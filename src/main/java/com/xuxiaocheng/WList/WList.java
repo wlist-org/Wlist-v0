@@ -4,12 +4,12 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HLoggerStream;
 import com.xuxiaocheng.WList.Configurations.GlobalConfiguration;
-import com.xuxiaocheng.WList.Internal.Server;
+import com.xuxiaocheng.WList.Internal.Server.Token.TokenManager;
+import com.xuxiaocheng.WList.Internal.Server.WListServer;
 
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.net.InetSocketAddress;
 
 public final class WList {
@@ -23,10 +23,12 @@ public final class WList {
             WList.DebugMode ? Integer.MIN_VALUE : HLogLevel.DEBUG.getPriority() + 1,
             true, new HLoggerStream(true, !WList.DebugMode));
 
-    public static void main(final String[] args) throws FileNotFoundException {
+    @SuppressWarnings("OverlyBroadThrowsClause")
+    public static void main(final String[] args) throws Exception {
         WList.logger.log(HLogLevel.FINE, "Hello WList!");
-        GlobalConfiguration.getInstance(new BufferedInputStream(new FileInputStream("config.yml")));
-        final Server server = Server.getInstance(new InetSocketAddress(GlobalConfiguration.getInstance(null).getPort()));
+        GlobalConfiguration.init(new BufferedInputStream(new FileInputStream("config.yml")));
+        TokenManager.init();
+        final WListServer server = WListServer.getInstance(new InetSocketAddress(GlobalConfiguration.getInstance().getPort()));
         server.start().syncUninterruptibly();
     }
 }

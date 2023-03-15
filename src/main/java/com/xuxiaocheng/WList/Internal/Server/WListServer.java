@@ -1,17 +1,17 @@
-package com.xuxiaocheng.WList.Internal;
+package com.xuxiaocheng.WList.Internal.Server;
 
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HLoggerStream;
+import com.xuxiaocheng.WList.Internal.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.WList;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandler;
-import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.ChannelId;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
@@ -30,16 +30,16 @@ import org.jetbrains.annotations.Nullable;
 
 import java.net.SocketAddress;
 
-public class Server {
-    protected static @Nullable Server instance;
+public class WListServer {
+    protected static @Nullable WListServer instance;
 
-    public static @NotNull Server getInstance(final @NotNull SocketAddress address) {
-        if (Server.instance == null)
-            Server.instance = new Server(address);
-        return Server.instance;
+    public static @NotNull WListServer getInstance(final @NotNull SocketAddress address) {
+        if (WListServer.instance == null)
+            WListServer.instance = new WListServer(address);
+        return WListServer.instance;
     }
 
-    private final @NotNull HLog logger = HLog.createInstance("ServerLogger",
+    private static final @NotNull HLog logger = HLog.createInstance("ServerLogger",
             WList.DebugMode ? Integer.MIN_VALUE : HLogLevel.DEBUG.getPriority() + 1,
             true, new HLoggerStream(true, false));
 
@@ -47,7 +47,7 @@ public class Server {
     protected final @NotNull EventLoopGroup bossGroup = new NioEventLoopGroup(1);
     protected final @NotNull EventLoopGroup workerGroup = new NioEventLoopGroup(0);
 
-    protected Server(final @NotNull SocketAddress address) {
+    protected WListServer(final @NotNull SocketAddress address) {
         super();
         this.address = address;
     }
@@ -60,7 +60,7 @@ public class Server {
     protected static @NotNull EventExecutorGroup executors = new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 3, new DefaultThreadFactory("ServerExecutors"));
 
     public synchronized @NotNull ChannelFuture start() {
-        this.logger.log(HLogLevel.INFO, "Server starting...");
+        WListServer.logger.log(HLogLevel.DEBUG, "WListServer starting...");
         final ServerBootstrap serverBootstrap = new ServerBootstrap();
         serverBootstrap.group(this.workerGroup, this.workerGroup);
         serverBootstrap.channel(NioServerSocketChannel.class);
@@ -74,53 +74,72 @@ public class Server {
 //                pipeline.addLast(new IdleStateHandler());
                 pipeline.addLast("Decoder", new LengthFieldBasedFrameDecoder(1 << 20, 0, 4, 0, 4));
                 pipeline.addLast("Encoder", new LengthFieldPrepender(4));
-                pipeline.addLast(Server.executors, "handler", new ServerHandler());
+                pipeline.addLast(WListServer.executors, "ServerHandler", new ServerChannelInboundHandler());
             }
         });
         this.channelFuture = serverBootstrap.bind(this.address).syncUninterruptibly();
-        this.logger.log(HLogLevel.FINE, "Server started.");
-        this.logger.log(HLogLevel.INFO, "Listening on: ", this.address);
+        WListServer.logger.log(HLogLevel.VERBOSE, "WListServer started.");
+        WListServer.logger.log(HLogLevel.INFO, "Listening on: ", this.address);
         return this.channelFuture.channel().closeFuture();
     }
 
     public synchronized void stop() throws InterruptedException {
-        this.logger.log(HLogLevel.INFO, "Server stopping...");
+        WListServer.logger.log(HLogLevel.DEBUG, "WListServer stopping...");
         this.channelFuture.channel().close().sync();
         this.bossGroup.shutdownGracefully().sync();
         this.workerGroup.shutdownGracefully().sync();
-        this.logger.log(HLogLevel.FINE, "Server stopped gracefully.");
+        WListServer.logger.log(HLogLevel.INFO, "WListServer stopped gracefully.");
     }
 
     @Override
     public @NotNull String toString() {
-        return "Server(TcpServer){" +
+        return "WListServer(TcpServer){" +
                 "address=" + this.address +
                 '}';
     }
 
     @ChannelHandler.Sharable
-    public static class ServerHandler extends SimpleChannelInboundHandler<ByteBuf> {
-
+    public static class ServerChannelInboundHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
         @Override
         public void channelActive(final @NotNull ChannelHandlerContext ctx) {
-            HLog.DefaultLogger.log("INFO", "Active");
+            final ChannelId id = ctx.channel().id();
+            WListServer.logger.log(HLogLevel.DEBUG, "Active: ", id.asLongText());
+            ServerHandler.doActive(id);
         }
 
         @Override
         public void channelInactive(final @NotNull ChannelHandlerContext ctx) {
-            HLog.DefaultLogger.log("INFO", "Inactive");
+            final ChannelId id = ctx.channel().id();
+            WListServer.logger.log(HLogLevel.DEBUG, "Inactive: ", id.asLongText());
+            ServerHandler.doInactive(id);
         }
 
+        @SuppressWarnings("OverlyBroadThrowsClause")
         @Override
         protected void channelRead0(final ChannelHandlerContext ctx, final ByteBuf msg) throws Exception {
-            HLog.DefaultLogger.log("INFO", "Read: ", msg);
+            final Channel channel = ctx.channel();
+            WListServer.logger.log(HLogLevel.DEBUG, "Read: ", channel.id().asLongText(), " len: ", msg.readableBytes());
+            final OperationTypes.Type type = OperationTypes.getType(ByteBufIOUtil.readByte(msg));
+            switch (type) {
+                case Undefined -> throw new IllegalArgumentException("Undefined operation!");
+                case Registry -> ServerHandler.doRegister(msg, channel);
+                case LoginIn -> ServerHandler.doLoginIn(msg, channel);
+                case LoginOut -> ServerHandler.doLoginOut(msg, channel);
+                case List -> ServerHandler.doList(msg, channel);
+                // TODO
+            }
         }
 
         @Override
-        public void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
-            HLog.DefaultLogger.log("INFO", cause);
+        public void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) {
+            WListServer.logger.log(HLogLevel.ERROR, "Exception: ", ctx.channel().id().asLongText(), cause);
             ctx.close();
+        }
+
+        @Override
+        public @NotNull String toString() {
+            return "ServerChannelInboundHandler{}";
         }
     }
 }
