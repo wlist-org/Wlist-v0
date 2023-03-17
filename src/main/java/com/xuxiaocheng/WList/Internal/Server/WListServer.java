@@ -60,7 +60,7 @@ public class WListServer {
     protected static @NotNull EventExecutorGroup executors = new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 3, new DefaultThreadFactory("ServerExecutors"));
 
     public synchronized @NotNull ChannelFuture start() {
-        WListServer.logger.log(HLogLevel.DEBUG, "WListServer starting...");
+        WListServer.logger.log(HLogLevel.DEBUG, "WListServer is starting...");
         final ServerBootstrap serverBootstrap = new ServerBootstrap();
         serverBootstrap.group(this.workerGroup, this.workerGroup);
         serverBootstrap.channel(NioServerSocketChannel.class);
@@ -84,7 +84,7 @@ public class WListServer {
     }
 
     public synchronized void stop() throws InterruptedException {
-        WListServer.logger.log(HLogLevel.DEBUG, "WListServer stopping...");
+        WListServer.logger.log(HLogLevel.DEBUG, "WListServer is stopping...");
         this.channelFuture.channel().close().sync();
         this.bossGroup.shutdownGracefully().sync();
         this.workerGroup.shutdownGracefully().sync();
@@ -117,10 +117,10 @@ public class WListServer {
 
         @SuppressWarnings("OverlyBroadThrowsClause")
         @Override
-        protected void channelRead0(final ChannelHandlerContext ctx, final ByteBuf msg) throws Exception {
+        protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) throws Exception {
             final Channel channel = ctx.channel();
             WListServer.logger.log(HLogLevel.DEBUG, "Read: ", channel.id().asLongText(), " len: ", msg.readableBytes());
-            final OperationTypes.Type type = OperationTypes.getType(ByteBufIOUtil.readByte(msg));
+            final Operation.Type type = Operation.getType(ByteBufIOUtil.readByte(msg));
             switch (type) {
                 case Undefined -> throw new IllegalArgumentException("Undefined operation!");
                 case Registry -> ServerHandler.doRegister(msg, channel);
@@ -132,7 +132,7 @@ public class WListServer {
         }
 
         @Override
-        public void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) {
+        public void exceptionCaught(final @NotNull ChannelHandlerContext ctx, final Throwable cause) {
             WListServer.logger.log(HLogLevel.ERROR, "Exception: ", ctx.channel().id().asLongText(), cause);
             ctx.close();
         }

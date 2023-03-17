@@ -4,7 +4,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HLoggerStream;
 import com.xuxiaocheng.WList.Configurations.GlobalConfiguration;
-import com.xuxiaocheng.WList.Internal.Server.Token.TokenManager;
+import com.xuxiaocheng.WList.Internal.Server.TokenManager;
 import com.xuxiaocheng.WList.Internal.Server.WListServer;
 
 import java.io.BufferedInputStream;

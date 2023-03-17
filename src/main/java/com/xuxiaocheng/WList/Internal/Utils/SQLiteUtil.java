@@ -9,6 +9,10 @@ import java.io.File;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class SQLiteUtil {
     protected static @Nullable SQLiteUtil DataDB;
@@ -26,6 +30,7 @@ public class SQLiteUtil {
         return SQLiteUtil.IndexDB;
     }
 
+    protected final @NotNull Map<@NotNull String, @NotNull ReadWriteLock> lock = new ConcurrentHashMap<>();
     protected final @NotNull File path;
     protected final @NotNull Connection sqliteConnection;
 
@@ -44,6 +49,10 @@ public class SQLiteUtil {
         this.sqliteConnection = sqliteDataSource.getConnection();
         if (this.sqliteConnection == null)
             throw new SQLException("Failed to get connection with sqlite database.");
+    }
+
+    public @NotNull ReadWriteLock getLock(final @NotNull String name) {
+        return this.lock.computeIfAbsent(name, k -> new ReentrantReadWriteLock());
     }
 
     public @NotNull File getPath() {
