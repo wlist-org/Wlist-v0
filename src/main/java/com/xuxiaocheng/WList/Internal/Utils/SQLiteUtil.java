@@ -11,10 +11,14 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class SQLiteUtil {
+    public static final @NotNull ExecutorService executor = Executors.newCachedThreadPool();
+
     protected static @Nullable SQLiteUtil DataDB;
     protected static @Nullable SQLiteUtil IndexDB;
 

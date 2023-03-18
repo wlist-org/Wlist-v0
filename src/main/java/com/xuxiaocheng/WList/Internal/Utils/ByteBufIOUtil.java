@@ -35,12 +35,10 @@ public final class ByteBufIOUtil {
         final int length = ByteBufIOUtil.readVariableLenInt(buffer);
         if (length <= 0)
             return ByteBufIOUtil.EmptyByteArray;
+        if (buffer.readableBytes() < length)
+            throw new IOException(new IndexOutOfBoundsException(length));
         final byte[] bytes = new byte[length];
-        try {
-            buffer.readBytes(bytes);
-        } catch (final IndexOutOfBoundsException exception) {
-            throw new IOException(exception);
-        }
+        buffer.readBytes(bytes);
         return bytes;
     }
 
