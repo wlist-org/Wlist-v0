@@ -7,18 +7,15 @@ import org.sqlite.SQLiteDataSource;
 
 import java.io.File;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class SQLiteUtil {
-    public static final @NotNull ExecutorService executor = Executors.newCachedThreadPool();
-
     protected static @Nullable SQLiteUtil DataDB;
     protected static @Nullable SQLiteUtil IndexDB;
 
@@ -65,6 +62,10 @@ public class SQLiteUtil {
 
     public @NotNull Statement createStatement() throws SQLException {
         return this.sqliteConnection.createStatement();
+    }
+
+    public @NotNull PreparedStatement prepareStatement(final @NotNull String sql) throws SQLException {
+        return this.sqliteConnection.prepareStatement(sql);
     }
 
     @Override

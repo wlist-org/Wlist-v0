@@ -119,15 +119,19 @@ public class WListServer {
         @Override
         protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) throws Exception {
             final Channel channel = ctx.channel();
-            WListServer.logger.log(HLogLevel.DEBUG, "Read: ", channel.id().asLongText(), " len: ", msg.readableBytes());
+            WListServer.logger.log(HLogLevel.VERBOSE, "Read: ", channel.id().asLongText(), " len: ", msg.readableBytes());
             final Operation.Type type = Operation.getType(ByteBufIOUtil.readByte(msg));
-            switch (type) {
-                case Undefined -> throw new IllegalArgumentException("Undefined operation!");
-                case Registry -> ServerHandler.doRegister(msg, channel);
-                case LoginIn -> ServerHandler.doLoginIn(msg, channel);
-                case LoginOut -> ServerHandler.doLoginOut(msg, channel);
-                case List -> ServerHandler.doList(msg, channel);
-                // TODO
+            try {
+                switch (type) {
+                    case Undefined -> throw new IllegalArgumentException("Undefined operation!");
+                    case LoginIn -> ServerHandler.doLoginIn(msg, channel);
+                    case LoginOut -> ServerHandler.doLoginOut(msg, channel);
+                    case Registry -> ServerHandler.doRegister(msg, channel);
+//                case List -> ServerHandler.doList(msg, channel);
+                    // TODO
+                }
+            } catch (final IllegalNetworkDataException exception) {
+                ServerHandler.doException(channel, exception);
             }
         }
 

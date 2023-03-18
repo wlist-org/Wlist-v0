@@ -4,7 +4,9 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HLoggerStream;
 import com.xuxiaocheng.WList.Configurations.GlobalConfiguration;
-import com.xuxiaocheng.WList.Internal.Server.TokenManager;
+import com.xuxiaocheng.WList.Internal.Server.Helper.TokenHelper;
+import com.xuxiaocheng.WList.Internal.Server.Helper.UserHelper;
+import com.xuxiaocheng.WList.Internal.Server.Operation;
 import com.xuxiaocheng.WList.Internal.Server.WListServer;
 
 import java.io.BufferedInputStream;
@@ -25,9 +27,12 @@ public final class WList {
 
     @SuppressWarnings("OverlyBroadThrowsClause")
     public static void main(final String[] args) throws Exception {
-        WList.logger.log(HLogLevel.FINE, "Hello WList!");
+        Operation.init();
+        WList.logger.log(HLogLevel.FINE, "Hello WList! Initializing...");
         GlobalConfiguration.init(new BufferedInputStream(new FileInputStream("config.yml")));
-        TokenManager.init();
+        UserHelper.init();
+        TokenHelper.init();
+
         final WListServer server = WListServer.getInstance(new InetSocketAddress(GlobalConfiguration.getInstance().getPort()));
         server.start().syncUninterruptibly();
     }
