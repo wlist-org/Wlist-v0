@@ -23,7 +23,7 @@ public final class UserManager {
         return token;
     }
 
-    public static @NotNull String doRegister(final @NotNull ByteBuf buf) throws IOException, SQLException {
+    public static void doRegister(final @NotNull ByteBuf buf) throws IOException, SQLException {
         final String username = ByteBufIOUtil.readUTF(buf);
         final String password = UserHelper.encryptPassword(ByteBufIOUtil.readUTF(buf));
         final Pair<String, Set<Operation.Permission>> user = UserHelper.getUser(username);
@@ -31,7 +31,6 @@ public final class UserManager {
         if (user != null)
             throw new IllegalNetworkDataException("The same username has existed.");
         UserHelper.addUser(username, password);
-        return UserManager.getNewToken(username);
     }
 
     public static @NotNull String doLoginIn(final @NotNull ByteBuf buf) throws IOException, SQLException {
@@ -45,5 +44,15 @@ public final class UserManager {
 
     public static @NotNull String doLoginOut(final @NotNull ByteBuf ignoredBuf) {
         return "";
+    }
+
+    public static @NotNull Set<Operation.@NotNull Permission> getPermissions(final @NotNull String token) throws SQLException {
+        final String username = TokenHelper.getUsername(token);
+        if (username == null)
+            return Set.of();
+        final Pair<String, Set<Operation.Permission>> user = UserHelper.getUser(username);
+        if (user == null)
+            return Set.of();
+        return user.getSecond();
     }
 }

@@ -97,7 +97,8 @@ public final class Operation {
         Undefined((byte) 0),
         Success((byte) 1),
         Unsupported((byte) 2),
-        DataError((byte) 3),
+        NoPermission((byte) 3),
+        DataError((byte) 4),
         ;
         private final byte id;
 

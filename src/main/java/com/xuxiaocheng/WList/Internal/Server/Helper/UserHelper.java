@@ -67,11 +67,11 @@ public final class UserHelper {
         UserHelper.insertUser(username, password);
     }
 
-    public static @Nullable Pair<String, Set<Operation.Permission>> getUser(final @NotNull String username) throws SQLException {
+    public static @Nullable Pair<@NotNull String, @NotNull Set<Operation.@NotNull Permission>> getUser(final @NotNull String username) throws SQLException {
         return UserHelper.selectUser(username);
     }
 
-    private static @Nullable Pair<String, Set<Operation.Permission>> selectUser(final @NotNull String username) throws SQLException {
+    private static @Nullable Pair<@NotNull String, @NotNull Set<Operation.@NotNull Permission>> selectUser(final @NotNull String username) throws SQLException {
         SQLiteUtil.getDataInstance().getLock("users").readLock().lock();
         try (final PreparedStatement statement = SQLiteUtil.getDataInstance().prepareStatement("SELECT password, permission FROM users WHERE username == ? LIMIT 1;")) {
             statement.setString(1, username);

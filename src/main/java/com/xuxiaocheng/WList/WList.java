@@ -32,7 +32,6 @@ public final class WList {
         GlobalConfiguration.init(new BufferedInputStream(new FileInputStream("config.yml")));
         UserHelper.init();
         TokenHelper.init();
-
         final WListServer server = WListServer.getInstance(new InetSocketAddress(GlobalConfiguration.getInstance().getPort()));
         server.start().syncUninterruptibly();
     }

@@ -123,7 +123,7 @@ public class WListServer {
             final Operation.Type type = Operation.getType(ByteBufIOUtil.readByte(msg));
             try {
                 switch (type) {
-                    case Undefined -> throw new IllegalArgumentException("Undefined operation!");
+                    case Undefined -> throw new IllegalNetworkDataException("Undefined operation!");
                     case LoginIn -> ServerHandler.doLoginIn(msg, channel);
                     case LoginOut -> ServerHandler.doLoginOut(msg, channel);
                     case Registry -> ServerHandler.doRegister(msg, channel);

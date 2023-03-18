@@ -3,15 +3,13 @@ package com.xuxiaocheng.WList.Internal.Server.Helper;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Internal.Utils.SQLiteUtil;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -21,8 +19,8 @@ public final class TokenHelper {
     }
 
     private static final long ExpiredTime = TimeUnit.DAYS.toMillis(1);
-    //                                username                                                  token            create_time
-    private static final @NotNull Map<@NotNull String, @NotNull Set<Pair.@NotNull ImmutablePair<@NotNull String, @NotNull Long>>> TokensCache = new ConcurrentHashMap<>();
+    //                                token                                        username         create_time
+    private static final @NotNull Map<@NotNull String, Pair.@NotNull ImmutablePair<@NotNull String, @NotNull Long>> TokensCache = new ConcurrentHashMap<>();
 
     public static void init() throws SQLException {
         SQLiteUtil.getDataInstance().getLock("tokens").writeLock().lock();
@@ -44,26 +42,30 @@ public final class TokenHelper {
     }
 
     public static void addToken(final @NotNull String token, final @NotNull String username, final long time) throws SQLException {
-        TokenHelper.getTokens(username).add(Pair.ImmutablePair.makeImmutablePair(token, time));
+        final Pair.ImmutablePair<String, Long> old = TokenHelper.TokensCache.putIfAbsent(token, Pair.ImmutablePair.makeImmutablePair(token, time));
+        if (old != null && !username.equals(old.getFirst()))
+            throw new SQLException("Token is existed!");
         TokenHelper.insertToken(token, username, time);
     }
 
-    public static @NotNull Set<Pair.@NotNull ImmutablePair<@NotNull String, @NotNull Long>> getTokens(final @NotNull String username) throws SQLException {
+    public static @Nullable String getUsername(final @NotNull String token) throws SQLException {
+        final Pair.ImmutablePair<String, Long> user;
         try {
-            final Set<Pair.ImmutablePair<String, Long>> tokens = TokenHelper.TokensCache.computeIfAbsent(username, username1 -> {
+            user = TokenHelper.TokensCache.computeIfAbsent(token, k -> {
                 try {
-                    return Collections.synchronizedSet(TokenHelper.selectTokens(username1));
+                    return TokenHelper.selectToken(token);
                 } catch (final SQLException exception) {
                     throw new RuntimeException(exception);
                 }
             });
-            tokens.removeIf(p -> p.getSecond().longValue() < System.currentTimeMillis() - TokenHelper.ExpiredTime);
-            return tokens;
         } catch (final RuntimeException exception) {
             if (exception.getCause() instanceof SQLException sqlException)
                 throw sqlException;
             throw exception;
         }
+        if (user == null || user.getSecond().longValue() < System.currentTimeMillis() - TokenHelper.ExpiredTime)
+            return null;
+        return user.getFirst();
     }
 
     public static void clearExpiredTokens() throws SQLException {
@@ -75,23 +77,21 @@ public final class TokenHelper {
         } finally {
             SQLiteUtil.getDataInstance().getLock("tokens").writeLock().unlock();
         }
-        TokenHelper.TokensCache.forEach((n, ts) -> ts.removeIf(token -> token.getSecond().longValue() < time));
-        TokenHelper.TokensCache.entrySet().removeIf(e -> !e.getValue().isEmpty());
+        TokenHelper.TokensCache.entrySet().removeIf(e -> e.getValue().getSecond().longValue() < time);
     }
 
-    private static @NotNull Set<Pair.@NotNull ImmutablePair<@NotNull String, @NotNull Long>> selectTokens(final @NotNull String username) throws SQLException {
-        final Set<Pair.ImmutablePair<String, Long>> sets = new HashSet<>();
+    private static Pair.@Nullable ImmutablePair<@NotNull String, @NotNull Long> selectToken(final @NotNull String token) throws SQLException {
         SQLiteUtil.getDataInstance().getLock("tokens").readLock().lock();
-        try (final PreparedStatement statement = SQLiteUtil.getDataInstance().prepareStatement("SELECT token, time FROM tokens WHERE user == ?;")) {
-            statement.setString(1, username);
+        try (final PreparedStatement statement = SQLiteUtil.getDataInstance().prepareStatement("SELECT user, time FROM tokens WHERE token == ? LIMIT 1;")) {
+            statement.setString(1, token);
             try (final ResultSet tokens = statement.executeQuery()) {
-                while (tokens.next())
-                    sets.add(Pair.ImmutablePair.makeImmutablePair(tokens.getString(1), tokens.getLong(2)));
+                if (tokens.next())
+                    return Pair.ImmutablePair.makeImmutablePair(tokens.getString(1), tokens.getLong(2));
+                return null;
             }
         } finally {
             SQLiteUtil.getDataInstance().getLock("tokens").readLock().unlock();
         }
-        return sets;
     }
 
     private static void insertToken(final @NotNull String token, final @NotNull String username, final long time) throws SQLException {
