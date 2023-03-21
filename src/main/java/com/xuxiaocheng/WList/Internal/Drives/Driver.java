@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Internal.Drives;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -22,11 +23,12 @@ public interface Driver<C extends DriverConfiguration> {
      * Get the list of files in this directory.
      * @param path The directory path to get files list.
      * @param page The page of the list.
-     * @return The files list. Null means directory is not available.
+     * @param limit Max length in one page.
+     * @return Long means files count. The second is the files list. Null means directory is not available.
      *          The String in the list means file name.
      * @throws Exception Something went wrong.
      */
-    @Nullable List<@NotNull String> list(final @NotNull DrivePath path, int page) throws Exception;
+    @Nullable Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull List<@NotNull String>> list(final @NotNull DrivePath path, final int page, final int limit) throws Exception;
 
     /**
      * Get the size of a specific file.
