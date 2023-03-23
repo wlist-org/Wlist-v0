@@ -4,13 +4,19 @@ import com.xuxiaocheng.WList.Internal.Drives.DriverConfiguration;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public class DriverConfiguration_123Pan implements DriverConfiguration {
-    protected @NotNull String passport = "";
-    protected @NotNull String password = "";
-    protected @Nullable String token;
-    protected long tokenExpire;
-    protected long refreshExpire;
-    protected int defaultLimitPerPage = 20;
+public final class DriverConfiguration_123Pan implements DriverConfiguration {
+    private @NotNull String name = "123pan";
+    private @NotNull String passport = "";
+    private @NotNull String password = "";
+    private @Nullable String token;
+    private long tokenExpire;
+    private long refreshExpire;
+    private int defaultLimitPerPage = 20;
+
+    @Override
+    public @NotNull String getName() {
+        return this.name;
+    }
 
     public @NotNull String getPassport() {
         return this.passport;
@@ -34,6 +40,11 @@ public class DriverConfiguration_123Pan implements DriverConfiguration {
 
     public int getDefaultLimitPerPage() {
         return this.defaultLimitPerPage;
+    }
+
+    @Override
+    public void setName(final @NotNull String name) {
+        this.name = name;
     }
 
     public void setPassport(final @NotNull String passport) {
@@ -63,7 +74,8 @@ public class DriverConfiguration_123Pan implements DriverConfiguration {
     @Override
     public @NotNull String toString() {
         return "DriverConfiguration_123Pan{" +
-                "passport='" + this.passport + '\'' +
+                "name='" + this.name + '\'' +
+                ", passport='" + this.passport + '\'' +
                 ", password='" + this.password + '\'' +
                 ", token='" + this.token + '\'' +
                 ", tokenExpire=" + this.tokenExpire +
