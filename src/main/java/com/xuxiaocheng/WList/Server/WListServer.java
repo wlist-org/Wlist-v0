@@ -1,9 +1,9 @@
-package com.xuxiaocheng.WList.Internal.Server;
+package com.xuxiaocheng.WList.Server;
 
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HLoggerStream;
-import com.xuxiaocheng.WList.Internal.Utils.ByteBufIOUtil;
+import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.WList;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;

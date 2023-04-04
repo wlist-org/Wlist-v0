@@ -1,9 +1,9 @@
-package com.xuxiaocheng.WList.Internal.Server;
+package com.xuxiaocheng.WList.Server;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.WList.Internal.Server.Helper.TokenHelper;
-import com.xuxiaocheng.WList.Internal.Server.Helper.UserHelper;
-import com.xuxiaocheng.WList.Internal.Utils.ByteBufIOUtil;
+import com.xuxiaocheng.WList.Server.Helper.TokenHelper;
+import com.xuxiaocheng.WList.Server.Helper.UserHelper;
+import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
 

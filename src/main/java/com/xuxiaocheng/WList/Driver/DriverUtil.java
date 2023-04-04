@@ -1,8 +1,8 @@
-package com.xuxiaocheng.WList.Drivers;
+package com.xuxiaocheng.WList.Driver;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
-import com.xuxiaocheng.WList.Internal.Drives.Exceptions.IllegalResponseCodeException;
+import com.xuxiaocheng.WList.Driver.Exceptions.IllegalResponseCodeException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -14,8 +14,8 @@ import java.net.URL;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-public final class HttpUtil {
-    private HttpUtil() {
+public final class DriverUtil {
+    private DriverUtil() {
         super();
     }
 
@@ -23,7 +23,7 @@ public final class HttpUtil {
     public static final @NotNull Pattern mailAddressPattern = Pattern.compile("^\\w+@[A-Za-z0-9]+(\\.[A-Za-z0-9]+){1,2}$");
 
     public static @NotNull JSONObject sendJsonHttp(final @NotNull String url, final @NotNull String method,
-                                                   final @Nullable Map<@NotNull String, @NotNull String> property, final @NotNull JSONObject message) throws IOException {
+                                                   final @Nullable Map<@NotNull String, @NotNull String> property, final @Nullable JSONObject message) throws IOException {
         assert url.startsWith("http://") || url.startsWith("https://");
         final HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
         connection.setRequestMethod(method);
@@ -34,9 +34,11 @@ public final class HttpUtil {
         connection.setDoInput(true);
         connection.setDoOutput(true);
         connection.setUseCaches(false);
-        final OutputStream outputStream = connection.getOutputStream();
-        outputStream.write(JSON.toJSONBytes(message));
-        outputStream.close();
+        if (message != null) {
+            final OutputStream outputStream = connection.getOutputStream();
+            outputStream.write(JSON.toJSONBytes(message));
+            outputStream.close();
+        }
         if (connection.getResponseCode() != HttpURLConnection.HTTP_OK)
             throw new IllegalResponseCodeException(connection.getResponseCode());
         final InputStream inputStream = connection.getInputStream();

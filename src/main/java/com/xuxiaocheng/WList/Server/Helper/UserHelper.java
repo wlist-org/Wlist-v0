@@ -1,12 +1,12 @@
-package com.xuxiaocheng.WList.Internal.Server.Helper;
+package com.xuxiaocheng.WList.Server.Helper;
 
 import com.alibaba.fastjson2.JSON;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.WList.Internal.Server.Operation;
-import com.xuxiaocheng.WList.Internal.Utils.SQLiteUtil;
+import com.xuxiaocheng.WList.Server.Operation;
+import com.xuxiaocheng.WList.Utils.SQLiteUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

@@ -1,6 +1,6 @@
-package com.xuxiaocheng.WList.Internal.Server;
+package com.xuxiaocheng.WList.Server;
 
-import com.xuxiaocheng.WList.Internal.Utils.ByteBufIOUtil;
+import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;

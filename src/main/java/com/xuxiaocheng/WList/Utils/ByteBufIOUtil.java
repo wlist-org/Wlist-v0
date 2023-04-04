@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Internal.Utils;
+package com.xuxiaocheng.WList.Utils;
 
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;

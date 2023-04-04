@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Internal.Utils;
+package com.xuxiaocheng.WList.Utils;
 
 import com.xuxiaocheng.WList.Configurations.GlobalConfiguration;
 import org.jetbrains.annotations.NotNull;

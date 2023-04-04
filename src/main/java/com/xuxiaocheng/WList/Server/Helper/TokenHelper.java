@@ -1,7 +1,7 @@
-package com.xuxiaocheng.WList.Internal.Server.Helper;
+package com.xuxiaocheng.WList.Server.Helper;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.WList.Internal.Utils.SQLiteUtil;
+import com.xuxiaocheng.WList.Utils.SQLiteUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

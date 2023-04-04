@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Internal.Server;
+package com.xuxiaocheng.WList.Server;
 
 import java.io.IOException;
 import java.io.Serial;
