@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Configurations;
+package com.xuxiaocheng.WList.Configuration;
 
 import com.xuxiaocheng.HeadLibs.Annotations.Range.IntRange;
 import org.jetbrains.annotations.NotNull;

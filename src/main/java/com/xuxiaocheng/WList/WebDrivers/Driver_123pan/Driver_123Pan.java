@@ -4,11 +4,11 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Driver.DrivePath;
 import com.xuxiaocheng.WList.Driver.Driver;
 import com.xuxiaocheng.WList.Driver.Exceptions.IllegalParametersException;
+import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.List;
 import java.util.Objects;
 
@@ -21,69 +21,61 @@ public final class Driver_123Pan implements Driver<DriverConfiguration_123Pan> {
     }
 
     public @NotNull DriverConfiguration_123Pan login(final @Nullable DriverConfiguration_123Pan info) throws IOException, IllegalParametersException {
-        final DriverConfiguration_123Pan config = Objects.requireNonNullElseGet(info, DriverConfiguration_123Pan::new);
-        final long time = System.currentTimeMillis();
-        if (config.getTokenExpire() >= time && config.getToken() != null) {
-            this.configuration = config;
-            return config;
-        }
-        if (config.getRefreshExpire() >= time && config.getToken() != null)
-            DriverHelper_123pan.doRefreshToken(config);
-        else
-            DriverHelper_123pan.doGetToken(config);
-        this.configuration = config;
-        return config;
+        this.configuration = Objects.requireNonNullElseGet(info, DriverConfiguration_123Pan::new);
+        DriverHelper_123pan.doEnsureToken(this.configuration);
+        DriverHelper_123pan.doGetUserInformation(this.configuration);
+        return this.configuration;
     }
 
     @Override
-    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull List<@NotNull String>> list(@NotNull final DrivePath path, final int page, final int limit) {
-        final long id = DriverHelper_123pan.getDirectoryId(path, true, this);
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull List<@NotNull String>> list(final @NotNull DrivePath path, final int page, final int limit) {
+        final long id = DriverHelper_123pan.getDirectoryId(path, true, this.configuration.getLocalSide().getName());
 // TODO list
         return Pair.ImmutablePair.makeImmutablePair(0L, List.of());
     }
 
     @Override
-    public @Nullable Long size(@NotNull final DrivePath path) {
+    public @Nullable Long size(final @NotNull DrivePath path) {
         return null;
     }
 
     @Override
-    public @Nullable String download(@NotNull final DrivePath path) {
+    public @Nullable String download(final @NotNull DrivePath path) {
         return null;
     }
 
     @Override
-    public @Nullable String mkdirs(@NotNull final DrivePath path) {
+    public @Nullable String mkdirs(final @NotNull DrivePath path) {
         return null;
     }
 
     @Override
-    public @Nullable String upload(@NotNull final DrivePath path, @NotNull final InputStream file) {
+    public @Nullable String upload(final @NotNull DrivePath path, final @NotNull ByteBuf file) {
         return null;
     }
 
     @Override
-    public void delete(@NotNull final DrivePath path) {
+    public void delete(final @NotNull DrivePath path) {
 
     }
 
     @Override
-    public void rmdir(@NotNull final DrivePath path) {
+    public void rmdir(final @NotNull DrivePath path) {
 
     }
 
     @Override
-    public @Nullable String copy(@NotNull final DrivePath source, @NotNull final DrivePath target) {
+    public @Nullable String copy(final @NotNull DrivePath source, final @NotNull DrivePath target) {
         return null;
     }
 
     @Override
-    public @Nullable String move(@NotNull final DrivePath source, @NotNull final DrivePath target) {
+    public @Nullable String move(final @NotNull DrivePath source, final @NotNull DrivePath target) {
         return null;
     }
 
     @Override
-    public @Nullable String rename(@NotNull final DrivePath source, @NotNull final String name) {
+    public @Nullable String rename(final @NotNull DrivePath source, final @NotNull String name) {
         return null;
     }
 }

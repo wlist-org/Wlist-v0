@@ -1,6 +1,6 @@
 package com.xuxiaocheng.WList.Utils;
 
-import com.xuxiaocheng.WList.Configurations.GlobalConfiguration;
+import com.xuxiaocheng.WList.Configuration.GlobalConfiguration;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.sqlite.SQLiteDataSource;

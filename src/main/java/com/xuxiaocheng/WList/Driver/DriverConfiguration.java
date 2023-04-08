@@ -1,67 +1,67 @@
 package com.xuxiaocheng.WList.Driver;
 
-import com.alibaba.fastjson2.JSONArray;
+import com.xuxiaocheng.WList.Driver.Configuration.CacheSideDriverConfiguration;
+import com.xuxiaocheng.WList.Driver.Configuration.LocalSideDriverConfiguration;
+import com.xuxiaocheng.WList.Driver.Configuration.WebSideDriverConfiguration;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Objects;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.function.Supplier;
 
-public abstract class DriverConfiguration {
-    protected final @NotNull JSONArray configurations = new JSONArray();
+public abstract class DriverConfiguration<L extends LocalSideDriverConfiguration, W extends WebSideDriverConfiguration, C extends CacheSideDriverConfiguration> {
+    protected @NotNull L localSide;
+    protected @NotNull W webSide;
+    protected @NotNull C cacheSide;
 
-    protected static <T> @NotNull T getNonNullOrSetDefault(final @NotNull JSONArray configurations, final int index, final Class<? extends T> type, final @NotNull T obj) {
-        for (int i = index - configurations.size(); i >= 0; --i)
-            configurations.add(null);
-        return Objects.requireNonNullElseGet(configurations.getObject(index, type), () -> {
-            configurations.set(1, obj);
-            return obj;
-        });
+    @Contract(pure = true)
+    public @NotNull Set<Class<?>> getDumpMapClasses() {
+        final Set<Class<?>> classes = new HashSet<>(4);
+        classes.add(this.getClass());
+        classes.add(this.localSide.getClass());
+        classes.add(this.webSide.getClass());
+        classes.add(this.cacheSide.getClass());
+        return classes;
     }
 
-    protected static <T> @NotNull T getNonNullOrSetDefault(final @NotNull JSONArray configurations, final int index, final Class<? extends T> type, final @NotNull Supplier<? extends @NotNull T> supplier) {
-        for (int i = index - configurations.size(); i >= 0; --i)
-            configurations.add(null);
-        return Objects.requireNonNullElseGet(configurations.getObject(index, type), () -> {
-            final T obj = supplier.get();
-            configurations.set(1, obj);
-            return obj;
-        });
+    protected DriverConfiguration(@NotNull final Supplier<? extends L> local, final @NotNull Supplier<? extends W> web, final @NotNull Supplier<? extends C> cache) {
+        super();
+        this.localSide = local.get();
+        this.webSide = web.get();
+        this.cacheSide = cache.get();
     }
 
-    protected @NotNull JSONArray arrayLocal() {
-        return DriverConfiguration.getNonNullOrSetDefault(this.configurations, 0, JSONArray.class, JSONArray::new);
+    public @NotNull L getLocalSide() {
+        return this.localSide;
     }
 
-    protected @NotNull JSONArray arrayWeb() {
-        return DriverConfiguration.getNonNullOrSetDefault(this.configurations, 1, JSONArray.class, JSONArray::new);
+    public void setLocalSide(@NotNull final L localSide) {
+        this.localSide = localSide;
     }
 
-    public @NotNull String getName() {
-        return DriverConfiguration.getNonNullOrSetDefault(this.arrayLocal(), 0, String.class, () -> this.getClass().getName());
+    public @NotNull W getWebSide() {
+        return this.webSide;
     }
 
-    public void setName(final @NotNull String name) {
-        this.arrayLocal().set(0, name);
+    public void setWebSide(@NotNull final W webSide) {
+        this.webSide = webSide;
     }
 
-    public int getPriority() {
-        return DriverConfiguration.getNonNullOrSetDefault(this.arrayLocal(),1, Integer.class, 0).intValue();
+    public @NotNull C getCacheSide() {
+        return this.cacheSide;
     }
 
-    public void setPriority(final int priority) {
-        this.arrayLocal().set(1, priority);
-    }
-
-    public boolean getStrictMode() {
-        return DriverConfiguration.getNonNullOrSetDefault(this.arrayLocal(),2, Boolean.class, true).booleanValue();
-    }
-
-    public void setStrictMode(final boolean strictMode) {
-        this.arrayLocal().set(2, strictMode);
+    public void setCacheSide(@NotNull final C cacheSide) {
+        this.cacheSide = cacheSide;
     }
 
     @Override
     public @NotNull String toString() {
-        return "DriverConfiguration:" + this.configurations;
+        return "DriverConfiguration{" +
+                "localSide=" + this.localSide +
+                ", webSide=" + this.webSide +
+                ", cacheSide=" + this.cacheSide +
+                '}';
     }
 }

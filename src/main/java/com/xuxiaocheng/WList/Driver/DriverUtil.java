@@ -25,6 +25,7 @@ public final class DriverUtil {
     public static @NotNull JSONObject sendJsonHttp(final @NotNull String url, final @NotNull String method,
                                                    final @Nullable Map<@NotNull String, @NotNull String> property, final @Nullable JSONObject message) throws IOException {
         assert url.startsWith("http://") || url.startsWith("https://");
+        // TODO gzip
         final HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
         connection.setRequestMethod(method);
         if (property == null)

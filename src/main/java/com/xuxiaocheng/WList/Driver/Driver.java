@@ -1,6 +1,8 @@
 package com.xuxiaocheng.WList.Driver;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -61,7 +63,7 @@ public interface Driver<C extends DriverConfiguration> {
      * @return The name of new file. Null means failure.
      * @throws Exception Something went wrong.
      */
-    @Nullable String upload(final @NotNull DrivePath path, final @NotNull InputStream file) throws Exception;//TODO Multi-thread upload
+    @Nullable String upload(final @NotNull DrivePath path, final @NotNull ByteBuf file) throws Exception;
 
     /**
      * Delete file.
@@ -80,7 +82,9 @@ public interface Driver<C extends DriverConfiguration> {
         if (url == null)
             return null;
         final InputStream inputStream = Driver.downloadFromString(url);
-        final String t =  this.upload(target, inputStream);
+        final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(inputStream.available());
+        buffer.writeBytes(inputStream.readAllBytes());
+        final String t =  this.upload(target, buffer);
         inputStream.close();
         return t;
     }
