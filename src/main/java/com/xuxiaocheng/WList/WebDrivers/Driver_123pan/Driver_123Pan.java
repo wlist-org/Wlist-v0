@@ -9,22 +9,31 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.List;
-import java.util.Objects;
 
 public final class Driver_123Pan implements Driver<DriverConfiguration_123Pan> {
-
     private @NotNull DriverConfiguration_123Pan configuration = new DriverConfiguration_123Pan();
 
     @NotNull DriverConfiguration_123Pan getConfiguration() {
         return this.configuration;
     }
 
-    public @NotNull DriverConfiguration_123Pan login(final @Nullable DriverConfiguration_123Pan info) throws IOException, IllegalParametersException {
-        this.configuration = Objects.requireNonNullElseGet(info, DriverConfiguration_123Pan::new);
-        DriverHelper_123pan.doRetrieveToken(this.configuration);
-        DriverHelper_123pan.doGetUserInformation(this.configuration);
-        return this.configuration;
+    @Override
+    public @NotNull DriverConfiguration_123Pan getDefaultConfiguration() {
+        return new DriverConfiguration_123Pan();
+    }
+
+    public void login(final @NotNull DriverConfiguration_123Pan configuration) throws IOException, IllegalParametersException, SQLException {
+        DriverSQLHelper_123pan.init(configuration.getLocalSide().getName());
+        DriverHelper_123pan.doRetrieveToken(configuration);
+        DriverHelper_123pan.doGetUserInformation(configuration);
+        this.configuration = configuration;
+    }
+
+    @Override
+    public void deleteDriver() throws SQLException {
+        DriverSQLHelper_123pan.delete(this.configuration.getLocalSide().getName());
     }
 
     @Override

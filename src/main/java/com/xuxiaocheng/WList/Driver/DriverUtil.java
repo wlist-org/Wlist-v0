@@ -2,6 +2,8 @@ package com.xuxiaocheng.WList.Driver;
 
 import com.alibaba.fastjson2.JSON;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.Logger.HLog;
+import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Driver.Exceptions.NetworkException;
 import okhttp3.Callback;
 import okhttp3.Headers;
@@ -29,6 +31,11 @@ public final class DriverUtil {
             .connectTimeout(10, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
+            .addNetworkInterceptor(chain -> {
+                HLog.getInstance("Network").log(HLogLevel.DEBUG, chain.request());
+                HLog.getInstance("Network").log(HLogLevel.VERBOSE, new Throwable());
+                return chain.proceed(chain.request());
+            })
             .build();
 
     public static final @NotNull Pattern phoneNumberPattern = Pattern.compile("^1([38][0-9]|4[579]|5[0-3,5-9]|66|7[0135678]|9[89])\\d{8}$");

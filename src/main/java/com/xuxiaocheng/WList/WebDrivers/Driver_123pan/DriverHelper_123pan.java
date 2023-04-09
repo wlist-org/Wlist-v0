@@ -226,6 +226,7 @@ public final class DriverHelper_123pan {
     }
 
     // Information Getter.
+
     //   User
 
     @SuppressWarnings("TypeMayBeWeakened")
@@ -423,31 +424,45 @@ public final class DriverHelper_123pan {
         return Pair.makePair(data.getIntValue("Total", 0), info);
     }
 
-    public static long getDirectoryId(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean dir, final boolean useCache) throws IOException, IllegalParametersException {
+    public static long getDirectoryId(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean dir, final boolean useCache) throws IOException, IllegalParametersException, SQLException {
         if (path.getDepth() == 0)
             return 0;
         if (useCache) {
-            // TODO use cache.
+            final DriverSQLHelper_123pan.FileInformation info = DriverSQLHelper_123pan.getFile(configuration.getLocalSide().getName(), path);
+            if (info != null) {
+                if (dir && info.is_dir() != 1)
+                    return -1;
+                else
+                    return info.id();
+            }
             return DriverHelper_123pan.getDirectoryId(configuration, path, dir, false);
         }
         final String name = path.getName();
-        final long parentId = DriverHelper_123pan.getDirectoryId(configuration, path.parent(), false, useCache);
-        path.child(name);
-        if (parentId < 0)
-            return -1;
-        JSONArray list = DriverHelper_123pan.listFiles(configuration, parentId, 1).getSecond();
-        for (int page = 2; !list.isEmpty(); ++page) {
-            for (int i = 0; i < list.size(); ++i) {
-                final JSONObject info = list.getJSONObject(i);
-                if (name.equals(info.getString("FileName")))
-                    if (dir && info.getIntValue("Type") != 1)
-                        return -1;
-                    else
-                        return info.getLongValue("FileId");
+        final long parentId = DriverHelper_123pan.getDirectoryId(configuration, path.parent(), false, false);
+        try {
+            if (parentId < 0)
+                return -1;
+            JSONArray list = DriverHelper_123pan.listFiles(configuration, parentId, 1).getSecond();
+            for (int page = 2; !list.isEmpty(); ++page) {
+                long id = -2;
+                for (int i = 0; i < list.size(); ++i) {
+                    final JSONObject info = list.getJSONObject(i);
+                    DriverSQLHelper_123pan.updateFile(configuration.getLocalSide().getName(), path, info);
+                    if (id == -2 && name.equals(info.getString("FileName"))) {
+                        if (dir && info.getIntValue("Type") != 1)
+                            id = -1;
+                        else
+                            id = info.getLongValue("FileId");
+                    }
+                }
+                if (id != -2)
+                    return id;
+                list = DriverHelper_123pan.listFiles(configuration, parentId, page).getSecond();
             }
-            list = DriverHelper_123pan.listFiles(configuration, parentId, page).getSecond();
+            return -1;
+        } finally {
+            path.child(name);
         }
-        return -1;
     }
 
     // Files manager.

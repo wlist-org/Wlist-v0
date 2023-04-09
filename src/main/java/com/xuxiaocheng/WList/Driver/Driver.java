@@ -11,15 +11,22 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.List;
 
-public interface Driver<C extends DriverConfiguration> {
+public interface Driver<C extends DriverConfiguration<?, ?, ?>> {
+    @NotNull C getDefaultConfiguration();
+
     /**
      * Login in the web server.
      * When user modify the configuration, this method will be call automatically.
-     * @param info The old deserialized configuration.
-     * @return The new configuration to serialize.
+     * @param configuration The modified configuration.
      * @throws Exception Something went wrong.
      */
-    @NotNull C login(final @Nullable C info) throws Exception;
+    void login(final @NotNull C configuration) throws Exception;
+
+    /**
+     * Completely delete this driver. (cleaner)
+     * @throws Exception Something went wrong.
+     */
+    void deleteDriver() throws Exception;
 
     /**
      * Get the list of files in this directory.
