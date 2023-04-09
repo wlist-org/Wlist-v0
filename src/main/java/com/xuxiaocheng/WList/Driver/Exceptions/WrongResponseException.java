@@ -21,11 +21,9 @@ public class WrongResponseException extends NetworkException {
         super(message + " Response: " + response);
     }
 
-
     public WrongResponseException(final @NotNull Throwable cause) {
         super(cause);
     }
-
 
     public WrongResponseException(final @NotNull String message, final @NotNull Throwable cause) {
         super(message, cause);

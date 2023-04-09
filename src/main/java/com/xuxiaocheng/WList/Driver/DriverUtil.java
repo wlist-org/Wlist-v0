@@ -1,17 +1,23 @@
 package com.xuxiaocheng.WList.Driver;
 
 import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.JSONObject;
-import com.xuxiaocheng.WList.Driver.Exceptions.IllegalResponseCodeException;
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.WList.Driver.Exceptions.NetworkException;
+import okhttp3.Callback;
+import okhttp3.Headers;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 public final class DriverUtil {
@@ -19,33 +25,49 @@ public final class DriverUtil {
         super();
     }
 
+    public static final @NotNull OkHttpClient httpClient = new OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .build();
+
     public static final @NotNull Pattern phoneNumberPattern = Pattern.compile("^1([38][0-9]|4[579]|5[0-3,5-9]|66|7[0135678]|9[89])\\d{8}$");
     public static final @NotNull Pattern mailAddressPattern = Pattern.compile("^\\w+@[A-Za-z0-9]+(\\.[A-Za-z0-9]+){1,2}$");
 
-    public static @NotNull JSONObject sendJsonHttp(final @NotNull String url, final @NotNull String method,
-                                                   final @Nullable Map<@NotNull String, @NotNull String> property, final @Nullable JSONObject message) throws IOException {
-        assert url.startsWith("http://") || url.startsWith("https://");
-        // TODO gzip
-        final HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
-        connection.setRequestMethod(method);
-        if (property == null)
-            connection.setRequestProperty("Content-Type", "application/json;charset=utf-8");
-        else
-            property.forEach(connection::setRequestProperty);
-        connection.setDoInput(true);
-        connection.setDoOutput(true);
-        connection.setUseCaches(false);
-        if (message != null) {
-            final OutputStream outputStream = connection.getOutputStream();
-            outputStream.write(JSON.toJSONBytes(message));
-            outputStream.close();
-        }
-        if (connection.getResponseCode() != HttpURLConnection.HTTP_OK)
-            throw new IllegalResponseCodeException(connection.getResponseCode());
-        final InputStream inputStream = connection.getInputStream();
-        final JSONObject json = JSON.parseObject(inputStream.readAllBytes());
-        inputStream.close();
-        connection.disconnect();
-        return json;
+    public static @NotNull ResponseBody checkResponseSuccessful(final @NotNull Response response) throws NetworkException {
+        if (!response.isSuccessful())
+            throw new NetworkException(response.code(), response.message());
+        final ResponseBody responseBody = response.body();
+        if (responseBody == null)
+            throw new NetworkException("Null response body.");
+        return responseBody;
+    }
+
+    public static void sendRequestAsync(final @NotNull Pair.ImmutablePair<String, String> url, final @Nullable Headers headers, final RequestBody body, final @NotNull Callback callback) {
+        DriverUtil.httpClient.newCall(new Request.Builder().url(url.getFirst())
+                .headers(Objects.requireNonNullElseGet(headers, () -> new Headers.Builder().build()))
+                .method(url.getSecond(), body).build()).enqueue(callback);
+    }
+
+    public static @NotNull Response sendRequest(final @NotNull Pair.ImmutablePair<String, String> url, final @Nullable Headers headers, final RequestBody body) throws IOException {
+        return DriverUtil.httpClient.newCall(new Request.Builder().url(url.getFirst())
+                .headers(Objects.requireNonNullElseGet(headers, () -> new Headers.Builder().build()))
+                .method(url.getSecond(), body).build()).execute();
+    }
+
+    public static @NotNull Response sendRequestWithParameters(final @NotNull Pair.ImmutablePair<String, String> url, final @Nullable Headers headers, final Map<String, Object> parameters) throws IOException {
+        final StringBuilder builder = new StringBuilder(url.getFirst());
+        builder.append('?');
+        for (final Map.Entry<String, Object> entry: parameters.entrySet())
+            builder.append(entry.getKey()).append('=').append(entry.getValue()).append('&');
+        builder.deleteCharAt(builder.length() - 1);
+        return DriverUtil.httpClient.newCall(new Request.Builder().url(builder.toString())
+                .headers(Objects.requireNonNullElseGet(headers, () -> new Headers.Builder().build()))
+                .method(url.getSecond(), null).build()).execute();
+    }
+
+    public static @NotNull RequestBody createJsonRequestBody(final @Nullable Object obj) {
+        return RequestBody.create(JSON.toJSONBytes(obj),
+                MediaType.parse("application/json;charset=utf-8"));
     }
 }

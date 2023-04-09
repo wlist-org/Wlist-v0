@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Driver;
+package com.xuxiaocheng.WList.Driver.Options;
 
 public enum DuplicatePolicy {
     ERROR,

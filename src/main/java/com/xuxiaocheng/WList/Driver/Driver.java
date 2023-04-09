@@ -26,11 +26,11 @@ public interface Driver<C extends DriverConfiguration> {
      * @param path The directory path to get files list.
      * @param page The page of the list.
      * @param limit Max length in one page.
-     * @return Long means files count. The second is the files list. Null means directory is not available.
+     * @return Integer means files count. The second is the files list. Null means directory is not available.
      *          The String in the list means file name.
      * @throws Exception Something went wrong.
      */
-    @Nullable Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull List<@NotNull String>> list(final @NotNull DrivePath path, final int page, final int limit) throws Exception;
+    @Nullable Pair.@Nullable ImmutablePair<@NotNull Integer, @NotNull List<@NotNull String>> list(final @NotNull DrivePath path, final int page, final int limit) throws Exception;
 
     /**
      * Get the size of a specific file.
@@ -96,7 +96,7 @@ public interface Driver<C extends DriverConfiguration> {
     }
 
     default @Nullable String rename(final @NotNull DrivePath source, final @NotNull String name) throws Exception {
-        return this.move(source, new DrivePath(source.getParent(), name));
+        return this.move(source, source.getParent().child(name));
     }
 
     static @NotNull InputStream downloadFromString(final @NotNull String url) throws IOException {

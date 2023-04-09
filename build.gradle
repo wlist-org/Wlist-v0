@@ -19,6 +19,7 @@ dependencies {
 //    testImplementation fileTree(dir: 'libs', excludes: ['*-javadoc.jar', '*-sources.jar'], includes: ['*.jar'])
     implementation 'org.yaml:snakeyaml:2.0'
     implementation 'com.alibaba.fastjson2:fastjson2:2.0.25'
+    implementation 'com.squareup.okhttp3:okhttp:4.9.3'
     implementation 'io.netty:netty-all:4.1.89.Final'
     implementation 'org.xerial:sqlite-jdbc:3.41.0.0'
 }
