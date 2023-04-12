@@ -378,10 +378,10 @@ public final class DriverHelper_123pan {
             throw new WrongResponseException("Abnormal data/info of 'StorageNode'.", info);
     }
 
-    private static @NotNull Pair<Integer, JSONArray> listFiles(final @NotNull DriverConfiguration_123Pan configuration, final long id, final int page) throws IOException, IllegalParametersException {
+    static @NotNull Pair<@NotNull Integer, @NotNull JSONArray> doListFiles(final @NotNull DriverConfiguration_123Pan configuration, final long id, final int limit, final int page, final @Nullable DrivePath directoryPathCache) throws IOException, IllegalParametersException, SQLException {
         final JSONObject request = new JSONObject(7);
         request.put("driveId", 0);
-        request.put("limit", configuration.getWebSide().getFilePart().getDefaultLimitPerPage());
+        request.put("limit", limit);
         request.put("orderBy", DriverHelper_123pan.getOrderPolicy(configuration.getWebSide().getFilePart().getOrderPolicy()));
         request.put("orderDirection", DriverHelper_123pan.getOrderDirection(configuration.getWebSide().getFilePart().getOrderDirection()));
         request.put("parentFileId", id);
@@ -393,7 +393,7 @@ public final class DriverHelper_123pan {
                 throw new WrongResponseException("Abnormal count of data items.", data);
             if (data.getString("Next") == null)
                 throw new WrongResponseException("Abnormal data of 'Next'.", data);
-            if (data.getIntValue("Len", 0) > configuration.getWebSide().getFilePart().getDefaultLimitPerPage())
+            if (data.getIntValue("Len", 0) > limit)
                 throw new WrongResponseException("Abnormal data of 'Len'.", data);
             if (data.getBooleanValue("IsFirst", page != 1) != (page == 1))
                 throw new WrongResponseException("Abnormal data of 'IsFirst'.", data);
@@ -421,12 +421,18 @@ public final class DriverHelper_123pan {
                     throw new WrongResponseException("Abnormal file info of 'RefuseReason'. index: " + i, data);
             }
         }
+        if (directoryPathCache != null) {
+            for (int i = 0; i < info.size(); ++i) {
+                final JSONObject obj = info.getJSONObject(i);
+                DriverSQLHelper_123pan.updateFile(configuration.getLocalSide().getName(), directoryPathCache, obj);
+            }
+        }
         return Pair.makePair(data.getIntValue("Total", 0), info);
     }
 
-    public static long getDirectoryId(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean dir, final boolean useCache) throws IOException, IllegalParametersException, SQLException {
+    static long getDirectoryId(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean dir, final boolean useCache) throws IOException, IllegalParametersException, SQLException {
         if (path.getDepth() == 0)
-            return 0;
+            return configuration.getWebSide().getFilePart().getRootDirectoryId();
         if (useCache) {
             final DriverSQLHelper_123pan.FileInformation info = DriverSQLHelper_123pan.getFile(configuration.getLocalSide().getName(), path);
             if (info != null) {
@@ -435,34 +441,48 @@ public final class DriverHelper_123pan {
                 else
                     return info.id();
             }
-            return DriverHelper_123pan.getDirectoryId(configuration, path, dir, false);
+//            return DriverHelper_123pan.getDirectoryId(configuration, path, dir, false);
         }
         final String name = path.getName();
         final long parentId = DriverHelper_123pan.getDirectoryId(configuration, path.parent(), false, false);
         try {
             if (parentId < 0)
                 return -1;
-            JSONArray list = DriverHelper_123pan.listFiles(configuration, parentId, 1).getSecond();
+            JSONArray list = DriverHelper_123pan.doListFiles(configuration, parentId, configuration.getWebSide().getFilePart().getDefaultLimitPerPage(), 1, path).getSecond();
             for (int page = 2; !list.isEmpty(); ++page) {
-                long id = -2;
                 for (int i = 0; i < list.size(); ++i) {
                     final JSONObject info = list.getJSONObject(i);
-                    DriverSQLHelper_123pan.updateFile(configuration.getLocalSide().getName(), path, info);
-                    if (id == -2 && name.equals(info.getString("FileName"))) {
+                    if (name.equals(info.getString("FileName"))) {
                         if (dir && info.getIntValue("Type") != 1)
-                            id = -1;
+                            return -1;
                         else
-                            id = info.getLongValue("FileId");
+                            return info.getLongValue("FileId");
                     }
                 }
-                if (id != -2)
-                    return id;
-                list = DriverHelper_123pan.listFiles(configuration, parentId, page).getSecond();
+                list = DriverHelper_123pan.doListFiles(configuration, parentId, configuration.getWebSide().getFilePart().getDefaultLimitPerPage(), page, path).getSecond();
             }
             return -1;
         } finally {
             path.child(name);
         }
+    }
+
+    static @Nullable JSONObject getFileInformation(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean useCache) throws SQLException, IOException, IllegalParametersException {
+        if (useCache) {
+            // TODO
+//            return DriverHelper_123pan.getFileInformation(configuration, path, false);
+        }
+        final long id = DriverHelper_123pan.getDirectoryId(configuration, path.getParent(), true, useCache);
+        JSONArray list = DriverHelper_123pan.doListFiles(configuration, id, configuration.getWebSide().getFilePart().getDefaultLimitPerPage(), 1, path).getSecond();
+        for (int page = 2; !list.isEmpty(); ++page) {
+            for (int i = 0; i < list.size(); ++i) {
+                final JSONObject info = list.getJSONObject(i);
+                if (path.getName().equals(info.getString("FileName")))
+                    return info;
+            }
+            list = DriverHelper_123pan.doListFiles(configuration, id, configuration.getWebSide().getFilePart().getDefaultLimitPerPage(), page, path).getSecond();
+        }
+        return null;
     }
 
     // Files manager.

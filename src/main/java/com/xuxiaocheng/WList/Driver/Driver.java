@@ -33,11 +33,11 @@ public interface Driver<C extends DriverConfiguration<?, ?, ?>> {
      * @param path The directory path to get files list.
      * @param page The page of the list.
      * @param limit Max length in one page.
-     * @return Integer means files count. The second is the files list. Null means directory is not available.
-     *          The String in the list means file name.
+     * @return Integer means all files in directory count. The second is the files list. The String in the list means file name.
+     *          Null means directory is not available.
      * @throws Exception Something went wrong.
      */
-    @Nullable Pair.@Nullable ImmutablePair<@NotNull Integer, @NotNull List<@NotNull String>> list(final @NotNull DrivePath path, final int page, final int limit) throws Exception;
+    Pair.@Nullable ImmutablePair<@NotNull Integer, @NotNull List<@NotNull String>> list(final @NotNull DrivePath path, final int page, final int limit) throws Exception;
 
     /**
      * Get the size of a specific file.
@@ -46,6 +46,22 @@ public interface Driver<C extends DriverConfiguration<?, ?, ?>> {
      * @throws Exception Something went wrong.
      */
     @Nullable Long size(final @NotNull DrivePath path) throws Exception;
+
+    /**
+     * Get the create_time of a specific file.
+     * @param path The file path to get create_time.
+     * @return The file create_time. Null means not available.
+     * @throws Exception Something went wrong.
+     */
+    @Nullable Long createTime(final @NotNull DrivePath path) throws Exception;
+
+    /**
+     * Get the update_time of a specific file.
+     * @param path The file path to get update_time.
+     * @return The file update_time. Null means not available.
+     * @throws Exception Something went wrong.
+     */
+    @Nullable Long updateTime(final @NotNull DrivePath path) throws Exception;
 
     /**
      * Get download link of a specific file.

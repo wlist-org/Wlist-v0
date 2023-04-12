@@ -116,6 +116,7 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
             private @NotNull DuplicatePolicy duplicatePolicy = DuplicatePolicy.KEEP;
             private @NotNull OrderPolicy orderPolicy = OrderPolicy.FileName;
             private @NotNull OrderDirection orderDirection = OrderDirection.ASCEND;
+            private long rootDirectoryId = 0;
 
             public int getDefaultLimitPerPage() {
                 return this.defaultLimitPerPage;
@@ -149,6 +150,14 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
                 this.orderDirection = orderDirection;
             }
 
+            public long getRootDirectoryId() {
+                return this.rootDirectoryId;
+            }
+
+            public void setRootDirectoryId(final long rootDirectoryId) {
+                this.rootDirectoryId = rootDirectoryId;
+            }
+
             @Override
             public @NotNull String toString() {
                 return "DriverConfiguration_123Pan$WebSide$FilePart{" +
@@ -156,6 +165,7 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
                         ", duplicatePolicy=" + this.duplicatePolicy +
                         ", orderPolicy=" + this.orderPolicy +
                         ", orderDirection=" + this.orderDirection +
+                        ", rootDirectoryId=" + this.rootDirectoryId +
                         '}';
             }
         }
