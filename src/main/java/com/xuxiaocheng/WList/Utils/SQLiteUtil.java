@@ -7,10 +7,9 @@ import org.sqlite.SQLiteDataSource;
 
 import java.io.File;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -33,7 +32,15 @@ public class SQLiteUtil {
 
     protected final @NotNull Map<@NotNull String, @NotNull ReadWriteLock> lock = new ConcurrentHashMap<>();
     protected final @NotNull File path;
-    protected final @NotNull Connection sqliteConnection;
+    protected final @NotNull SQLiteDataSource sqliteDataSource;
+    protected final @NotNull Map<@NotNull String, @NotNull Connection> sqliteConnections = new ConcurrentHashMap<>();
+
+    protected final @NotNull Connection getNewConnection() throws SQLException {
+        final Connection connection = this.sqliteDataSource.getConnection();
+        if (connection == null)
+            throw new SQLException("Failed to get connection with sqlite database.");
+        return connection;
+    }
 
     protected SQLiteUtil(final @NotNull File path) throws SQLException {
         super();
@@ -45,27 +52,39 @@ public class SQLiteUtil {
         this.path = path.getAbsoluteFile();
         if (!this.path.exists() && !this.path.getParentFile().mkdirs() && !this.path.getParentFile().exists())
             throw new SQLException("Cannot create database directory.");
-        final SQLiteDataSource sqliteDataSource = new SQLiteDataSource();
-        sqliteDataSource.setUrl("jdbc:sqlite:" + this.path.getPath());
-        this.sqliteConnection = sqliteDataSource.getConnection();
-        if (this.sqliteConnection == null)
-            throw new SQLException("Failed to get connection with sqlite database.");
-    }
-
-    public @NotNull ReadWriteLock getLock(final @NotNull String name) {
-        return this.lock.computeIfAbsent(name, k -> new ReentrantReadWriteLock());
+        this.sqliteDataSource = new SQLiteDataSource();
+        this.sqliteDataSource.setUrl("jdbc:sqlite:" + this.path.getPath());
+        this.sqliteConnections.put("default", this.getNewConnection());
     }
 
     public @NotNull File getPath() {
         return this.path;
     }
 
-    public @NotNull Statement createStatement() throws SQLException {
-        return this.sqliteConnection.createStatement();
+    public @NotNull ReadWriteLock getLock(final @NotNull String name) {
+        return this.lock.computeIfAbsent(name, k -> new ReentrantReadWriteLock());
     }
 
-    public @NotNull PreparedStatement prepareStatement(final @NotNull String sql) throws SQLException {
-        return this.sqliteConnection.prepareStatement(sql);
+    public @NotNull Connection getConnection(final @Nullable String name) throws SQLException {
+        try {
+            return this.sqliteConnections.computeIfAbsent(Objects.requireNonNullElse(name, "default"), k -> {
+                try {
+                    return this.getNewConnection();
+                } catch (final SQLException exception) {
+                    throw new RuntimeException(exception);
+                }
+            });
+        } catch (final RuntimeException exception) {
+            if (exception.getCause() instanceof SQLException sqlException)
+                throw sqlException;
+            throw exception;
+        }
+    }
+
+    public void deleteConnection(final @Nullable String name) throws SQLException {
+        final Connection connection = this.sqliteConnections.remove(Objects.requireNonNullElse(name, "default"));
+        if (connection != null)
+            connection.close();
     }
 
     @Override

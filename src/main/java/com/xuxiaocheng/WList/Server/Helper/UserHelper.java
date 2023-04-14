@@ -34,7 +34,7 @@ public final class UserHelper {
 
     public static void init() throws SQLException {
         SQLiteUtil.getDataInstance().getLock("users").writeLock().lock();
-        try (final Statement statement = SQLiteUtil.getDataInstance().createStatement()) {
+        try (final Statement statement = SQLiteUtil.getDataInstance().getConnection(null).createStatement()) {
             statement.executeUpdate(String.format("""
                     CREATE TABLE IF NOT EXISTS users (
                         id          INTEGER    PRIMARY KEY
@@ -73,7 +73,7 @@ public final class UserHelper {
 
     private static @Nullable Pair<@NotNull String, @NotNull Set<Operation.@NotNull Permission>> selectUser(final @NotNull String username) throws SQLException {
         SQLiteUtil.getDataInstance().getLock("users").readLock().lock();
-        try (final PreparedStatement statement = SQLiteUtil.getDataInstance().prepareStatement("SELECT password, permission FROM users WHERE username == ? LIMIT 1;")) {
+        try (final PreparedStatement statement = SQLiteUtil.getDataInstance().getConnection(null).prepareStatement("SELECT password, permission FROM users WHERE username == ? LIMIT 1;")) {
             statement.setString(1, username);
             try (final ResultSet user = statement.executeQuery()) {
                 if (!user.next())
@@ -89,7 +89,7 @@ public final class UserHelper {
 
     private static void insertUser(final @NotNull String username, final @NotNull String password) throws SQLException {
         SQLiteUtil.getDataInstance().getLock("users").writeLock().lock();
-        try (final PreparedStatement updateStatement = SQLiteUtil.getDataInstance().prepareStatement("INSERT INTO users (username, password) VALUES (?, ?);")) {
+        try (final PreparedStatement updateStatement = SQLiteUtil.getDataInstance().getConnection(null).prepareStatement("INSERT INTO users (username, password) VALUES (?, ?);")) {
             updateStatement.setString(1, username);
             updateStatement.setString(2, password);
             updateStatement.executeUpdate();

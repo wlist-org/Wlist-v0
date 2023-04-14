@@ -24,7 +24,7 @@ public final class TokenHelper {
 
     public static void init() throws SQLException {
         SQLiteUtil.getDataInstance().getLock("tokens").writeLock().lock();
-        try (final Statement statement = SQLiteUtil.getDataInstance().createStatement()) {
+        try (final Statement statement = SQLiteUtil.getDataInstance().getConnection(null).createStatement()) {
             statement.executeUpdate("""
                     CREATE TABLE IF NOT EXISTS tokens (
                         token TEXT    PRIMARY KEY
@@ -71,7 +71,7 @@ public final class TokenHelper {
     public static void clearExpiredTokens() throws SQLException {
         final long time = System.currentTimeMillis() - TokenHelper.ExpiredTime;
         SQLiteUtil.getDataInstance().getLock("tokens").writeLock().lock();
-        try (final PreparedStatement statement = SQLiteUtil.getDataInstance().prepareStatement("DELETE FROM tokens WHERE time < ?;")) {
+        try (final PreparedStatement statement = SQLiteUtil.getDataInstance().getConnection(null).prepareStatement("DELETE FROM tokens WHERE time < ?;")) {
             statement.setLong(1, time);
             statement.executeUpdate();
         } finally {
@@ -82,7 +82,7 @@ public final class TokenHelper {
 
     private static Pair.@Nullable ImmutablePair<@NotNull String, @NotNull Long> selectToken(final @NotNull String token) throws SQLException {
         SQLiteUtil.getDataInstance().getLock("tokens").readLock().lock();
-        try (final PreparedStatement statement = SQLiteUtil.getDataInstance().prepareStatement("SELECT user, time FROM tokens WHERE token == ? LIMIT 1;")) {
+        try (final PreparedStatement statement = SQLiteUtil.getDataInstance().getConnection(null).prepareStatement("SELECT user, time FROM tokens WHERE token == ? LIMIT 1;")) {
             statement.setString(1, token);
             try (final ResultSet tokens = statement.executeQuery()) {
                 if (tokens.next())
@@ -96,7 +96,7 @@ public final class TokenHelper {
 
     private static void insertToken(final @NotNull String token, final @NotNull String username, final long time) throws SQLException {
         SQLiteUtil.getDataInstance().getLock("tokens").writeLock().lock();
-        try (final PreparedStatement statement = SQLiteUtil.getDataInstance().prepareStatement("INSERT INTO tokens (token, user, time) VALUES (?, ?, ?);")) {
+        try (final PreparedStatement statement = SQLiteUtil.getDataInstance().getConnection(null).prepareStatement("INSERT INTO tokens (token, user, time) VALUES (?, ?, ?);")) {
             statement.setString(1, token);
             statement.setString(2, username);
             statement.setLong(3, time);

@@ -5,6 +5,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Driver.Exceptions.NetworkException;
+import com.xuxiaocheng.WList.WList;
 import okhttp3.Callback;
 import okhttp3.Headers;
 import okhttp3.MediaType;
@@ -32,9 +33,19 @@ public final class DriverUtil {
             .writeTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .addNetworkInterceptor(chain -> {
-                HLog.getInstance("Network").log(HLogLevel.DEBUG, chain.request());
-                HLog.getInstance("Network").log(HLogLevel.VERBOSE, new Throwable());
-                return chain.proceed(chain.request());
+                final Request request = chain.request();
+                if (WList.DeepDebugMode) {
+                    HLog.getInstance("Network").log(HLogLevel.DEBUG, "Thread: ", Thread.currentThread(), " Request: ", request);
+                    HLog.getInstance("Network").log(HLogLevel.VERBOSE, "Thread: ", Thread.currentThread(), new Throwable());
+                }
+                final long time1 = System.currentTimeMillis();
+                final Response response = chain.proceed(request);
+                final long time2 = System.currentTimeMillis();
+                if (WList.DeepDebugMode) {
+                    HLog.getInstance("Network").log(HLogLevel.DEBUG, "Thread: ", Thread.currentThread(), "Response: ", response);
+                    HLog.getInstance("Network").log(HLogLevel.INFO, "Thread: ", Thread.currentThread(), "Cost time: ", time2 - time1, "ms.");
+                }
+                return response;
             })
             .build();
 

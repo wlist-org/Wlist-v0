@@ -3,19 +3,26 @@ package com.xuxiaocheng.WList;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HLoggerStream;
+import com.xuxiaocheng.WList.Configuration.FieldOrderRepresenter;
 import com.xuxiaocheng.WList.Driver.DrivePath;
 import com.xuxiaocheng.WList.Driver.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.DriverConfiguration_123Pan;
-import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.DriverHelper_123pan;
-import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.DriverSQLHelper_123pan;
+import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.DriverSQL_123pan;
 import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.Driver_123Pan;
+import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.FileInformation_123pan;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.nodes.Tag;
+import org.yaml.snakeyaml.representer.Representer;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 
 public final class WList {
@@ -23,6 +30,7 @@ public final class WList {
         super();
     }
 
+    public static final boolean DeepDebugMode = false;
     public static final boolean DebugMode = !new File(WList.class.getProtectionDomain().getCodeSource().getLocation().getPath()).isFile();
 
     private static final HLog logger = HLog.createInstance("DefaultLogger",
@@ -37,16 +45,19 @@ public final class WList {
 
         final Driver_123Pan driver = new Driver_123Pan();
         driver.login(config);
-        DriverHelper_123pan.getDirectoryId(config, new DrivePath("/AutoCopy"), true, true);
-        HLog.DefaultLogger.log("", DriverSQLHelper_123pan.countPath("123pan", new DrivePath("")));
 
-//        DriverHelper_123pan.doListFiles(config, 0, 1);
+        final Representer representer = new FieldOrderRepresenter();
+        config.getDumpMapClasses().forEach(c -> representer.addClassTag(c, Tag.MAP));
+        final OutputStream os = new BufferedOutputStream(new FileOutputStream("test.yml"));
+        os.write(new Yaml(representer).dump(config).getBytes(StandardCharsets.UTF_8));
+        os.close();
 
-//        final Representer representer = new FieldOrderRepresenter();
-//        config.getDumpMapClasses().forEach(c -> representer.addClassTag(c, Tag.MAP));
-//        final OutputStream os = new BufferedOutputStream(new FileOutputStream("test.yml"));
-//        os.write(new Yaml(representer).dump(config).getBytes(StandardCharsets.UTF_8));
-//        os.close();
+//        HLog.DefaultLogger.log("", config);
+        DriverSQL_123pan.insertFile("123pan", new FileInformation_123pan(0, new DrivePath("abc"), 0, 0, 0, 0, "", ""), null);
+        DriverSQL_123pan.insertFile("123pan", new FileInformation_123pan(0, new DrivePath("abc"), 0, 100, 0, 0, "", ""), null);
+//        HLog.DefaultLogger.log("", DriverSQL_123pan.countPath("123pan", new DrivePath("")));
+
+//        DriverUtil_123pan.doListFiles(config, 0, 1);
 
 //        Operation.init();
 //        WList.logger.log(HLogLevel.FINE, "Hello WList! Initializing...");

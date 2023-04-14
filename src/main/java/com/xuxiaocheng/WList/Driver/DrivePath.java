@@ -55,11 +55,32 @@ public class DrivePath implements Iterable<String> {
         if (this.path.isEmpty())
             return "/";
         final StringBuilder builder = new StringBuilder();
-        this.path.forEach(p -> builder.append('/').append(p));
+        for (final String p: this.path)
+            builder.append('/').append(p);
+        return builder.toString();
+    }
+
+    public @NotNull String getParentPath() {
+        if (this.path.size() < 2)
+            return "/";
+        final StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < this.path.size() - 1; ++i)
+            builder.append('/').append(this.path.get(i));
+        return builder.toString();
+    }
+
+    public @NotNull String getChildPath(final @NotNull CharSequence child) {
+        final StringBuilder builder = new StringBuilder();
+        for (final String p: this.path)
+            builder.append('/').append(p);
+        for (final String p: DrivePath.split(child))
+            builder.append('/').append(p);
         return builder.toString();
     }
 
     public @NotNull String getName() {
+        if (this.path.isEmpty())
+            return "";
         return this.path.get(this.path.size() - 1);
     }
 
