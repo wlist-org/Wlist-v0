@@ -11,6 +11,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
@@ -71,7 +73,8 @@ public final class DriverSQL_123pan {
         return new FileInformation_123pan(result.getLong("id"),
                 new DrivePath(result.getString("full_path")),
                 result.getInt("is_directory"), result.getLong("size"),
-                result.getLong("create_time"),result.getLong("update_time"),
+                LocalDateTime.parse(result.getString("create_time"), DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+                LocalDateTime.parse(result.getString("update_time"), DateTimeFormatter.ISO_LOCAL_DATE_TIME),
                 result.getString("s3key"),result.getString("etag"));
     }
 
@@ -99,8 +102,8 @@ public final class DriverSQL_123pan {
                 statement.setString(3, info.path().getName());
                 statement.setInt(4, info.is_dir());
                 statement.setLong(5, info.size());
-                statement.setLong(6, info.createTime());
-                statement.setLong(7, info.updateTime());
+                statement.setString(6, info.createTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                statement.setString(7, info.updateTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
                 statement.setString(8, info.s3key());
                 statement.setString(9, info.etag());
                 statement.executeUpdate();
@@ -110,7 +113,7 @@ public final class DriverSQL_123pan {
         }
     }
 
-    public static void insertFile(final @NotNull String driverName, final @NotNull FileInformation_123pan info, final @Nullable String connectionName) throws SQLException {
+    static void insertFile(final @NotNull String driverName, final @NotNull FileInformation_123pan info, final @Nullable String connectionName) throws SQLException {
         DriverSQL_123pan.insertFiles(driverName, List.of(info), connectionName);
     }
 
@@ -211,8 +214,11 @@ public final class DriverSQL_123pan {
         final String table = DriverSQL_123pan.getTableName(driverName);
         SQLiteUtil.getIndexInstance().getLock(table).writeLock().lock();
         try (final PreparedStatement statement = SQLiteUtil.getIndexInstance().getConnection(connectionName)
-                .prepareStatement(String.format("DELETE FROM %s WHERE full_path LIKE ?;", table))) {
-            statement.setString(1, parentPath.getPath() + "/%");
+                .prepareStatement(String.format("DELETE FROM %s WHERE full_path REGEXP ?;", table))) {
+            if (parentPath.getDepth() == 0)
+                statement.setString(1, "^/[^/]+$");
+            else
+                statement.setString(1, "^" + parentPath.getPath() + "/[^/]+$");
             statement.executeUpdate();
         } finally {
             SQLiteUtil.getIndexInstance().getLock(table).writeLock().unlock();

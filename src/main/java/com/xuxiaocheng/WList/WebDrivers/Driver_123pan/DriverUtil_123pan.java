@@ -20,9 +20,11 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
-import java.text.DateFormat;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,20 +66,20 @@ public final class DriverUtil_123pan {
     }
 
     private static void handleLoginData(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull JSONObject data) throws WrongResponseException {
-        // token
         final String token = data.getString("token");
-        if (configuration.getLocalSide().getStrictMode() && !DriverHelper_123pan.tokenPattern.matcher(token).matches())
-            throw new WrongResponseException("Invalid token format.", data);
+        if (token == null)
+            throw new WrongResponseException("No token in response.");
         configuration.getCacheSide().setToken(token);
-        // TODO: time zone?
-        // token expire time
-        try {
-            configuration.getCacheSide().setTokenExpire(DriverHelper_123pan.parseServerTimeWithZone(data.getString("expire")));
-        } catch (final IllegalParametersException exception) {
-            throw new WrongResponseException("Invalid expire time.", exception);
-        }
-        // refresh token expire time
-        configuration.getCacheSide().setRefreshExpire(data.getLongValue("refresh_token_expire_time", 0) * 1000);
+        final String expire = data.getString("expire");
+        if (expire == null)
+            throw new WrongResponseException("No expire time in response.");
+        configuration.getCacheSide().setTokenExpireTime(LocalDateTime.parse(expire, DateTimeFormatter.ISO_ZONED_DATE_TIME));
+        final Long refresh = data.getLong("refresh_token_expire_time");
+        if (refresh == null)
+            throw new WrongResponseException("No refresh time in response.");
+        // TODO: time zone ?
+        //noinspection UseOfObsoleteDateTimeApi
+        configuration.getCacheSide().setRefreshExpireTime(new Date(refresh.longValue() * 1000).toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
     }
 
     private static void getToken(final @NotNull DriverConfiguration_123Pan configuration) throws IOException, IllegalParametersException {
@@ -132,15 +134,17 @@ public final class DriverUtil_123pan {
         return false;
     }
 
-    private static void forceRetrieveToken(final @NotNull DriverConfiguration_123Pan configuration, final long time) throws IOException, IllegalParametersException {
-        if (configuration.getCacheSide().getRefreshExpire() < time || configuration.getCacheSide().getToken() == null
+    private static void forceRetrieveToken(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull LocalDateTime time) throws IOException, IllegalParametersException {
+        if (configuration.getCacheSide().getToken() == null
+                || configuration.getCacheSide().getRefreshExpireTime() == null || time.isAfter(configuration.getCacheSide().getRefreshExpireTime())
                 || DriverUtil_123pan.refreshToken(configuration))
             DriverUtil_123pan.getToken(configuration);
     }
 
     static synchronized void doRetrieveToken(final @NotNull DriverConfiguration_123Pan configuration) throws IOException, IllegalParametersException {
-        final long time = System.currentTimeMillis();
-        if (configuration.getCacheSide().getTokenExpire() < time || configuration.getCacheSide().getToken() == null)
+        final LocalDateTime time = LocalDateTime.now();
+        if (configuration.getCacheSide().getToken() == null
+                || configuration.getCacheSide().getTokenExpireTime() == null || time.isAfter(configuration.getCacheSide().getTokenExpireTime()))
             DriverUtil_123pan.forceRetrieveToken(configuration, time);
     }
 
@@ -165,7 +169,7 @@ public final class DriverUtil_123pan {
         if (code != 0 || !"ok".equals(message)) {
             if (code == 401) {
                 // Token Expired Exception.
-                DriverUtil_123pan.forceRetrieveToken(configuration, System.currentTimeMillis());
+                DriverUtil_123pan.forceRetrieveToken(configuration, LocalDateTime.now());
                 final JSONObject newJson;
                 if ("GET".equals(url.getSecond()) && request != null)
                     newJson = JSON.parseObject(DriverUtil.checkResponseSuccessful(DriverUtil.sendRequestWithParameters(url, headers, request)).bytes());
@@ -268,7 +272,7 @@ public final class DriverUtil_123pan {
         if (info.getString("UpdateAt") == null)
             throw new WrongResponseException("Abnormal data/info of 'UpdateAt'.", info);
         final String etag = info.getString("Etag");
-        if (etag == null || !DriverHelper_123pan.etagPattern.matcher(etag).matches())
+        if (etag == null || (!etag.isEmpty() && !DriverHelper_123pan.etagPattern.matcher(etag).matches()))
             throw new WrongResponseException("Abnormal data of 'Etag'.", info);
     }
 
@@ -358,8 +362,8 @@ public final class DriverUtil_123pan {
         return Pair.makePair(data.getIntValue("Total", 0), list);
     }
 
-    static void forceRefreshDirectory(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final @NotNull DrivePath directoryPath, final @Nullable String connectionName) throws SQLException, IOException, IllegalParametersException {
-        final String connection = Objects.requireNonNullElseGet(connectionName, () -> "123pan_transaction_" + DateFormat.getDateInstance().format(LocalDateTime.now()));
+    public static void forceRefreshDirectory(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final @NotNull DrivePath directoryPath, final @Nullable String connectionName) throws SQLException, IOException, IllegalParametersException {
+        final String connection = Objects.requireNonNullElseGet(connectionName, () -> "123pan_transaction_" + DateTimeFormatter.ISO_DATE_TIME.format(LocalDateTime.now()));
         SQLiteUtil.getIndexInstance().getConnection(connection).setAutoCommit(false);
         try {
             DriverSQL_123pan.deleteFilesByParentPath(configuration.getLocalSide().getName(), directoryPath, connection);

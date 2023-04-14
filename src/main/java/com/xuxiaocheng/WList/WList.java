@@ -7,9 +7,8 @@ import com.xuxiaocheng.WList.Configuration.FieldOrderRepresenter;
 import com.xuxiaocheng.WList.Driver.DrivePath;
 import com.xuxiaocheng.WList.Driver.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.DriverConfiguration_123Pan;
-import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.DriverSQL_123pan;
+import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.DriverUtil_123pan;
 import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.Driver_123Pan;
-import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.FileInformation_123pan;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.nodes.Tag;
 import org.yaml.snakeyaml.representer.Representer;
@@ -52,11 +51,7 @@ public final class WList {
         os.write(new Yaml(representer).dump(config).getBytes(StandardCharsets.UTF_8));
         os.close();
 
-//        HLog.DefaultLogger.log("", config);
-        DriverSQL_123pan.insertFile("123pan", new FileInformation_123pan(0, new DrivePath("abc"), 0, 0, 0, 0, "", ""), null);
-        DriverSQL_123pan.insertFile("123pan", new FileInformation_123pan(0, new DrivePath("abc"), 0, 100, 0, 0, "", ""), null);
-//        HLog.DefaultLogger.log("", DriverSQL_123pan.countPath("123pan", new DrivePath("")));
-
+        DriverUtil_123pan.forceRefreshDirectory(config, 0, new DrivePath(""), null);
 //        DriverUtil_123pan.doListFiles(config, 0, 1);
 
 //        Operation.init();

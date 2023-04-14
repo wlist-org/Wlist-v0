@@ -10,6 +10,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -58,7 +59,7 @@ public final class Driver_123Pan implements Driver<DriverConfiguration_123Pan> {
     }
 
     @Override
-    public @Nullable Long createTime(final @NotNull DrivePath path) throws SQLException, IOException, IllegalParametersException {
+    public @Nullable LocalDateTime createTime(final @NotNull DrivePath path) throws SQLException, IOException, IllegalParametersException {
         final FileInformation_123pan info = DriverUtil_123pan.getFileInformation(this.configuration, path, true);
         if (info == null)
             return null;
@@ -66,7 +67,7 @@ public final class Driver_123Pan implements Driver<DriverConfiguration_123Pan> {
     }
 
     @Override
-    public @Nullable Long updateTime(final @NotNull DrivePath path) throws SQLException, IOException, IllegalParametersException {
+    public @Nullable LocalDateTime updateTime(final @NotNull DrivePath path) throws SQLException, IOException, IllegalParametersException {
         final FileInformation_123pan info = DriverUtil_123pan.getFileInformation(this.configuration, path, true);
         if (info == null)
             return null;

@@ -9,6 +9,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface Driver<C extends DriverConfiguration<?, ?, ?>> {
@@ -53,7 +54,7 @@ public interface Driver<C extends DriverConfiguration<?, ?, ?>> {
      * @return The file create_time. Null means not available.
      * @throws Exception Something went wrong.
      */
-    @Nullable Long createTime(final @NotNull DrivePath path) throws Exception;
+    @Nullable LocalDateTime createTime(final @NotNull DrivePath path) throws Exception;
 
     /**
      * Get the update_time of a specific file.
@@ -61,7 +62,7 @@ public interface Driver<C extends DriverConfiguration<?, ?, ?>> {
      * @return The file update_time. Null means not available.
      * @throws Exception Something went wrong.
      */
-    @Nullable Long updateTime(final @NotNull DrivePath path) throws Exception;
+    @Nullable LocalDateTime updateTime(final @NotNull DrivePath path) throws Exception;
 
     /**
      * Get download link of a specific file.

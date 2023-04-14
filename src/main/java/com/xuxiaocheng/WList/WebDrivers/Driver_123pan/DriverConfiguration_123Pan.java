@@ -10,6 +10,8 @@ import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Set;
 
 public final class DriverConfiguration_123Pan extends DriverConfiguration<
@@ -173,18 +175,20 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
 
     public static final class CacheSide extends CacheSideDriverConfiguration {
         private @Nullable String token;
-        private long tokenExpire;
-        private long refreshExpire;
+        private @Nullable String tokenExpire;
+        private @Nullable String refreshExpire;
 
         public @Nullable String getToken() {
             return this.token;
         }
 
-        public long getTokenExpire() {
+        @Deprecated
+        public @Nullable String getTokenExpire() {
             return this.tokenExpire;
         }
 
-        public long getRefreshExpire() {
+        @Deprecated
+        public @Nullable String getRefreshExpire() {
             return this.refreshExpire;
         }
 
@@ -192,12 +196,40 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
             this.token = token;
         }
 
-        public void setTokenExpire(final long tokenExpire) {
+        public void setTokenExpire(final @Nullable String tokenExpire) {
             this.tokenExpire = tokenExpire;
         }
 
-        public void setRefreshExpire(final long refreshExpire) {
+        public void setRefreshExpire(final @Nullable String refreshExpire) {
             this.refreshExpire = refreshExpire;
+        }
+
+        public @Nullable LocalDateTime getTokenExpireTime() {
+            if (this.tokenExpire == null)
+                return null;
+            return LocalDateTime.parse(this.tokenExpire, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        }
+
+        public @Nullable LocalDateTime getRefreshExpireTime() {
+            if (this.refreshExpire == null)
+                return null;
+            return LocalDateTime.parse(this.refreshExpire, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        }
+
+        public void setTokenExpireTime(final @Nullable LocalDateTime tokenExpire) {
+            if (tokenExpire == null) {
+                this.tokenExpire = null;
+                return;
+            }
+            this.tokenExpire = tokenExpire.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        }
+
+        public void setRefreshExpireTime(final @Nullable LocalDateTime refreshExpire) {
+            if (refreshExpire == null) {
+                this.refreshExpire = null;
+                return;
+            }
+            this.refreshExpire = refreshExpire.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         }
 
         @Override

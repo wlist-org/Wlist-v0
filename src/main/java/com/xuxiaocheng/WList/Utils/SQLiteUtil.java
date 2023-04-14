@@ -3,6 +3,8 @@ package com.xuxiaocheng.WList.Utils;
 import com.xuxiaocheng.WList.Configuration.GlobalConfiguration;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.sqlite.Function;
+import org.sqlite.JDBC;
 import org.sqlite.SQLiteDataSource;
 
 import java.io.File;
@@ -13,6 +15,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.regex.Pattern;
 
 public class SQLiteUtil {
     protected static @Nullable SQLiteUtil DataDB;
@@ -39,21 +42,25 @@ public class SQLiteUtil {
         final Connection connection = this.sqliteDataSource.getConnection();
         if (connection == null)
             throw new SQLException("Failed to get connection with sqlite database.");
+        // Regex fixer
+        Function.create(connection, "REGEXP", new Function() {
+            @Override
+            protected void xFunc() throws SQLException {
+                final String expression = this.value_text(0);
+                final String value = Objects.requireNonNullElse(this.value_text(1), "");
+                this.result(Pattern.compile(expression).matcher(value).find() ? 1 : 0);
+            }
+        });
         return connection;
     }
 
     protected SQLiteUtil(final @NotNull File path) throws SQLException {
         super();
-        try {
-            Class.forName("org.sqlite.JDBC");
-        } catch (final ClassNotFoundException exception) {
-            throw new RuntimeException("Failed to load sqlite JDBC.", exception);
-        }
         this.path = path.getAbsoluteFile();
         if (!this.path.exists() && !this.path.getParentFile().mkdirs() && !this.path.getParentFile().exists())
             throw new SQLException("Cannot create database directory.");
         this.sqliteDataSource = new SQLiteDataSource();
-        this.sqliteDataSource.setUrl("jdbc:sqlite:" + this.path.getPath());
+        this.sqliteDataSource.setUrl(JDBC.PREFIX + this.path.getPath());
         this.sqliteConnections.put("default", this.getNewConnection());
     }
 
