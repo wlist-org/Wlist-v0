@@ -3,11 +3,10 @@ package com.xuxiaocheng.WList.Driver;
 import com.xuxiaocheng.WList.Driver.Configuration.CacheSideDriverConfiguration;
 import com.xuxiaocheng.WList.Driver.Configuration.LocalSideDriverConfiguration;
 import com.xuxiaocheng.WList.Driver.Configuration.WebSideDriverConfiguration;
-import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.yaml.snakeyaml.nodes.Tag;
+import org.yaml.snakeyaml.representer.Representer;
 
-import java.util.HashSet;
-import java.util.Set;
 import java.util.function.Supplier;
 
 public abstract class DriverConfiguration<L extends LocalSideDriverConfiguration, W extends WebSideDriverConfiguration, C extends CacheSideDriverConfiguration> {
@@ -15,14 +14,11 @@ public abstract class DriverConfiguration<L extends LocalSideDriverConfiguration
     protected @NotNull W webSide;
     protected @NotNull C cacheSide;
 
-    @Contract(pure = true)
-    public @NotNull Set<Class<?>> getDumpMapClasses() {
-        final Set<Class<?>> classes = new HashSet<>(4);
-        classes.add(this.getClass());
-        classes.add(this.localSide.getClass());
-        classes.add(this.webSide.getClass());
-        classes.add(this.cacheSide.getClass());
-        return classes;
+    public void setConfigClassTag(final @NotNull Representer representer) {
+        representer.addClassTag(this.getClass(), Tag.MAP);
+        representer.addClassTag(this.localSide.getClass(), Tag.MAP);
+        representer.addClassTag(this.webSide.getClass(), Tag.MAP);
+        representer.addClassTag(this.cacheSide.getClass(), Tag.MAP);
     }
 
     protected DriverConfiguration(@NotNull final Supplier<? extends L> local, final @NotNull Supplier<? extends W> web, final @NotNull Supplier<? extends C> cache) {

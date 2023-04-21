@@ -9,6 +9,8 @@ import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.yaml.snakeyaml.nodes.Tag;
+import org.yaml.snakeyaml.representer.Representer;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -23,11 +25,10 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
     }
 
     @Override
-    public @NotNull Set<Class<?>> getDumpMapClasses() {
-        final Set<Class<?>> classes =  super.getDumpMapClasses();
-        classes.add(WebSide.LoginPart.class);
-        classes.add(WebSide.FilePart.class);
-        return classes;
+    public void setConfigClassTag(final @NotNull Representer representer) {
+        super.setConfigClassTag(representer);
+        representer.addClassTag(WebSide.LoginPart.class, Tag.MAP);
+        representer.addClassTag(WebSide.FilePart.class, Tag.MAP);
     }
 
     public static final class LocalSide extends LocalSideDriverConfiguration {
@@ -41,7 +42,6 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
             return "DriverConfiguration_123Pan$LocalSide{" +
                     "name='" + this.name + '\'' +
                     ", priority=" + this.priority +
-                    ", strictMode=" + this.strictMode +
                     '}';
         }
     }

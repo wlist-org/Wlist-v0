@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -91,6 +92,18 @@ public class DrivePath implements Iterable<String> {
     @Override
     public @NotNull Iterator<String> iterator() {
         return this.path.iterator();
+    }
+
+    @Override
+    public boolean equals(final @Nullable Object o) {
+        if (this == o) return true;
+        if (!(o instanceof DrivePath that)) return false;
+        return this.path.equals(that.path);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.path);
     }
 
     @Override

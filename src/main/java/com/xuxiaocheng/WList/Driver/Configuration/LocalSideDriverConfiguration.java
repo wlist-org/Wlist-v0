@@ -7,7 +7,6 @@ import java.math.BigInteger;
 public abstract class LocalSideDriverConfiguration {
     protected @NotNull String name = "Driver";
     protected @NotNull BigInteger priority = BigInteger.ZERO;
-    protected boolean strictMode = true;
 
     public @NotNull String getName() {
         return this.name;
@@ -25,20 +24,11 @@ public abstract class LocalSideDriverConfiguration {
         this.priority = priority;
     }
 
-    public boolean getStrictMode() {
-        return this.strictMode;
-    }
-
-    public void setStrictMode(final boolean strictMode) {
-        this.strictMode = strictMode;
-    }
-
     @Override
     public @NotNull String toString() {
         return "LocalSideDriverConfiguration{" +
                 "name='" + this.name + '\'' +
                 ", priority=" + this.priority +
-                ", strictMode=" + this.strictMode +
                 '}';
     }
 }

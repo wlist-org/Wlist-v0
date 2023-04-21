@@ -4,13 +4,10 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HLoggerStream;
 import com.xuxiaocheng.WList.Configuration.FieldOrderRepresenter;
-import com.xuxiaocheng.WList.Driver.DrivePath;
 import com.xuxiaocheng.WList.Driver.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.DriverConfiguration_123Pan;
-import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.DriverUtil_123pan;
 import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.Driver_123Pan;
 import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.nodes.Tag;
 import org.yaml.snakeyaml.representer.Representer;
 
 import java.io.BufferedInputStream;
@@ -37,22 +34,26 @@ public final class WList {
             true, new HLoggerStream(true, !WList.DebugMode));
 
     @SuppressWarnings("SpellCheckingInspection")
-    public static void main(final String[] args) throws IOException, IllegalParametersException, SQLException {
+    public static void main(final String[] args) throws IllegalParametersException, IOException, SQLException {
         final InputStream is = new BufferedInputStream(new FileInputStream("test.yml"));
         final DriverConfiguration_123Pan config = new Yaml().loadAs(is, DriverConfiguration_123Pan.class);
         is.close();
 
         final Driver_123Pan driver = new Driver_123Pan();
         driver.login(config);
+        WList.logger.log(HLogLevel.DEBUG, config);
 
         final Representer representer = new FieldOrderRepresenter();
-        config.getDumpMapClasses().forEach(c -> representer.addClassTag(c, Tag.MAP));
+        config.setConfigClassTag(representer);
         final OutputStream os = new BufferedOutputStream(new FileOutputStream("test.yml"));
         os.write(new Yaml(representer).dump(config).getBytes(StandardCharsets.UTF_8));
         os.close();
 
-        DriverUtil_123pan.forceRefreshDirectory(config, 0, new DrivePath(""), null);
-//        DriverUtil_123pan.doListFiles(config, 0, 1);
+        final long time1 = System.currentTimeMillis();
+        driver.buildCache();
+        final long time2 = System.currentTimeMillis();
+        HLog.DefaultLogger.log("", "Build time: ", time2 - time1, " ms.");
+        // No concurrency: 42s. (count: 3416)
 
 //        Operation.init();
 //        WList.logger.log(HLogLevel.FINE, "Hello WList! Initializing...");

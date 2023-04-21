@@ -9,7 +9,6 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.time.LocalDateTime;
 import java.util.List;
 
 public interface Driver<C extends DriverConfiguration<?, ?, ?>> {
@@ -41,28 +40,12 @@ public interface Driver<C extends DriverConfiguration<?, ?, ?>> {
     Pair.@Nullable ImmutablePair<@NotNull Integer, @NotNull List<@NotNull String>> list(final @NotNull DrivePath path, final int page, final int limit) throws Exception;
 
     /**
-     * Get the size of a specific file.
-     * @param path The file path to get size.
-     * @return The file size. Null means not available. 0 means an empty file. -1 means a directory.
+     * Get the file information of a specific file.
+     * @param path The file path to get information.
+     * @return The file information. Null means not existed.
      * @throws Exception Something went wrong.
      */
-    @Nullable Long size(final @NotNull DrivePath path) throws Exception;
-
-    /**
-     * Get the create_time of a specific file.
-     * @param path The file path to get create_time.
-     * @return The file create_time. Null means not available.
-     * @throws Exception Something went wrong.
-     */
-    @Nullable LocalDateTime createTime(final @NotNull DrivePath path) throws Exception;
-
-    /**
-     * Get the update_time of a specific file.
-     * @param path The file path to get update_time.
-     * @return The file update_time. Null means not available.
-     * @throws Exception Something went wrong.
-     */
-    @Nullable LocalDateTime updateTime(final @NotNull DrivePath path) throws Exception;
+    @Nullable FileInformation info(final @NotNull DrivePath path) throws Exception;
 
     /**
      * Get download link of a specific file.
@@ -121,6 +104,9 @@ public interface Driver<C extends DriverConfiguration<?, ?, ?>> {
 
     default @Nullable String rename(final @NotNull DrivePath source, final @NotNull String name) throws Exception {
         return this.move(source, source.getParent().child(name));
+    }
+
+    default void buildCache() throws Exception {
     }
 
     static @NotNull InputStream downloadFromString(final @NotNull String url) throws IOException {
