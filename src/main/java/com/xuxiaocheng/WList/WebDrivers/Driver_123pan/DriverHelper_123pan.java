@@ -6,6 +6,7 @@ import com.xuxiaocheng.WList.Driver.Exceptions.WrongResponseException;
 import com.xuxiaocheng.WList.Driver.Options.DuplicatePolicy;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -21,24 +22,24 @@ public final class DriverHelper_123pan {
     static final @NotNull Predicate<String> filenamePredication = (s) -> {
         if (s.length() >= 128)
             return false;
-        for (char ch : s.toCharArray())
+        for (char ch: s.toCharArray())
             if ("\"\\/:*?|><".indexOf(ch) != -1)
                 return false;
         return true;
     };
 
-    static final @NotNull Pair.ImmutablePair<String, String> UploadRequestURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/upload_request", "POST");
     static final @NotNull Pair.ImmutablePair<String, String> ListFilesURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/list/new", "GET");
     static final @NotNull Pair.ImmutablePair<String, String> RefreshTokenURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/user/refresh_token", "POST");
     static final @NotNull Pair.ImmutablePair<String, String> UserInformationURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/user/info", "GET");
     static final @NotNull Pair.ImmutablePair<String, String> LoginURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/user/sign_in", "POST");
     static final @NotNull Pair.ImmutablePair<String, String> SingleFileDownloadURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/download_info", "POST");
+//    static final @NotNull Pair.ImmutablePair<String, String> BatchFileDownloadURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/batch_download_info", "POST");
+    static final @NotNull Pair.ImmutablePair<String, String> UploadRequestURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/upload_request", "POST");
 
     private static final @NotNull DuplicatePolicy defaultDuplicatePolicy = DuplicatePolicy.KEEP;
     private static final @NotNull OrderPolicy defaultOrderPolicy = OrderPolicy.FileName;
     private static final @NotNull OrderDirection defaultOrderDirection = OrderDirection.ASCEND;
-
-    static int getDuplicatePolicy(final @Nullable DuplicatePolicy policy) {
+    @Contract(pure = true) static int getDuplicatePolicy(final @Nullable DuplicatePolicy policy) {
         if (policy == null)
             return DriverHelper_123pan.getDuplicatePolicy(DriverHelper_123pan.defaultDuplicatePolicy);
         return switch (policy) {
@@ -48,7 +49,7 @@ public final class DriverHelper_123pan {
             default -> DriverHelper_123pan.getDuplicatePolicy(DriverHelper_123pan.defaultDuplicatePolicy);
         };
     }
-    static @NotNull String getOrderPolicy(final @Nullable OrderPolicy policy) {
+    @Contract(pure = true) static @NotNull String getOrderPolicy(final @Nullable OrderPolicy policy) {
         if (policy == null)
             return DriverHelper_123pan.getOrderPolicy(DriverHelper_123pan.defaultOrderPolicy);
         return switch (policy) {
@@ -59,7 +60,7 @@ public final class DriverHelper_123pan {
 //            default -> DriverHelper_123pan.getOrderPolicy(DriverHelper_123pan.defaultOrderPolicy);
         };
     }
-    static @NotNull String getOrderDirection(final @Nullable OrderDirection policy) {
+    @Contract(pure = true) static @NotNull String getOrderDirection(final @Nullable OrderDirection policy) {
         if (policy == null)
             return DriverHelper_123pan.getOrderDirection(DriverHelper_123pan.defaultOrderDirection);
         return switch (policy) {

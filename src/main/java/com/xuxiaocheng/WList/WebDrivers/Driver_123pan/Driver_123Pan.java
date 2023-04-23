@@ -11,6 +11,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -62,13 +63,22 @@ public final class Driver_123Pan implements Driver<DriverConfiguration_123Pan> {
     }
 
     @Override
-    public @Nullable String mkdirs(final @NotNull DrivePath path) {
-        return null;
+    public boolean mkdirs(final @NotNull DrivePath path) throws IllegalParametersException, IOException, SQLException {
+        final FileInformation info = DriverUtil_123pan.getFileInformation(this.configuration, path, null);
+        if (info != null) {
+            if (info.is_dir())
+                return false;
+            throw new FileAlreadyExistsException(path.getPath());
+        }
+        this.mkdirs(path.getParent());
+        DriverUtil_123pan.doCreateDirectory(this.configuration, path, null);
+        return true;
     }
 
     @Override
-    public @Nullable String upload(final @NotNull DrivePath path, final @NotNull ByteBuf file) {
-        return null;
+    public @NotNull FileInformation upload(final @NotNull DrivePath path, final @NotNull ByteBuf file) {
+//        return DriverUtil_123pan.doUpload(this.configuration, path, file, null);
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -77,28 +87,18 @@ public final class Driver_123Pan implements Driver<DriverConfiguration_123Pan> {
     }
 
     @Override
-    public void rmdir(final @NotNull DrivePath path) {
-
-    }
-
-    @Override
-    public @Nullable String copy(final @NotNull DrivePath source, final @NotNull DrivePath target) {
+    public @Nullable FileInformation copy(final @NotNull DrivePath source, final @NotNull DrivePath target) {
         return null;
     }
 
     @Override
-    public @Nullable String move(final @NotNull DrivePath source, final @NotNull DrivePath target) {
-        return null;
-    }
-
-    @Override
-    public @Nullable String rename(final @NotNull DrivePath source, final @NotNull String name) {
+    public @Nullable FileInformation move(final @NotNull DrivePath source, final @NotNull DrivePath target) {
         return null;
     }
 
     @Override
     public void buildCache() throws SQLException, IOException, IllegalParametersException {
-        DriverUtil_123pan.recursiveRefreshDirectory(this.configuration, new DrivePath("/"), null);
+        DriverUtil_123pan.recursiveRefreshDirectory(this.configuration, new DrivePath("/"), this.configuration.getWebSide().getFilePart().getRootDirectoryId(), null, null);
     }
 
     @Override

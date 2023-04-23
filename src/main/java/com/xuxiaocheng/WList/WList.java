@@ -41,7 +41,7 @@ public final class WList {
 
         final Driver_123Pan driver = new Driver_123Pan();
         driver.login(config);
-        WList.logger.log(HLogLevel.DEBUG, config);
+        WList.logger.log(HLogLevel.INFO, config);
 
         final Representer representer = new FieldOrderRepresenter();
         config.setConfigClassTag(representer);
@@ -54,6 +54,12 @@ public final class WList {
         final long time2 = System.currentTimeMillis();
         HLog.DefaultLogger.log("", "Build time: ", time2 - time1, " ms.");
         // No concurrency: 42s. (count: 3416)
+        // With concurrency: 18.6s (count: 3699)
+        //  Something unexcepted: bug in no concurrency.(old version.)
+
+//        final byte[] context = new byte[]{10, 20, 30};
+//        final InputStream inputStream = new ByteArrayInputStream(context);
+//        DriverUtil_123pan.doUpload(config, new DrivePath("hello.text"), inputStream, 3, MiscellaneousUtil.getMd5(context), null);
 
 //        Operation.init();
 //        WList.logger.log(HLogLevel.FINE, "Hello WList! Initializing...");

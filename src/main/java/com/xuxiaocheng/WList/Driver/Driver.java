@@ -50,27 +50,27 @@ public interface Driver<C extends DriverConfiguration<?, ?, ?>> {
     /**
      * Get download link of a specific file.
      * @param path The file path to download.
-     * @return The download link. Null means failure.
+     * @return The download link. Null means not existed.
      * @throws Exception Something went wrong.
      */
     @Nullable String download(final @NotNull DrivePath path) throws Exception;
 
     /**
-     * Create an empty directory.
+     * Create a new empty directory.
      * @param path The directory path to create.
-     * @return The name of new directory. Null means failure.
+     * @return True means something modified in web side. Notice: whether true or false, this directory must be existent.
      * @throws Exception Something went wrong.
      */
-    @Nullable String mkdirs(final @NotNull DrivePath path) throws Exception;
+    boolean mkdirs(final @NotNull DrivePath path) throws Exception;
 
     /**
      * Upload file to path.
      * @param path Target path.
      * @param file Content of file.
-     * @return The name of new file. Null means failure.
+     * @return The information of new file.
      * @throws Exception Something went wrong.
      */
-    @Nullable String upload(final @NotNull DrivePath path, final @NotNull ByteBuf file) throws Exception;
+    @NotNull FileInformation upload(final @NotNull DrivePath path, final @NotNull ByteBuf file) throws Exception;
 
     /**
      * Delete file.
@@ -84,25 +84,25 @@ public interface Driver<C extends DriverConfiguration<?, ?, ?>> {
     }
 
     @SuppressWarnings("OverlyBroadThrowsClause")
-    default @Nullable String copy(final @NotNull DrivePath source, final @NotNull DrivePath target) throws Exception {
+    default @Nullable FileInformation copy(final @NotNull DrivePath source, final @NotNull DrivePath target) throws Exception {
         final String url = this.download(source);
         if (url == null)
             return null;
         final InputStream inputStream = Driver.downloadFromString(url);
         final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(inputStream.available());
         buffer.writeBytes(inputStream.readAllBytes());
-        final String t =  this.upload(target, buffer);
+        final FileInformation t =  this.upload(target, buffer);
         inputStream.close();
         return t;
     }
 
-    default @Nullable String move(final @NotNull DrivePath source, final @NotNull DrivePath target) throws Exception {
-        final String t = this.copy(source, target);
+    default @Nullable FileInformation move(final @NotNull DrivePath source, final @NotNull DrivePath target) throws Exception {
+        final FileInformation t = this.copy(source, target);
         this.delete(source);
         return t;
     }
 
-    default @Nullable String rename(final @NotNull DrivePath source, final @NotNull String name) throws Exception {
+    default @Nullable FileInformation rename(final @NotNull DrivePath source, final @NotNull String name) throws Exception {
         return this.move(source, source.getParent().child(name));
     }
 

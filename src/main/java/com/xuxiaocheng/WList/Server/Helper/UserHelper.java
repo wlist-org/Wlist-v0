@@ -7,13 +7,11 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Server.Operation;
 import com.xuxiaocheng.WList.Utils.DataBaseUtil;
+import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -110,25 +108,13 @@ public final class UserHelper {
     }
 
     public static @NotNull String generateRandomToken(final @NotNull String username, final long time) {
-        return Base64.getEncoder().encodeToString(("@MD5-Username:\n\t" + UserHelper.getMd5(username)).getBytes(StandardCharsets.UTF_8)) + '.'
+        return Base64.getEncoder().encodeToString(("@MD5-Username:\n\t" + MiscellaneousUtil.getMd5(username.getBytes(StandardCharsets.UTF_8))).getBytes(StandardCharsets.UTF_8)) + '.'
                 + Base64.getEncoder().encodeToString(HRandomHelper.getRandomUUID(HRandomHelper.RANDOM).toString().getBytes(StandardCharsets.UTF_8)) + '_'
-                + UserHelper.getMd5(Long.toString(time, 8));
+                + MiscellaneousUtil.getMd5(Long.toString(time, 8).getBytes(StandardCharsets.UTF_8));
     }
 
     private static final @NotNull String ServerPasswordSlat = "Server SALT***#WListServer%CreateBy@XXC#***TokenMD5&SALT";
     public static @NotNull String encryptPassword(final @NotNull String password) {
-        return UserHelper.getMd5(password + UserHelper.ServerPasswordSlat);
-    }
-
-    public static @NotNull String getMd5(final String source) {
-        final MessageDigest md5;
-        try {
-            md5 = MessageDigest.getInstance("MD5");
-        } catch (final NoSuchAlgorithmException exception) {
-            throw new RuntimeException("Unreachable!", exception);
-        }
-        md5.update(source.getBytes(StandardCharsets.UTF_8));
-        final BigInteger i = new BigInteger(1, md5.digest());
-        return i.toString(16);
+        return MiscellaneousUtil.getMd5((password + UserHelper.ServerPasswordSlat).getBytes(StandardCharsets.UTF_8));
     }
 }

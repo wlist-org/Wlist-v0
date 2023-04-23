@@ -34,6 +34,7 @@ public class GlobalConfiguration {
     protected @IntRange(minimum = 0, maximum = 65535) int port = 5212;
     protected @NotNull String data_db = "data/data.db";
     protected @NotNull String index_db = "data/index.db";
+    protected @IntRange(minimum = 1) int thread_count = 10;
 
     public int getPort() {
         return this.port;
@@ -45,6 +46,10 @@ public class GlobalConfiguration {
 
     public @NotNull String getIndex_db() {
         return this.index_db;
+    }
+
+    public int getThread_count() {
+        return this.thread_count;
     }
 
     @Deprecated
@@ -62,12 +67,20 @@ public class GlobalConfiguration {
         this.index_db = index_db;
     }
 
+    @Deprecated
+    public void setThread_count(final int thread_count) {
+        this.thread_count = thread_count;
+    }
+
+    // TODO equal
+
     @Override
-    public String toString() {
+    public @NotNull String toString() {
         return "GlobalConfiguration{" +
                 "port=" + this.port +
                 ", data_db='" + this.data_db + '\'' +
                 ", index_db='" + this.index_db + '\'' +
+                ", thread_count=" + this.thread_count +
                 '}';
     }
 }

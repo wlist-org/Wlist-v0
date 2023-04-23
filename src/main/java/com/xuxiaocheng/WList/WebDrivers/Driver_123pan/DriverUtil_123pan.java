@@ -6,19 +6,22 @@ import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.Configuration.GlobalConfiguration;
 import com.xuxiaocheng.WList.Driver.DrivePath;
 import com.xuxiaocheng.WList.Driver.DriverSqlHelper;
 import com.xuxiaocheng.WList.Driver.DriverUtil;
 import com.xuxiaocheng.WList.Driver.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Driver.Exceptions.WrongResponseException;
 import com.xuxiaocheng.WList.Driver.FileInformation;
-import com.xuxiaocheng.WList.Driver.Options.DuplicatePolicy;
+import com.xuxiaocheng.WList.Utils.DataBaseUtil;
+import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import okhttp3.Headers;
 import okhttp3.RequestBody;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -27,10 +30,19 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collection;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Objects;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 
 @SuppressWarnings("SameParameterValue")
@@ -218,39 +230,93 @@ public final class DriverUtil_123pan {
         return null;
     }
 
-    static void recursiveRefreshDirectory(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath directoryPath, final @Nullable Connection _connection) throws IllegalParametersException, IOException, SQLException {
-        final Connection connection = DriverSqlHelper.requireConnection(_connection);
+    static @NotNull Iterator<@NotNull FileInformation> listAllFiles(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath directoryPath, final long directoryId, final @NotNull Connection connection, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
+        final ExecutorService threadPool = Objects.requireNonNullElseGet(_threadPool, () -> Executors.newFixedThreadPool(GlobalConfiguration.getInstance().getThread_count()));
+        final Pair<Integer, List<FileInformation>> firstPage = DriverUtil_123pan.doListFiles(configuration, directoryId, configuration.getWebSide().getFilePart().getDefaultLimitPerPage(), 1, directoryPath, connection);
+        final int fileCount = firstPage.getFirst().intValue();
+        if (fileCount <= 0)
+            return new Iterator<>() {
+                @Override
+                public boolean hasNext() {
+                    return false;
+                }
+
+                @Override
+                public @NotNull FileInformation next() {
+                    throw new NoSuchElementException();
+                }
+            };
+        final int pageCount = (int) Math.ceil(((double) fileCount) / configuration.getWebSide().getFilePart().getDefaultLimitPerPage());
+        final AtomicInteger finishedPageCount = new AtomicInteger(1);
+        final BlockingQueue<FileInformation> allFiles = new LinkedBlockingQueue<>(fileCount);
+        allFiles.addAll(firstPage.getSecond());
+        for (int page = 2; page <= pageCount; ++page) {
+            final int current = page;
+            threadPool.submit(() -> {
+                allFiles.addAll(DriverUtil_123pan.doListFiles(configuration, directoryId, configuration.getWebSide().getFilePart().getDefaultLimitPerPage(), current, directoryPath, connection).getSecond());
+                return finishedPageCount.incrementAndGet();
+            });
+        }
+        return new Iterator<>() {
+            @Override
+            public boolean hasNext() {
+                final boolean has = finishedPageCount.get() < pageCount || !allFiles.isEmpty();
+                if (!has && _threadPool == null)
+                    threadPool.shutdown();
+                return has;
+            }
+
+            @Override
+            public @NotNull FileInformation next() {
+                if (!this.hasNext())
+                    throw new NoSuchElementException();
+                try {
+                    return allFiles.take();
+                } catch (final InterruptedException exception) {
+                    throw new RuntimeException(exception);
+                }
+            }
+        };
+    }
+
+    static void recursiveRefreshDirectory(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath directoryPath, final long directoryId, final @Nullable Connection _connection, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
+        final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
+        final ExecutorService threadPool = Objects.requireNonNullElseGet(_threadPool, () -> Executors.newFixedThreadPool(GlobalConfiguration.getInstance().getThread_count()));
         try {
             if (_connection == null)
                 connection.setAutoCommit(false);
-            final long directoryId = DriverUtil_123pan.getFileId(configuration, directoryPath, FileInformation::is_dir, true, connection);
             DriverSqlHelper.deleteFileByParentPath(configuration.getLocalSide().getName(), directoryPath, connection);
-            int page = 1;
-            List<FileInformation> list;
-            do {
-                list = DriverUtil_123pan.doListFiles(configuration, directoryId, configuration.getWebSide().getFilePart().getDefaultLimitPerPage(), page++, directoryPath, connection).getSecond();
-                for (final FileInformation info: list)
-                    if (info.is_dir())
-                        DriverUtil_123pan.recursiveRefreshDirectory(configuration, info.path(), connection);
-            } while (!list.isEmpty());
+            final Collection<Pair<String, Long>> directoryList = new ArrayList<>();
+            final Iterator<FileInformation> lister = DriverUtil_123pan.listAllFiles(configuration, directoryPath, directoryId, connection, threadPool);
+            while (lister.hasNext()) {
+                final FileInformation info = lister.next();
+                if (info.is_dir())
+                    directoryList.add(Pair.makePair(info.path().getName(), info.id()));
+            }
+            for (final Pair<String, Long> name: directoryList) {
+                DriverUtil_123pan.recursiveRefreshDirectory(configuration, directoryPath.child(name.getFirst()), name.getSecond().longValue(), connection, threadPool);
+                directoryPath.parent();
+            }
             if (_connection == null)
                 connection.commit();
         } finally {
             if (_connection == null)
                 connection.close();
+            if (_threadPool == null)
+                threadPool.shutdown();
         }
     }
 
     // Files manager.
     
-    static void doCreateDirectory(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @Nullable DuplicatePolicy policy, final @Nullable Connection _connection) throws IllegalParametersException, IOException, SQLException {
+    static void doCreateDirectory(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @Nullable Connection _connection) throws IllegalParametersException, IOException, SQLException {
         final String newDirectoryName = path.getName();
         if (!DriverHelper_123pan.filenamePredication.test(newDirectoryName))
             throw new IllegalParametersException("Invalid directory name.", newDirectoryName);
         final DrivePath parentPath = path.getParent();
         final long parentDirectoryId = DriverUtil_123pan.getFileId(configuration, parentPath, FileInformation::is_dir, true, _connection);
         if (parentDirectoryId < 0)
-            throw new IllegalParametersException("Parent directory is nonexistent.");
+            throw new IllegalParametersException("Parent directory is nonexistent.", path);
         final JSONObject request = new JSONObject(8);
         request.put("driveId", 0);
         request.put("etag", "");
@@ -259,7 +325,7 @@ public final class DriverUtil_123pan {
         request.put("size", 0);
         request.put("type", 1);
         request.put("NotReuse", true);
-        request.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(policy));
+        request.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(configuration.getWebSide().getFilePart().getDuplicatePolicy()));
         final JSONObject data = DriverUtil_123pan.sendJsonWithToken(DriverHelper_123pan.UploadRequestURL, configuration, request);
         final FileInformation obj = FileInformation_123pan.create(parentPath, data.getJSONObject("Info"));
         if (obj == null)
@@ -309,5 +375,36 @@ public final class DriverUtil_123pan {
         return url;
     }
 
-
+    static @NotNull FileInformation doUpload(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @NotNull InputStream stream, final long size, final @NotNull String hexMd5, final @Nullable Connection _connection) throws IllegalParametersException, IOException, SQLException {
+        if (!DriverHelper_123pan.etagPattern.matcher(hexMd5).matches())
+            throw new IllegalParametersException("Invalid etag (md5).", hexMd5);
+        final String newDirectoryName = path.getName();
+        if (!DriverHelper_123pan.filenamePredication.test(newDirectoryName))
+            throw new IllegalParametersException("Invalid directory name.", newDirectoryName);
+        final DrivePath parentPath = path.getParent();
+        final long parentDirectoryId = DriverUtil_123pan.getFileId(configuration, parentPath, FileInformation::is_dir, true, _connection);
+        if (parentDirectoryId < 0)
+            throw new IllegalParametersException("Parent directory is nonexistent.", path);
+        final JSONObject preUploadRequest = new JSONObject(7);
+        preUploadRequest.put("driveId", 0);
+        preUploadRequest.put("etag", hexMd5);
+        preUploadRequest.put("fileName", newDirectoryName);
+        preUploadRequest.put("parentFileId", parentDirectoryId);
+        preUploadRequest.put("size", size);
+        preUploadRequest.put("type", 0);
+        preUploadRequest.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(configuration.getWebSide().getFilePart().getDuplicatePolicy()));
+        final JSONObject preUploadData = DriverUtil_123pan.sendJsonWithToken(DriverHelper_123pan.UploadRequestURL, configuration, preUploadRequest);
+        final String bucket = preUploadData.getString("Bucket");
+        final String key = preUploadData.getString("Key");
+        final String uploadId = preUploadData.getString("UploadId");
+        if (bucket == null || key == null || uploadId == null)
+            throw new WrongResponseException("Abnormal data of 'preUploadData'.", preUploadData);
+        HLog.DefaultLogger.log("", preUploadData);
+        return null;
+        // TODO
+//        final FileInformation info;
+//
+//        DriverSqlHelper.insertFile(configuration.getLocalSide().getName(), info, _connection);
+//        return info;
+    }
 }

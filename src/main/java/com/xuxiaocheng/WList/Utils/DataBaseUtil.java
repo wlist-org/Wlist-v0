@@ -1,8 +1,11 @@
 package com.xuxiaocheng.WList.Utils;
 
+import com.xuxiaocheng.HeadLibs.Logger.HLog;
+import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Configuration.GlobalConfiguration;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.sqlite.BusyHandler;
 import org.sqlite.SQLiteDataSource;
 
 import java.io.File;
@@ -27,6 +30,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class DataBaseUtil {
@@ -65,8 +69,13 @@ public class DataBaseUtil {
             throw new SQLException("Cannot create database directory.");
         this.sqliteDataSource = new SQLiteDataSource();
         this.sqliteDataSource.setUrl(org.sqlite.JDBC.PREFIX + path.getPath());
-        for (int i = 0; i < this.config.initSize; ++i)
-            this.sqliteConnections.push(this.createConnection());
+        for (int i = 1; i < this.config.initSize; ++i)
+            this.sqliteConnections.push(this.createNewConnection());
+        try (final Connection connection = this.createNewConnection()) {
+            try (final Statement statement = connection.createStatement()) {
+                statement.executeUpdate("PRAGMA journal_mode = WAL;");
+            }
+        }
         assert this.createdSize.get() == this.config.initSize;
     }
 
@@ -74,7 +83,7 @@ public class DataBaseUtil {
         return this.config;
     }
 
-    protected final @NotNull Connection createConnection() throws SQLException {
+    protected final @NotNull Connection createNewConnection() throws SQLException {
         final Connection connection;
         synchronized (this.createdSize) {
             connection = this.sqliteDataSource.getConnection();
@@ -82,6 +91,21 @@ public class DataBaseUtil {
                 throw new SQLException("Failed to get connection with sqlite database.");
             this.createdSize.incrementAndGet();
         }
+        BusyHandler.setHandler(connection, new BusyHandler() {
+            @Override
+            protected int callback(final int n) throws SQLException {
+                if (n > 2 && (n < 5 || n % 5 == 0))
+                    HLog.getInstance("DefaultLogger").log(HLogLevel.WARN, "SQLITE BUSY!!! Retry time: ", n);
+                if (n > 99) // Connection may leak.
+                    return 0;
+                try {
+                    TimeUnit.MILLISECONDS.sleep(100);
+                } catch (final InterruptedException exception) {
+                    throw new SQLException(exception);
+                }
+                return 1;
+            }
+        });
 //        // Regex fixer
 //        Function.create(connection, "REGEXP", new Function() {
 //            @Override
@@ -100,7 +124,7 @@ public class DataBaseUtil {
             return connection;
         synchronized (this.createdSize) {
             if (this.createdSize.get() < this.config.maxSize)
-                return this.createConnection();
+                return this.createNewConnection();
         }
         try {
             synchronized (this.needIdleConnection) {
