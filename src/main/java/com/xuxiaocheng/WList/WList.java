@@ -4,14 +4,18 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HLoggerStream;
 import com.xuxiaocheng.WList.Configuration.FieldOrderRepresenter;
+import com.xuxiaocheng.WList.Driver.DrivePath;
 import com.xuxiaocheng.WList.Driver.Exceptions.IllegalParametersException;
+import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.DriverConfiguration_123Pan;
+import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.DriverUtil_123pan;
 import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.Driver_123Pan;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.representer.Representer;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -49,18 +53,13 @@ public final class WList {
         os.write(new Yaml(representer).dump(config).getBytes(StandardCharsets.UTF_8));
         os.close();
 
-        final long time1 = System.currentTimeMillis();
-        driver.buildCache();
-        final long time2 = System.currentTimeMillis();
-        HLog.DefaultLogger.log("", "Build time: ", time2 - time1, " ms.");
-        // No concurrency: 42s. (count: 3416)
-        // With concurrency: 18.6s (count: 3699)
-        //  Something unexcepted: bug in no concurrency.(old version.)
+        HLog.DefaultLogger.log("", DriverUtil_123pan.getFileInformation(config, new DrivePath("/AutoCopy"), false, null));
 
-//        final byte[] context = new byte[]{10, 20, 30};
-//        final InputStream inputStream = new ByteArrayInputStream(context);
-//        DriverUtil_123pan.doUpload(config, new DrivePath("hello.text"), inputStream, 3, MiscellaneousUtil.getMd5(context), null);
-
+        if (false) {
+            final byte[] context = new byte[]{10, 20, 30};
+            final InputStream inputStream = new ByteArrayInputStream(context);
+            DriverUtil_123pan.doUpload(config, new DrivePath("test/hello.text"), inputStream, 3, MiscellaneousUtil.getMd5(context), null);
+        }
 //        Operation.init();
 //        WList.logger.log(HLogLevel.FINE, "Hello WList! Initializing...");
 //        GlobalConfiguration.init(new BufferedInputStream(new FileInputStream("config.yml")));

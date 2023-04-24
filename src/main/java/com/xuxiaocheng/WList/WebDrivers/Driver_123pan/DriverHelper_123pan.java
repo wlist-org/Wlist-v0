@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.WebDrivers.Driver_123pan;
 
+import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Driver.Exceptions.WrongResponseException;
@@ -10,6 +11,8 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collection;
+import java.util.Map;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
@@ -28,13 +31,15 @@ public final class DriverHelper_123pan {
         return true;
     };
 
-    static final @NotNull Pair.ImmutablePair<String, String> ListFilesURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/list/new", "GET");
+    static final @NotNull Pair.ImmutablePair<String, String> LoginURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/user/sign_in", "POST");
     static final @NotNull Pair.ImmutablePair<String, String> RefreshTokenURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/user/refresh_token", "POST");
     static final @NotNull Pair.ImmutablePair<String, String> UserInformationURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/user/info", "GET");
-    static final @NotNull Pair.ImmutablePair<String, String> LoginURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/user/sign_in", "POST");
+    static final @NotNull Pair.ImmutablePair<String, String> ListFilesURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/list/new", "GET");
+    static final @NotNull Pair.ImmutablePair<String, String> FilesInfoURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/info", "POST");
     static final @NotNull Pair.ImmutablePair<String, String> SingleFileDownloadURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/download_info", "POST");
 //    static final @NotNull Pair.ImmutablePair<String, String> BatchFileDownloadURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/batch_download_info", "POST");
     static final @NotNull Pair.ImmutablePair<String, String> UploadRequestURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/upload_request", "POST");
+    static final @NotNull Pair.ImmutablePair<String, String> S3PareURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/s3_repare_upload_parts_batch", "POST");
 
     private static final @NotNull DuplicatePolicy defaultDuplicatePolicy = DuplicatePolicy.KEEP;
     private static final @NotNull OrderPolicy defaultOrderPolicy = OrderPolicy.FileName;
@@ -99,5 +104,17 @@ public final class DriverHelper_123pan {
         final String etag = info.getString("Etag");
         if (etag == null || (!etag.isEmpty() && !DriverHelper_123pan.etagPattern.matcher(etag).matches()))
             throw new WrongResponseException("Abnormal data of 'Etag'.", info);
+    }
+
+    static @NotNull JSONObject buildFileIdList(final @NotNull Collection<@NotNull Long> idList) {
+        final Collection<Object> list = new JSONArray(idList.size());
+        for (final Long id: idList) {
+            final Map<String, Object> pair = new JSONObject(1);
+            pair.put("fileId", id.longValue());
+            list.add(pair);
+        }
+        final JSONObject res = new JSONObject(1);
+        res.put("fileIdList", list);
+        return res;
     }
 }

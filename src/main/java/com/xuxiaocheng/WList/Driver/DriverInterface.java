@@ -11,7 +11,7 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.List;
 
-public interface Driver<C extends DriverConfiguration<?, ?, ?>> {
+public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     @NotNull C getDefaultConfiguration();
 
     /**
@@ -88,7 +88,7 @@ public interface Driver<C extends DriverConfiguration<?, ?, ?>> {
         final String url = this.download(source);
         if (url == null)
             return null;
-        final InputStream inputStream = Driver.downloadFromString(url);
+        final InputStream inputStream = DriverInterface.downloadFromString(url);
         final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(inputStream.available());
         buffer.writeBytes(inputStream.readAllBytes());
         final FileInformation t =  this.upload(target, buffer);

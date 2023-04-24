@@ -17,6 +17,7 @@ import com.xuxiaocheng.WList.Utils.DataBaseUtil;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import okhttp3.Headers;
 import okhttp3.RequestBody;
+import okhttp3.Response;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -129,14 +130,17 @@ public final class DriverUtil_123pan {
     private static @NotNull JSONObject sendJsonWithToken(final @NotNull Pair.ImmutablePair<@NotNull String, @NotNull String> url, final @NotNull DriverConfiguration_123Pan configuration, final @Nullable JSONObject request) throws IllegalParametersException, IOException {
         DriverUtil_123pan.doRetrieveToken(configuration);
         final Headers headers = new Headers.Builder().add("authorization", "Bearer " + configuration.getCacheSide().getToken())
+                .add("user-agent", "123pan/1.0.100" + DriverUtil.defaultUserAgent)
                 .add("app-version", "101") // .add("app-version", "2")
                 .add("platform", "pc") // .add("platform", "web")
                 .build();
-        final JSONObject json;
+        final Response response;
         if ("GET".equals(url.getSecond()) && request != null)
-            json = JSON.parseObject(DriverUtil.checkResponseSuccessful(DriverUtil.sendRequestWithParameters(url, headers, request)).bytes());
+            response = DriverUtil.sendRequestWithParameters(url, headers, request);
         else
-            json = JSON.parseObject(DriverUtil.checkResponseSuccessful(DriverUtil.sendRequest(url, headers, "GET".equals(url.getSecond()) ? null : DriverUtil.createJsonRequestBody(request))).bytes());
+            response = DriverUtil.sendRequest(url, headers, request == null ? null : DriverUtil.createJsonRequestBody(request));
+        final JSONObject json = JSON.parseObject(DriverUtil.checkResponseSuccessful(response).bytes());
+        response.close();
         try {
             return DriverHelper_123pan.extractResponseData(json, 0, "ok");
         } catch (final WrongResponseException exception) {
@@ -165,7 +169,7 @@ public final class DriverUtil_123pan {
         configuration.getCacheSide().setFileCount(data.getLongValue("FileCount", 0));
     }
 
-    // File Info Getter
+    // File Information Getter
 
     static @NotNull Pair<@NotNull Integer, @NotNull List<@NotNull FileInformation>> doListFiles(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final int limit, final int page, final @NotNull DrivePath directoryPath, final @Nullable Connection _connection) throws IllegalParametersException, IOException, SQLException {
         final JSONObject request = new JSONObject(7);
@@ -214,20 +218,25 @@ public final class DriverUtil_123pan {
         return -1;
     }
 
-    static @Nullable FileInformation getFileInformation(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @Nullable Connection _connection) throws IllegalParametersException, IOException, SQLException {
-        final FileInformation info = DriverSqlHelper.getFile(configuration.getLocalSide().getName(), path, _connection);
-        if (info != null)
-            return info;
-        final long id = DriverUtil_123pan.getFileId(configuration, path.getParent(), FileInformation::is_dir, true, _connection);
-        int page = 1;
-        List<FileInformation> list;
-        do {
-            list = DriverUtil_123pan.doListFiles(configuration, id, configuration.getWebSide().getFilePart().getDefaultLimitPerPage(), page++, path, _connection).getSecond();
-            for (final FileInformation obj: list)
-                if (path.getName().equals(obj.path().getName()))
-                    return obj;
-        } while (!list.isEmpty());
-        return null;
+    public static @Nullable FileInformation getFileInformation(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean useCache, final @Nullable Connection _connection) throws IllegalParametersException, IOException, SQLException {
+        if (useCache) {
+            final FileInformation info = DriverSqlHelper.getFile(configuration.getLocalSide().getName(), path, _connection);
+            if (info != null)
+                return info;
+        }
+        final long id = DriverUtil_123pan.getFileId(configuration, path, (f) -> true, useCache, _connection);
+        final JSONObject request = DriverHelper_123pan.buildFileIdList(List.of(id));
+        final JSONObject data = DriverUtil_123pan.sendJsonWithToken(DriverHelper_123pan.FilesInfoURL, configuration, request);
+        final JSONArray list = data.getJSONArray("infoList");
+        if (list == null || list.isEmpty())
+            return null;
+        final JSONObject info = list.getJSONObject(0);
+        DriverHelper_123pan.checkForFileNecessaryInfo(info);
+        final FileInformation file = FileInformation_123pan.create(path.getParent(), info);
+        if (file == null)
+            throw new WrongResponseException("Abnormal data of 'infoList'.", data);
+        DriverSqlHelper.insertFile(configuration.getLocalSide().getName(), file, _connection);
+        return file;
     }
 
     static @NotNull Iterator<@NotNull FileInformation> listAllFiles(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath directoryPath, final long directoryId, final @NotNull Connection connection, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
@@ -235,17 +244,7 @@ public final class DriverUtil_123pan {
         final Pair<Integer, List<FileInformation>> firstPage = DriverUtil_123pan.doListFiles(configuration, directoryId, configuration.getWebSide().getFilePart().getDefaultLimitPerPage(), 1, directoryPath, connection);
         final int fileCount = firstPage.getFirst().intValue();
         if (fileCount <= 0)
-            return new Iterator<>() {
-                @Override
-                public boolean hasNext() {
-                    return false;
-                }
-
-                @Override
-                public @NotNull FileInformation next() {
-                    throw new NoSuchElementException();
-                }
-            };
+            return MiscellaneousUtil.getEmptyIterator();
         final int pageCount = (int) Math.ceil(((double) fileCount) / configuration.getWebSide().getFilePart().getDefaultLimitPerPage());
         final AtomicInteger finishedPageCount = new AtomicInteger(1);
         final BlockingQueue<FileInformation> allFiles = new LinkedBlockingQueue<>(fileCount);
@@ -359,9 +358,9 @@ public final class DriverUtil_123pan {
         request.put("fileId", info.id());
         request.put("fileName", info.path().getName());
         request.put("size", info.size());
-        final FileInformation_123pan.FileInfoExtra_123pan extra = FileInformation_123pan.deserializeJson(info);
+        final FileInformation_123pan.FileInfoExtra_123pan extra = FileInformation_123pan.deserializeOther(info);
         request.put("s3keyFlag",extra.s3key());
-        request.put("etag", extra.etag());
+        request.put("etag", info.tag());
         final JSONObject data = DriverUtil_123pan.sendJsonWithToken(DriverHelper_123pan.SingleFileDownloadURL, configuration, request);
         String url = data.getString("DownloadUrl");
         if (url == null)
@@ -375,7 +374,8 @@ public final class DriverUtil_123pan {
         return url;
     }
 
-    static @NotNull FileInformation doUpload(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @NotNull InputStream stream, final long size, final @NotNull String hexMd5, final @Nullable Connection _connection) throws IllegalParametersException, IOException, SQLException {
+    static final long PartSize = 16 * 1024 * 1024;
+    public static @NotNull FileInformation doUpload(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @NotNull InputStream stream, final long size, final @NotNull String hexMd5, final @Nullable Connection _connection) throws IllegalParametersException, IOException, SQLException {
         if (!DriverHelper_123pan.etagPattern.matcher(hexMd5).matches())
             throw new IllegalParametersException("Invalid etag (md5).", hexMd5);
         final String newDirectoryName = path.getName();
@@ -400,6 +400,14 @@ public final class DriverUtil_123pan {
         if (bucket == null || key == null || uploadId == null)
             throw new WrongResponseException("Abnormal data of 'preUploadData'.", preUploadData);
         HLog.DefaultLogger.log("", preUploadData);
+        final JSONObject s3PareRequest = new JSONObject(7);
+        s3PareRequest.put("bucket", bucket);
+        s3PareRequest.put("key", key);
+        s3PareRequest.put("uploadId", uploadId);
+        s3PareRequest.put("partNumberStart", 1);
+        s3PareRequest.put("partNumberEnd", (int) Math.ceil(((double) size) / DriverUtil_123pan.PartSize));
+        final JSONObject s3PareData = DriverUtil_123pan.sendJsonWithToken(DriverHelper_123pan.S3PareURL, configuration, s3PareRequest);
+
         return null;
         // TODO
 //        final FileInformation info;

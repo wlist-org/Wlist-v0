@@ -8,7 +8,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.Objects;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 public final class MiscellaneousUtil {
     private MiscellaneousUtil() {
@@ -27,6 +28,20 @@ public final class MiscellaneousUtil {
         return i.toString(16);
     }
 
+    public static <T> @NotNull Iterator<T> getEmptyIterator() {
+        return new Iterator<>() {
+            @Override
+            public boolean hasNext() {
+                return false;
+            }
+
+            @Override
+            public @NotNull T next() {
+                throw new NoSuchElementException();
+            }
+        };
+    }
+
     /**
      * Automatically get not null connection with DataBaseUtil.
      * Standard code: @code {
@@ -40,18 +55,8 @@ public final class MiscellaneousUtil {
      * }
      */
     public static @NotNull Connection requireConnection(final @Nullable Connection _connection, final @NotNull DataBaseUtil util) throws SQLException {
-        try {
-            return Objects.requireNonNullElseGet(_connection, () -> {
-                try {
-                    return util.getConnection();
-                } catch (final SQLException exception) {
-                    throw new RuntimeException(exception);
-                }
-            });
-        } catch (final RuntimeException exception) {
-            if (exception.getCause() instanceof SQLException sqlException)
-                throw sqlException;
-            throw exception;
-        }
+        if (_connection != null)
+            return _connection;
+        return util.getConnection();
     }
 }

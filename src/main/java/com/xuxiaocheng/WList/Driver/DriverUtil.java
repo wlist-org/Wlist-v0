@@ -4,7 +4,6 @@ import com.alibaba.fastjson2.JSON;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.WList.Configuration.GlobalConfiguration;
 import com.xuxiaocheng.WList.Driver.Exceptions.NetworkException;
 import com.xuxiaocheng.WList.WList;
 import okhttp3.Callback;
@@ -21,8 +20,6 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
@@ -31,6 +28,7 @@ public final class DriverUtil {
         super();
     }
 
+    public static final @NotNull String defaultUserAgent = " WList/0.0.1";
     public static final @NotNull OkHttpClient httpClient = new OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)

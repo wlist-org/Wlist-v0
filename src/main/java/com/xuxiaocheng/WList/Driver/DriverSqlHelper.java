@@ -44,7 +44,7 @@ public final class DriverSqlHelper {
                 result.getBoolean("is_directory"), result.getLong("size"),
                 LocalDateTime.parse(result.getString("create_time"), DateTimeFormatter.ISO_LOCAL_DATE_TIME),
                 LocalDateTime.parse(result.getString("update_time"), DateTimeFormatter.ISO_LOCAL_DATE_TIME),
-                result.getString("others"));
+                result.getString("tag"), result.getString("others"));
     }
 
     // Initiate
@@ -69,6 +69,7 @@ public final class DriverSqlHelper {
                                              CHECK (size >= -1),
                         create_time  TEXT    NOT NULL,
                         update_time  TEXT    NOT NULL,
+                        tag          TEXT    NOT NULL,
                         others       TEXT
                     );
                     """, DriverSqlHelper.getTableName(driverName)));
@@ -92,13 +93,13 @@ public final class DriverSqlHelper {
             return;
         final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
         try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                INSERT INTO %s (id, parent_path, name, is_directory, size, create_time, update_time, others)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO %s (id, parent_path, name, is_directory, size, create_time, update_time, tag, others)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (id) DO UPDATE SET
                     parent_path = excluded.parent_path, name = excluded.name,
                     is_directory = excluded.is_directory, size = excluded.size,
                     create_time = excluded.create_time, update_time = excluded.update_time,
-                    others = excluded.others;
+                    tag = excluded.tag, others = excluded.others;
                 """, DriverSqlHelper.getTableName(driverName)))) {
             if (_connection == null)
                 connection.setAutoCommit(false);
@@ -110,7 +111,8 @@ public final class DriverSqlHelper {
                 statement.setLong(5, info.size());
                 statement.setString(6, DriverSqlHelper.serializeTime(info.createTime()));
                 statement.setString(7, DriverSqlHelper.serializeTime(info.updateTime()));
-                statement.setString(8, info.others());
+                statement.setString(8, info.tag());
+                statement.setString(9, info.others());
                 statement.executeUpdate();
             }
             if (_connection == null)
@@ -200,6 +202,30 @@ public final class DriverSqlHelper {
         DriverSqlHelper.deleteFilesByParentPath(driverName, List.of(parentPath), _connection);
     }
 
+    public static void deleteFilesByTag(final @NotNull String driverName, final @NotNull Collection<@NotNull String> tagList, final @Nullable Connection _connection) throws SQLException {
+        if (tagList.isEmpty())
+            return;
+        final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
+        try (final PreparedStatement statement = connection.prepareStatement(String.format(
+                "DELETE FROM %s WHERE tag == ?;", DriverSqlHelper.getTableName(driverName)))) {
+            if (_connection == null)
+                connection.setAutoCommit(false);
+            for (final String tag: tagList) {
+                statement.setString(1, tag);
+                statement.executeUpdate();
+            }
+            if (_connection == null)
+                connection.commit();
+        } finally {
+            if (_connection == null)
+                connection.close();
+        }
+    }
+
+    public static void deleteFileByTag(final @NotNull String driverName, final @NotNull String tag, final @Nullable Connection _connection) throws SQLException {
+        DriverSqlHelper.deleteFilesByTag(driverName, List.of(tag), _connection);
+    }
+
     // Get
 
     public static @NotNull @UnmodifiableView List<@Nullable FileInformation> getFiles(final @NotNull String driverName, final @NotNull Collection<? extends @NotNull DrivePath> pathList, final @Nullable Connection _connection) throws SQLException {
@@ -285,6 +311,38 @@ public final class DriverSqlHelper {
 
     public static @NotNull @UnmodifiableView List<@Nullable FileInformation> getFileByParentPath(final @NotNull String driverName, final @NotNull DrivePath parentPath, final @Nullable Connection _connection) throws SQLException {
         return DriverSqlHelper.getFilesByParentPath(driverName, List.of(parentPath), _connection).get(0);
+    }
+
+    public static @NotNull @UnmodifiableView List<@NotNull @UnmodifiableView List<@Nullable FileInformation>> getFilesByTag(final @NotNull String driverName, final @NotNull Collection<@NotNull String> tagList, final @Nullable Connection _connection) throws SQLException {
+        if (tagList.isEmpty())
+            return List.of();
+        final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
+        try (final PreparedStatement statement = connection.prepareStatement(String.format(
+                "SELECT * FROM %s WHERE tag == ?;", DriverSqlHelper.getTableName(driverName)))) {
+            if (_connection == null)
+                connection.setAutoCommit(false);
+            final List<List<FileInformation>> list = new ArrayList<>(tagList.size());
+            for (final String tag: tagList) {
+                statement.setString(1, tag);
+                final List<FileInformation> insideList = new ArrayList<>();
+                try (final ResultSet result = statement.executeQuery()) {
+                    FileInformation info = DriverSqlHelper.createNextFileInfo(result);
+                    while (info != null) {
+                        insideList.add(info);
+                        info = DriverSqlHelper.createNextFileInfo(result);
+                    }
+                }
+                list.add(Collections.unmodifiableList(insideList));
+            }
+            return Collections.unmodifiableList(list);
+        } finally {
+            if (_connection == null)
+                connection.close();
+        }
+    }
+
+    public static @NotNull @UnmodifiableView List<@Nullable FileInformation> getFileByTag(final @NotNull String driverName, final @NotNull String tag, final @Nullable Connection _connection) throws SQLException {
+        return DriverSqlHelper.getFilesByTag(driverName, List.of(tag), _connection).get(0);
     }
 
     // Search

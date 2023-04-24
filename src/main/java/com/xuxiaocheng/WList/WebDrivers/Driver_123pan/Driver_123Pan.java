@@ -2,7 +2,7 @@ package com.xuxiaocheng.WList.WebDrivers.Driver_123pan;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Driver.DrivePath;
-import com.xuxiaocheng.WList.Driver.Driver;
+import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.DriverSqlHelper;
 import com.xuxiaocheng.WList.Driver.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Driver.FileInformation;
@@ -16,7 +16,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class Driver_123Pan implements Driver<DriverConfiguration_123Pan> {
+public final class Driver_123Pan implements DriverInterface<DriverConfiguration_123Pan> {
     private @NotNull DriverConfiguration_123Pan configuration = new DriverConfiguration_123Pan();
 
     @NotNull DriverConfiguration_123Pan getConfiguration() {
@@ -54,7 +54,7 @@ public final class Driver_123Pan implements Driver<DriverConfiguration_123Pan> {
 
     @Override
     public @Nullable FileInformation info(final @NotNull DrivePath path) throws IllegalParametersException, IOException, SQLException {
-        return DriverUtil_123pan.getFileInformation(this.configuration, path, null);
+        return DriverUtil_123pan.getFileInformation(this.configuration, path, true, null);
     }
 
     @Override
@@ -64,7 +64,7 @@ public final class Driver_123Pan implements Driver<DriverConfiguration_123Pan> {
 
     @Override
     public boolean mkdirs(final @NotNull DrivePath path) throws IllegalParametersException, IOException, SQLException {
-        final FileInformation info = DriverUtil_123pan.getFileInformation(this.configuration, path, null);
+        final FileInformation info = DriverUtil_123pan.getFileInformation(this.configuration, path, true, null);
         if (info != null) {
             if (info.is_dir())
                 return false;
