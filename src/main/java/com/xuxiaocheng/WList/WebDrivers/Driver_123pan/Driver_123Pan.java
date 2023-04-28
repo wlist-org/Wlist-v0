@@ -6,11 +6,14 @@ import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.DriverSqlHelper;
 import com.xuxiaocheng.WList.Driver.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Driver.FileInformation;
+import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufInputStream;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -30,8 +33,7 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
 
     public void login(final @NotNull DriverConfiguration_123Pan configuration) throws IllegalParametersException, IOException, SQLException {
         DriverSqlHelper.initiate(configuration.getLocalSide().getName());
-        DriverUtil_123pan.doRetrieveToken(configuration);
-        DriverUtil_123pan.doGetUserInformation(configuration);
+        DriverManager_123pan.getUserInformation(configuration);
         this.configuration = configuration;
     }
 
@@ -42,10 +44,10 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
 
     @Override
     public Pair.@Nullable ImmutablePair<@NotNull Integer, @NotNull List<@NotNull String>> list(final @NotNull DrivePath path, final int page, final int limit) throws IllegalParametersException, IOException, SQLException {
-        final long id = DriverUtil_123pan.getFileId(this.configuration, path, FileInformation::is_dir, true, null);
+        final long id = DriverManager_123pan.getFileId(this.configuration, path, FileInformation::is_dir, true, null);
         if (id < 0)
             return null;
-        final Pair<Integer, List<FileInformation>> info = DriverUtil_123pan.doListFiles(this.configuration, id, limit, page, path, null);
+        final Pair<Integer, List<FileInformation>> info = DriverManager_123pan.listFiles(this.configuration, id, limit, page, path, null);
         final List<String> list = new ArrayList<>(info.getSecond().size());
         for (final FileInformation obj: info.getSecond())
             list.add(obj.path().getName());
@@ -54,31 +56,34 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
 
     @Override
     public @Nullable FileInformation info(final @NotNull DrivePath path) throws IllegalParametersException, IOException, SQLException {
-        return DriverUtil_123pan.getFileInformation(this.configuration, path, true, null);
+        return DriverManager_123pan.getFileInformation(this.configuration, path, true, null);
     }
 
     @Override
     public @Nullable String download(final @NotNull DrivePath path) throws IllegalParametersException, IOException, SQLException {
-        return DriverUtil_123pan.doGetDownloadUrl(this.configuration, path, null);
+        return DriverManager_123pan.doGetDownloadUrl(this.configuration, path, null);
     }
 
     @Override
     public boolean mkdirs(final @NotNull DrivePath path) throws IllegalParametersException, IOException, SQLException {
-        final FileInformation info = DriverUtil_123pan.getFileInformation(this.configuration, path, true, null);
+        final FileInformation info = DriverManager_123pan.getFileInformation(this.configuration, path, true, null);
         if (info != null) {
             if (info.is_dir())
                 return false;
             throw new FileAlreadyExistsException(path.getPath());
         }
         this.mkdirs(path.getParent());
-        DriverUtil_123pan.doCreateDirectory(this.configuration, path, null);
+        DriverManager_123pan.doCreateDirectory(this.configuration, path, null);
         return true;
     }
 
     @Override
-    public @NotNull FileInformation upload(final @NotNull DrivePath path, final @NotNull ByteBuf file) {
-//        return DriverUtil_123pan.doUpload(this.configuration, path, file, null);
-        throw new UnsupportedOperationException();
+    public @NotNull FileInformation upload(final @NotNull DrivePath path, final @NotNull ByteBuf file) throws IllegalParametersException, IOException, SQLException {
+        try (final InputStream stream = new ByteBufInputStream(file)) {
+            final String md5 = MiscellaneousUtil.getMd5(stream);
+            stream.reset();
+            return DriverManager_123pan.doUpload(this.configuration, path, stream, md5, stream.available(), null);
+        }
     }
 
     @Override
@@ -87,8 +92,11 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
     }
 
     @Override
-    public @Nullable FileInformation copy(final @NotNull DrivePath source, final @NotNull DrivePath target) {
-        return null;
+    public @Nullable FileInformation copy(final @NotNull DrivePath source, final @NotNull DrivePath target) throws IllegalParametersException, IOException, SQLException {
+        final FileInformation info = this.info(source);
+        if (info == null)
+            return null;
+        return DriverManager_123pan.doUpload(this.configuration, target, InputStream.nullInputStream(), info.tag(), info.size(), null);
     }
 
     @Override
@@ -98,7 +106,7 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
 
     @Override
     public void buildCache() throws SQLException, IOException, IllegalParametersException {
-        DriverUtil_123pan.recursiveRefreshDirectory(this.configuration, new DrivePath("/"), this.configuration.getWebSide().getFilePart().getRootDirectoryId(), null, null);
+        DriverManager_123pan.recursiveRefreshDirectory(this.configuration, new DrivePath("/"), this.configuration.getWebSide().getFilePart().getRootDirectoryId(), null, null);
     }
 
     @Override

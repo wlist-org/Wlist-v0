@@ -4,18 +4,14 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HLoggerStream;
 import com.xuxiaocheng.WList.Configuration.FieldOrderRepresenter;
-import com.xuxiaocheng.WList.Driver.DrivePath;
 import com.xuxiaocheng.WList.Driver.Exceptions.IllegalParametersException;
-import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.DriverConfiguration_123Pan;
-import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.DriverUtil_123pan;
 import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.Driver_123Pan;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.representer.Representer;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -53,12 +49,7 @@ public final class WList {
         os.write(new Yaml(representer).dump(config).getBytes(StandardCharsets.UTF_8));
         os.close();
 
-        final byte[] context = "A string for test.".getBytes(StandardCharsets.UTF_8);
-        final InputStream inputStream = new ByteArrayInputStream(context);
-        final String md5 = MiscellaneousUtil.getMd5(context);
-        HLog.DefaultLogger.log("FINE", md5);
-        HLog.DefaultLogger.log("", DriverUtil_123pan.getFileInformation(config, new DrivePath("test/test.txt"), false, null));
-        HLog.DefaultLogger.log("", DriverUtil_123pan.doUpload(config, new DrivePath("test/test.txt"), inputStream, inputStream.available(), md5, null));
+
 
 //        Operation.init();
 //        WList.logger.log(HLogLevel.FINE, "Hello WList! Initializing...");

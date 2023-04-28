@@ -4,7 +4,6 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.WList.Driver.DrivePath;
 import com.xuxiaocheng.WList.Driver.Exceptions.IllegalParametersException;
-import com.xuxiaocheng.WList.Driver.Exceptions.WrongResponseException;
 import com.xuxiaocheng.WList.Driver.FileInformation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -50,15 +49,25 @@ public final class FileInformation_123pan {
         if (info == null)
             return null;
         try {
-            DriverHelper_123pan.checkForFileNecessaryInfo(info);
-            return new FileInformation(info.getLongValue("FileId"),
-                    parentPath.getChild(info.getString("FileName")),
-                    info.getIntValue("Type") == 1, info.getLongValue("Size"),
-                    LocalDateTime.parse(info.getString("CreateAt"), DateTimeFormatter.ISO_ZONED_DATE_TIME),
-                    LocalDateTime.parse(info.getString("UpdateAt"), DateTimeFormatter.ISO_ZONED_DATE_TIME),
-                    info.getString("Etag"), FileInformation_123pan.serializeOther(
-                            new FileInfoExtra_123pan(info.getIntValue("Type"), info.getString("S3KeyFlag"))));
-        } catch (final WrongResponseException | DateTimeParseException ignore) {
+            final Long id = info.getLong("FileId");
+            final String name = info.getString("FileName");
+            final Integer type = info.getInteger("Type");
+            final Long size = info.getLong("Size");
+            final String create = info.getString("CreateAt");
+            final String update = info.getString("UpdateAt");
+            final String flag = info.getString("S3KeyFlag");
+            final String etag = info.getString("Etag");
+            if (id == null || name == null || type == null || size == null || size.longValue() < 0
+                    || create == null || update == null || flag == null
+                    || etag == null || (!etag.isEmpty() && !DriverHelper_123pan.etagPattern.matcher(etag).matches()))
+                return null;
+            return new FileInformation(id.longValue(), parentPath.getChild(name),
+                    type.intValue() == 1, size.longValue(),
+                    LocalDateTime.parse(create, DateTimeFormatter.ISO_ZONED_DATE_TIME),
+                    LocalDateTime.parse(update, DateTimeFormatter.ISO_ZONED_DATE_TIME),
+                    flag, FileInformation_123pan.serializeOther(new FileInfoExtra_123pan(
+                            type.intValue(), flag)));
+        } catch (final DateTimeParseException ignore) {
             return null;
         }
     }

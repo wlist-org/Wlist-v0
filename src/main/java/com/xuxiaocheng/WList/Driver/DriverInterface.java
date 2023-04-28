@@ -64,7 +64,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     boolean mkdirs(final @NotNull DrivePath path) throws Exception;
 
     /**
-     * Upload file to path.
+     * Upload small file to path. (! Only small file)
      * @param path Target path.
      * @param file Content of file.
      * @return The information of new file.
