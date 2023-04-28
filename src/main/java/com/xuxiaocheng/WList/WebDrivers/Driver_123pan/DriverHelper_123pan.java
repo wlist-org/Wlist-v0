@@ -39,7 +39,9 @@ public final class DriverHelper_123pan {
     static final @NotNull Pair.ImmutablePair<String, String> SingleFileDownloadURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/download_info", "POST");
 //    static final @NotNull Pair.ImmutablePair<String, String> BatchFileDownloadURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/batch_download_info", "POST");
     static final @NotNull Pair.ImmutablePair<String, String> UploadRequestURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/upload_request", "POST");
-    static final @NotNull Pair.ImmutablePair<String, String> S3PareURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/s3_repare_upload_parts_batch", "POST");
+    static final @NotNull Pair.ImmutablePair<String, String> S3AuthPartURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/s3_upload_object/auth", "POST");
+    static final @NotNull Pair.ImmutablePair<String, String> S3ParePartsURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/s3_repare_upload_parts_batch", "POST");
+    static final @NotNull Pair.ImmutablePair<String, String> UploadCompleteURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/upload_complete/v2", "POST");
 
     private static final @NotNull DuplicatePolicy defaultDuplicatePolicy = DuplicatePolicy.KEEP;
     private static final @NotNull OrderPolicy defaultOrderPolicy = OrderPolicy.FileName;

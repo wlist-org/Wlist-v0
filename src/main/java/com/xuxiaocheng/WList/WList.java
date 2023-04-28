@@ -53,13 +53,13 @@ public final class WList {
         os.write(new Yaml(representer).dump(config).getBytes(StandardCharsets.UTF_8));
         os.close();
 
-        HLog.DefaultLogger.log("", DriverUtil_123pan.getFileInformation(config, new DrivePath("/AutoCopy"), false, null));
+        final byte[] context = "A string for test.".getBytes(StandardCharsets.UTF_8);
+        final InputStream inputStream = new ByteArrayInputStream(context);
+        final String md5 = MiscellaneousUtil.getMd5(context);
+        HLog.DefaultLogger.log("FINE", md5);
+        HLog.DefaultLogger.log("", DriverUtil_123pan.getFileInformation(config, new DrivePath("test/test.txt"), false, null));
+        HLog.DefaultLogger.log("", DriverUtil_123pan.doUpload(config, new DrivePath("test/test.txt"), inputStream, inputStream.available(), md5, null));
 
-        if (false) {
-            final byte[] context = new byte[]{10, 20, 30};
-            final InputStream inputStream = new ByteArrayInputStream(context);
-            DriverUtil_123pan.doUpload(config, new DrivePath("test/hello.text"), inputStream, 3, MiscellaneousUtil.getMd5(context), null);
-        }
 //        Operation.init();
 //        WList.logger.log(HLogLevel.FINE, "Hello WList! Initializing...");
 //        GlobalConfiguration.init(new BufferedInputStream(new FileInputStream("config.yml")));

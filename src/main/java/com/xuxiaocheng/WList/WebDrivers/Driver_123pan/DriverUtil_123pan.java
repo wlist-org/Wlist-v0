@@ -16,8 +16,11 @@ import com.xuxiaocheng.WList.Driver.FileInformation;
 import com.xuxiaocheng.WList.Utils.DataBaseUtil;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import okhttp3.Headers;
+import okhttp3.MediaType;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import okio.Buffer;
+import okio.BufferedSink;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -226,7 +229,14 @@ public final class DriverUtil_123pan {
         }
         final long id = DriverUtil_123pan.getFileId(configuration, path, (f) -> true, useCache, _connection);
         final JSONObject request = DriverHelper_123pan.buildFileIdList(List.of(id));
-        final JSONObject data = DriverUtil_123pan.sendJsonWithToken(DriverHelper_123pan.FilesInfoURL, configuration, request);
+        final JSONObject data;
+        try {
+            data = DriverUtil_123pan.sendJsonWithToken(DriverHelper_123pan.FilesInfoURL, configuration, request);
+        } catch (final WrongResponseException exception) {
+            if (exception.getMessage().startsWith("Code: 400"))
+                return null;
+            throw exception;
+        }
         final JSONArray list = data.getJSONArray("infoList");
         if (list == null || list.isEmpty())
             return null;
@@ -385,34 +395,93 @@ public final class DriverUtil_123pan {
         final long parentDirectoryId = DriverUtil_123pan.getFileId(configuration, parentPath, FileInformation::is_dir, true, _connection);
         if (parentDirectoryId < 0)
             throw new IllegalParametersException("Parent directory is nonexistent.", path);
-        final JSONObject preUploadRequest = new JSONObject(7);
-        preUploadRequest.put("driveId", 0);
-        preUploadRequest.put("etag", hexMd5);
-        preUploadRequest.put("fileName", newDirectoryName);
-        preUploadRequest.put("parentFileId", parentDirectoryId);
-        preUploadRequest.put("size", size);
-        preUploadRequest.put("type", 0);
-        preUploadRequest.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(configuration.getWebSide().getFilePart().getDuplicatePolicy()));
-        final JSONObject preUploadData = DriverUtil_123pan.sendJsonWithToken(DriverHelper_123pan.UploadRequestURL, configuration, preUploadRequest);
-        final String bucket = preUploadData.getString("Bucket");
-        final String key = preUploadData.getString("Key");
-        final String uploadId = preUploadData.getString("UploadId");
-        if (bucket == null || key == null || uploadId == null)
-            throw new WrongResponseException("Abnormal data of 'preUploadData'.", preUploadData);
-        HLog.DefaultLogger.log("", preUploadData);
-        final JSONObject s3PareRequest = new JSONObject(7);
-        s3PareRequest.put("bucket", bucket);
-        s3PareRequest.put("key", key);
-        s3PareRequest.put("uploadId", uploadId);
-        s3PareRequest.put("partNumberStart", 1);
-        s3PareRequest.put("partNumberEnd", (int) Math.ceil(((double) size) / DriverUtil_123pan.PartSize));
-        final JSONObject s3PareData = DriverUtil_123pan.sendJsonWithToken(DriverHelper_123pan.S3PareURL, configuration, s3PareRequest);
+        final JSONObject requestUploadRequest = new JSONObject(7);
+        requestUploadRequest.put("driveId", 0);
+        requestUploadRequest.put("etag", hexMd5);
+        requestUploadRequest.put("fileName", newDirectoryName);
+        requestUploadRequest.put("parentFileId", parentDirectoryId);
+        requestUploadRequest.put("size", size);
+        requestUploadRequest.put("type", 0);
+        requestUploadRequest.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(configuration.getWebSide().getFilePart().getDuplicatePolicy()));
+        final JSONObject requestUploadData = DriverUtil_123pan.sendJsonWithToken(DriverHelper_123pan.UploadRequestURL, configuration, requestUploadRequest);
+        final FileInformation info;
+        final Boolean reuse = requestUploadData.getBoolean("Reuse");
+        if (reuse == null)
+            throw new WrongResponseException("Abnormal data of 'requestUploadData'.", requestUploadData);
+        if (reuse.booleanValue()) {
+            final JSONObject fileInfo = requestUploadData.getJSONObject("Info");
+            if (fileInfo == null)
+                throw new WrongResponseException("Abnormal data of 'requestUploadData'.", requestUploadData);
+            info = FileInformation_123pan.create(parentPath, fileInfo);
+            if (info == null)
+                throw new WrongResponseException("Abnormal data of 'requestUploadData'.", requestUploadData);
+        } else {
+            final String bucket = requestUploadData.getString("Bucket");
+            final String node = requestUploadData.getString("StorageNode");
+            final String key = requestUploadData.getString("Key");
+            final String uploadId = requestUploadData.getString("UploadId");
+            final Long fileId = requestUploadData.getLong("FileId");
+            if (bucket == null || key == null || uploadId == null || fileId == null)
+                throw new WrongResponseException("Abnormal data of 'requestUploadData'.", requestUploadData);
+            final int partCount = (int) Math.ceil(((double) size) / DriverUtil_123pan.PartSize);
+            final JSONObject s3PareRequest = new JSONObject(6);
+            s3PareRequest.put("bucket", bucket);
+            s3PareRequest.put("StorageNode", node);
+            s3PareRequest.put("key", key);
+            s3PareRequest.put("uploadId", uploadId);
+            s3PareRequest.put("partNumberStart", 1);
+            s3PareRequest.put("partNumberEnd", partCount);
+            final JSONObject s3PareData = DriverUtil_123pan.sendJsonWithToken(
+                    partCount <= 1 ? DriverHelper_123pan.S3AuthPartURL : DriverHelper_123pan.S3ParePartsURL, configuration, s3PareRequest);
+            final JSONObject urls = s3PareData.getJSONObject("presignedUrls");
+            if (urls == null)
+                throw new WrongResponseException("Abnormal data of 'presignedUrls'.", s3PareData);
+            final Buffer buffer = new Buffer();
+            final long[] readSize = {0};
+            for (int i = 1; i <= urls.size(); ++i) {
+                final String url = urls.getString(String.valueOf(i));
+                if (url == null)
+                    throw new WrongResponseException("Abnormal data of 'presignedUrls'.", s3PareData);
+                DriverUtil.sendRequest(Pair.ImmutablePair.makeImmutablePair(url, "PUT"), null,
+                        new RequestBody() {
+                            @Override
+                            public @Nullable MediaType contentType() {
+                                return MediaType.parse("application/octet-stream");
+                            }
 
-        return null;
-        // TODO
-//        final FileInformation info;
-//
-//        DriverSqlHelper.insertFile(configuration.getLocalSide().getName(), info, _connection);
-//        return info;
+                            private final long len = Math.min(DriverUtil_123pan.PartSize, size - readSize[0]);
+
+                            @Override
+                            public long contentLength() {
+                                return this.len;
+                            }
+
+                            @Override
+                            public void writeTo(final @NotNull BufferedSink bufferedSink) throws IOException {
+                                buffer.readFrom(stream, this.len);
+                                bufferedSink.write(buffer, this.len);
+                                readSize[0] += this.len;
+                            }
+                        }
+                ).close();
+            }
+            final JSONObject completeUploadRequest = new JSONObject(7);
+            completeUploadRequest.put("bucket", bucket);
+            completeUploadRequest.put("StorageNode", node);
+            completeUploadRequest.put("key", key);
+            completeUploadRequest.put("uploadId", uploadId);
+            completeUploadRequest.put("isMultipart", partCount != 1);
+            completeUploadRequest.put("fileSize", size);
+            completeUploadRequest.put("fileId", fileId);
+            final JSONObject completeUploadData = DriverUtil_123pan.sendJsonWithToken(DriverHelper_123pan.UploadCompleteURL, configuration, completeUploadRequest);
+            final JSONObject fileInfo = completeUploadData.getJSONObject("file_info");
+            if (fileInfo == null)
+                throw new WrongResponseException("Abnormal data of 'completeUploadData'.", completeUploadData);
+            info = FileInformation_123pan.create(parentPath, fileInfo);
+            if (info == null)
+                throw new WrongResponseException("Abnormal data of 'completeUploadData'.", completeUploadData);
+        }
+        DriverSqlHelper.insertFile(configuration.getLocalSide().getName(), info, _connection);
+        return info;
     }
 }

@@ -281,7 +281,7 @@ public final class DriverSqlHelper {
         return DriverSqlHelper.getFilesById(driverName, List.of(id), _connection).get(0);
     }
 
-    public static @NotNull @UnmodifiableView List<@NotNull @UnmodifiableView List<@Nullable FileInformation>> getFilesByParentPath(final @NotNull String driverName, final @NotNull Collection<? extends @NotNull DrivePath> parentPathList, final @Nullable Connection _connection) throws SQLException {
+    public static @NotNull @UnmodifiableView List<@NotNull @UnmodifiableView List<@NotNull FileInformation>> getFilesByParentPath(final @NotNull String driverName, final @NotNull Collection<? extends @NotNull DrivePath> parentPathList, final @Nullable Connection _connection) throws SQLException {
         if (parentPathList.isEmpty())
             return List.of();
         final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
@@ -309,11 +309,11 @@ public final class DriverSqlHelper {
         }
     }
 
-    public static @NotNull @UnmodifiableView List<@Nullable FileInformation> getFileByParentPath(final @NotNull String driverName, final @NotNull DrivePath parentPath, final @Nullable Connection _connection) throws SQLException {
+    public static @NotNull @UnmodifiableView List<@NotNull FileInformation> getFileByParentPath(final @NotNull String driverName, final @NotNull DrivePath parentPath, final @Nullable Connection _connection) throws SQLException {
         return DriverSqlHelper.getFilesByParentPath(driverName, List.of(parentPath), _connection).get(0);
     }
 
-    public static @NotNull @UnmodifiableView List<@NotNull @UnmodifiableView List<@Nullable FileInformation>> getFilesByTag(final @NotNull String driverName, final @NotNull Collection<@NotNull String> tagList, final @Nullable Connection _connection) throws SQLException {
+    public static @NotNull @UnmodifiableView List<@NotNull @UnmodifiableView List<@NotNull FileInformation>> getFilesByTag(final @NotNull String driverName, final @NotNull Collection<@NotNull String> tagList, final @Nullable Connection _connection) throws SQLException {
         if (tagList.isEmpty())
             return List.of();
         final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
@@ -341,7 +341,7 @@ public final class DriverSqlHelper {
         }
     }
 
-    public static @NotNull @UnmodifiableView List<@Nullable FileInformation> getFileByTag(final @NotNull String driverName, final @NotNull String tag, final @Nullable Connection _connection) throws SQLException {
+    public static @NotNull @UnmodifiableView List<@NotNull FileInformation> getFileByTag(final @NotNull String driverName, final @NotNull String tag, final @Nullable Connection _connection) throws SQLException {
         return DriverSqlHelper.getFilesByTag(driverName, List.of(tag), _connection).get(0);
     }
 
