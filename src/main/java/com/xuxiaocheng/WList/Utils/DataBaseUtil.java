@@ -1,11 +1,8 @@
 package com.xuxiaocheng.WList.Utils;
 
-import com.xuxiaocheng.HeadLibs.Logger.HLog;
-import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Configuration.GlobalConfiguration;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.sqlite.BusyHandler;
 import org.sqlite.SQLiteDataSource;
 
 import java.io.File;
@@ -30,7 +27,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Executor;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class DataBaseUtil {
@@ -91,21 +87,21 @@ public class DataBaseUtil {
                 throw new SQLException("Failed to get connection with sqlite database.");
             this.createdSize.incrementAndGet();
         }
-        BusyHandler.setHandler(connection, new BusyHandler() {
-            @Override
-            protected int callback(final int n) throws SQLException {
-                if (n > 2 && (n < 5 || n % 5 == 0))
-                    HLog.getInstance("DefaultLogger").log(HLogLevel.WARN, "SQLITE BUSY!!! Retry time: ", n);
-                if (n > 99) // Connection may leak.
-                    return 0;
-                try {
-                    TimeUnit.MILLISECONDS.sleep(100);
-                } catch (final InterruptedException exception) {
-                    throw new SQLException(exception);
-                }
-                return 1;
-            }
-        });
+//        BusyHandler.setHandler(connection, new BusyHandler() {
+//            @Override
+//            protected int callback(final int n) throws SQLException {
+//                if (n > 2 && (n < 5 || n % 5 == 0))
+//                    HLog.getInstance("DefaultLogger").log(HLogLevel.WARN, "SQLITE BUSY!!! Retry time: ", n);
+//                if (n > 99) // Connection may leak.
+//                    return 0;
+//                try {
+//                    TimeUnit.MILLISECONDS.sleep(100);
+//                } catch (final InterruptedException exception) {
+//                    throw new SQLException(exception);
+//                }
+//                return 1;
+//            }
+//        });
 //        // Regex fixer
 //        Function.create(connection, "REGEXP", new Function() {
 //            @Override

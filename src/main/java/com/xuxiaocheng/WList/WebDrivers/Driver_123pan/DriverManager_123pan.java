@@ -25,7 +25,6 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -34,6 +33,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 
@@ -60,17 +60,86 @@ public final class DriverManager_123pan {
         final JSONArray info = data.getJSONArray("InfoList");
         if (info == null)
             throw new WrongResponseException("Abnormal data of 'InfoList'.", data);
-        final List<FileInformation> list = new ArrayList<>(info.size());
-        for (int i = 0; i < info.size(); ++i) {
-            final FileInformation obj = FileInformation_123pan.create(directoryPath, info.getJSONObject(i));
-            if (obj != null)
-                list.add(obj);
-        }
+        final List<FileInformation> list = new ArrayList<>(info.toList(JSONObject.class).stream()
+                .map(j -> FileInformation_123pan.create(directoryPath, j)).filter(Objects::nonNull).toList());
         DriverSqlHelper.insertFiles(configuration.getLocalSide().getName(), list, _connection);
         return Pair.makePair(data.getIntValue("Total", 0), list);
     }
 
-    static long getFileId(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final Predicate<? super FileInformation> infoPredicate, final boolean useCache, final @Nullable Connection _connection) throws IllegalParametersException, IOException, SQLException {
+    static @NotNull Pair<@NotNull Integer, @NotNull Iterator<@NotNull FileInformation>> listAllFiles(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final @NotNull DrivePath directoryPath, final @Nullable Connection _connection, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
+        boolean noThread = true;
+        final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
+        try {
+            if (_connection == null)
+                connection.setAutoCommit(false);
+            DriverSqlHelper.deleteFileByParentPath(configuration.getLocalSide().getName(), directoryPath, connection);
+            final Pair<Integer, List<FileInformation>> firstPage = DriverManager_123pan.listFiles(configuration, directoryId, configuration.getWebSide().getFilePart().getDefaultLimitPerPage(), 1, directoryPath, connection);
+            final int fileCount = firstPage.getFirst().intValue();
+            if (fileCount <= 0 || firstPage.getSecond().isEmpty()) {
+                if (_connection == null)
+                    connection.commit();
+                return Pair.makePair(0, MiscellaneousUtil.getEmptyIterator());
+            }
+            final int pageCount = (int) Math.ceil(((double) fileCount) / configuration.getWebSide().getFilePart().getDefaultLimitPerPage());
+            if (pageCount <= 1) {
+                if (_connection == null)
+                    connection.commit();
+                return Pair.makePair(fileCount, firstPage.getSecond().iterator());
+            }
+            noThread = false;
+            final AtomicInteger finishedPageCount = new AtomicInteger(1);
+            final ExecutorService threadPool = Objects.requireNonNullElseGet(_threadPool, () -> Executors.newFixedThreadPool(GlobalConfiguration.getInstance().getThread_count()));
+            final BlockingQueue<FileInformation> allFiles = new LinkedBlockingQueue<>(firstPage.getSecond());
+            for (int page = 2; page <= pageCount; ++page) {
+                final int current = page;
+                threadPool.submit(() -> {
+                    final Pair<Integer, List<FileInformation>> infos = DriverManager_123pan.listFiles(configuration, directoryId, configuration.getWebSide().getFilePart().getDefaultLimitPerPage(), current, directoryPath, connection);
+                    assert infos.getFirst().intValue() == fileCount;
+                    if (allFiles.size() > configuration.getWebSide().getFilePart().getDefaultLimitPerPage() << 1)
+                        try { // Frequency control.
+                            TimeUnit.MILLISECONDS.sleep(100);
+                        } catch (final InterruptedException ignore) {
+                        }
+                    allFiles.addAll(infos.getSecond());
+                    return finishedPageCount.incrementAndGet();
+                });
+            }
+            return Pair.makePair(fileCount, new Iterator<>() {
+                @Override
+                public boolean hasNext() {
+                    final boolean have = finishedPageCount.get() < pageCount || !allFiles.isEmpty();
+                    if (!have) {
+                        if (_threadPool == null)
+                            threadPool.shutdown();
+                        if (_connection == null)
+                            try {
+                                connection.commit();
+                                connection.close();
+                            } catch (final SQLException exception) {
+                                throw new RuntimeException(exception);
+                            }
+                    }
+                    return have;
+                }
+
+                @Override
+                public synchronized @NotNull FileInformation next() {
+                    if (!this.hasNext())
+                        throw new NoSuchElementException();
+                    try {
+                        return allFiles.take();
+                    } catch (final InterruptedException exception) {
+                        throw new NoSuchElementException(exception);
+                    }
+                }
+            });
+        } finally {
+            if (noThread && _connection == null)
+                connection.close();
+        }
+    }
+
+    static long getFileId(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final Predicate<? super FileInformation> infoPredicate, final boolean useCache, final @Nullable Connection _connection, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
         if (path.getDepth() == 0)
             return configuration.getWebSide().getFilePart().getRootDirectoryId();
         if (useCache) {
@@ -80,27 +149,28 @@ public final class DriverManager_123pan {
         }
         final String name = path.getName();
         final DrivePath parentPath = path.getParent();
-        final long parentId = DriverManager_123pan.getFileId(configuration, parentPath, FileInformation::is_dir, useCache, _connection);
+        final long parentId = DriverManager_123pan.getFileId(configuration, parentPath, FileInformation::is_dir, useCache, _connection, _threadPool);
         if (parentId < 0)
             return -1;
-        int page = 1;
-        List<FileInformation> list;
-        do {
-            list = DriverManager_123pan.listFiles(configuration, parentId, configuration.getWebSide().getFilePart().getDefaultLimitPerPage(), page++, parentPath, _connection).getSecond();
-            for (final FileInformation info: list)
-                if (name.equals(info.path().getName()))
-                    return infoPredicate.test(info) ? info.id() : -1;
-        } while (!list.isEmpty());
+        final Iterator<FileInformation> iterator = DriverManager_123pan.listAllFiles(configuration, parentId, parentPath, _connection, _threadPool).getSecond();
+        while (iterator.hasNext()) {
+            final FileInformation info = iterator.next();
+            if (name.equals(info.path().getName())) {
+                while (iterator.hasNext())
+                    iterator.next();
+                return infoPredicate.test(info) ? info.id() : -1;
+            }
+        }
         return -1;
     }
 
-    static @Nullable FileInformation getFileInformation(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean useCache, final @Nullable Connection _connection) throws IllegalParametersException, IOException, SQLException {
+    static @Nullable FileInformation getFileInformation(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean useCache, final @Nullable Connection _connection, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
         if (useCache) {
             final FileInformation info = DriverSqlHelper.getFile(configuration.getLocalSide().getName(), path, _connection);
             if (info != null)
                 return info;
         }
-        final long id = DriverManager_123pan.getFileId(configuration, path, (f) -> true, useCache, _connection);
+        final long id = DriverManager_123pan.getFileId(configuration, path, f -> true, useCache, _connection, _threadPool);
         final JSONObject data;
         try {
             data = DriverHelper_123pan.doGetFilesInformation(configuration, List.of(id));
@@ -112,6 +182,7 @@ public final class DriverManager_123pan {
         final JSONArray list = data.getJSONArray("infoList");
         if (list == null || list.isEmpty())
             return null;
+        assert list.size() == 1;
         final JSONObject info = list.getJSONObject(0);
         final FileInformation file = FileInformation_123pan.create(path.getParent(), info);
         if (file == null)
@@ -120,96 +191,45 @@ public final class DriverManager_123pan {
         return file;
     }
 
-    static @NotNull Iterator<@NotNull FileInformation> listAllFiles(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath directoryPath, final long directoryId, final @NotNull Connection connection, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
-        final ExecutorService threadPool = Objects.requireNonNullElseGet(_threadPool, () -> Executors.newFixedThreadPool(GlobalConfiguration.getInstance().getThread_count()));
-        final Pair<Integer, List<FileInformation>> firstPage = DriverManager_123pan.listFiles(configuration, directoryId, configuration.getWebSide().getFilePart().getDefaultLimitPerPage(), 1, directoryPath, connection);
-        final int fileCount = firstPage.getFirst().intValue();
-        if (fileCount <= 0)
-            return MiscellaneousUtil.getEmptyIterator();
-        final int pageCount = (int) Math.ceil(((double) fileCount) / configuration.getWebSide().getFilePart().getDefaultLimitPerPage());
-        final AtomicInteger finishedPageCount = new AtomicInteger(1);
-        final BlockingQueue<FileInformation> allFiles = new LinkedBlockingQueue<>(fileCount);
-        allFiles.addAll(firstPage.getSecond());
-        for (int page = 2; page <= pageCount; ++page) {
-            final int current = page;
-            threadPool.submit(() -> {
-                allFiles.addAll(DriverManager_123pan.listFiles(configuration, directoryId, configuration.getWebSide().getFilePart().getDefaultLimitPerPage(), current, directoryPath, connection).getSecond());
-                return finishedPageCount.incrementAndGet();
-            });
-        }
-        return new Iterator<>() {
-            @Override
-            public boolean hasNext() {
-                final boolean has = finishedPageCount.get() < pageCount || !allFiles.isEmpty();
-                if (!has && _threadPool == null)
-                    threadPool.shutdown();
-                return has;
-            }
-
-            @Override
-            public @NotNull FileInformation next() {
-                if (!this.hasNext())
-                    throw new NoSuchElementException();
-                try {
-                    return allFiles.take();
-                } catch (final InterruptedException exception) {
-                    throw new RuntimeException(exception);
-                }
-            }
-        };
-    }
-
-    static void recursiveRefreshDirectory(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath directoryPath, final long directoryId, final @Nullable Connection _connection, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
+    public static void recursiveRefreshDirectory(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final @NotNull DrivePath directoryPath, final @Nullable Connection _connection, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
         final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
         final ExecutorService threadPool = Objects.requireNonNullElseGet(_threadPool, () -> Executors.newFixedThreadPool(GlobalConfiguration.getInstance().getThread_count()));
         try {
             if (_connection == null)
                 connection.setAutoCommit(false);
-            DriverSqlHelper.deleteFileByParentPath(configuration.getLocalSide().getName(), directoryPath, connection);
-            final Collection<Pair<String, Long>> directoryList = new ArrayList<>();
-            final Iterator<FileInformation> lister = DriverManager_123pan.listAllFiles(configuration, directoryPath, directoryId, connection, threadPool);
-            while (lister.hasNext()) {
-                final FileInformation info = lister.next();
-                if (info.is_dir())
-                    directoryList.add(Pair.makePair(info.path().getName(), info.id()));
+            final Pair<Integer, Iterator<FileInformation>> lister = DriverManager_123pan.listAllFiles(configuration, directoryId, directoryPath, connection, threadPool);
+            final List<String> directoryNameList = new ArrayList<>();
+            final List<Long> directoryIdList = new ArrayList<>();
+            final Iterator<FileInformation> iterator = lister.getSecond();
+            while (iterator.hasNext()) {
+                final FileInformation info = iterator.next();
+                if (info.is_dir()) {
+                    directoryNameList.add(info.path().getName());
+                    directoryIdList.add(info.id());
+                }
             }
-            for (final Pair<String, Long> name: directoryList) {
-                DriverManager_123pan.recursiveRefreshDirectory(configuration, directoryPath.child(name.getFirst()), name.getSecond().longValue(), connection, threadPool);
+            assert directoryNameList.size() == directoryIdList.size();
+            for (int i = 0; i < directoryNameList.size(); ++i) {
+                directoryPath.child(directoryNameList.get(i));
+                DriverManager_123pan.recursiveRefreshDirectory(configuration, directoryIdList.get(i).longValue(), directoryPath, connection, threadPool);
                 directoryPath.parent();
             }
             if (_connection == null)
                 connection.commit();
         } finally {
-            if (_connection == null)
-                connection.close();
             if (_threadPool == null)
                 threadPool.shutdown();
+            if (_connection == null)
+                connection.close();
         }
     }
 
     // Files manager.
 
-    static @Nullable String doGetDownloadUrl(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @Nullable Connection _connection) throws IllegalParametersException, IOException, SQLException {
-        FileInformation info = DriverSqlHelper.getFile(configuration.getLocalSide().getName(), path, _connection);
-        if (info == null) {
-            final DrivePath parentPath = path.getParent();
-            final long id = DriverManager_123pan.getFileId(configuration, parentPath, FileInformation::is_dir, true, _connection);
-            if (id < 0)
-                return null;
-            int page = 1;
-            List<FileInformation> list;
-            do {
-                list = DriverManager_123pan.listFiles(configuration, id, configuration.getWebSide().getFilePart().getDefaultLimitPerPage(), page++, parentPath, _connection).getSecond();
-                for (final FileInformation obj: list)
-                    if (path.getName().equals(obj.path().getName())) {
-                        info = obj;
-                        list.clear(); // for break again.
-                        break;
-                    }
-            } while (!list.isEmpty());
-            if (info == null)
-                return null;
-        }
+    static @Nullable String doGetDownloadUrl(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean useCache, final @Nullable Connection _connection, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
+        final FileInformation info = DriverManager_123pan.getFileInformation(configuration, path, useCache, _connection, _threadPool);
+        if (info == null)
+            return null;
         final JSONObject data = DriverHelper_123pan.doGetFileDownloadUrl(configuration, info);
         String url = data.getString("DownloadUrl");
         if (url == null)
@@ -223,16 +243,16 @@ public final class DriverManager_123pan {
         return url;
     }
 
-    static long prepareUpload(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath parentPath, final @NotNull String name, final @Nullable Connection _connection) throws IllegalParametersException, IOException, SQLException {
+    private static long prepareUpload(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath parentPath, final @NotNull String name, final @Nullable Connection _connection) throws IllegalParametersException, IOException, SQLException {
         if (!DriverHelper_123pan.filenamePredication.test(name))
             throw new IllegalParametersException("Invalid directory name.", name);
-        final long parentDirectoryId = DriverManager_123pan.getFileId(configuration, parentPath, FileInformation::is_dir, true, _connection);
+        final long parentDirectoryId = DriverManager_123pan.getFileId(configuration, parentPath, FileInformation::is_dir, true, _connection, null);
         if (parentDirectoryId < 0)
             throw new IllegalParametersException("Parent directory is nonexistent.", parentPath.getChildPath(name));
         return parentDirectoryId;
     }
 
-    static void doCreateDirectory(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @Nullable Connection _connection) throws IllegalParametersException, IOException, SQLException {
+    static void createDirectory(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @Nullable Connection _connection) throws IllegalParametersException, IOException, SQLException {
         final String newDirectoryName = path.getName();
         final DrivePath parentPath = path.getParent();
         final long parentDirectoryId = DriverManager_123pan.prepareUpload(configuration, parentPath, newDirectoryName, _connection);
@@ -243,16 +263,13 @@ public final class DriverManager_123pan {
         DriverSqlHelper.insertFile(configuration.getLocalSide().getName(), obj, _connection);
     }
 
-    static final long PartSize = 16 * 1024 * 1024;
-    static @NotNull FileInformation doUpload(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @NotNull InputStream stream, final @NotNull String hexMd5, final long size, final @Nullable Connection _connection) throws IllegalParametersException, IOException, SQLException {
-        if (!DriverHelper_123pan.etagPattern.matcher(hexMd5).matches())
-            throw new IllegalParametersException("Invalid etag (md5).", hexMd5);
+    static @NotNull FileInformation uploadFile(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @NotNull InputStream stream, final @NotNull String md5, final long size, final @Nullable Connection _connection) throws IllegalParametersException, IOException, SQLException {
+        if (!DriverHelper_123pan.etagPattern.matcher(md5).matches())
+            throw new IllegalParametersException("Invalid etag (md5).", md5);
         final String newDirectoryName = path.getName();
         final DrivePath parentPath = path.getParent();
         final long parentDirectoryId = DriverManager_123pan.prepareUpload(configuration, parentPath, newDirectoryName, _connection);
-        if (parentDirectoryId < 0)
-            throw new IllegalParametersException("Parent directory is nonexistent.", path);
-        final JSONObject requestUploadData = DriverHelper_123pan.doUploadRequest(configuration, parentDirectoryId, newDirectoryName, size, hexMd5);
+        final JSONObject requestUploadData = DriverHelper_123pan.doUploadRequest(configuration, parentDirectoryId, newDirectoryName, size, md5);
         final FileInformation info;
         final Boolean reuse = requestUploadData.getBoolean("Reuse");
         if (reuse == null)
@@ -272,7 +289,7 @@ public final class DriverManager_123pan {
             final Long fileId = requestUploadData.getLong("FileId");
             if (bucket == null || key == null || uploadId == null || fileId == null)
                 throw new WrongResponseException("Abnormal data of 'requestUploadData'.", requestUploadData);
-            final int partCount = (int) Math.ceil(((double) size) / DriverManager_123pan.PartSize);
+            final int partCount = (int) Math.ceil(((double) size) / DriverHelper_123pan.UploadPartSize);
             final JSONObject s3PareData = DriverHelper_123pan.doUploadPare(configuration, bucket, node, key, uploadId, partCount);
             final JSONObject urls = s3PareData.getJSONObject("presignedUrls");
             if (urls == null)
@@ -290,7 +307,7 @@ public final class DriverManager_123pan {
                                 return MediaType.parse("application/octet-stream");
                             }
 
-                            private final long len = Math.min(DriverManager_123pan.PartSize, size - readSize[0]);
+                            private final long len = Math.min(DriverHelper_123pan.UploadPartSize, size - readSize[0]);
 
                             @Override
                             public long contentLength() {
@@ -317,4 +334,5 @@ public final class DriverManager_123pan {
         DriverSqlHelper.insertFile(configuration.getLocalSide().getName(), info, _connection);
         return info;
     }
+
 }

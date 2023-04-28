@@ -88,6 +88,7 @@ public final class DriverHelper_123pan {
                 return false;
         return true;
     };
+    static final long UploadPartSize = 16 << 20;
 
     static @NotNull Headers buildHeaders(final @Nullable String token) {
         final Headers.Builder builder = new Headers.Builder();
@@ -187,10 +188,13 @@ public final class DriverHelper_123pan {
     static @NotNull String ensureToken(final @NotNull DriverConfiguration_123Pan configuration) throws IllegalParametersException, IOException {
         final LocalDateTime time = LocalDateTime.now().minusMinutes(3);
         if (configuration.getCacheSide().getToken() == null
+                || configuration.getCacheSide().getTokenExpireTime() == null
+                || time.isAfter(configuration.getCacheSide().getTokenExpireTime()))
+            if (configuration.getCacheSide().getToken() == null
                 || configuration.getCacheSide().getRefreshExpireTime() == null
                 || time.isAfter(configuration.getCacheSide().getRefreshExpireTime())
                 || DriverHelper_123pan.refreshToken(configuration))
-            DriverHelper_123pan.login(configuration);
+                DriverHelper_123pan.login(configuration);
         return configuration.getCacheSide().getToken();
     }
 

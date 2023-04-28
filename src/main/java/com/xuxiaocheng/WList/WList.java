@@ -49,7 +49,11 @@ public final class WList {
         os.write(new Yaml(representer).dump(config).getBytes(StandardCharsets.UTF_8));
         os.close();
 
-
+        final long time1 = System.currentTimeMillis();
+        driver.buildCache();
+        final long time2 = System.currentTimeMillis();
+        HLog.DefaultLogger.log("", "Build time: ", time2 - time1, " ms.");
+        // Build time: 16226 ms. Faster!!!
 
 //        Operation.init();
 //        WList.logger.log(HLogLevel.FINE, "Hello WList! Initializing...");

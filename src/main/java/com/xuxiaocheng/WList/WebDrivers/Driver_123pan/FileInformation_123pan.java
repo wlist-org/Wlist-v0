@@ -65,7 +65,7 @@ public final class FileInformation_123pan {
                     type.intValue() == 1, size.longValue(),
                     LocalDateTime.parse(create, DateTimeFormatter.ISO_ZONED_DATE_TIME),
                     LocalDateTime.parse(update, DateTimeFormatter.ISO_ZONED_DATE_TIME),
-                    flag, FileInformation_123pan.serializeOther(new FileInfoExtra_123pan(
+                    etag, FileInformation_123pan.serializeOther(new FileInfoExtra_123pan(
                             type.intValue(), flag)));
         } catch (final DateTimeParseException ignore) {
             return null;
