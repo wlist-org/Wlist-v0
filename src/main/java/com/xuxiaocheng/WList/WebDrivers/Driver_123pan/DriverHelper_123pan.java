@@ -1,6 +1,5 @@
 package com.xuxiaocheng.WList.WebDrivers.Driver_123pan;
 
-import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -45,6 +44,8 @@ public final class DriverHelper_123pan {
     static final @NotNull Pair.ImmutablePair<String, String> S3ParePartsURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/s3_repare_upload_parts_batch", "POST");
     static final @NotNull Pair.ImmutablePair<String, String> UploadCompleteURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/upload_complete/v2", "POST");
     static final @NotNull Pair.ImmutablePair<String, String> TrashFileURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/trash", "POST");
+    static final @NotNull Pair.ImmutablePair<String, String> RenameFileURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/rename", "POST");
+    static final @NotNull Pair.ImmutablePair<String, String> MoveFilesURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/mod_pid", "POST");
 
     private static final @NotNull DuplicatePolicy defaultDuplicatePolicy = DuplicatePolicy.KEEP;
     private static final @NotNull OrderPolicy defaultOrderPolicy = OrderPolicy.FileName;
@@ -212,13 +213,11 @@ public final class DriverHelper_123pan {
     static @NotNull JSONObject doGetFilesInformation(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull Collection<@NotNull Long> idList) throws IllegalParametersException, IOException {
         final String token = DriverHelper_123pan.ensureToken(configuration);
         final Map<String, Object> request = new LinkedHashMap<>(1);
-        final Collection<Object> list = new JSONArray(idList.size());
-        for (final Long id: idList) {
-            final Map<String, Object> pair = new JSONObject(1);
+        request.put("fileIdList", idList.stream().map(id -> {
+            final JSONObject pair = new JSONObject(1);
             pair.put("fileId", id.longValue());
-            list.add(pair);
-        }
-        request.put("fileIdList", list);
+            return pair;
+        }).toList());
         return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.FilesInfoURL,
                 DriverHelper_123pan.buildHeaders(token), request), 0, "ok");
     }
@@ -302,14 +301,36 @@ public final class DriverHelper_123pan {
         final Map<String, Object> request = new LinkedHashMap<>(3);
         request.put("driveId", 0);
         request.put("operation", true);
-        final Collection<Object> list = new JSONArray(idList.size());
-        for (final Long id: idList) {
-            final Map<String, Object> pair = new JSONObject(1);
+        request.put("fileTrashInfoList", idList.stream().map(id -> {
+            final JSONObject pair = new JSONObject(1);
             pair.put("FileId", id.longValue());
-            list.add(pair);
-        }
-        request.put("fileTrashInfoList", list);
+            return pair;
+        }).toList());
         return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.TrashFileURL,
+                DriverHelper_123pan.buildHeaders(token), request), 0, "ok");
+    }
+
+    static @NotNull JSONObject doRenameFile(final @NotNull DriverConfiguration_123Pan configuration, final long id, final @NotNull String name) throws IllegalParametersException, IOException {
+        final String token = DriverHelper_123pan.ensureToken(configuration);
+        final Map<String, Object> request = new LinkedHashMap<>(4);
+        request.put("driveId", 0);
+        request.put("fileId", id);
+        request.put("fileName", name);
+        request.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(configuration.getWebSide().getFilePart().getDuplicatePolicy()));
+        return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.RenameFileURL,
+                DriverHelper_123pan.buildHeaders(token), request), 0, "ok");
+    }
+
+    static @NotNull JSONObject doMoveFiles(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull Collection<@NotNull Long> idList, final long parentId) throws IllegalParametersException, IOException {
+        final String token = DriverHelper_123pan.ensureToken(configuration);
+        final Map<String, Object> request = new LinkedHashMap<>(2);
+        request.put("parentFileId", parentId);
+        request.put("fileIdList", idList.stream().map(id -> {
+            final JSONObject pair = new JSONObject(1);
+            pair.put("FileId", id.longValue());
+            return pair;
+        }).toList());
+        return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.MoveFilesURL,
                 DriverHelper_123pan.buildHeaders(token), request), 0, "ok");
     }
 }

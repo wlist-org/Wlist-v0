@@ -247,7 +247,7 @@ public final class DriverManager_123pan {
 
     private static long prepareUpload(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath parentPath, final @NotNull String name, final @Nullable Connection _connection) throws IllegalParametersException, IOException, SQLException {
         if (!DriverHelper_123pan.filenamePredication.test(name))
-            throw new IllegalParametersException("Invalid directory name.", name);
+            throw new IllegalParametersException("Invalid file name.", name);
         final long parentDirectoryId = DriverManager_123pan.getFileId(configuration, parentPath, FileInformation::is_dir, true, _connection, null);
         if (parentDirectoryId < 0)
             throw new IllegalParametersException("Parent directory is nonexistent.", parentPath.getChildPath(name));
@@ -338,12 +338,47 @@ public final class DriverManager_123pan {
         return info;
     }
 
-    static void deleteFile(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @Nullable Connection _connection, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
-        final long id = DriverManager_123pan.getFileId(configuration, path, f -> true, true, _connection, _threadPool);
+    static void trashFile(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean useCache, final @Nullable Connection _connection, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
+        final long id = DriverManager_123pan.getFileId(configuration, path, f -> true, useCache, _connection, _threadPool);
         final JSONObject data = DriverHelper_123pan.doTrashFiles(configuration, List.of(id));
         assert data.getJSONArray("InfoList") != null && data.getJSONArray("InfoList").size() == 1;
         assert data.getJSONArray("InfoList").getJSONObject(0) != null
                 && Long.valueOf(id).equals(data.getJSONArray("InfoList").getJSONObject(0).getLong("FileId"));
         DriverSqlHelper.deleteFileById(configuration.getLocalSide().getName(), id, _connection);
+    }
+
+    static @NotNull FileInformation renameFile(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @NotNull String name, final boolean useCache, final @Nullable Connection _connection, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
+        if (!DriverHelper_123pan.filenamePredication.test(name))
+            throw new IllegalParametersException("Invalid file name.", name);
+        final long id = DriverManager_123pan.getFileId(configuration, path, f -> true, useCache, _connection, _threadPool);
+        final JSONObject data = DriverHelper_123pan.doRenameFile(configuration, id, name);
+        final JSONArray infos = data.getJSONArray("Info");
+        if (infos == null || infos.isEmpty())
+            throw new WrongResponseException("Abnormal data of 'Info'.", data);
+        assert infos.size() == 1;
+        final JSONObject fileInfo = infos.getJSONObject(0);
+        final FileInformation info = FileInformation_123pan.create(path.getParent(), fileInfo);
+        if (info == null)
+            throw new WrongResponseException("Abnormal data of 'Info'.", data);
+        assert info.id() == id;
+        DriverSqlHelper.insertFile(configuration.getLocalSide().getName(), info, _connection);
+        return info;
+    }
+
+    static @NotNull FileInformation moveFile(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath sourceFile, final @NotNull DrivePath targetParent, final boolean useCache, final @Nullable Connection _connection, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
+        final long sourceId = DriverManager_123pan.getFileId(configuration, sourceFile, f -> true, useCache, _connection, _threadPool);
+        final long targetId = DriverManager_123pan.getFileId(configuration, sourceFile, FileInformation::is_dir, useCache, _connection, _threadPool);
+        final JSONObject data = DriverHelper_123pan.doMoveFiles(configuration, List.of(sourceId), targetId);
+        final JSONArray infos = data.getJSONArray("Info");
+        if (infos == null || infos.isEmpty())
+            throw new WrongResponseException("Abnormal data of 'Info'.", data);
+        assert infos.size() == 1;
+        final JSONObject fileInfo = infos.getJSONObject(0);
+        final FileInformation info = FileInformation_123pan.create(targetParent, fileInfo);
+        if (info == null)
+            throw new WrongResponseException("Abnormal data of 'Info'.", data);
+        assert info.id() == sourceId;
+        DriverSqlHelper.insertFile(configuration.getLocalSide().getName(), info, _connection);
+        return info;
     }
 }

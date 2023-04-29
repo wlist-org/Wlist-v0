@@ -65,13 +65,8 @@ public class DataBaseUtil {
             throw new SQLException("Cannot create database directory.");
         this.sqliteDataSource = new SQLiteDataSource();
         this.sqliteDataSource.setUrl(org.sqlite.JDBC.PREFIX + path.getPath());
-        for (int i = 1; i < this.config.initSize; ++i)
+        for (int i = 0; i < this.config.initSize; ++i)
             this.sqliteConnections.push(this.createNewConnection());
-        try (final Connection connection = this.createNewConnection()) {
-            try (final Statement statement = connection.createStatement()) {
-                statement.executeUpdate("PRAGMA journal_mode = WAL;");
-            }
-        }
         assert this.createdSize.get() == this.config.initSize;
     }
 

@@ -54,9 +54,7 @@ public final class WList {
         os.write(new Yaml(representer).dump(config).getBytes(StandardCharsets.UTF_8));
         os.close();
 
-        final DrivePath path = new DrivePath("/test");
-        driver.mkdirs(path);
-        driver.delete(path);
+        driver.move(new DrivePath("/test/test"), new DrivePath("/"));
 
 //        Operation.init();
 //        WList.logger.log(HLogLevel.FINE, "Hello WList! Initializing...");

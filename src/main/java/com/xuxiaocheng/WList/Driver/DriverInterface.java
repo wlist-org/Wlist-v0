@@ -96,14 +96,20 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
         return t;
     }
 
-    default @Nullable FileInformation move(final @NotNull DrivePath source, final @NotNull DrivePath target) throws Exception {
-        final FileInformation t = this.copy(source, target);
-        this.delete(source);
+    default @Nullable FileInformation move(final @NotNull DrivePath sourceFile, final @NotNull DrivePath targetDirectory) throws Exception {
+        if (targetDirectory.equals(sourceFile.getParent()))
+            return this.info(sourceFile);
+        final FileInformation t = this.copy(sourceFile, targetDirectory.getChild(sourceFile.getName()));
+        this.delete(sourceFile);
         return t;
     }
 
     default @Nullable FileInformation rename(final @NotNull DrivePath source, final @NotNull String name) throws Exception {
-        return this.move(source, source.getParent().child(name));
+        if (source.getName().equals(name))
+            return this.info(source);
+        final FileInformation t = this.copy(source, source.getParent().child(name));
+        this.delete(source);
+        return t;
     }
 
     default void buildCache() throws Exception {

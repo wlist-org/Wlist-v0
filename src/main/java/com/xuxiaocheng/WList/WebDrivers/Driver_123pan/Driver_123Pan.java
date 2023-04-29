@@ -95,7 +95,7 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
 
     @Override
     public void delete(final @NotNull DrivePath path) throws IllegalParametersException, IOException, SQLException {
-        DriverManager_123pan.deleteFile(this.configuration, path, null, null);
+        DriverManager_123pan.trashFile(this.configuration, path, true, null, null);
     }
 
     @Override
@@ -107,12 +107,21 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
     }
 
     @Override
-    public @Nullable FileInformation move(final @NotNull DrivePath source, final @NotNull DrivePath target) {
-        return null;
+    public @Nullable FileInformation move(final @NotNull DrivePath sourceFile, final @NotNull DrivePath targetDirectory) throws IllegalParametersException, IOException, SQLException {
+        if (targetDirectory.equals(sourceFile.getParent()))
+            return this.info(sourceFile);
+        return DriverManager_123pan.moveFile(this.configuration, sourceFile, targetDirectory, true, null, null);
     }
 
     @Override
-    public void buildCache() throws SQLException, IOException, IllegalParametersException {
+    public @Nullable FileInformation rename(@NotNull final DrivePath source, @NotNull final String name) throws IllegalParametersException, IOException, SQLException {
+        if (source.getName().equals(name))
+            return this.info(source);
+        return DriverManager_123pan.renameFile(this.configuration, source, name, true, null, null);
+    }
+
+    @Override
+    public void buildCache() throws IllegalParametersException, IOException, SQLException {
         DriverManager_123pan.recursiveRefreshDirectory(this.configuration, this.configuration.getWebSide().getFilePart().getRootDirectoryId(), new DrivePath("/"), null, null);
     }
 
