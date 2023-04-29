@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Configuration;
+package com.xuxiaocheng.WList.Server.Configuration;
 
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.introspector.BeanAccess;

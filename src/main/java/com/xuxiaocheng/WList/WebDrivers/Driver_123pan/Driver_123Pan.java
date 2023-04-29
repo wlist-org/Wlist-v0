@@ -4,7 +4,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Driver.DrivePath;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.DriverSqlHelper;
-import com.xuxiaocheng.WList.Driver.Exceptions.IllegalParametersException;
+import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Driver.FileInformation;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
@@ -21,10 +21,6 @@ import java.util.List;
 
 public final class Driver_123Pan implements DriverInterface<DriverConfiguration_123Pan> {
     private @NotNull DriverConfiguration_123Pan configuration = new DriverConfiguration_123Pan();
-
-    @NotNull DriverConfiguration_123Pan getConfiguration() {
-        return this.configuration;
-    }
 
     @Override
     public @NotNull DriverConfiguration_123Pan getDefaultConfiguration() {

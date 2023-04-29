@@ -1,23 +1,29 @@
-package com.xuxiaocheng.WList.Configuration;
+package com.xuxiaocheng.WList.Server.Configuration;
 
 import com.xuxiaocheng.HeadLibs.Annotations.Range.IntRange;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.yaml.snakeyaml.Yaml;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Objects;
 
 public class GlobalConfiguration {
     protected static @Nullable GlobalConfiguration instance;
 
-    public static void init(final @Nullable InputStream input) {
+    public static void init(final @Nullable InputStream input) throws IOException {
         if (GlobalConfiguration.instance == null) {
             if (input == null) {
                 GlobalConfiguration.instance = new GlobalConfiguration();
                 return;
             }
-            GlobalConfiguration.instance = new Yaml().loadAs(input, GlobalConfiguration.class);
+            try {
+                GlobalConfiguration.instance = new Yaml().loadAs(input, GlobalConfiguration.class);
+                input.close();
+            } catch (final RuntimeException exception) {
+                throw new IOException(exception);
+            }
             if (GlobalConfiguration.instance == null) // Empty input stream.
                 GlobalConfiguration.instance = new GlobalConfiguration();
         }
@@ -35,6 +41,7 @@ public class GlobalConfiguration {
     protected @NotNull String data_db = "data/data.db";
     protected @NotNull String index_db = "data/index.db";
     protected @IntRange(minimum = 1) int thread_count = 10;
+    protected @IntRange(minimum = 1) int token_expire_time = 259200;
 
     public int getPort() {
         return this.port;
@@ -50,6 +57,10 @@ public class GlobalConfiguration {
 
     public int getThread_count() {
         return this.thread_count;
+    }
+
+    public int getToken_expire_time() {
+        return this.token_expire_time;
     }
 
     @Deprecated
@@ -72,6 +83,11 @@ public class GlobalConfiguration {
         this.thread_count = thread_count;
     }
 
+    @Deprecated
+    public void setToken_expire_time(final int token_expire_time) {
+        this.token_expire_time = token_expire_time;
+    }
+
     // TODO equal
 
     @Override
@@ -81,6 +97,7 @@ public class GlobalConfiguration {
                 ", data_db='" + this.data_db + '\'' +
                 ", index_db='" + this.index_db + '\'' +
                 ", thread_count=" + this.thread_count +
+                ", token_expire_time=" + this.token_expire_time +
                 '}';
     }
 }

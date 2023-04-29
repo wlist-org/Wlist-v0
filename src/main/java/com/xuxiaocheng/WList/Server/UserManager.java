@@ -1,45 +1,50 @@
 package com.xuxiaocheng.WList.Server;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.WList.Server.Helper.TokenHelper;
-import com.xuxiaocheng.WList.Server.Helper.UserHelper;
+import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
+import com.xuxiaocheng.WList.Exceptions.IllegalNetworkDataException;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.UnmodifiableView;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 public final class UserManager {
     private UserManager() {
         super();
     }
 
-    private static @NotNull String getNewToken(final @NotNull String username) throws SQLException {
-        final long time = System.currentTimeMillis();
-        final String token = UserHelper.generateRandomToken(username, time);
-        TokenHelper.addToken(token, username, time);
-        return token;
-    }
+    public static final @NotNull @UnmodifiableView SortedSet<Operation.@NotNull Permission> AdminPermission =
+            Collections.unmodifiableSortedSet(new TreeSet<>(Arrays.stream(Operation.Permission.values()).skip(1)/*Permission.Undefined*/.toList()));
+    public static final @NotNull @UnmodifiableView SortedSet<Operation.@NotNull Permission> DefaultPermission =
+            Collections.unmodifiableSortedSet(new TreeSet<>(List.of(Operation.Permission.FilesList)));
 
-    public static void doRegister(final @NotNull ByteBuf buf) throws IOException, SQLException {
+    public static boolean doRegister(final @NotNull ByteBuf buf) throws IOException, SQLException {
         final String username = ByteBufIOUtil.readUTF(buf);
-        final String password = UserHelper.encryptPassword(ByteBufIOUtil.readUTF(buf));
-        final Pair<String, Set<Operation.Permission>> user = UserHelper.getUser(username);
+        final String password = ByteBufIOUtil.readUTF(buf);
+        final Triad<String, SortedSet<Operation.Permission>, LocalDateTime> user = UserSqlHelper.selectUser(username);
         //noinspection VariableNotUsedInsideIf
         if (user != null)
             throw new IllegalNetworkDataException("The same username has existed.");
-        UserHelper.addUser(username, password);
+        return UserSqlHelper.insertUser(username, password, UserManager.DefaultPermission);
     }
 
     public static @NotNull String doLoginIn(final @NotNull ByteBuf buf) throws IOException, SQLException {
         final String username = ByteBufIOUtil.readUTF(buf);
-        final String password = UserHelper.encryptPassword(ByteBufIOUtil.readUTF(buf));
-        final Pair<String, Set<Operation.Permission>> user = UserHelper.getUser(username);
-        if (user == null || !password.equals(user.getFirst()))
+        final String password = ByteBufIOUtil.readUTF(buf);
+        final Triad<String, SortedSet<Operation.Permission>, LocalDateTime> user = UserSqlHelper.selectUser(username);
+        if (user == null || !password.equals(user.getA()))
             throw new IllegalNetworkDataException("The username or password is wrong.");
-        return UserManager.getNewToken(username);
+        return UserTokenHelper.encodeToken(username, user.getC());
     }
 
     public static @NotNull String doLoginOut(final @NotNull ByteBuf ignoredBuf) {
@@ -47,12 +52,12 @@ public final class UserManager {
     }
 
     public static @NotNull Set<Operation.@NotNull Permission> getPermissions(final @NotNull String token) throws SQLException {
-        final String username = TokenHelper.getUsername(token);
-        if (username == null)
+        final Pair<String, LocalDateTime> pair = UserTokenHelper.decodeToken(token);
+        if (pair == null)
             return Set.of();
-        final Pair<String, Set<Operation.Permission>> user = UserHelper.getUser(username);
+        final Triad<String, SortedSet<Operation.Permission>, LocalDateTime> user = UserSqlHelper.selectUser(pair.getFirst());
         if (user == null)
             return Set.of();
-        return user.getSecond();
+        return user.getB();
     }
 }

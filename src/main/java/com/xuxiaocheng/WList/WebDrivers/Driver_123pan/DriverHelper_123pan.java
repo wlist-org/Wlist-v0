@@ -5,8 +5,8 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Driver.DriverUtil;
-import com.xuxiaocheng.WList.Driver.Exceptions.IllegalParametersException;
-import com.xuxiaocheng.WList.Driver.Exceptions.WrongResponseException;
+import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
+import com.xuxiaocheng.WList.Exceptions.WrongResponseException;
 import com.xuxiaocheng.WList.Driver.FileInformation;
 import com.xuxiaocheng.WList.Driver.Options.DuplicatePolicy;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
@@ -18,10 +18,9 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Collection;
-import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Predicate;
@@ -96,7 +95,7 @@ public final class DriverHelper_123pan {
         final Headers.Builder builder = new Headers.Builder();
         if (token != null)
             builder.add("authorization", "Bearer " + token);
-        builder.add("user-agent", "123pan/1.0.100" + DriverUtil.defaultUserAgent)
+        builder.add("user-agent", "123pan/1.0.100")
                 .add("platform", "web").add("app-version", "3");
         return builder.build();
     }
@@ -146,8 +145,7 @@ public final class DriverHelper_123pan {
         if (refresh == null)
             throw new WrongResponseException("No refresh time in response.");
         // TODO: time zone ?
-        //noinspection UseOfObsoleteDateTimeApi
-        configuration.getCacheSide().setRefreshExpireTime(new Date(refresh.longValue() * 1000).toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
+        configuration.getCacheSide().setRefreshExpireTime(LocalDateTime.ofEpochSecond(refresh.longValue(), 0, ZoneOffset.ofHours(8)));
     }
 
     private static void login(final @NotNull DriverConfiguration_123Pan configuration) throws IllegalParametersException, IOException {

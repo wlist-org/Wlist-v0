@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Driver.Exceptions;
+package com.xuxiaocheng.WList.Exceptions;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

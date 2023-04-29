@@ -33,7 +33,7 @@ public final class DriverSqlHelper {
     }
 
     private static @NotNull String serializeTime(final @Nullable LocalDateTime time) {
-        return Objects.requireNonNullElseGet(time, LocalDateTime::now).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        return Objects.requireNonNullElseGet(time, LocalDateTime::now).withNano(0).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
     }
 
     private static @Nullable FileInformation createNextFileInfo(final @NotNull ResultSet result) throws SQLException {

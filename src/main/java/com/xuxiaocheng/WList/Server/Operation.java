@@ -1,119 +1,46 @@
 package com.xuxiaocheng.WList.Server;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.UnmodifiableView;
 
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public final class Operation {
     private Operation() {
         super();
     }
 
-    private static final @NotNull Map<Byte, Type> TypeMap = new HashMap<>();
-    private static final @NotNull Map<Byte, Permission> PermissionMap = new HashMap<>();
-    private static final @NotNull Map<Byte, State> StateMap = new HashMap<>();
-
-    @SuppressWarnings({"unused", "UnusedAssignment"})
-    public static void init() {
-        Object e;
-        e = Type.Undefined;
-        e = Permission.Undefined;
-        e = State.Undefined;
-    }
-
-    public static byte getId(final @NotNull Type type) {
-        return type.id;
-    }
-    public static @NotNull Type getType(final byte b) {
-        return Objects.requireNonNullElse(Operation.TypeMap.get(b), Type.Undefined);
-    }
-
-    public static byte getId(final @NotNull Permission permission) {
-        return permission.id;
-    }
-    public static @NotNull Permission getPermission(final byte b) {
-        return Objects.requireNonNullElse(Operation.PermissionMap.get(b), Permission.Undefined);
-    }
-
-    public static byte getId(final @NotNull State state) {
-        return state.id;
-    }
-    public static @NotNull State getState(final byte b) {
-        return Objects.requireNonNullElse(Operation.StateMap.get(b), State.Undefined);
-    }
-
     public enum Type {
-        Undefined((byte) 0),
-        LoginIn((byte) 1),
-        LoginOut((byte) 2),
-        Registry((byte) 3),
+        Undefined,
+        LoginIn,
+        LoginOut,
+        Registry,
 //        List,
-        ;
-        private final byte id;
-
-        Type(final byte id) {
-            this.id = id;
-            Operation.TypeMap.put(id, this);
-        }
-
-        public byte getId() {
-            return this.id;
-        }
-
-        @Override
-        public @NotNull String toString() {
-            return "Type(" + this.name() + ')';
-        }
     }
 
     public enum Permission {
-        Undefined((byte) 0),
-        UsersList((byte) 1),
-        UsersAdd((byte) 2),
-        UsersDelete((byte) 3),
-        UsersChangePermissions((byte) 4),
-//        FilesList((byte) 11),
-        ;
-        private final byte id;
-
-        Permission(final byte id) {
-            this.id = id;
-            Operation.PermissionMap.put(id, this);
-        }
-
-        public byte getId() {
-            return this.id;
-        }
-
-        @Override
-        public @NotNull String toString() {
-            return "Permission(" + this.name() + ')';
-        }
+        Undefined,
+        UsersList,
+        UsersAdd,
+        UsersDelete,
+        UsersChangePermissions,
+        FilesList,
     }
 
     public enum State {
-        Undefined((byte) 0),
-        Success((byte) 1),
-        Unsupported((byte) 2),
-        NoPermission((byte) 3),
-        DataError((byte) 4),
-        ;
-        private final byte id;
-
-        State(final byte id) {
-            this.id = id;
-            Operation.StateMap.put(id, this);
-        }
-
-        public byte getId() {
-            return this.id;
-        }
-
-        @Override
-        public @NotNull String toString() {
-            return "State(" + this.name() + ')';
-        }
+        Undefined,
+        Success,
+        Unsupported,
+        NoPermission,
+        DataError,
     }
+
+    public static final @NotNull @UnmodifiableView Map<@NotNull String, @NotNull Type> TypeMap = Stream.of(Type.values())
+            .collect(Collectors.toMap(Enum::name, t -> t));
+    public static final @NotNull @UnmodifiableView Map<@NotNull String, @NotNull Permission> PermissionMap = Stream.of(Permission.values())
+            .collect(Collectors.toMap(Enum::name, p -> p));
+    public static final @NotNull @UnmodifiableView Map<@NotNull String, @NotNull State> StateMap = Stream.of(State.values())
+            .collect(Collectors.toMap(Enum::name, s -> s));
 }

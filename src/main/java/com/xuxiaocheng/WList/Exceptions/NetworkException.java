@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Driver.Exceptions;
+package com.xuxiaocheng.WList.Exceptions;
 
 import java.io.IOException;
 import java.io.Serial;

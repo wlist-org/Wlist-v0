@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Server;
 
+import com.xuxiaocheng.WList.Exceptions.IllegalNetworkDataException;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -23,7 +24,7 @@ public final class ServerHandler {
 
     public static void doException(final @NotNull Channel channel, final @NotNull IllegalNetworkDataException exception) throws IOException {
         final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(256);
-        ByteBufIOUtil.writeByte(buffer, Operation.State.DataError.getId());
+        ByteBufIOUtil.writeUTF(buffer, Operation.State.DataError.name());
         ByteBufIOUtil.writeUTF(buffer, exception.getMessage());
         channel.writeAndFlush(buffer);
     }
@@ -31,7 +32,7 @@ public final class ServerHandler {
     public static void doLoginIn(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws SQLException, IOException {
         final String token = UserManager.doLoginIn(buf);
         final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(149);
-        ByteBufIOUtil.writeByte(buffer, Operation.State.Success.getId());
+        ByteBufIOUtil.writeUTF(buffer, Operation.State.Success.name());
         ByteBufIOUtil.writeUTF(buffer, token);
         channel.writeAndFlush(buffer);
     }
@@ -46,8 +47,10 @@ public final class ServerHandler {
             ServerHandler.writeOnlyState(channel, Operation.State.NoPermission);
             return;
         }
-        UserManager.doRegister(buf);
-        ServerHandler.writeOnlyState(channel, Operation.State.Success);
+        if (UserManager.doRegister(buf))
+            ServerHandler.writeOnlyState(channel, Operation.State.Success);
+        else
+            ServerHandler.writeOnlyState(channel, Operation.State.DataError);
     }
 
 //    public static void doList(final @NotNull ByteBuf buf, final Channel channel) {
@@ -57,7 +60,7 @@ public final class ServerHandler {
 
     private static void writeOnlyState(final @NotNull Channel channel, final @NotNull Operation.State state) throws IOException {
         final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(1);
-        ByteBufIOUtil.writeByte(buffer, state.getId());
+        ByteBufIOUtil.writeUTF(buffer, state.name());
         channel.writeAndFlush(buffer);
     }
 }

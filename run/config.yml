@@ -2,3 +2,4 @@ port: 5212
 data_db: data/data.db
 index_db: data/index.db
 thread_count: 10
+token_expire_time: 259200

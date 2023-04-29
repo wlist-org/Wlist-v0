@@ -3,6 +3,7 @@ package com.xuxiaocheng.WList.Server;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HLoggerStream;
+import com.xuxiaocheng.WList.Exceptions.IllegalNetworkDataException;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.WList;
 import io.netty.bootstrap.ServerBootstrap;
@@ -120,7 +121,7 @@ public class WListServer {
         protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) throws Exception {
             final Channel channel = ctx.channel();
             WListServer.logger.log(HLogLevel.VERBOSE, "Read: ", channel.id().asLongText(), " len: ", msg.readableBytes());
-            final Operation.Type type = Operation.getType(ByteBufIOUtil.readByte(msg));
+            final Operation.Type type = Operation.TypeMap.get(ByteBufIOUtil.readUTF(msg));
             try {
                 switch (type) {
                     case Undefined -> throw new IllegalNetworkDataException("Undefined operation!");

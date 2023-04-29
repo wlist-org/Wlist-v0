@@ -1,9 +1,8 @@
-package com.xuxiaocheng.WList.Server;
+package com.xuxiaocheng.WList.Exceptions;
 
-import java.io.IOException;
 import java.io.Serial;
 
-public class IllegalNetworkDataException extends IOException {
+public class IllegalNetworkDataException extends NetworkException {
     @Serial
     private static final long serialVersionUID = -6647704998750964255L;
 
