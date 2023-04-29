@@ -27,28 +27,22 @@ import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.EventExecutorGroup;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.net.SocketAddress;
 
 public class WListServer {
-    protected static @Nullable WListServer instance;
-
-    public static @NotNull WListServer getInstance(final @NotNull SocketAddress address) {
-        if (WListServer.instance == null)
-            WListServer.instance = new WListServer(address);
-        return WListServer.instance;
-    }
-
     private static final @NotNull HLog logger = HLog.createInstance("ServerLogger",
             WList.DebugMode ? Integer.MIN_VALUE : HLogLevel.DEBUG.getPriority() + 1,
             true, new HLoggerStream(true, false));
+    protected static @NotNull EventExecutorGroup executors =
+            new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 3, new DefaultThreadFactory("ServerExecutors"));
 
     protected final @NotNull SocketAddress address;
     protected final @NotNull EventLoopGroup bossGroup = new NioEventLoopGroup(1);
     protected final @NotNull EventLoopGroup workerGroup = new NioEventLoopGroup(0);
+    private ChannelFuture channelFuture;
 
-    protected WListServer(final @NotNull SocketAddress address) {
+    public WListServer(final @NotNull SocketAddress address) {
         super();
         this.address = address;
     }
@@ -57,10 +51,7 @@ public class WListServer {
         return this.address;
     }
 
-    private ChannelFuture channelFuture;
-    protected static @NotNull EventExecutorGroup executors = new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 3, new DefaultThreadFactory("ServerExecutors"));
-
-    public synchronized @NotNull ChannelFuture start() {
+    public synchronized @NotNull ChannelFuture start() throws InterruptedException {
         WListServer.logger.log(HLogLevel.DEBUG, "WListServer is starting...");
         final ServerBootstrap serverBootstrap = new ServerBootstrap();
         serverBootstrap.group(this.workerGroup, this.workerGroup);
@@ -78,13 +69,15 @@ public class WListServer {
                 pipeline.addLast(WListServer.executors, "ServerHandler", new ServerChannelInboundHandler());
             }
         });
-        this.channelFuture = serverBootstrap.bind(this.address).syncUninterruptibly();
+        this.channelFuture = serverBootstrap.bind(this.address).sync();
         WListServer.logger.log(HLogLevel.VERBOSE, "WListServer started.");
         WListServer.logger.log(HLogLevel.INFO, "Listening on: ", this.address);
         return this.channelFuture.channel().closeFuture();
     }
 
     public synchronized void stop() throws InterruptedException {
+        if (this.channelFuture == null)
+            return;
         WListServer.logger.log(HLogLevel.DEBUG, "WListServer is stopping...");
         this.channelFuture.channel().close().sync();
         this.bossGroup.shutdownGracefully().sync();
@@ -101,7 +94,6 @@ public class WListServer {
 
     @ChannelHandler.Sharable
     public static class ServerChannelInboundHandler extends SimpleChannelInboundHandler<ByteBuf> {
-
         @Override
         public void channelActive(final @NotNull ChannelHandlerContext ctx) {
             final ChannelId id = ctx.channel().id();
@@ -125,9 +117,10 @@ public class WListServer {
             try {
                 switch (type) {
                     case Undefined -> throw new IllegalNetworkDataException("Undefined operation!");
-                    case LoginIn -> ServerHandler.doLoginIn(msg, channel);
-                    case LoginOut -> ServerHandler.doLoginOut(msg, channel);
+                    case Login -> ServerHandler.doLogin(msg, channel);
                     case Registry -> ServerHandler.doRegister(msg, channel);
+                    case AddPermission -> ServerHandler.doChangePermission(msg, channel, true);
+                    case ReducePermission -> ServerHandler.doChangePermission(msg, channel, false);
 //                case List -> ServerHandler.doList(msg, channel);
                     // TODO
                 }
@@ -139,7 +132,7 @@ public class WListServer {
         @Override
         public void exceptionCaught(final @NotNull ChannelHandlerContext ctx, final Throwable cause) {
             WListServer.logger.log(HLogLevel.ERROR, "Exception: ", ctx.channel().id().asLongText(), cause);
-            ctx.close();
+//            ctx.close();
         }
 
         @Override

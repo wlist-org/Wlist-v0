@@ -1,6 +1,5 @@
 package com.xuxiaocheng.WList.Server;
 
-import com.alibaba.fastjson2.JSON;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -18,10 +17,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Collections;
-import java.util.Objects;
 import java.util.SortedSet;
-import java.util.TreeSet;
 
 public final class UserSqlHelper {
     private UserSqlHelper() {
@@ -64,10 +60,10 @@ public final class UserSqlHelper {
                                                    DEFAULT '%s',
                             modify_time TEXT       NOT NULL
                         );
-                        """, JSON.toJSONString(defaultPermission)));
+                        """, Operation.dumpPermissions(defaultPermission)));
                 try (final ResultSet admins = statement.executeQuery(String.format("""
                         SELECT 1 FROM users WHERE permission == '%s' LIMIT 1;
-                        """, JSON.toJSONString(adminPermission)))) {
+                        """, Operation.dumpPermissions(adminPermission)))) {
                     needCreate = !admins.next();
                 }
             }
@@ -75,14 +71,15 @@ public final class UserSqlHelper {
                 final String password = UserSqlHelper.generateRandomPassword();
                 try (final PreparedStatement statement = connection.prepareStatement("""
                         INSERT INTO users (username, password, permission, modify_time)
-                            VALUES ('admin', ?, ?, ?)
+                            VALUES (?, ?, ?, ?)
                         ON CONFLICT (username) DO UPDATE SET
                             id = excluded.id, password = excluded.password,
                             permission = excluded.permission, modify_time = excluded.modify_time;
                         """)) {
-                    statement.setString(1, UserSqlHelper.encryptPassword(password));
-                    statement.setString(2, JSON.toJSONString(adminPermission));
-                    statement.setString(3, UserSqlHelper.getModifyTime());
+                    statement.setString(1, "admin");
+                    statement.setString(2, UserSqlHelper.encryptPassword(password));
+                    statement.setString(3, Operation.dumpPermissions(adminPermission));
+                    statement.setString(4, UserSqlHelper.getModifyTime());
                     statement.executeUpdate();
                 }
                 HLog.getInstance("DefaultLogger").log(HLogLevel.WARN, "Reset admin user, password: ", password);
@@ -111,6 +108,31 @@ public final class UserSqlHelper {
         }
     }
 
+    public static void updateUser(final @NotNull String username, final @Nullable String password, final @Nullable SortedSet<Operation.@NotNull Permission> permissions) throws SQLException {
+        if (password == null && permissions == null)
+            return;
+        try (final Connection connection = DataBaseUtil.getDataInstance().getConnection()) {
+            connection.setAutoCommit(false);
+            if (password != null)
+                try (final PreparedStatement statement = connection.prepareStatement("""
+                            UPDATE users SET password = ?, modify_time = ? WHERE username == ?;
+                            """)) {
+                    statement.setString(1, password);
+                    statement.setString(2, UserSqlHelper.getModifyTime());
+                    statement.setString(3, username);
+                }
+            if (permissions != null)
+                try (final PreparedStatement statement = connection.prepareStatement("""
+                            UPDATE users SET permission = ?, modify_time = ? WHERE username == ?;
+                            """)) {
+                    statement.setString(1, Operation.dumpPermissions(permissions));
+                    statement.setString(2, UserSqlHelper.getModifyTime());
+                    statement.setString(3, username);
+                }
+            connection.commit();
+        }
+    }
+
     public static void deleteUser(final @NotNull String username) throws SQLException {
         try (final Connection connection = DataBaseUtil.getDataInstance().getConnection()) {
             try (final PreparedStatement statement = connection.prepareStatement("""
@@ -131,10 +153,9 @@ public final class UserSqlHelper {
                 try (final ResultSet user = statement.executeQuery()) {
                     if (!user.next())
                         return null;
-                    final LocalDateTime time = LocalDateTime.parse(user.getString(3), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-                    final SortedSet<Operation.Permission> set = new TreeSet<>(JSON.parseArray(user.getString(2)).stream()
-                            .map(s -> Operation.PermissionMap.get(s.toString())).filter(Objects::nonNull).toList());
-                    return new Triad.ImmutableTriad<>(user.getString(1), Collections.unmodifiableSortedSet(set), time);
+                    return new Triad.ImmutableTriad<>(user.getString(1),
+                            Operation.parsePermissions(user.getString(2)),
+                            LocalDateTime.parse(user.getString(3), DateTimeFormatter.ISO_LOCAL_DATE_TIME));
                 }
             }
         }

@@ -33,7 +33,7 @@ public final class UserTokenHelper {
                 .sign(UserTokenHelper.sign);
     }
 
-    public static @Nullable Pair.ImmutablePair<@NotNull String, @NotNull LocalDateTime> decodeToken(final @NotNull String token) {
+    private static @Nullable Pair.ImmutablePair<@NotNull String, @NotNull LocalDateTime> decodeToken(final @NotNull String token) {
         //noinspection OverlyBroadCatchBlock
         try {
             final Payload payload = UserTokenHelper.verifier.verify(token);
@@ -45,6 +45,7 @@ public final class UserTokenHelper {
         }
     }
 
+    @Deprecated
     public static @NotNull String generateToken(final @NotNull String username) throws SQLException, IllegalParametersException {
         final Triad<String, SortedSet<Operation.Permission>, LocalDateTime> user = UserSqlHelper.selectUser(username);
         if (user == null)
@@ -52,13 +53,13 @@ public final class UserTokenHelper {
         return UserTokenHelper.encodeToken(username, user.getC());
     }
 
-    public static @Nullable String resolveToken(final @NotNull String token) throws SQLException {
+    public static @Nullable Pair<@NotNull String, @NotNull SortedSet<Operation.@NotNull Permission>> resolveToken(final @NotNull String token) throws SQLException {
         final Pair<String, LocalDateTime> pair = UserTokenHelper.decodeToken(token);
         if (pair == null)
             return null;
         final Triad<String, SortedSet<Operation.Permission>, LocalDateTime> user = UserSqlHelper.selectUser(pair.getFirst());
         if (user == null || !user.getC().equals(pair.getSecond()))
             return null;
-        return pair.getFirst();
+        return Pair.ImmutablePair.makeImmutablePair(pair.getFirst(), user.getB());
     }
 }

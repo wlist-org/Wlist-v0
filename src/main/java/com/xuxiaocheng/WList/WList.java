@@ -7,7 +7,6 @@ import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.Configuration.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.UserManager;
 import com.xuxiaocheng.WList.Server.UserSqlHelper;
-import com.xuxiaocheng.WList.Server.UserTokenHelper;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -32,11 +31,9 @@ public final class WList {
         GlobalConfiguration.init(new BufferedInputStream(new FileInputStream("config.yml")));
         UserSqlHelper.init(UserManager.DefaultPermission, UserManager.AdminPermission);
 
-        final String token = UserTokenHelper.generateToken("admin");
-        HLog.DefaultLogger.log("", token);
-        HLog.DefaultLogger.log("", UserTokenHelper.resolveToken(token));
+//        HLog.DefaultLogger.log("", );
 
-//        final WListServer server = WListServer.getInstance(new InetSocketAddress(GlobalConfiguration.getInstance().getPort()));
+//        final WListServer server = new WListServer(new InetSocketAddress(GlobalConfiguration.getInstance().getPort()));
 //        server.start().syncUninterruptibly();
 
 //        final InputStream is = new BufferedInputStream(new FileInputStream("test.yml"));
