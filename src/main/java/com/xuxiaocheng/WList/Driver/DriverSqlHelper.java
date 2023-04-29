@@ -183,7 +183,7 @@ public final class DriverSqlHelper {
             return;
         final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
         try (final PreparedStatement statement = connection.prepareStatement(String.format(
-                "DELETE FROM %s WHERE parent_path == ?;", DriverSqlHelper.getTableName(driverName)))) {
+                "DELETE FROM %s WHERE parent_path == ? AND name GLOB '?*';", DriverSqlHelper.getTableName(driverName)))) {
             if (_connection == null)
                 connection.setAutoCommit(false);
             for (final DrivePath parentPath: parentPathList) {

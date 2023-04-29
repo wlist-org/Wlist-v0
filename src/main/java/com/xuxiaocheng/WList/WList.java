@@ -4,6 +4,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HLoggerStream;
 import com.xuxiaocheng.WList.Configuration.FieldOrderRepresenter;
+import com.xuxiaocheng.WList.Driver.DrivePath;
 import com.xuxiaocheng.WList.Driver.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.DriverConfiguration_123Pan;
 import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.Driver_123Pan;
@@ -35,6 +36,10 @@ public final class WList {
 
     @SuppressWarnings("SpellCheckingInspection")
     public static void main(final String[] args) throws IllegalParametersException, IOException, SQLException {
+
+//        if (true)
+//            return;
+
         final InputStream is = new BufferedInputStream(new FileInputStream("test.yml"));
         final DriverConfiguration_123Pan config = new Yaml().loadAs(is, DriverConfiguration_123Pan.class);
         is.close();
@@ -49,11 +54,9 @@ public final class WList {
         os.write(new Yaml(representer).dump(config).getBytes(StandardCharsets.UTF_8));
         os.close();
 
-        final long time1 = System.currentTimeMillis();
-        driver.buildCache();
-        final long time2 = System.currentTimeMillis();
-        HLog.DefaultLogger.log("", "Build time: ", time2 - time1, " ms.");
-        // Build time: 16226 ms. Faster!!!
+        final DrivePath path = new DrivePath("/test");
+        driver.mkdirs(path);
+        driver.delete(path);
 
 //        Operation.init();
 //        WList.logger.log(HLogLevel.FINE, "Hello WList! Initializing...");

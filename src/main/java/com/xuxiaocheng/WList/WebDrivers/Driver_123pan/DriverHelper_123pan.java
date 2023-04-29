@@ -44,6 +44,7 @@ public final class DriverHelper_123pan {
     static final @NotNull Pair.ImmutablePair<String, String> S3AuthPartURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/s3_upload_object/auth", "POST");
     static final @NotNull Pair.ImmutablePair<String, String> S3ParePartsURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/s3_repare_upload_parts_batch", "POST");
     static final @NotNull Pair.ImmutablePair<String, String> UploadCompleteURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/upload_complete/v2", "POST");
+    static final @NotNull Pair.ImmutablePair<String, String> TrashFileURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/trash", "POST");
 
     private static final @NotNull DuplicatePolicy defaultDuplicatePolicy = DuplicatePolicy.KEEP;
     private static final @NotNull OrderPolicy defaultOrderPolicy = OrderPolicy.FileName;
@@ -97,18 +98,6 @@ public final class DriverHelper_123pan {
         builder.add("user-agent", "123pan/1.0.100" + DriverUtil.defaultUserAgent)
                 .add("platform", "web").add("app-version", "3");
         return builder.build();
-    }
-
-    static @NotNull JSONObject buildFileIdList(final @NotNull Collection<@NotNull Long> idList) {
-        final Collection<Object> list = new JSONArray(idList.size());
-        for (final Long id: idList) {
-            final Map<String, Object> pair = new JSONObject(1);
-            pair.put("fileId", id.longValue());
-            list.add(pair);
-        }
-        final JSONObject res = new JSONObject(1);
-        res.put("fileIdList", list);
-        return res;
     }
 
     static @NotNull JSONObject extractResponseData(final @NotNull JSONObject json, final int successCode, final @NotNull String successMessage) throws WrongResponseException {
@@ -222,8 +211,16 @@ public final class DriverHelper_123pan {
 
     static @NotNull JSONObject doGetFilesInformation(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull Collection<@NotNull Long> idList) throws IllegalParametersException, IOException {
         final String token = DriverHelper_123pan.ensureToken(configuration);
+        final Map<String, Object> request = new LinkedHashMap<>(1);
+        final Collection<Object> list = new JSONArray(idList.size());
+        for (final Long id: idList) {
+            final Map<String, Object> pair = new JSONObject(1);
+            pair.put("fileId", id.longValue());
+            list.add(pair);
+        }
+        request.put("fileIdList", list);
         return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.FilesInfoURL,
-                DriverHelper_123pan.buildHeaders(token), DriverHelper_123pan.buildFileIdList(idList)), 0, "ok");
+                DriverHelper_123pan.buildHeaders(token), request), 0, "ok");
     }
 
     static @NotNull JSONObject doGetFileDownloadUrl(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull FileInformation info) throws IllegalParametersException, IOException {
@@ -300,4 +297,19 @@ public final class DriverHelper_123pan {
                 DriverHelper_123pan.buildHeaders(token), request), 0, "ok");
     }
 
+    static @NotNull JSONObject doTrashFiles(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull Collection<@NotNull Long> idList) throws IllegalParametersException, IOException {
+        final String token = DriverHelper_123pan.ensureToken(configuration);
+        final Map<String, Object> request = new LinkedHashMap<>(3);
+        request.put("driveId", 0);
+        request.put("operation", true);
+        final Collection<Object> list = new JSONArray(idList.size());
+        for (final Long id: idList) {
+            final Map<String, Object> pair = new JSONObject(1);
+            pair.put("FileId", id.longValue());
+            list.add(pair);
+        }
+        request.put("fileTrashInfoList", list);
+        return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.TrashFileURL,
+                DriverHelper_123pan.buildHeaders(token), request), 0, "ok");
+    }
 }

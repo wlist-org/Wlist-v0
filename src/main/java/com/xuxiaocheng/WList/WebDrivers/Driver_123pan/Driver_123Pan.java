@@ -33,6 +33,9 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
 
     public void login(final @NotNull DriverConfiguration_123Pan configuration) throws IllegalParametersException, IOException, SQLException {
         DriverSqlHelper.initiate(configuration.getLocalSide().getName());
+        DriverSqlHelper.insertFile(configuration.getLocalSide().getName(),
+                new FileInformation(configuration.getWebSide().getFilePart().getRootDirectoryId(),
+                        new DrivePath("/"), true, 0, null, null, "", null), null);
         DriverManager_123pan.getUserInformation(configuration);
         this.configuration = configuration;
     }
@@ -61,20 +64,24 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
 
     @Override
     public @Nullable String download(final @NotNull DrivePath path) throws IllegalParametersException, IOException, SQLException {
-        return DriverManager_123pan.doGetDownloadUrl(this.configuration, path, true, null, null);
+        return DriverManager_123pan.getDownloadUrl(this.configuration, path, true, null, null);
     }
 
     @Override
-    public boolean mkdirs(final @NotNull DrivePath path) throws IllegalParametersException, IOException, SQLException {
+    public @NotNull FileInformation mkdirs(final @NotNull DrivePath path) throws IllegalParametersException, IOException, SQLException {
         final FileInformation info = DriverManager_123pan.getFileInformation(this.configuration, path, true, null, null);
         if (info != null) {
             if (info.is_dir())
-                return false;
+                return info;
             throw new FileAlreadyExistsException(path.getPath());
         }
-        this.mkdirs(path.getParent());
-        DriverManager_123pan.createDirectory(this.configuration, path, null);
-        return true;
+        final String name = path.getName();
+        try {
+            this.mkdirs(path.parent());
+        } finally {
+            path.child(name);
+        }
+        return DriverManager_123pan.createDirectory(this.configuration, path, null);
     }
 
     @Override
@@ -87,8 +94,8 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
     }
 
     @Override
-    public void delete(final @NotNull DrivePath path) {
-
+    public void delete(final @NotNull DrivePath path) throws IllegalParametersException, IOException, SQLException {
+        DriverManager_123pan.deleteFile(this.configuration, path, null, null);
     }
 
     @Override

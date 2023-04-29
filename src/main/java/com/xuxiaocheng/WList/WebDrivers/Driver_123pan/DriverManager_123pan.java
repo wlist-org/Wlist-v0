@@ -95,8 +95,8 @@ public final class DriverManager_123pan {
                 threadPool.submit(() -> {
                     final Pair<Integer, List<FileInformation>> infos = DriverManager_123pan.listFiles(configuration, directoryId, configuration.getWebSide().getFilePart().getDefaultLimitPerPage(), current, directoryPath, connection);
                     assert infos.getFirst().intValue() == fileCount;
-                    if (allFiles.size() > configuration.getWebSide().getFilePart().getDefaultLimitPerPage() << 1)
-                        try { // Frequency control.
+                    while (allFiles.size() > configuration.getWebSide().getFilePart().getDefaultLimitPerPage() << 1) // Frequency control.
+                        try {
                             TimeUnit.MILLISECONDS.sleep(100);
                         } catch (final InterruptedException ignore) {
                         }
@@ -170,7 +170,9 @@ public final class DriverManager_123pan {
             if (info != null)
                 return info;
         }
-        final long id = DriverManager_123pan.getFileId(configuration, path, f -> true, useCache, _connection, _threadPool);
+        final long id = DriverManager_123pan.getFileId(configuration, path, f -> true, false, _connection, _threadPool);
+        if (id < 0)
+            return null;
         final JSONObject data;
         try {
             data = DriverHelper_123pan.doGetFilesInformation(configuration, List.of(id));
@@ -191,7 +193,7 @@ public final class DriverManager_123pan {
         return file;
     }
 
-    public static void recursiveRefreshDirectory(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final @NotNull DrivePath directoryPath, final @Nullable Connection _connection, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
+    static void recursiveRefreshDirectory(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final @NotNull DrivePath directoryPath, final @Nullable Connection _connection, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
         final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
         final ExecutorService threadPool = Objects.requireNonNullElseGet(_threadPool, () -> Executors.newFixedThreadPool(GlobalConfiguration.getInstance().getThread_count()));
         try {
@@ -224,9 +226,9 @@ public final class DriverManager_123pan {
         }
     }
 
-    // Files manager.
+    // File Manager.
 
-    static @Nullable String doGetDownloadUrl(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean useCache, final @Nullable Connection _connection, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
+    static @Nullable String getDownloadUrl(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean useCache, final @Nullable Connection _connection, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
         final FileInformation info = DriverManager_123pan.getFileInformation(configuration, path, useCache, _connection, _threadPool);
         if (info == null)
             return null;
@@ -252,7 +254,7 @@ public final class DriverManager_123pan {
         return parentDirectoryId;
     }
 
-    static void createDirectory(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @Nullable Connection _connection) throws IllegalParametersException, IOException, SQLException {
+    static @NotNull FileInformation createDirectory(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @Nullable Connection _connection) throws IllegalParametersException, IOException, SQLException {
         final String newDirectoryName = path.getName();
         final DrivePath parentPath = path.getParent();
         final long parentDirectoryId = DriverManager_123pan.prepareUpload(configuration, parentPath, newDirectoryName, _connection);
@@ -261,6 +263,7 @@ public final class DriverManager_123pan {
         if (obj == null)
             throw new WrongResponseException("Abnormal data of 'fata/Info'.", data);
         DriverSqlHelper.insertFile(configuration.getLocalSide().getName(), obj, _connection);
+        return obj;
     }
 
     static @NotNull FileInformation uploadFile(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @NotNull InputStream stream, final @NotNull String md5, final long size, final @Nullable Connection _connection) throws IllegalParametersException, IOException, SQLException {
@@ -335,4 +338,12 @@ public final class DriverManager_123pan {
         return info;
     }
 
+    static void deleteFile(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @Nullable Connection _connection, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
+        final long id = DriverManager_123pan.getFileId(configuration, path, f -> true, true, _connection, _threadPool);
+        final JSONObject data = DriverHelper_123pan.doTrashFiles(configuration, List.of(id));
+        assert data.getJSONArray("InfoList") != null && data.getJSONArray("InfoList").size() == 1;
+        assert data.getJSONArray("InfoList").getJSONObject(0) != null
+                && Long.valueOf(id).equals(data.getJSONArray("InfoList").getJSONObject(0).getLong("FileId"));
+        DriverSqlHelper.deleteFileById(configuration.getLocalSide().getName(), id, _connection);
+    }
 }

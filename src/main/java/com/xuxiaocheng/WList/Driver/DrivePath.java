@@ -2,6 +2,7 @@ package com.xuxiaocheng.WList.Driver;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.UnmodifiableView;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -15,7 +16,7 @@ import java.util.stream.Stream;
 
 public class DrivePath implements Iterable<String> {
     protected static final Pattern Separator = Pattern.compile("[\\\\/]");
-    protected static @NotNull List<String> split(final @Nullable CharSequence path) {
+    protected static @NotNull @UnmodifiableView List<@NotNull String> split(final @Nullable CharSequence path) {
         if (path == null)
             return new ArrayList<>();
         return Stream.of(DrivePath.Separator.split(path))
@@ -35,7 +36,8 @@ public class DrivePath implements Iterable<String> {
     }
 
     public @NotNull DrivePath parent() {
-        this.path.remove(this.path.size() - 1);
+        if (!this.path.isEmpty())
+            this.path.remove(this.path.size() - 1);
         return this;
     }
 

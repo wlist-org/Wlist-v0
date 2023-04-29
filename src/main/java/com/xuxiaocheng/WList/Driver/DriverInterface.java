@@ -58,10 +58,10 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     /**
      * Create a new empty directory.
      * @param path The directory path to create.
-     * @return True means something modified in web side. Notice: whether true or false, this directory must be existent.
+     * @return The information of new directory.
      * @throws Exception Something went wrong.
      */
-    boolean mkdirs(final @NotNull DrivePath path) throws Exception;
+    @NotNull FileInformation mkdirs(final @NotNull DrivePath path) throws Exception;
 
     /**
      * Upload small file to path. (! Only small file)
