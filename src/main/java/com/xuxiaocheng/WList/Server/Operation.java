@@ -20,15 +20,16 @@ public final class Operation {
         Undefined,
         Login,
         Registry,
+        ChangePassword,
+        Logoff,
         AddPermission,
         ReducePermission,
-//        List,
+        ListFiles,
     }
 
     public enum Permission {
         Undefined,
         UsersList,
-        UsersAdd,
         UsersDelete,
         UsersChangePermissions,
         FilesList,

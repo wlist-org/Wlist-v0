@@ -26,6 +26,10 @@ public final class UserSqlHelper {
 
     // Util
 
+    private static @NotNull String encryptPassword(final @NotNull String password) {
+        return MiscellaneousUtil.getMd5((password + /*UserSqlHelper.ServerPasswordSlat*/"With Server:SALT***#WListServer%CreateBy@XXC#***TokenMD5&SALT").getBytes(StandardCharsets.UTF_8));
+    }
+
     private static @NotNull String generateRandomPassword() {
         final char[] word = new char[8];
         //noinspection SpellCheckingInspection
@@ -33,12 +37,12 @@ public final class UserSqlHelper {
         return new String(word);
     }
 
-    private static @NotNull String encryptPassword(final @NotNull String password) {
-        return MiscellaneousUtil.getMd5((password + /*UserSqlHelper.ServerPasswordSlat*/"With Server:SALT***#WListServer%CreateBy@XXC#***TokenMD5&SALT").getBytes(StandardCharsets.UTF_8));
-    }
-
     private static @NotNull String getModifyTime() {
         return LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+    }
+
+    public static boolean checkPassword(final @NotNull String source, final @NotNull String encrypted) {
+        return UserSqlHelper.encryptPassword(source).equals(encrypted);
     }
 
     // Helper
@@ -117,9 +121,10 @@ public final class UserSqlHelper {
                 try (final PreparedStatement statement = connection.prepareStatement("""
                             UPDATE users SET password = ?, modify_time = ? WHERE username == ?;
                             """)) {
-                    statement.setString(1, password);
+                    statement.setString(1, UserSqlHelper.encryptPassword(password));
                     statement.setString(2, UserSqlHelper.getModifyTime());
                     statement.setString(3, username);
+                    statement.executeUpdate();
                 }
             if (permissions != null)
                 try (final PreparedStatement statement = connection.prepareStatement("""
@@ -128,6 +133,7 @@ public final class UserSqlHelper {
                     statement.setString(1, Operation.dumpPermissions(permissions));
                     statement.setString(2, UserSqlHelper.getModifyTime());
                     statement.setString(3, username);
+                    statement.executeUpdate();
                 }
             connection.commit();
         }

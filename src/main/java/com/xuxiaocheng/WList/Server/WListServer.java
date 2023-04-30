@@ -28,7 +28,9 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.EventExecutorGroup;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.IOException;
 import java.net.SocketAddress;
+import java.sql.SQLException;
 
 public class WListServer {
     private static final @NotNull HLog logger = HLog.createInstance("ServerLogger",
@@ -108,9 +110,8 @@ public class WListServer {
             ServerHandler.doInactive(id);
         }
 
-        @SuppressWarnings("OverlyBroadThrowsClause")
         @Override
-        protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) throws Exception {
+        protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) throws IOException, SQLException {
             final Channel channel = ctx.channel();
             WListServer.logger.log(HLogLevel.VERBOSE, "Read: ", channel.id().asLongText(), " len: ", msg.readableBytes());
             final Operation.Type type = Operation.TypeMap.get(ByteBufIOUtil.readUTF(msg));
@@ -119,6 +120,8 @@ public class WListServer {
                     case Undefined -> throw new IllegalNetworkDataException("Undefined operation!");
                     case Login -> ServerHandler.doLogin(msg, channel);
                     case Registry -> ServerHandler.doRegister(msg, channel);
+                    case ChangePassword -> ServerHandler.doChangePassword(msg, channel);
+                    case Logoff -> ServerHandler.doLogoff(msg, channel);
                     case AddPermission -> ServerHandler.doChangePermission(msg, channel, true);
                     case ReducePermission -> ServerHandler.doChangePermission(msg, channel, false);
 //                case List -> ServerHandler.doList(msg, channel);

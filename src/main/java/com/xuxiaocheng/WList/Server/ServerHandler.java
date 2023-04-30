@@ -1,6 +1,6 @@
 package com.xuxiaocheng.WList.Server;
 
-import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.WList.Exceptions.IllegalNetworkDataException;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
@@ -9,12 +9,24 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelId;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.UnmodifiableView;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
 import java.util.SortedSet;
+import java.util.TreeSet;
 
-final class ServerHandler {
+public final class ServerHandler {
+    public static final @NotNull @UnmodifiableView SortedSet<Operation.@NotNull Permission> AdminPermission =
+            Collections.unmodifiableSortedSet(new TreeSet<>(Arrays.stream(Operation.Permission.values()).filter(p -> p != Operation.Permission.Undefined).toList()));
+    public static final @NotNull @UnmodifiableView SortedSet<Operation.@NotNull Permission> DefaultPermission =
+            Collections.unmodifiableSortedSet(new TreeSet<>(List.of(Operation.Permission.FilesList)));
+
     private ServerHandler() {
         super();
     }
@@ -25,59 +37,88 @@ final class ServerHandler {
     public static void doInactive(final ChannelId ignoredId) {
     }
 
-    private static void writeOnlyState(final @NotNull Channel channel, final @NotNull Operation.State state) throws IOException {
+    private static void writeMessage(final @NotNull Channel channel, final @NotNull Operation.State state, final @Nullable String message) throws IOException {
         final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
         ByteBufIOUtil.writeUTF(buffer, state.name());
+        if (message != null)
+            ByteBufIOUtil.writeUTF(buffer, message);
         channel.writeAndFlush(buffer);
     }
 
     public static void doException(final @NotNull Channel channel, final @NotNull IllegalNetworkDataException exception) throws IOException {
-        final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
-        ByteBufIOUtil.writeUTF(buffer, Operation.State.ServerError.name());
-        ByteBufIOUtil.writeUTF(buffer, exception.getMessage());
-        channel.writeAndFlush(buffer);
+        ServerHandler.writeMessage(channel, Operation.State.ServerError, Objects.requireNonNullElse(exception.getMessage(), ""));
     }
 
     public static void doLogin(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, SQLException {
-        final String token = UserManager.doLogin(buf);
-        if (token == null) {
-            ServerHandler.writeOnlyState(channel, Operation.State.DataError);
+        final String username = ByteBufIOUtil.readUTF(buf);
+        final String password = ByteBufIOUtil.readUTF(buf);
+        final Triad<String, SortedSet<Operation.Permission>, LocalDateTime> user = UserSqlHelper.selectUser(username);
+        if (user == null || !UserSqlHelper.checkPassword(password, user.getA())) {
+            ServerHandler.writeMessage(channel, Operation.State.DataError, null);
             return;
         }
-        final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
-        ByteBufIOUtil.writeUTF(buffer, Operation.State.Success.name());
-        ByteBufIOUtil.writeUTF(buffer, token);
-        channel.writeAndFlush(buffer);
+        final String token = UserTokenHelper.encodeToken(username, user.getC());
+        ServerHandler.writeMessage(channel, Operation.State.Success, token);
     }
 
     public static void doRegister(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, SQLException {
-        if (UserManager.doRegister(buf))
-            ServerHandler.writeOnlyState(channel, Operation.State.Success);
+        final String username = ByteBufIOUtil.readUTF(buf);
+        final String password = ByteBufIOUtil.readUTF(buf);
+        if (UserSqlHelper.insertUser(username, password, ServerHandler.DefaultPermission))
+            ServerHandler.writeMessage(channel, Operation.State.Success, null);
         else
-            ServerHandler.writeOnlyState(channel, Operation.State.DataError);
+            ServerHandler.writeMessage(channel, Operation.State.DataError, null);
     }
 
-    private static @Nullable Pair<@NotNull String, @NotNull SortedSet<Operation.@NotNull Permission>> checkPermission(final @NotNull ByteBuf buf, final @NotNull Channel channel, final @NotNull Operation.Permission permission) throws IOException, SQLException {
+    public static void doChangePassword(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, SQLException {
         final String token = ByteBufIOUtil.readUTF(buf);
-        final Pair<String, SortedSet<Operation.Permission>> user = UserTokenHelper.resolveToken(token);
-        if (user == null || !user.getSecond().contains(permission)) {
-            ServerHandler.writeOnlyState(channel, Operation.State.NoPermission);
+        final String newPassword = ByteBufIOUtil.readUTF(buf);
+        final Triad<String, String, SortedSet<Operation.Permission>> user = UserTokenHelper.decodeToken(token);
+        if (user == null) {
+            ServerHandler.writeMessage(channel, Operation.State.DataError, null);
+            return;
+        }
+        UserSqlHelper.updateUser(user.getA(), newPassword, null);
+        ServerHandler.writeMessage(channel, Operation.State.Success, null);
+    }
+
+    public static void doLogoff(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, SQLException {
+        final String token = ByteBufIOUtil.readUTF(buf);
+        final String verifyingPassword = ByteBufIOUtil.readUTF(buf);
+        final Triad<String, String, SortedSet<Operation.Permission>> user = UserTokenHelper.decodeToken(token);
+        if (user == null) {
+            ServerHandler.writeMessage(channel, Operation.State.DataError, "Token");
+            return;
+        }
+        if (!UserSqlHelper.checkPassword(verifyingPassword, user.getB())) {
+            ServerHandler.writeMessage(channel, Operation.State.DataError, "Password");
+            return;
+        }
+        UserSqlHelper.deleteUser(user.getA());
+        ServerHandler.writeMessage(channel, Operation.State.Success, null);
+    }
+
+    private static @Nullable Triad<@NotNull String, @NotNull String, @NotNull SortedSet<Operation.@NotNull Permission>> checkPermission(final @NotNull ByteBuf buf, final @NotNull Channel channel, final @NotNull Operation.Permission permission) throws IOException, SQLException {
+        final String token = ByteBufIOUtil.readUTF(buf);
+        final Triad<String, String, SortedSet<Operation.Permission>> user = UserTokenHelper.decodeToken(token);
+        if (user == null || !user.getC().contains(permission)) {
+            ServerHandler.writeMessage(channel, Operation.State.NoPermission, null);
             return null;
         }
         return user;
     }
 
     public static void doChangePermission(final @NotNull ByteBuf buf, final @NotNull Channel channel, final boolean add) throws IOException, SQLException {
-        final Pair<@NotNull String, @NotNull SortedSet<Operation.@NotNull Permission>> user = ServerHandler.checkPermission(buf, channel, Operation.Permission.UsersChangePermissions);
+        final Triad<String, String, SortedSet<Operation.Permission>> user = ServerHandler.checkPermission(buf, channel, Operation.Permission.UsersChangePermissions);
         if (user == null)
             return;
-        final SortedSet<Operation.Permission> permissions = user.getSecond();
+        final SortedSet<Operation.Permission> permissions = user.getC();
         if (add)
             permissions.addAll(Operation.parsePermissions(ByteBufIOUtil.readUTF(buf)));
         else
             permissions.removeAll(Operation.parsePermissions(ByteBufIOUtil.readUTF(buf)));
-        UserSqlHelper.updateUser(user.getFirst(), null, permissions);
-        ServerHandler.writeOnlyState(channel, Operation.State.Success);
+        UserSqlHelper.updateUser(user.getA(), null, permissions);
+        ServerHandler.writeMessage(channel, Operation.State.Success, null);
     }
 
 //    public static void doList(final @NotNull ByteBuf buf, final Channel channel) {

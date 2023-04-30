@@ -3,15 +3,16 @@ package com.xuxiaocheng.WList;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HLoggerStream;
-import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.Configuration.GlobalConfiguration;
-import com.xuxiaocheng.WList.Server.UserManager;
+import com.xuxiaocheng.WList.Server.ServerHandler;
 import com.xuxiaocheng.WList.Server.UserSqlHelper;
+import com.xuxiaocheng.WList.Server.WListServer;
 
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.sql.SQLException;
 
 public final class WList {
@@ -26,15 +27,12 @@ public final class WList {
             WList.DebugMode ? Integer.MIN_VALUE : HLogLevel.DEBUG.getPriority() + 1,
             true, new HLoggerStream(true, !WList.DebugMode));
 
-    public static void main(final String[] args) throws IOException, SQLException, IllegalParametersException {
+    public static void main(final String[] args) throws IOException, SQLException, InterruptedException {
         WList.logger.log(HLogLevel.FINE, "Hello WList! Initializing...");
         GlobalConfiguration.init(new BufferedInputStream(new FileInputStream("config.yml")));
-        UserSqlHelper.init(UserManager.DefaultPermission, UserManager.AdminPermission);
-
-//        HLog.DefaultLogger.log("", );
-
-//        final WListServer server = new WListServer(new InetSocketAddress(GlobalConfiguration.getInstance().getPort()));
-//        server.start().syncUninterruptibly();
+        UserSqlHelper.init(ServerHandler.DefaultPermission, ServerHandler.AdminPermission);
+        final WListServer server = new WListServer(new InetSocketAddress(GlobalConfiguration.getInstance().getPort()));
+        server.start().syncUninterruptibly();
 
 //        final InputStream is = new BufferedInputStream(new FileInputStream("test.yml"));
 //        final DriverConfiguration_123Pan config = new Yaml().loadAs(is, DriverConfiguration_123Pan.class);
