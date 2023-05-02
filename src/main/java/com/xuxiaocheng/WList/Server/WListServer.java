@@ -65,14 +65,13 @@ public class WListServer {
             @Override
             protected void initChannel(final @NotNull SocketChannel ch) {
                 final ChannelPipeline pipeline = ch.pipeline();
-//                pipeline.addLast(new IdleStateHandler());
-                pipeline.addLast("Decoder", new LengthFieldBasedFrameDecoder(1 << 20, 0, 4, 0, 4));
-                pipeline.addLast("Encoder", new LengthFieldPrepender(4));
+                pipeline.addLast("LengthDecoder", new LengthFieldBasedFrameDecoder(1 << 20, 0, 4, 0, 4));
+                pipeline.addLast("LengthEncoder", new LengthFieldPrepender(4));
+//                pipeline.addLast("Cipher", new RsaServerCipher());
                 pipeline.addLast(WListServer.executors, "ServerHandler", new ServerChannelInboundHandler());
             }
         });
         this.channelFuture = serverBootstrap.bind(this.address).sync();
-        WListServer.logger.log(HLogLevel.VERBOSE, "WListServer started.");
         WListServer.logger.log(HLogLevel.INFO, "Listening on: ", this.address);
         return this.channelFuture.channel().closeFuture();
     }
@@ -114,8 +113,10 @@ public class WListServer {
         protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) throws IOException, SQLException {
             final Channel channel = ctx.channel();
             WListServer.logger.log(HLogLevel.VERBOSE, "Read: ", channel.id().asLongText(), " len: ", msg.readableBytes());
-            final Operation.Type type = Operation.TypeMap.get(ByteBufIOUtil.readUTF(msg));
             try {
+                final Operation.Type type = Operation.TypeMap.get(ByteBufIOUtil.readUTF(msg));
+                if (type == null)
+                    throw new IllegalNetworkDataException("Undefined operation!");
                 switch (type) {
                     case Undefined -> throw new IllegalNetworkDataException("Undefined operation!");
                     case Login -> ServerHandler.doLogin(msg, channel);
@@ -124,23 +125,30 @@ public class WListServer {
                     case Logoff -> ServerHandler.doLogoff(msg, channel);
                     case AddPermission -> ServerHandler.doChangePermission(msg, channel, true);
                     case ReducePermission -> ServerHandler.doChangePermission(msg, channel, false);
-//                case List -> ServerHandler.doList(msg, channel);
+    //                case List -> ServerHandler.doList(msg, channel);
                     // TODO
                 }
             } catch (final IllegalNetworkDataException exception) {
-                ServerHandler.doException(channel, exception);
+                throw exception;
+            } catch (final IOException exception) {
+                // ByteBufIOUtil
+                if (exception.getCause() instanceof IndexOutOfBoundsException)
+                    throw new IllegalNetworkDataException(exception.getCause());
+                throw exception;
             }
         }
 
         @Override
-        public void exceptionCaught(final @NotNull ChannelHandlerContext ctx, final Throwable cause) {
-            WListServer.logger.log(HLogLevel.ERROR, "Exception: ", ctx.channel().id().asLongText(), cause);
+        public void exceptionCaught(final @NotNull ChannelHandlerContext ctx, final Throwable cause) throws IOException {
+            WListServer.logger.log(HLogLevel.WARN, "Exception: ", ctx.channel().id().asLongText(), cause);
+            if (cause instanceof IllegalNetworkDataException networkDataException)
+                ServerHandler.doException(ctx.channel(), networkDataException);
 //            ctx.close();
         }
 
         @Override
         public @NotNull String toString() {
-            return "ServerChannelInboundHandler{}";
+            return "ServerChannelInboundHandler{" + super.toString() + '}';
         }
     }
 }

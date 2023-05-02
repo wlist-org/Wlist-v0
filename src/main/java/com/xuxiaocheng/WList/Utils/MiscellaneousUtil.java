@@ -1,13 +1,17 @@
 package com.xuxiaocheng.WList.Utils;
 
+import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Iterator;
@@ -48,6 +52,17 @@ public final class MiscellaneousUtil {
         }
         final BigInteger i = new BigInteger(1, md5.digest());
         return i.toString(16);
+    }
+
+    public static @NotNull KeyPair generateRsaKeyPair(final int keySize) {
+        final KeyPairGenerator generator;
+        try {
+            generator = KeyPairGenerator.getInstance("RSA");
+        } catch (final NoSuchAlgorithmException exception) {
+            throw new RuntimeException("Unreachable!", exception);
+        }
+        generator.initialize(keySize, (SecureRandom) HRandomHelper.RANDOM);
+        return generator.generateKeyPair();
     }
 
     public static <T> @NotNull Iterator<T> getEmptyIterator() {
