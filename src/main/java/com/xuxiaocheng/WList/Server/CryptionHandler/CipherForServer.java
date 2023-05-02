@@ -14,9 +14,9 @@ import java.security.KeyPair;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class RsaServerCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
-    private @Nullable RsaCipher cipher = null;
-    private final @NotNull AtomicBoolean allow = new AtomicBoolean(false);
+public class CipherForServer extends MessageToMessageCodec<ByteBuf, ByteBuf> {
+    private @Nullable AesCipher cipher = null;
+    private boolean allow = false;
     private final @NotNull AtomicBoolean uninitialized = new AtomicBoolean(true);
 
     @Override
@@ -26,10 +26,10 @@ public class RsaServerCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
     @Override
     protected void encode(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg, final @NotNull List<Object> out) throws IOException, InterruptedException {
         if (this.cipher == null) {
-            if (this.allow.get()) {
+            if (this.allow) {
                 msg.retain();
                 out.add(msg);
-                this.allow.set(false);
+                this.allow = false;
                 return;
             }
             synchronized (this.uninitialized) {
@@ -45,7 +45,7 @@ public class RsaServerCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
         if (this.cipher == null) {
             assert this.uninitialized.get();
             final String magic = ByteBufIOUtil.readUTF(msg);
-            if (!"WList/RSA".equals(magic)) {
+            if (!"WList/Cipher".equals(magic)) {
                 ctx.close();
                 return;
             }
@@ -53,9 +53,9 @@ public class RsaServerCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
             final KeyPair keys = MiscellaneousUtil.generateRsaKeyPair(1024);
             final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
             ByteBufIOUtil.writeByteArray(buffer, keys.getPublic().getEncoded());
-            this.allow.set(true);
+            this.allow = true;
             ctx.channel().writeAndFlush(buffer);
-            this.cipher = new RsaCipher(keys.getPrivate());
+            this.cipher = new AesCipher(keys.getPrivate());
             synchronized (this.uninitialized) {
                 this.uninitialized.set(false);
                 this.uninitialized.notifyAll();
@@ -66,7 +66,7 @@ public class RsaServerCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
 
     @Override
     public @NotNull String toString() {
-        return "RsaServerCipher{" +
+        return "CipherForServer{" +
                 "cipher=" + this.cipher +
                 "} (" + super.toString() + ')';
     }

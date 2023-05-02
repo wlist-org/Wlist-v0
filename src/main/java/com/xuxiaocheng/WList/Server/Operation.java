@@ -24,6 +24,7 @@ public final class Operation {
         Logoff,
         AddPermission,
         ReducePermission,
+        ListDrivers,
         ListFiles,
     }
 
@@ -32,6 +33,7 @@ public final class Operation {
         UsersList,
         UsersDelete,
         UsersChangePermissions,
+        DriversList,
         FilesList,
     }
 

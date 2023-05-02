@@ -4,9 +4,11 @@ import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
+import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
@@ -16,6 +18,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.Random;
 
 public final class MiscellaneousUtil {
     private MiscellaneousUtil() {
@@ -63,6 +66,12 @@ public final class MiscellaneousUtil {
         }
         generator.initialize(keySize, (SecureRandom) HRandomHelper.RANDOM);
         return generator.generateKeyPair();
+    }
+
+    public static @NotNull Key generateAesKey(final long seed) {
+        final byte[] key = new byte[32];
+        new Random(seed).nextBytes(key);
+        return new SecretKeySpec(key, "AES");
     }
 
     public static <T> @NotNull Iterator<T> getEmptyIterator() {

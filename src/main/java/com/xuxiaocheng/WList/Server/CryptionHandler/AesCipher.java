@@ -20,20 +20,31 @@ import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
-class RsaCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
+public class AesCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
     protected final @NotNull Cipher decryptCipher;
     protected final @NotNull Cipher encryptCipher;
 
-    protected RsaCipher(final @NotNull Key key) {
+    public AesCipher(final @NotNull Key key) {
         super();
         try {
-            this.decryptCipher = Cipher.getInstance("RSA");
+            this.decryptCipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
             this.decryptCipher.init(Cipher.DECRYPT_MODE, key);
-            this.encryptCipher = Cipher.getInstance("RSA");
+            this.encryptCipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
             this.encryptCipher.init(Cipher.ENCRYPT_MODE, key);
         } catch (final NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException exception) {
             throw new RuntimeException("Unreachable!", exception);
         }
+    }
+
+    @Override
+    protected void encode(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg, final @NotNull List<Object> out) throws IOException {
+        final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(msg.readableBytes() << 1);
+        try (final InputStream inputStream = new CipherInputStream(new ByteBufInputStream(msg), this.encryptCipher)) {
+            try (final OutputStream outputStream = new ByteBufOutputStream(buffer)) {
+                inputStream.transferTo(outputStream);
+            }
+        }
+        out.add(buffer);
     }
 
     @Override
@@ -48,18 +59,7 @@ class RsaCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
     }
 
     @Override
-    protected void encode(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg, final @NotNull List<Object> out) throws IOException {
-        final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(msg.readableBytes() << 1);
-        try (final OutputStream outputStream = new ByteBufOutputStream(buffer)) {
-            try (final InputStream inputStream = new CipherInputStream(new ByteBufInputStream(msg), this.encryptCipher)) {
-                inputStream.transferTo(outputStream);
-            }
-        }
-        out.add(buffer);
-    }
-
-    @Override
     public @NotNull String toString() {
-        return "RsaCipher{" + super.toString() + '}';
+        return "AesCipher{" + super.toString() + '}';
     }
 }

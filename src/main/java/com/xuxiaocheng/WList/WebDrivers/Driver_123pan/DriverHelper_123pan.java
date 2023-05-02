@@ -144,7 +144,6 @@ public final class DriverHelper_123pan {
         final Long refresh = data.getLong("refresh_token_expire_time");
         if (refresh == null)
             throw new WrongResponseException("No refresh time in response.");
-        // TODO: time zone ?
         configuration.getCacheSide().setRefreshExpireTime(LocalDateTime.ofEpochSecond(refresh.longValue(), 0, ZoneOffset.ofHours(8)));
     }
 

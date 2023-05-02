@@ -4,6 +4,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HLoggerStream;
 import com.xuxiaocheng.WList.Exceptions.IllegalNetworkDataException;
+import com.xuxiaocheng.WList.Server.CryptionHandler.AesCipher;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.WList;
 import io.netty.bootstrap.ServerBootstrap;
@@ -67,7 +68,7 @@ public class WListServer {
                 final ChannelPipeline pipeline = ch.pipeline();
                 pipeline.addLast("LengthDecoder", new LengthFieldBasedFrameDecoder(1 << 20, 0, 4, 0, 4));
                 pipeline.addLast("LengthEncoder", new LengthFieldPrepender(4));
-//                pipeline.addLast("Cipher", new RsaServerCipher());
+                pipeline.addLast("ServerCipher", new AesCipher(WList.key));
                 pipeline.addLast(WListServer.executors, "ServerHandler", new ServerChannelInboundHandler());
             }
         });
@@ -125,7 +126,7 @@ public class WListServer {
                     case Logoff -> ServerHandler.doLogoff(msg, channel);
                     case AddPermission -> ServerHandler.doChangePermission(msg, channel, true);
                     case ReducePermission -> ServerHandler.doChangePermission(msg, channel, false);
-    //                case List -> ServerHandler.doList(msg, channel);
+                    case ListDrivers -> ServerHandler.doListDrivers(msg, channel);
                     // TODO
                 }
             } catch (final IllegalNetworkDataException exception) {

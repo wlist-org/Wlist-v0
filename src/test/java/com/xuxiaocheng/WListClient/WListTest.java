@@ -1,7 +1,6 @@
 package com.xuxiaocheng.WListClient;
 
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
-import com.xuxiaocheng.WList.Server.Configuration.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.ServerHandler;
 import com.xuxiaocheng.WList.Server.UserSqlHelper;
 import com.xuxiaocheng.WList.Server.WListServer;
@@ -12,24 +11,23 @@ import io.netty.channel.Channel;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 
-import java.io.BufferedInputStream;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class WListTest {
     @Test
     public void server() throws InterruptedException, IOException, SQLException {
-        GlobalConfiguration.init(new BufferedInputStream(new FileInputStream("run/config.yml")));
         UserSqlHelper.init(ServerHandler.DefaultPermission, ServerHandler.AdminPermission);
-        final WListServer server = new WListServer(new InetSocketAddress(GlobalConfiguration.getInstance().getPort()));
+        final WListServer server = new WListServer(new InetSocketAddress(5212));
         server.start();
         final WListClient client = new WListClient(new InetSocketAddress(5212));
         client.start();
+        HLog.DefaultLogger.log("FINE", "**********START!**********");
         this.client(client.getChannel());
-        HLog.DefaultLogger.log("MISTAKE", "FINISH!");
+        HLog.DefaultLogger.log("FINE", "**********FINISH!**********");
         client.stop();
         server.stop();
     }
@@ -39,14 +37,13 @@ public class WListTest {
         final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
         ByteBufIOUtil.writeUTF(buffer, "Login");
         ByteBufIOUtil.writeUTF(buffer, "admin");
-        ByteBufIOUtil.writeUTF(buffer, "hxCi9BvH");
+        ByteBufIOUtil.writeUTF(buffer, "XdWpP1Ow");
         channel.writeAndFlush(buffer);
         synchronized (WListTest.lock) {
-            while (WListTest.wait)
+            while (WListTest.lock.get())
                 WListTest.lock.wait();
         }
     }
 
-    protected static volatile boolean wait = true;
-    protected static final Object lock = new Object();
+    static final AtomicBoolean lock = new AtomicBoolean(true);
 }

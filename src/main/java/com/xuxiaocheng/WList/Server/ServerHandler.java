@@ -121,8 +121,16 @@ public final class ServerHandler {
         ServerHandler.writeMessage(channel, Operation.State.Success, null);
     }
 
-//    public static void doList(final @NotNull ByteBuf buf, final Channel channel) {
-//        if (token == null || Token.NullToken.equals(token))
-//            throw new IllegalStateException("Operate without token!");
+    public static void doListDrivers(final @NotNull ByteBuf buf, final Channel channel) throws IOException, SQLException {
+        final Triad<String, String, SortedSet<Operation.Permission>> user = ServerHandler.checkPermission(buf, channel, Operation.Permission.DriversList);
+        if (user == null)
+            return;
+
+    }
+
+//    public static void doListFiles(final @NotNull ByteBuf buf, final Channel channel) throws IOException, SQLException {
+//        final Triad<String, String, SortedSet<Operation.Permission>> user = ServerHandler.checkPermission(buf, channel, Operation.Permission.FilesList);
+//        if (user == null)
+//            return;
 //    }
 }

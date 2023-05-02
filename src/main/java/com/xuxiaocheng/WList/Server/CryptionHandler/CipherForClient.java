@@ -17,17 +17,17 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class RsaClientCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
-    private @Nullable RsaCipher cipher = null;
-    private final @NotNull AtomicBoolean allow = new AtomicBoolean(false);
+public class CipherForClient extends MessageToMessageCodec<ByteBuf, ByteBuf> {
+    private @Nullable AesCipher cipher = null;
+    private boolean allow = false;
     private final @NotNull AtomicBoolean uninitialized = new AtomicBoolean(true);
 
     @Override
     public void channelActive(final @NotNull ChannelHandlerContext ctx) throws IOException {
         if (this.cipher == null) {
             final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
-            ByteBufIOUtil.writeUTF(buffer, "WList/RSA");
-            this.allow.set(true);
+            ByteBufIOUtil.writeUTF(buffer, "WList/Cipher");
+            this.allow = true;
             ctx.channel().writeAndFlush(buffer);
         }
     }
@@ -35,10 +35,10 @@ public class RsaClientCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
     @Override
     protected void encode(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg, final @NotNull List<Object> out) throws IOException, InterruptedException {
         if (this.cipher == null) {
-            if (this.allow.get()) {
+            if (this.allow) {
                 msg.retain();
                 out.add(msg);
-                this.allow.set(false);
+                this.allow = false;
                 return;
             }
             synchronized (this.uninitialized) {
@@ -60,7 +60,7 @@ public class RsaClientCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
             } catch (final InvalidKeySpecException | NoSuchAlgorithmException exception) {
                 throw new RuntimeException("Unreachable!", exception);
             }
-            this.cipher = new RsaCipher(key);
+            this.cipher = new AesCipher(key);
             synchronized (this.uninitialized) {
                 this.uninitialized.set(false);
                 this.uninitialized.notifyAll();
@@ -72,7 +72,7 @@ public class RsaClientCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
 
     @Override
     public @NotNull String toString() {
-        return "RsaClientCipher{" +
+        return "CipherForClient{" +
                 "cipher=" + this.cipher +
                 "} (" + super.toString() + ')';
     }

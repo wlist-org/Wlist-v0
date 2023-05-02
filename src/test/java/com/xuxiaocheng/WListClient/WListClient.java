@@ -3,6 +3,7 @@ package com.xuxiaocheng.WListClient;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HLoggerStream;
+import com.xuxiaocheng.WList.Server.CryptionHandler.AesCipher;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.WList;
 import io.netty.bootstrap.Bootstrap;
@@ -57,7 +58,7 @@ public class WListClient {
                 final ChannelPipeline pipeline = ch.pipeline();
                 pipeline.addLast("LengthDecoder", new LengthFieldBasedFrameDecoder(1 << 20, 0, 4, 0, 4));
                 pipeline.addLast("LengthEncoder", new LengthFieldPrepender(4));
-//                pipeline.addLast("Cipher", new RsaClientCipher());
+                pipeline.addLast("ClientCipher", new AesCipher(WList.key));
                 pipeline.addLast("ClientHandler", new ClientChannelInboundHandler());
             }
         });
@@ -91,9 +92,16 @@ public class WListClient {
                 }
             }
             synchronized (WListTest.lock) {
-                WListTest.wait = false;
+                WListTest.lock.set(false);
                 WListTest.lock.notifyAll();
             }
         }
+    }
+
+    @Override
+    public @NotNull String toString() {
+        return "WListClient{" +
+                "address=" + this.address +
+                '}';
     }
 }
