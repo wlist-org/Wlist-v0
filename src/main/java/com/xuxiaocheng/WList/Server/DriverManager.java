@@ -4,6 +4,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Driver.DriverConfiguration;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
+import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.Configuration.FieldOrderRepresenter;
 import com.xuxiaocheng.WList.Utils.DataBaseUtil;
 import com.xuxiaocheng.WList.WebDrivers.WebDriversRegisterer;
@@ -22,6 +23,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -29,7 +32,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Supplier;
 
 public final class DriverManager {
@@ -40,52 +45,76 @@ public final class DriverManager {
     private static final @NotNull Map<@NotNull String, @NotNull String> driverTypes = new HashMap<>();
     private static final @NotNull Map<@NotNull String, @NotNull DriverInterface<?>> drivers = new HashMap<>();
 
-    public static void init() throws SQLException, IOException {
+    private static @NotNull File getConfigPath(final @NotNull String name) {
+        return new File("configs", name + ".yml");
+    }
+
+    public static void init() throws SQLException {
         DriverManager.driverTypes.clear();
         DriverManager.drivers.clear();
         DriverManager.sqlInit();
-        DriverManager.driverTypes.putAll(DriverManager.sqlSelectAllDrivers());
-        for (final Map.Entry<String, String> entry: DriverManager.driverTypes.entrySet())
-            DriverManager.add(entry.getKey(), entry.getValue());
+        for (final Map.Entry<String, String> entry: DriverManager.sqlSelectAllDrivers().entrySet())
+            try {
+                DriverManager.add(entry.getKey(), entry.getValue());
+            } catch (final IllegalParametersException exception) {
+                HLog.DefaultLogger.log(HLogLevel.WARN, exception);
+                DriverManager.sqlDeleteDriver(entry.getKey());
+            } catch (final SQLException | IOException exception) {
+                HLog.DefaultLogger.log(HLogLevel.ERROR, "entry: ", entry, exception);
+            }
     }
 
-    @SuppressWarnings({"unchecked"})
-    public static boolean add(final @NotNull String name, final @NotNull String type) throws SQLException, IOException {
-        if (DriverManager.drivers.containsKey(name))
-            return false;
-        final String path = "configs/" + name + ".yml";
-        final Supplier<DriverInterface<?>> supplier = WebDriversRegisterer.DriversMap.get(type);
-        if (supplier == null) {
-            HLog.DefaultLogger.log(HLogLevel.WARN, "Unregistered driver. name: ", name, ", type: ", type);
-            DriverManager.sqlDeleteDriver(name);
-            return false;
-        }
-        final DriverInterface<?> driver = supplier.get();
-        DriverConfiguration<?, ?, ?> configuration = driver.getDefaultConfiguration();
+    @SuppressWarnings("unchecked")
+    public static void add(final @NotNull String name, final @NotNull String type) throws SQLException, IOException, IllegalParametersException {
+        if (DriverManager.driverTypes.containsKey(name) || DriverManager.drivers.containsKey(name))
+            throw new IllegalParametersException("Conflict driver name.");
+        final File path = DriverManager.getConfigPath(name);
+        if (!path.isFile())
+            throw new FileNotFoundException();
+        final DriverInterface<?> driver;
+        final DriverConfiguration<?, ?, ?> configuration;
         try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(path))) {
-            final DriverConfiguration<?, ?, ?> temp = (DriverConfiguration<?, ?, ?>) new Yaml().loadAs(inputStream, configuration.getClass());
-            if (temp != null)
-                configuration = temp;
-        } catch (final FileNotFoundException ignore) {
-            final File file = new File(path);
-            //noinspection unused
-            final boolean f = file.getParentFile().mkdirs() && file.createNewFile();
+            final Supplier<DriverInterface<?>> supplier = WebDriversRegisterer.DriversMap.get(type);
+            if (supplier == null) {
+                final Map<String, String> p = new LinkedHashMap<>();
+                p.put("name", name);
+                p.put("type", type);
+                throw new IllegalParametersException("Unregistered driver type.", p);
+            }
+            driver = supplier.get();
+            try {
+                configuration = (DriverConfiguration<?, ?, ?>) Objects.requireNonNullElseGet(new Yaml().loadAs(inputStream, driver.getDefaultConfigurationClass()), () -> {
+                    try {
+                        final Constructor<?> constructor = driver.getDefaultConfigurationClass().getConstructor();
+                        return constructor.newInstance();
+                    } catch (final NoSuchMethodException | InstantiationException | IllegalAccessException |
+                                   InvocationTargetException exception) {
+                        throw new RuntimeException(exception);
+                    }
+                });
+            } catch (final RuntimeException exception) {
+                if (exception.getCause() instanceof NoSuchMethodException)
+                    throw new IllegalParametersException("Need default constructor.", type);
+                if (exception.getCause() instanceof InstantiationException ||
+                        exception.getCause() instanceof IllegalAccessException ||
+                        exception.getCause() instanceof InvocationTargetException)
+                    throw new IllegalParametersException("Failed to get default configuration.", exception);
+                throw exception;
+            }
         }
         try {
             ((DriverInterface<DriverConfiguration<?,?,?>>) driver).login(configuration);
         } catch (final Exception exception) {
-            HLog.DefaultLogger.log("ERROR", exception);
-            return false;
+            throw new IllegalParametersException("Failed to login.", exception);
         }
         final Representer representer = new FieldOrderRepresenter();
         configuration.setConfigClassTag(representer);
         try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(path))) {
             outputStream.write(new Yaml(representer).dump(configuration).getBytes(StandardCharsets.UTF_8));
         }
-        if (!DriverManager.sqlInsertDriver(name, type))
-            return false;
+        DriverManager.driverTypes.put(name, type);
         DriverManager.drivers.put(name, driver);
-        return true;
+        DriverManager.sqlInsertDriver(name, type);
     }
 
     public static @Nullable DriverInterface<?> get(final @NotNull String name) {
@@ -98,8 +127,6 @@ public final class DriverManager {
         if (driver == null)
             return;
         driver.deleteDriver();
-        //noinspection ResultOfMethodCallIgnored
-        new File("config/" + name + ".yml").delete();
     }
 
     public static @NotNull @UnmodifiableView Map<@NotNull String, @NotNull String> getDriverTypes() {
@@ -123,20 +150,16 @@ public final class DriverManager {
         }
     }
 
-    private static boolean sqlInsertDriver(final @NotNull String name, final @NotNull String type) throws SQLException {
+    private static void sqlInsertDriver(final @NotNull String name, final @NotNull String type) throws SQLException {
         try (final Connection connection = DataBaseUtil.getDataInstance().getConnection()) {
             try (final PreparedStatement statement = connection.prepareStatement("""
-                        INSERT INTO drivers (name, type) VALUES (?, ?);
+                        INSERT INTO drivers (name, type) VALUES (?, ?)
+                        ON CONFLICT (name) DO UPDATE SET type = excluded.type;
                         """)) {
                 statement.setString(1, name);
                 statement.setString(2, type);
                 statement.executeUpdate();
-                return true;
             }
-        } catch (final SQLException exception) {
-            if (exception.getMessage().contains("UNIQUE"))
-                return false;
-            throw exception;
         }
     }
 

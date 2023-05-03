@@ -4,6 +4,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HLoggerStream;
 import com.xuxiaocheng.WList.Exceptions.IllegalNetworkDataException;
+import com.xuxiaocheng.WList.Exceptions.ServerException;
 import com.xuxiaocheng.WList.Server.CryptionHandler.AesCipher;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.WList;
@@ -111,11 +112,12 @@ public class WListServer {
         }
 
         @Override
-        protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) throws IOException, SQLException {
+        protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) throws IOException, SQLException, ServerException {
             final Channel channel = ctx.channel();
             WListServer.logger.log(HLogLevel.VERBOSE, "Read: ", channel.id().asLongText(), " len: ", msg.readableBytes());
             try {
                 final Operation.Type type = Operation.TypeMap.get(ByteBufIOUtil.readUTF(msg));
+                WListServer.logger.log(HLogLevel.DEBUG, "Type: ", channel.id().asLongText(), " type: ", type);
                 if (type == null)
                     throw new IllegalNetworkDataException("Undefined operation!");
                 switch (type) {
@@ -127,8 +129,11 @@ public class WListServer {
                     case AddPermission -> ServerHandler.doChangePermission(msg, channel, true);
                     case ReducePermission -> ServerHandler.doChangePermission(msg, channel, false);
                     case ListDrivers -> ServerHandler.doListDrivers(msg, channel);
-                    // TODO
+                    case ListFiles -> ServerHandler.doListFiles(msg, channel);
+                    case DownloadFile -> ServerHandler.doDownloadFile(msg, channel);
                 }
+                if (msg.readableBytes() != 0)
+                    WListServer.logger.log(HLogLevel.MISTAKE, "Unexpected discarded bytes: ", channel.id().asLongText(), " len: ", msg.readableBytes());
             } catch (final IllegalNetworkDataException exception) {
                 throw exception;
             } catch (final IOException exception) {
@@ -140,10 +145,12 @@ public class WListServer {
         }
 
         @Override
-        public void exceptionCaught(final @NotNull ChannelHandlerContext ctx, final Throwable cause) throws IOException {
+        public void exceptionCaught(final @NotNull ChannelHandlerContext ctx, final Throwable cause) {
             WListServer.logger.log(HLogLevel.WARN, "Exception: ", ctx.channel().id().asLongText(), cause);
             if (cause instanceof IllegalNetworkDataException networkDataException)
                 ServerHandler.doException(ctx.channel(), networkDataException);
+            else if (cause instanceof ServerException serverException)
+                ServerHandler.doException(ctx.channel(), serverException);
             else
                 ServerHandler.doException(ctx.channel(), null);
         }

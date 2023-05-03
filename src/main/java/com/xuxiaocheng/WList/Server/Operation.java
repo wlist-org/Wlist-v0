@@ -27,6 +27,7 @@ public final class Operation {
         ReducePermission,
         ListDrivers,
         ListFiles,
+        DownloadFile,
     }
 
     public enum Permission {
@@ -36,6 +37,7 @@ public final class Operation {
         UsersChangePermissions,
         DriversList,
         FilesList,
+        FileDownload,
     }
 
     public enum State {

@@ -4,7 +4,6 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HLoggerStream;
 import com.xuxiaocheng.WList.Server.CryptionHandler.AesCipher;
-import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.WList;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
@@ -22,7 +21,6 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.TestOnly;
 
 import java.io.IOException;
 import java.net.SocketAddress;
@@ -67,7 +65,6 @@ public class WListClient {
         return this.channelFuture.channel().closeFuture();
     }
 
-    @TestOnly
     public synchronized Channel getChannel() {
         return this.channelFuture.channel();
     }
@@ -83,18 +80,8 @@ public class WListClient {
 
     public static class ClientChannelInboundHandler extends SimpleChannelInboundHandler<ByteBuf> {
         @Override
-        protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) {
-            while (true) {
-                try {
-                    HLog.DefaultLogger.log("FINE", ByteBufIOUtil.readUTF(msg));
-                } catch (final IOException exception) {
-                    break;
-                }
-            }
-            synchronized (WListTest.lock) {
-                WListTest.lock.set(false);
-                WListTest.lock.notifyAll();
-            }
+        protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) throws IOException {
+            WListTest.client(msg);
         }
     }
 

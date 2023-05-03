@@ -1,8 +1,17 @@
 package com.xuxiaocheng.WList.Server;
 
+import com.alibaba.fastjson2.JSON;
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.Driver.DrivePath;
+import com.xuxiaocheng.WList.Driver.DriverInterface;
+import com.xuxiaocheng.WList.Driver.FileInformation;
+import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
+import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
+import com.xuxiaocheng.WList.Exceptions.ServerException;
+import com.xuxiaocheng.WList.Server.Configuration.GlobalConfiguration;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -15,12 +24,16 @@ import org.jetbrains.annotations.UnmodifiableView;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 public final class ServerHandler {
     public static final @NotNull @UnmodifiableView SortedSet<Operation.@NotNull Permission> AdminPermission =
@@ -104,10 +117,10 @@ public final class ServerHandler {
         ServerHandler.writeMessage(channel, Operation.State.Success, null);
     }
 
-    private static @Nullable Triad<@NotNull String, @NotNull String, @NotNull SortedSet<Operation.@NotNull Permission>> getAndCheckPermission(final @NotNull ByteBuf buf, final @NotNull Channel channel, final @Nullable Operation.Permission permission) throws IOException, SQLException {
+    private static @Nullable Triad<@NotNull String, @NotNull String, @NotNull SortedSet<Operation.@NotNull Permission>> getAndCheckPermission(final @NotNull ByteBuf buf, final @NotNull Channel channel, final @Nullable Operation.Permission... permission) throws IOException, SQLException {
         final String token = ByteBufIOUtil.readUTF(buf);
         final Triad<String, String, SortedSet<Operation.Permission>> user = UserTokenHelper.decodeToken(token);
-        if (user == null || (permission != null && !user.getC().contains(permission))) {
+        if (user == null || (permission != null && !user.getC().containsAll(List.of(permission)))) {
             ServerHandler.writeMessage(channel, Operation.State.NoPermission, null);
             return null;
         }
@@ -142,12 +155,79 @@ public final class ServerHandler {
         final Triad<String, String, SortedSet<Operation.Permission>> user = ServerHandler.getAndCheckPermission(buf, channel, Operation.Permission.DriversList);
         if (user == null)
             return;
-
+        ServerHandler.writeMessage(channel, Operation.State.Success, JSON.toJSONString(DriverManager.getDriverTypes().keySet()));
     }
 
-//    public static void doListFiles(final @NotNull ByteBuf buf, final Channel channel) throws IOException, SQLException {
-//        final Triad<String, String, SortedSet<Operation.Permission>> user = ServerHandler.checkPermission(buf, channel, Operation.Permission.FilesList);
-//        if (user == null)
-//            return;
-//    }
+    private static @Nullable Pair<@NotNull DriverInterface<?>, @NotNull DrivePath> getDriverPath(final @NotNull ByteBuf buf, final @NotNull Channel channel, final @Nullable Operation.Permission... permission) throws IOException, SQLException {
+        if (ServerHandler.getAndCheckPermission(buf, channel, permission) == null)
+            return null;
+        final String name = ByteBufIOUtil.readUTF(buf);
+        final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buf));
+        final DriverInterface<?> driver = DriverManager.get(name);
+        if (driver == null) {
+            ServerHandler.writeMessage(channel, Operation.State.DataError, "Driver");
+            return null;
+        }
+        return Pair.makePair(driver, path);
+    }
+
+    public static void doListFiles(final @NotNull ByteBuf buf, final Channel channel) throws IOException, SQLException, ServerException {
+        final Pair<DriverInterface<?>, DrivePath> path = ServerHandler.getDriverPath(buf, channel, Operation.Permission.FilesList);
+        if (path == null)
+            return;
+        final int limit = ByteBufIOUtil.readVariableLenInt(buf);
+        final int page = ByteBufIOUtil.readVariableLenInt(buf);
+        final String direction = ByteBufIOUtil.readUTF(buf);
+        final String policy = ByteBufIOUtil.readUTF(buf);
+        final OrderDirection orderDirection = OrderDirection.Map.get(direction);
+        final OrderPolicy orderPolicy = OrderPolicy.Map.get(policy);
+        if (limit < 1 || limit > GlobalConfiguration.getInstance().getMax_limit() || page < 0
+                || (orderDirection == null && !"D".equals(direction))
+                || (orderPolicy == null && !"D".equals(policy))) {
+            ServerHandler.writeMessage(channel, Operation.State.DataError, "Page");
+            return;
+        }
+        final Pair<Integer, List<FileInformation>> list;
+        try {
+            list = path.getFirst().list(path.getSecond(), limit, page, orderDirection, orderPolicy);
+        } catch (final Exception exception) {
+            throw new ServerException(exception);
+        }
+        if (list == null) {
+            ServerHandler.writeMessage(channel, Operation.State.DataError, "Directory");
+            return;
+        }
+        final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
+        ByteBufIOUtil.writeUTF(buffer, Operation.State.Success.name());
+        ByteBufIOUtil.writeVariableLenInt(buffer, list.getFirst().intValue());
+        ByteBufIOUtil.writeUTF(buffer, JSON.toJSONString(list.getSecond().stream().map(f -> {
+            final Map<String, Object> map = new HashMap<>(4);
+            map.put("name", f.path().getName());
+            map.put("size", f.size());
+            if (f.createTime() != null)
+                map.put("create_time", f.createTime().format(DateTimeFormatter.ISO_DATE_TIME));
+            if (f.updateTime() != null)
+                map.put("update_time", f.updateTime().format(DateTimeFormatter.ISO_DATE_TIME));
+            return map;
+        }).collect(Collectors.toSet())));
+        channel.writeAndFlush(buffer);
+    }
+
+    public static void doDownloadFile(final @NotNull ByteBuf buf, final Channel channel) throws IOException, SQLException, ServerException {
+        final Pair<DriverInterface<?>, DrivePath> path = ServerHandler.getDriverPath(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileDownload);
+        if (path == null)
+            return;
+        final String link;
+        try {
+            link = path.getFirst().download(path.getSecond());
+        } catch (final Exception exception) {
+            throw new ServerException(exception);
+        }
+        if (link == null) {
+            ServerHandler.writeMessage(channel, Operation.State.DataError, "File");
+            return;
+        }
+        ServerHandler.writeMessage(channel, Operation.State.Success, link);
+    }
+
 }

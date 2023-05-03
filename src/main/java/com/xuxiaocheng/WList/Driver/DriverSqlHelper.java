@@ -1,5 +1,8 @@
 package com.xuxiaocheng.WList.Driver;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
+import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import com.xuxiaocheng.WList.Utils.DataBaseUtil;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import org.jetbrains.annotations.NotNull;
@@ -45,6 +48,16 @@ public final class DriverSqlHelper {
                 LocalDateTime.parse(result.getString("create_time"), DateTimeFormatter.ISO_LOCAL_DATE_TIME),
                 LocalDateTime.parse(result.getString("update_time"), DateTimeFormatter.ISO_LOCAL_DATE_TIME),
                 result.getString("tag"), result.getString("others"));
+    }
+
+    private static @NotNull @UnmodifiableView List<@NotNull FileInformation> createFilesInfo(final @NotNull ResultSet result) throws SQLException {
+        final List<FileInformation> list = new ArrayList<>();
+        FileInformation info = DriverSqlHelper.createNextFileInfo(result);
+        while (info != null) {
+            list.add(info);
+            info = DriverSqlHelper.createNextFileInfo(result);
+        }
+        return list;
     }
 
     // Initiate
@@ -292,15 +305,9 @@ public final class DriverSqlHelper {
             final List<List<FileInformation>> list = new ArrayList<>(parentPathList.size());
             for (final DrivePath parentPath: parentPathList) {
                 statement.setString(1, parentPath.getPath());
-                final List<FileInformation> insideList = new ArrayList<>();
                 try (final ResultSet result = statement.executeQuery()) {
-                    FileInformation info = DriverSqlHelper.createNextFileInfo(result);
-                    while (info != null) {
-                        insideList.add(info);
-                        info = DriverSqlHelper.createNextFileInfo(result);
-                    }
+                    list.add(DriverSqlHelper.createFilesInfo(result));
                 }
-                list.add(Collections.unmodifiableList(insideList));
             }
             return Collections.unmodifiableList(list);
         } finally {
@@ -324,15 +331,9 @@ public final class DriverSqlHelper {
             final List<List<FileInformation>> list = new ArrayList<>(tagList.size());
             for (final String tag: tagList) {
                 statement.setString(1, tag);
-                final List<FileInformation> insideList = new ArrayList<>();
                 try (final ResultSet result = statement.executeQuery()) {
-                    FileInformation info = DriverSqlHelper.createNextFileInfo(result);
-                    while (info != null) {
-                        insideList.add(info);
-                        info = DriverSqlHelper.createNextFileInfo(result);
-                    }
+                    list.add(DriverSqlHelper.createFilesInfo(result));
                 }
-                list.add(Collections.unmodifiableList(insideList));
             }
             return Collections.unmodifiableList(list);
         } finally {
@@ -343,6 +344,41 @@ public final class DriverSqlHelper {
 
     public static @NotNull @UnmodifiableView List<@NotNull FileInformation> getFileByTag(final @NotNull String driverName, final @NotNull String tag, final @Nullable Connection _connection) throws SQLException {
         return DriverSqlHelper.getFilesByTag(driverName, List.of(tag), _connection).get(0);
+    }
+
+    public static Pair.@NotNull ImmutablePair<@NotNull Integer, @UnmodifiableView List<@NotNull FileInformation>> getFileByParentPathS(final @NotNull String driverName, final @NotNull DrivePath parentPath, final int limit, final int offset, final @NotNull OrderDirection direction, final @NotNull OrderPolicy policy, final @Nullable Connection _connection) throws SQLException {
+        final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
+        try (final PreparedStatement statement = connection.prepareStatement(String.format(
+                "SELECT * FROM %s WHERE parent_path == ? ORDER BY ? %s LIMIT ? OFFSET ?;", DriverSqlHelper.getTableName(driverName),
+                switch (direction) {case ASCEND -> "ASC";case DESCEND -> "DESC";}))) {
+            if (_connection == null)
+                connection.setAutoCommit(false);
+            statement.setString(1, parentPath.getPath());
+            statement.setString(2, switch (policy) {
+                case FileName -> "name";
+                case Size -> "size";
+                case CreateTime -> "create_time";
+                case UpdateTime -> "update_time";
+//                default -> {throw new IllegalParametersException("Unsupported policy.", policy);}
+            });
+            statement.setInt(3, limit);
+            statement.setLong(4, offset);
+            final List<FileInformation> list;
+            try (final ResultSet result = statement.executeQuery()) {
+                list = DriverSqlHelper.createFilesInfo(result);
+            }
+            try (final PreparedStatement counter = connection.prepareStatement(String.format(
+                    "SELECT COUNT(*) FROM %s WHERE parent_path == ?;", DriverSqlHelper.getTableName(driverName)))) {
+                counter.setString(1, parentPath.getPath());
+                try (final ResultSet result = counter.executeQuery()) {
+                    result.next();
+                    return Pair.ImmutablePair.makeImmutablePair(result.getInt(1), list);
+                }
+            }
+        } finally {
+            if (_connection == null)
+                connection.close();
+        }
     }
 
     // Search

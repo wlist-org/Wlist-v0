@@ -1,6 +1,8 @@
 package com.xuxiaocheng.WList.Driver;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
+import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import org.jetbrains.annotations.NotNull;
@@ -12,7 +14,7 @@ import java.net.URL;
 import java.util.List;
 
 public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
-    @NotNull C getDefaultConfiguration();
+    @NotNull Class<C> getDefaultConfigurationClass();
 
     /**
      * Login in the web server.
@@ -37,7 +39,8 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      *          Null means directory is not available.
      * @throws Exception Something went wrong.
      */
-    Pair.@Nullable ImmutablePair<@NotNull Integer, @NotNull List<@NotNull String>> list(final @NotNull DrivePath path, final int page, final int limit) throws Exception;
+    Pair.@Nullable ImmutablePair<@NotNull Integer, @NotNull List<@NotNull FileInformation>> list(final @NotNull DrivePath path,final int limit, final int page,
+                                                                                                 final @Nullable OrderDirection direction, final @Nullable OrderPolicy policy) throws Exception;
 
     /**
      * Get the file information of a specific file.
