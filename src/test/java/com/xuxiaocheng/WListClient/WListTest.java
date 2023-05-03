@@ -14,7 +14,6 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.sql.SQLException;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class WListTest {
@@ -33,7 +32,7 @@ public class WListTest {
     }
 
     protected void client(final @NotNull Channel channel) throws IOException, InterruptedException {
-        TimeUnit.SECONDS.sleep(3);
+//        TimeUnit.SECONDS.sleep(3);
         final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
         ByteBufIOUtil.writeUTF(buffer, "Login");
         ByteBufIOUtil.writeUTF(buffer, "admin");

@@ -68,7 +68,7 @@ public class WListServer {
                 final ChannelPipeline pipeline = ch.pipeline();
                 pipeline.addLast("LengthDecoder", new LengthFieldBasedFrameDecoder(1 << 20, 0, 4, 0, 4));
                 pipeline.addLast("LengthEncoder", new LengthFieldPrepender(4));
-                pipeline.addLast("ServerCipher", new AesCipher(WList.key));
+                pipeline.addLast("Cipher", new AesCipher(WList.key, WList.vector));
                 pipeline.addLast(WListServer.executors, "ServerHandler", new ServerChannelInboundHandler());
             }
         });

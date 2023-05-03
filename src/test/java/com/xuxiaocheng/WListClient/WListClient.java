@@ -58,7 +58,7 @@ public class WListClient {
                 final ChannelPipeline pipeline = ch.pipeline();
                 pipeline.addLast("LengthDecoder", new LengthFieldBasedFrameDecoder(1 << 20, 0, 4, 0, 4));
                 pipeline.addLast("LengthEncoder", new LengthFieldPrepender(4));
-                pipeline.addLast("ClientCipher", new AesCipher(WList.key));
+                pipeline.addLast("Cipher", new AesCipher(WList.key, WList.vector));
                 pipeline.addLast("ClientHandler", new ClientChannelInboundHandler());
             }
         });

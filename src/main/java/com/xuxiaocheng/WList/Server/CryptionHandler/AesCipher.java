@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Server.CryptionHandler;
 
+import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufInputStream;
@@ -12,26 +13,38 @@ import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
 import javax.crypto.CipherOutputStream;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.math.BigInteger;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
+import java.security.spec.AlgorithmParameterSpec;
 import java.util.List;
 
 public class AesCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
     protected final @NotNull Cipher decryptCipher;
     protected final @NotNull Cipher encryptCipher;
 
-    public AesCipher(final @NotNull Key key) {
+    public AesCipher(final BigInteger keySeed, final BigInteger vectorSeed) {
         super();
+        final byte[] keys = new byte[32];
+        MiscellaneousUtil.generateRandomByteArray(keySeed, keys);
+        final Key key = new SecretKeySpec(keys, "AES");
+        final byte[] vectors = new byte[16];
+        MiscellaneousUtil.generateRandomByteArray(vectorSeed, vectors);
+        final AlgorithmParameterSpec vector = new IvParameterSpec(vectors);
         try {
-            this.decryptCipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
-            this.decryptCipher.init(Cipher.DECRYPT_MODE, key);
-            this.encryptCipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
-            this.encryptCipher.init(Cipher.ENCRYPT_MODE, key);
-        } catch (final NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException exception) {
+            this.decryptCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            this.decryptCipher.init(Cipher.DECRYPT_MODE, key, vector);
+            this.encryptCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            this.encryptCipher.init(Cipher.ENCRYPT_MODE, key, vector);
+        } catch (final NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException |
+                       InvalidAlgorithmParameterException exception) {
             throw new RuntimeException("Unreachable!", exception);
         }
     }

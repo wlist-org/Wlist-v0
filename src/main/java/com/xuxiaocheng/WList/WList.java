@@ -8,13 +8,15 @@ import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.Server.ServerHandler;
 import com.xuxiaocheng.WList.Server.UserSqlHelper;
 import com.xuxiaocheng.WList.Server.WListServer;
-import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.math.BigInteger;
 import java.net.InetSocketAddress;
-import java.security.Key;
+import java.util.Random;
+import java.util.random.RandomGenerator;
 
 public final class WList {
     private WList() {
@@ -28,12 +30,20 @@ public final class WList {
             WList.DebugMode ? Integer.MIN_VALUE : HLogLevel.DEBUG.getPriority() + 1,
             true, new HLoggerStream(true, !WList.DebugMode));
 
-    public static final Key key = MiscellaneousUtil.generateAesKey(0);
+    public static final @NotNull BigInteger key;
+    public static final @NotNull BigInteger vector;
+    static {
+        final RandomGenerator generator = new Random(5212);
+        final byte[] bytes = new byte[512];
+        generator.nextBytes(bytes);
+        key = new BigInteger(bytes);
+        generator.nextBytes(bytes);
+        vector = new BigInteger(bytes);
+    }
 
     @SuppressWarnings("OverlyBroadThrowsClause")
     public static void main(final String[] args) throws Exception {
         DriverManager.init();
-
         if (true) return;
 
         WList.logger.log(HLogLevel.FINE, "Hello WList! Initializing...");

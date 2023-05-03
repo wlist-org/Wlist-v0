@@ -4,11 +4,9 @@ import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
-import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
@@ -19,6 +17,7 @@ import java.sql.SQLException;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Random;
+import java.util.random.RandomGenerator;
 
 public final class MiscellaneousUtil {
     private MiscellaneousUtil() {
@@ -68,12 +67,6 @@ public final class MiscellaneousUtil {
         return generator.generateKeyPair();
     }
 
-    public static @NotNull Key generateAesKey(final long seed) {
-        final byte[] key = new byte[32];
-        new Random(seed).nextBytes(key);
-        return new SecretKeySpec(key, "AES");
-    }
-
     public static <T> @NotNull Iterator<T> getEmptyIterator() {
         return new Iterator<>() {
             @Override
@@ -104,5 +97,12 @@ public final class MiscellaneousUtil {
         if (_connection != null)
             return _connection;
         return util.getConnection();
+    }
+
+    public static void generateRandomByteArray(final @NotNull BigInteger seed, final byte @NotNull [] bytes) {
+        new Random(seed.mod(BigInteger.valueOf(Long.MAX_VALUE)).longValue()).nextBytes(bytes);
+        final RandomGenerator random = new Random(seed.longValue() ^ seed.getLowestSetBit() ^ seed.bitLength());
+        for (int i = 0; i < bytes.length; ++i)
+            bytes[i] = (byte) (bytes[i] ^ (byte) random.nextInt(Byte.MIN_VALUE, Byte.MAX_VALUE));
     }
 }
