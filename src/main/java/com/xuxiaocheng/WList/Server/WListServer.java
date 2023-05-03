@@ -121,7 +121,7 @@ public class WListServer {
                 switch (type) {
                     case Undefined -> throw new IllegalNetworkDataException("Undefined operation!");
                     case Login -> ServerHandler.doLogin(msg, channel);
-                    case Registry -> ServerHandler.doRegister(msg, channel);
+                    case Register -> ServerHandler.doRegister(msg, channel);
                     case ChangePassword -> ServerHandler.doChangePassword(msg, channel);
                     case Logoff -> ServerHandler.doLogoff(msg, channel);
                     case AddPermission -> ServerHandler.doChangePermission(msg, channel, true);
@@ -134,7 +134,7 @@ public class WListServer {
             } catch (final IOException exception) {
                 // ByteBufIOUtil
                 if (exception.getCause() instanceof IndexOutOfBoundsException)
-                    throw new IllegalNetworkDataException(exception.getCause());
+                    throw new IllegalNetworkDataException("Wrong bytes formation.", exception);
                 throw exception;
             }
         }
@@ -144,7 +144,8 @@ public class WListServer {
             WListServer.logger.log(HLogLevel.WARN, "Exception: ", ctx.channel().id().asLongText(), cause);
             if (cause instanceof IllegalNetworkDataException networkDataException)
                 ServerHandler.doException(ctx.channel(), networkDataException);
-//            ctx.close();
+            else
+                ServerHandler.doException(ctx.channel(), null);
         }
 
         @Override

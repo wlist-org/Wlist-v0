@@ -28,7 +28,7 @@ public final class UserTokenHelper {
     public static @NotNull String encodeToken(final @NotNull String username, final @NotNull LocalDateTime modifyTime) {
         return UserTokenHelper.builder.withAudience(username)
                 .withJWTId(String.valueOf(modifyTime.toEpochSecond(ZoneOffset.UTC)))
-                .withSubject(String.valueOf(modifyTime.getNano() / 100))
+                .withSubject(String.valueOf(modifyTime.getNano()))
                 .withExpiresAt(LocalDateTime.now().plusSeconds(GlobalConfiguration.getInstance().getToken_expire_time()).toInstant(ZoneOffset.UTC))
                 .sign(UserTokenHelper.sign);
     }
@@ -40,7 +40,7 @@ public final class UserTokenHelper {
             final Payload payload = UserTokenHelper.verifier.verify(token);
             pair = Pair.ImmutablePair.makeImmutablePair(payload.getAudience().get(0),
                     LocalDateTime.ofEpochSecond(Integer.valueOf(payload.getId()).intValue(),
-                            Integer.valueOf(payload.getSubject()).intValue() * 100, ZoneOffset.UTC));
+                            Integer.valueOf(payload.getSubject()).intValue(), ZoneOffset.UTC));
         } catch (final RuntimeException ignore) {
             return null;
         }

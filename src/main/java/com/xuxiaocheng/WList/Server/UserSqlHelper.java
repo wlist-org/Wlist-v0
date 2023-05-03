@@ -100,7 +100,7 @@ public final class UserSqlHelper {
                         """)) {
                 statement.setString(1, username);
                 statement.setString(2, UserSqlHelper.encryptPassword(password));
-                statement.setString(3, permissions.toString());
+                statement.setString(3, Operation.dumpPermissions(permissions));
                 statement.setString(4, UserSqlHelper.getModifyTime());
                 statement.executeUpdate();
                 return true;

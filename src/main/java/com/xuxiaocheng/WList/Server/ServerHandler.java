@@ -1,7 +1,8 @@
 package com.xuxiaocheng.WList.Server;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
-import com.xuxiaocheng.WList.Exceptions.IllegalNetworkDataException;
+import com.xuxiaocheng.HeadLibs.Logger.HLog;
+import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -25,7 +26,7 @@ public final class ServerHandler {
     public static final @NotNull @UnmodifiableView SortedSet<Operation.@NotNull Permission> AdminPermission =
             Collections.unmodifiableSortedSet(new TreeSet<>(Arrays.stream(Operation.Permission.values()).filter(p -> p != Operation.Permission.Undefined).toList()));
     public static final @NotNull @UnmodifiableView SortedSet<Operation.@NotNull Permission> DefaultPermission =
-            Collections.unmodifiableSortedSet(new TreeSet<>(List.of(Operation.Permission.FilesList)));
+            Collections.unmodifiableSortedSet(new TreeSet<>(List.of(Operation.Permission.DriversList)));
 
     private ServerHandler() {
         super();
@@ -45,8 +46,13 @@ public final class ServerHandler {
         channel.writeAndFlush(buffer);
     }
 
-    public static void doException(final @NotNull Channel channel, final @NotNull IllegalNetworkDataException exception) throws IOException {
-        ServerHandler.writeMessage(channel, Operation.State.ServerError, Objects.requireNonNullElse(exception.getMessage(), ""));
+    public static void doException(final @NotNull Channel channel, final @Nullable Throwable throwable) {
+        try {
+            ServerHandler.writeMessage(channel, Operation.State.ServerError, throwable == null ? "" : Objects.requireNonNullElse(throwable.getMessage(), ""));
+        } catch (final IOException exception) {
+            HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, exception);
+            channel.close();
+        }
     }
 
     public static void doLogin(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, SQLException {
@@ -98,10 +104,10 @@ public final class ServerHandler {
         ServerHandler.writeMessage(channel, Operation.State.Success, null);
     }
 
-    private static @Nullable Triad<@NotNull String, @NotNull String, @NotNull SortedSet<Operation.@NotNull Permission>> checkPermission(final @NotNull ByteBuf buf, final @NotNull Channel channel, final @NotNull Operation.Permission permission) throws IOException, SQLException {
+    private static @Nullable Triad<@NotNull String, @NotNull String, @NotNull SortedSet<Operation.@NotNull Permission>> getAndCheckPermission(final @NotNull ByteBuf buf, final @NotNull Channel channel, final @Nullable Operation.Permission permission) throws IOException, SQLException {
         final String token = ByteBufIOUtil.readUTF(buf);
         final Triad<String, String, SortedSet<Operation.Permission>> user = UserTokenHelper.decodeToken(token);
-        if (user == null || !user.getC().contains(permission)) {
+        if (user == null || (permission != null && !user.getC().contains(permission))) {
             ServerHandler.writeMessage(channel, Operation.State.NoPermission, null);
             return null;
         }
@@ -109,20 +115,31 @@ public final class ServerHandler {
     }
 
     public static void doChangePermission(final @NotNull ByteBuf buf, final @NotNull Channel channel, final boolean add) throws IOException, SQLException {
-        final Triad<String, String, SortedSet<Operation.Permission>> user = ServerHandler.checkPermission(buf, channel, Operation.Permission.UsersChangePermissions);
-        if (user == null)
+        final Triad<String, String, SortedSet<Operation.Permission>> changer = ServerHandler.getAndCheckPermission(buf, channel, Operation.Permission.UsersChangePermissions);
+        if (changer == null)
             return;
-        final SortedSet<Operation.Permission> permissions = user.getC();
+        final String username = ByteBufIOUtil.readUTF(buf);
+        final SortedSet<Operation.Permission> permissions;
+        if (username.equals(changer.getA()))
+            permissions = changer.getC();
+        else {
+            final Triad<String, SortedSet<Operation.Permission>, LocalDateTime> user = UserSqlHelper.selectUser(username);
+            if (user == null) {
+                ServerHandler.writeMessage(channel, Operation.State.DataError, null);
+                return;
+            }
+            permissions = user.getB();
+        }
         if (add)
             permissions.addAll(Operation.parsePermissions(ByteBufIOUtil.readUTF(buf)));
         else
             permissions.removeAll(Operation.parsePermissions(ByteBufIOUtil.readUTF(buf)));
-        UserSqlHelper.updateUser(user.getA(), null, permissions);
+        UserSqlHelper.updateUser(username, null, permissions);
         ServerHandler.writeMessage(channel, Operation.State.Success, null);
     }
 
     public static void doListDrivers(final @NotNull ByteBuf buf, final Channel channel) throws IOException, SQLException {
-        final Triad<String, String, SortedSet<Operation.Permission>> user = ServerHandler.checkPermission(buf, channel, Operation.Permission.DriversList);
+        final Triad<String, String, SortedSet<Operation.Permission>> user = ServerHandler.getAndCheckPermission(buf, channel, Operation.Permission.DriversList);
         if (user == null)
             return;
 

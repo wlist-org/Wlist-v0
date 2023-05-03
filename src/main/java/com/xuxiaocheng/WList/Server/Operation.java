@@ -4,6 +4,7 @@ import com.alibaba.fastjson2.JSON;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.UnmodifiableView;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.SortedSet;
@@ -19,7 +20,7 @@ public final class Operation {
     public enum Type {
         Undefined,
         Login,
-        Registry,
+        Register,
         ChangePassword,
         Logoff,
         AddPermission,
@@ -53,8 +54,8 @@ public final class Operation {
     public static final @NotNull @UnmodifiableView Map<@NotNull String, @NotNull State> StateMap = Stream.of(State.values())
             .collect(Collectors.toMap(Enum::name, s -> s));
 
-    public static @NotNull String dumpPermissions(final @NotNull SortedSet<@NotNull Permission> permissions) {
-        return JSON.toJSONString(permissions);
+    public static @NotNull String dumpPermissions(final @NotNull Collection<@NotNull Permission> permissions) {
+        return JSON.toJSONString(permissions.stream().sorted().map(Enum::name).collect(Collectors.toSet()));
     }
 
     public static @NotNull SortedSet<@NotNull Permission> parsePermissions(final @NotNull String permissions) {
