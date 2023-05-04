@@ -30,6 +30,16 @@ public class DrivePath implements Iterable<String> {
         this(DrivePath.split(path));
     }
 
+    public DrivePath(final @Nullable CharSequence path, final @NotNull DrivePath child) {
+        this(DrivePath.split(path));
+        this.path.addAll(child.path);
+    }
+
+    public DrivePath(final @NotNull DrivePath root, final @Nullable CharSequence path) {
+        this(DrivePath.split(path));
+        this.path.addAll(0, root.path);
+    }
+
     protected DrivePath(final @NotNull Collection<String> path) {
         super();
         this.path = new ArrayList<>(path);
@@ -52,6 +62,28 @@ public class DrivePath implements Iterable<String> {
 
     public @NotNull DrivePath getChild(final @NotNull CharSequence child) {
         return new DrivePath(this.path).child(child);
+    }
+
+    public @NotNull DrivePath removedRoot() {
+        if (this.path.size() < 1)
+            return this;
+        this.path.remove(0);
+        return this;
+    }
+
+    public @NotNull DrivePath getRemovedRoot() {
+        return new DrivePath(this.path).removedRoot();
+    }
+
+    public @NotNull DrivePath addRoot(final @NotNull CharSequence root) {
+        if (this.path.size() < 1)
+            return this;
+        this.path.addAll(0, DrivePath.split(root));
+        return this;
+    }
+
+    public @NotNull DrivePath getAddedRoot(final @NotNull CharSequence root) {
+        return new DrivePath(this.path).addRoot(root);
     }
 
     public @NotNull String getPath() {
@@ -79,6 +111,12 @@ public class DrivePath implements Iterable<String> {
         for (final String p: DrivePath.split(child))
             builder.append('/').append(p);
         return builder.toString();
+    }
+
+    public @NotNull String getRoot() {
+        if (this.path.size() < 1)
+            return "";
+        return this.path.get(0);
     }
 
     public @NotNull String getName() {

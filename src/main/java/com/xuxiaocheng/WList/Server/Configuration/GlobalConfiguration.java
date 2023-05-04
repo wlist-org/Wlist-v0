@@ -42,6 +42,7 @@ public class GlobalConfiguration {
     protected @NotNull String index_db = "data/index.db";
     protected @IntRange(minimum = 1) int thread_count = 10;
     protected @IntRange(minimum = 1) int token_expire_time = 259200;
+    protected @IntRange(minimum = 1) int download_id_expire_time = 1800;
     protected @IntRange(minimum = 1) int max_limit = 100;
 
     public int getPort() {
@@ -62,6 +63,10 @@ public class GlobalConfiguration {
 
     public int getToken_expire_time() {
         return this.token_expire_time;
+    }
+
+    public int getDownload_id_expire_time() {
+        return this.download_id_expire_time;
     }
 
     public int getMax_limit() {
@@ -91,6 +96,11 @@ public class GlobalConfiguration {
     @Deprecated
     public void setToken_expire_time(final int token_expire_time) {
         this.token_expire_time = token_expire_time;
+    }
+
+    @Deprecated
+    public void setDownload_id_expire_time(final int download_id_expire_time) {
+        this.download_id_expire_time = download_id_expire_time;
     }
 
     @Deprecated

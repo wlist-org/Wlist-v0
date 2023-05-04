@@ -2,13 +2,16 @@ package com.xuxiaocheng.WList.Driver;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
+import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Exceptions.NetworkException;
+import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.WList;
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.Dispatcher;
 import okhttp3.Headers;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -21,6 +24,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Objects;
@@ -36,18 +40,19 @@ public final class DriverUtil {
             .connectTimeout(10, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
+            .dispatcher(new Dispatcher(WListServer.IOExecutors))
             .addNetworkInterceptor(chain -> {
                 final Request request = chain.request();
                 if (WList.DeepDebugMode) {
-                    HLog.getInstance("Network").log(HLogLevel.DEBUG, "Thread: ", Thread.currentThread(), " Request: ", request);
-                    HLog.getInstance("Network").log(HLogLevel.VERBOSE, "Thread: ", Thread.currentThread(), new Throwable());
+                    HLog.DefaultLogger.log(HLogLevel.DEBUG, "Thread: ", Thread.currentThread(), " Request: ", request);
+                    HLog.DefaultLogger.log(HLogLevel.VERBOSE, "Thread: ", Thread.currentThread(), new Throwable());
                 }
                 final long time1 = System.currentTimeMillis();
                 final Response response = chain.proceed(request);
                 final long time2 = System.currentTimeMillis();
                 if (WList.DeepDebugMode) {
-                    HLog.getInstance("Network").log(HLogLevel.DEBUG, "Thread: ", Thread.currentThread(), "Response: ", response);
-                    HLog.getInstance("Network").log(HLogLevel.INFO, "Thread: ", Thread.currentThread(), "Cost time: ", time2 - time1, "ms.");
+                    HLog.DefaultLogger.log(HLogLevel.DEBUG, "Thread: ", Thread.currentThread(), "Response: ", response);
+                    HLog.DefaultLogger.log(HLogLevel.INFO, "Thread: ", Thread.currentThread(), "Cost time: ", time2 - time1, "ms.");
                 }
                 return response;
             })
@@ -88,7 +93,7 @@ public final class DriverUtil {
                 .build());
     }
 
-    public static @NotNull Response sendJsonRequest(final @NotNull OkHttpClient client, final @NotNull Pair.ImmutablePair<String, String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body) throws IOException {
+    public static @NotNull Response sendRequestJson(final @NotNull OkHttpClient client, final @NotNull Pair.ImmutablePair<String, String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body) throws IOException {
         return (HttpMethod.requiresRequestBody(url.getSecond()) ?
             DriverUtil.callRequestWithBody(client, url, headers, DriverUtil.createJsonRequestBody(body)) :
             DriverUtil.callRequestWithParameters(client, url, headers, body)).execute();
@@ -110,6 +115,48 @@ public final class DriverUtil {
     }
 
     public static @NotNull JSONObject sendRequestReceiveJson(final @NotNull OkHttpClient client, final @NotNull Pair.ImmutablePair<String, String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body) throws IOException {
-        return JSON.parseObject(DriverUtil.extraResponse(DriverUtil.sendJsonRequest(client, url, headers, body)).byteStream());
+        return JSON.parseObject(DriverUtil.extraResponse(DriverUtil.sendRequestJson(client, url, headers, body)).byteStream());
+    }
+
+    public static @NotNull InputStream getDownloadStream(final @NotNull OkHttpClient client, final @NotNull Pair.ImmutablePair<String, String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws IOException {
+        if (from >= to)
+            return InputStream.nullInputStream();
+        final InputStream link = DriverUtil.extraResponse(DriverUtil.sendRequestJson(client, url, headers, body)).byteStream();
+        final long skip = link.skip(from);
+        assert skip == from;
+        return new InputStream() {
+            private long pos = skip;
+
+            @Override
+            public int read() throws IOException {
+                if (this.pos + 1 > to) {
+                    link.close();
+                    return -1;
+                }
+                ++this.pos;
+                return link.read();
+            }
+
+            @Override
+            public int read(final byte @NotNull [] b, final int off, final int len) throws IOException {
+                Objects.checkFromIndexSize(off, len, b.length);
+                if (len == 0)
+                    return 0;
+                if (this.pos + 1 > to) {
+                    link.close();
+                    return -1;
+                }
+                final int r = link.read(b, off, (int) Math.min(len, to - this.pos));
+                this.pos += r;
+                if (this.pos + 1 > to)
+                    link.close();
+                return r;
+            }
+
+            @Override
+            public void close() throws IOException {
+                link.close();
+            }
+        };
     }
 }

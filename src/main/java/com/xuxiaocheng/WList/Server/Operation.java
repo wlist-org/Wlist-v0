@@ -25,9 +25,10 @@ public final class Operation {
         Logoff,
         AddPermission,
         ReducePermission,
-        ListDrivers,
         ListFiles,
+        RequestDownloadFile,
         DownloadFile,
+        CancelDownloadFile,
     }
 
     public enum Permission {
@@ -35,7 +36,6 @@ public final class Operation {
         UsersList,
         UsersDelete,
         UsersChangePermissions,
-        DriversList,
         FilesList,
         FileDownload,
     }

@@ -3,7 +3,6 @@ package com.xuxiaocheng.WList.Server;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
-import com.xuxiaocheng.WList.Exceptions.IllegalNetworkDataException;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
 import com.xuxiaocheng.WList.Server.CryptionHandler.AesCipher;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
@@ -32,14 +31,16 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.sql.SQLException;
 
 public class WListServer {
     private static final @NotNull HLog logger = HLog.createInstance("ServerLogger",
             WList.DebugMode ? Integer.MIN_VALUE : HLogLevel.DEBUG.getPriority() + 1,
             true, HMergedStream.createNoException(true, null));
-    protected static final @NotNull EventExecutorGroup executors =
+
+    public static final @NotNull EventExecutorGroup ServerExecutors =
             new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 3, new DefaultThreadFactory("ServerExecutors"));
+    public static final @NotNull EventExecutorGroup IOExecutors =
+            new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 3, new DefaultThreadFactory("IOExecutors"));
 
     protected final @NotNull SocketAddress address;
     protected final @NotNull EventExecutorGroup bossGroup = new NioEventLoopGroup(1);
@@ -70,7 +71,7 @@ public class WListServer {
                 pipeline.addLast("LengthDecoder", new LengthFieldBasedFrameDecoder(1 << 20, 0, 4, 0, 4));
                 pipeline.addLast("LengthEncoder", new LengthFieldPrepender(4));
                 pipeline.addLast("Cipher", new AesCipher(WList.key, WList.vector));
-                pipeline.addLast(WListServer.executors, "ServerHandler", new ServerChannelInboundHandler());
+                pipeline.addLast(WListServer.ServerExecutors, "ServerHandler", new ServerChannelInboundHandler());
             }
         });
         this.channelFuture = serverBootstrap.bind(this.address).sync();
@@ -112,47 +113,42 @@ public class WListServer {
         }
 
         @Override
-        protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) throws IOException, SQLException, ServerException {
+        protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) {
             final Channel channel = ctx.channel();
             WListServer.logger.log(HLogLevel.VERBOSE, "Read: ", channel.id().asLongText(), " len: ", msg.readableBytes());
             try {
                 final Operation.Type type = Operation.TypeMap.get(ByteBufIOUtil.readUTF(msg));
                 WListServer.logger.log(HLogLevel.DEBUG, "Type: ", channel.id().asLongText(), " type: ", type);
-                if (type == null)
-                    throw new IllegalNetworkDataException("Undefined operation!");
-                switch (type) {
-                    case Undefined -> throw new IllegalNetworkDataException("Undefined operation!");
-                    case Login -> ServerHandler.doLogin(msg, channel);
-                    case Register -> ServerHandler.doRegister(msg, channel);
-                    case ChangePassword -> ServerHandler.doChangePassword(msg, channel);
-                    case Logoff -> ServerHandler.doLogoff(msg, channel);
-                    case AddPermission -> ServerHandler.doChangePermission(msg, channel, true);
-                    case ReducePermission -> ServerHandler.doChangePermission(msg, channel, false);
-                    case ListDrivers -> ServerHandler.doListDrivers(msg, channel);
-                    case ListFiles -> ServerHandler.doListFiles(msg, channel);
-                    case DownloadFile -> ServerHandler.doDownloadFile(msg, channel);
-                }
+                if (type == null || type == Operation.Type.Undefined)
+                    ServerHandler.writeMessage(channel, Operation.State.DataError, "Undefined operation!");
+                else
+                    switch (type) {
+                        case Login -> ServerHandler.doLogin(msg, channel);
+                        case Register -> ServerHandler.doRegister(msg, channel);
+                        case ChangePassword -> ServerHandler.doChangePassword(msg, channel);
+                        case Logoff -> ServerHandler.doLogoff(msg, channel);
+                        case AddPermission -> ServerHandler.doChangePermission(msg, channel, true);
+                        case ReducePermission -> ServerHandler.doChangePermission(msg, channel, false);
+                        case ListFiles -> ServerHandler.doListFiles(msg, channel);
+                        case RequestDownloadFile -> ServerHandler.doRequestDownloadFile(msg, channel);
+                        case DownloadFile -> ServerHandler.doDownloadFile(msg, channel);
+                        case CancelDownloadFile -> ServerHandler.doCancelDownloadFile(msg, channel);
+                        // TODO
+                    }
                 if (msg.readableBytes() != 0)
                     WListServer.logger.log(HLogLevel.MISTAKE, "Unexpected discarded bytes: ", channel.id().asLongText(), " len: ", msg.readableBytes());
-            } catch (final IllegalNetworkDataException exception) {
-                throw exception;
             } catch (final IOException exception) {
-                // ByteBufIOUtil
-                if (exception.getCause() instanceof IndexOutOfBoundsException)
-                    throw new IllegalNetworkDataException("Wrong bytes formation.", exception);
-                throw exception;
+                ServerHandler.doException(channel, exception.getMessage());
+            } catch (final ServerException exception) {
+                WListServer.logger.log(HLogLevel.WARN, "Exception: ", channel.id().asLongText(), exception);
+                ServerHandler.doException(channel, null);
             }
         }
 
         @Override
         public void exceptionCaught(final @NotNull ChannelHandlerContext ctx, final Throwable cause) {
             WListServer.logger.log(HLogLevel.WARN, "Exception: ", ctx.channel().id().asLongText(), cause);
-            if (cause instanceof IllegalNetworkDataException networkDataException)
-                ServerHandler.doException(ctx.channel(), networkDataException);
-            else if (cause instanceof ServerException serverException)
-                ServerHandler.doException(ctx.channel(), serverException);
-            else
-                ServerHandler.doException(ctx.channel(), null);
+            ServerHandler.doException(ctx.channel(), null);
         }
 
         @Override

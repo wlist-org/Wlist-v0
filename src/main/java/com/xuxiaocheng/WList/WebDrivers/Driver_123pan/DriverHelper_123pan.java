@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -109,6 +110,20 @@ public final class DriverHelper_123pan {
         if (data == null)
             throw new WrongResponseException("Null response data.", json);
         return data;
+    }
+
+    static @NotNull String extractDownloadUrl(final @NotNull String url) throws IOException {
+        assert url.contains("params=");
+        final int pIndex = url.indexOf("params=") + "params=".length();
+        final int aIndex = url.indexOf('&', pIndex);
+        final String base64 = url.substring(pIndex, aIndex < 0 ? url.length() : aIndex);
+        final String decodedUrl = new String(Base64.getDecoder().decode(base64));
+        final JSONObject json = DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, Pair.ImmutablePair.makeImmutablePair(decodedUrl, "GET"), null, null);
+        final JSONObject data = DriverHelper_123pan.extractResponseData(json, 0, "ok");
+        final String redirectUrl = data.getString("redirect_url");
+        if (redirectUrl == null)
+            throw new WrongResponseException("Abnormal data of 'redirect_url'.", data);
+        return redirectUrl;
     }
 
     // Token

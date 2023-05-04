@@ -21,7 +21,7 @@ public final class UserTokenHelper {
         super();
     }
 
-    private static final @NotNull Algorithm sign = Algorithm.HMAC512("Server:SIGN***#WListServer%CreateBy@XXC#***TokenHMAC512&SIGN");
+    private static final @NotNull Algorithm sign = Algorithm.HMAC512("User: Server:SIGN***#WListServer%CreateBy@XXC#***TokenHMAC512&SIGN");
     private static final JWTCreator.Builder builder = JWT.create().withIssuer("WList");
     private static final JWTVerifier verifier = JWT.require(UserTokenHelper.sign).withIssuer("WList").build();
 
@@ -38,6 +38,8 @@ public final class UserTokenHelper {
         //noinspection OverlyBroadCatchBlock
         try {
             final Payload payload = UserTokenHelper.verifier.verify(token);
+            if (LocalDateTime.now().isAfter(LocalDateTime.ofInstant(payload.getExpiresAtAsInstant(), ZoneOffset.UTC)))
+                return null;
             pair = Pair.ImmutablePair.makeImmutablePair(payload.getAudience().get(0),
                     LocalDateTime.ofEpochSecond(Integer.valueOf(payload.getId()).intValue(),
                             Integer.valueOf(payload.getSubject()).intValue(), ZoneOffset.UTC));

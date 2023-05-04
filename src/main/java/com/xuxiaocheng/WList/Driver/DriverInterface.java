@@ -1,16 +1,17 @@
 package com.xuxiaocheng.WList.Driver;
 
+import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.ByteBufOutputStream;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
+import java.io.OutputStream;
 import java.util.List;
 
 public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
@@ -54,10 +55,12 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     /**
      * Get download link of a specific file.
      * @param path The file path to download.
-     * @return The download link. Null means not existed.
+     * @param from The stream start byte.
+     * @param to The stream stop byte.
+     * @return The download stream and real available bytes. Null means not existed.
      * @throws Exception Something went wrong.
      */
-    @Nullable String download(final @NotNull DrivePath path) throws Exception;
+    @Nullable Pair.ImmutablePair<@NotNull InputStream, @NotNull Long> download(final @NotNull DrivePath path, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws Exception;
 
     /**
      * Create a new empty directory.
@@ -89,12 +92,14 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
 
     @SuppressWarnings("OverlyBroadThrowsClause")
     default @Nullable FileInformation copy(final @NotNull DrivePath source, final @NotNull DrivePath target) throws Exception {
-        final String url = this.download(source);
+        final Pair.ImmutablePair<InputStream, Long> url = this.download(source, 0, Long.MAX_VALUE);
         if (url == null)
             return null;
-        final InputStream inputStream = DriverInterface.downloadFromString(url);
-        final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(inputStream.available());
-        buffer.writeBytes(inputStream.readAllBytes());
+        final InputStream inputStream = url.getFirst();
+        final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(url.getSecond().intValue());
+        try (final OutputStream outputStream = new ByteBufOutputStream(buffer)) {
+            inputStream.transferTo(outputStream);
+        }
         final FileInformation t =  this.upload(target, buffer);
         inputStream.close();
         return t;
@@ -117,9 +122,5 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     }
 
     default void buildCache() throws Exception {
-    }
-
-    static @NotNull InputStream downloadFromString(final @NotNull String url) throws IOException {
-        return new URL(url).openConnection().getInputStream();
     }
 }

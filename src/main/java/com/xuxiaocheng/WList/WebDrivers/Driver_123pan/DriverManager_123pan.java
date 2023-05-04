@@ -3,15 +3,15 @@ package com.xuxiaocheng.WList.WebDrivers.Driver_123pan;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
-import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
-import com.xuxiaocheng.WList.Server.Configuration.GlobalConfiguration;
 import com.xuxiaocheng.WList.Driver.DrivePath;
 import com.xuxiaocheng.WList.Driver.DriverSqlHelper;
 import com.xuxiaocheng.WList.Driver.DriverUtil;
+import com.xuxiaocheng.WList.Driver.FileInformation;
+import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
+import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Exceptions.WrongResponseException;
-import com.xuxiaocheng.WList.Driver.FileInformation;
+import com.xuxiaocheng.WList.Server.Configuration.GlobalConfiguration;
 import com.xuxiaocheng.WList.Utils.DataBaseUtil;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import okhttp3.MediaType;
@@ -26,7 +26,6 @@ import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -237,23 +236,17 @@ public final class DriverManager_123pan {
 
     // File Manager.
 
-    static @Nullable String getDownloadUrl(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean useCache, final @Nullable Connection _connection, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
+    static @Nullable Pair<@NotNull String, @NotNull Long> getDownloadUrl(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean useCache, final @Nullable Connection _connection, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
         final FileInformation info = DriverManager_123pan.getFileInformation(configuration, path, useCache, _connection, _threadPool);
         if (info == null)
             return null;
         if (info.is_dir())
             return null;
         final JSONObject data = DriverHelper_123pan.doGetFileDownloadUrl(configuration, info);
-        String url = data.getString("DownloadUrl");
+        final String url = data.getString("DownloadUrl");
         if (url == null)
             throw new WrongResponseException("Abnormal data of 'DownloadUrl'.", data);
-        while (url.contains("params=")) {
-            final int pIndex = url.indexOf("params=") + "params=".length();
-            final int aIndex = url.indexOf('&', pIndex);
-            final String base64 = url.substring(pIndex, aIndex < 0 ? url.length() : aIndex);
-            url = new String(Base64.getDecoder().decode(base64));
-        }
-        return url;
+        return Pair.ImmutablePair.makeImmutablePair(DriverHelper_123pan.extractDownloadUrl(url), info.size());
     }
 
     private static long prepareUpload(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath parentPath, final @NotNull String name, final @Nullable Connection _connection) throws IllegalParametersException, IOException, SQLException {
