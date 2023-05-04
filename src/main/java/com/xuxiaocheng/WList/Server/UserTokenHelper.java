@@ -33,8 +33,8 @@ public final class UserTokenHelper {
                 .sign(UserTokenHelper.sign);
     }
 
-    public static @Nullable Triad<@NotNull String, @NotNull String, @NotNull SortedSet<Operation.@NotNull Permission>> decodeToken(final @NotNull String token) throws SQLException {
-        final Pair<String, LocalDateTime> pair;
+    public static @Nullable Triad.ImmutableTriad<@NotNull String, @NotNull String, @NotNull SortedSet<Operation.@NotNull Permission>> decodeToken(final @NotNull String token) throws SQLException {
+        final Pair.ImmutablePair<String, LocalDateTime> pair;
         //noinspection OverlyBroadCatchBlock
         try {
             final Payload payload = UserTokenHelper.verifier.verify(token);
@@ -44,9 +44,9 @@ public final class UserTokenHelper {
         } catch (final RuntimeException ignore) {
             return null;
         }
-        final Triad<String, SortedSet<Operation.Permission>, LocalDateTime> user = UserSqlHelper.selectUser(pair.getFirst());
+        final Triad.ImmutableTriad<String, SortedSet<Operation.Permission>, LocalDateTime> user = UserSqlHelper.selectUser(pair.getFirst());
         if (user == null || !user.getC().equals(pair.getSecond()))
             return null;
-        return new Triad<>(pair.getFirst(), user.getA(),  user.getB());
+        return Triad.ImmutableTriad.makeImmutableTriad(pair.getFirst(), user.getA(),  user.getB());
     }
 }

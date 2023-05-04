@@ -2,7 +2,7 @@ package com.xuxiaocheng.WListClient;
 
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.WList.Server.Configuration.GlobalConfiguration;
-import com.xuxiaocheng.WList.Server.DriverManager;
+import com.xuxiaocheng.WList.Server.Driver.DriverManager;
 import com.xuxiaocheng.WList.Server.ServerHandler;
 import com.xuxiaocheng.WList.Server.UserSqlHelper;
 import com.xuxiaocheng.WList.Server.WListServer;
@@ -23,7 +23,7 @@ public final class WListTest {
         super();
     }
 
-    public static void main(final String[] args) throws Exception {
+    public static void main(final String[] args) throws IOException, java.io.FileNotFoundException, java.sql.SQLException, InterruptedException {
         GlobalConfiguration.init(new BufferedInputStream(new FileInputStream("config.yml")));
         DriverManager.init();
         UserSqlHelper.init(ServerHandler.DefaultPermission, ServerHandler.AdminPermission);
@@ -37,7 +37,7 @@ public final class WListTest {
         HLog.DefaultLogger.log("FINE", "**********FINISH!**********");
         client.stop();
         server.stop();
-        System.exit(0);
+//        System.exit(0);
     }
 
     private static void client(final @NotNull Channel channel) throws IOException, InterruptedException {
@@ -64,7 +64,5 @@ public final class WListTest {
     public static void client(final @NotNull ByteBuf buffer) throws IOException {
         HLog.DefaultLogger.log("INFO", ByteBufIOUtil.readUTF(buffer));
         HLog.DefaultLogger.log("INFO", ByteBufIOUtil.readUTF(buffer));
-//        HLog.DefaultLogger.log("INFO", ByteBufIOUtil.readVariableLenInt(buffer));
-//        HLog.DefaultLogger.log("INFO", JSON.parseArray(ByteBufIOUtil.readUTF(buffer)));
     }
 }

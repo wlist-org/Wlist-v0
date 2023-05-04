@@ -82,30 +82,6 @@ public class DataBaseUtil {
                 throw new SQLException("Failed to get connection with sqlite database.");
             this.createdSize.incrementAndGet();
         }
-//        BusyHandler.setHandler(connection, new BusyHandler() {
-//            @Override
-//            protected int callback(final int n) throws SQLException {
-//                if (n > 2 && (n < 5 || n % 5 == 0))
-//                    HLog.getInstance("DefaultLogger").log(HLogLevel.WARN, "SQLITE BUSY!!! Retry time: ", n);
-//                if (n > 99) // Connection may leak.
-//                    return 0;
-//                try {
-//                    TimeUnit.MILLISECONDS.sleep(100);
-//                } catch (final InterruptedException exception) {
-//                    throw new SQLException(exception);
-//                }
-//                return 1;
-//            }
-//        });
-//        // Regex fixer
-//        Function.create(connection, "REGEXP", new Function() {
-//            @Override
-//            protected void xFunc() throws SQLException {
-//                final String expression = this.value_text(0);
-//                final String value = Objects.requireNonNullElse(this.value_text(1), "");
-//                this.result(Pattern.compile(expression).matcher(value).find() ? 1 : 0);
-//            }
-//        });
         return new PooledSqliteConnection(connection, this);
     }
 

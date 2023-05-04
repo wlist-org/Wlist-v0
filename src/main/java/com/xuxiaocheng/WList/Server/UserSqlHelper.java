@@ -33,7 +33,7 @@ public final class UserSqlHelper {
     private static @NotNull String generateRandomPassword() {
         final char[] word = new char[8];
         //noinspection SpellCheckingInspection
-        HRandomHelper.setArray(HRandomHelper.RANDOM, word, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_".toCharArray());
+        HRandomHelper.setArray(HRandomHelper.DefaultSecureRandom, word, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_".toCharArray());
         return new String(word);
     }
 
@@ -41,12 +41,13 @@ public final class UserSqlHelper {
         return LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
     }
 
-    public static boolean checkPassword(final @NotNull String source, final @NotNull String encrypted) {
-        return UserSqlHelper.encryptPassword(source).equals(encrypted);
+    public static boolean isWrongPassword(final @NotNull String source, final @NotNull String encrypted) {
+        return !UserSqlHelper.encryptPassword(source).equals(encrypted);
     }
 
     // Helper
 
+    @SuppressWarnings("TypeMayBeWeakened")
     public static void init(final @NotNull SortedSet<Operation.@NotNull Permission> defaultPermission, final @NotNull SortedSet<Operation.@NotNull Permission> adminPermission) throws SQLException {
         try (final Connection connection = DataBaseUtil.getDataInstance().getConnection()) {
             connection.setAutoCommit(false);
@@ -92,6 +93,7 @@ public final class UserSqlHelper {
         }
     }
 
+    @SuppressWarnings("TypeMayBeWeakened")
     public static boolean insertUser(final @NotNull String username, final @NotNull String password, final @NotNull SortedSet<Operation.@NotNull Permission> permissions) throws SQLException {
         try (final Connection connection = DataBaseUtil.getDataInstance().getConnection()) {
             try (final PreparedStatement statement = connection.prepareStatement("""
@@ -112,6 +114,7 @@ public final class UserSqlHelper {
         }
     }
 
+    @SuppressWarnings("TypeMayBeWeakened")
     public static void updateUser(final @NotNull String username, final @Nullable String password, final @Nullable SortedSet<Operation.@NotNull Permission> permissions) throws SQLException {
         if (password == null && permissions == null)
             return;
@@ -150,7 +153,7 @@ public final class UserSqlHelper {
         }
     }
 
-    public static @Nullable Triad<@NotNull String, @NotNull SortedSet<Operation.@NotNull Permission>, @NotNull LocalDateTime> selectUser(final @NotNull String username) throws SQLException {
+    public static @Nullable Triad.ImmutableTriad<@NotNull String, @NotNull SortedSet<Operation.@NotNull Permission>, @NotNull LocalDateTime> selectUser(final @NotNull String username) throws SQLException {
         try (final Connection connection = DataBaseUtil.getDataInstance().getConnection()) {
             try (final PreparedStatement statement = connection.prepareStatement("""
                         SELECT password, permission, modify_time FROM users WHERE username == ? LIMIT 1;
@@ -159,7 +162,7 @@ public final class UserSqlHelper {
                 try (final ResultSet user = statement.executeQuery()) {
                     if (!user.next())
                         return null;
-                    return new Triad.ImmutableTriad<>(user.getString(1),
+                    return Triad.ImmutableTriad.makeImmutableTriad(user.getString(1),
                             Operation.parsePermissions(user.getString(2)),
                             LocalDateTime.parse(user.getString(3), DateTimeFormatter.ISO_LOCAL_DATE_TIME));
                 }

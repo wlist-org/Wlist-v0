@@ -2,7 +2,7 @@ package com.xuxiaocheng.WList.Server;
 
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.HeadLibs.Logger.HLoggerStream;
+import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
 import com.xuxiaocheng.WList.Exceptions.IllegalNetworkDataException;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
 import com.xuxiaocheng.WList.Server.CryptionHandler.AesCipher;
@@ -37,12 +37,12 @@ import java.sql.SQLException;
 public class WListServer {
     private static final @NotNull HLog logger = HLog.createInstance("ServerLogger",
             WList.DebugMode ? Integer.MIN_VALUE : HLogLevel.DEBUG.getPriority() + 1,
-            true, new HLoggerStream(true, false));
-    protected static @NotNull EventExecutorGroup executors =
+            true, HMergedStream.createNoException(true, null));
+    protected static final @NotNull EventExecutorGroup executors =
             new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 3, new DefaultThreadFactory("ServerExecutors"));
 
     protected final @NotNull SocketAddress address;
-    protected final @NotNull EventLoopGroup bossGroup = new NioEventLoopGroup(1);
+    protected final @NotNull EventExecutorGroup bossGroup = new NioEventLoopGroup(1);
     protected final @NotNull EventLoopGroup workerGroup = new NioEventLoopGroup(0);
     private ChannelFuture channelFuture;
 

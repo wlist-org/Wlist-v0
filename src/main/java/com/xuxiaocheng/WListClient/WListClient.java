@@ -2,7 +2,7 @@ package com.xuxiaocheng.WListClient;
 
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.HeadLibs.Logger.HLoggerStream;
+import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
 import com.xuxiaocheng.WList.Server.CryptionHandler.AesCipher;
 import com.xuxiaocheng.WList.WList;
 import io.netty.bootstrap.Bootstrap;
@@ -28,7 +28,7 @@ import java.net.SocketAddress;
 public class WListClient {
     private static final @NotNull HLog logger = HLog.createInstance("ClientLogger",
             WList.DebugMode ? Integer.MIN_VALUE : HLogLevel.DEBUG.getPriority() + 1,
-            true, new HLoggerStream(true, false));
+            true, HMergedStream.createNoException(true, null));
 
     protected final @NotNull SocketAddress address;
     protected final @NotNull EventLoopGroup group = new NioEventLoopGroup(1);

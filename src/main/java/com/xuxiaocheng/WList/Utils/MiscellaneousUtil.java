@@ -63,7 +63,7 @@ public final class MiscellaneousUtil {
         } catch (final NoSuchAlgorithmException exception) {
             throw new RuntimeException("Unreachable!", exception);
         }
-        generator.initialize(keySize, (SecureRandom) HRandomHelper.RANDOM);
+        generator.initialize(keySize, (SecureRandom) HRandomHelper.DefaultSecureRandom);
         return generator.generateKeyPair();
     }
 

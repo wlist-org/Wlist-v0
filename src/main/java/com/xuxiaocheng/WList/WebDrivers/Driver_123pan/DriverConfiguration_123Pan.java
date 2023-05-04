@@ -14,7 +14,6 @@ import org.yaml.snakeyaml.representer.Representer;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Set;
 
 public final class DriverConfiguration_123Pan extends DriverConfiguration<
         DriverConfiguration_123Pan.LocalSide,

@@ -23,6 +23,7 @@ import java.util.List;
 public final class Driver_123Pan implements DriverInterface<DriverConfiguration_123Pan> {
     private @NotNull DriverConfiguration_123Pan configuration = new DriverConfiguration_123Pan();
 
+    @SuppressWarnings("MethodReturnAlwaysConstant")
     @Override
     public @NotNull Class<DriverConfiguration_123Pan> getDefaultConfigurationClass() {
         return DriverConfiguration_123Pan.class;

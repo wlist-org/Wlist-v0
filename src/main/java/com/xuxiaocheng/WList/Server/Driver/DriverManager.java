@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server;
+package com.xuxiaocheng.WList.Server.Driver;
 
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 public final class DriverManager {
@@ -42,8 +43,8 @@ public final class DriverManager {
         super();
     }
 
-    private static final @NotNull Map<@NotNull String, @NotNull String> driverTypes = new HashMap<>();
-    private static final @NotNull Map<@NotNull String, @NotNull DriverInterface<?>> drivers = new HashMap<>();
+    private static final @NotNull Map<@NotNull String, @NotNull DriverInterface<?>> drivers = new ConcurrentHashMap<>();
+    private static final @NotNull Map<@NotNull String, @NotNull String> driverTypes = new ConcurrentHashMap<>();
 
     private static @NotNull File getConfigPath(final @NotNull String name) {
         return new File("configs", name + ".yml");

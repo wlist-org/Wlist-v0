@@ -68,25 +68,25 @@ public final class DriverManager_123pan {
         return Pair.ImmutablePair.makeImmutablePair(data.getIntValue("Total", 0), list);
     }
 
-    static @NotNull Pair<@NotNull Integer, @NotNull Iterator<@NotNull FileInformation>> listAllFilesNoCache(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final @NotNull DrivePath directoryPath, final @Nullable Connection _connection, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
+    static @NotNull Pair.ImmutablePair<@NotNull Integer, @NotNull Iterator<@NotNull FileInformation>> listAllFilesNoCache(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final @NotNull DrivePath directoryPath, final @Nullable Connection _connection, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
         boolean noThread = true;
         final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
         try {
             if (_connection == null)
                 connection.setAutoCommit(false);
             DriverSqlHelper.deleteFileByParentPath(configuration.getLocalSide().getName(), directoryPath, connection);
-            final Pair<Integer, List<FileInformation>> firstPage = DriverManager_123pan.listFilesNoCache(configuration, directoryId, configuration.getWebSide().getFilePart().getDefaultLimitPerPage(), 1, directoryPath, connection);
+            final Pair.ImmutablePair<Integer, List<FileInformation>> firstPage = DriverManager_123pan.listFilesNoCache(configuration, directoryId, configuration.getWebSide().getFilePart().getDefaultLimitPerPage(), 1, directoryPath, connection);
             final int fileCount = firstPage.getFirst().intValue();
             if (fileCount <= 0 || firstPage.getSecond().isEmpty()) {
                 if (_connection == null)
                     connection.commit();
-                return Pair.makePair(0, MiscellaneousUtil.getEmptyIterator());
+                return Pair.ImmutablePair.makeImmutablePair(0, MiscellaneousUtil.getEmptyIterator());
             }
             final int pageCount = (int) Math.ceil(((double) fileCount) / configuration.getWebSide().getFilePart().getDefaultLimitPerPage());
             if (pageCount <= 1) {
                 if (_connection == null)
                     connection.commit();
-                return Pair.makePair(fileCount, firstPage.getSecond().iterator());
+                return Pair.ImmutablePair.makeImmutablePair(fileCount, firstPage.getSecond().iterator());
             }
             noThread = false;
             final AtomicInteger finishedPageCount = new AtomicInteger(1);
@@ -95,7 +95,7 @@ public final class DriverManager_123pan {
             for (int page = 2; page <= pageCount; ++page) {
                 final int current = page;
                 threadPool.submit(() -> {
-                    final Pair<Integer, List<FileInformation>> infos = DriverManager_123pan.listFilesNoCache(configuration, directoryId, configuration.getWebSide().getFilePart().getDefaultLimitPerPage(), current, directoryPath, connection);
+                    final Pair.ImmutablePair<Integer, List<FileInformation>> infos = DriverManager_123pan.listFilesNoCache(configuration, directoryId, configuration.getWebSide().getFilePart().getDefaultLimitPerPage(), current, directoryPath, connection);
                     assert infos.getFirst().intValue() == fileCount;
                     while (allFiles.size() > configuration.getWebSide().getFilePart().getDefaultLimitPerPage() << 1) // Frequency control.
                         try {
@@ -106,7 +106,7 @@ public final class DriverManager_123pan {
                     return finishedPageCount.incrementAndGet();
                 });
             }
-            return Pair.makePair(fileCount, new Iterator<>() {
+            return Pair.ImmutablePair.makeImmutablePair(fileCount, new Iterator<>() {
                 @Override
                 public boolean hasNext() {
                     final boolean have = finishedPageCount.get() < pageCount || !allFiles.isEmpty();
@@ -201,7 +201,7 @@ public final class DriverManager_123pan {
         try {
             if (_connection == null)
                 connection.setAutoCommit(false);
-            final Pair<Integer, Iterator<FileInformation>> lister = DriverManager_123pan.listAllFilesNoCache(configuration, directoryId, directoryPath, connection, threadPool);
+            final Pair.ImmutablePair<Integer, Iterator<FileInformation>> lister = DriverManager_123pan.listAllFilesNoCache(configuration, directoryId, directoryPath, connection, threadPool);
             final List<String> directoryNameList = new ArrayList<>();
             final List<Long> directoryIdList = new ArrayList<>();
             final Iterator<FileInformation> iterator = lister.getSecond();

@@ -12,6 +12,7 @@ import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
 import com.xuxiaocheng.WList.Server.Configuration.GlobalConfiguration;
+import com.xuxiaocheng.WList.Server.Driver.DriverManager;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -71,8 +72,8 @@ public final class ServerHandler {
     public static void doLogin(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, SQLException {
         final String username = ByteBufIOUtil.readUTF(buf);
         final String password = ByteBufIOUtil.readUTF(buf);
-        final Triad<String, SortedSet<Operation.Permission>, LocalDateTime> user = UserSqlHelper.selectUser(username);
-        if (user == null || !UserSqlHelper.checkPassword(password, user.getA())) {
+        final Triad.ImmutableTriad<String, SortedSet<Operation.Permission>, LocalDateTime> user = UserSqlHelper.selectUser(username);
+        if (user == null || UserSqlHelper.isWrongPassword(password, user.getA())) {
             ServerHandler.writeMessage(channel, Operation.State.DataError, null);
             return;
         }
@@ -92,7 +93,7 @@ public final class ServerHandler {
     public static void doChangePassword(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, SQLException {
         final String token = ByteBufIOUtil.readUTF(buf);
         final String newPassword = ByteBufIOUtil.readUTF(buf);
-        final Triad<String, String, SortedSet<Operation.Permission>> user = UserTokenHelper.decodeToken(token);
+        final Triad.ImmutableTriad<String, String, SortedSet<Operation.Permission>> user = UserTokenHelper.decodeToken(token);
         if (user == null) {
             ServerHandler.writeMessage(channel, Operation.State.DataError, null);
             return;
@@ -104,12 +105,12 @@ public final class ServerHandler {
     public static void doLogoff(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, SQLException {
         final String token = ByteBufIOUtil.readUTF(buf);
         final String verifyingPassword = ByteBufIOUtil.readUTF(buf);
-        final Triad<String, String, SortedSet<Operation.Permission>> user = UserTokenHelper.decodeToken(token);
+        final Triad.ImmutableTriad<String, String, SortedSet<Operation.Permission>> user = UserTokenHelper.decodeToken(token);
         if (user == null) {
             ServerHandler.writeMessage(channel, Operation.State.DataError, "Token");
             return;
         }
-        if (!UserSqlHelper.checkPassword(verifyingPassword, user.getB())) {
+        if (UserSqlHelper.isWrongPassword(verifyingPassword, user.getB())) {
             ServerHandler.writeMessage(channel, Operation.State.DataError, "Password");
             return;
         }
@@ -117,9 +118,9 @@ public final class ServerHandler {
         ServerHandler.writeMessage(channel, Operation.State.Success, null);
     }
 
-    private static @Nullable Triad<@NotNull String, @NotNull String, @NotNull SortedSet<Operation.@NotNull Permission>> getAndCheckPermission(final @NotNull ByteBuf buf, final @NotNull Channel channel, final @Nullable Operation.Permission... permission) throws IOException, SQLException {
+    private static @Nullable Triad.ImmutableTriad<@NotNull String, @NotNull String, @NotNull SortedSet<Operation.@NotNull Permission>> getAndCheckPermission(final @NotNull ByteBuf buf, final @NotNull Channel channel, final @Nullable Operation.Permission... permission) throws IOException, SQLException {
         final String token = ByteBufIOUtil.readUTF(buf);
-        final Triad<String, String, SortedSet<Operation.Permission>> user = UserTokenHelper.decodeToken(token);
+        final Triad.ImmutableTriad<String, String, SortedSet<Operation.Permission>> user = UserTokenHelper.decodeToken(token);
         if (user == null || (permission != null && !user.getC().containsAll(List.of(permission)))) {
             ServerHandler.writeMessage(channel, Operation.State.NoPermission, null);
             return null;
@@ -128,7 +129,7 @@ public final class ServerHandler {
     }
 
     public static void doChangePermission(final @NotNull ByteBuf buf, final @NotNull Channel channel, final boolean add) throws IOException, SQLException {
-        final Triad<String, String, SortedSet<Operation.Permission>> changer = ServerHandler.getAndCheckPermission(buf, channel, Operation.Permission.UsersChangePermissions);
+        final Triad.ImmutableTriad<String, String, SortedSet<Operation.Permission>> changer = ServerHandler.getAndCheckPermission(buf, channel, Operation.Permission.UsersChangePermissions);
         if (changer == null)
             return;
         final String username = ByteBufIOUtil.readUTF(buf);
@@ -136,7 +137,7 @@ public final class ServerHandler {
         if (username.equals(changer.getA()))
             permissions = changer.getC();
         else {
-            final Triad<String, SortedSet<Operation.Permission>, LocalDateTime> user = UserSqlHelper.selectUser(username);
+            final Triad.ImmutableTriad<String, SortedSet<Operation.Permission>, LocalDateTime> user = UserSqlHelper.selectUser(username);
             if (user == null) {
                 ServerHandler.writeMessage(channel, Operation.State.DataError, null);
                 return;
@@ -152,13 +153,13 @@ public final class ServerHandler {
     }
 
     public static void doListDrivers(final @NotNull ByteBuf buf, final Channel channel) throws IOException, SQLException {
-        final Triad<String, String, SortedSet<Operation.Permission>> user = ServerHandler.getAndCheckPermission(buf, channel, Operation.Permission.DriversList);
+        final Triad.ImmutableTriad<String, String, SortedSet<Operation.Permission>> user = ServerHandler.getAndCheckPermission(buf, channel, Operation.Permission.DriversList);
         if (user == null)
             return;
         ServerHandler.writeMessage(channel, Operation.State.Success, JSON.toJSONString(DriverManager.getDriverTypes().keySet()));
     }
 
-    private static @Nullable Pair<@NotNull DriverInterface<?>, @NotNull DrivePath> getDriverPath(final @NotNull ByteBuf buf, final @NotNull Channel channel, final @Nullable Operation.Permission... permission) throws IOException, SQLException {
+    private static @Nullable Pair.ImmutablePair<@NotNull DriverInterface<?>, @NotNull DrivePath> getDriverPath(final @NotNull ByteBuf buf, final @NotNull Channel channel, final @Nullable Operation.Permission... permission) throws IOException, SQLException {
         if (ServerHandler.getAndCheckPermission(buf, channel, permission) == null)
             return null;
         final String name = ByteBufIOUtil.readUTF(buf);
@@ -168,11 +169,11 @@ public final class ServerHandler {
             ServerHandler.writeMessage(channel, Operation.State.DataError, "Driver");
             return null;
         }
-        return Pair.makePair(driver, path);
+        return Pair.ImmutablePair.makeImmutablePair(driver, path);
     }
 
     public static void doListFiles(final @NotNull ByteBuf buf, final Channel channel) throws IOException, SQLException, ServerException {
-        final Pair<DriverInterface<?>, DrivePath> path = ServerHandler.getDriverPath(buf, channel, Operation.Permission.FilesList);
+        final Pair.ImmutablePair<DriverInterface<?>, DrivePath> path = ServerHandler.getDriverPath(buf, channel, Operation.Permission.FilesList);
         if (path == null)
             return;
         final int limit = ByteBufIOUtil.readVariableLenInt(buf);
@@ -187,7 +188,7 @@ public final class ServerHandler {
             ServerHandler.writeMessage(channel, Operation.State.DataError, "Page");
             return;
         }
-        final Pair<Integer, List<FileInformation>> list;
+        final Pair.ImmutablePair<Integer, List<FileInformation>> list;
         try {
             list = path.getFirst().list(path.getSecond(), limit, page, orderDirection, orderPolicy);
         } catch (final Exception exception) {
@@ -214,7 +215,7 @@ public final class ServerHandler {
     }
 
     public static void doDownloadFile(final @NotNull ByteBuf buf, final Channel channel) throws IOException, SQLException, ServerException {
-        final Pair<DriverInterface<?>, DrivePath> path = ServerHandler.getDriverPath(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileDownload);
+        final Pair.ImmutablePair<DriverInterface<?>, DrivePath> path = ServerHandler.getDriverPath(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileDownload);
         if (path == null)
             return;
         final String link;
