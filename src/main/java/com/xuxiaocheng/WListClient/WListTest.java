@@ -7,6 +7,7 @@ import com.xuxiaocheng.WList.Server.ServerHandler;
 import com.xuxiaocheng.WList.Server.UserSqlHelper;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
+import com.xuxiaocheng.WList.WList;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
@@ -17,7 +18,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.sql.SQLException;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public final class WListTest {
     private WListTest() {
@@ -37,16 +39,11 @@ public final class WListTest {
         HLog.DefaultLogger.log("FINE", "**********FINISH!**********");
         client.stop();
         server.stop();
-        HLog.DefaultLogger.log("DEBUG", "Executors is stopping");
-        WListServer.ServerExecutors.shutdownGracefully().syncUninterruptibly();
-        WListServer.IOExecutors.shutdownGracefully().syncUninterruptibly();
-        HLog.DefaultLogger.log("INFO", "Executors stopped gracefully.");
+        WList.exit();
     }
 
     private static void client(final @NotNull Channel channel) throws IOException, InterruptedException {
-        //noinspection SpellCheckingInspection
-        final String token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJhdWQiOiJhZG1pbiIsInN1YiI6IjI2MjIxMjEwMCIsImlzcyI6IldMaXN0IiwiZXhwIjoxNjgzNDc4MzU1LCJqdGkiOiIxNjgzMjE4NTQwIn0.pDoIlk0Titm26qJ4RLSl35yxUkjEvIUJDtNFdVw0JKyI8bB3Oue-zbg5Wq0nbABXDpFBaSqJzKzef96a6ZfSag";
-        if (false) {
+        if (true) {
             final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
             ByteBufIOUtil.writeUTF(buffer, "Login");
             ByteBufIOUtil.writeUTF(buffer, "admin");
@@ -54,32 +51,79 @@ public final class WListTest {
             ByteBufIOUtil.writeUTF(buffer, "lJbtzCGp");
             channel.writeAndFlush(buffer);
         }
-        if (false){
+        if (true){
+            synchronized (WListTest._token) {
+                WListTest._token.wait();
+            }
             final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
-            ByteBufIOUtil.writeUTF(buffer, "ListFiles");
-            ByteBufIOUtil.writeUTF(buffer, token);
-            ByteBufIOUtil.writeUTF(buffer, "/123pan");
-            ByteBufIOUtil.writeVariableLenInt(buffer, 10);
-            ByteBufIOUtil.writeVariableLenInt(buffer, 1);
-            ByteBufIOUtil.writeUTF(buffer, "D");
-            ByteBufIOUtil.writeUTF(buffer, "D");
+            ByteBufIOUtil.writeUTF(buffer, "RequestDownloadFile");
+            ByteBufIOUtil.writeUTF(buffer, WListTest.token);
+            ByteBufIOUtil.writeUTF(buffer, "/123pan/AutoCopy.zip");
+            ByteBufIOUtil.writeVariableLenLong(buffer, 1378208);
+            ByteBufIOUtil.writeVariableLenLong(buffer, 1378208+19);
             channel.writeAndFlush(buffer);
         }
         if (true){
-            final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
-            ByteBufIOUtil.writeUTF(buffer, "RequestDownloadFile");
-            ByteBufIOUtil.writeUTF(buffer, token);
-            ByteBufIOUtil.writeUTF(buffer, "/123pan/AutoCopy.zip");
-            ByteBufIOUtil.writeVariableLenLong(buffer, 1);
-            ByteBufIOUtil.writeVariableLenLong(buffer, 4);
-            channel.writeAndFlush(buffer);
+            synchronized (WListTest.id) {
+                while (WListTest.id.get() == 0)
+                    WListTest.id.wait();
+            }
+            for (int i = 0; i < 5; ++i) {
+                final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
+                ByteBufIOUtil.writeUTF(buffer, i == 3 ? "CancelDownloadFile" : "DownloadFile");
+                ByteBufIOUtil.writeUTF(buffer, WListTest.token);
+                ByteBufIOUtil.writeLong(buffer, WListTest.id.get());
+                channel.writeAndFlush(buffer);
+                synchronized (WListTest.s) {
+                    while (WListTest.s.get() == 3)
+                        WListTest.s.wait();
+                    WListTest.s.decrementAndGet();
+                }
+            }
         }
-        TimeUnit.SECONDS.sleep(60);
+//        TimeUnit.SECONDS.sleep(10);
     }
 
+    private static final AtomicInteger s = new AtomicInteger(1);
+    private static final Object _token = new Object();
+    private static String token;
+    private static final AtomicLong id = new AtomicLong(0);
     public static void client(final @NotNull ByteBuf buffer) throws IOException {
-        HLog.DefaultLogger.log("INFO", ByteBufIOUtil.readUTF(buffer));
-        HLog.DefaultLogger.log("INFO", ByteBufIOUtil.readVariableLenLong(buffer));
-        HLog.DefaultLogger.log("INFO", ByteBufIOUtil.readUTF(buffer));
+        switch (WListTest.s.getAndIncrement()) {
+            case 1 -> {
+                HLog.DefaultLogger.log("INFO", ByteBufIOUtil.readUTF(buffer));
+                WListTest.token = ByteBufIOUtil.readUTF(buffer);
+                HLog.DefaultLogger.log("INFO", WListTest.token);
+                synchronized (WListTest._token) {
+                    WListTest._token.notify();
+                }
+            }
+            case 2 -> {
+                HLog.DefaultLogger.log("INFO", ByteBufIOUtil.readUTF(buffer));
+                HLog.DefaultLogger.log("INFO", ByteBufIOUtil.readVariableLenLong(buffer));
+                final long id = ByteBufIOUtil.readLong(buffer);
+                HLog.DefaultLogger.log("INFO", id);
+                synchronized (WListTest.id) {
+                    WListTest.id.set(id);
+                    WListTest.id.notify();
+                }
+            }
+            case 3 -> {
+                final String state = ByteBufIOUtil.readUTF(buffer);
+                HLog.DefaultLogger.log("INFO", state);
+                if ("DataError".equals(state))
+                    break;
+                HLog.DefaultLogger.log("INFO", ByteBufIOUtil.readVariableLenInt(buffer));
+                final StringBuilder builder = new StringBuilder();
+                for (final byte b : ByteBufIOUtil.readByteArray(buffer)) {
+                    final String hex = "0" + Integer.toHexString(b);
+                    builder.append(hex.substring(hex.length() - 2)).append(" ");
+                }
+                HLog.DefaultLogger.log("DEBUG", builder.toString());
+                synchronized (WListTest.s) {
+                    WListTest.s.notify();
+                }
+            }
+        }
     }
 }

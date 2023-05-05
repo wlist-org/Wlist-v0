@@ -16,6 +16,7 @@ import com.xuxiaocheng.WList.Server.Driver.DriverManager;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelId;
 import org.jetbrains.annotations.NotNull;
@@ -224,9 +225,10 @@ public final class ServerHandler {
         ByteBufIOUtil.writeUTF(buffer, Operation.State.Success.name());
         ByteBufIOUtil.writeVariableLenInt(buffer, list.getFirst().intValue());
         ByteBufIOUtil.writeUTF(buffer, JSON.toJSONString(list.getSecond().stream().map(f -> {
-            final Map<String, Object> map = new HashMap<>(4);
+            final Map<String, Object> map = new HashMap<>(5);
             map.put("name", f.path().getName());
             map.put("size", f.size());
+            map.put("tag", f.tag());
             if (f.createTime() != null)
                 map.put("create_time", f.createTime().format(DateTimeFormatter.ISO_DATE_TIME));
             if (f.updateTime() != null)
@@ -279,8 +281,10 @@ public final class ServerHandler {
             ByteBufIOUtil.writeUTF(buffer, Operation.State.Success.name());
             ByteBufIOUtil.writeVariableLenInt(buffer, file.getFirst().intValue());
             ByteBufIOUtil.writeVariableLenInt(buffer, file.getSecond().readableBytes());
-            channel.write(buffer);
-            channel.writeAndFlush(file.getSecond());
+            final CompositeByteBuf composite = ByteBufAllocator.DEFAULT.compositeBuffer(2);
+            composite.addComponent(buffer);
+            composite.addComponent(file.getSecond());
+            channel.writeAndFlush(composite);
         } catch (final InterruptedException | IOException | ExecutionException exception) {
             throw new ServerException(exception);
         }

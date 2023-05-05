@@ -3,19 +3,16 @@ package com.xuxiaocheng.WList;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
-import com.xuxiaocheng.WList.Server.Configuration.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.DownloadIdHelper;
 import com.xuxiaocheng.WList.Server.WListServer;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.CompositeByteBuf;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.IOException;
 import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
 import java.util.Random;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.random.RandomGenerator;
 
 public final class WList {
@@ -41,16 +38,15 @@ public final class WList {
         vector = new BigInteger(bytes);
     }
 
-    public static void main(final String[] args) throws InterruptedException, IOException, ExecutionException {
-        GlobalConfiguration.init(null);
-        GlobalConfiguration.getInstance().setDownload_id_expire_time(3);
-        final long id = DownloadIdHelper.generateId(new ByteArrayInputStream("AString tester.".getBytes(StandardCharsets.UTF_8)));
-        if (DownloadIdHelper.download(id) == null) throw new AssertionError();
-        TimeUnit.SECONDS.sleep(5);
-        if (DownloadIdHelper.download(id) != null) throw new AssertionError();
+    public static void main(final String[] args) {
 
+        WList.exit();
+    }
+
+    public static void exit() {
+        WList.logger.log(HLogLevel.FINE, "Shutting down the whole server...");
+        WListServer.ServerExecutors.shutdownGracefully().syncUninterruptibly();
+        WListServer.IOExecutors.shutdownGracefully().syncUninterruptibly();
         DownloadIdHelper.cleaner.interrupt();
-        WListServer.ServerExecutors.shutdownGracefully().sync();
-        WListServer.IOExecutors.shutdownGracefully().sync();
     }
 }

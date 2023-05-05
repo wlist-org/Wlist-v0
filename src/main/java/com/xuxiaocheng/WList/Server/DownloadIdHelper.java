@@ -28,7 +28,7 @@ public final class DownloadIdHelper {
         super();
     }
 
-    public static final int BufferSize = 4;
+    public static final int BufferSize = 4 << 20;
 
     private static final @NotNull Map<@NotNull Long, @NotNull DownloaderData> buffers = new ConcurrentHashMap<>();
 
@@ -104,23 +104,43 @@ public final class DownloadIdHelper {
         public Pair.@Nullable ImmutablePair<@NotNull Integer, @NotNull ByteBuf> get() throws InterruptedException, IOException, ExecutionException {
             this.expireTime = LocalDateTime.now().plusSeconds(GlobalConfiguration.getInstance().getDownload_id_expire_time());
             DownloadIdHelper.checkTime.add(Pair.ImmutablePair.makeImmutablePair(this.expireTime, this));
+            final Pair.ImmutablePair<Integer, ByteBuf> pair;
+            final boolean flag;
             synchronized (this) {
-                if (!this.bufferQueue.isEmpty()) {
-                    if (this.downloader.isDone() && this.inputStream.available() > 0)
+                // TODO can optimize.
+                //noinspection LoopStatementThatDoesntLoop,ConstantConditions
+                do {
+                    if (!this.bufferQueue.isEmpty()) {
+                        if (this.downloader.isDone() && this.inputStream.available() > 0)
+                            this.downloader = this.newDownloader();
+                        pair = this.bufferQueue.take();
+                        break;
+                    }
+                    if (this.downloader.isDone()) {
+                        if (this.inputStream.available() <= 0 && this.bufferQueue.isEmpty()) {
+                            pair = null;
+                            break;
+                        }
                         this.downloader = this.newDownloader();
-                    return this.bufferQueue.take();
-                }
-                if (this.downloader.isDone()) {
-                    if (this.inputStream.available() <= 0 && this.bufferQueue.isEmpty())
-                        return null;
+                    }
+                    try {
+                        this.downloader.get();
+                    } catch (final ExecutionException exception) {
+                        throw new IOException(exception);
+                    }
+                    if (this.bufferQueue.isEmpty()) {
+                        pair = null;
+                        break;
+                    }
                     this.downloader = this.newDownloader();
-                }
-                this.downloader.get();
-                if (this.bufferQueue.isEmpty())
-                    return null;
-                this.downloader = this.newDownloader();
-                return this.bufferQueue.take();
+                    pair = this.bufferQueue.take();
+                    break;
+                } while (false);
+                flag = pair != null && this.downloader.isDone() && this.bufferQueue.isEmpty();
             }
+            if (flag)
+                DownloadIdHelper.buffers.values().remove(this);
+            return pair;
         }
 
         public void cancel() {
