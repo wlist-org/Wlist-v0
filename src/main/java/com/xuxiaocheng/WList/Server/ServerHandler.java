@@ -270,15 +270,17 @@ public final class ServerHandler {
             return;
         final long id = ByteBufIOUtil.readLong(buf);
         try {
-            final ByteBuf file = DownloadIdHelper.download(id);
+            final Pair.ImmutablePair<Integer, ByteBuf> file = DownloadIdHelper.download(id);
             if (file == null) {
                 ServerHandler.writeMessage(channel, Operation.State.DataError, null);
                 return;
             }
             final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
             ByteBufIOUtil.writeUTF(buffer, Operation.State.Success.name());
+            ByteBufIOUtil.writeVariableLenInt(buffer, file.getFirst().intValue());
+            ByteBufIOUtil.writeVariableLenInt(buffer, file.getSecond().readableBytes());
             channel.write(buffer);
-            channel.writeAndFlush(file);
+            channel.writeAndFlush(file.getSecond());
         } catch (final InterruptedException | IOException | ExecutionException exception) {
             throw new ServerException(exception);
         }
