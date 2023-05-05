@@ -60,7 +60,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @return The download stream and real available bytes. Null means not existed.
      * @throws Exception Something went wrong.
      */
-    @Nullable Pair.ImmutablePair<@NotNull InputStream, @NotNull Long> download(final @NotNull DrivePath path, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws Exception;
+    Pair.@Nullable ImmutablePair<@NotNull InputStream, @NotNull Long> download(final @NotNull DrivePath path, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws Exception;
 
     /**
      * Create a new empty directory.

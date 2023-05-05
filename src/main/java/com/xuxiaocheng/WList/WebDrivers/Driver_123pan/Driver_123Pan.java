@@ -5,7 +5,6 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Driver.DrivePath;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.DriverSqlHelper;
-import com.xuxiaocheng.WList.Driver.DriverUtil;
 import com.xuxiaocheng.WList.Driver.FileInformation;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
@@ -58,16 +57,11 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
     }
 
     @Override
-    public @Nullable Pair.ImmutablePair<@NotNull InputStream, @NotNull Long> download(final @NotNull DrivePath path, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws IllegalParametersException, IOException, SQLException {
-        final Pair<String, Long> url = DriverManager_123pan.getDownloadUrl(this.configuration, path, true, null, null);
+    public Pair.@Nullable ImmutablePair<@NotNull InputStream, @NotNull Long> download(final @NotNull DrivePath path, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws IllegalParametersException, IOException, SQLException {
+        final Pair.ImmutablePair<String, Long> url = DriverManager_123pan.getDownloadUrl(this.configuration, path, true, null, null);
         if (url == null)
             return null;
-        final long size = url.getSecond().longValue();
-        if (from >= size)
-            return Pair.ImmutablePair.makeImmutablePair(InputStream.nullInputStream(), 0L);
-        final long end = Math.min(to, size);
-        return Pair.ImmutablePair.makeImmutablePair(DriverUtil.getDownloadStream(DriverUtil.httpClient,
-                Pair.ImmutablePair.makeImmutablePair(url.getFirst(), "GET"), null, null, from, end), end - from);
+        return DriverManager_123pan.getDownloadStream(url, from, to);
     }
 
     @Override

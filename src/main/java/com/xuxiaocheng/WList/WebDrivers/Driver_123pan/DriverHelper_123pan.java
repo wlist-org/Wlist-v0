@@ -32,20 +32,20 @@ public final class DriverHelper_123pan {
         super();
     }
 
-    static final @NotNull Pair.ImmutablePair<String, String> LoginURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/user/sign_in", "POST");
-    static final @NotNull Pair.ImmutablePair<String, String> RefreshTokenURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/user/refresh_token", "POST");
-    static final @NotNull Pair.ImmutablePair<String, String> UserInformationURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/user/info", "GET");
-    static final @NotNull Pair.ImmutablePair<String, String> ListFilesURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/list/new", "GET");
-    static final @NotNull Pair.ImmutablePair<String, String> FilesInfoURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/info", "POST");
-    static final @NotNull Pair.ImmutablePair<String, String> SingleFileDownloadURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/download_info", "POST");
-//    static final @NotNull Pair.ImmutablePair<String, String> BatchFileDownloadURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/batch_download_info", "POST");
-    static final @NotNull Pair.ImmutablePair<String, String> UploadRequestURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/upload_request", "POST");
-    static final @NotNull Pair.ImmutablePair<String, String> S3AuthPartURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/s3_upload_object/auth", "POST");
-    static final @NotNull Pair.ImmutablePair<String, String> S3ParePartsURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/s3_repare_upload_parts_batch", "POST");
-    static final @NotNull Pair.ImmutablePair<String, String> UploadCompleteURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/upload_complete/v2", "POST");
-    static final @NotNull Pair.ImmutablePair<String, String> TrashFileURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/trash", "POST");
-    static final @NotNull Pair.ImmutablePair<String, String> RenameFileURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/rename", "POST");
-    static final @NotNull Pair.ImmutablePair<String, String> MoveFilesURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/mod_pid", "POST");
+    static final Pair.@NotNull ImmutablePair<String, String> LoginURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/user/sign_in", "POST");
+    static final Pair.@NotNull ImmutablePair<String, String> RefreshTokenURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/user/refresh_token", "POST");
+    static final Pair.@NotNull ImmutablePair<String, String> UserInformationURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/user/info", "GET");
+    static final Pair.@NotNull ImmutablePair<String, String> ListFilesURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/list/new", "GET");
+    static final Pair.@NotNull ImmutablePair<String, String> FilesInfoURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/info", "POST");
+    static final Pair.@NotNull ImmutablePair<String, String> SingleFileDownloadURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/download_info", "POST");
+//    static final Pair.@NotNull ImmutablePair<String, String> BatchFileDownloadURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/batch_download_info", "POST");
+    static final Pair.@NotNull ImmutablePair<String, String> UploadRequestURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/upload_request", "POST");
+    static final Pair.@NotNull ImmutablePair<String, String> S3AuthPartURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/s3_upload_object/auth", "POST");
+    static final Pair.@NotNull ImmutablePair<String, String> S3ParePartsURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/s3_repare_upload_parts_batch", "POST");
+    static final Pair.@NotNull ImmutablePair<String, String> UploadCompleteURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/upload_complete/v2", "POST");
+    static final Pair.@NotNull ImmutablePair<String, String> TrashFileURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/trash", "POST");
+    static final Pair.@NotNull ImmutablePair<String, String> RenameFileURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/rename", "POST");
+    static final Pair.@NotNull ImmutablePair<String, String> MoveFilesURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/mod_pid", "POST");
 
     private static final @NotNull DuplicatePolicy defaultDuplicatePolicy = DuplicatePolicy.KEEP;
     private static final @NotNull OrderPolicy defaultOrderPolicy = OrderPolicy.FileName;
@@ -92,13 +92,13 @@ public final class DriverHelper_123pan {
     };
     static final long UploadPartSize = 16 << 20;
 
-    static @NotNull Headers buildHeaders(final @Nullable String token) {
+    static @NotNull Headers.Builder headerBuilder(final @Nullable String token) {
         final Headers.Builder builder = new Headers.Builder();
         if (token != null)
             builder.add("authorization", "Bearer " + token);
         builder.add("user-agent", "123pan/1.0.100")
                 .add("platform", "web").add("app-version", "3");
-        return builder.build();
+        return builder;
     }
 
     static @NotNull JSONObject extractResponseData(final @NotNull JSONObject json, final int successCode, final @NotNull String successMessage) throws WrongResponseException {
@@ -138,12 +138,12 @@ public final class DriverHelper_123pan {
         }, passport);
         requestBody.put("password", password);
         requestBody.put("remember", false);
-        final JSONObject json = DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.LoginURL, DriverHelper_123pan.buildHeaders(null), requestBody);
+        final JSONObject json = DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.LoginURL, DriverHelper_123pan.headerBuilder(null).build(), requestBody);
         return DriverHelper_123pan.extractResponseData(json, 200, "success");
     }
 
     static @NotNull JSONObject doRefresh(final @NotNull String token) throws IOException {
-        final JSONObject json = DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.RefreshTokenURL, DriverHelper_123pan.buildHeaders(token), null);
+        final JSONObject json = DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.RefreshTokenURL, DriverHelper_123pan.headerBuilder(token).build(), null);
         return DriverHelper_123pan.extractResponseData(json, 200, "success");
     }
 
@@ -205,7 +205,7 @@ public final class DriverHelper_123pan {
     static @NotNull JSONObject doGetUserInformation(final @NotNull DriverConfiguration_123Pan configuration) throws IllegalParametersException, IOException {
         final String token = DriverHelper_123pan.ensureToken(configuration);
         return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.UserInformationURL,
-                DriverHelper_123pan.buildHeaders(token), null), 0, "ok");
+                DriverHelper_123pan.headerBuilder(token).build(), null), 0, "ok");
     }
 
     static @NotNull JSONObject doListFiles(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final int limit, final int page) throws IllegalParametersException, IOException {
@@ -219,7 +219,7 @@ public final class DriverHelper_123pan {
         request.put("Page", page);
         request.put("trashed", false);
         return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.ListFilesURL,
-                DriverHelper_123pan.buildHeaders(token), request), 0, "ok");
+                DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 
     static @NotNull JSONObject doGetFilesInformation(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull Collection<@NotNull Long> idList) throws IllegalParametersException, IOException {
@@ -231,7 +231,7 @@ public final class DriverHelper_123pan {
             return pair;
         }).toList());
         return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.FilesInfoURL,
-                DriverHelper_123pan.buildHeaders(token), request), 0, "ok");
+                DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 
     static @NotNull JSONObject doGetFileDownloadUrl(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull FileInformation info) throws IllegalParametersException, IOException {
@@ -241,11 +241,11 @@ public final class DriverHelper_123pan {
         request.put("fileId", info.id());
         request.put("fileName", info.path().getName());
         request.put("size", info.size());
+        request.put("etag", info.tag());
         final FileInformation_123pan.FileInfoExtra_123pan extra = FileInformation_123pan.deserializeOther(info);
         request.put("s3keyFlag",extra.s3key());
-        request.put("etag", info.tag());
         return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.SingleFileDownloadURL,
-                DriverHelper_123pan.buildHeaders(token), request), 0, "ok");
+                DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 
     static @NotNull JSONObject doCreateDirectory(final @NotNull DriverConfiguration_123Pan configuration, final long parentId, final @NotNull String name) throws IllegalParametersException, IOException {
@@ -260,7 +260,7 @@ public final class DriverHelper_123pan {
         request.put("NotReuse", true);
         request.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(configuration.getWebSide().getFilePart().getDuplicatePolicy()));
         return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.UploadRequestURL,
-                DriverHelper_123pan.buildHeaders(token), request), 0, "ok");
+                DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 
     static @NotNull JSONObject doUploadRequest(final @NotNull DriverConfiguration_123Pan configuration, final long parentId, final @NotNull String name, final long size, final @NotNull String etag) throws IllegalParametersException, IOException {
@@ -274,7 +274,7 @@ public final class DriverHelper_123pan {
         request.put("type", 0);
         request.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(configuration.getWebSide().getFilePart().getDuplicatePolicy()));
         return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.UploadRequestURL,
-                DriverHelper_123pan.buildHeaders(token), request), 0, "ok");
+                DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 
     static @NotNull JSONObject doUploadPare(final @NotNull DriverConfiguration_123Pan configuration,
@@ -289,7 +289,7 @@ public final class DriverHelper_123pan {
         request.put("partNumberEnd", partCount);
         return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient,
                 partCount <= 1 ? DriverHelper_123pan.S3AuthPartURL : DriverHelper_123pan.S3ParePartsURL,
-                DriverHelper_123pan.buildHeaders(token), request), 0, "ok");
+                DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 
     static @NotNull JSONObject doUploadComplete(final @NotNull DriverConfiguration_123Pan configuration,
@@ -305,7 +305,7 @@ public final class DriverHelper_123pan {
         request.put("fileSize", size);
         request.put("fileId", fileId);
         return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.UploadCompleteURL,
-                DriverHelper_123pan.buildHeaders(token), request), 0, "ok");
+                DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 
     static @NotNull JSONObject doTrashFiles(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull Collection<@NotNull Long> idList) throws IllegalParametersException, IOException {
@@ -319,7 +319,7 @@ public final class DriverHelper_123pan {
             return pair;
         }).toList());
         return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.TrashFileURL,
-                DriverHelper_123pan.buildHeaders(token), request), 0, "ok");
+                DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 
     static @NotNull JSONObject doRenameFile(final @NotNull DriverConfiguration_123Pan configuration, final long id, final @NotNull String name) throws IllegalParametersException, IOException {
@@ -330,7 +330,7 @@ public final class DriverHelper_123pan {
         request.put("fileName", name);
         request.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(configuration.getWebSide().getFilePart().getDuplicatePolicy()));
         return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.RenameFileURL,
-                DriverHelper_123pan.buildHeaders(token), request), 0, "ok");
+                DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 
     static @NotNull JSONObject doMoveFiles(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull Collection<@NotNull Long> idList, final long parentId) throws IllegalParametersException, IOException {
@@ -343,6 +343,6 @@ public final class DriverHelper_123pan {
             return pair;
         }).toList());
         return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.MoveFilesURL,
-                DriverHelper_123pan.buildHeaders(token), request), 0, "ok");
+                DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 }

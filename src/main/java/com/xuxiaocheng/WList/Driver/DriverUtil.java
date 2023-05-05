@@ -66,7 +66,7 @@ public final class DriverUtil {
                 MediaType.parse("application/json;charset=utf-8"));
     }
 
-    public static @NotNull Call callRequestWithParameters(final @NotNull OkHttpClient client, final @NotNull Pair.ImmutablePair<String, String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> parameters) {
+    public static @NotNull Call callRequestWithParameters(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<String, String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> parameters) {
         assert !HttpMethod.requiresRequestBody(url.getSecond());
         final Request.Builder request = new Request.Builder();
         if (parameters == null)
@@ -84,7 +84,7 @@ public final class DriverUtil {
                 .method(url.getSecond(), null).build());
     }
 
-    public static @NotNull Call callRequestWithBody(final @NotNull OkHttpClient client, final @NotNull Pair.ImmutablePair<String, String> url, final @Nullable Headers headers, final @Nullable RequestBody body) {
+    public static @NotNull Call callRequestWithBody(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<String, String> url, final @Nullable Headers headers, final @Nullable RequestBody body) {
         assert HttpMethod.requiresRequestBody(url.getSecond());
         return client.newCall(new Request.Builder().url(url.getFirst())
                 .headers(Objects.requireNonNullElseGet(headers, () -> new Headers.Builder().build()))
@@ -93,13 +93,13 @@ public final class DriverUtil {
                 .build());
     }
 
-    public static @NotNull Response sendRequestJson(final @NotNull OkHttpClient client, final @NotNull Pair.ImmutablePair<String, String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body) throws IOException {
+    public static @NotNull Response sendRequestJson(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<String, String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body) throws IOException {
         return (HttpMethod.requiresRequestBody(url.getSecond()) ?
             DriverUtil.callRequestWithBody(client, url, headers, DriverUtil.createJsonRequestBody(body)) :
             DriverUtil.callRequestWithParameters(client, url, headers, body)).execute();
     }
 
-    public static void sendRequestAsync(final @NotNull OkHttpClient client, final @NotNull Pair.ImmutablePair<String, String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body, final @NotNull Callback callback) {
+    public static void sendRequestAsync(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<String, String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body, final @NotNull Callback callback) {
         (HttpMethod.requiresRequestBody(url.getSecond()) ?
                 DriverUtil.callRequestWithBody(client, url, headers, DriverUtil.createJsonRequestBody(body)) :
                 DriverUtil.callRequestWithParameters(client, url, headers, body)).enqueue(callback);
@@ -114,15 +114,14 @@ public final class DriverUtil {
         return responseBody;
     }
 
-    public static @NotNull JSONObject sendRequestReceiveJson(final @NotNull OkHttpClient client, final @NotNull Pair.ImmutablePair<String, String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body) throws IOException {
+    public static @NotNull JSONObject sendRequestReceiveJson(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<String, String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body) throws IOException {
         return JSON.parseObject(DriverUtil.extraResponse(DriverUtil.sendRequestJson(client, url, headers, body)).byteStream());
     }
 
-    public static @NotNull InputStream getDownloadStream(final @NotNull OkHttpClient client, final @NotNull Pair.ImmutablePair<String, String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws IOException {
+    public static @NotNull InputStream getDownloadStream(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<String, String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws IOException {
         if (from >= to)
             return InputStream.nullInputStream();
         final InputStream link = DriverUtil.extraResponse(DriverUtil.sendRequestJson(client, url, headers, body)).byteStream();
-        // TODO skip link.
         final long skip = link.skip(from);
         assert skip == from;
         return new InputStream() {
