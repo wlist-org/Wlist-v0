@@ -38,6 +38,7 @@ public class GlobalConfiguration {
     }
 
     protected @IntRange(minimum = 0, maximum = 65535) int port = 5212;
+    protected @IntRange(minimum = 1) int max_connection = 128;
     protected @NotNull String data_db = "data/data.db";
     protected @NotNull String index_db = "data/index.db";
     protected @IntRange(minimum = 1) int thread_count = 10;
@@ -47,6 +48,10 @@ public class GlobalConfiguration {
 
     public int getPort() {
         return this.port;
+    }
+
+    public int getMax_connection() {
+        return this.max_connection;
     }
 
     public @NotNull String getData_db() {
@@ -76,6 +81,11 @@ public class GlobalConfiguration {
     @Deprecated
     public void setPort(final int port) {
         this.port = port;
+    }
+
+    @Deprecated
+    public void setMax_connection(final int max_connection) {
+        this.max_connection = max_connection;
     }
 
     @Deprecated

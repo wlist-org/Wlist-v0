@@ -4,6 +4,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
+import com.xuxiaocheng.WList.Server.Configuration.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.CryptionHandler.AesCipher;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.WList;
@@ -38,7 +39,7 @@ public class WListServer {
             true, HMergedStream.createNoException(true, null));
 
     public static final @NotNull EventExecutorGroup ServerExecutors =
-            new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 3, new DefaultThreadFactory("ServerExecutors"));
+            new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 1, new DefaultThreadFactory("ServerExecutors"));
     public static final @NotNull EventExecutorGroup IOExecutors =
             new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 3, new DefaultThreadFactory("IOExecutors"));
 
@@ -61,14 +62,14 @@ public class WListServer {
         final ServerBootstrap serverBootstrap = new ServerBootstrap();
         serverBootstrap.group(this.workerGroup, this.workerGroup);
         serverBootstrap.channel(NioServerSocketChannel.class);
-        serverBootstrap.option(ChannelOption.SO_BACKLOG, 1 << 10);
+        serverBootstrap.option(ChannelOption.SO_BACKLOG, GlobalConfiguration.getInstance().getMax_connection());
         serverBootstrap.option(ChannelOption.SO_REUSEADDR, true);
         serverBootstrap.childOption(ChannelOption.SO_KEEPALIVE, true);
         serverBootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
             @Override
             protected void initChannel(final @NotNull SocketChannel ch) {
                 final ChannelPipeline pipeline = ch.pipeline();
-                pipeline.addLast("LengthDecoder", new LengthFieldBasedFrameDecoder(1 << 20, 0, 4, 0, 4));
+                pipeline.addLast("LengthDecoder", new LengthFieldBasedFrameDecoder(5 << 20, 0, 4, 0, 4));
                 pipeline.addLast("LengthEncoder", new LengthFieldPrepender(4));
                 pipeline.addLast("Cipher", new AesCipher(WList.key, WList.vector));
                 pipeline.addLast(WListServer.ServerExecutors, "ServerHandler", new ServerChannelInboundHandler());

@@ -51,7 +51,7 @@ public class AesCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
 
     @Override
     protected void encode(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg, final @NotNull List<Object> out) throws IOException {
-        final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(msg.readableBytes() << 1);
+        final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(msg.readableBytes() + 128);
         try (final InputStream inputStream = new CipherInputStream(new ByteBufInputStream(msg), this.encryptCipher)) {
             try (final OutputStream outputStream = new ByteBufOutputStream(buffer)) {
                 inputStream.transferTo(outputStream);
@@ -62,7 +62,7 @@ public class AesCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
 
     @Override
     protected void decode(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg, final @NotNull List<Object> out) throws IOException {
-        final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(msg.readableBytes() >> 1);
+        final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(msg.readableBytes());
         try (final InputStream inputStream = new ByteBufInputStream(msg)) {
             try (final OutputStream outputStream = new CipherOutputStream(new ByteBufOutputStream(buffer), this.decryptCipher)) {
                 inputStream.transferTo(outputStream);

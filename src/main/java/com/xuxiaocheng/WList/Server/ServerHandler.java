@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 public final class ServerHandler {
@@ -268,15 +269,19 @@ public final class ServerHandler {
         if (user == null)
             return;
         final long id = ByteBufIOUtil.readLong(buf);
-        final ByteBuf file = DownloadIdHelper.download(id);
-        if (file == null) {
-            ServerHandler.writeMessage(channel, Operation.State.DataError, null);
-            return;
+        try {
+            final ByteBuf file = DownloadIdHelper.download(id);
+            if (file == null) {
+                ServerHandler.writeMessage(channel, Operation.State.DataError, null);
+                return;
+            }
+            final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
+            ByteBufIOUtil.writeUTF(buffer, Operation.State.Success.name());
+            channel.write(buffer);
+            channel.writeAndFlush(file);
+        } catch (final InterruptedException | IOException | ExecutionException exception) {
+            throw new ServerException(exception);
         }
-        final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
-        ByteBufIOUtil.writeUTF(buffer, Operation.State.Success.name());
-        channel.write(buffer);
-        channel.writeAndFlush(file);
     }
 
     public static void doCancelDownloadFile(final @NotNull ByteBuf buf, final Channel channel) throws IOException, ServerException {

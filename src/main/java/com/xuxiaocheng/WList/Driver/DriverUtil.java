@@ -154,6 +154,11 @@ public final class DriverUtil {
             }
 
             @Override
+            public int available() {
+                return (int) Math.min(to - this.pos, Integer.MAX_VALUE);
+            }
+
+            @Override
             public void close() throws IOException {
                 link.close();
             }
