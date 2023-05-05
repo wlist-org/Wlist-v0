@@ -38,6 +38,8 @@ public class WListServer {
             WList.DebugMode ? Integer.MIN_VALUE : HLogLevel.DEBUG.getPriority() + 1,
             true, HMergedStream.createNoException(true, null));
 
+    public static final int FileTransferBufferSize = 4;
+
     public static final @NotNull EventExecutorGroup ServerExecutors =
             new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 1, new DefaultThreadFactory("ServerExecutors"));
     public static final @NotNull EventExecutorGroup IOExecutors =
@@ -69,7 +71,7 @@ public class WListServer {
             @Override
             protected void initChannel(final @NotNull SocketChannel ch) {
                 final ChannelPipeline pipeline = ch.pipeline();
-                pipeline.addLast("LengthDecoder", new LengthFieldBasedFrameDecoder(5 << 20, 0, 4, 0, 4));
+                pipeline.addLast("LengthDecoder", new LengthFieldBasedFrameDecoder((64 << 10) + WListServer.FileTransferBufferSize, 0, 4, 0, 4));
                 pipeline.addLast("LengthEncoder", new LengthFieldPrepender(4));
                 pipeline.addLast("Cipher", new AesCipher(WList.key, WList.vector));
                 pipeline.addLast(WListServer.ServerExecutors, "ServerHandler", new ServerChannelInboundHandler());

@@ -111,15 +111,20 @@ public final class WListTest {
             case 3 -> {
                 final String state = ByteBufIOUtil.readUTF(buffer);
                 HLog.DefaultLogger.log("INFO", state);
-                if ("DataError".equals(state))
-                    break;
-                HLog.DefaultLogger.log("INFO", ByteBufIOUtil.readVariableLenInt(buffer));
-                final StringBuilder builder = new StringBuilder();
-                for (final byte b : ByteBufIOUtil.readByteArray(buffer)) {
-                    final String hex = "0" + Integer.toHexString(b);
-                    builder.append(hex.substring(hex.length() - 2)).append(" ");
+                if ("Success".equals(state)) {
+                    try {
+                        HLog.DefaultLogger.log("INFO", ByteBufIOUtil.readVariableLenInt(buffer));
+                        final StringBuilder builder = new StringBuilder();
+                        for (final byte b : ByteBufIOUtil.readByteArray(buffer)) {
+                            final String hex = "0" + Integer.toHexString(b);
+                            builder.append(hex.substring(hex.length() - 2)).append(" ");
+                        }
+                        HLog.DefaultLogger.log("DEBUG", builder.toString());
+                    } catch (final IOException exception) {
+                        assert exception.getCause() instanceof IndexOutOfBoundsException;
+                        HLog.DefaultLogger.log("MISTAKE", exception.getCause().getMessage());
+                    }
                 }
-                HLog.DefaultLogger.log("DEBUG", builder.toString());
                 synchronized (WListTest.s) {
                     WListTest.s.notify();
                 }
