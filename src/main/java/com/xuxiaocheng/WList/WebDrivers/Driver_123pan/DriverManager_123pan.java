@@ -279,7 +279,7 @@ public final class DriverManager_123pan {
         final JSONObject data = DriverHelper_123pan.doCreateDirectory(configuration, parentDirectoryId, newDirectoryName);
         final FileInformation obj = FileInformation_123pan.create(parentPath, data.getJSONObject("Info"));
         if (obj == null)
-            throw new WrongResponseException("Abnormal data of 'fata/Info'.", data);
+            throw new WrongResponseException("Abnormal data of 'data/Info'.", data);
         DriverSqlHelper.insertFile(configuration.getLocalSide().getName(), obj, _connection);
         return obj;
     }

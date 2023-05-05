@@ -65,10 +65,10 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     /**
      * Create a new empty directory.
      * @param path The directory path to create.
-     * @return The information of new directory.
+     * @return The information of new directory. Null means failure. (Invalid filename.)
      * @throws Exception Something went wrong.
      */
-    @NotNull FileInformation mkdirs(final @NotNull DrivePath path) throws Exception;
+    @Nullable FileInformation mkdirs(final @NotNull DrivePath path) throws Exception;
 
     /**
      * Upload small file to path. (! Only small file)
@@ -85,10 +85,6 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @throws Exception Something went wrong.
      */
     void delete(final @NotNull DrivePath path) throws Exception;
-
-    default void rmdir(final @NotNull DrivePath path) throws Exception {
-        this.delete(path);
-    }
 
     @SuppressWarnings("OverlyBroadThrowsClause")
     default @Nullable FileInformation copy(final @NotNull DrivePath source, final @NotNull DrivePath target) throws Exception {

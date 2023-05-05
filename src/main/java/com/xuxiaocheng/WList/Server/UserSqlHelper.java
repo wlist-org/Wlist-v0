@@ -153,7 +153,7 @@ public final class UserSqlHelper {
         }
     }
 
-    public static @Nullable Triad.ImmutableTriad<@NotNull String, @NotNull SortedSet<Operation.@NotNull Permission>, @NotNull LocalDateTime> selectUser(final @NotNull String username) throws SQLException {
+    public static Triad.@Nullable ImmutableTriad<@NotNull String, @NotNull SortedSet<Operation.@NotNull Permission>, @NotNull LocalDateTime> selectUser(final @NotNull String username) throws SQLException {
         try (final Connection connection = DataBaseUtil.getDataInstance().getConnection()) {
             try (final PreparedStatement statement = connection.prepareStatement("""
                         SELECT password, permission, modify_time FROM users WHERE username == ? LIMIT 1;

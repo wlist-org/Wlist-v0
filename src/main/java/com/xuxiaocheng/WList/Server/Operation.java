@@ -29,6 +29,12 @@ public final class Operation {
         RequestDownloadFile,
         DownloadFile,
         CancelDownloadFile,
+        MakeDirectories,
+        DeleteFile,
+        RenameFile,
+        UploadFile,
+        CopyFile,
+        MoveFile,
     }
 
     public enum Permission {
@@ -38,6 +44,8 @@ public final class Operation {
         UsersChangePermissions,
         FilesList,
         FileDownload,
+        FileUpload,
+        FileDelete,
     }
 
     public enum State {

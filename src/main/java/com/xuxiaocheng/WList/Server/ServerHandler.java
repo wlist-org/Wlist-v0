@@ -67,6 +67,19 @@ public final class ServerHandler {
         }
     }
 
+    public static @NotNull Map<String, Object> getVisibleInfo(final @NotNull FileInformation f) {
+        final Map<String, Object> map = new HashMap<>(6);
+        map.put("path", f.path().getPath());
+        map.put("is_dir", f.is_dir());
+        map.put("size", f.size());
+        if (f.createTime() != null)
+            map.put("create_time", f.createTime().format(DateTimeFormatter.ISO_DATE_TIME));
+        if (f.updateTime() != null)
+            map.put("update_time", f.updateTime().format(DateTimeFormatter.ISO_DATE_TIME));
+        map.put("tag", f.tag());
+        return map;
+    }
+
     public static void doException(final @NotNull Channel channel, final @Nullable String message) {
         try {
             ServerHandler.writeMessage(channel, Operation.State.ServerError, Objects.requireNonNullElse(message, ""));
@@ -141,7 +154,7 @@ public final class ServerHandler {
         }
     }
 
-    private static @Nullable Triad.ImmutableTriad<@NotNull String, @NotNull String, @NotNull SortedSet<Operation.@NotNull Permission>> getAndCheckPermission(final @NotNull ByteBuf buf, final @NotNull Channel channel, final @Nullable Operation.Permission... permission) throws IOException, ServerException {
+    private static Triad.@Nullable ImmutableTriad<@NotNull String, @NotNull String, @NotNull SortedSet<Operation.@NotNull Permission>> getAndCheckPermission(final @NotNull ByteBuf buf, final @NotNull Channel channel, final @Nullable Operation.Permission... permission) throws IOException, ServerException {
         final String token = ByteBufIOUtil.readUTF(buf);
         try {
             final Triad.ImmutableTriad<String, String, SortedSet<Operation.Permission>> user = UserTokenHelper.decodeToken(token);
@@ -186,6 +199,7 @@ public final class ServerHandler {
     private static Pair.@Nullable ImmutablePair<@NotNull DriverInterface<?>, @NotNull DrivePath> getDriverPath(final @NotNull ByteBuf buf, final @NotNull Channel channel, final @Nullable Operation.Permission... permission) throws IOException, ServerException {
         if (ServerHandler.getAndCheckPermission(buf, channel, permission) == null)
             return null;
+        // TODO Server raid.
         final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buf));
         final DriverInterface<?> driver = DriverManager.get(path.getRoot());
         if (driver == null) {
@@ -195,7 +209,7 @@ public final class ServerHandler {
         return Pair.ImmutablePair.makeImmutablePair(driver, path.removedRoot());
     }
 
-    public static void doListFiles(final @NotNull ByteBuf buf, final Channel channel) throws IOException, ServerException {
+    public static void doListFiles(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
         final Pair.ImmutablePair<DriverInterface<?>, DrivePath> path = ServerHandler.getDriverPath(buf, channel, Operation.Permission.FilesList);
         if (path == null)
             return;
@@ -214,6 +228,9 @@ public final class ServerHandler {
         final Pair.ImmutablePair<Integer, List<FileInformation>> list;
         try {
             list = path.getFirst().list(path.getSecond(), limit, page, orderDirection, orderPolicy);
+        } catch (final UnsupportedOperationException exception) {
+           ServerHandler.writeMessage(channel, Operation.State.Unsupported, exception.getMessage());
+           return;
         } catch (final Exception exception) {
             throw new ServerException(exception);
         }
@@ -224,21 +241,11 @@ public final class ServerHandler {
         final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
         ByteBufIOUtil.writeUTF(buffer, Operation.State.Success.name());
         ByteBufIOUtil.writeVariableLenInt(buffer, list.getFirst().intValue());
-        ByteBufIOUtil.writeUTF(buffer, JSON.toJSONString(list.getSecond().stream().map(f -> {
-            final Map<String, Object> map = new HashMap<>(5);
-            map.put("name", f.path().getName());
-            map.put("size", f.size());
-            map.put("tag", f.tag());
-            if (f.createTime() != null)
-                map.put("create_time", f.createTime().format(DateTimeFormatter.ISO_DATE_TIME));
-            if (f.updateTime() != null)
-                map.put("update_time", f.updateTime().format(DateTimeFormatter.ISO_DATE_TIME));
-            return map;
-        }).collect(Collectors.toSet())));
+        ByteBufIOUtil.writeUTF(buffer, JSON.toJSONString(list.getSecond().stream().map(ServerHandler::getVisibleInfo).collect(Collectors.toSet())));
         channel.writeAndFlush(buffer);
     }
 
-    public static void doRequestDownloadFile(final @NotNull ByteBuf buf, final Channel channel) throws IOException, ServerException {
+    public static void doRequestDownloadFile(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
         final Pair.ImmutablePair<DriverInterface<?>, DrivePath> path = ServerHandler.getDriverPath(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileDownload);
         if (path == null)
             return;
@@ -251,6 +258,9 @@ public final class ServerHandler {
         final Pair.ImmutablePair<InputStream, Long> url;
         try {
             url = path.getFirst().download(path.getSecond(), from, to);
+        } catch (final UnsupportedOperationException exception) {
+            ServerHandler.writeMessage(channel, Operation.State.Unsupported, exception.getMessage());
+            return;
         } catch (final Exception exception) {
             throw new ServerException(exception);
         }
@@ -266,7 +276,7 @@ public final class ServerHandler {
         channel.writeAndFlush(buffer);
     }
 
-    public static void doDownloadFile(final @NotNull ByteBuf buf, final Channel channel) throws IOException, ServerException {
+    public static void doDownloadFile(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
         final Triad.ImmutableTriad<String, String, SortedSet<Operation.Permission>> user = ServerHandler.getAndCheckPermission(buf, channel, Operation.Permission.FileDownload);
         if (user == null)
             return;
@@ -290,7 +300,7 @@ public final class ServerHandler {
         }
     }
 
-    public static void doCancelDownloadFile(final @NotNull ByteBuf buf, final Channel channel) throws IOException, ServerException {
+    public static void doCancelDownloadFile(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
         final Triad.ImmutableTriad<String, String, SortedSet<Operation.Permission>> user = ServerHandler.getAndCheckPermission(buf, channel, Operation.Permission.FileDownload);
         if (user == null)
             return;
@@ -299,6 +309,62 @@ public final class ServerHandler {
             ServerHandler.writeMessage(channel, Operation.State.Success, null);
         else
             ServerHandler.writeMessage(channel, Operation.State.DataError, null);
+    }
+
+    public static void doMakeDirectories(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
+        final Pair.ImmutablePair<DriverInterface<?>, DrivePath> path = ServerHandler.getDriverPath(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileUpload);
+        if (path == null)
+            return;
+        final FileInformation dir;
+        try {
+            dir = path.getFirst().mkdirs(path.getSecond());
+        } catch (final UnsupportedOperationException exception) {
+            ServerHandler.writeMessage(channel, Operation.State.Unsupported, exception.getMessage());
+            return;
+        } catch (final Exception exception) {
+            throw new ServerException(exception);
+        }
+        if (dir == null) {
+            ServerHandler.writeMessage(channel, Operation.State.DataError, "Name");
+            return;
+        }
+        ServerHandler.writeMessage(channel, Operation.State.Success, JSON.toJSONString(ServerHandler.getVisibleInfo(dir)));
+    }
+
+    public static void doDeleteFile(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
+        final Pair.ImmutablePair<DriverInterface<?>, DrivePath> path = ServerHandler.getDriverPath(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileDelete);
+        if (path == null)
+            return;
+        try {
+            path.getFirst().delete(path.getSecond());
+        } catch (final UnsupportedOperationException exception) {
+            ServerHandler.writeMessage(channel, Operation.State.Unsupported, exception.getMessage());
+            return;
+        } catch (final Exception exception) {
+            throw new ServerException(exception);
+        }
+        ServerHandler.writeMessage(channel, Operation.State.Success, null);
+    }
+
+    public static void doRenameFile(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
+        final Pair.ImmutablePair<DriverInterface<?>, DrivePath> path = ServerHandler.getDriverPath(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileUpload, Operation.Permission.FileDelete);
+        if (path == null)
+            return;
+        final String name = ByteBufIOUtil.readUTF(buf);
+        final FileInformation file;
+        try {
+            file = path.getFirst().rename(path.getSecond(), name);
+        } catch (final UnsupportedOperationException exception) {
+            ServerHandler.writeMessage(channel, Operation.State.Unsupported, exception.getMessage());
+            return;
+        } catch (final Exception exception) {
+            throw new ServerException(exception);
+        }
+        if (file == null) {
+            ServerHandler.writeMessage(channel, Operation.State.DataError, "Name");
+            return;
+        }
+        ServerHandler.writeMessage(channel, Operation.State.Success, JSON.toJSONString(ServerHandler.getVisibleInfo(file)));
     }
 
     // TODO

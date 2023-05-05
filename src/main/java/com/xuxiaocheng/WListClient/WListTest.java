@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.sql.SQLException;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 public final class WListTest {
     private WListTest() {
@@ -42,92 +41,55 @@ public final class WListTest {
         WList.exit();
     }
 
+    private static String token;
+    private static final Object token_lock = new Object();
+    private static final AtomicInteger stage = new AtomicInteger(0);
+
     private static void client(final @NotNull Channel channel) throws IOException, InterruptedException {
-        if (true) {
+        {
             final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
             ByteBufIOUtil.writeUTF(buffer, "Login");
             ByteBufIOUtil.writeUTF(buffer, "admin");
             //noinspection SpellCheckingInspection
-            ByteBufIOUtil.writeUTF(buffer, "lJbtzCGp");
+            ByteBufIOUtil.writeUTF(buffer, "U.jF9u4Z");
             channel.writeAndFlush(buffer);
-        }
-        if (true){
-            synchronized (WListTest._token) {
-                WListTest._token.wait();
-            }
-            final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
-            ByteBufIOUtil.writeUTF(buffer, "RequestDownloadFile");
-            ByteBufIOUtil.writeUTF(buffer, WListTest.token);
-            ByteBufIOUtil.writeUTF(buffer, "/123pan/AutoCopy.zip");
-            ByteBufIOUtil.writeVariableLenLong(buffer, 1378208);
-            ByteBufIOUtil.writeVariableLenLong(buffer, 1378208+19);
-            channel.writeAndFlush(buffer);
-        }
-        if (true){
-            synchronized (WListTest.id) {
-                while (WListTest.id.get() == 0)
-                    WListTest.id.wait();
-            }
-            for (int i = 0; i < 5; ++i) {
-                final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
-                ByteBufIOUtil.writeUTF(buffer, i == 3 ? "CancelDownloadFile" : "DownloadFile");
-                ByteBufIOUtil.writeUTF(buffer, WListTest.token);
-                ByteBufIOUtil.writeLong(buffer, WListTest.id.get());
-                channel.writeAndFlush(buffer);
-                synchronized (WListTest.s) {
-                    while (WListTest.s.get() == 3)
-                        WListTest.s.wait();
-                    WListTest.s.decrementAndGet();
-                }
+            synchronized (WListTest.token_lock) {
+                while (WListTest.token == null)
+                    WListTest.token_lock.wait();
             }
         }
-//        TimeUnit.SECONDS.sleep(10);
+        assert WListTest.stage.get() == 1;
+        final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
+        ByteBufIOUtil.writeUTF(buffer, "DeleteFile");
+        ByteBufIOUtil.writeUTF(buffer, WListTest.token);
+        ByteBufIOUtil.writeUTF(buffer, "/123pan/test directory");
+        channel.writeAndFlush(buffer);
+        synchronized (WListTest.stage) {
+            while (WListTest.stage.get() != 2)
+                WListTest.stage.wait();
+        }
     }
 
-    private static final AtomicInteger s = new AtomicInteger(1);
-    private static final Object _token = new Object();
-    private static String token;
-    private static final AtomicLong id = new AtomicLong(0);
     public static void client(final @NotNull ByteBuf buffer) throws IOException {
-        switch (WListTest.s.getAndIncrement()) {
-            case 1 -> {
-                HLog.DefaultLogger.log("INFO", ByteBufIOUtil.readUTF(buffer));
-                WListTest.token = ByteBufIOUtil.readUTF(buffer);
-                HLog.DefaultLogger.log("INFO", WListTest.token);
-                synchronized (WListTest._token) {
-                    WListTest._token.notify();
-                }
-            }
-            case 2 -> {
-                HLog.DefaultLogger.log("INFO", ByteBufIOUtil.readUTF(buffer));
-                HLog.DefaultLogger.log("INFO", ByteBufIOUtil.readVariableLenLong(buffer));
-                final long id = ByteBufIOUtil.readLong(buffer);
-                HLog.DefaultLogger.log("INFO", id);
-                synchronized (WListTest.id) {
-                    WListTest.id.set(id);
-                    WListTest.id.notify();
-                }
-            }
-            case 3 -> {
-                final String state = ByteBufIOUtil.readUTF(buffer);
-                HLog.DefaultLogger.log("INFO", state);
-                if ("Success".equals(state)) {
-                    try {
-                        HLog.DefaultLogger.log("INFO", ByteBufIOUtil.readVariableLenInt(buffer));
-                        final StringBuilder builder = new StringBuilder();
-                        for (final byte b : ByteBufIOUtil.readByteArray(buffer)) {
-                            final String hex = "0" + Integer.toHexString(b);
-                            builder.append(hex.substring(hex.length() - 2)).append(" ");
-                        }
-                        HLog.DefaultLogger.log("DEBUG", builder.toString());
-                    } catch (final IOException exception) {
-                        assert exception.getCause() instanceof IndexOutOfBoundsException;
-                        HLog.DefaultLogger.log("MISTAKE", exception.getCause().getMessage());
+        try {
+            switch (WListTest.stage.get()) {
+                case 0 -> {
+                    HLog.DefaultLogger.log("INFO", ByteBufIOUtil.readUTF(buffer));
+                    synchronized (WListTest.token_lock) {
+                        WListTest.token = ByteBufIOUtil.readUTF(buffer);
+                        HLog.DefaultLogger.log("INFO", WListTest.token);
+                        WListTest.token_lock.notify();
                     }
                 }
-                synchronized (WListTest.s) {
-                    WListTest.s.notify();
+                case 1 -> {
+                    HLog.DefaultLogger.log("INFO", ByteBufIOUtil.readUTF(buffer));
+//                    HLog.DefaultLogger.log("INFO", ByteBufIOUtil.readUTF(buffer));
                 }
+            }
+        } finally {
+            synchronized (WListTest.stage) {
+                WListTest.stage.getAndIncrement();
+                WListTest.stage.notify();
             }
         }
     }

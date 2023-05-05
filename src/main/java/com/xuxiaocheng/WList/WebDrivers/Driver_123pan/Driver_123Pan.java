@@ -65,7 +65,7 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
     }
 
     @Override
-    public @NotNull FileInformation mkdirs(final @NotNull DrivePath path) throws IllegalParametersException, IOException, SQLException {
+    public @Nullable FileInformation mkdirs(final @NotNull DrivePath path) throws IllegalParametersException, IOException, SQLException {
         final FileInformation info = DriverManager_123pan.getFileInformation(this.configuration, path, true, null, null);
         if (info != null) {
             if (info.is_dir())
@@ -74,6 +74,8 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
         }
         final String name = path.getName();
         try {
+            if (!DriverHelper_123pan.filenamePredication.test(name))
+                return null;
             this.mkdirs(path.parent());
         } finally {
             path.child(name);

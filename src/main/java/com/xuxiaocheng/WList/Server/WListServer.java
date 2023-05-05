@@ -38,7 +38,7 @@ public class WListServer {
             WList.DebugMode ? Integer.MIN_VALUE : HLogLevel.DEBUG.getPriority() + 1,
             true, HMergedStream.createNoException(true, null));
 
-    public static final int FileTransferBufferSize = 4;
+    public static final int FileTransferBufferSize = 4 << 20;
 
     public static final @NotNull EventExecutorGroup ServerExecutors =
             new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 1, new DefaultThreadFactory("ServerExecutors"));
@@ -123,7 +123,7 @@ public class WListServer {
                 final Operation.Type type = Operation.TypeMap.get(ByteBufIOUtil.readUTF(msg));
                 WListServer.logger.log(HLogLevel.DEBUG, "Type: ", channel.id().asLongText(), " type: ", type);
                 if (type == null || type == Operation.Type.Undefined)
-                    ServerHandler.writeMessage(channel, Operation.State.DataError, "Undefined operation!");
+                    ServerHandler.writeMessage(channel, Operation.State.Unsupported, "Undefined operation!");
                 else
                     switch (type) {
                         case Login -> ServerHandler.doLogin(msg, channel);
@@ -136,7 +136,11 @@ public class WListServer {
                         case RequestDownloadFile -> ServerHandler.doRequestDownloadFile(msg, channel);
                         case DownloadFile -> ServerHandler.doDownloadFile(msg, channel);
                         case CancelDownloadFile -> ServerHandler.doCancelDownloadFile(msg, channel);
+                        case MakeDirectories -> ServerHandler.doMakeDirectories(msg, channel);
+                        case DeleteFile -> ServerHandler.doDeleteFile(msg, channel);
+                        case RenameFile -> ServerHandler.doRenameFile(msg, channel);
                         // TODO
+                        default -> ServerHandler.writeMessage(channel, Operation.State.Unsupported, "TODO: Unsupported.");
                     }
                 if (msg.readableBytes() != 0)
                     WListServer.logger.log(HLogLevel.MISTAKE, "Unexpected discarded bytes: ", channel.id().asLongText(), " len: ", msg.readableBytes());

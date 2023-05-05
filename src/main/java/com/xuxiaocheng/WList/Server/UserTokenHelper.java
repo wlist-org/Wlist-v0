@@ -33,7 +33,7 @@ public final class UserTokenHelper {
                 .sign(UserTokenHelper.sign);
     }
 
-    public static @Nullable Triad.ImmutableTriad<@NotNull String, @NotNull String, @NotNull SortedSet<Operation.@NotNull Permission>> decodeToken(final @NotNull String token) throws SQLException {
+    public static Triad.@Nullable ImmutableTriad<@NotNull String, @NotNull String, @NotNull SortedSet<Operation.@NotNull Permission>> decodeToken(final @NotNull String token) throws SQLException {
         final Pair.ImmutablePair<String, LocalDateTime> pair;
         //noinspection OverlyBroadCatchBlock
         try {
