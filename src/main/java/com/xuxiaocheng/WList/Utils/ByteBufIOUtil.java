@@ -1,12 +1,11 @@
 package com.xuxiaocheng.WList.Utils;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufInputStream;
+import io.netty.buffer.ByteBufOutputStream;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
@@ -59,11 +58,56 @@ public final class ByteBufIOUtil {
     }
 
     public static short readVariableLenShort(final @NotNull ByteBuf buffer) throws IOException {
+        int value = 0;
+        int position = 0;
+        while (true) {
+            final byte current = ByteBufIOUtil.readByte(buffer);
+            value |= (current & 0x7F) << position;
+            if ((current & 0x80) == 0)
+                break;
+            position += 7;
+            if (position >= 16)
+                throw new IOException("Short in stream is too big.");
+        }
+        return (short) value;
+    }
+
+    public static int readMedium(final @NotNull ByteBuf buffer) throws IOException {
         try {
-            return (short) ByteBufIOUtil.readVariableLenInt(buffer);
+            return buffer.readMedium();
         } catch (final IndexOutOfBoundsException exception) {
             throw new IOException(exception);
         }
+    }
+
+    public static int readVariableLenMedium(final @NotNull ByteBuf buffer) throws IOException {
+        int value = 0;
+        int position = 0;
+        while (true) {
+            final byte current = ByteBufIOUtil.readByte(buffer);
+            value |= (current & 0x7F) << position;
+            if ((current & 0x80) == 0)
+                break;
+            position += 7;
+            if (position >= 24)
+                throw new IOException("Medium in stream is too big.");
+        }
+        return value;
+    }
+
+    public static int readVariable2LenMedium(final @NotNull ByteBuf buffer) throws IOException {
+        int value = 0;
+        int position = 0;
+        while (true) {
+            final short current = ByteBufIOUtil.readShort(buffer);
+            value |= (current & 0x7FFF) << position;
+            if ((current & 0x8000) == 0)
+                break;
+            position += 15;
+            if (position >= 24)
+                throw new IOException("Medium in stream is too big.");
+        }
+        return value;
     }
 
     public static int readInt(final @NotNull ByteBuf buffer) throws IOException {
@@ -83,6 +127,36 @@ public final class ByteBufIOUtil {
             if ((current & 0x80) == 0)
                 break;
             position += 7;
+            if (position >= 32)
+                throw new IOException("Int in stream is too big.");
+        }
+        return value;
+    }
+
+    public static int readVariable2LenInt(final @NotNull ByteBuf buffer) throws IOException {
+        int value = 0;
+        int position = 0;
+        while (true) {
+            final short current = ByteBufIOUtil.readShort(buffer);
+            value |= (current & 0x7FFF) << position;
+            if ((current & 0x8000) == 0)
+                break;
+            position += 15;
+            if (position >= 32)
+                throw new IOException("Int in stream is too big.");
+        }
+        return value;
+    }
+
+    public static int readVariable3LenInt(final @NotNull ByteBuf buffer) throws IOException {
+        int value = 0;
+        int position = 0;
+        while (true) {
+            final int current = ByteBufIOUtil.readMedium(buffer);
+            value |= (current & 0x7FFFFF) << position;
+            if ((current & 0x800000) == 0)
+                break;
+            position += 23;
             if (position >= 32)
                 throw new IOException("Int in stream is too big.");
         }
@@ -112,12 +186,65 @@ public final class ByteBufIOUtil {
         return value;
     }
 
+    public static long readVariable2LenLong(final @NotNull ByteBuf buffer) throws IOException {
+        long value = 0;
+        int position = 0;
+        while (true) {
+            final short current = ByteBufIOUtil.readShort(buffer);
+            value |= (current & 0x7FFFL) << position;
+            if ((current & 0x8000) == 0)
+                break;
+            position += 15;
+            if (position >= 64)
+                throw new IOException("Long in stream is too big.");
+        }
+        return value;
+    }
+
+    public static long readVariable3LenLong(final @NotNull ByteBuf buffer) throws IOException {
+        long value = 0;
+        int position = 0;
+        while (true) {
+            final int current = ByteBufIOUtil.readMedium(buffer);
+            value |= (current & 0x7FFFFFL) << position;
+            if ((current & 0x800000) == 0)
+                break;
+            position += 23;
+            if (position >= 64)
+                throw new IOException("Long in stream is too big.");
+        }
+        return value;
+    }
+
+    public static long readVariable4LenLong(final @NotNull ByteBuf buffer) throws IOException {
+        long value = 0;
+        int position = 0;
+        while (true) {
+            final int current = ByteBufIOUtil.readInt(buffer);
+            value |= (current & 0x7FFFFFFFL) << position;
+            if ((current & 0x80000000) == 0)
+                break;
+            position += 31;
+            if (position >= 64)
+                throw new IOException("Long in stream is too big.");
+        }
+        return value;
+    }
+
     public static float readFloat(final @NotNull ByteBuf buffer) throws IOException {
         return Float.intBitsToFloat(ByteBufIOUtil.readInt(buffer));
     }
 
     public static float readVariableLenFloat(final @NotNull ByteBuf buffer) throws IOException {
         return Float.intBitsToFloat(ByteBufIOUtil.readVariableLenInt(buffer));
+    }
+
+    public static float readVariable2LenFloat(final @NotNull ByteBuf buffer) throws IOException {
+        return Float.intBitsToFloat(ByteBufIOUtil.readVariable2LenInt(buffer));
+    }
+
+    public static float readVariable3LenFloat(final @NotNull ByteBuf buffer) throws IOException {
+        return Float.intBitsToFloat(ByteBufIOUtil.readVariable3LenInt(buffer));
     }
 
     public static double readDouble(final @NotNull ByteBuf buffer) throws IOException {
@@ -128,22 +255,31 @@ public final class ByteBufIOUtil {
         return Double.longBitsToDouble(ByteBufIOUtil.readVariableLenLong(buffer));
     }
 
+    public static double readVariable2LenDouble(final @NotNull ByteBuf buffer) throws IOException {
+        return Double.longBitsToDouble(ByteBufIOUtil.readVariable2LenLong(buffer));
+    }
+
+    public static double readVariable3LenDouble(final @NotNull ByteBuf buffer) throws IOException {
+        return Double.longBitsToDouble(ByteBufIOUtil.readVariable3LenLong(buffer));
+    }
+
+    public static double readVariable4LenDouble(final @NotNull ByteBuf buffer) throws IOException {
+        return Double.longBitsToDouble(ByteBufIOUtil.readVariable4LenLong(buffer));
+    }
+
     public static @NotNull String readUTF(final @NotNull ByteBuf buffer) throws IOException {
         return new String(ByteBufIOUtil.readByteArray(buffer), StandardCharsets.UTF_8);
     }
 
     public static @NotNull UUID readUUID(final @NotNull ByteBuf buffer) throws IOException {
-        return new UUID(ByteBufIOUtil.readLong(buffer), ByteBufIOUtil.readLong(buffer));
+        return new UUID(ByteBufIOUtil.readVariable3LenLong(buffer), ByteBufIOUtil.readVariable3LenLong(buffer));
     }
 
     @SuppressWarnings("unchecked")
     public static @Nullable <T extends Serializable> T readSerializable(final @NotNull ByteBuf buffer) throws IOException {
-        final byte[] bytes = ByteBufIOUtil.readByteArray(buffer);
-        if (bytes.length == 0)
-            return null;
-        try (final ObjectInputStream objectInputStream = new ObjectInputStream(new ByteArrayInputStream(bytes))) {
+        try (final ObjectInputStream objectInputStream = new ObjectInputStream(new ByteBufInputStream(buffer))) {
             return (T) objectInputStream.readObject();
-        } catch (final ClassNotFoundException | ClassCastException exception) {
+        } catch (final ClassNotFoundException | ClassCastException | IndexOutOfBoundsException exception) {
             throw new IOException(exception);
         }
     }
@@ -183,7 +319,38 @@ public final class ByteBufIOUtil {
     }
 
     public static void writeVariableLenShort(final @NotNull ByteBuf buffer, final short s) throws IOException {
-        ByteBufIOUtil.writeVariableLenInt(buffer, s);
+        short value = s;
+        while ((value & 0xFF80) != 0) {
+            ByteBufIOUtil.writeByte(buffer, (byte) ((value & 0x7F) | 0x80));
+            value = (short) ((value & 0xFFFF) >>> 7);
+        }
+        ByteBufIOUtil.writeByte(buffer, (byte) value);
+    }
+
+    public static void writeMedium(final @NotNull ByteBuf buffer, final int i) throws IOException {
+        try {
+            buffer.writeMedium(i);
+        } catch (final IndexOutOfBoundsException exception) {
+            throw new IOException(exception);
+        }
+    }
+
+    public static void writeVariableLenMedium(final @NotNull ByteBuf buffer, final int i) throws IOException {
+        int value = i & 0xFFFFFF;
+        while ((value & 0xFFFF80) != 0) {
+            ByteBufIOUtil.writeByte(buffer, (byte) ((value & 0x7F) | 0x80));
+            value = (value & 0xFFFFFF) >>> 7;
+        }
+        ByteBufIOUtil.writeByte(buffer, (byte) value);
+    }
+
+    public static void writeVariable2LenMedium(final @NotNull ByteBuf buffer, final int i) throws IOException {
+        int value = i;
+        while ((value & 0xFFFF8000) != 0) {
+            ByteBufIOUtil.writeShort(buffer, (short) ((value & 0x7FFF) | 0x8000));
+            value >>>= 15;
+        }
+        ByteBufIOUtil.writeShort(buffer, (short) value);
     }
 
     public static void writeInt(final @NotNull ByteBuf buffer, final int i) throws IOException {
@@ -196,14 +363,29 @@ public final class ByteBufIOUtil {
 
     public static void writeVariableLenInt(final @NotNull ByteBuf buffer, final int i) throws IOException {
         int value = i;
-        while (true) {
-            if ((value & ~0x7F) == 0) {
-                ByteBufIOUtil.writeByte(buffer, (byte) value);
-                return;
-            }
+        while ((value & 0xFFFFFF80) != 0) {
             ByteBufIOUtil.writeByte(buffer, (byte) ((value & 0x7F) | 0x80));
             value >>>= 7;
         }
+        ByteBufIOUtil.writeByte(buffer, (byte) value);
+    }
+
+    public static void writeVariable2LenInt(final @NotNull ByteBuf buffer, final int i) throws IOException {
+        int value = i;
+        while ((value & 0xFFFF8000) != 0) {
+            ByteBufIOUtil.writeShort(buffer, (short) ((value & 0x7FFF) | 0x8000));
+            value >>>= 15;
+        }
+        ByteBufIOUtil.writeShort(buffer, (short) value);
+    }
+
+    public static void writeVariable3LenInt(final @NotNull ByteBuf buffer, final int i) throws IOException {
+        int value = i;
+        while ((value & 0xFF800000) != 0) {
+            ByteBufIOUtil.writeMedium(buffer, ((value & 0x7FFFFF) | 0x800000));
+            value >>>= 23;
+        }
+        ByteBufIOUtil.writeMedium(buffer, value);
     }
 
     public static void writeLong(final @NotNull ByteBuf buffer, final long l) throws IOException {
@@ -216,14 +398,38 @@ public final class ByteBufIOUtil {
 
     public static void writeVariableLenLong(final @NotNull ByteBuf buffer, final long l) throws IOException {
         long value = l;
-        while (true) {
-            if ((value & ~0x7FL) == 0) {
-                ByteBufIOUtil.writeByte(buffer, (byte) value);
-                return;
-            }
+        while ((value & 0xFFFFFFFFFFFFFF80L) != 0) {
             ByteBufIOUtil.writeByte(buffer, (byte) ((value & 0x7F) | 0x80));
             value >>>= 7;
         }
+        ByteBufIOUtil.writeByte(buffer, (byte) value);
+    }
+
+    public static void writeVariable2LenLong(final @NotNull ByteBuf buffer, final long l) throws IOException {
+        long value = l;
+        while ((value & 0xFFFFFFFFFFFF8000L) != 0) {
+            ByteBufIOUtil.writeShort(buffer, (short) ((value & 0x7FFF) | 0x8000));
+            value >>>= 15;
+        }
+        ByteBufIOUtil.writeShort(buffer, (short) value);
+    }
+
+    public static void writeVariable3LenLong(final @NotNull ByteBuf buffer, final long l) throws IOException {
+        long value = l;
+        while ((value & 0xFFFFFFFFFF800000L) != 0) {
+            ByteBufIOUtil.writeMedium(buffer, (int) ((value & 0x7FFFFF) | 0x800000));
+            value >>>= 23;
+        }
+        ByteBufIOUtil.writeMedium(buffer, (int) value);
+    }
+
+    public static void writeVariable4LenLong(final @NotNull ByteBuf buffer, final long l) throws IOException {
+        long value = l;
+        while ((value & 0xFFFFFFFF80000000L) != 0) {
+            ByteBufIOUtil.writeInt(buffer, (int) ((value & 0x7FFFFFFF) | 0x80000000));
+            value >>>= 23;
+        }
+        ByteBufIOUtil.writeInt(buffer, (int) value);
     }
 
     public static void writeFloat(final @NotNull ByteBuf buffer, final float f) throws IOException {
@@ -234,6 +440,14 @@ public final class ByteBufIOUtil {
         ByteBufIOUtil.writeVariableLenInt(buffer, Float.floatToIntBits(f));
     }
 
+    public static void writeVariable2LenFloat(final @NotNull ByteBuf buffer, final float f) throws IOException {
+        ByteBufIOUtil.writeVariable2LenInt(buffer, Float.floatToIntBits(f));
+    }
+
+    public static void writeVariable3LenFloat(final @NotNull ByteBuf buffer, final float f) throws IOException {
+        ByteBufIOUtil.writeVariable3LenInt(buffer, Float.floatToIntBits(f));
+    }
+
     public static void writeDouble(final @NotNull ByteBuf buffer, final double d) throws IOException {
         ByteBufIOUtil.writeLong(buffer, Double.doubleToLongBits(d));
     }
@@ -242,24 +456,32 @@ public final class ByteBufIOUtil {
         ByteBufIOUtil.writeVariableLenLong(buffer, Double.doubleToLongBits(d));
     }
 
+    public static void writeVariable2LenDouble(final @NotNull ByteBuf buffer, final double d) throws IOException {
+        ByteBufIOUtil.writeVariable2LenLong(buffer, Double.doubleToLongBits(d));
+    }
+
+    public static void writeVariable3LenDouble(final @NotNull ByteBuf buffer, final double d) throws IOException {
+        ByteBufIOUtil.writeVariable3LenLong(buffer, Double.doubleToLongBits(d));
+    }
+
+    public static void writeVariable4LenDouble(final @NotNull ByteBuf buffer, final double d) throws IOException {
+        ByteBufIOUtil.writeVariable4LenLong(buffer, Double.doubleToLongBits(d));
+    }
+
     public static void writeUTF(final @NotNull ByteBuf buffer, final @NotNull String s) throws IOException {
         ByteBufIOUtil.writeByteArray(buffer, s.getBytes(StandardCharsets.UTF_8));
     }
 
     public static void writeUUID(final @NotNull ByteBuf buffer, final @NotNull UUID id) throws IOException {
-        ByteBufIOUtil.writeLong(buffer, id.getMostSignificantBits());
-        ByteBufIOUtil.writeLong(buffer, id.getLeastSignificantBits());
+        ByteBufIOUtil.writeVariable3LenLong(buffer, id.getMostSignificantBits());
+        ByteBufIOUtil.writeVariable3LenLong(buffer, id.getLeastSignificantBits());
     }
 
     public static void writeSerializable(final @NotNull ByteBuf buffer, final @Nullable Serializable serializable) throws IOException {
-        if (serializable == null) {
-            ByteBufIOUtil.writeVariableLenInt(buffer, -1);
-            return;
-        }
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        try (final ObjectOutput objectOutputStream = new ObjectOutputStream(new BufferedOutputStream(outputStream))) {
+        try (final ObjectOutput objectOutputStream = new ObjectOutputStream(new ByteBufOutputStream(buffer))) {
             objectOutputStream.writeObject(serializable);
+        } catch (final IndexOutOfBoundsException exception) {
+            throw new IOException(exception);
         }
-        ByteBufIOUtil.writeByteArray(buffer, outputStream.toByteArray());
     }
 }

@@ -5,12 +5,10 @@ import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
 import com.xuxiaocheng.WList.Server.DownloadIdHelper;
 import com.xuxiaocheng.WList.Server.WListServer;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.CompositeByteBuf;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Random;
 import java.util.random.RandomGenerator;
@@ -38,7 +36,7 @@ public final class WList {
         vector = new BigInteger(bytes);
     }
 
-    public static void main(final String[] args) {
+    public static void main(final String[] args) throws IOException {
 
         WList.exit();
     }
