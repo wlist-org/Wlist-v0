@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Server;
 
+import com.alibaba.fastjson2.JSONException;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
@@ -38,6 +39,7 @@ public class WListServer {
             WList.DebugMode ? Integer.MIN_VALUE : HLogLevel.DEBUG.getPriority() + 1,
             true, HMergedStream.createNoException(true, null));
 
+    // CONST
     public static final int FileTransferBufferSize = 4 << 20;
 
     public static final @NotNull EventExecutorGroup ServerExecutors =
@@ -74,7 +76,7 @@ public class WListServer {
                 pipeline.addLast("LengthDecoder", new LengthFieldBasedFrameDecoder((64 << 10) + WListServer.FileTransferBufferSize, 0, 4, 0, 4));
                 pipeline.addLast("LengthEncoder", new LengthFieldPrepender(4));
                 pipeline.addLast("Cipher", new AesCipher(WList.key, WList.vector));
-                pipeline.addLast(WListServer.ServerExecutors, "ServerHandler", new ServerChannelInboundHandler());
+                pipeline.addLast(WListServer.ServerExecutors, "ServerHandler", new ServerChannelInboundHandler(WListServer.this));
             }
         });
         this.channelFuture = serverBootstrap.bind(this.address).sync();
@@ -101,6 +103,13 @@ public class WListServer {
 
     @ChannelHandler.Sharable
     public static class ServerChannelInboundHandler extends SimpleChannelInboundHandler<ByteBuf> {
+        private final @NotNull WListServer server;
+
+        private ServerChannelInboundHandler(final @NotNull WListServer server) {
+            super();
+            this.server = server;
+        }
+
         @Override
         public void channelActive(final @NotNull ChannelHandlerContext ctx) {
             final ChannelId id = ctx.channel().id();
@@ -120,12 +129,19 @@ public class WListServer {
             final Channel channel = ctx.channel();
             WListServer.logger.log(HLogLevel.VERBOSE, "Read: ", channel.id().asLongText(), " len: ", msg.readableBytes());
             try {
-                final Operation.Type type = Operation.TypeMap.get(ByteBufIOUtil.readUTF(msg));
+                final Operation.Type type = Operation.valueOfType(ByteBufIOUtil.readUTF(msg));
                 WListServer.logger.log(HLogLevel.DEBUG, "Type: ", channel.id().asLongText(), " type: ", type);
                 if (type == null || type == Operation.Type.Undefined)
                     ServerHandler.writeMessage(channel, Operation.State.Unsupported, "Undefined operation!");
                 else
                     switch (type) {
+                        case CloseServer -> {
+                            if (ServerHandler.getAndCheckPermission(msg, channel, Operation.Permission.ServerOperate) != null)
+                                WListServer.ServerExecutors.submit(() -> {
+                                    this.server.stop();
+                                    return this;
+                                });
+                        }
                         case Login -> ServerHandler.doLogin(msg, channel);
                         case Register -> ServerHandler.doRegister(msg, channel);
                         case ChangePassword -> ServerHandler.doChangePassword(msg, channel);
@@ -139,12 +155,13 @@ public class WListServer {
                         case MakeDirectories -> ServerHandler.doMakeDirectories(msg, channel);
                         case DeleteFile -> ServerHandler.doDeleteFile(msg, channel);
                         case RenameFile -> ServerHandler.doRenameFile(msg, channel);
+                        case RequestUploadFile -> ServerHandler.doRequestUploadFile(msg, channel);
                         // TODO
                         default -> ServerHandler.writeMessage(channel, Operation.State.Unsupported, "TODO: Unsupported.");
                     }
                 if (msg.readableBytes() != 0)
                     WListServer.logger.log(HLogLevel.MISTAKE, "Unexpected discarded bytes: ", channel.id().asLongText(), " len: ", msg.readableBytes());
-            } catch (final IOException exception) {
+            } catch (final IOException | JSONException exception) {
                 ServerHandler.doException(channel, exception.getMessage());
             } catch (final ServerException exception) {
                 WListServer.logger.log(HLogLevel.WARN, "Exception: ", channel.id().asLongText(), exception);

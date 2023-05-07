@@ -285,7 +285,7 @@ public final class DriverManager_123pan {
     }
 
     static @NotNull FileInformation uploadFile(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @NotNull InputStream stream, final @NotNull String md5, final long size, final @Nullable Connection _connection) throws IllegalParametersException, IOException, SQLException {
-        if (!DriverHelper_123pan.etagPattern.matcher(md5).matches())
+        if (!DriverUtil.tagPredication.test(md5))
             throw new IllegalParametersException("Invalid etag (md5).", md5);
         final String newDirectoryName = path.getName();
         final DrivePath parentPath = path.getParent();

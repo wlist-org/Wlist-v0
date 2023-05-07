@@ -7,6 +7,8 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 public class GlobalConfiguration {
@@ -20,7 +22,6 @@ public class GlobalConfiguration {
             }
             try {
                 GlobalConfiguration.instance = new Yaml().loadAs(input, GlobalConfiguration.class);
-                input.close();
             } catch (final RuntimeException exception) {
                 throw new IOException(exception);
             }
@@ -31,6 +32,15 @@ public class GlobalConfiguration {
 
     public static @NotNull GlobalConfiguration getInstance() {
         return Objects.requireNonNullElseGet(GlobalConfiguration.instance, GlobalConfiguration::new);
+    }
+
+    public static void dump(final @NotNull OutputStream output) throws IOException {
+        final GlobalConfiguration instance = GlobalConfiguration.getInstance();
+        try {
+            output.write(new Yaml().dumpAsMap(instance).getBytes(StandardCharsets.UTF_8));
+        } catch (final RuntimeException exception) {
+            throw new IOException(exception);
+        }
     }
 
     protected GlobalConfiguration() {

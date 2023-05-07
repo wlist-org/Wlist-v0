@@ -8,6 +8,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Exceptions.NetworkException;
 import com.xuxiaocheng.WList.Server.WListServer;
+import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.WList;
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -29,12 +30,15 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 public final class DriverUtil {
     private DriverUtil() {
         super();
     }
+
+    public static final @NotNull Predicate<String> tagPredication = s -> MiscellaneousUtil.md5Pattern.matcher(s).matches();
 
     public static final @NotNull OkHttpClient httpClient = new OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)

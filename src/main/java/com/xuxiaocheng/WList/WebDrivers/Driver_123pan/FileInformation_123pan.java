@@ -3,6 +3,7 @@ package com.xuxiaocheng.WList.WebDrivers.Driver_123pan;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.WList.Driver.DrivePath;
+import com.xuxiaocheng.WList.Driver.DriverUtil;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Driver.FileInformation;
 import org.jetbrains.annotations.NotNull;
@@ -59,7 +60,7 @@ public final class FileInformation_123pan {
             final String etag = info.getString("Etag");
             if (id == null || name == null || type == null || size == null || size.longValue() < 0
                     || create == null || update == null || flag == null
-                    || etag == null || (!etag.isEmpty() && !DriverHelper_123pan.etagPattern.matcher(etag).matches()))
+                    || etag == null || (!etag.isEmpty() && !DriverUtil.tagPredication.test(etag)))
                 return null;
             return new FileInformation(id.longValue(), parentPath.getChild(name),
                     type.intValue() == 1, size.longValue(),

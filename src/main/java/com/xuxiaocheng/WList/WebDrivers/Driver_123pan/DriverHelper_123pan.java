@@ -25,7 +25,6 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Predicate;
-import java.util.regex.Pattern;
 
 public final class DriverHelper_123pan {
     private DriverHelper_123pan() {
@@ -81,7 +80,6 @@ public final class DriverHelper_123pan {
         };
     }
 
-    static final @NotNull Pattern etagPattern = Pattern.compile("^[a-z0-9]{32}$");
     static final @NotNull Predicate<String> filenamePredication = (s) -> {
         if (s.length() >= 128)
             return false;
@@ -90,6 +88,7 @@ public final class DriverHelper_123pan {
                 return false;
         return true;
     };
+
     static final long UploadPartSize = 16 << 20;
 
     static @NotNull Headers.Builder headerBuilder(final @Nullable String token) {

@@ -9,9 +9,6 @@ import com.xuxiaocheng.WList.Driver.FileInformation;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
-import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufInputStream;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -84,12 +81,10 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
     }
 
     @Override
-    public @NotNull FileInformation upload(final @NotNull DrivePath path, final @NotNull ByteBuf file) throws IllegalParametersException, IOException, SQLException {
-        try (final InputStream stream = new ByteBufInputStream(file)) {
-            final String md5 = MiscellaneousUtil.getMd5(stream);
-            stream.reset();
-            return DriverManager_123pan.uploadFile(this.configuration, path, stream, md5, stream.available(), null);
-        }
+    public @Nullable FileInformation upload(final @NotNull DrivePath path, final @NotNull InputStream stream, final @NotNull String tag, final @NotNull List<@NotNull String> ignoredPartTags) throws IllegalParametersException, IOException, SQLException {
+        if (this.mkdirs(path.getParent()) == null)
+            return null;
+        return DriverManager_123pan.uploadFile(this.configuration, path, stream, tag, stream.available(), null);
     }
 
     @Override

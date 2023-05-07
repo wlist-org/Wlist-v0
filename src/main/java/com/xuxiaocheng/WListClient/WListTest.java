@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WListClient;
 
+import com.alibaba.fastjson2.JSON;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.WList.Server.Configuration.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.Driver.DriverManager;
@@ -7,17 +8,18 @@ import com.xuxiaocheng.WList.Server.ServerHandler;
 import com.xuxiaocheng.WList.Server.UserSqlHelper;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
+import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.WList;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.BufferedInputStream;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class WListTest {
@@ -26,7 +28,7 @@ public final class WListTest {
     }
 
     public static void main(final String[] args) throws IOException, SQLException, InterruptedException {
-        GlobalConfiguration.init(new BufferedInputStream(new FileInputStream("config.yml")));
+        GlobalConfiguration.init(null);
         DriverManager.init();
         UserSqlHelper.init(ServerHandler.DefaultPermission, ServerHandler.AdminPermission);
         final WListServer server = new WListServer(new InetSocketAddress(GlobalConfiguration.getInstance().getPort()));
@@ -50,23 +52,29 @@ public final class WListTest {
             final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
             ByteBufIOUtil.writeUTF(buffer, "Login");
             ByteBufIOUtil.writeUTF(buffer, "admin");
-            //noinspection SpellCheckingInspection
             ByteBufIOUtil.writeUTF(buffer, "U.jF9u4Z");
             channel.writeAndFlush(buffer);
             synchronized (WListTest.token_lock) {
                 while (WListTest.token == null)
                     WListTest.token_lock.wait();
             }
+            assert WListTest.stage.get() == 1;
         }
-        assert WListTest.stage.get() == 1;
-        final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
-        ByteBufIOUtil.writeUTF(buffer, "DeleteFile");
-        ByteBufIOUtil.writeUTF(buffer, WListTest.token);
-        ByteBufIOUtil.writeUTF(buffer, "/123pan/test directory");
-        channel.writeAndFlush(buffer);
-        synchronized (WListTest.stage) {
-            while (WListTest.stage.get() != 2)
-                WListTest.stage.wait();
+        {
+            final String file = "Uploader test.";
+            final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
+            ByteBufIOUtil.writeUTF(buffer, "RequestUploadFile");
+            ByteBufIOUtil.writeUTF(buffer, WListTest.token);
+            ByteBufIOUtil.writeUTF(buffer, "/123pan/test directory/t.txt");
+            ByteBufIOUtil.writeVariableLenLong(buffer, file.getBytes(StandardCharsets.UTF_8).length);
+            final String tag = MiscellaneousUtil.getMd5(file.getBytes(StandardCharsets.UTF_8));
+            ByteBufIOUtil.writeUTF(buffer, tag);
+            ByteBufIOUtil.writeUTF(buffer, JSON.toJSONString(List.of(tag)));
+            channel.writeAndFlush(buffer);
+            synchronized (WListTest.stage) {
+                while (WListTest.stage.get() != 2)
+                    WListTest.stage.wait();
+            }
         }
     }
 
@@ -83,7 +91,7 @@ public final class WListTest {
                 }
                 case 1 -> {
                     HLog.DefaultLogger.log("INFO", ByteBufIOUtil.readUTF(buffer));
-//                    HLog.DefaultLogger.log("INFO", ByteBufIOUtil.readUTF(buffer));
+                    HLog.DefaultLogger.log("INFO", ByteBufIOUtil.readUTF(buffer));
                 }
             }
         } finally {

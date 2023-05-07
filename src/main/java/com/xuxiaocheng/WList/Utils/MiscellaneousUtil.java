@@ -18,11 +18,14 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Random;
 import java.util.random.RandomGenerator;
+import java.util.regex.Pattern;
 
 public final class MiscellaneousUtil {
     private MiscellaneousUtil() {
         super();
     }
+
+    public static final @NotNull Pattern md5Pattern = Pattern.compile("^[a-z0-9]{32}$");
 
     public static @NotNull String getMd5(final byte @NotNull [] source) {
         final MessageDigest md5;

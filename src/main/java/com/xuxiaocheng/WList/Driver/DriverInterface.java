@@ -4,14 +4,10 @@ import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.ByteBufOutputStream;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.List;
 
 public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
@@ -71,13 +67,15 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     @Nullable FileInformation mkdirs(final @NotNull DrivePath path) throws Exception;
 
     /**
-     * Upload small file to path. (! Only small file)
+     * Upload file to path.
      * @param path Target path.
-     * @param file Content of file.
-     * @return The information of new file.
+     * @param stream Content stream of file.
+     * @param tag File md5.
+     * @param partTags File md5 of per 4 MB file part.
+     * @return The information of new file. Null means failure. (Invalid filename.)
      * @throws Exception Something went wrong.
      */
-    @NotNull FileInformation upload(final @NotNull DrivePath path, final @NotNull ByteBuf file) throws Exception;
+    @Nullable FileInformation upload(final @NotNull DrivePath path, final @NotNull InputStream stream, final @NotNull String tag, final @NotNull List<@NotNull String> partTags) throws Exception;
 
     /**
      * Delete file.
@@ -89,14 +87,14 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     @SuppressWarnings("OverlyBroadThrowsClause")
     default @Nullable FileInformation copy(final @NotNull DrivePath source, final @NotNull DrivePath target) throws Exception {
         final Pair.ImmutablePair<InputStream, Long> url = this.download(source, 0, Long.MAX_VALUE);
-        if (url == null)
+        final FileInformation info = this.info(source);
+        if (url == null || info == null)
             return null;
+        assert info.size() == url.getSecond().longValue();
+        if (info.size() > 4 << 20)
+            throw new UnsupportedOperationException();
         final InputStream inputStream = url.getFirst();
-        final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(url.getSecond().intValue());
-        try (final OutputStream outputStream = new ByteBufOutputStream(buffer)) {
-            inputStream.transferTo(outputStream);
-        }
-        final FileInformation t =  this.upload(target, buffer);
+        final FileInformation t =  this.upload(target, inputStream, info.tag(), List.of(info.tag()));
         inputStream.close();
         return t;
     }

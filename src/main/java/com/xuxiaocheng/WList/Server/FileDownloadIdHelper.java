@@ -23,19 +23,21 @@ import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-public final class DownloadIdHelper {
-    private DownloadIdHelper() {
+public final class FileDownloadIdHelper {
+    private FileDownloadIdHelper() {
         super();
     }
 
-    private static final @NotNull Map<@NotNull Long, @NotNull DownloaderData> buffers = new ConcurrentHashMap<>();
+    private static final @NotNull Map<@NotNull String, @NotNull DownloaderData> buffers = new ConcurrentHashMap<>();
 
-    public static long generateId(final @NotNull InputStream inputStream) {
+    public static @NotNull String generateId(final @NotNull InputStream inputStream) {
         final DownloaderData data = new DownloaderData(inputStream);
-        long id = HRandomHelper.DefaultSecureRandom.nextLong();
-        for (; ; id = HRandomHelper.DefaultSecureRandom.nextLong()) {
+        String id;
+        while (true) {
+            //noinspection SpellCheckingInspection
+            id = HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890~!@#$%^&*,.?|");
             final boolean[] flag = {false};
-            DownloadIdHelper.buffers.computeIfAbsent(id, (i) -> {
+            FileDownloadIdHelper.buffers.computeIfAbsent(id, (i) -> {
                 flag[0] = true;
                 return data;
             });
@@ -46,26 +48,26 @@ public final class DownloadIdHelper {
         return id;
     }
 
-    public static boolean cancel(final long id) {
-        final DownloaderData data = DownloadIdHelper.buffers.remove(id);
+    public static boolean cancel(final @NotNull String id) {
+        final DownloaderData data = FileDownloadIdHelper.buffers.remove(id);
         if (data == null)
             return false;
         data.cancel(true);
         return true;
     }
 
-    public static Pair.@Nullable ImmutablePair<@NotNull Integer, @NotNull ByteBuf> download(final long id) throws InterruptedException, IOException, ExecutionException {
-        final DownloaderData data = DownloadIdHelper.buffers.get(id);
+    public static Pair.@Nullable ImmutablePair<@NotNull Integer, @NotNull ByteBuf> download(final @NotNull String id) throws InterruptedException, IOException, ExecutionException {
+        final DownloaderData data = FileDownloadIdHelper.buffers.get(id);
         if (data == null)
             return null;
         final Pair.ImmutablePair<Integer, ByteBuf> buf = data.get();
         if (buf == null)
-            DownloadIdHelper.cancel(id);
+            FileDownloadIdHelper.cancel(id);
         return buf;
     }
 
     private static class DownloaderData {
-        private @Nullable Long id = null;
+        private @NotNull String id = "";
         private @NotNull Future<?> downloader;
         private volatile @NotNull LocalDateTime expireTime;
         private final @NotNull BlockingQueue<Pair.@NotNull ImmutablePair<@NotNull Integer, @NotNull ByteBuf>> bufferQueue = new LinkedBlockingQueue<>(3);
@@ -97,14 +99,14 @@ public final class DownloadIdHelper {
             super();
             this.inputStream = inputStream;
             this.expireTime = LocalDateTime.now().plusSeconds(GlobalConfiguration.getInstance().getDownload_id_expire_time());
-            DownloadIdHelper.checkTime.add(Pair.ImmutablePair.makeImmutablePair(this.expireTime, this));
+            FileDownloadIdHelper.checkTime.add(Pair.ImmutablePair.makeImmutablePair(this.expireTime, this));
             this.downloader = CompletableFuture.allOf(this.newDownloader(), this.newDownloader(), this.newDownloader());
         }
 
         public Pair.@Nullable ImmutablePair<@NotNull Integer, @NotNull ByteBuf> get() throws InterruptedException, IOException, ExecutionException {
-            assert this.id != null;
+            assert !this.id.isEmpty();
             this.expireTime = LocalDateTime.now().plusSeconds(GlobalConfiguration.getInstance().getDownload_id_expire_time());
-            DownloadIdHelper.checkTime.add(Pair.ImmutablePair.makeImmutablePair(this.expireTime, this));
+            FileDownloadIdHelper.checkTime.add(Pair.ImmutablePair.makeImmutablePair(this.expireTime, this));
             synchronized (this) {
                 if ((this.downloader.isDone() || this.downloader.isCancelled()) && this.bufferQueue.isEmpty()) {
                     this.cancel(true);
@@ -122,7 +124,7 @@ public final class DownloadIdHelper {
         }
 
         public void cancel(final boolean release) {
-            assert this.id != null;
+            assert !this.id.isEmpty();
             synchronized (this) {
                 this.downloader.cancel(true);
                 try {
@@ -134,7 +136,7 @@ public final class DownloadIdHelper {
                 this.inputStream.close();
             } catch (final IOException ignore) {
             }
-            DownloadIdHelper.buffers.remove(this.id, this);
+            FileDownloadIdHelper.buffers.remove(this.id, this);
             if (release)
                 while (!this.bufferQueue.isEmpty()) {
                     try {
@@ -148,14 +150,18 @@ public final class DownloadIdHelper {
         }
 
         @Override
-        public synchronized @NotNull String toString() {
-            return "DownloaderData{" +
-                    "downloader=" + this.downloader +
-                    ", queryTime=" + this.expireTime +
-                    ", buffers=" + this.bufferQueue +
-                    ", counter=" + this.counter[0] +
-                    ", inputStream=" + this.inputStream +
-                    '}';
+        public @NotNull String toString() {
+            final String id = this.id;
+            synchronized (this) {
+                return "DownloaderData{" +
+                        "id=" + id +
+                        ", downloader=" + this.downloader +
+                        ", queryTime=" + this.expireTime +
+                        ", buffers=" + this.bufferQueue +
+                        ", counter=" + this.counter[0] +
+                        ", inputStream=" + this.inputStream +
+                        '}';
+            }
         }
     }
 
@@ -163,7 +169,7 @@ public final class DownloadIdHelper {
     public static final Thread cleaner = new Thread(() -> {
         while (true) {
             try {
-                final Pair.ImmutablePair<LocalDateTime, DownloaderData> check = DownloadIdHelper.checkTime.take();
+                final Pair.ImmutablePair<LocalDateTime, DownloaderData> check = FileDownloadIdHelper.checkTime.take();
                 final LocalDateTime now = LocalDateTime.now();
                 if (now.isBefore(check.getFirst()))
                     TimeUnit.MILLISECONDS.sleep(Duration.between(now, check.getFirst()).toMillis());
@@ -175,7 +181,7 @@ public final class DownloadIdHelper {
         }
     }, "Downloader Cleaner");
     static {
-        DownloadIdHelper.cleaner.setDaemon(true);
-        DownloadIdHelper.cleaner.start();
+        FileDownloadIdHelper.cleaner.setDaemon(true);
+        FileDownloadIdHelper.cleaner.start();
     }
 }

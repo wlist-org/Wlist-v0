@@ -7,6 +7,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Driver.DrivePath;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
+import com.xuxiaocheng.WList.Driver.DriverUtil;
 import com.xuxiaocheng.WList.Driver.FileInformation;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
@@ -154,7 +155,7 @@ public final class ServerHandler {
         }
     }
 
-    private static Triad.@Nullable ImmutableTriad<@NotNull String, @NotNull String, @NotNull SortedSet<Operation.@NotNull Permission>> getAndCheckPermission(final @NotNull ByteBuf buf, final @NotNull Channel channel, final @Nullable Operation.Permission... permission) throws IOException, ServerException {
+    static Triad.@Nullable ImmutableTriad<@NotNull String, @NotNull String, @NotNull SortedSet<Operation.@NotNull Permission>> getAndCheckPermission(final @NotNull ByteBuf buf, final @NotNull Channel channel, final @Nullable Operation.Permission... permission) throws IOException, ServerException {
         final String token = ByteBufIOUtil.readUTF(buf);
         try {
             final Triad.ImmutableTriad<String, String, SortedSet<Operation.Permission>> user = UserTokenHelper.decodeToken(token);
@@ -268,11 +269,11 @@ public final class ServerHandler {
             ServerHandler.writeMessage(channel, Operation.State.DataError, "File");
             return;
         }
-        final long id = DownloadIdHelper.generateId(url.getFirst());
+        final String id = FileDownloadIdHelper.generateId(url.getFirst());
         final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
         ByteBufIOUtil.writeUTF(buffer, Operation.State.Success.name());
         ByteBufIOUtil.writeVariableLenLong(buffer, url.getSecond().longValue());
-        ByteBufIOUtil.writeLong(buffer, id);
+        ByteBufIOUtil.writeUTF(buffer, id);
         channel.writeAndFlush(buffer);
     }
 
@@ -280,9 +281,9 @@ public final class ServerHandler {
         final Triad.ImmutableTriad<String, String, SortedSet<Operation.Permission>> user = ServerHandler.getAndCheckPermission(buf, channel, Operation.Permission.FileDownload);
         if (user == null)
             return;
-        final long id = ByteBufIOUtil.readLong(buf);
+        final String id = ByteBufIOUtil.readUTF(buf);
         try {
-            final Pair.ImmutablePair<Integer, ByteBuf> file = DownloadIdHelper.download(id);
+            final Pair.ImmutablePair<Integer, ByteBuf> file = FileDownloadIdHelper.download(id);
             if (file == null) {
                 ServerHandler.writeMessage(channel, Operation.State.DataError, null);
                 return;
@@ -304,8 +305,8 @@ public final class ServerHandler {
         final Triad.ImmutableTriad<String, String, SortedSet<Operation.Permission>> user = ServerHandler.getAndCheckPermission(buf, channel, Operation.Permission.FileDownload);
         if (user == null)
             return;
-        final long id = ByteBufIOUtil.readLong(buf);
-        if (DownloadIdHelper.cancel(id))
+        final String id = ByteBufIOUtil.readUTF(buf);
+        if (FileDownloadIdHelper.cancel(id))
             ServerHandler.writeMessage(channel, Operation.State.Success, null);
         else
             ServerHandler.writeMessage(channel, Operation.State.DataError, null);
@@ -365,6 +366,25 @@ public final class ServerHandler {
             return;
         }
         ServerHandler.writeMessage(channel, Operation.State.Success, JSON.toJSONString(ServerHandler.getVisibleInfo(file)));
+    }
+
+    public static void doRequestUploadFile(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
+        final Pair.ImmutablePair<DriverInterface<?>, DrivePath> path = ServerHandler.getDriverPath(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileUpload);
+        if (path == null)
+            return;
+        final long size = ByteBufIOUtil.readVariableLenLong(buf);
+        final String tag = ByteBufIOUtil.readUTF(buf);
+        final List<String> tags = JSON.parseArray(ByteBufIOUtil.readUTF(buf), String.class);
+        if (size < 0 || size <= (long) (tags.size() - 1) * (4 << 20) || (long) tags.size() * (4 << 20) < size) {
+            ServerHandler.writeMessage(channel, Operation.State.DataError, "Size");
+            return;
+        }
+        if (!DriverUtil.tagPredication.test(tag) || !tags.stream().allMatch(DriverUtil.tagPredication)) {
+            ServerHandler.writeMessage(channel, Operation.State.DataError, "Tag");
+            return;
+        }
+        //todo
+        ServerHandler.writeMessage(channel, Operation.State.Unsupported, null);
     }
 
     // TODO
