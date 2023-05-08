@@ -13,7 +13,7 @@ import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
 import com.xuxiaocheng.WList.Server.Configuration.GlobalConfiguration;
-import com.xuxiaocheng.WList.Server.Driver.DriverManager;
+import com.xuxiaocheng.WList.Server.Driver.RootDriver;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -197,30 +197,17 @@ public final class ServerHandler {
         }
     }
 
-    private static Pair.@Nullable ImmutablePair<@NotNull DriverInterface<?>, @NotNull DrivePath> getDriverPath(final @NotNull ByteBuf buf, final @NotNull Channel channel, final @Nullable Operation.Permission... permission) throws IOException, ServerException {
-        if (ServerHandler.getAndCheckPermission(buf, channel, permission) == null)
-            return null;
-        // TODO Server raid.
-        final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buf));
-        final DriverInterface<?> driver = DriverManager.get(path.getRoot());
-        if (driver == null) {
-            ServerHandler.writeMessage(channel, Operation.State.DataError, "File");
-            return null;
-        }
-        return Pair.ImmutablePair.makeImmutablePair(driver, path.removedRoot());
-    }
-
     public static void doListFiles(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
-        final Pair.ImmutablePair<DriverInterface<?>, DrivePath> path = ServerHandler.getDriverPath(buf, channel, Operation.Permission.FilesList);
-        if (path == null)
+        if (ServerHandler.getAndCheckPermission(buf, channel, Operation.Permission.FilesList) == null)
             return;
+        final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buf));
         final int limit = ByteBufIOUtil.readVariableLenInt(buf);
         final int page = ByteBufIOUtil.readVariableLenInt(buf);
         final String direction = ByteBufIOUtil.readUTF(buf);
         final String policy = ByteBufIOUtil.readUTF(buf);
         final OrderDirection orderDirection = OrderDirection.Map.get(direction);
         final OrderPolicy orderPolicy = OrderPolicy.Map.get(policy);
-        if (limit < 1 || limit > GlobalConfiguration.getInstance().getMax_limit() || page < 0
+        if (limit < 1 || limit > GlobalConfiguration.getInstance().getMaxLimitPerPage() || page < 0
                 || (orderDirection == null && !"D".equals(direction))
                 || (orderPolicy == null && !"D".equals(policy))) {
             ServerHandler.writeMessage(channel, Operation.State.DataError, "Parameters");
@@ -228,7 +215,7 @@ public final class ServerHandler {
         }
         final Pair.ImmutablePair<Integer, List<FileInformation>> list;
         try {
-            list = path.getFirst().list(path.getSecond(), limit, page, orderDirection, orderPolicy);
+            list = RootDriver.getInstance().list(path, limit, page, orderDirection, orderPolicy);
         } catch (final UnsupportedOperationException exception) {
            ServerHandler.writeMessage(channel, Operation.State.Unsupported, exception.getMessage());
            return;
@@ -247,9 +234,9 @@ public final class ServerHandler {
     }
 
     public static void doRequestDownloadFile(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
-        final Pair.ImmutablePair<DriverInterface<?>, DrivePath> path = ServerHandler.getDriverPath(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileDownload);
-        if (path == null)
+        if (ServerHandler.getAndCheckPermission(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileDownload) == null)
             return;
+        final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buf));
         final long from = ByteBufIOUtil.readVariableLenLong(buf);
         final long to = ByteBufIOUtil.readVariableLenLong(buf);
         if (from < 0 || from >= to) {
@@ -258,7 +245,7 @@ public final class ServerHandler {
         }
         final Pair.ImmutablePair<InputStream, Long> url;
         try {
-            url = path.getFirst().download(path.getSecond(), from, to);
+            url = RootDriver.getInstance().download(path, from, to);
         } catch (final UnsupportedOperationException exception) {
             ServerHandler.writeMessage(channel, Operation.State.Unsupported, exception.getMessage());
             return;
@@ -313,7 +300,11 @@ public final class ServerHandler {
     }
 
     public static void doMakeDirectories(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
-        final Pair.ImmutablePair<DriverInterface<?>, DrivePath> path = ServerHandler.getDriverPath(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileUpload);
+        Pair.@Nullable ImmutablePair<@NotNull DriverInterface<?>, @NotNull DrivePath> path = null;
+        if (ServerHandler.getAndCheckPermission(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileUpload) != null) {
+            final DrivePath path1 = new DrivePath(ByteBufIOUtil.readUTF(buf));
+            path = Pair.ImmutablePair.makeImmutablePair(RootDriver.getInstance(), path1);
+        }
         if (path == null)
             return;
         final FileInformation dir;
@@ -333,7 +324,11 @@ public final class ServerHandler {
     }
 
     public static void doDeleteFile(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
-        final Pair.ImmutablePair<DriverInterface<?>, DrivePath> path = ServerHandler.getDriverPath(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileDelete);
+        Pair.@Nullable ImmutablePair<@NotNull DriverInterface<?>, @NotNull DrivePath> path = null;
+        if (ServerHandler.getAndCheckPermission(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileDelete) != null) {
+            final DrivePath path1 = new DrivePath(ByteBufIOUtil.readUTF(buf));
+            path = Pair.ImmutablePair.makeImmutablePair(RootDriver.getInstance(), path1);
+        }
         if (path == null)
             return;
         try {
@@ -348,7 +343,11 @@ public final class ServerHandler {
     }
 
     public static void doRenameFile(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
-        final Pair.ImmutablePair<DriverInterface<?>, DrivePath> path = ServerHandler.getDriverPath(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileUpload, Operation.Permission.FileDelete);
+        Pair.@Nullable ImmutablePair<@NotNull DriverInterface<?>, @NotNull DrivePath> path = null;
+        if (ServerHandler.getAndCheckPermission(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileUpload, Operation.Permission.FileDelete) != null) {
+            final DrivePath path1 = new DrivePath(ByteBufIOUtil.readUTF(buf));
+            path = Pair.ImmutablePair.makeImmutablePair(RootDriver.getInstance(), path1);
+        }
         if (path == null)
             return;
         final String name = ByteBufIOUtil.readUTF(buf);
@@ -369,7 +368,11 @@ public final class ServerHandler {
     }
 
     public static void doRequestUploadFile(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
-        final Pair.ImmutablePair<DriverInterface<?>, DrivePath> path = ServerHandler.getDriverPath(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileUpload);
+        Pair.@Nullable ImmutablePair<@NotNull DriverInterface<?>, @NotNull DrivePath> path = null;
+        if (ServerHandler.getAndCheckPermission(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileUpload) != null) {
+            final DrivePath path1 = new DrivePath(ByteBufIOUtil.readUTF(buf));
+            path = Pair.ImmutablePair.makeImmutablePair(RootDriver.getInstance(), path1);
+        }
         if (path == null)
             return;
         final long size = ByteBufIOUtil.readVariableLenLong(buf);

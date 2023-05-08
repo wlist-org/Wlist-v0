@@ -91,7 +91,7 @@ public final class DriverManager_123pan {
             }
             noThread = false;
             final AtomicInteger finishedPageCount = new AtomicInteger(1);
-            final ExecutorService threadPool = Objects.requireNonNullElseGet(_threadPool, () -> Executors.newFixedThreadPool(GlobalConfiguration.getInstance().getThread_count()));
+            final ExecutorService threadPool = Objects.requireNonNullElseGet(_threadPool, () -> Executors.newFixedThreadPool(GlobalConfiguration.getInstance().getThreadCount()));
             final BlockingQueue<FileInformation> allFiles = new LinkedBlockingQueue<>(firstPage.getSecond());
             for (int page = 2; page <= pageCount; ++page) {
                 final int current = page;
@@ -198,7 +198,7 @@ public final class DriverManager_123pan {
 
     static void recursiveRefreshDirectory(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final @NotNull DrivePath directoryPath, final @Nullable Connection _connection, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
         final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
-        final ExecutorService threadPool = Objects.requireNonNullElseGet(_threadPool, () -> Executors.newFixedThreadPool(GlobalConfiguration.getInstance().getThread_count()));
+        final ExecutorService threadPool = Objects.requireNonNullElseGet(_threadPool, () -> Executors.newFixedThreadPool(GlobalConfiguration.getInstance().getThreadCount()));
         try {
             if (_connection == null)
                 connection.setAutoCommit(false);

@@ -98,14 +98,14 @@ public final class FileDownloadIdHelper {
         private DownloaderData(final @NotNull InputStream inputStream) {
             super();
             this.inputStream = inputStream;
-            this.expireTime = LocalDateTime.now().plusSeconds(GlobalConfiguration.getInstance().getDownload_id_expire_time());
+            this.expireTime = LocalDateTime.now().plusSeconds(GlobalConfiguration.getInstance().getIdIdleExpireTime());
             FileDownloadIdHelper.checkTime.add(Pair.ImmutablePair.makeImmutablePair(this.expireTime, this));
             this.downloader = CompletableFuture.allOf(this.newDownloader(), this.newDownloader(), this.newDownloader());
         }
 
         public Pair.@Nullable ImmutablePair<@NotNull Integer, @NotNull ByteBuf> get() throws InterruptedException, IOException, ExecutionException {
             assert !this.id.isEmpty();
-            this.expireTime = LocalDateTime.now().plusSeconds(GlobalConfiguration.getInstance().getDownload_id_expire_time());
+            this.expireTime = LocalDateTime.now().plusSeconds(GlobalConfiguration.getInstance().getIdIdleExpireTime());
             FileDownloadIdHelper.checkTime.add(Pair.ImmutablePair.makeImmutablePair(this.expireTime, this));
             synchronized (this) {
                 if ((this.downloader.isDone() || this.downloader.isCancelled()) && this.bufferQueue.isEmpty()) {

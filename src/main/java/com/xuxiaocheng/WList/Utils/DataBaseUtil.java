@@ -36,7 +36,7 @@ public class DataBaseUtil {
     public static @NotNull DataBaseUtil getDataInstance() throws SQLException {
         if (DataBaseUtil.DataDB == null)
             DataBaseUtil.DataDB = new DataBaseUtil(new PooledDatabaseConfig(
-                    new File(GlobalConfiguration.getInstance().getData_db()),
+                    new File(GlobalConfiguration.getInstance().getDataDBPath()),
                     2, 4, 10, true, Connection.TRANSACTION_READ_COMMITTED
             ));
         return DataBaseUtil.DataDB;
@@ -45,7 +45,7 @@ public class DataBaseUtil {
     public static @NotNull DataBaseUtil getIndexInstance() throws SQLException {
         if (DataBaseUtil.IndexDB == null)
             DataBaseUtil.IndexDB = new DataBaseUtil(new PooledDatabaseConfig(
-                    new File(GlobalConfiguration.getInstance().getIndex_db()),
+                    new File(GlobalConfiguration.getInstance().getIndexDBPath()),
                     2, 4, 10, true, Connection.TRANSACTION_READ_COMMITTED
             ));
         return DataBaseUtil.IndexDB;

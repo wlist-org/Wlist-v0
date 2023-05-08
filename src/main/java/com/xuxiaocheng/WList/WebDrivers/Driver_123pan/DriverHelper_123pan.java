@@ -33,6 +33,7 @@ public final class DriverHelper_123pan {
 
     static final Pair.@NotNull ImmutablePair<String, String> LoginURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/user/sign_in", "POST");
     static final Pair.@NotNull ImmutablePair<String, String> RefreshTokenURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/user/refresh_token", "POST");
+//    static final Pair.@NotNull ImmutablePair<String, String> TokenDelayURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/user/token_delay", "POST");
     static final Pair.@NotNull ImmutablePair<String, String> UserInformationURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/user/info", "GET");
     static final Pair.@NotNull ImmutablePair<String, String> ListFilesURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/list/new", "GET");
     static final Pair.@NotNull ImmutablePair<String, String> FilesInfoURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/info", "POST");

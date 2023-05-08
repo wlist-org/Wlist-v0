@@ -30,29 +30,44 @@ import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.EventExecutorGroup;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.net.SocketAddress;
 
 public class WListServer {
-    private static final @NotNull HLog logger = HLog.createInstance("ServerLogger",
-            WList.DebugMode ? Integer.MIN_VALUE : HLogLevel.DEBUG.getPriority() + 1,
-            true, HMergedStream.createNoException(true, null));
-
-    // CONST
     public static final int FileTransferBufferSize = 4 << 20;
-
+    public static final @NotNull EventExecutorGroup CodecExecutors =
+            new DefaultEventExecutorGroup(Math.max(1, Runtime.getRuntime().availableProcessors() >>> 1), new DefaultThreadFactory("CodecExecutors"));
     public static final @NotNull EventExecutorGroup ServerExecutors =
             new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 1, new DefaultThreadFactory("ServerExecutors"));
     public static final @NotNull EventExecutorGroup IOExecutors =
             new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 3, new DefaultThreadFactory("IOExecutors"));
 
+    private static final @NotNull HLog logger = HLog.createInstance("ServerLogger",
+            WList.DebugMode ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1,
+            true, WList.InIdeaMode ? null : HMergedStream.getFileOutputStreamNoException(""));
+
+    protected static @Nullable WListServer instance;
+    public static synchronized void init(final @NotNull SocketAddress address) {
+        if (WListServer.instance != null)
+            throw new IllegalStateException("WList server is initialized. instance: " + WListServer.instance + " address: " + address);
+        WListServer.instance = new WListServer(address);
+    }
+    public static synchronized @NotNull WListServer getInstance() {
+        if (WListServer.instance == null)
+            throw new IllegalStateException("WList server is not initialized.");
+        return WListServer.instance;
+    }
+
+    protected static final @NotNull WListServer.ServerChannelHandler handlerInstance = new ServerChannelHandler();
+
     protected final @NotNull SocketAddress address;
     protected final @NotNull EventExecutorGroup bossGroup = new NioEventLoopGroup(1);
-    protected final @NotNull EventLoopGroup workerGroup = new NioEventLoopGroup(0);
-    private ChannelFuture channelFuture;
+    protected final @NotNull EventLoopGroup workerGroup = new NioEventLoopGroup();
+    private Channel channel;
 
-    public WListServer(final @NotNull SocketAddress address) {
+    protected WListServer(final @NotNull SocketAddress address) {
         super();
         this.address = address;
     }
@@ -66,31 +81,31 @@ public class WListServer {
         final ServerBootstrap serverBootstrap = new ServerBootstrap();
         serverBootstrap.group(this.workerGroup, this.workerGroup);
         serverBootstrap.channel(NioServerSocketChannel.class);
-        serverBootstrap.option(ChannelOption.SO_BACKLOG, GlobalConfiguration.getInstance().getMax_connection());
+        serverBootstrap.option(ChannelOption.SO_BACKLOG, GlobalConfiguration.getInstance().getMaxConnection());
         serverBootstrap.option(ChannelOption.SO_REUSEADDR, true);
         serverBootstrap.childOption(ChannelOption.SO_KEEPALIVE, true);
         serverBootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
             @Override
             protected void initChannel(final @NotNull SocketChannel ch) {
                 final ChannelPipeline pipeline = ch.pipeline();
-                pipeline.addLast("LengthDecoder", new LengthFieldBasedFrameDecoder((64 << 10) + WListServer.FileTransferBufferSize, 0, 4, 0, 4));
-                pipeline.addLast("LengthEncoder", new LengthFieldPrepender(4));
-                pipeline.addLast("Cipher", new AesCipher(WList.key, WList.vector));
-                pipeline.addLast(WListServer.ServerExecutors, "ServerHandler", new ServerChannelInboundHandler(WListServer.this));
+                pipeline.addLast(WListServer.CodecExecutors, "LengthDecoder", new LengthFieldBasedFrameDecoder((64 << 10) + WListServer.FileTransferBufferSize, 0, 4, 0, 4));
+                pipeline.addLast(WListServer.CodecExecutors, "LengthEncoder", new LengthFieldPrepender(4));
+                pipeline.addLast(WListServer.CodecExecutors, "Cipher", new AesCipher(WList.key, WList.vector));
+                pipeline.addLast(WListServer.ServerExecutors, "ServerHandler", WListServer.handlerInstance);
             }
         });
-        this.channelFuture = serverBootstrap.bind(this.address).sync();
+        this.channel = serverBootstrap.bind(this.address).sync().channel();
         WListServer.logger.log(HLogLevel.INFO, "Listening on: ", this.address);
-        return this.channelFuture.channel().closeFuture();
+        return this.channel.closeFuture();
     }
 
-    public synchronized void stop() throws InterruptedException {
-        if (this.channelFuture == null)
+    public synchronized void stop() {
+        if (this.channel == null)
             return;
         WListServer.logger.log(HLogLevel.DEBUG, "WListServer is stopping...");
-        this.channelFuture.channel().close().sync();
-        this.bossGroup.shutdownGracefully().sync();
-        this.workerGroup.shutdownGracefully().sync();
+        this.channel.close().syncUninterruptibly();
+        this.bossGroup.shutdownGracefully().syncUninterruptibly();
+        this.workerGroup.shutdownGracefully().syncUninterruptibly();
         WListServer.logger.log(HLogLevel.INFO, "WListServer stopped gracefully.");
     }
 
@@ -102,12 +117,10 @@ public class WListServer {
     }
 
     @ChannelHandler.Sharable
-    public static class ServerChannelInboundHandler extends SimpleChannelInboundHandler<ByteBuf> {
-        private final @NotNull WListServer server;
-
-        private ServerChannelInboundHandler(final @NotNull WListServer server) {
+    public static class ServerChannelHandler extends SimpleChannelInboundHandler<ByteBuf> {
+        private ServerChannelHandler() {
             super();
-            this.server = server;
+            HLog.DefaultLogger.log("", "Create new.");
         }
 
         @Override
@@ -138,7 +151,7 @@ public class WListServer {
                         case CloseServer -> {
                             if (ServerHandler.getAndCheckPermission(msg, channel, Operation.Permission.ServerOperate) != null)
                                 WListServer.ServerExecutors.submit(() -> {
-                                    this.server.stop();
+                                    WListServer.getInstance().stop();
                                     return this;
                                 });
                         }
@@ -173,11 +186,6 @@ public class WListServer {
         public void exceptionCaught(final @NotNull ChannelHandlerContext ctx, final Throwable cause) {
             WListServer.logger.log(HLogLevel.WARN, "Exception: ", ctx.channel().id().asLongText(), cause);
             ServerHandler.doException(ctx.channel(), null);
-        }
-
-        @Override
-        public @NotNull String toString() {
-            return "ServerChannelInboundHandler{" + super.toString() + '}';
         }
     }
 }

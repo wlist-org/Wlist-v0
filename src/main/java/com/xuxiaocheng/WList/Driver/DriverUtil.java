@@ -47,23 +47,19 @@ public final class DriverUtil {
             .dispatcher(new Dispatcher(WListServer.IOExecutors))
             .addNetworkInterceptor(chain -> {
                 final Request request = chain.request();
-                if (WList.DeepDebugMode) {
-                    HLog.DefaultLogger.log(HLogLevel.DEBUG, "Thread: ", Thread.currentThread(), " Request: ", request);
-                    HLog.DefaultLogger.log(HLogLevel.VERBOSE, "Thread: ", Thread.currentThread(), new Throwable());
-                }
+                if (WList.DebugMode)
+                    HLog.DefaultLogger.log(HLogLevel.DEBUG, Thread.currentThread(), ": Request: ", request);
                 final long time1 = System.currentTimeMillis();
                 final Response response = chain.proceed(request);
                 final long time2 = System.currentTimeMillis();
-                if (WList.DeepDebugMode) {
-                    HLog.DefaultLogger.log(HLogLevel.DEBUG, "Thread: ", Thread.currentThread(), "Response: ", response);
-                    HLog.DefaultLogger.log(HLogLevel.INFO, "Thread: ", Thread.currentThread(), "Cost time: ", time2 - time1, "ms.");
-                }
+                if (WList.DebugMode)
+                    HLog.DefaultLogger.log(HLogLevel.DEBUG, Thread.currentThread(), ": Cost time: ", time2 - time1, "ms.");
                 return response;
             })
             .build();
 
     public static final @NotNull Pattern phoneNumberPattern = Pattern.compile("^1([38][0-9]|4[579]|5[0-3,5-9]|66|7[0135678]|9[89])\\d{8}$");
-    public static final @NotNull Pattern mailAddressPattern = Pattern.compile("^\\w+@[A-Za-z0-9]+(\\.[A-Za-z0-9]+){1,2}$");
+    public static final @NotNull Pattern mailAddressPattern = Pattern.compile("^\\w+@[a-zA-Z0-9]+(\\.[a-zA-Z0-9]+){1,2}$");
 
     public static @NotNull RequestBody createJsonRequestBody(final @Nullable Object obj) {
         return RequestBody.create(JSON.toJSONBytes(obj),

@@ -1,46 +1,47 @@
 package com.xuxiaocheng.WList.Server.Configuration;
 
 import com.xuxiaocheng.HeadLibs.Annotations.Range.IntRange;
+import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.yaml.snakeyaml.Yaml;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.Objects;
+import java.util.Properties;
 
 public class GlobalConfiguration {
     protected static @Nullable GlobalConfiguration instance;
-
-    public static void init(final @Nullable InputStream input) throws IOException {
-        if (GlobalConfiguration.instance == null) {
-            if (input == null) {
-                GlobalConfiguration.instance = new GlobalConfiguration();
-                return;
-            }
-            try {
-                GlobalConfiguration.instance = new Yaml().loadAs(input, GlobalConfiguration.class);
-            } catch (final RuntimeException exception) {
-                throw new IOException(exception);
-            }
-            if (GlobalConfiguration.instance == null) // Empty input stream.
-                GlobalConfiguration.instance = new GlobalConfiguration();
-        }
-    }
-
-    public static @NotNull GlobalConfiguration getInstance() {
-        return Objects.requireNonNullElseGet(GlobalConfiguration.instance, GlobalConfiguration::new);
-    }
-
-    public static void dump(final @NotNull OutputStream output) throws IOException {
-        final GlobalConfiguration instance = GlobalConfiguration.getInstance();
-        try {
-            output.write(new Yaml().dumpAsMap(instance).getBytes(StandardCharsets.UTF_8));
+    public static synchronized void init(final @Nullable File configurationPath) throws IOException {
+        if (GlobalConfiguration.instance != null)
+            throw new IllegalStateException("Global configuration is initialized. instance: " + GlobalConfiguration.instance + " configurationPath: " + (configurationPath == null ? "null" : configurationPath.getAbsolutePath()));
+        GlobalConfiguration.instance = new GlobalConfiguration();
+        if (configurationPath == null)
+            return;
+        if (!HFileHelper.ensureFileExist(configurationPath))
+            throw new IOException("Failed to create configuration file. configurationPath: " + configurationPath.getAbsolutePath());
+        try (final InputStream stream = new BufferedInputStream(new FileInputStream(configurationPath))) {
+            final Properties properties = new Properties();
+            properties.load(stream);
+            GlobalConfiguration.instance.fromProperties(properties);
         } catch (final RuntimeException exception) {
             throw new IOException(exception);
         }
+        try (final OutputStream stream = new BufferedOutputStream(new FileOutputStream(configurationPath))) {
+            GlobalConfiguration.instance.toProperties().store(stream, null);
+        } catch (final RuntimeException exception) {
+            throw new IOException(exception);
+        }
+    }
+
+    public static synchronized @NotNull GlobalConfiguration getInstance() {
+        return Objects.requireNonNullElseGet(GlobalConfiguration.instance, GlobalConfiguration::new);
     }
 
     protected GlobalConfiguration() {
@@ -48,96 +49,97 @@ public class GlobalConfiguration {
     }
 
     protected @IntRange(minimum = 0, maximum = 65535) int port = 5212;
-    protected @IntRange(minimum = 1) int max_connection = 128;
-    protected @NotNull String data_db = "data/data.db";
-    protected @NotNull String index_db = "data/index.db";
-    protected @IntRange(minimum = 1) int thread_count = 10;
-    protected @IntRange(minimum = 1) int token_expire_time = 259200;
-    protected @IntRange(minimum = 1) int download_id_expire_time = 1800;
-    protected @IntRange(minimum = 1) int max_limit = 100;
+    protected @IntRange(minimum = 1) int maxConnection = 128;
+    protected @NotNull String dataDBPath = "data/data.db";
+    protected @NotNull String indexDBPath = "data/index.db";
+    protected @IntRange(minimum = 1) int threadCount = 10; // todo delete
+    protected @IntRange(minimum = 1) int tokenExpireTime = 259200;
+    protected @IntRange(minimum = 1) int idIdleExpireTime = 1800;
+    protected @IntRange(minimum = 1) int maxLimitPerPage = 100;
 
     public int getPort() {
         return this.port;
     }
 
-    public int getMax_connection() {
-        return this.max_connection;
+    public int getMaxConnection() {
+        return this.maxConnection;
     }
 
-    public @NotNull String getData_db() {
-        return this.data_db;
+    public @NotNull String getDataDBPath() {
+        return this.dataDBPath;
     }
 
-    public @NotNull String getIndex_db() {
-        return this.index_db;
+    public @NotNull String getIndexDBPath() {
+        return this.indexDBPath;
     }
 
-    public int getThread_count() {
-        return this.thread_count;
+    public int getThreadCount() {
+        return this.threadCount;
     }
 
-    public int getToken_expire_time() {
-        return this.token_expire_time;
+    public int getTokenExpireTime() {
+        return this.tokenExpireTime;
     }
 
-    public int getDownload_id_expire_time() {
-        return this.download_id_expire_time;
+    public int getIdIdleExpireTime() {
+        return this.idIdleExpireTime;
     }
 
-    public int getMax_limit() {
-        return this.max_limit;
+    public int getMaxLimitPerPage() {
+        return this.maxLimitPerPage;
     }
 
-    @Deprecated
-    public void setPort(final int port) {
-        this.port = port;
+    protected @NotNull Properties toProperties() {
+        final Properties properties = new Properties();
+        properties.put("port", String.valueOf(this.port));
+        properties.put("max_connection", String.valueOf(this.maxConnection));
+        properties.put("data_db", this.dataDBPath);
+        properties.put("index_db", this.indexDBPath);
+        properties.put("thread_count", String.valueOf(this.threadCount));
+        properties.put("token_expire_time", String.valueOf(this.tokenExpireTime));
+        properties.put("id_idle_expire_time", String.valueOf(this.idIdleExpireTime));
+        properties.put("max_limit_per_page", String.valueOf(this.maxLimitPerPage));
+        return properties;
     }
 
-    @Deprecated
-    public void setMax_connection(final int max_connection) {
-        this.max_connection = max_connection;
+    protected void fromProperties(final @NotNull Properties properties) throws IOException {
+        try {
+            this.port = ((Integer) properties.getOrDefault("port", this.port)).intValue();
+            this.maxConnection = ((Integer) properties.getOrDefault("max_connection", this.maxConnection)).intValue();
+            this.dataDBPath = (String) properties.getOrDefault("data_db", this.dataDBPath);
+            this.indexDBPath = (String) properties.getOrDefault("index_db", this.indexDBPath);
+            this.threadCount = ((Integer) properties.getOrDefault("thread_count", this.threadCount)).intValue();
+            this.tokenExpireTime = ((Integer) properties.getOrDefault("token_expire_time", this.tokenExpireTime)).intValue();
+            this.idIdleExpireTime = ((Integer) properties.getOrDefault("id_idle_expire_time", this.idIdleExpireTime)).intValue();
+            this.maxLimitPerPage = ((Integer) properties.getOrDefault("max_limit_per_page", this.maxLimitPerPage)).intValue();
+        } catch (final ClassCastException exception) {
+            throw new IOException(exception);
+        }
     }
 
-    @Deprecated
-    public void setData_db(final @NotNull String data_db) {
-        this.data_db = data_db;
+    @Override
+    public boolean equals(final @Nullable Object o) {
+        if (this == o) return true;
+        if (!(o instanceof GlobalConfiguration that)) return false;
+        return this.port == that.port && this.maxConnection == that.maxConnection && this.threadCount == that.threadCount && this.tokenExpireTime == that.tokenExpireTime && this.idIdleExpireTime == that.idIdleExpireTime && this.maxLimitPerPage == that.maxLimitPerPage && this.dataDBPath.equals(that.dataDBPath) && this.indexDBPath.equals(that.indexDBPath);
     }
 
-    @Deprecated
-    public void setIndex_db(final @NotNull String index_db) {
-        this.index_db = index_db;
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.port, this.maxConnection, this.dataDBPath, this.indexDBPath, this.threadCount, this.tokenExpireTime, this.idIdleExpireTime, this.maxLimitPerPage);
     }
-
-    @Deprecated
-    public void setThread_count(final int thread_count) {
-        this.thread_count = thread_count;
-    }
-
-    @Deprecated
-    public void setToken_expire_time(final int token_expire_time) {
-        this.token_expire_time = token_expire_time;
-    }
-
-    @Deprecated
-    public void setDownload_id_expire_time(final int download_id_expire_time) {
-        this.download_id_expire_time = download_id_expire_time;
-    }
-
-    @Deprecated
-    public void setMax_limit(final int max_limit) {
-        this.max_limit = max_limit;
-    }
-
-    // TODO equal
 
     @Override
     public @NotNull String toString() {
         return "GlobalConfiguration{" +
                 "port=" + this.port +
-                ", data_db='" + this.data_db + '\'' +
-                ", index_db='" + this.index_db + '\'' +
-                ", thread_count=" + this.thread_count +
-                ", token_expire_time=" + this.token_expire_time +
+                ", maxConnection=" + this.maxConnection +
+                ", dataDBPath='" + this.dataDBPath + '\'' +
+                ", indexDBPath='" + this.indexDBPath + '\'' +
+                ", threadCount=" + this.threadCount +
+                ", tokenExpireTime=" + this.tokenExpireTime +
+                ", idIdleExpireTime=" + this.idIdleExpireTime +
+                ", maxLimitPerPage=" + this.maxLimitPerPage +
                 '}';
     }
 }

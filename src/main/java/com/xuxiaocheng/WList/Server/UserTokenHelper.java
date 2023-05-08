@@ -29,7 +29,7 @@ public final class UserTokenHelper {
         return UserTokenHelper.builder.withAudience(username)
                 .withJWTId(String.valueOf(modifyTime.toEpochSecond(ZoneOffset.UTC)))
                 .withSubject(String.valueOf(modifyTime.getNano()))
-                .withExpiresAt(LocalDateTime.now().plusSeconds(GlobalConfiguration.getInstance().getToken_expire_time()).toInstant(ZoneOffset.UTC))
+                .withExpiresAt(LocalDateTime.now().plusSeconds(GlobalConfiguration.getInstance().getTokenExpireTime()).toInstant(ZoneOffset.UTC))
                 .sign(UserTokenHelper.sign);
     }
 
