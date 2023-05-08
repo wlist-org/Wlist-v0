@@ -1,20 +1,22 @@
 package com.xuxiaocheng.WList.Server.Configuration;
 
+import com.electronwill.nightconfig.core.Config;
+import com.electronwill.nightconfig.core.file.CommentedFileConfig;
+import com.electronwill.nightconfig.toml.TomlFormat;
 import com.xuxiaocheng.HeadLibs.Annotations.Range.IntRange;
 import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
+import com.xuxiaocheng.WList.Utils.TomlUtil;
+import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.UnmodifiableView;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
-import java.util.Properties;
 
 public class GlobalConfiguration {
     protected static @Nullable GlobalConfiguration instance;
@@ -26,20 +28,28 @@ public class GlobalConfiguration {
             return;
         if (!HFileHelper.ensureFileExist(configurationPath))
             throw new IOException("Failed to create configuration file. configurationPath: " + configurationPath.getAbsolutePath());
-        try (final InputStream stream = new BufferedInputStream(new FileInputStream(configurationPath))) {
-            final Properties properties = new Properties();
-            properties.load(stream);
-            GlobalConfiguration.instance.fromProperties(properties);
-        } catch (final RuntimeException exception) {
-            throw new IOException(exception);
-        }
-        try (final OutputStream stream = new BufferedOutputStream(new FileOutputStream(configurationPath))) {
-            GlobalConfiguration.instance.toProperties().store(stream, null);
+        try {
+            final CommentedFileConfig toml = CommentedFileConfig.builder(configurationPath).preserveInsertionOrder().build();
+            toml.load();
+            GlobalConfiguration.instance.port = TomlUtil.getOrSet(toml, "port", GlobalConfiguration.instance.port, "Server port.");
+            GlobalConfiguration.instance.maxConnection = TomlUtil.getOrSet(toml, "max_connection", GlobalConfiguration.instance.maxConnection, "Server backlog.");
+            GlobalConfiguration.instance.dataDBPath = TomlUtil.getOrSet(toml, "data_db_path", GlobalConfiguration.instance.dataDBPath, "Server 'data' database path.");
+            GlobalConfiguration.instance.indexDBPath = TomlUtil.getOrSet(toml, "index_db_path", GlobalConfiguration.instance.indexDBPath, "Server 'index' database path.");
+            GlobalConfiguration.instance.threadCount = TomlUtil.getOrSet(toml, "thread_count", GlobalConfiguration.instance.threadCount, "Temp thread size (todo: delete).");
+            GlobalConfiguration.instance.tokenExpireTime = TomlUtil.getOrSet(toml, "token_expire_time", GlobalConfiguration.instance.tokenExpireTime, "Token expire time (sec).");
+            GlobalConfiguration.instance.idIdleExpireTime = TomlUtil.getOrSet(toml, "id_idle_expire_time", GlobalConfiguration.instance.idIdleExpireTime, "Id idle expire time (sec).");
+            GlobalConfiguration.instance.maxLimitPerPage = TomlUtil.getOrSet(toml, "max_limit_per_page", GlobalConfiguration.instance.maxLimitPerPage, "Client request 'FilesList' limit count per page.");
+            final Config drivers = TomlUtil.getOrSet(toml, "drivers", TomlFormat.newConfig(), "Web drivers with type.");
+            for (final Config.Entry entry: drivers.entrySet())
+                GlobalConfiguration.instance.drivers.put(entry.getKey(), WebDriversType.valueOf(entry.getValue()));
+            // TODO other check.
+            toml.save();
+        } catch (final IllegalArgumentException exception) {
+            throw new IOException("Unsupported driver type.", exception);
         } catch (final RuntimeException exception) {
             throw new IOException(exception);
         }
     }
-
     public static synchronized @NotNull GlobalConfiguration getInstance() {
         return Objects.requireNonNullElseGet(GlobalConfiguration.instance, GlobalConfiguration::new);
     }
@@ -56,6 +66,7 @@ public class GlobalConfiguration {
     protected @IntRange(minimum = 1) int tokenExpireTime = 259200;
     protected @IntRange(minimum = 1) int idIdleExpireTime = 1800;
     protected @IntRange(minimum = 1) int maxLimitPerPage = 100;
+    protected final @NotNull Map<@NotNull String, @NotNull WebDriversType> drivers = new HashMap<>();
 
     public int getPort() {
         return this.port;
@@ -89,44 +100,20 @@ public class GlobalConfiguration {
         return this.maxLimitPerPage;
     }
 
-    protected @NotNull Properties toProperties() {
-        final Properties properties = new Properties();
-        properties.put("port", String.valueOf(this.port));
-        properties.put("max_connection", String.valueOf(this.maxConnection));
-        properties.put("data_db", this.dataDBPath);
-        properties.put("index_db", this.indexDBPath);
-        properties.put("thread_count", String.valueOf(this.threadCount));
-        properties.put("token_expire_time", String.valueOf(this.tokenExpireTime));
-        properties.put("id_idle_expire_time", String.valueOf(this.idIdleExpireTime));
-        properties.put("max_limit_per_page", String.valueOf(this.maxLimitPerPage));
-        return properties;
-    }
-
-    protected void fromProperties(final @NotNull Properties properties) throws IOException {
-        try {
-            this.port = ((Integer) properties.getOrDefault("port", this.port)).intValue();
-            this.maxConnection = ((Integer) properties.getOrDefault("max_connection", this.maxConnection)).intValue();
-            this.dataDBPath = (String) properties.getOrDefault("data_db", this.dataDBPath);
-            this.indexDBPath = (String) properties.getOrDefault("index_db", this.indexDBPath);
-            this.threadCount = ((Integer) properties.getOrDefault("thread_count", this.threadCount)).intValue();
-            this.tokenExpireTime = ((Integer) properties.getOrDefault("token_expire_time", this.tokenExpireTime)).intValue();
-            this.idIdleExpireTime = ((Integer) properties.getOrDefault("id_idle_expire_time", this.idIdleExpireTime)).intValue();
-            this.maxLimitPerPage = ((Integer) properties.getOrDefault("max_limit_per_page", this.maxLimitPerPage)).intValue();
-        } catch (final ClassCastException exception) {
-            throw new IOException(exception);
-        }
+    public @NotNull @UnmodifiableView Map<@NotNull String, @NotNull WebDriversType> getDrivers() {
+        return Collections.unmodifiableMap(this.drivers);
     }
 
     @Override
     public boolean equals(final @Nullable Object o) {
         if (this == o) return true;
         if (!(o instanceof GlobalConfiguration that)) return false;
-        return this.port == that.port && this.maxConnection == that.maxConnection && this.threadCount == that.threadCount && this.tokenExpireTime == that.tokenExpireTime && this.idIdleExpireTime == that.idIdleExpireTime && this.maxLimitPerPage == that.maxLimitPerPage && this.dataDBPath.equals(that.dataDBPath) && this.indexDBPath.equals(that.indexDBPath);
+        return this.port == that.port && this.maxConnection == that.maxConnection && this.threadCount == that.threadCount && this.tokenExpireTime == that.tokenExpireTime && this.idIdleExpireTime == that.idIdleExpireTime && this.maxLimitPerPage == that.maxLimitPerPage && this.dataDBPath.equals(that.dataDBPath) && this.indexDBPath.equals(that.indexDBPath) && this.drivers.equals(that.drivers);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.port, this.maxConnection, this.dataDBPath, this.indexDBPath, this.threadCount, this.tokenExpireTime, this.idIdleExpireTime, this.maxLimitPerPage);
+        return Objects.hash(this.port, this.maxConnection, this.dataDBPath, this.indexDBPath, this.threadCount, this.tokenExpireTime, this.idIdleExpireTime, this.maxLimitPerPage, this.drivers);
     }
 
     @Override
@@ -140,6 +127,7 @@ public class GlobalConfiguration {
                 ", tokenExpireTime=" + this.tokenExpireTime +
                 ", idIdleExpireTime=" + this.idIdleExpireTime +
                 ", maxLimitPerPage=" + this.maxLimitPerPage +
+                ", drivers=" + this.drivers +
                 '}';
     }
 }

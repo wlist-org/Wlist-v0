@@ -8,7 +8,7 @@ import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.Configuration.FieldOrderRepresenter;
 import com.xuxiaocheng.WList.Utils.DataBaseUtil;
-import com.xuxiaocheng.WList.WebDrivers.WebDriversRegisterer;
+import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.yaml.snakeyaml.Yaml;
@@ -34,7 +34,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
 
 public final class DriverManager {
     private DriverManager() {
@@ -53,14 +52,14 @@ public final class DriverManager {
         //noinspection ResultOfMethodCallIgnored
         path.createNewFile();
         final DriverInterface<C> driver; {
-            final Supplier<DriverInterface<?>> supplier = WebDriversRegisterer.DriversMap.get(type);
-            if (supplier == null) {
+            final WebDriversType driversType = WebDriversType.get(type);
+            if (driversType == null) {
                 final Map<String, String> p = new LinkedHashMap<>();
                 p.put("name", name);
                 p.put("type", type);
                 throw new IllegalParametersException("Unregistered driver type.", p);
             }
-            driver = (DriverInterface<C>) supplier.get();
+            driver = (DriverInterface<C>) driversType.getSupplier().get();
         }
         C configuration = null;
         try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(path))) {
