@@ -17,6 +17,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.SortedSet;
 
 public final class UserSqlHelper {
@@ -94,19 +96,31 @@ public final class UserSqlHelper {
     }
 
     @SuppressWarnings("TypeMayBeWeakened")
-    public static boolean insertUser(final @NotNull String username, final @NotNull String password, final @NotNull SortedSet<Operation.@NotNull Permission> permissions) throws SQLException {
+    public static boolean insertUser(final @NotNull String username, final @NotNull String password, final @Nullable SortedSet<Operation.@NotNull Permission> permissions) throws SQLException {
         try (final Connection connection = DataBaseUtil.getDataInstance().getConnection()) {
-            try (final PreparedStatement statement = connection.prepareStatement("""
-                        INSERT INTO users (username, password, permission, modify_time)
-                            VALUES (?, ?, ?, ?);
+            if (permissions == null)
+                try (final PreparedStatement statement = connection.prepareStatement("""
+                        INSERT INTO users (username, password, modify_time)
+                            VALUES (?, ?, ?);
                         """)) {
-                statement.setString(1, username);
-                statement.setString(2, UserSqlHelper.encryptPassword(password));
-                statement.setString(3, Operation.dumpPermissions(permissions));
-                statement.setString(4, UserSqlHelper.getModifyTime());
-                statement.executeUpdate();
-                return true;
-            }
+                    statement.setString(1, username);
+                    statement.setString(2, UserSqlHelper.encryptPassword(password));
+                    statement.setString(3, UserSqlHelper.getModifyTime());
+                    statement.executeUpdate();
+                    return true;
+                }
+            else
+                try (final PreparedStatement statement = connection.prepareStatement("""
+                            INSERT INTO users (username, password, permission, modify_time)
+                                VALUES (?, ?, ?, ?);
+                            """)) {
+                    statement.setString(1, username);
+                    statement.setString(2, UserSqlHelper.encryptPassword(password));
+                    statement.setString(3, Operation.dumpPermissions(permissions));
+                    statement.setString(4, UserSqlHelper.getModifyTime());
+                    statement.executeUpdate();
+                    return true;
+                }
         } catch (final SQLException exception) {
             if (exception.getMessage().contains("UNIQUE"))
                 return false;
@@ -165,6 +179,24 @@ public final class UserSqlHelper {
                     return Triad.ImmutableTriad.makeImmutableTriad(user.getString(1),
                             Operation.parsePermissions(user.getString(2)),
                             LocalDateTime.parse(user.getString(3), DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                }
+            }
+        }
+    }
+
+    public static @NotNull List<Triad.@NotNull ImmutableTriad<@NotNull String, @NotNull SortedSet<Operation.@NotNull Permission>, @NotNull LocalDateTime>> selectAllUsers() throws SQLException {
+        // TODO limit and page.
+        try (final Connection connection = DataBaseUtil.getDataInstance().getConnection()) {
+            try (final Statement statement = connection.createStatement()) {
+                try (final ResultSet user = statement.executeQuery("""
+                        SELECT password, permission, modify_time FROM users;
+                        """)) {
+                    final List<Triad.ImmutableTriad<String, SortedSet<Operation.Permission>, LocalDateTime>> list = new LinkedList<>();
+                    while (user.next())
+                        list.add(Triad.ImmutableTriad.makeImmutableTriad(user.getString(1),
+                            Operation.parsePermissions(user.getString(2)),
+                            LocalDateTime.parse(user.getString(3), DateTimeFormatter.ISO_LOCAL_DATE_TIME)));
+                    return list;
                 }
             }
         }

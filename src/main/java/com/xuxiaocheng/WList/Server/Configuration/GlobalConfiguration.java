@@ -11,14 +11,19 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
 public class GlobalConfiguration {
+    protected static @Nullable File path;
     protected static @Nullable GlobalConfiguration instance;
     public static synchronized void init(final @Nullable File configurationPath) throws IOException {
         if (GlobalConfiguration.instance != null)
@@ -26,8 +31,9 @@ public class GlobalConfiguration {
         GlobalConfiguration.instance = new GlobalConfiguration();
         if (configurationPath == null)
             return;
+        GlobalConfiguration.path = configurationPath;
         if (!HFileHelper.ensureFileExist(configurationPath))
-            throw new IOException("Failed to create configuration file. configurationPath: " + configurationPath.getAbsolutePath());
+            throw new IOException("Failed to create configuration file. path: " + configurationPath.getAbsolutePath());
         try {
             final CommentedFileConfig toml = CommentedFileConfig.builder(configurationPath).preserveInsertionOrder().build();
             toml.load();
@@ -43,6 +49,7 @@ public class GlobalConfiguration {
             for (final Config.Entry entry: drivers.entrySet())
                 GlobalConfiguration.instance.drivers.put(entry.getKey(), WebDriversType.valueOf(entry.getValue()));
             // TODO other check.
+            // TODO in dif file.
             toml.save();
         } catch (final IllegalArgumentException exception) {
             throw new IOException("Unsupported driver type.", exception);
@@ -102,6 +109,28 @@ public class GlobalConfiguration {
 
     public @NotNull @UnmodifiableView Map<@NotNull String, @NotNull WebDriversType> getDrivers() {
         return Collections.unmodifiableMap(this.drivers);
+    }
+
+    public static synchronized void addDriver(final @NotNull String name, final @NotNull WebDriversType type) throws IOException {
+        final File dif = new File(GlobalConfiguration.path + ".dif");
+        HFileHelper.ensureFileExist(dif);
+        try (final OutputStream stream = new BufferedOutputStream(new FileOutputStream(dif, true))){
+            stream.write("+\n\t".getBytes(StandardCharsets.UTF_8));
+            stream.write(name.getBytes(StandardCharsets.UTF_8));
+            stream.write("\n\t".getBytes(StandardCharsets.UTF_8));
+            stream.write(type.name().getBytes(StandardCharsets.UTF_8));
+            stream.write("\n".getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    public static synchronized void subDriver(final @NotNull String name) throws IOException {
+        final File dif = new File(GlobalConfiguration.path + ".dif");
+        HFileHelper.ensureFileExist(dif);
+        try (final OutputStream stream = new BufferedOutputStream(new FileOutputStream(dif, true))){
+            stream.write("-\t".getBytes(StandardCharsets.UTF_8));
+            stream.write(name.getBytes(StandardCharsets.UTF_8));
+            stream.write("\n".getBytes(StandardCharsets.UTF_8));
+        }
     }
 
     @Override

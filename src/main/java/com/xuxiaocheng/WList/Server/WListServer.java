@@ -21,6 +21,10 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.channel.group.ChannelGroup;
+import io.netty.channel.group.ChannelGroupFuture;
+import io.netty.channel.group.ChannelMatcher;
+import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -29,11 +33,13 @@ import io.netty.handler.codec.LengthFieldPrepender;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.EventExecutorGroup;
+import io.netty.util.concurrent.GlobalEventExecutor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.util.function.Supplier;
 
 public class WListServer {
     public static final int FileTransferBufferSize = 4 << 20;
@@ -63,8 +69,9 @@ public class WListServer {
     protected static final @NotNull WListServer.ServerChannelHandler handlerInstance = new ServerChannelHandler();
 
     protected final @NotNull SocketAddress address;
-    protected final @NotNull EventExecutorGroup bossGroup = new NioEventLoopGroup(1);
-    protected final @NotNull EventLoopGroup workerGroup = new NioEventLoopGroup();
+    protected final @NotNull EventExecutorGroup bossGroup = new NioEventLoopGroup(Math.max(2, Runtime.getRuntime().availableProcessors() >>> 1));
+    protected final @NotNull EventLoopGroup workerGroup = new NioEventLoopGroup(Runtime.getRuntime().availableProcessors() << 1);
+    protected final @NotNull ChannelGroup channelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
     private Channel channel;
 
     protected WListServer(final @NotNull SocketAddress address) {
@@ -77,7 +84,7 @@ public class WListServer {
     }
 
     public synchronized @NotNull ChannelFuture start() throws InterruptedException {
-        WListServer.logger.log(HLogLevel.DEBUG, "WListServer is starting...");
+        WListServer.logger.log(HLogLevel.INFO, "WListServer is starting...");
         final ServerBootstrap serverBootstrap = new ServerBootstrap();
         serverBootstrap.group(this.workerGroup, this.workerGroup);
         serverBootstrap.channel(NioServerSocketChannel.class);
@@ -95,15 +102,24 @@ public class WListServer {
             }
         });
         this.channel = serverBootstrap.bind(this.address).sync().channel();
-        WListServer.logger.log(HLogLevel.INFO, "Listening on: ", this.address);
+        WListServer.logger.log(HLogLevel.ENHANCED, "Listening on: ", this.address);
         return this.channel.closeFuture();
+    }
+
+    public @NotNull ChannelGroupFuture writeChannels(final @NotNull ByteBuf msg) {
+        return this.channelGroup.writeAndFlush(msg);
+    }
+
+    public @NotNull ChannelGroupFuture writeChannels(final @NotNull ByteBuf msg, final @NotNull ChannelMatcher matcher) {
+        return this.channelGroup.writeAndFlush(msg, matcher);
     }
 
     public synchronized void stop() {
         if (this.channel == null)
             return;
-        WListServer.logger.log(HLogLevel.DEBUG, "WListServer is stopping...");
+        WListServer.logger.log(HLogLevel.ENHANCED, "WListServer is stopping...");
         this.channel.close().syncUninterruptibly();
+        this.channelGroup.close().syncUninterruptibly();
         this.bossGroup.shutdownGracefully().syncUninterruptibly();
         this.workerGroup.shutdownGracefully().syncUninterruptibly();
         WListServer.logger.log(HLogLevel.INFO, "WListServer stopped gracefully.");
@@ -118,15 +134,11 @@ public class WListServer {
 
     @ChannelHandler.Sharable
     public static class ServerChannelHandler extends SimpleChannelInboundHandler<ByteBuf> {
-        private ServerChannelHandler() {
-            super();
-            HLog.DefaultLogger.log("", "Create new.");
-        }
-
         @Override
         public void channelActive(final @NotNull ChannelHandlerContext ctx) {
             final ChannelId id = ctx.channel().id();
             WListServer.logger.log(HLogLevel.DEBUG, "Active: ", id.asLongText());
+            WListServer.getInstance().channelGroup.add(ctx.channel());
             ServerHandler.doActive(id);
         }
 
@@ -143,35 +155,44 @@ public class WListServer {
             WListServer.logger.log(HLogLevel.VERBOSE, "Read: ", channel.id().asLongText(), " len: ", msg.readableBytes());
             try {
                 final Operation.Type type = Operation.valueOfType(ByteBufIOUtil.readUTF(msg));
-                WListServer.logger.log(HLogLevel.DEBUG, "Type: ", channel.id().asLongText(), " type: ", type);
-                if (type == null || type == Operation.Type.Undefined)
-                    ServerHandler.writeMessage(channel, Operation.State.Unsupported, "Undefined operation!");
-                else
-                    switch (type) {
-                        case CloseServer -> {
-                            if (ServerHandler.getAndCheckPermission(msg, channel, Operation.Permission.ServerOperate) != null)
-                                WListServer.ServerExecutors.submit(() -> {
-                                    WListServer.getInstance().stop();
-                                    return this;
-                                });
-                        }
-                        case Login -> ServerHandler.doLogin(msg, channel);
-                        case Register -> ServerHandler.doRegister(msg, channel);
-                        case ChangePassword -> ServerHandler.doChangePassword(msg, channel);
-                        case Logoff -> ServerHandler.doLogoff(msg, channel);
-                        case AddPermission -> ServerHandler.doChangePermission(msg, channel, true);
-                        case ReducePermission -> ServerHandler.doChangePermission(msg, channel, false);
-                        case ListFiles -> ServerHandler.doListFiles(msg, channel);
-                        case RequestDownloadFile -> ServerHandler.doRequestDownloadFile(msg, channel);
-                        case DownloadFile -> ServerHandler.doDownloadFile(msg, channel);
-                        case CancelDownloadFile -> ServerHandler.doCancelDownloadFile(msg, channel);
-                        case MakeDirectories -> ServerHandler.doMakeDirectories(msg, channel);
-                        case DeleteFile -> ServerHandler.doDeleteFile(msg, channel);
-                        case RenameFile -> ServerHandler.doRenameFile(msg, channel);
-                        case RequestUploadFile -> ServerHandler.doRequestUploadFile(msg, channel);
-                        // TODO
-                        default -> ServerHandler.writeMessage(channel, Operation.State.Unsupported, "TODO: Unsupported.");
+                WListServer.logger.log(HLogLevel.DEBUG, "Operate: ", channel.id().asLongText(), " type: ", type, " user: ", (Supplier<String>) () -> {
+                    final String user;
+                    msg.markReaderIndex();
+                    try {
+                        user = ByteBufIOUtil.readUTF(msg);
+                    } catch (final IOException ignore) {
+                        return "error";
+                    } finally {
+                        msg.resetReaderIndex();
                     }
+                    return user;
+                });
+                if (type == null || type == Operation.Type.Undefined) {
+                    ServerHandler.writeMessage(channel, Operation.State.Unsupported, "Undefined operation!");
+                    return;
+                }
+                switch (type) {
+                    case CloseServer -> ServerStateHandler.doCloseServer(msg, channel);
+                    case Broadcast -> ServerStateHandler.doBroadcast(msg, channel);
+                    case Login -> ServerUserHandler.doLogin(msg, channel);
+                    case Register -> ServerUserHandler.doRegister(msg, channel);
+                    case ChangePassword -> ServerUserHandler.doChangePassword(msg, channel);
+                    case Logoff -> ServerUserHandler.doLogoff(msg, channel);
+                    case ListUsers -> ServerUserHandler.doListUsers(msg, channel);
+                    case DeleteUser -> ServerUserHandler.doDeleteUser(msg, channel);
+                    case AddPermission -> ServerUserHandler.doChangePermission(msg, channel, true);
+                    case ReducePermission -> ServerUserHandler.doChangePermission(msg, channel, false);
+                    case ListFiles -> ServerFileHandler.doListFiles(msg, channel);
+                    case RequestDownloadFile -> ServerFileHandler.doRequestDownloadFile(msg, channel);
+                    case DownloadFile -> ServerFileHandler.doDownloadFile(msg, channel);
+                    case CancelDownloadFile -> ServerFileHandler.doCancelDownloadFile(msg, channel);
+                    case MakeDirectories -> ServerFileHandler.doMakeDirectories(msg, channel);
+                    case DeleteFile -> ServerFileHandler.doDeleteFile(msg, channel);
+                    case RenameFile -> ServerFileHandler.doRenameFile(msg, channel);
+                    case RequestUploadFile -> ServerFileHandler.doRequestUploadFile(msg, channel);
+                    // TODO
+                    default -> ServerHandler.writeMessage(channel, Operation.State.Unsupported, "TODO: Unsupported.");
+                }
                 if (msg.readableBytes() != 0)
                     WListServer.logger.log(HLogLevel.MISTAKE, "Unexpected discarded bytes: ", channel.id().asLongText(), " len: ", msg.readableBytes());
             } catch (final IOException | JSONException exception) {

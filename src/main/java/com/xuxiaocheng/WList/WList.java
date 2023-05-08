@@ -6,7 +6,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
 import com.xuxiaocheng.WList.Server.Configuration.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.Driver.DriverManager;
 import com.xuxiaocheng.WList.Server.FileDownloadIdHelper;
-import com.xuxiaocheng.WList.Server.ServerHandler;
+import com.xuxiaocheng.WList.Server.ServerUserHandler;
 import com.xuxiaocheng.WList.Server.UserSqlHelper;
 import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
@@ -17,6 +17,7 @@ import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.sql.SQLException;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import java.util.random.RandomGenerator;
 
 public final class WList {
@@ -27,7 +28,8 @@ public final class WList {
     public static final boolean DebugMode = true;
     public static final boolean InIdeaMode = !new File(WList.class.getProtectionDomain().getCodeSource().getLocation().getPath()).isFile();
     static {
-        if (!WList.InIdeaMode) System.setProperty("HLogLevel.color", "2");
+        if (!WList.InIdeaMode && System.getProperty("HLogLevel.color") == null) System.setProperty("HLogLevel.color", "2");
+        HLog.setDebugMode(WList.DebugMode);
     }
 
     private static final HLog logger = HLog.createInstance("DefaultLogger",
@@ -52,15 +54,21 @@ public final class WList {
         WList.logger.log(HLogLevel.LESS, "Initializing global configuration. file: ", configuration.getAbsolutePath());
         GlobalConfiguration.init(configuration);
         WList.logger.log(HLogLevel.VERBOSE, "Initialized global configuration.");
-        if(true)return;
+        WList.logger.log(HLogLevel.LESS, "Initializing driver manager.");
         DriverManager.init();
-        UserSqlHelper.init(ServerHandler.DefaultPermission, ServerHandler.AdminPermission);
+        WList.logger.log(HLogLevel.VERBOSE, "Initialized driver manager.");
+        WList.logger.log(HLogLevel.LESS, "Initializing user database.");
+        UserSqlHelper.init(ServerUserHandler.DefaultPermission, ServerUserHandler.AdminPermission);
+        WList.logger.log(HLogLevel.VERBOSE, "Initialized user database.");
         WListServer.init(new InetSocketAddress(GlobalConfiguration.getInstance().getPort()));
-        WListServer.getInstance().start().syncUninterruptibly();
+        WList.logger.log(HLogLevel.VERBOSE, "Initialized WList server.");
+        WListServer.getInstance().start();
+        TimeUnit.SECONDS.sleep(3);
+        WListServer.getInstance().stop();
         WList.logger.log(HLogLevel.FINE, "Shutting down the whole server...");
         WListServer.ServerExecutors.shutdownGracefully().syncUninterruptibly();
         WListServer.IOExecutors.shutdownGracefully().syncUninterruptibly();
         FileDownloadIdHelper.cleaner.interrupt();
+        WList.logger.log(HLogLevel.MISTAKE, "Thanks to use WList.");
     }
-
 }

@@ -18,10 +18,13 @@ public final class Operation {
     public enum Type {
         Undefined,
         CloseServer,
+        Broadcast,
         Login,
         Register,
         ChangePassword,
         Logoff,
+        ListUsers,
+        DeleteUser,
         AddPermission,
         ReducePermission,
         ListFiles,
@@ -39,9 +42,9 @@ public final class Operation {
     public enum Permission {
         Undefined,
         ServerOperate,
+        Broadcast,
         UsersList,
-        UsersDelete,
-        UsersChangePermissions,
+        UsersOperate,
         FilesList,
         FileDownload,
         FileUpload,
@@ -51,6 +54,7 @@ public final class Operation {
     public enum State {
         Undefined,
         Success,
+        Broadcast,
         ServerError,
         Unsupported,
         NoPermission,
