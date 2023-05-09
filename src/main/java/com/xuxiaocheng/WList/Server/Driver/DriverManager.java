@@ -7,25 +7,13 @@ import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Driver.DriverConfiguration;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
-import com.xuxiaocheng.WList.Server.Configuration.FieldOrderRepresenter;
-import com.xuxiaocheng.WList.Server.Configuration.GlobalConfiguration;
+import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.representer.Representer;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -44,36 +32,36 @@ public final class DriverManager {
         if (!HFileHelper.ensureFileExist(path))
             throw new IOException("Failed to create driver configuration file. path: " + path.getAbsolutePath());
         final DriverInterface<C> driver = (DriverInterface<C>) type.getSupplier().get();
-        C configuration = null;
-        try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(path))) {
-            configuration = new Yaml().loadAs(inputStream, driver.getDefaultConfigurationClass());
-        }
-        if (configuration == null)
-            try {
-                final Constructor<C> constructor = driver.getDefaultConfigurationClass().getConstructor();
-                configuration = constructor.newInstance();
-            } catch (final NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException exception) {
-                throw new IllegalParametersException("Failed to get default configuration.", exception);
-            }
-        else {
-            try {
-                driver.login(configuration);
-            } catch (final Exception exception) {
-                throw new IllegalParametersException("Failed to login.", exception);
-            }
-            final boolean flag;
-            synchronized (DriverManager.drivers) {
-                flag = DriverManager.drivers.containsKey(name);
-                DriverManager.drivers.put(name, Pair.ImmutablePair.makeImmutablePair(type, driver));
-            }
-            if (flag)
-                HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, "Replaced driver. name=", name);
-        }
-        final Representer representer = new FieldOrderRepresenter();
-        configuration.setConfigClassTag(representer);
-        try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(path))) {
-            outputStream.write(new Yaml(representer).dump(configuration).getBytes(StandardCharsets.UTF_8));
-        }
+//        C configuration = null;
+//        try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(path))) {
+//            configuration = new Yaml().loadAs(inputStream, driver.getDefaultConfigurationClass());
+//        }
+//        if (configuration == null)
+//            try {
+//                final Constructor<C> constructor = driver.getDefaultConfigurationClass().getConstructor();
+//                configuration = constructor.newInstance();
+//            } catch (final NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException exception) {
+//                throw new IllegalParametersException("Failed to get default configuration.", exception);
+//            }
+//        else {
+//            try {
+//                driver.login(configuration);
+//            } catch (final Exception exception) {
+//                throw new IllegalParametersException("Failed to login.", exception);
+//            }
+//            final boolean flag;
+//            synchronized (DriverManager.drivers) {
+//                flag = DriverManager.drivers.containsKey(name);
+//                DriverManager.drivers.put(name, Pair.ImmutablePair.makeImmutablePair(type, driver));
+//            }
+//            if (flag)
+//                HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, "Replaced driver. name=", name);
+//        }
+//        final Representer representer = new FieldOrderRepresenter();
+//        configuration.setConfigClassTag(representer);
+//        try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(path))) {
+//            outputStream.write(new Yaml(representer).dump(configuration).getBytes(StandardCharsets.UTF_8));
+//        }
     }
 
     public static void init() {

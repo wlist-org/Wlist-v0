@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server.CryptionHandler;
+package com.xuxiaocheng.WList.Server.ServerHandlers;
 
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;

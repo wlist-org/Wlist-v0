@@ -5,14 +5,16 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
-import com.xuxiaocheng.WList.Server.Configuration.GlobalConfiguration;
-import com.xuxiaocheng.WList.Server.CryptionHandler.AesCipher;
+import com.xuxiaocheng.WList.Server.ServerHandlers.AesCipher;
+import com.xuxiaocheng.WList.Server.ServerHandlers.ServerFileHandler;
+import com.xuxiaocheng.WList.Server.ServerHandlers.ServerHandler;
+import com.xuxiaocheng.WList.Server.ServerHandlers.ServerStateHandler;
+import com.xuxiaocheng.WList.Server.ServerHandlers.ServerUserHandler;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.WList;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelId;
@@ -39,6 +41,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 public class WListServer {
@@ -73,6 +77,7 @@ public class WListServer {
     protected final @NotNull EventLoopGroup workerGroup = new NioEventLoopGroup(Runtime.getRuntime().availableProcessors() << 1);
     protected final @NotNull ChannelGroup channelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
     private Channel channel;
+    protected final @NotNull CountDownLatch latch = new CountDownLatch(1);
 
     protected WListServer(final @NotNull SocketAddress address) {
         super();
@@ -83,7 +88,15 @@ public class WListServer {
         return this.address;
     }
 
-    public synchronized @NotNull ChannelFuture start() throws InterruptedException {
+    public void awaitStop() throws InterruptedException {
+        this.latch.await();
+    }
+
+    public boolean awaitStop(final long timeout, final @NotNull TimeUnit unit) throws InterruptedException {
+        return this.latch.await(timeout, unit);
+    }
+
+    public synchronized void start() throws InterruptedException {
         WListServer.logger.log(HLogLevel.INFO, "WListServer is starting...");
         final ServerBootstrap serverBootstrap = new ServerBootstrap();
         serverBootstrap.group(this.workerGroup, this.workerGroup);
@@ -103,15 +116,6 @@ public class WListServer {
         });
         this.channel = serverBootstrap.bind(this.address).sync().channel();
         WListServer.logger.log(HLogLevel.ENHANCED, "Listening on: ", this.address);
-        return this.channel.closeFuture();
-    }
-
-    public @NotNull ChannelGroupFuture writeChannels(final @NotNull ByteBuf msg) {
-        return this.channelGroup.writeAndFlush(msg);
-    }
-
-    public @NotNull ChannelGroupFuture writeChannels(final @NotNull ByteBuf msg, final @NotNull ChannelMatcher matcher) {
-        return this.channelGroup.writeAndFlush(msg, matcher);
     }
 
     public synchronized void stop() {
@@ -123,6 +127,15 @@ public class WListServer {
         this.bossGroup.shutdownGracefully().syncUninterruptibly();
         this.workerGroup.shutdownGracefully().syncUninterruptibly();
         WListServer.logger.log(HLogLevel.INFO, "WListServer stopped gracefully.");
+        this.latch.countDown();
+    }
+
+    public @NotNull ChannelGroupFuture writeChannels(final @NotNull ByteBuf msg) {
+        return this.channelGroup.writeAndFlush(msg);
+    }
+
+    public @NotNull ChannelGroupFuture writeChannels(final @NotNull ByteBuf msg, final @NotNull ChannelMatcher matcher) {
+        return this.channelGroup.writeAndFlush(msg, matcher);
     }
 
     @Override

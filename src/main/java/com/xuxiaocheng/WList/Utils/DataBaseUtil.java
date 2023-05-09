@@ -1,8 +1,9 @@
 package com.xuxiaocheng.WList.Utils;
 
-import com.xuxiaocheng.WList.Server.Configuration.GlobalConfiguration;
+import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.sqlite.JDBC;
 import org.sqlite.SQLiteDataSource;
 
 import java.io.File;
@@ -64,7 +65,7 @@ public class DataBaseUtil {
         if (!path.exists() && !path.getParentFile().mkdirs() && !path.getParentFile().exists())
             throw new SQLException("Cannot create database directory.");
         this.sqliteDataSource = new SQLiteDataSource();
-        this.sqliteDataSource.setUrl(org.sqlite.JDBC.PREFIX + path.getPath());
+        this.sqliteDataSource.setUrl(JDBC.PREFIX + path.getPath());
         for (int i = 0; i < this.config.initSize; ++i)
             this.sqliteConnections.push(this.createNewConnection());
         assert this.createdSize.get() == this.config.initSize;

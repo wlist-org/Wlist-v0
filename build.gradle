@@ -17,8 +17,6 @@ dependencies {
     implementation files('libs/HeadLibs.main.jar')
 //    implementation fileTree(dir: 'libs', excludes: ['*-javadoc.jar', '*-sources.jar'], includes: ['*.jar'])
 //    testImplementation fileTree(dir: 'libs', excludes: ['*-javadoc.jar', '*-sources.jar'], includes: ['*.jar'])
-    implementation 'com.electronwill.night-config:toml:3.6.6'
-    implementation 'org.yaml:snakeyaml:2.0'
     implementation 'com.alibaba.fastjson2:fastjson2:2.0.25'
     implementation 'com.squareup.okhttp3:okhttp:4.10.0'
     implementation 'io.netty:netty-all:4.1.90.Final'

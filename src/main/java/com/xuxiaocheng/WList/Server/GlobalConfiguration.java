@@ -1,26 +1,22 @@
-package com.xuxiaocheng.WList.Server.Configuration;
+package com.xuxiaocheng.WList.Server;
 
-import com.electronwill.nightconfig.core.Config;
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
-import com.electronwill.nightconfig.toml.TomlFormat;
 import com.xuxiaocheng.HeadLibs.Annotations.Range.IntRange;
 import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
-import com.xuxiaocheng.WList.Utils.TomlUtil;
 import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
-import java.io.BufferedOutputStream;
+import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileOutputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
+import java.io.InputStream;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Properties;
 
 public class GlobalConfiguration {
     protected static @Nullable File path;
@@ -34,28 +30,43 @@ public class GlobalConfiguration {
         GlobalConfiguration.path = configurationPath;
         if (!HFileHelper.ensureFileExist(configurationPath))
             throw new IOException("Failed to create configuration file. path: " + configurationPath.getAbsolutePath());
-        try {
-            final CommentedFileConfig toml = CommentedFileConfig.builder(configurationPath).preserveInsertionOrder().build();
-            toml.load();
-            GlobalConfiguration.instance.port = TomlUtil.getOrSet(toml, "port", GlobalConfiguration.instance.port, "Server port.");
-            GlobalConfiguration.instance.maxConnection = TomlUtil.getOrSet(toml, "max_connection", GlobalConfiguration.instance.maxConnection, "Server backlog.");
-            GlobalConfiguration.instance.dataDBPath = TomlUtil.getOrSet(toml, "data_db_path", GlobalConfiguration.instance.dataDBPath, "Server 'data' database path.");
-            GlobalConfiguration.instance.indexDBPath = TomlUtil.getOrSet(toml, "index_db_path", GlobalConfiguration.instance.indexDBPath, "Server 'index' database path.");
-            GlobalConfiguration.instance.threadCount = TomlUtil.getOrSet(toml, "thread_count", GlobalConfiguration.instance.threadCount, "Temp thread size (todo: delete).");
-            GlobalConfiguration.instance.tokenExpireTime = TomlUtil.getOrSet(toml, "token_expire_time", GlobalConfiguration.instance.tokenExpireTime, "Token expire time (sec).");
-            GlobalConfiguration.instance.idIdleExpireTime = TomlUtil.getOrSet(toml, "id_idle_expire_time", GlobalConfiguration.instance.idIdleExpireTime, "Id idle expire time (sec).");
-            GlobalConfiguration.instance.maxLimitPerPage = TomlUtil.getOrSet(toml, "max_limit_per_page", GlobalConfiguration.instance.maxLimitPerPage, "Client request 'FilesList' limit count per page.");
-            final Config drivers = TomlUtil.getOrSet(toml, "drivers", TomlFormat.newConfig(), "Web drivers with type.");
-            for (final Config.Entry entry: drivers.entrySet())
-                GlobalConfiguration.instance.drivers.put(entry.getKey(), WebDriversType.valueOf(entry.getValue()));
-            // TODO other check.
-            // TODO in dif file.
-            toml.save();
-        } catch (final IllegalArgumentException exception) {
-            throw new IOException("Unsupported driver type.", exception);
-        } catch (final RuntimeException exception) {
-            throw new IOException(exception);
+        // TODO: In HeadLibs lib. XSML (XSML, the Strictest but Modifiable object Language)
+        final Properties properties = new Properties();
+        try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(configurationPath))) {
+            properties.load(inputStream);
         }
+        for (final Map.Entry<Object, Object> entry: properties.entrySet())
+            GlobalConfiguration.instance.drivers.put(entry.getKey().toString(), WebDriversType.valueOf(entry.getValue().toString()));
+//        final LoadSettings loadSettings = LoadSettings.builder().setParseComments(true).setSchema(new FailsafeSchema()).build();
+//        final Load loader = new Load(loadSettings, new CommentedYamlConstructor(loadSettings));
+//        final Map<String, Object> configs;
+//        try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(configurationPath))){
+//            final Object config = loader.loadFromInputStream(inputStream);
+//            if (config != null) {
+//                if(!(config instanceof LinkedHashMap<?, ?>))
+//                    throw new IOException("Invalid yaml config format.");
+//                configs = (Map<String, Object>) config;
+//            } else configs = new LinkedHashMap<>();
+//        } catch (final RuntimeException exception) {
+//            throw new IOException(exception);
+//        }
+//        final DumpSettings dumpSettings = DumpSettings.builder().setDumpComments(true).setDefaultFlowStyle(FlowStyle.BLOCK).build();
+//        final Dump dumper = new Dump(dumpSettings);
+//            final CommentedFileConfig toml = CommentedFileConfig.builder(configurationPath).preserveInsertionOrder().build();
+//            toml.load();
+//            GlobalConfiguration.instance.port = TomlUtil.getOrSet(toml, "port", GlobalConfiguration.instance.port, "Server port.");
+//            GlobalConfiguration.instance.maxConnection = TomlUtil.getOrSet(toml, "max_connection", GlobalConfiguration.instance.maxConnection, "Server backlog.");
+//            GlobalConfiguration.instance.dataDBPath = TomlUtil.getOrSet(toml, "data_db_path", GlobalConfiguration.instance.dataDBPath, "Server 'data' database path.");
+//            GlobalConfiguration.instance.indexDBPath = TomlUtil.getOrSet(toml, "index_db_path", GlobalConfiguration.instance.indexDBPath, "Server 'index' database path.");
+//            GlobalConfiguration.instance.threadCount = TomlUtil.getOrSet(toml, "thread_count", GlobalConfiguration.instance.threadCount, "Temp thread size (todo: delete).");
+//            GlobalConfiguration.instance.tokenExpireTime = TomlUtil.getOrSet(toml, "token_expire_time", GlobalConfiguration.instance.tokenExpireTime, "Token expire time (sec).");
+//            GlobalConfiguration.instance.idIdleExpireTime = TomlUtil.getOrSet(toml, "id_idle_expire_time", GlobalConfiguration.instance.idIdleExpireTime, "Id idle expire time (sec).");
+//            GlobalConfiguration.instance.maxLimitPerPage = TomlUtil.getOrSet(toml, "max_limit_per_page", GlobalConfiguration.instance.maxLimitPerPage, "Client request 'FilesList' limit count per page.");
+//            final Config drivers = TomlUtil.getOrSet(toml, "drivers", TomlFormat.newConfig(), "Web drivers with type.");
+//            for (final Config.Entry entry: drivers.entrySet())
+//                GlobalConfiguration.instance.drivers.put(entry.getKey(), WebDriversType.valueOf(entry.getValue()));
+        // TODO in dif file.
+        // TODO other check.
     }
     public static synchronized @NotNull GlobalConfiguration getInstance() {
         return Objects.requireNonNullElseGet(GlobalConfiguration.instance, GlobalConfiguration::new);
@@ -112,25 +123,25 @@ public class GlobalConfiguration {
     }
 
     public static synchronized void addDriver(final @NotNull String name, final @NotNull WebDriversType type) throws IOException {
-        final File dif = new File(GlobalConfiguration.path + ".dif");
-        HFileHelper.ensureFileExist(dif);
-        try (final OutputStream stream = new BufferedOutputStream(new FileOutputStream(dif, true))){
-            stream.write("+\n\t".getBytes(StandardCharsets.UTF_8));
-            stream.write(name.getBytes(StandardCharsets.UTF_8));
-            stream.write("\n\t".getBytes(StandardCharsets.UTF_8));
-            stream.write(type.name().getBytes(StandardCharsets.UTF_8));
-            stream.write("\n".getBytes(StandardCharsets.UTF_8));
-        }
+//        final File dif = new File(GlobalConfiguration.path + ".dif");
+//        HFileHelper.ensureFileExist(dif);
+//        try (final OutputStream stream = new BufferedOutputStream(new FileOutputStream(dif, true))){
+//            stream.write("+\n\t".getBytes(StandardCharsets.UTF_8));
+//            stream.write(name.getBytes(StandardCharsets.UTF_8));
+//            stream.write("\n\t".getBytes(StandardCharsets.UTF_8));
+//            stream.write(type.name().getBytes(StandardCharsets.UTF_8));
+//            stream.write("\n".getBytes(StandardCharsets.UTF_8));
+//        }
     }
 
     public static synchronized void subDriver(final @NotNull String name) throws IOException {
-        final File dif = new File(GlobalConfiguration.path + ".dif");
-        HFileHelper.ensureFileExist(dif);
-        try (final OutputStream stream = new BufferedOutputStream(new FileOutputStream(dif, true))){
-            stream.write("-\t".getBytes(StandardCharsets.UTF_8));
-            stream.write(name.getBytes(StandardCharsets.UTF_8));
-            stream.write("\n".getBytes(StandardCharsets.UTF_8));
-        }
+//        final File dif = new File(GlobalConfiguration.path + ".dif");
+//        HFileHelper.ensureFileExist(dif);
+//        try (final OutputStream stream = new BufferedOutputStream(new FileOutputStream(dif, true))){
+//            stream.write("-\t".getBytes(StandardCharsets.UTF_8));
+//            stream.write(name.getBytes(StandardCharsets.UTF_8));
+//            stream.write("\n".getBytes(StandardCharsets.UTF_8));
+//        }
     }
 
     @Override

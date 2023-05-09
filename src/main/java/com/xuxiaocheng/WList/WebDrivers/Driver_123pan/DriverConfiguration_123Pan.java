@@ -1,16 +1,11 @@
 package com.xuxiaocheng.WList.WebDrivers.Driver_123pan;
 
-import com.xuxiaocheng.WList.Driver.Configuration.CacheSideDriverConfiguration;
-import com.xuxiaocheng.WList.Driver.Configuration.LocalSideDriverConfiguration;
-import com.xuxiaocheng.WList.Driver.Configuration.WebSideDriverConfiguration;
 import com.xuxiaocheng.WList.Driver.DriverConfiguration;
 import com.xuxiaocheng.WList.Driver.Options.DuplicatePolicy;
-import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
+import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.yaml.snakeyaml.nodes.Tag;
-import org.yaml.snakeyaml.representer.Representer;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -21,13 +16,6 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
         DriverConfiguration_123Pan.CacheSide> {
     public DriverConfiguration_123Pan() {
         super(LocalSide::new, WebSide::new, CacheSide::new);
-    }
-
-    @Override
-    public void setConfigClassTag(final @NotNull Representer representer) {
-        super.setConfigClassTag(representer);
-        representer.addClassTag(WebSide.LoginPart.class, Tag.MAP);
-        representer.addClassTag(WebSide.FilePart.class, Tag.MAP);
     }
 
     public static final class LocalSide extends LocalSideDriverConfiguration {

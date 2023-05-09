@@ -3,10 +3,9 @@ package com.xuxiaocheng.WList;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
-import com.xuxiaocheng.WList.Server.Configuration.GlobalConfiguration;
+import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.Driver.DriverManager;
-import com.xuxiaocheng.WList.Server.FileDownloadIdHelper;
-import com.xuxiaocheng.WList.Server.ServerUserHandler;
+import com.xuxiaocheng.WList.Server.ServerHandlers.ServerUserHandler;
 import com.xuxiaocheng.WList.Server.UserSqlHelper;
 import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
@@ -17,7 +16,6 @@ import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.sql.SQLException;
 import java.util.Random;
-import java.util.concurrent.TimeUnit;
 import java.util.random.RandomGenerator;
 
 public final class WList {
@@ -47,7 +45,7 @@ public final class WList {
         vector = new BigInteger(bytes);
     }
 
-    public static void main(final String @NotNull [] args) throws IOException, InterruptedException, SQLException {
+    public static void main(final String @NotNull [] args) throws IOException, SQLException, InterruptedException {
         Thread.setDefaultUncaughtExceptionHandler((t, e) -> WList.logger.log(HLogLevel.FAULT, "Uncaught exception. thread: ", t.getName(), e));
         WList.logger.log(HLogLevel.FINE, "Hello WList! Initializing...");
         final File configuration = new File(args.length > 0 ? args[0] : "server.toml");
@@ -63,12 +61,14 @@ public final class WList {
         WListServer.init(new InetSocketAddress(GlobalConfiguration.getInstance().getPort()));
         WList.logger.log(HLogLevel.VERBOSE, "Initialized WList server.");
         WListServer.getInstance().start();
-        TimeUnit.SECONDS.sleep(3);
-        WListServer.getInstance().stop();
-        WList.logger.log(HLogLevel.FINE, "Shutting down the whole server...");
-        WListServer.ServerExecutors.shutdownGracefully().syncUninterruptibly();
-        WListServer.IOExecutors.shutdownGracefully().syncUninterruptibly();
-        FileDownloadIdHelper.cleaner.interrupt();
-        WList.logger.log(HLogLevel.MISTAKE, "Thanks to use WList.");
+        try {
+            WListServer.getInstance().awaitStop();
+        } finally {
+            WList.logger.log(HLogLevel.FINE, "Shutting down the whole application...");
+            WListServer.CodecExecutors.shutdownGracefully().syncUninterruptibly();
+            WListServer.ServerExecutors.shutdownGracefully().syncUninterruptibly();
+            WListServer.IOExecutors.shutdownGracefully().syncUninterruptibly();
+            WList.logger.log(HLogLevel.MISTAKE, "Thanks to use WList.");
+        }
     }
 }
