@@ -66,7 +66,6 @@ public class GlobalConfiguration {
 //            for (final Config.Entry entry: drivers.entrySet())
 //                GlobalConfiguration.instance.drivers.put(entry.getKey(), WebDriversType.valueOf(entry.getValue()));
         // TODO in dif file.
-        // TODO other check.
     }
     public static synchronized @NotNull GlobalConfiguration getInstance() {
         return Objects.requireNonNullElseGet(GlobalConfiguration.instance, GlobalConfiguration::new);

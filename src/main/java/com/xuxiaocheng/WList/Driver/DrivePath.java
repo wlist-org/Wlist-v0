@@ -7,6 +7,7 @@ import org.jetbrains.annotations.UnmodifiableView;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
@@ -18,7 +19,7 @@ public class DrivePath implements Iterable<String> {
     protected static final Pattern Separator = Pattern.compile("[\\\\/]");
     protected static @NotNull @UnmodifiableView List<@NotNull String> split(final @Nullable CharSequence path) {
         if (path == null)
-            return new ArrayList<>();
+            return List.of();
         return Stream.of(DrivePath.Separator.split(path))
                 .filter(Predicate.not(String::isEmpty))
                 .collect(Collectors.toList());
@@ -42,7 +43,7 @@ public class DrivePath implements Iterable<String> {
 
     protected DrivePath(final @NotNull Collection<String> path) {
         super();
-        this.path = new ArrayList<>(path);
+        this.path = new LinkedList<>(path);
     }
 
     public @NotNull DrivePath parent() {

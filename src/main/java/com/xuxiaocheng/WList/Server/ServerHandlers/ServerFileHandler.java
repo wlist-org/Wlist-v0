@@ -32,8 +32,12 @@ import java.util.SortedSet;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
-public class ServerFileHandler {
-    public static @NotNull Map<String, Object> getVisibleInfo(final @NotNull FileInformation f) {
+public final class ServerFileHandler {
+    private ServerFileHandler() {
+        super();
+    }
+
+    static @NotNull Map<String, Object> getVisibleInfo(final @NotNull FileInformation f) {
         final Map<String, Object> map = new HashMap<>(6);
         map.put("path", f.path().getPath());
         map.put("is_dir", f.is_dir());
@@ -149,16 +153,12 @@ public class ServerFileHandler {
     }
 
     public static void doMakeDirectories(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
-        Pair.@Nullable ImmutablePair<@NotNull DriverInterface<?>, @NotNull DrivePath> path = null;
-        if (ServerUserHandler.checkToken(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileUpload) != null) {
-            final DrivePath path1 = new DrivePath(ByteBufIOUtil.readUTF(buf));
-            path = Pair.ImmutablePair.makeImmutablePair(RootDriver.getInstance(), path1);
-        }
-        if (path == null)
+        if (ServerUserHandler.checkToken(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileUpload) == null)
             return;
+        final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buf));
         final FileInformation dir;
         try {
-            dir = path.getFirst().mkdirs(path.getSecond());
+            dir = RootDriver.getInstance().mkdirs(path);
         } catch (final UnsupportedOperationException exception) {
             ServerHandler.writeMessage(channel, Operation.State.Unsupported, exception.getMessage());
             return;
@@ -169,19 +169,15 @@ public class ServerFileHandler {
             ServerHandler.writeMessage(channel, Operation.State.DataError, "Name");
             return;
         }
-        ServerHandler.writeMessage(channel, Operation.State.Success, JSON.toJSONString(getVisibleInfo(dir)));
+        ServerHandler.writeMessage(channel, Operation.State.Success, JSON.toJSONString(ServerFileHandler.getVisibleInfo(dir)));
     }
 
     public static void doDeleteFile(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
-        Pair.@Nullable ImmutablePair<@NotNull DriverInterface<?>, @NotNull DrivePath> path = null;
-        if (ServerUserHandler.checkToken(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileDelete) != null) {
-            final DrivePath path1 = new DrivePath(ByteBufIOUtil.readUTF(buf));
-            path = Pair.ImmutablePair.makeImmutablePair(RootDriver.getInstance(), path1);
-        }
-        if (path == null)
+        if (ServerUserHandler.checkToken(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileDelete) == null)
             return;
+        final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buf));
         try {
-            path.getFirst().delete(path.getSecond());
+            RootDriver.getInstance().delete(path);
         } catch (final UnsupportedOperationException exception) {
             ServerHandler.writeMessage(channel, Operation.State.Unsupported, exception.getMessage());
             return;
@@ -213,7 +209,7 @@ public class ServerFileHandler {
             ServerHandler.writeMessage(channel, Operation.State.DataError, "Name");
             return;
         }
-        ServerHandler.writeMessage(channel, Operation.State.Success, JSON.toJSONString(getVisibleInfo(file)));
+        ServerHandler.writeMessage(channel, Operation.State.Success, JSON.toJSONString(ServerFileHandler.getVisibleInfo(file)));
     }
 
     public static void doRequestUploadFile(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {

@@ -195,6 +195,7 @@ public class WListServer {
                     case DeleteUser -> ServerUserHandler.doDeleteUser(msg, channel);
                     case AddPermission -> ServerUserHandler.doChangePermission(msg, channel, true);
                     case ReducePermission -> ServerUserHandler.doChangePermission(msg, channel, false);
+                    // TODO drivers operate.
                     case ListFiles -> ServerFileHandler.doListFiles(msg, channel);
                     case RequestDownloadFile -> ServerFileHandler.doRequestDownloadFile(msg, channel);
                     case DownloadFile -> ServerFileHandler.doDownloadFile(msg, channel);
@@ -202,7 +203,7 @@ public class WListServer {
                     case MakeDirectories -> ServerFileHandler.doMakeDirectories(msg, channel);
                     case DeleteFile -> ServerFileHandler.doDeleteFile(msg, channel);
                     case RenameFile -> ServerFileHandler.doRenameFile(msg, channel);
-                    case RequestUploadFile -> ServerFileHandler.doRequestUploadFile(msg, channel);
+//                    case RequestUploadFile -> ServerFileHandler.doRequestUploadFile(msg, channel);
                     // TODO
                     default -> ServerHandler.writeMessage(channel, Operation.State.Unsupported, "TODO: Unsupported.");
                 }
