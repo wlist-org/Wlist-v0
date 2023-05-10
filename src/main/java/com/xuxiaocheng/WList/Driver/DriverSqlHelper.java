@@ -9,6 +9,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -32,7 +33,8 @@ public final class DriverSqlHelper {
     // Util
 
     private static @NotNull String getTableName(final @NotNull String name) {
-        return "Driver_" + Base64.getEncoder().encodeToString(name.getBytes(StandardCharsets.UTF_8));
+        return "Driver_" + Base64.getEncoder().encodeToString(name.getBytes(StandardCharsets.UTF_8))
+                .replace("==", "__").replace('=', '_');
     }
 
     private static @NotNull String serializeTime(final @Nullable LocalDateTime time) {

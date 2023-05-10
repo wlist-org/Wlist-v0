@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Utils;
 
+import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -62,8 +63,8 @@ public class DataBaseUtil {
         super();
         this.config = config;
         final File path = this.config.path.getAbsoluteFile();
-        if (!path.exists() && !path.getParentFile().mkdirs() && !path.getParentFile().exists())
-            throw new SQLException("Cannot create database directory.");
+        if (!HFileHelper.ensureFileExist(path))
+            throw new SQLException("Cannot create database file.");
         this.sqliteDataSource = new SQLiteDataSource();
         this.sqliteDataSource.setUrl(JDBC.PREFIX + path.getPath());
         for (int i = 0; i < this.config.initSize; ++i)
