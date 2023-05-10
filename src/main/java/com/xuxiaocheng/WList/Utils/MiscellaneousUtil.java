@@ -15,7 +15,9 @@ import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Random;
 import java.util.random.RandomGenerator;
 import java.util.regex.Pattern;
@@ -107,5 +109,10 @@ public final class MiscellaneousUtil {
         final RandomGenerator random = new Random(seed.longValue() ^ seed.getLowestSetBit() ^ seed.bitLength());
         for (int i = 0; i < bytes.length; ++i)
             bytes[i] = (byte) (bytes[i] ^ (byte) random.nextInt(Byte.MIN_VALUE, Byte.MAX_VALUE));
+    }
+
+    public static <K, V> @NotNull V resetNonNull(final @NotNull Map<K, V> map, final @NotNull K key, final @NotNull V defaultValue) {
+        map.putIfAbsent(key, defaultValue);
+        return Objects.requireNonNullElse(map.get(key), defaultValue);
     }
 }

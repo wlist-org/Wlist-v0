@@ -60,7 +60,7 @@ public final class ServerFileHandler {
         final String policy = ByteBufIOUtil.readUTF(buf);
         final OrderDirection orderDirection = OrderDirection.Map.get(direction);
         final OrderPolicy orderPolicy = OrderPolicy.Map.get(policy);
-        if (limit < 1 || limit > GlobalConfiguration.getInstance().getMaxLimitPerPage() || page < 0
+        if (limit < 1 || limit > GlobalConfiguration.getInstance().maxLimitPerPage() || page < 0
                 || (orderDirection == null && !"D".equals(direction))
                 || (orderPolicy == null && !"D".equals(policy))) {
             ServerHandler.writeMessage(channel, Operation.State.DataError, "Parameters");

@@ -83,7 +83,7 @@ public final class DriverManager {
 
     public static void init() {
         DriverManager.drivers.clear();
-        for (final Map.Entry<String, WebDriversType> entry: GlobalConfiguration.getInstance().getDrivers().entrySet())
+        for (final Map.Entry<String, WebDriversType> entry: GlobalConfiguration.getInstance().drivers().entrySet())
             try {
                 HLog.getInstance("DefaultLogger").log(HLogLevel.INFO, "Driver: ", entry.getKey(), " type: ", entry.getValue().name());
                 DriverManager.add0(entry.getKey(), entry.getValue());

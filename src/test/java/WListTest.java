@@ -9,7 +9,7 @@ import java.io.IOException;
 public class WListTest {
     @Test
     public void globalConfig() throws IOException {
-        GlobalConfiguration.init(new File("run/server.properties"));
+        GlobalConfiguration.init(new File("run/server.yml"));
         HLog.DefaultLogger.log(HLogLevel.INFO, GlobalConfiguration.getInstance());
     }
 }

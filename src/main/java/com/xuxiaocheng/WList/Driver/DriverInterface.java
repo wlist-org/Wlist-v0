@@ -26,7 +26,8 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * Completely delete this driver. (cleaner)
      * @throws Exception Something went wrong.
      */
-    void deleteDriver() throws Exception;
+    default void deleteDriver() throws Exception {
+    }
 
     /**
      * Get the list of files in this directory.

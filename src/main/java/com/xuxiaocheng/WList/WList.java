@@ -58,7 +58,7 @@ public final class WList {
         WList.logger.log(HLogLevel.LESS, "Initializing user database.");
         UserSqlHelper.init(ServerUserHandler.DefaultPermission, ServerUserHandler.AdminPermission);
         WList.logger.log(HLogLevel.VERBOSE, "Initialized user database.");
-        WListServer.init(new InetSocketAddress(GlobalConfiguration.getInstance().getPort()));
+        WListServer.init(new InetSocketAddress(GlobalConfiguration.getInstance().port()));
         WList.logger.log(HLogLevel.VERBOSE, "Initialized WList server.");
         WListServer.getInstance().start();
         try {

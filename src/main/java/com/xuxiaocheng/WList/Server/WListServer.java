@@ -101,7 +101,7 @@ public class WListServer {
         final ServerBootstrap serverBootstrap = new ServerBootstrap();
         serverBootstrap.group(this.workerGroup, this.workerGroup);
         serverBootstrap.channel(NioServerSocketChannel.class);
-        serverBootstrap.option(ChannelOption.SO_BACKLOG, GlobalConfiguration.getInstance().getMaxConnection());
+        serverBootstrap.option(ChannelOption.SO_BACKLOG, GlobalConfiguration.getInstance().maxConnection());
         serverBootstrap.option(ChannelOption.SO_REUSEADDR, true);
         serverBootstrap.childOption(ChannelOption.SO_KEEPALIVE, true);
         serverBootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
