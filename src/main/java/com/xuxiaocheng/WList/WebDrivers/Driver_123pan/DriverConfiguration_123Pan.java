@@ -14,6 +14,7 @@ import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class DriverConfiguration_123Pan extends DriverConfiguration<
@@ -53,6 +54,14 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
             this.filePart.load(file, errors, prefix + "file$");
         }
 
+        @Override
+        protected @NotNull Map<@NotNull String, @NotNull Object> dump() {
+            final Map<String, Object> cache = super.dump();
+            cache.put("login", this.loginPart.dump());
+            cache.put("file", this.filePart.dump());
+            return cache;
+        }
+
         public @NotNull LoginPart getLoginPart() {
             return this.loginPart;
         }
@@ -81,6 +90,14 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
                         o -> YamlHelper.transferString(o, errors, prefix + "password"));
                 this.loginType = YamlHelper.getConfig(login, "login_type", () -> Integer.toString(this.loginType),
                         o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "login_type", BigInteger.ONE, BigInteger.TWO)).intValue();
+            }
+
+            private @NotNull Map<@NotNull String, @NotNull Object> dump() {
+                final Map<String, Object> cache = new LinkedHashMap<>();
+                cache.put("passport", this.passport);
+                cache.put("password", this.password);
+                cache.put("login_type", this.loginType);
+                return cache;
             }
 
             public @NotNull String getPassport() {
@@ -123,6 +140,16 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
                         o -> YamlHelper.transferEnumFromStr(o, errors, prefix + "order_direction", OrderDirection.class));
                 this.rootDirectoryId = YamlHelper.getConfig(file, "root_directory_id", () -> Long.toString(this.rootDirectoryId),
                         o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "root_directory_id", BigInteger.ZERO, null)).longValue();
+            }
+
+            private @NotNull Map<@NotNull String, @NotNull Object> dump() {
+                final Map<String, Object> cache = new LinkedHashMap<>();
+                cache.put("default_limit_per_page", this.defaultLimitPerPage);
+                cache.put("duplicate_policy", this.duplicatePolicy.name());
+                cache.put("order_policy", this.orderPolicy.name());
+                cache.put("order_direction", this.orderDirection.name());
+                cache.put("root_directory_id", this.rootDirectoryId);
+                return cache;
             }
 
             public int getDefaultLimitPerPage() {
@@ -172,6 +199,15 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
                     o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "token_expire", DateTimeFormatter.ISO_LOCAL_DATE_TIME));
             this.refreshExpire = YamlHelper.getConfigNullable(cache, "refresh_expire",
                     o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "refresh_expire", DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        }
+
+        @Override
+        protected @NotNull Map<@NotNull String, @NotNull Object> dump() {
+            final Map<String, Object> cache = super.dump();
+            cache.put("token", this.token);
+            cache.put("token_expire", this.tokenExpire == null ? null : DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(this.tokenExpire));
+            cache.put("refresh_expire", this.refreshExpire == null ? null : DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(this.refreshExpire));
+            return cache;
         }
 
         public @Nullable String getToken() {

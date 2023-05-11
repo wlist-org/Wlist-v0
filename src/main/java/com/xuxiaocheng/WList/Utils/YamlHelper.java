@@ -67,6 +67,15 @@ public final class YamlHelper {
         stream.write(dumper.dumpToString(config).getBytes(StandardCharsets.UTF_8));
     }
 
+    public static void throwErrors(final @NotNull Collection<? extends Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors) throws IOException {
+        if (!errors.isEmpty()) {
+            final StringBuilder builder = new StringBuilder();
+            for (final Pair.ImmutablePair<String, String> pair: errors)
+                builder.append("In '").append(pair.getFirst()).append("': ").append(pair.getSecond()).append('\n');
+            throw new IOException(builder.toString());
+        }
+    }
+
     public static <T> @NotNull T getConfig(final @NotNull Map<? super @NotNull String, @NotNull Object> config, final @NotNull String key, final @NotNull Object defaultValue, final @NotNull Function<@NotNull Object, @Nullable T> transfer) {
         final Object value = Objects.requireNonNullElse(config.get(key), defaultValue);
         return Objects.requireNonNullElseGet(transfer.apply(value), () -> transfer.apply(defaultValue));

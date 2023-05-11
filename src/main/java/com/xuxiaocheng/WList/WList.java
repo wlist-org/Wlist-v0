@@ -48,7 +48,7 @@ public final class WList {
     public static void main(final String @NotNull [] args) throws IOException, SQLException, InterruptedException {
         Thread.setDefaultUncaughtExceptionHandler((t, e) -> WList.logger.log(HLogLevel.FAULT, "Uncaught exception. thread: ", t.getName(), e));
         WList.logger.log(HLogLevel.FINE, "Hello WList! Initializing...");
-        final File configuration = new File(args.length > 0 ? args[0] : "server.toml");
+        final File configuration = new File(args.length > 0 ? args[0] : "server.yaml");
         WList.logger.log(HLogLevel.LESS, "Initializing global configuration. file: ", configuration.getAbsolutePath());
         GlobalConfiguration.init(configuration);
         WList.logger.log(HLogLevel.VERBOSE, "Initialized global configuration.");

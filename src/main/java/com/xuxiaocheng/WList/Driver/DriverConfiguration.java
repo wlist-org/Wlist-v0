@@ -7,6 +7,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.math.BigInteger;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -47,7 +48,11 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
     }
 
     public @NotNull Map<@NotNull String, @NotNull Object> dump() {
-        return Map.of();//TODO
+        final Map<String, Object> config = new LinkedHashMap<>();
+        config.put("local", this.localSide.dump());
+        config.put("web", this.webSide.dump());
+        config.put("cache", this.cacheSide.dump());
+        return config;
     }
 
     @Override
@@ -80,6 +85,13 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "priority", null, null));
         }
 
+        protected @NotNull Map<@NotNull String, @NotNull Object> dump() {
+            final Map<String, Object> local = new LinkedHashMap<>();
+            local.put("name", this.name);
+            local.put("priority", this.priority);
+            return local;
+        }
+
         public @NotNull String getName() {
             return this.name;
         }
@@ -99,6 +111,10 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
 
     public abstract static class WebSideDriverConfiguration {
         protected void load(final @NotNull Map<? super @NotNull String, @NotNull Object> web, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
+        }
+
+        protected @NotNull Map<@NotNull String, @NotNull Object> dump() {
+            return new LinkedHashMap<>();
         }
 
         @Override
@@ -128,6 +144,17 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "space_used", BigInteger.ZERO, BigInteger.valueOf(Long.MAX_VALUE))).longValue();
             this.fileCount = YamlHelper.getConfig(cache, "file_count", () -> Long.toString(this.fileCount),
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "file_count", BigInteger.valueOf(-1), BigInteger.valueOf(Long.MAX_VALUE))).longValue();
+        }
+
+        protected @NotNull Map<@NotNull String, @NotNull Object> dump() {
+            final Map<String, Object> cache = new LinkedHashMap<>();
+            cache.put("nickname", this.nickname);
+            cache.put("image_link", this.imageLink);
+            cache.put("vip", this.vip);
+            cache.put("space_all", this.spaceAll);
+            cache.put("space_used", this.spaceUsed);
+            cache.put("file_count", this.fileCount);
+            return cache;
         }
 
         public @NotNull String getNickname() {

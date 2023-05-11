@@ -1,6 +1,5 @@
 package com.xuxiaocheng.WList.Server.Driver;
 
-import com.alibaba.fastjson2.TypeReference;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -23,10 +22,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class DriverManager {
@@ -46,13 +48,20 @@ public final class DriverManager {
         } catch (final RuntimeException exception) {
             throw new IllegalParametersException("Failed to get driver.", Map.of("name", name, "type", type), exception);
         }
-        final File path = new File("configs", name + ".yml");
+        final File path = new File("configs", name + ".yaml");
         if (!HFileHelper.ensureFileExist(path))
             throw new IOException("Failed to create driver configuration file. path: " + path.getAbsolutePath());
         final C configuration;
         try {
-            configuration = (C) new TypeReference<C>() {}.getRawType().getConstructor().newInstance();
-        } catch (final InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException exception) {
+            ParameterizedType configType = null;
+            for (final Type t: driver.getClass().getGenericInterfaces())
+                if (t instanceof ParameterizedType p && DriverInterface.class.equals(p.getRawType())) {
+                    configType = p;
+                    break;
+                }
+            configuration = ((Class<C>) Objects.requireNonNull(configType).getActualTypeArguments()[0]).getConstructor().newInstance();
+        } catch (final IllegalArgumentException | SecurityException | ClassCastException | NullPointerException
+                       | InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException exception) {
             throw new IllegalParametersException("Failed to get driver configuration.", Map.of("name", name, "type", type), exception);
         }
         final Map<String, Object> config = new LinkedHashMap<>();
@@ -61,14 +70,16 @@ public final class DriverManager {
         }
         final Collection<Pair.ImmutablePair<String, String>> errors = new LinkedList<>();
         configuration.load(config, errors);
-        if (GlobalConfiguration.getInstance().dumpConfiguration())
-            try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(path))) {
-                YamlHelper.dumpYaml(config, outputStream);
-            }
+        YamlHelper.throwErrors(errors);
         try {
             driver.login(configuration);
         } catch (final Exception exception) {
-            throw new IllegalParametersException("Failed to login.", Map.of("name", name, "type", type), exception);
+            throw new IllegalParametersException("Failed to login.", Map.of("name", name, "type", type, "configuration", configuration), exception);
+        } finally {
+            if (GlobalConfiguration.getInstance().dumpConfiguration())
+                try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(path))) {
+                    YamlHelper.dumpYaml(configuration.dump(), outputStream);
+                }
         }
         final boolean[] flag = new boolean[] {true};
         DriverManager.drivers.computeIfAbsent(name, (n) -> {
@@ -86,7 +97,7 @@ public final class DriverManager {
                 HLog.getInstance("DefaultLogger").log(HLogLevel.INFO, "Driver: ", entry.getKey(), " type: ", entry.getValue().name());
                 DriverManager.add0(entry.getKey(), entry.getValue());
             } catch (final IllegalParametersException | IOException exception) {
-                HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, "entry: ", entry, exception);
+                HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, "Driver: ", entry.getKey(), " type: ", entry.getValue().name(), exception);
             }
     }
 

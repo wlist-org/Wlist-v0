@@ -81,12 +81,7 @@ public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxCo
         } catch (final RuntimeException exception) {
             throw new IOException(exception);
         }
-        if (!errors.isEmpty()) {
-            final StringBuilder builder = new StringBuilder();
-            for (final Pair.ImmutablePair<String, String> pair: errors)
-                builder.append("In '").append(pair.getFirst()).append("': ").append(pair.getSecond()).append('\n');
-            throw new IOException(builder.toString());
-        }
+        YamlHelper.throwErrors(errors);
         if (GlobalConfiguration.instance.dumpConfiguration && path != null) {
             config.put("dumpConfiguration", true);
             config.put("port", GlobalConfiguration.instance.port);
@@ -97,7 +92,9 @@ public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxCo
             config.put("id_idle_expire_time", GlobalConfiguration.instance.idIdleExpireTime);
             config.put("max_limit_per_page", GlobalConfiguration.instance.maxLimitPerPage);
             config.put("thread_count", GlobalConfiguration.instance.threadCount);
-            config.put("drivers", GlobalConfiguration.instance.drivers);
+            config.put("drivers", GlobalConfiguration.instance.drivers.entrySet().stream()
+                    .map(e -> Pair.ImmutablePair.makeImmutablePair(e.getKey(), e.getValue().name()))
+                    .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond)));
             config.put("delete_driver", GlobalConfiguration.instance.deleteDriver);
             try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(path))) {
                 YamlHelper.dumpYaml(config, outputStream);
