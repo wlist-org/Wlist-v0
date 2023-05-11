@@ -2,10 +2,10 @@ package com.xuxiaocheng.WList.WebDrivers.Driver_123pan;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
-import com.xuxiaocheng.WList.Driver.DrivePath;
-import com.xuxiaocheng.WList.Driver.DriverUtil;
+import com.xuxiaocheng.WList.Driver.Utils.DrivePath;
+import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
-import com.xuxiaocheng.WList.Driver.FileInformation;
+import com.xuxiaocheng.WList.Driver.Utils.FileInformation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

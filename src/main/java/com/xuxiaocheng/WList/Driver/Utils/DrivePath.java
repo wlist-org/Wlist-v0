@@ -1,10 +1,9 @@
-package com.xuxiaocheng.WList.Driver;
+package com.xuxiaocheng.WList.Driver.Utils;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;

@@ -124,20 +124,20 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
 
         public static final class FilePart {
             private int defaultLimitPerPage = 20;
-            private @NotNull DuplicatePolicy duplicatePolicy = DuplicatePolicy.KEEP;
-            private @NotNull OrderPolicy orderPolicy = OrderPolicy.FileName;
-            private @NotNull OrderDirection orderDirection = OrderDirection.ASCEND;
+            private @NotNull DuplicatePolicy defaultDuplicatePolicy = DuplicatePolicy.KEEP;
+            private @NotNull OrderPolicy defaultOrderPolicy = OrderPolicy.FileName;
+            private @NotNull OrderDirection defaultOrderDirection = OrderDirection.ASCEND;
             private long rootDirectoryId = 0;
 
             private void load(final @NotNull Map<? super @NotNull String, @NotNull Object> file, @NotNull final Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
                 this.defaultLimitPerPage = YamlHelper.getConfig(file, "default_limit_per_page", () -> Integer.toString(this.defaultLimitPerPage),
                         o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "default_limit_per_page", BigInteger.ONE, BigInteger.valueOf(GlobalConfiguration.getInstance().maxLimitPerPage()))).intValue();
-                this.duplicatePolicy = YamlHelper.getConfig(file, "duplicate_policy", this.duplicatePolicy::name,
-                        o -> YamlHelper.transferEnumFromStr(o, errors, prefix + "duplicate_policy", DuplicatePolicy.class));
-                this.orderPolicy = YamlHelper.getConfig(file, "order_policy", this.orderPolicy::name,
-                        o -> YamlHelper.transferEnumFromStr(o, errors, prefix + "order_policy", OrderPolicy.class));
-                this.orderDirection = YamlHelper.getConfig(file, "order_direction", this.orderDirection::name,
-                        o -> YamlHelper.transferEnumFromStr(o, errors, prefix + "order_direction", OrderDirection.class));
+                this.defaultDuplicatePolicy = YamlHelper.getConfig(file, "default_duplicate_policy", this.defaultDuplicatePolicy::name,
+                        o -> YamlHelper.transferEnumFromStr(o, errors, prefix + "default_duplicate_policy", DuplicatePolicy.class));
+                this.defaultOrderPolicy = YamlHelper.getConfig(file, "default_order_policy", this.defaultOrderPolicy::name,
+                        o -> YamlHelper.transferEnumFromStr(o, errors, prefix + "default_order_policy", OrderPolicy.class));
+                this.defaultOrderDirection = YamlHelper.getConfig(file, "default_order_direction", this.defaultOrderDirection::name,
+                        o -> YamlHelper.transferEnumFromStr(o, errors, prefix + "default_order_direction", OrderDirection.class));
                 this.rootDirectoryId = YamlHelper.getConfig(file, "root_directory_id", () -> Long.toString(this.rootDirectoryId),
                         o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "root_directory_id", BigInteger.ZERO, null)).longValue();
             }
@@ -145,9 +145,9 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
             private @NotNull Map<@NotNull String, @NotNull Object> dump() {
                 final Map<String, Object> cache = new LinkedHashMap<>();
                 cache.put("default_limit_per_page", this.defaultLimitPerPage);
-                cache.put("duplicate_policy", this.duplicatePolicy.name());
-                cache.put("order_policy", this.orderPolicy.name());
-                cache.put("order_direction", this.orderDirection.name());
+                cache.put("default_duplicate_policy", this.defaultDuplicatePolicy.name());
+                cache.put("default_order_policy", this.defaultOrderPolicy.name());
+                cache.put("default_order_direction", this.defaultOrderDirection.name());
                 cache.put("root_directory_id", this.rootDirectoryId);
                 return cache;
             }
@@ -156,16 +156,16 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
                 return this.defaultLimitPerPage;
             }
 
-            public @NotNull DuplicatePolicy getDuplicatePolicy() {
-                return this.duplicatePolicy;
+            public @NotNull DuplicatePolicy getDefaultDuplicatePolicy() {
+                return this.defaultDuplicatePolicy;
             }
 
-            public @NotNull OrderPolicy getOrderPolicy() {
-                return this.orderPolicy;
+            public @NotNull OrderPolicy getDefaultOrderPolicy() {
+                return this.defaultOrderPolicy;
             }
 
-            public @NotNull OrderDirection getOrderDirection() {
-                return this.orderDirection;
+            public @NotNull OrderDirection getDefaultOrderDirection() {
+                return this.defaultOrderDirection;
             }
 
             public long getRootDirectoryId() {
@@ -176,9 +176,9 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
             public @NotNull String toString() {
                 return "DriverConfiguration_123Pan$WebSide$FilePart{" +
                         "defaultLimitPerPage=" + this.defaultLimitPerPage +
-                        ", duplicatePolicy=" + this.duplicatePolicy +
-                        ", orderPolicy=" + this.orderPolicy +
-                        ", orderDirection=" + this.orderDirection +
+                        ", duplicatePolicy=" + this.defaultDuplicatePolicy +
+                        ", orderPolicy=" + this.defaultOrderPolicy +
+                        ", orderDirection=" + this.defaultOrderDirection +
                         ", rootDirectoryId=" + this.rootDirectoryId +
                         '}';
             }

@@ -45,7 +45,7 @@ public final class Operation {
         Broadcast,
         UsersList,
         UsersOperate,
-        FilesList,
+        FilesList, // TODO permissions for each file
         FileDownload,
         FileUpload,
         FileDelete,

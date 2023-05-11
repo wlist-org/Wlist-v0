@@ -56,6 +56,7 @@ public final class WList {
         DriverManager.init();
         WList.logger.log(HLogLevel.VERBOSE, "Initialized driver manager.");
         WList.logger.log(HLogLevel.LESS, "Initializing user database.");
+        // TODO: If this project is successful and there are many users, SQL operations will choose to add middleware.
         UserSqlHelper.init(ServerUserHandler.DefaultPermission, ServerUserHandler.AdminPermission);
         WList.logger.log(HLogLevel.VERBOSE, "Initialized user database.");
         WListServer.init(new InetSocketAddress(GlobalConfiguration.getInstance().port()));

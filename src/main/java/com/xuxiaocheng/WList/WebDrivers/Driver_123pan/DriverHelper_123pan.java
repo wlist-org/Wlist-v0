@@ -4,8 +4,8 @@ import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.WList.Driver.DriverUtil;
-import com.xuxiaocheng.WList.Driver.FileInformation;
+import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
+import com.xuxiaocheng.WList.Driver.Utils.FileInformation;
 import com.xuxiaocheng.WList.Driver.Options.DuplicatePolicy;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
@@ -118,7 +118,7 @@ public final class DriverHelper_123pan {
         final int aIndex = url.indexOf('&', pIndex);
         final String base64 = url.substring(pIndex, aIndex < 0 ? url.length() : aIndex);
         final String decodedUrl = new String(Base64.getDecoder().decode(base64));
-        final JSONObject json = DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, Pair.ImmutablePair.makeImmutablePair(decodedUrl, "GET"), null, null);
+        final JSONObject json = DriverNetworkHelper.sendRequestReceiveJson(DriverNetworkHelper.httpClient, Pair.ImmutablePair.makeImmutablePair(decodedUrl, "GET"), null, null);
         final JSONObject data = DriverHelper_123pan.extractResponseData(json, 0, "ok");
         final String redirectUrl = data.getString("redirect_url");
         if (redirectUrl == null)
@@ -138,12 +138,12 @@ public final class DriverHelper_123pan {
         }, passport);
         requestBody.put("password", password);
         requestBody.put("remember", false);
-        final JSONObject json = DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.LoginURL, DriverHelper_123pan.headerBuilder(null).build(), requestBody);
+        final JSONObject json = DriverNetworkHelper.sendRequestReceiveJson(DriverNetworkHelper.httpClient, DriverHelper_123pan.LoginURL, DriverHelper_123pan.headerBuilder(null).build(), requestBody);
         return DriverHelper_123pan.extractResponseData(json, 200, "success");
     }
 
     static @NotNull JSONObject doRefresh(final @NotNull String token) throws IOException {
-        final JSONObject json = DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.RefreshTokenURL, DriverHelper_123pan.headerBuilder(token).build(), null);
+        final JSONObject json = DriverNetworkHelper.sendRequestReceiveJson(DriverNetworkHelper.httpClient, DriverHelper_123pan.RefreshTokenURL, DriverHelper_123pan.headerBuilder(token).build(), null);
         return DriverHelper_123pan.extractResponseData(json, 200, "success");
     }
 
@@ -204,7 +204,7 @@ public final class DriverHelper_123pan {
 
     static @NotNull JSONObject doGetUserInformation(final @NotNull DriverConfiguration_123Pan configuration) throws IllegalParametersException, IOException {
         final String token = DriverHelper_123pan.ensureToken(configuration);
-        return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.UserInformationURL,
+        return DriverHelper_123pan.extractResponseData(DriverNetworkHelper.sendRequestReceiveJson(DriverNetworkHelper.httpClient, DriverHelper_123pan.UserInformationURL,
                 DriverHelper_123pan.headerBuilder(token).build(), null), 0, "ok");
     }
 
@@ -213,12 +213,12 @@ public final class DriverHelper_123pan {
         final Map<String, Object> request = new LinkedHashMap<>(7);
         request.put("driveId", 0);
         request.put("limit", limit);
-        request.put("orderBy", DriverHelper_123pan.getOrderPolicy(configuration.getWebSide().getFilePart().getOrderPolicy()));
-        request.put("orderDirection", DriverHelper_123pan.getOrderDirection(configuration.getWebSide().getFilePart().getOrderDirection()));
+        request.put("orderBy", DriverHelper_123pan.getOrderPolicy(configuration.getWebSide().getFilePart().getDefaultOrderPolicy()));
+        request.put("orderDirection", DriverHelper_123pan.getOrderDirection(configuration.getWebSide().getFilePart().getDefaultOrderDirection()));
         request.put("parentFileId", directoryId);
         request.put("Page", page);
         request.put("trashed", false);
-        return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.ListFilesURL,
+        return DriverHelper_123pan.extractResponseData(DriverNetworkHelper.sendRequestReceiveJson(DriverNetworkHelper.httpClient, DriverHelper_123pan.ListFilesURL,
                 DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 
@@ -230,7 +230,7 @@ public final class DriverHelper_123pan {
             pair.put("fileId", id.longValue());
             return pair;
         }).toList());
-        return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.FilesInfoURL,
+        return DriverHelper_123pan.extractResponseData(DriverNetworkHelper.sendRequestReceiveJson(DriverNetworkHelper.httpClient, DriverHelper_123pan.FilesInfoURL,
                 DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 
@@ -244,7 +244,7 @@ public final class DriverHelper_123pan {
         request.put("etag", info.tag());
         final FileInformation_123pan.FileInfoExtra_123pan extra = FileInformation_123pan.deserializeOther(info);
         request.put("s3keyFlag",extra.s3key());
-        return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.SingleFileDownloadURL,
+        return DriverHelper_123pan.extractResponseData(DriverNetworkHelper.sendRequestReceiveJson(DriverNetworkHelper.httpClient, DriverHelper_123pan.SingleFileDownloadURL,
                 DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 
@@ -258,8 +258,8 @@ public final class DriverHelper_123pan {
         request.put("size", 0);
         request.put("type", 1);
         request.put("NotReuse", true);
-        request.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(configuration.getWebSide().getFilePart().getDuplicatePolicy()));
-        return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.UploadRequestURL,
+        request.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(configuration.getWebSide().getFilePart().getDefaultDuplicatePolicy()));
+        return DriverHelper_123pan.extractResponseData(DriverNetworkHelper.sendRequestReceiveJson(DriverNetworkHelper.httpClient, DriverHelper_123pan.UploadRequestURL,
                 DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 
@@ -272,8 +272,8 @@ public final class DriverHelper_123pan {
         request.put("parentFileId", parentId);
         request.put("size", size);
         request.put("type", 0);
-        request.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(configuration.getWebSide().getFilePart().getDuplicatePolicy()));
-        return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.UploadRequestURL,
+        request.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(configuration.getWebSide().getFilePart().getDefaultDuplicatePolicy()));
+        return DriverHelper_123pan.extractResponseData(DriverNetworkHelper.sendRequestReceiveJson(DriverNetworkHelper.httpClient, DriverHelper_123pan.UploadRequestURL,
                 DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 
@@ -287,7 +287,7 @@ public final class DriverHelper_123pan {
         request.put("uploadId", uploadId);
         request.put("partNumberStart", 1);
         request.put("partNumberEnd", partCount);
-        return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient,
+        return DriverHelper_123pan.extractResponseData(DriverNetworkHelper.sendRequestReceiveJson(DriverNetworkHelper.httpClient,
                 partCount <= 1 ? DriverHelper_123pan.S3AuthPartURL : DriverHelper_123pan.S3ParePartsURL,
                 DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
@@ -304,7 +304,7 @@ public final class DriverHelper_123pan {
         request.put("isMultipart", partCount != 1);
         request.put("fileSize", size);
         request.put("fileId", fileId);
-        return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.UploadCompleteURL,
+        return DriverHelper_123pan.extractResponseData(DriverNetworkHelper.sendRequestReceiveJson(DriverNetworkHelper.httpClient, DriverHelper_123pan.UploadCompleteURL,
                 DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 
@@ -318,7 +318,7 @@ public final class DriverHelper_123pan {
             pair.put("FileId", id.longValue());
             return pair;
         }).toList());
-        return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.TrashFileURL,
+        return DriverHelper_123pan.extractResponseData(DriverNetworkHelper.sendRequestReceiveJson(DriverNetworkHelper.httpClient, DriverHelper_123pan.TrashFileURL,
                 DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 
@@ -328,8 +328,8 @@ public final class DriverHelper_123pan {
         request.put("driveId", 0);
         request.put("fileId", id);
         request.put("fileName", name);
-        request.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(configuration.getWebSide().getFilePart().getDuplicatePolicy()));
-        return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.RenameFileURL,
+        request.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(configuration.getWebSide().getFilePart().getDefaultDuplicatePolicy()));
+        return DriverHelper_123pan.extractResponseData(DriverNetworkHelper.sendRequestReceiveJson(DriverNetworkHelper.httpClient, DriverHelper_123pan.RenameFileURL,
                 DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 
@@ -342,7 +342,7 @@ public final class DriverHelper_123pan {
             pair.put("FileId", id.longValue());
             return pair;
         }).toList());
-        return DriverHelper_123pan.extractResponseData(DriverUtil.sendRequestReceiveJson(DriverUtil.httpClient, DriverHelper_123pan.MoveFilesURL,
+        return DriverHelper_123pan.extractResponseData(DriverNetworkHelper.sendRequestReceiveJson(DriverNetworkHelper.httpClient, DriverHelper_123pan.MoveFilesURL,
                 DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 }

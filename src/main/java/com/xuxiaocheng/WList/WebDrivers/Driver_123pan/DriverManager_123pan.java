@@ -4,10 +4,11 @@ import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.WList.Driver.DrivePath;
-import com.xuxiaocheng.WList.Driver.DriverSqlHelper;
-import com.xuxiaocheng.WList.Driver.DriverUtil;
-import com.xuxiaocheng.WList.Driver.FileInformation;
+import com.xuxiaocheng.WList.Driver.Utils.DrivePath;
+import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
+import com.xuxiaocheng.WList.Driver.Helpers.DriverSqlHelper;
+import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
+import com.xuxiaocheng.WList.Driver.Utils.FileInformation;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
@@ -94,11 +95,7 @@ public final class DriverManager_123pan {
                 threadPool.submit(() -> {
                     final Pair.ImmutablePair<Integer, List<FileInformation>> infos = DriverManager_123pan.listFilesNoCache(configuration, directoryId, configuration.getWebSide().getFilePart().getDefaultLimitPerPage(), current, directoryPath, connection);
                     assert infos.getFirst().intValue() == fileCount;
-//                    while (allFiles.size() > configuration.getWebSide().getFilePart().getDefaultLimitPerPage() << 1) // Frequency control.
-//                        try {
-//                            TimeUnit.MILLISECONDS.sleep(100);
-//                        } catch (final InterruptedException ignore) {
-//                        }
+                    // TODO interrupt.
                     allFiles.addAll(infos.getSecond());
                     return finishedPageCount.incrementAndGet();
                 });
@@ -150,13 +147,19 @@ public final class DriverManager_123pan {
         if (parentId < 0)
             return -1;
         final Iterator<FileInformation> iterator = DriverManager_123pan.listAllFilesNoCache(configuration, parentId, parentPath, _connection, threadPool).getSecond();
-        while (iterator.hasNext()) {
-            final FileInformation info = iterator.next();
-            if (name.equals(info.path().getName())) {
-                while (iterator.hasNext())
-                    iterator.next();
-                return infoPredicate.test(info) ? info.id() : -1;
+        try {
+            while (iterator.hasNext()) {
+                final FileInformation info = iterator.next();
+                if (name.equals(info.path().getName())) {
+                    while (iterator.hasNext())
+                        iterator.next();
+                    return infoPredicate.test(info) ? info.id() : -1;
+                }
             }
+        } catch (final RuntimeException exception) {
+            if (exception.getCause() instanceof SQLException sqlException)
+                throw sqlException;
+            throw exception;
         }
         return -1;
     }
@@ -199,12 +202,18 @@ public final class DriverManager_123pan {
             final List<String> directoryNameList = new ArrayList<>();
             final List<Long> directoryIdList = new ArrayList<>();
             final Iterator<FileInformation> iterator = lister.getSecond();
-            while (iterator.hasNext()) {
-                final FileInformation info = iterator.next();
-                if (info.is_dir()) {
-                    directoryNameList.add(info.path().getName());
-                    directoryIdList.add(info.id());
+            try {
+                while (iterator.hasNext()) {
+                    final FileInformation info = iterator.next();
+                    if (info.is_dir()) {
+                        directoryNameList.add(info.path().getName());
+                        directoryIdList.add(info.id());
+                    }
                 }
+            } catch (final RuntimeException exception) {
+                if (exception.getCause() instanceof SQLException sqlException)
+                    throw sqlException;
+                throw exception;
             }
             assert directoryNameList.size() == directoryIdList.size();
             for (int i = 0; i < directoryNameList.size(); ++i) {
@@ -222,8 +231,8 @@ public final class DriverManager_123pan {
 
     static Pair.@NotNull ImmutablePair<@NotNull Integer, @NotNull List<@NotNull FileInformation>> listFilesWithCache(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath directoryPath, final int limit, final int page, final @Nullable OrderDirection direction, final @Nullable OrderPolicy policy, final @Nullable Connection _connection) throws SQLException {
         return DriverSqlHelper.getFileByParentPathS(configuration.getLocalSide().getName(), directoryPath, limit, (page - 1) * limit,
-                Objects.requireNonNullElse(direction, configuration.getWebSide().getFilePart().getOrderDirection()),
-                Objects.requireNonNullElse(policy, configuration.getWebSide().getFilePart().getOrderPolicy()),
+                Objects.requireNonNullElse(direction, configuration.getWebSide().getFilePart().getDefaultOrderDirection()),
+                Objects.requireNonNullElse(policy, configuration.getWebSide().getFilePart().getDefaultOrderPolicy()),
                 _connection);
     }
 
@@ -233,7 +242,7 @@ public final class DriverManager_123pan {
             return Pair.ImmutablePair.makeImmutablePair(InputStream.nullInputStream(), 0L);
         final long end = Math.min(to, size);
         final long len = end - from;
-        return Pair.ImmutablePair.makeImmutablePair(DriverUtil.getDownloadStream(DriverUtil.httpClient,
+        return Pair.ImmutablePair.makeImmutablePair(DriverUtil.getDownloadStream(DriverNetworkHelper.httpClient,
                 Pair.ImmutablePair.makeImmutablePair(url.getFirst(), "GET"),
                 new Headers.Builder().add("Range", String.format("bytes=%d-%d", from, end)).build(),
                 null, 0, len), len);
@@ -312,7 +321,7 @@ public final class DriverManager_123pan {
                 final String url = urls.getString(String.valueOf(i));
                 if (url == null)
                     throw new WrongResponseException("Abnormal data of 'presignedUrls'.", s3PareData);
-                DriverUtil.callRequestWithBody(DriverUtil.httpClient, Pair.ImmutablePair.makeImmutablePair(url, "PUT"), null,
+                DriverNetworkHelper.callRequestWithBody(DriverNetworkHelper.httpClient, Pair.ImmutablePair.makeImmutablePair(url, "PUT"), null,
                         new RequestBody() {
                             @Override
                             public @Nullable MediaType contentType() {
