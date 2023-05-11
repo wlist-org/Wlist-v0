@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxConnection,
                                   @NotNull String dataDBPath, @NotNull String indexDBPath,
                                   long tokenExpireTime, long idIdleExpireTime,
-                                  int maxLimitPerPage, int threadCount,
+                                  int maxLimitPerPage,
                                   @NotNull Map<@NotNull String, @NotNull WebDriversType> drivers,
                                   boolean deleteDriver) {
     private static @Nullable GlobalConfiguration instance;
@@ -61,8 +61,6 @@ public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxCo
                         o -> YamlHelper.transferIntegerFromStr(o, errors, "id_idle_expire_time", BigInteger.ONE, null)).longValue(),
                 YamlHelper.getConfig(config, "max_limit_per_page", "100",
                         o -> YamlHelper.transferIntegerFromStr(o, errors, "max_limit_per_page", BigInteger.ONE, null)).intValue(),
-                YamlHelper.getConfig(config, "thread_count", "10",
-                        o -> YamlHelper.transferIntegerFromStr(o, errors, "thread_count", BigInteger.ONE, null)).intValue(),
                 YamlHelper.getConfig(config, "drivers", new LinkedHashMap<>(),
                         o -> { final Map<String, Object> map = YamlHelper.transferMapNode(o, errors, "drivers");
                             if (map == null) return Map.of();
@@ -91,7 +89,6 @@ public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxCo
             config.put("token_expire_time", GlobalConfiguration.instance.tokenExpireTime);
             config.put("id_idle_expire_time", GlobalConfiguration.instance.idIdleExpireTime);
             config.put("max_limit_per_page", GlobalConfiguration.instance.maxLimitPerPage);
-            config.put("thread_count", GlobalConfiguration.instance.threadCount);
             config.put("drivers", GlobalConfiguration.instance.drivers.entrySet().stream()
                     .map(e -> Pair.ImmutablePair.makeImmutablePair(e.getKey(), e.getValue().name()))
                     .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond)));

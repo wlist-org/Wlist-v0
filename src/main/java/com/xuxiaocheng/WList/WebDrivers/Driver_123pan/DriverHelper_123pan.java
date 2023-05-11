@@ -96,8 +96,8 @@ public final class DriverHelper_123pan {
         final Headers.Builder builder = new Headers.Builder();
         if (token != null)
             builder.add("authorization", "Bearer " + token);
-        builder.add("user-agent", "123pan/1.0.100")
-                .add("platform", "web").add("app-version", "3");
+//        builder.add("user-agent", "123pan/1.0.100");
+        builder.add("platform", "web").add("app-version", "3");
         return builder;
     }
 
@@ -166,7 +166,7 @@ public final class DriverHelper_123pan {
         final JSONObject data = DriverHelper_123pan.doLogin(configuration.getWebSide().getLoginPart().getLoginType(),
                 configuration.getWebSide().getLoginPart().getPassport(),
                 configuration.getWebSide().getLoginPart().getPassword());
-        HLog.getInstance("DefaultLogger").log(HLogLevel.DEBUG, "Logged in: ", data);
+        HLog.getInstance("DefaultLogger").log(HLogLevel.LESS, "Logged in: ", data);
         DriverHelper_123pan.handleLoginData(configuration, data);
     }
 
@@ -182,7 +182,7 @@ public final class DriverHelper_123pan {
                 return true; // throw new TokenExpiredException();
             throw exception;
         }
-        HLog.getInstance("DefaultLogger").log(HLogLevel.DEBUG, "Refreshed token: ", data);
+        HLog.getInstance("DefaultLogger").log(HLogLevel.LESS, "Refreshed token: ", data);
         DriverHelper_123pan.handleLoginData(configuration, data);
         return false;
     } // true means failed.
