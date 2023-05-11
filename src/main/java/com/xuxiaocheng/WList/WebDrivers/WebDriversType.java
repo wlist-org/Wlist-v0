@@ -19,7 +19,9 @@ public enum WebDriversType {
         return this.supplier;
     }
 
-    public static @Nullable WebDriversType get(final @NotNull String name) {
+    public static @Nullable WebDriversType get(final @Nullable String name) {
+        if (name == null)
+            return null;
         try {
             return WebDriversType.valueOf(name);
         } catch (final IllegalArgumentException exception) {

@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Server.Driver;
 
+import com.alibaba.fastjson2.TypeReference;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -8,21 +9,24 @@ import com.xuxiaocheng.WList.Driver.DriverConfiguration;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
-import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.DriverConfiguration_123Pan;
+import com.xuxiaocheng.WList.Utils.YamlHelper;
 import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Constructor;
+import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.ParameterizedType;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class DriverManager {
@@ -36,49 +40,43 @@ public final class DriverManager {
     private static <C extends DriverConfiguration<?, ?, ?>> void add0(final @NotNull String name, final @NotNull WebDriversType type) throws IOException, IllegalParametersException {
         if (DriverManager.drivers.containsKey(name))
             throw new IllegalParametersException("Conflict driver name.");
-        final DriverInterface<C> driver = (DriverInterface<C>) type.getSupplier().get();
-        final File path = new File("configs", name + ".properties");
+        final DriverInterface<C> driver;
+        try {
+            driver = (DriverInterface<C>) type.getSupplier().get();
+        } catch (final RuntimeException exception) {
+            throw new IllegalParametersException("Failed to get driver.", Map.of("name", name, "type", type), exception);
+        }
+        final File path = new File("configs", name + ".yml");
         if (!HFileHelper.ensureFileExist(path))
             throw new IOException("Failed to create driver configuration file. path: " + path.getAbsolutePath());
-        C configuration = null;
+        final C configuration;
+        try {
+            configuration = (C) new TypeReference<C>() {}.getRawType().getConstructor().newInstance();
+        } catch (final InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException exception) {
+            throw new IllegalParametersException("Failed to get driver configuration.", Map.of("name", name, "type", type), exception);
+        }
+        final Map<String, Object> config = new LinkedHashMap<>();
         try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(path))) {
-//            configuration = new Yaml().loadAs(inputStream, driver.getDefaultConfigurationClass());
-            // TODO XSML config.
-            final Properties properties = new Properties();
-            properties.load(inputStream);
-            configuration = ((Class<C>) ((ParameterizedType) driver.getClass().getGenericSuperclass()).getActualTypeArguments()[0]).getConstructor().newInstance();
-            ((DriverConfiguration<DriverConfiguration_123Pan.LocalSide, DriverConfiguration_123Pan.WebSide, DriverConfiguration_123Pan.CacheSide>) configuration).getCacheSide().setToken(properties.getProperty("token"));
-            ((DriverConfiguration<DriverConfiguration_123Pan.LocalSide, DriverConfiguration_123Pan.WebSide, DriverConfiguration_123Pan.CacheSide>) configuration).getCacheSide().setTokenExpire(properties.getProperty("expire"));
-            ((DriverConfiguration<DriverConfiguration_123Pan.LocalSide, DriverConfiguration_123Pan.WebSide, DriverConfiguration_123Pan.CacheSide>) configuration).getCacheSide().setRefreshExpire(properties.getProperty("refresh"));
-        } catch (final InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException ignore) {
+            config.putAll(YamlHelper.loadYaml(inputStream));
         }
-        if (configuration == null)
-            try {
-                final Constructor<C> constructor = driver.getDefaultConfigurationClass().getConstructor();
-                configuration = constructor.newInstance();
-            } catch (final NoSuchMethodException | InstantiationException | IllegalAccessException |
-                           InvocationTargetException exception) {
-                throw new IllegalParametersException("Failed to get default configuration.", exception);
+        final Collection<Pair.ImmutablePair<String, String>> errors = new LinkedList<>();
+        configuration.load(config, errors);
+        if (GlobalConfiguration.getInstance().dumpConfiguration())
+            try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(path))) {
+                YamlHelper.dumpYaml(config, outputStream);
             }
-        else {
-            try {
-                driver.login(configuration);
-            } catch (final Exception exception) {
-                throw new IllegalParametersException("Failed to login.", exception);
-            }
-            final boolean flag;
-            synchronized (DriverManager.drivers) {
-                flag = DriverManager.drivers.containsKey(name);
-                DriverManager.drivers.put(name, Pair.ImmutablePair.makeImmutablePair(type, driver));
-            }
-            if (flag)
-                HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, "Replaced driver. name=", name);
+        try {
+            driver.login(configuration);
+        } catch (final Exception exception) {
+            throw new IllegalParametersException("Failed to login.", Map.of("name", name, "type", type), exception);
         }
-//        final Representer representer = new FieldOrderRepresenter();
-//        configuration.setConfigClassTag(representer);
-//        try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(path))) {
-//            outputStream.write(new Yaml(representer).dump(configuration).getBytes(StandardCharsets.UTF_8));
-//        }
+        final boolean[] flag = new boolean[] {true};
+        DriverManager.drivers.computeIfAbsent(name, (n) -> {
+            flag[0] = false;
+            return Pair.ImmutablePair.makeImmutablePair(type, driver);
+        });
+        if (flag[0])
+            HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, "Conflict driver. Abort newer. name: ", name, " configuration: ", configuration);
     }
 
     public static void init() {
@@ -101,18 +99,20 @@ public final class DriverManager {
 
     public static void add(final @NotNull String name, final @NotNull WebDriversType type) throws IOException, IllegalParametersException {
         DriverManager.add0(name, type);
-        GlobalConfiguration.addDriver(name, type);
+        // TODO dynamically change configuration.
+//        GlobalConfiguration.addDriver(name, type);
     }
 
     public static void del(final @NotNull String name) throws IOException {
         final Pair.ImmutablePair<WebDriversType, DriverInterface<?>> driver = DriverManager.drivers.remove(name);
         if (driver == null)
             return;
-        GlobalConfiguration.subDriver(name);
-        try {
-            driver.getSecond().deleteDriver();
-        } catch (final Exception exception) {
-            throw new IOException(exception);
-        }
+//        GlobalConfiguration.subDriver(name);
+        if (GlobalConfiguration.getInstance().dumpConfiguration())
+            try {
+                driver.getSecond().deleteDriver();
+            } catch (final Exception exception) {
+                throw new IOException(exception);
+            }
     }
 }

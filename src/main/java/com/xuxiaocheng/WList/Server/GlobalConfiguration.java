@@ -6,14 +6,6 @@ import com.xuxiaocheng.WList.Utils.YamlHelper;
 import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.snakeyaml.engine.v2.api.Dump;
-import org.snakeyaml.engine.v2.api.DumpSettings;
-import org.snakeyaml.engine.v2.api.Load;
-import org.snakeyaml.engine.v2.api.LoadSettings;
-import org.snakeyaml.engine.v2.common.FlowStyle;
-import org.snakeyaml.engine.v2.constructor.ConstructYamlNull;
-import org.snakeyaml.engine.v2.nodes.Tag;
-import org.snakeyaml.engine.v2.schema.FailsafeSchema;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -23,7 +15,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
+import java.math.BigInteger;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -35,109 +27,87 @@ public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxCo
                                   @NotNull String dataDBPath, @NotNull String indexDBPath,
                                   long tokenExpireTime, long idIdleExpireTime,
                                   int maxLimitPerPage, int threadCount,
-                                  @NotNull Map<@NotNull String, @NotNull WebDriversType> drivers) {
-    private static @Nullable File path;
+                                  @NotNull Map<@NotNull String, @NotNull WebDriversType> drivers,
+                                  boolean deleteDriver) {
     private static @Nullable GlobalConfiguration instance;
-    public static synchronized void init(final @Nullable File configurationPath) throws IOException {
+
+    public static synchronized void init(final @Nullable File path) throws IOException {
         if (GlobalConfiguration.instance != null)
-            throw new IllegalStateException("Global configuration is initialized. instance: " + GlobalConfiguration.instance + " configurationPath: " + (configurationPath == null ? "null" : configurationPath.getAbsolutePath()));
-        GlobalConfiguration.path = configurationPath;
-        // TODO in dif file.
+            throw new IllegalStateException("Global configuration is initialized. instance: " + GlobalConfiguration.instance + " path: " + (path == null ? "null" : path.getAbsolutePath()));
         final Map<String, Object> config = new LinkedHashMap<>();
-        if (configurationPath != null) {
-            if (!HFileHelper.ensureFileExist(configurationPath))
-                throw new IOException("Failed to create configuration file. path: " + configurationPath.getAbsolutePath());
-            try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(configurationPath))) {
-                final Object yaml = new Load(LoadSettings.builder().setParseComments(true).setSchema(new FailsafeSchema())
-                        .setTagConstructors(Map.of(Tag.NULL, new ConstructYamlNull())).build())
-                        .loadFromInputStream(inputStream);
-                if (yaml != null) {
-                    if (!(yaml instanceof LinkedHashMap<?, ?> map))
-                        throw new IOException("Invalid yaml config format.");
-                    config.putAll(map.entrySet().stream()
-                            .map(e -> Pair.ImmutablePair.makeImmutablePair(e.getKey().toString(), e.getValue()))
-                            .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond)));
-                }
-            } catch (final RuntimeException exception) {
-                throw new IOException(exception);
+        if (path != null) {
+            if (!HFileHelper.ensureFileExist(path))
+                throw new IOException("Failed to create configuration file. path: " + path.getAbsolutePath());
+            try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(path))) {
+                config.putAll(YamlHelper.loadYaml(inputStream));
             }
         }
         final Collection<Pair.ImmutablePair<String, String>> errors = new LinkedList<>();
         try {
             GlobalConfiguration.instance = new GlobalConfiguration(
-                YamlHelper.checkConfig(config, "dump_configuration", "true",
-                        o -> YamlHelper.getBooleanFromStr(o, errors, "dump_configuration")).booleanValue(),
-                YamlHelper.checkConfig(config, "port", "5212",
-                        o -> YamlHelper.getIntegerFromStr(o, errors, "port", 1, 65535)).intValue(),
-                YamlHelper.checkConfig(config, "max_connection", "128",
-                        o -> YamlHelper.getIntegerFromStr(o, errors, "max_connection", 1, null)).intValue(),
-                YamlHelper.checkConfig(config, "data_db_path", "data/data.db",
-                        o -> YamlHelper.getString(o, errors, "data_db_path")),
-                YamlHelper.checkConfig(config, "index_db_path", "data/index.db",
-                        o -> YamlHelper.getString(o, errors, "index_db_path")),
-                YamlHelper.checkConfig(config, "token_expire_time", "259200",
-                        o -> YamlHelper.getLongFromStr(o, errors, "token_expire_time", 1L, null)).longValue(),
-                YamlHelper.checkConfig(config, "id_idle_expire_time", "1800",
-                        o -> YamlHelper.getLongFromStr(o, errors, "id_idle_expire_time", 1L, null)).longValue(),
-                YamlHelper.checkConfig(config, "max_limit_per_page", "100",
-                        o -> YamlHelper.getIntegerFromStr(o, errors, "max_limit_per_page", 1, null)).intValue(),
-                YamlHelper.checkConfig(config, "thread_count", "10",
-                        o -> YamlHelper.getIntegerFromStr(o, errors, "thread_count", 1, null)).intValue(),
-                YamlHelper.checkConfig(config, "drivers", new LinkedHashMap<>(), o -> {
-                    final Map<Object, Object> map = YamlHelper.getMap(o, errors, "drivers");
-                    if (map == null) return Map.of();
-                    return map.entrySet().stream().map(e -> {
-                        final String key = YamlHelper.getString(e.getKey(), errors, "driver(name)");
-                        if (key == null) //noinspection ReturnOfNull
-                            return null;
-                        final String name = YamlHelper.getString(e.getValue(), errors, "driver(type)_" + key);
-                        if (name == null) //noinspection ReturnOfNull
-                            return null;
-                        final WebDriversType type = WebDriversType.get(name);
-                        if (type == null) //noinspection ReturnOfNull
-                            return null;
-                        return Pair.ImmutablePair.makeImmutablePair(key, type);
-                    }).filter(Objects::nonNull)
-                    .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond));
-                })
+                YamlHelper.getConfig(config, "dump_configuration", "true",
+                        o -> YamlHelper.transferBooleanFromStr(o, errors, "dump_configuration")).booleanValue(),
+                YamlHelper.getConfig(config, "port", "5212",
+                        o -> YamlHelper.transferIntegerFromStr(o, errors, "port", BigInteger.ONE, BigInteger.valueOf(65535))).intValue(),
+                YamlHelper.getConfig(config, "max_connection", "128",
+                        o -> YamlHelper.transferIntegerFromStr(o, errors, "max_connection", BigInteger.ONE, null)).intValue(),
+                YamlHelper.getConfig(config, "data_db_path", "data/data.db",
+                        o -> YamlHelper.transferString(o, errors, "data_db_path")),
+                YamlHelper.getConfig(config, "index_db_path", "data/index.db",
+                        o -> YamlHelper.transferString(o, errors, "index_db_path")),
+                YamlHelper.getConfig(config, "token_expire_time", "259200",
+                        o -> YamlHelper.transferIntegerFromStr(o, errors, "token_expire_time", BigInteger.ONE, null)).longValue(),
+                YamlHelper.getConfig(config, "id_idle_expire_time", "1800",
+                        o -> YamlHelper.transferIntegerFromStr(o, errors, "id_idle_expire_time", BigInteger.ONE, null)).longValue(),
+                YamlHelper.getConfig(config, "max_limit_per_page", "100",
+                        o -> YamlHelper.transferIntegerFromStr(o, errors, "max_limit_per_page", BigInteger.ONE, null)).intValue(),
+                YamlHelper.getConfig(config, "thread_count", "10",
+                        o -> YamlHelper.transferIntegerFromStr(o, errors, "thread_count", BigInteger.ONE, null)).intValue(),
+                YamlHelper.getConfig(config, "drivers", new LinkedHashMap<>(),
+                        o -> { final Map<String, Object> map = YamlHelper.transferMapNode(o, errors, "drivers");
+                            if (map == null) return Map.of();
+                            return map.entrySet().stream().map(e -> {
+                                final WebDriversType type = WebDriversType.get(
+                                        YamlHelper.transferString(e.getValue(), errors, "driver(" + e.getKey() + ')'));
+                                if (type == null) //noinspection ReturnOfNull
+                                    return null;
+                                return Pair.ImmutablePair.makeImmutablePair(e.getKey(), type);
+                            }).filter(Objects::nonNull)
+                                    .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond));
+                        }),
+                YamlHelper.getConfig(config, "delete_driver", "false",
+                        o -> YamlHelper.transferBooleanFromStr(o, errors, "delete_driver")).booleanValue()
             );
         } catch (final RuntimeException exception) {
             throw new IOException(exception);
         }
-        if (!errors.isEmpty())
-            throw new IOException(errors.toString());
-        if (GlobalConfiguration.instance.dumpConfiguration && configurationPath != null)
-            try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(configurationPath))) {
-                final Dump dumper = new Dump(DumpSettings.builder().setDumpComments(true)
-                        .setDefaultFlowStyle(FlowStyle.BLOCK).build());
-               outputStream.write(dumper.dumpToString(config).getBytes(StandardCharsets.UTF_8));
+        if (!errors.isEmpty()) {
+            final StringBuilder builder = new StringBuilder();
+            for (final Pair.ImmutablePair<String, String> pair: errors)
+                builder.append("In '").append(pair.getFirst()).append("': ").append(pair.getSecond()).append('\n');
+            throw new IOException(builder.toString());
+        }
+        if (GlobalConfiguration.instance.dumpConfiguration && path != null) {
+            config.put("dumpConfiguration", true);
+            config.put("port", GlobalConfiguration.instance.port);
+            config.put("max_connection", GlobalConfiguration.instance.maxConnection);
+            config.put("data_db_path", GlobalConfiguration.instance.dataDBPath);
+            config.put("index_db_path", GlobalConfiguration.instance.indexDBPath);
+            config.put("token_expire_time", GlobalConfiguration.instance.tokenExpireTime);
+            config.put("id_idle_expire_time", GlobalConfiguration.instance.idIdleExpireTime);
+            config.put("max_limit_per_page", GlobalConfiguration.instance.maxLimitPerPage);
+            config.put("thread_count", GlobalConfiguration.instance.threadCount);
+            config.put("drivers", GlobalConfiguration.instance.drivers);
+            config.put("delete_driver", GlobalConfiguration.instance.deleteDriver);
+            try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(path))) {
+                YamlHelper.dumpYaml(config, outputStream);
             }
+        }
     }
+
     public static synchronized @NotNull GlobalConfiguration getInstance() {
         if (GlobalConfiguration.instance == null)
             throw new IllegalStateException("Global configuration is not initialized.");
         return GlobalConfiguration.instance;
-    }
-
-    public static synchronized void addDriver(final @NotNull String name, final @NotNull WebDriversType type) throws IOException {
-        final File dif = new File(GlobalConfiguration.path + ".dif");
-        HFileHelper.ensureFileExist(dif);
-//        try (final OutputStream stream = new BufferedOutputStream(new FileOutputStream(dif, true))){
-//            stream.write("+\n\t".getBytes(StandardCharsets.UTF_8));
-//            stream.write(name.getBytes(StandardCharsets.UTF_8));
-//            stream.write("\n\t".getBytes(StandardCharsets.UTF_8));
-//            stream.write(type.name().getBytes(StandardCharsets.UTF_8));
-//            stream.write("\n".getBytes(StandardCharsets.UTF_8));
-//        }
-    }
-
-    public static synchronized void subDriver(final @NotNull String name) throws IOException {
-        final File dif = new File(GlobalConfiguration.path + ".dif");
-        HFileHelper.ensureFileExist(dif);
-//        try (final OutputStream stream = new BufferedOutputStream(new FileOutputStream(dif, true))){
-//            stream.write("-\t".getBytes(StandardCharsets.UTF_8));
-//            stream.write(name.getBytes(StandardCharsets.UTF_8));
-//            stream.write("\n".getBytes(StandardCharsets.UTF_8));
-//        }
     }
 }

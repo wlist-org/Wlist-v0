@@ -155,11 +155,11 @@ public final class DriverHelper_123pan {
         final String expire = data.getString("expire");
         if (expire == null)
             throw new WrongResponseException("No expire time in response.");
-        configuration.getCacheSide().setTokenExpireTime(LocalDateTime.parse(expire, DateTimeFormatter.ISO_ZONED_DATE_TIME));
+        configuration.getCacheSide().setTokenExpire(LocalDateTime.parse(expire, DateTimeFormatter.ISO_ZONED_DATE_TIME));
         final Long refresh = data.getLong("refresh_token_expire_time");
         if (refresh == null)
             throw new WrongResponseException("No refresh time in response.");
-        configuration.getCacheSide().setRefreshExpireTime(LocalDateTime.ofEpochSecond(refresh.longValue(), 0, ZoneOffset.ofHours(8)));
+        configuration.getCacheSide().setRefreshExpire(LocalDateTime.ofEpochSecond(refresh.longValue(), 0, ZoneOffset.ofHours(8)));
     }
 
     private static void login(final @NotNull DriverConfiguration_123Pan configuration) throws IllegalParametersException, IOException {
@@ -190,11 +190,11 @@ public final class DriverHelper_123pan {
     static @NotNull String ensureToken(final @NotNull DriverConfiguration_123Pan configuration) throws IllegalParametersException, IOException {
         final LocalDateTime time = LocalDateTime.now().minusMinutes(3);
         if (configuration.getCacheSide().getToken() == null
-                || configuration.getCacheSide().getTokenExpireTime() == null
-                || time.isAfter(configuration.getCacheSide().getTokenExpireTime()))
+                || configuration.getCacheSide().getTokenExpire() == null
+                || time.isAfter(configuration.getCacheSide().getTokenExpire()))
             if (configuration.getCacheSide().getToken() == null
-                || configuration.getCacheSide().getRefreshExpireTime() == null
-                || time.isAfter(configuration.getCacheSide().getRefreshExpireTime())
+                || configuration.getCacheSide().getRefreshExpire() == null
+                || time.isAfter(configuration.getCacheSide().getRefreshExpire())
                 || DriverHelper_123pan.refreshToken(configuration))
                 DriverHelper_123pan.login(configuration);
         return configuration.getCacheSide().getToken();

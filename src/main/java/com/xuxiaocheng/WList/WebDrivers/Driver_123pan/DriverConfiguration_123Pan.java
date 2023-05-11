@@ -1,14 +1,20 @@
 package com.xuxiaocheng.WList.WebDrivers.Driver_123pan;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Driver.DriverConfiguration;
 import com.xuxiaocheng.WList.Driver.Options.DuplicatePolicy;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
+import com.xuxiaocheng.WList.Server.GlobalConfiguration;
+import com.xuxiaocheng.WList.Utils.YamlHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Collection;
+import java.util.Map;
 
 public final class DriverConfiguration_123Pan extends DriverConfiguration<
         DriverConfiguration_123Pan.LocalSide,
@@ -20,8 +26,7 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
 
     public static final class LocalSide extends LocalSideDriverConfiguration {
         public LocalSide() {
-            super();
-            super.setName("123pan");
+            super("123pan");
         }
 
         @Override
@@ -34,23 +39,26 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
     }
 
     public static final class WebSide extends WebSideDriverConfiguration {
-        private @NotNull LoginPart loginPart = new LoginPart();
-        private @NotNull FilePart filePart = new FilePart();
+        private final @NotNull LoginPart loginPart = new LoginPart();
+        private final @NotNull FilePart filePart = new FilePart();
+
+        @Override
+        protected void load(@NotNull final Map<? super @NotNull String, @NotNull Object> web, @NotNull final Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
+            super.load(web, errors, prefix);
+            final Map<String, Object> login = YamlHelper.getConfig(web, "login", Map::of,
+                    o -> YamlHelper.transferMapNode(o, errors, prefix + "login"));
+            this.loginPart.load(login, errors, prefix + "login$");
+            final Map<String, Object> file = YamlHelper.getConfig(web, "file", Map::of,
+                    o -> YamlHelper.transferMapNode(o, errors, prefix + "file"));
+            this.filePart.load(file, errors, prefix + "file$");
+        }
 
         public @NotNull LoginPart getLoginPart() {
             return this.loginPart;
         }
 
-        public void setLoginPart(final @NotNull LoginPart loginPart) {
-            this.loginPart = loginPart;
-        }
-
         public @NotNull FilePart getFilePart() {
             return this.filePart;
-        }
-
-        public void setFilePart(final @NotNull FilePart filePart) {
-            this.filePart = filePart;
         }
 
         @Override
@@ -66,28 +74,25 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
             private @NotNull String password = "";
             private int loginType = 1;
 
-            public @NotNull String getPassport() {
-                return this.passport;
+            private void load(final @NotNull Map<? super @NotNull String, @NotNull Object> login, @NotNull final Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
+                this.passport = YamlHelper.getConfig(login, "passport", this.passport,
+                        o -> YamlHelper.transferString(o, errors, prefix + "passport"));
+                this.password = YamlHelper.getConfig(login, "password", this.password,
+                        o -> YamlHelper.transferString(o, errors, prefix + "password"));
+                this.loginType = YamlHelper.getConfig(login, "login_type", () -> Integer.toString(this.loginType),
+                        o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "login_type", BigInteger.ONE, BigInteger.TWO)).intValue();
             }
 
-            public void setPassport(final @NotNull String passport) {
-                this.passport = passport;
+            public @NotNull String getPassport() {
+                return this.passport;
             }
 
             public @NotNull String getPassword() {
                 return this.password;
             }
 
-            public void setPassword(final @NotNull String password) {
-                this.password = password;
-            }
-
             public int getLoginType() {
                 return this.loginType;
-            }
-
-            public void setLoginType(final int loginType) {
-                this.loginType = loginType;
             }
 
             @Override
@@ -107,44 +112,37 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
             private @NotNull OrderDirection orderDirection = OrderDirection.ASCEND;
             private long rootDirectoryId = 0;
 
-            public int getDefaultLimitPerPage() {
-                return this.defaultLimitPerPage;
+            private void load(final @NotNull Map<? super @NotNull String, @NotNull Object> file, @NotNull final Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
+                this.defaultLimitPerPage = YamlHelper.getConfig(file, "default_limit_per_page", () -> Integer.toString(this.defaultLimitPerPage),
+                        o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "default_limit_per_page", BigInteger.ONE, BigInteger.valueOf(GlobalConfiguration.getInstance().maxLimitPerPage()))).intValue();
+                this.duplicatePolicy = YamlHelper.getConfig(file, "duplicate_policy", this.duplicatePolicy::name,
+                        o -> YamlHelper.transferEnumFromStr(o, errors, prefix + "duplicate_policy", DuplicatePolicy.class));
+                this.orderPolicy = YamlHelper.getConfig(file, "order_policy", this.orderPolicy::name,
+                        o -> YamlHelper.transferEnumFromStr(o, errors, prefix + "order_policy", OrderPolicy.class));
+                this.orderDirection = YamlHelper.getConfig(file, "order_direction", this.orderDirection::name,
+                        o -> YamlHelper.transferEnumFromStr(o, errors, prefix + "order_direction", OrderDirection.class));
+                this.rootDirectoryId = YamlHelper.getConfig(file, "root_directory_id", () -> Long.toString(this.rootDirectoryId),
+                        o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "root_directory_id", BigInteger.ZERO, null)).longValue();
             }
 
-            public void setDefaultLimitPerPage(final int defaultLimitPerPage) {
-                this.defaultLimitPerPage = defaultLimitPerPage;
+            public int getDefaultLimitPerPage() {
+                return this.defaultLimitPerPage;
             }
 
             public @NotNull DuplicatePolicy getDuplicatePolicy() {
                 return this.duplicatePolicy;
             }
 
-            public void setDuplicatePolicy(final @NotNull DuplicatePolicy duplicatePolicy) {
-                this.duplicatePolicy = duplicatePolicy;
-            }
-
             public @NotNull OrderPolicy getOrderPolicy() {
                 return this.orderPolicy;
-            }
-
-            public void setOrderPolicy(final @NotNull OrderPolicy orderPolicy) {
-                this.orderPolicy = orderPolicy;
             }
 
             public @NotNull OrderDirection getOrderDirection() {
                 return this.orderDirection;
             }
 
-            public void setOrderDirection(final @NotNull OrderDirection orderDirection) {
-                this.orderDirection = orderDirection;
-            }
-
             public long getRootDirectoryId() {
                 return this.rootDirectoryId;
-            }
-
-            public void setRootDirectoryId(final long rootDirectoryId) {
-                this.rootDirectoryId = rootDirectoryId;
             }
 
             @Override
@@ -162,61 +160,42 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
 
     public static final class CacheSide extends CacheSideDriverConfiguration {
         private @Nullable String token;
-        private @Nullable String tokenExpire;
-        private @Nullable String refreshExpire;
+        private @Nullable LocalDateTime tokenExpire;
+        private @Nullable LocalDateTime refreshExpire;
+
+        @Override
+        protected void load(@NotNull final Map<? super @NotNull String, @NotNull Object> cache, @NotNull final Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, @NotNull final String prefix) {
+            super.load(cache, errors, prefix + "cache$");
+            this.token = YamlHelper.getConfigNullable(cache, "token",
+                    o -> YamlHelper.transferString(o, errors, prefix + "token"));
+            this.tokenExpire = YamlHelper.getConfigNullable(cache, "token_expire",
+                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "token_expire", DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+            this.refreshExpire = YamlHelper.getConfigNullable(cache, "refresh_expire",
+                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "refresh_expire", DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        }
 
         public @Nullable String getToken() {
             return this.token;
-        }
-
-        @Deprecated
-        public @Nullable String getTokenExpire() {
-            return this.tokenExpire;
-        }
-
-        @Deprecated
-        public @Nullable String getRefreshExpire() {
-            return this.refreshExpire;
         }
 
         public void setToken(final @Nullable String token) {
             this.token = token;
         }
 
-        public void setTokenExpire(final @Nullable String tokenExpire) {
+        public @Nullable LocalDateTime getTokenExpire() {
+            return this.tokenExpire;
+        }
+
+        public void setTokenExpire(final @Nullable LocalDateTime tokenExpire) {
             this.tokenExpire = tokenExpire;
         }
 
-        public void setRefreshExpire(final @Nullable String refreshExpire) {
+        public @Nullable LocalDateTime getRefreshExpire() {
+            return this.refreshExpire;
+        }
+
+        public void setRefreshExpire(final @Nullable LocalDateTime refreshExpire) {
             this.refreshExpire = refreshExpire;
-        }
-
-        public @Nullable LocalDateTime getTokenExpireTime() {
-            if (this.tokenExpire == null)
-                return null;
-            return LocalDateTime.parse(this.tokenExpire, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-        }
-
-        public @Nullable LocalDateTime getRefreshExpireTime() {
-            if (this.refreshExpire == null)
-                return null;
-            return LocalDateTime.parse(this.refreshExpire, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-        }
-
-        public void setTokenExpireTime(final @Nullable LocalDateTime tokenExpire) {
-            if (tokenExpire == null) {
-                this.tokenExpire = null;
-                return;
-            }
-            this.tokenExpire = tokenExpire.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-        }
-
-        public void setRefreshExpireTime(final @Nullable LocalDateTime refreshExpire) {
-            if (refreshExpire == null) {
-                this.refreshExpire = null;
-                return;
-            }
-            this.refreshExpire = refreshExpire.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         }
 
         @Override
