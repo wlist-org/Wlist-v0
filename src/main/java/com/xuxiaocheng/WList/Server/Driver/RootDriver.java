@@ -20,11 +20,6 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
     }
 
     @Override
-    public @NotNull Class<RootDriverConfiguration> getDefaultConfigurationClass() {
-        return RootDriverConfiguration.class;
-    }
-
-    @Override
     public void login(final @Nullable RootDriverConfiguration configuration) {
         DriverManager.init();
         // TODO get root user config.

@@ -13,9 +13,6 @@ import java.io.InputStream;
 import java.util.List;
 
 public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
-    @SuppressWarnings("MethodReturnAlwaysConstant")
-    @NotNull Class<C> getDefaultConfigurationClass();
-
     /**
      * Login in the web server.
      * When user modify the configuration, this method will be call automatically.

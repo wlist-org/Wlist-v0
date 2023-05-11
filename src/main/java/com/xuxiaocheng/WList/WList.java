@@ -62,14 +62,11 @@ public final class WList {
         WListServer.init(new InetSocketAddress(GlobalConfiguration.getInstance().port()));
         WList.logger.log(HLogLevel.VERBOSE, "Initialized WList server.");
         WListServer.getInstance().start();
-        try {
-            WListServer.getInstance().awaitStop();
-        } finally {
-            WList.logger.log(HLogLevel.FINE, "Shutting down the whole application...");
-            WListServer.CodecExecutors.shutdownGracefully().syncUninterruptibly();
-            WListServer.ServerExecutors.shutdownGracefully().syncUninterruptibly();
-            WListServer.IOExecutors.shutdownGracefully().syncUninterruptibly();
-            WList.logger.log(HLogLevel.MISTAKE, "Thanks to use WList.");
-        }
+        WListServer.getInstance().awaitStop();
+        WList.logger.log(HLogLevel.FINE, "Shutting down the whole application...");
+        WListServer.CodecExecutors.shutdownGracefully().syncUninterruptibly();
+        WListServer.ServerExecutors.shutdownGracefully().syncUninterruptibly();
+        WListServer.IOExecutors.shutdownGracefully().syncUninterruptibly();
+        WList.logger.log(HLogLevel.MISTAKE, "Thanks to use WList.");
     }
 }
