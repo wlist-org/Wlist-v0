@@ -6,6 +6,7 @@ import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import com.xuxiaocheng.WList.Driver.Utils.DrivePath;
 import com.xuxiaocheng.WList.Driver.Utils.FileInformation;
+import com.xuxiaocheng.WList.Utils.DataBaseUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -14,19 +15,31 @@ import java.util.List;
 
 public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     /**
-     * Login in the web server.
+     * Init the web driver. (bind to the configuration.)
      * When user modify the configuration, this method will be call automatically.
      * @param configuration The modified configuration.
      * @throws Exception Something went wrong.
      */
-    void login(final @NotNull C configuration) throws Exception;
+    void initiate(final @NotNull C configuration) throws Exception;
 
     /**
-     * Completely delete this driver. (cleaner)
+     * Completely uninitiate this driver. (cleaner/deleter)
      * @throws Exception Something went wrong.
      */
-    default void deleteDriver() throws Exception {
-    }
+    void uninitiate() throws Exception;
+
+    /**
+     * Login the web server. Check token etc.
+     * @throws Exception Something went wrong.
+     */
+    void buildCache() throws Exception;
+
+    /**
+     * Build file index into sql database {@link DataBaseUtil#getIndexInstance()}.
+     * @throws Exception Something went wrong.
+     * @see com.xuxiaocheng.WList.Driver.Helpers.DriverSqlHelper
+     */
+    void buildIndex() throws Exception;
 
     /**
      * Get the list of files in this directory.
@@ -103,6 +116,8 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
         if (targetDirectory.equals(sourceFile.getParent()))
             return this.info(sourceFile);
         final FileInformation t = this.copy(sourceFile, targetDirectory.getChild(sourceFile.getName()));
+        if (t == null)
+            return null;
         this.delete(sourceFile);
         return t;
     }
@@ -113,8 +128,5 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
         final FileInformation t = this.copy(source, source.getParent().child(name));
         this.delete(source);
         return t;
-    }
-
-    default void buildCache() throws Exception {
     }
 }

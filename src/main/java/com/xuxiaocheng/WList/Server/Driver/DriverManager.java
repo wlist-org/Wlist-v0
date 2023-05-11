@@ -12,6 +12,7 @@ import com.xuxiaocheng.WList.Utils.YamlHelper;
 import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.UnmodifiableView;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -25,6 +26,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.Map;
@@ -72,7 +74,7 @@ public final class DriverManager {
         configuration.load(config, errors);
         YamlHelper.throwErrors(errors);
         try {
-            driver.login(configuration);
+            driver.initiate(configuration);
         } catch (final Exception exception) {
             throw new IllegalParametersException("Failed to login.", Map.of("name", name, "type", type, "configuration", configuration), exception);
         } finally {
@@ -108,6 +110,10 @@ public final class DriverManager {
         return driver.getSecond();
     }
 
+    public static @NotNull @UnmodifiableView Map<@NotNull String, Pair.@NotNull ImmutablePair<@NotNull WebDriversType, @NotNull DriverInterface<?>>> getAll() {
+        return Collections.unmodifiableMap(DriverManager.drivers);
+    }
+
     public static void add(final @NotNull String name, final @NotNull WebDriversType type) throws IOException, IllegalParametersException {
         DriverManager.add0(name, type);
         // TODO dynamically change configuration.
@@ -119,9 +125,9 @@ public final class DriverManager {
         if (driver == null)
             return;
 //        GlobalConfiguration.subDriver(name);
-        if (GlobalConfiguration.getInstance().dumpConfiguration())
+        if (GlobalConfiguration.getInstance().deleteDriver())
             try {
-                driver.getSecond().deleteDriver();
+                driver.getSecond().uninitiate();
             } catch (final Exception exception) {
                 throw new IOException(exception);
             }

@@ -2,10 +2,6 @@ package com.xuxiaocheng.WList.WebDrivers.Driver_123pan;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Driver.DriverConfiguration;
-import com.xuxiaocheng.WList.Driver.Options.DuplicatePolicy;
-import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
-import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
-import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Utils.YamlHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -14,7 +10,6 @@ import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class DriverConfiguration_123Pan extends DriverConfiguration<
@@ -40,148 +35,62 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
     }
 
     public static final class WebSide extends WebSideDriverConfiguration {
-        private final @NotNull LoginPart loginPart = new LoginPart();
-        private final @NotNull FilePart filePart = new FilePart();
+        private @NotNull String passport = "";
+        private @NotNull String password = "";
+        private int loginType = 1;
+        private long rootDirectoryId = 0;
 
         @Override
         protected void load(@NotNull final Map<? super @NotNull String, @NotNull Object> web, @NotNull final Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
             super.load(web, errors, prefix);
-            final Map<String, Object> login = YamlHelper.getConfig(web, "login", Map::of,
-                    o -> YamlHelper.transferMapNode(o, errors, prefix + "login"));
-            this.loginPart.load(login, errors, prefix + "login$");
-            final Map<String, Object> file = YamlHelper.getConfig(web, "file", Map::of,
-                    o -> YamlHelper.transferMapNode(o, errors, prefix + "file"));
-            this.filePart.load(file, errors, prefix + "file$");
+            this.passport = YamlHelper.getConfig(web, "passport", this.passport,
+                    o -> YamlHelper.transferString(o, errors, prefix + "passport"));
+            this.password = YamlHelper.getConfig(web, "password", this.password,
+                    o -> YamlHelper.transferString(o, errors, prefix + "password"));
+            this.loginType = YamlHelper.getConfig(web, "login_type", () -> Integer.toString(this.loginType),
+                    o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "login_type", BigInteger.ONE, BigInteger.TWO)).intValue();
+            this.rootDirectoryId = YamlHelper.getConfig(web, "root_directory_id", () -> Long.toString(this.rootDirectoryId),
+                    o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "root_directory_id", BigInteger.ZERO, BigInteger.valueOf(Long.MAX_VALUE))).longValue();
         }
 
         @Override
         protected @NotNull Map<@NotNull String, @NotNull Object> dump() {
-            final Map<String, Object> cache = super.dump();
-            cache.put("login", this.loginPart.dump());
-            cache.put("file", this.filePart.dump());
-            return cache;
+            final Map<String, Object> web = super.dump();
+            web.put("passport", this.passport);
+            web.put("password", this.password);
+            web.put("login_type", this.loginType);
+            web.put("root_directory_id", this.rootDirectoryId);
+            return web;
         }
 
-        public @NotNull LoginPart getLoginPart() {
-            return this.loginPart;
+        public @NotNull String getPassport() {
+            return this.passport;
         }
 
-        public @NotNull FilePart getFilePart() {
-            return this.filePart;
+        public @NotNull String getPassword() {
+            return this.password;
+        }
+
+        public int getLoginType() {
+            return this.loginType;
+        }
+
+        public long getRootDirectoryId() {
+            return this.rootDirectoryId;
         }
 
         @Override
         public @NotNull String toString() {
             return "DriverConfiguration_123Pan$WebSide{" +
-                    "loginPart=" + this.loginPart +
-                    ", filePart=" + this.filePart +
+                    "passport='" + this.passport + '\'' +
+                    ", password='" + this.password + '\'' +
+                    ", loginType=" + this.loginType +
+                    ", rootDirectoryId=" + this.rootDirectoryId +
+                    ", defaultLimitPerPage=" + this.defaultLimitPerPage +
+                    ", defaultDuplicatePolicy=" + this.defaultDuplicatePolicy +
+                    ", defaultOrderPolicy=" + this.defaultOrderPolicy +
+                    ", defaultOrderDirection=" + this.defaultOrderDirection +
                     '}';
-        }
-
-        public static final class LoginPart {
-            private @NotNull String passport = "";
-            private @NotNull String password = "";
-            private int loginType = 1;
-
-            private void load(final @NotNull Map<? super @NotNull String, @NotNull Object> login, @NotNull final Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
-                this.passport = YamlHelper.getConfig(login, "passport", this.passport,
-                        o -> YamlHelper.transferString(o, errors, prefix + "passport"));
-                this.password = YamlHelper.getConfig(login, "password", this.password,
-                        o -> YamlHelper.transferString(o, errors, prefix + "password"));
-                this.loginType = YamlHelper.getConfig(login, "login_type", () -> Integer.toString(this.loginType),
-                        o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "login_type", BigInteger.ONE, BigInteger.TWO)).intValue();
-            }
-
-            private @NotNull Map<@NotNull String, @NotNull Object> dump() {
-                final Map<String, Object> cache = new LinkedHashMap<>();
-                cache.put("passport", this.passport);
-                cache.put("password", this.password);
-                cache.put("login_type", this.loginType);
-                return cache;
-            }
-
-            public @NotNull String getPassport() {
-                return this.passport;
-            }
-
-            public @NotNull String getPassword() {
-                return this.password;
-            }
-
-            public int getLoginType() {
-                return this.loginType;
-            }
-
-            @Override
-            public @NotNull String toString() {
-                return "DriverConfiguration_123Pan$WebSide$LoginPart{" +
-                        "passport='" + this.passport + '\'' +
-                        ", password='" + this.password + '\'' +
-                        ", loginType=" + this.loginType +
-                        '}';
-            }
-        }
-
-        public static final class FilePart {
-            private int defaultLimitPerPage = 20;
-            private @NotNull DuplicatePolicy defaultDuplicatePolicy = DuplicatePolicy.KEEP;
-            private @NotNull OrderPolicy defaultOrderPolicy = OrderPolicy.FileName;
-            private @NotNull OrderDirection defaultOrderDirection = OrderDirection.ASCEND;
-            private long rootDirectoryId = 0;
-
-            private void load(final @NotNull Map<? super @NotNull String, @NotNull Object> file, @NotNull final Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
-                this.defaultLimitPerPage = YamlHelper.getConfig(file, "default_limit_per_page", () -> Integer.toString(this.defaultLimitPerPage),
-                        o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "default_limit_per_page", BigInteger.ONE, BigInteger.valueOf(GlobalConfiguration.getInstance().maxLimitPerPage()))).intValue();
-                this.defaultDuplicatePolicy = YamlHelper.getConfig(file, "default_duplicate_policy", this.defaultDuplicatePolicy::name,
-                        o -> YamlHelper.transferEnumFromStr(o, errors, prefix + "default_duplicate_policy", DuplicatePolicy.class));
-                this.defaultOrderPolicy = YamlHelper.getConfig(file, "default_order_policy", this.defaultOrderPolicy::name,
-                        o -> YamlHelper.transferEnumFromStr(o, errors, prefix + "default_order_policy", OrderPolicy.class));
-                this.defaultOrderDirection = YamlHelper.getConfig(file, "default_order_direction", this.defaultOrderDirection::name,
-                        o -> YamlHelper.transferEnumFromStr(o, errors, prefix + "default_order_direction", OrderDirection.class));
-                this.rootDirectoryId = YamlHelper.getConfig(file, "root_directory_id", () -> Long.toString(this.rootDirectoryId),
-                        o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "root_directory_id", BigInteger.ZERO, null)).longValue();
-            }
-
-            private @NotNull Map<@NotNull String, @NotNull Object> dump() {
-                final Map<String, Object> cache = new LinkedHashMap<>();
-                cache.put("default_limit_per_page", this.defaultLimitPerPage);
-                cache.put("default_duplicate_policy", this.defaultDuplicatePolicy.name());
-                cache.put("default_order_policy", this.defaultOrderPolicy.name());
-                cache.put("default_order_direction", this.defaultOrderDirection.name());
-                cache.put("root_directory_id", this.rootDirectoryId);
-                return cache;
-            }
-
-            public int getDefaultLimitPerPage() {
-                return this.defaultLimitPerPage;
-            }
-
-            public @NotNull DuplicatePolicy getDefaultDuplicatePolicy() {
-                return this.defaultDuplicatePolicy;
-            }
-
-            public @NotNull OrderPolicy getDefaultOrderPolicy() {
-                return this.defaultOrderPolicy;
-            }
-
-            public @NotNull OrderDirection getDefaultOrderDirection() {
-                return this.defaultOrderDirection;
-            }
-
-            public long getRootDirectoryId() {
-                return this.rootDirectoryId;
-            }
-
-            @Override
-            public @NotNull String toString() {
-                return "DriverConfiguration_123Pan$WebSide$FilePart{" +
-                        "defaultLimitPerPage=" + this.defaultLimitPerPage +
-                        ", duplicatePolicy=" + this.defaultDuplicatePolicy +
-                        ", orderPolicy=" + this.defaultOrderPolicy +
-                        ", orderDirection=" + this.defaultOrderDirection +
-                        ", rootDirectoryId=" + this.rootDirectoryId +
-                        '}';
-            }
         }
     }
 

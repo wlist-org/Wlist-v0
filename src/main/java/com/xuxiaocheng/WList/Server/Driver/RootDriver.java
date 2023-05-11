@@ -1,17 +1,19 @@
 package com.xuxiaocheng.WList.Server.Driver;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.WList.Driver.Utils.DrivePath;
 import com.xuxiaocheng.WList.Driver.DriverConfiguration;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
-import com.xuxiaocheng.WList.Driver.Utils.FileInformation;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
+import com.xuxiaocheng.WList.Driver.Utils.DrivePath;
+import com.xuxiaocheng.WList.Driver.Utils.FileInformation;
+import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.InputStream;
 import java.util.List;
+import java.util.Map;
 
 public class RootDriver implements DriverInterface<RootDriver.RootDriverConfiguration> {
     protected static final RootDriver instance = new RootDriver();
@@ -20,13 +22,13 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
     }
 
     @Override
-    public void login(final @Nullable RootDriverConfiguration configuration) {
+    public void initiate(final @Nullable RootDriverConfiguration configuration) {
         DriverManager.init();
         // TODO get root user config.
     }
 
     @Override
-    public void deleteDriver() throws IllegalAccessException {
+    public void uninitiate() throws IllegalAccessException {
         throw new IllegalAccessException("Root Driver is the core driver of WList. Shouldn't delete.");
     }
 
@@ -95,6 +97,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
         }
     }
 
+    @SuppressWarnings("OverlyBroadThrowsClause")
     @Override
     public void delete(@NotNull final DrivePath path) throws Exception {
         if (path.getDepth() < 2) {
@@ -120,8 +123,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
                 return null;
             return real.copy(source.getRemovedRoot(), target.getRemovedRoot());
         }
-        throw new UnsupportedOperationException("Copy");
-//        return DriverInterface.super.copy(source, target);
+        return DriverInterface.super.copy(source, target);
     }
 
     @Override
@@ -130,10 +132,9 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
             final DriverInterface<?> real = DriverManager.get(sourceFile.getRoot());
             if (real == null)
                 return null;
-            return real.copy(sourceFile.getRemovedRoot(), targetDirectory.getRemovedRoot());
+            return real.move(sourceFile.getRemovedRoot(), targetDirectory.getRemovedRoot());
         }
-        throw new UnsupportedOperationException("Move");
-//        return DriverInterface.super.move(sourceFile, targetDirectory);
+        return DriverInterface.super.move(sourceFile, targetDirectory);
     }
 
     @Override
@@ -151,7 +152,14 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
 
     @Override
     public void buildCache() throws Exception {
-//        DriverInterface.super.buildCache();
+        for (final Map.Entry<String, Pair.ImmutablePair<WebDriversType, DriverInterface<?>>> driver: DriverManager.getAll().entrySet())
+            driver.getValue().getSecond().buildCache();
+    }
+
+    @Override
+    public void buildIndex() throws Exception {
+        for (final Map.Entry<String, Pair.ImmutablePair<WebDriversType, DriverInterface<?>>> driver: DriverManager.getAll().entrySet())
+            driver.getValue().getSecond().buildIndex();
     }
 
     public static class RootDriverConfiguration extends DriverConfiguration<RootDriverConfiguration.L, RootDriverConfiguration.W, RootDriverConfiguration.C> {

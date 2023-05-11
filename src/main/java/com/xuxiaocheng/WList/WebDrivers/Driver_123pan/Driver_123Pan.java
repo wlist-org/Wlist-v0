@@ -23,18 +23,27 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
     private @NotNull DriverConfiguration_123Pan configuration = new DriverConfiguration_123Pan();
 
     @Override
-    public void login(final @NotNull DriverConfiguration_123Pan configuration) throws IllegalParametersException, IOException, SQLException {
+    public void initiate(final @NotNull DriverConfiguration_123Pan configuration) throws SQLException {
         DriverSqlHelper.initiate(configuration.getLocalSide().getName());
         DriverSqlHelper.insertFile(configuration.getLocalSide().getName(),
-                new FileInformation(configuration.getWebSide().getFilePart().getRootDirectoryId(),
+                new FileInformation(configuration.getWebSide().getRootDirectoryId(),
                         new DrivePath("/"), true, 0, null, null, "", null), null);
-        DriverManager_123pan.getUserInformation(configuration);
         this.configuration = configuration;
     }
 
     @Override
-    public void deleteDriver() throws SQLException {
+    public void uninitiate() throws SQLException {
         DriverSqlHelper.uninitiate(this.configuration.getLocalSide().getName());
+    }
+
+    @Override
+    public void buildCache() throws IllegalParametersException, IOException {
+        DriverManager_123pan.getUserInformation(this.configuration);
+    }
+
+    @Override
+    public void buildIndex() throws IllegalParametersException, IOException, SQLException {
+        DriverManager_123pan.recursiveRefreshDirectory(this.configuration, this.configuration.getWebSide().getRootDirectoryId(), new DrivePath("/"), null, WListServer.IOExecutors);
     }
 
     @Override
@@ -107,11 +116,6 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
         if (source.getName().equals(name))
             return this.info(source);
         return DriverManager_123pan.renameFile(this.configuration, source, name, true, null, WListServer.IOExecutors);
-    }
-
-    @Override
-    public void buildCache() throws IllegalParametersException, IOException, SQLException {
-        DriverManager_123pan.recursiveRefreshDirectory(this.configuration, this.configuration.getWebSide().getFilePart().getRootDirectoryId(), new DrivePath("/"), null, WListServer.IOExecutors);
     }
 
     @Override

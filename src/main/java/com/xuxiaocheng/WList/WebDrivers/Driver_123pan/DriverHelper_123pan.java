@@ -163,9 +163,9 @@ public final class DriverHelper_123pan {
     }
 
     private static void login(final @NotNull DriverConfiguration_123Pan configuration) throws IllegalParametersException, IOException {
-        final JSONObject data = DriverHelper_123pan.doLogin(configuration.getWebSide().getLoginPart().getLoginType(),
-                configuration.getWebSide().getLoginPart().getPassport(),
-                configuration.getWebSide().getLoginPart().getPassword());
+        final JSONObject data = DriverHelper_123pan.doLogin(configuration.getWebSide().getLoginType(),
+                configuration.getWebSide().getPassport(),
+                configuration.getWebSide().getPassword());
         HLog.getInstance("DefaultLogger").log(HLogLevel.LESS, "Logged in: ", data);
         DriverHelper_123pan.handleLoginData(configuration, data);
     }
@@ -213,8 +213,8 @@ public final class DriverHelper_123pan {
         final Map<String, Object> request = new LinkedHashMap<>(7);
         request.put("driveId", 0);
         request.put("limit", limit);
-        request.put("orderBy", DriverHelper_123pan.getOrderPolicy(configuration.getWebSide().getFilePart().getDefaultOrderPolicy()));
-        request.put("orderDirection", DriverHelper_123pan.getOrderDirection(configuration.getWebSide().getFilePart().getDefaultOrderDirection()));
+        request.put("orderBy", DriverHelper_123pan.getOrderPolicy(configuration.getWebSide().getDefaultOrderPolicy()));
+        request.put("orderDirection", DriverHelper_123pan.getOrderDirection(configuration.getWebSide().getDefaultOrderDirection()));
         request.put("parentFileId", directoryId);
         request.put("Page", page);
         request.put("trashed", false);
@@ -258,7 +258,7 @@ public final class DriverHelper_123pan {
         request.put("size", 0);
         request.put("type", 1);
         request.put("NotReuse", true);
-        request.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(configuration.getWebSide().getFilePart().getDefaultDuplicatePolicy()));
+        request.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(configuration.getWebSide().getDefaultDuplicatePolicy()));
         return DriverHelper_123pan.extractResponseData(DriverNetworkHelper.sendRequestReceiveJson(DriverNetworkHelper.httpClient, DriverHelper_123pan.UploadRequestURL,
                 DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
@@ -272,7 +272,7 @@ public final class DriverHelper_123pan {
         request.put("parentFileId", parentId);
         request.put("size", size);
         request.put("type", 0);
-        request.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(configuration.getWebSide().getFilePart().getDefaultDuplicatePolicy()));
+        request.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(configuration.getWebSide().getDefaultDuplicatePolicy()));
         return DriverHelper_123pan.extractResponseData(DriverNetworkHelper.sendRequestReceiveJson(DriverNetworkHelper.httpClient, DriverHelper_123pan.UploadRequestURL,
                 DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
@@ -328,7 +328,7 @@ public final class DriverHelper_123pan {
         request.put("driveId", 0);
         request.put("fileId", id);
         request.put("fileName", name);
-        request.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(configuration.getWebSide().getFilePart().getDefaultDuplicatePolicy()));
+        request.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(configuration.getWebSide().getDefaultDuplicatePolicy()));
         return DriverHelper_123pan.extractResponseData(DriverNetworkHelper.sendRequestReceiveJson(DriverNetworkHelper.httpClient, DriverHelper_123pan.RenameFileURL,
                 DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }

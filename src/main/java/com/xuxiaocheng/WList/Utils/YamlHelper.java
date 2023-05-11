@@ -94,6 +94,8 @@ public final class YamlHelper {
     }
 
     public static @Nullable String transferString(final @Nullable Object obj, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String slot) {
+        if (obj == null)
+            return null;
         if (!(obj instanceof String str)) {
             errors.add(Pair.ImmutablePair.makeImmutablePair(slot, "Require normal text. obj: " + obj));
             return null;
@@ -157,6 +159,8 @@ public final class YamlHelper {
     }
 
     public static @Nullable @UnmodifiableView Map<@NotNull String, @NotNull Object> transferMapNode(final @Nullable Object obj, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String slot) {
+        if (obj == null)
+            return null;
         if (!(obj instanceof Map<?, ?> map)) {
             errors.add(Pair.ImmutablePair.makeImmutablePair(slot, "Require map node. obj: " + obj));
             return null;

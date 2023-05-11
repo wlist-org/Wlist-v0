@@ -74,14 +74,14 @@ public final class DriverManager_123pan {
             if (_connection == null)
                 connection.setAutoCommit(false);
             DriverSqlHelper.deleteFileByParentPath(configuration.getLocalSide().getName(), directoryPath, connection);
-            final Pair.ImmutablePair<Integer, List<FileInformation>> firstPage = DriverManager_123pan.listFilesNoCache(configuration, directoryId, configuration.getWebSide().getFilePart().getDefaultLimitPerPage(), 1, directoryPath, connection);
+            final Pair.ImmutablePair<Integer, List<FileInformation>> firstPage = DriverManager_123pan.listFilesNoCache(configuration, directoryId, configuration.getWebSide().getDefaultLimitPerPage(), 1, directoryPath, connection);
             final int fileCount = firstPage.getFirst().intValue();
             if (fileCount <= 0 || firstPage.getSecond().isEmpty()) {
                 if (_connection == null)
                     connection.commit();
                 return Pair.ImmutablePair.makeImmutablePair(0, MiscellaneousUtil.getEmptyIterator());
             }
-            final int pageCount = (int) Math.ceil(((double) fileCount) / configuration.getWebSide().getFilePart().getDefaultLimitPerPage());
+            final int pageCount = (int) Math.ceil(((double) fileCount) / configuration.getWebSide().getDefaultLimitPerPage());
             if (pageCount <= 1) {
                 if (_connection == null)
                     connection.commit();
@@ -93,7 +93,7 @@ public final class DriverManager_123pan {
             for (int page = 2; page <= pageCount; ++page) {
                 final int current = page;
                 threadPool.submit(() -> {
-                    final Pair.ImmutablePair<Integer, List<FileInformation>> infos = DriverManager_123pan.listFilesNoCache(configuration, directoryId, configuration.getWebSide().getFilePart().getDefaultLimitPerPage(), current, directoryPath, connection);
+                    final Pair.ImmutablePair<Integer, List<FileInformation>> infos = DriverManager_123pan.listFilesNoCache(configuration, directoryId, configuration.getWebSide().getDefaultLimitPerPage(), current, directoryPath, connection);
                     assert infos.getFirst().intValue() == fileCount;
                     // TODO interrupt.
                     allFiles.addAll(infos.getSecond());
@@ -135,7 +135,7 @@ public final class DriverManager_123pan {
 
     static long getFileId(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final Predicate<? super FileInformation> infoPredicate, final boolean useCache, final @Nullable Connection _connection, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {
         if (path.getDepth() == 0)
-            return configuration.getWebSide().getFilePart().getRootDirectoryId();
+            return configuration.getWebSide().getRootDirectoryId();
         if (useCache) {
             final FileInformation info = DriverSqlHelper.getFile(configuration.getLocalSide().getName(), path, _connection);
             if (info != null)
@@ -231,8 +231,8 @@ public final class DriverManager_123pan {
 
     static Pair.@NotNull ImmutablePair<@NotNull Integer, @NotNull List<@NotNull FileInformation>> listFilesWithCache(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath directoryPath, final int limit, final int page, final @Nullable OrderDirection direction, final @Nullable OrderPolicy policy, final @Nullable Connection _connection) throws SQLException {
         return DriverSqlHelper.getFileByParentPathS(configuration.getLocalSide().getName(), directoryPath, limit, (page - 1) * limit,
-                Objects.requireNonNullElse(direction, configuration.getWebSide().getFilePart().getDefaultOrderDirection()),
-                Objects.requireNonNullElse(policy, configuration.getWebSide().getFilePart().getDefaultOrderPolicy()),
+                Objects.requireNonNullElse(direction, configuration.getWebSide().getDefaultOrderDirection()),
+                Objects.requireNonNullElse(policy, configuration.getWebSide().getDefaultOrderPolicy()),
                 _connection);
     }
 
