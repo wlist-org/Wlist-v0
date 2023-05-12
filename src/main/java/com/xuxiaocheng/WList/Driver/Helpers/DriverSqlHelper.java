@@ -1,10 +1,10 @@
 package com.xuxiaocheng.WList.Driver.Helpers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.WList.Driver.Utils.DrivePath;
-import com.xuxiaocheng.WList.Driver.Utils.FileInformation;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
+import com.xuxiaocheng.WList.Driver.Utils.DrivePath;
+import com.xuxiaocheng.WList.Driver.Utils.FileInformation;
 import com.xuxiaocheng.WList.Utils.DataBaseUtil;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import org.jetbrains.annotations.NotNull;
@@ -19,10 +19,10 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 
@@ -34,8 +34,7 @@ public final class DriverSqlHelper {
     // Util
 
     private static @NotNull String getTableName(final @NotNull String name) {
-        return "Driver_" + Base64.getEncoder().encodeToString(name.getBytes(StandardCharsets.UTF_8))
-                .replace("==", "__").replace('=', '_');
+        return "Driver_" + Base64.getEncoder().encodeToString(name.getBytes(StandardCharsets.UTF_8)).replace('=', '_');
     }
 
     private static @NotNull String serializeTime(final @Nullable LocalDateTime time) {
@@ -54,13 +53,13 @@ public final class DriverSqlHelper {
     }
 
     private static @NotNull @UnmodifiableView List<@NotNull FileInformation> createFilesInfo(final @NotNull ResultSet result) throws SQLException {
-        final List<FileInformation> list = new ArrayList<>();
+        final List<FileInformation> list = new LinkedList<>();
         FileInformation info = DriverSqlHelper.createNextFileInfo(result);
         while (info != null) {
             list.add(info);
             info = DriverSqlHelper.createNextFileInfo(result);
         }
-        return list;
+        return Collections.unmodifiableList(list);
     }
 
     // Initiate
@@ -72,7 +71,7 @@ public final class DriverSqlHelper {
                 statement.executeUpdate(String.format("""
                     CREATE TABLE IF NOT EXISTS %s (
                         id           INTEGER NOT NULL
-                                             PRIMARY KEY
+                                             PRIMARY KEY AUTOINCREMENT
                                              UNIQUE,
                         parent_path    TEXT  NOT NULL,
                         name         TEXT    NOT NULL,
@@ -141,6 +140,61 @@ public final class DriverSqlHelper {
 
     public static void insertFile(final @NotNull String driverName, final @NotNull FileInformation info, final @Nullable Connection _connection) throws SQLException {
         DriverSqlHelper.insertFiles(driverName, List.of(info), _connection);
+    }
+
+    /* Please try not to use this method and use {@code insertFiles} instead */
+    public static void insertFilesIgnoreId(final @NotNull String driverName, final @NotNull Collection<FileInformation> infoList, final @Nullable Connection _connection) throws SQLException {
+        if (infoList.isEmpty())
+            return;
+        final String table = DriverSqlHelper.getTableName(driverName);
+        final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
+        try (final PreparedStatement checker = connection.prepareStatement(String.format("""
+                SELECT id FROM %s WHERE parent_path == ? AND name == ? LIMIT 1;
+                """, table))) {
+            if (_connection == null)
+                connection.setAutoCommit(false);
+            // TODO merge operate.
+            try (final PreparedStatement deleter = connection.prepareStatement(String.format("""
+                    DELETE FROM %s WHERE id == ?;
+                    """, table))) {
+                try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+                        INSERT INTO %s (parent_path, name, is_directory, size, create_time, update_time, tag, others)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+                        """, table))) {
+                    for (final FileInformation info: infoList) {
+                        checker.setString(1, info.path().getParentPath());
+                        checker.setString(2, info.path().getName());
+                        final Long id;
+                        try (final ResultSet result = checker.executeQuery()) {
+                            id = result.next() ? result.getLong("id") : null;
+                        }
+                        if (id != null) {
+                            deleter.setLong(1, id.longValue());
+                            deleter.executeUpdate();
+                        }
+                        statement.setString(1, info.path().getParentPath());
+                        statement.setString(2, info.path().getName());
+                        statement.setBoolean(3, info.is_dir());
+                        statement.setLong(4, info.size());
+                        statement.setString(5, DriverSqlHelper.serializeTime(info.createTime()));
+                        statement.setString(6, DriverSqlHelper.serializeTime(info.updateTime()));
+                        statement.setString(7, info.tag());
+                        statement.setString(8, info.others());
+                        statement.executeUpdate();
+                    }
+                }
+            }
+            if (_connection == null)
+                connection.commit();
+        } finally {
+            if (_connection == null)
+                connection.close();
+        }
+    }
+
+    /* Please try not to use this method and use {@code insertFile} instead */
+    public static void insertFileIgnoreId(final @NotNull String driverName, final @NotNull FileInformation info, final @Nullable Connection _connection) throws SQLException {
+        DriverSqlHelper.insertFilesIgnoreId(driverName, List.of(info), _connection);
     }
 
     // Delete
@@ -252,7 +306,7 @@ public final class DriverSqlHelper {
                 "SELECT * FROM %s WHERE parent_path == ? AND name == ? LIMIT 1;", DriverSqlHelper.getTableName(driverName)))) {
             if (_connection == null)
                 connection.setAutoCommit(false);
-            final List<FileInformation> list = new ArrayList<>(pathList.size());
+            final List<FileInformation> list = new LinkedList<>();
             for (final DrivePath path: pathList) {
                 statement.setString(1, path.getParentPath());
                 statement.setString(2, path.getName());
@@ -279,7 +333,7 @@ public final class DriverSqlHelper {
                 "SELECT * FROM %s WHERE id == ? LIMIT 1;", DriverSqlHelper.getTableName(driverName)))) {
             if (_connection == null)
                 connection.setAutoCommit(false);
-            final List<FileInformation> list = new ArrayList<>(idList.size());
+            final List<FileInformation> list = new LinkedList<>();
             for (final Long id: idList) {
                 statement.setLong(1, id.longValue());
                 try (final ResultSet result = statement.executeQuery()) {
@@ -305,7 +359,7 @@ public final class DriverSqlHelper {
                 "SELECT * FROM %s WHERE parent_path == ?;", DriverSqlHelper.getTableName(driverName)))) {
             if (_connection == null)
                 connection.setAutoCommit(false);
-            final List<List<FileInformation>> list = new ArrayList<>(parentPathList.size());
+            final List<List<FileInformation>> list = new LinkedList<>();
             for (final DrivePath parentPath: parentPathList) {
                 statement.setString(1, parentPath.getPath());
                 try (final ResultSet result = statement.executeQuery()) {
@@ -331,7 +385,7 @@ public final class DriverSqlHelper {
                 "SELECT * FROM %s WHERE tag == ?;", DriverSqlHelper.getTableName(driverName)))) {
             if (_connection == null)
                 connection.setAutoCommit(false);
-            final List<List<FileInformation>> list = new ArrayList<>(tagList.size());
+            final List<List<FileInformation>> list = new LinkedList<>();
             for (final String tag: tagList) {
                 statement.setString(1, tag);
                 try (final ResultSet result = statement.executeQuery()) {

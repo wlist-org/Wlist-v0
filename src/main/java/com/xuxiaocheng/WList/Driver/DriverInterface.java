@@ -9,6 +9,7 @@ import com.xuxiaocheng.WList.Driver.Utils.FileInformation;
 import com.xuxiaocheng.WList.Utils.DataBaseUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.UnmodifiableView;
 
 import java.io.InputStream;
 import java.util.List;
@@ -50,8 +51,8 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      *          Null means directory is not available.
      * @throws Exception Something went wrong.
      */
-    Pair.@Nullable ImmutablePair<@NotNull Integer, @NotNull List<@NotNull FileInformation>> list(final @NotNull DrivePath path, final int limit, final int page,
-                                                                                                 final @Nullable OrderDirection direction, final @Nullable OrderPolicy policy) throws Exception;
+    Pair.@Nullable ImmutablePair<@NotNull Integer, @NotNull @UnmodifiableView List<@NotNull FileInformation>> list(final @NotNull DrivePath path, final int limit, final int page,
+                                                                                                                   final @Nullable OrderDirection direction, final @Nullable OrderPolicy policy) throws Exception;
 
     /**
      * Get the file information of a specific file.

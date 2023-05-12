@@ -32,6 +32,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class DataBaseUtil {
+    private static final boolean WalMode = false;
+
     protected static @Nullable DataBaseUtil DataDB;
     protected static @Nullable DataBaseUtil IndexDB;
 
@@ -67,7 +69,14 @@ public class DataBaseUtil {
             throw new SQLException("Cannot create database file.");
         this.sqliteDataSource = new SQLiteDataSource();
         this.sqliteDataSource.setUrl(JDBC.PREFIX + path.getPath());
-        for (int i = 0; i < this.config.initSize; ++i)
+        if (DataBaseUtil.WalMode) {
+            final Connection connection = this.createNewConnection();
+            try (final Statement statement = connection.createStatement()) {
+                statement.executeUpdate("PRAGMA journal_mode = WAL");
+            }
+            this.sqliteConnections.push(connection);
+        }
+        for (int i = DataBaseUtil.WalMode ? 1 : 0; i < this.config.initSize; ++i)
             this.sqliteConnections.push(this.createNewConnection());
         assert this.createdSize.get() == this.config.initSize;
     }

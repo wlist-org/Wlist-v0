@@ -38,7 +38,7 @@ public final class MiscellaneousUtil {
         }
         md5.update(source);
         final BigInteger i = new BigInteger(1, md5.digest());
-        return i.toString(16);
+        return String.format("%32s", i.toString(16)).replace(' ', '0');
     }
 
     public static @NotNull String getMd5(final @NotNull InputStream source) throws IOException {
@@ -49,16 +49,16 @@ public final class MiscellaneousUtil {
             throw new RuntimeException("Unreachable!", exception);
         }
         int remaining = source.available();
-        final int size = Math.min(2048, remaining);
+        final int size = Math.min(1 << 20, remaining);
         int nr;
         for (final byte[] buffer = new byte[size]; remaining > 0L; remaining -= nr) {
             nr = source.read(buffer, 0, Math.min(size, remaining));
             if (nr < 0)
                 break;
-            md5.update(buffer);
+            md5.update(buffer, 0, nr);
         }
         final BigInteger i = new BigInteger(1, md5.digest());
-        return i.toString(16);
+        return String.format("%32s", i.toString(16)).replace(' ', '0');
     }
 
     public static @NotNull KeyPair generateRsaKeyPair(final int keySize) {
@@ -106,6 +106,7 @@ public final class MiscellaneousUtil {
 
     public static void generateRandomByteArray(final @NotNull BigInteger seed, final byte @NotNull [] bytes) {
         new Random(seed.mod(BigInteger.valueOf(Long.MAX_VALUE)).longValue()).nextBytes(bytes);
+        // TODO enhance
         final RandomGenerator random = new Random(seed.longValue() ^ seed.getLowestSetBit() ^ seed.bitLength());
         for (int i = 0; i < bytes.length; ++i)
             bytes[i] = (byte) (bytes[i] ^ (byte) random.nextInt(Byte.MIN_VALUE, Byte.MAX_VALUE));

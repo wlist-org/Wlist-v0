@@ -22,13 +22,16 @@ import okio.Buffer;
 import okio.BufferedSink;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.UnmodifiableView;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -61,7 +64,7 @@ public final class DriverManager_123pan {
         final JSONArray info = data.getJSONArray("InfoList");
         if (info == null)
             throw new WrongResponseException("Abnormal data of 'InfoList'.", data);
-        final List<FileInformation> list = new ArrayList<>(info.toList(JSONObject.class).stream()
+        final List<FileInformation> list = new LinkedList<>(info.toList(JSONObject.class).stream()
                 .map(j -> FileInformation_123pan.create(directoryPath, j)).filter(Objects::nonNull).toList());
         DriverSqlHelper.insertFiles(configuration.getLocalSide().getName(), list, _connection);
         return Pair.ImmutablePair.makeImmutablePair(data.getIntValue("Total", 0), list);
@@ -193,14 +196,14 @@ public final class DriverManager_123pan {
         return file;
     }
 
-    public static void recursiveRefreshDirectory(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final @NotNull DrivePath directoryPath, final @Nullable Connection _connection, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {
+    static void recursiveRefreshDirectory(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final @NotNull DrivePath directoryPath, final @Nullable Connection _connection, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {
         final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
         try {
             if (_connection == null)
                 connection.setAutoCommit(false);
             final Pair.ImmutablePair<Integer, Iterator<FileInformation>> lister = DriverManager_123pan.listAllFilesNoCache(configuration, directoryId, directoryPath, connection, threadPool);
-            final List<String> directoryNameList = new ArrayList<>();
-            final List<Long> directoryIdList = new ArrayList<>();
+            final Collection<String> directoryNameList = new LinkedList<>();
+            final Collection<Long> directoryIdList = new LinkedList<>();
             final Iterator<FileInformation> iterator = lister.getSecond();
             try {
                 while (iterator.hasNext()) {
@@ -216,11 +219,17 @@ public final class DriverManager_123pan {
                 throw exception;
             }
             assert directoryNameList.size() == directoryIdList.size();
-            for (int i = 0; i < directoryNameList.size(); ++i) {
-                directoryPath.child(directoryNameList.get(i));
-                DriverManager_123pan.recursiveRefreshDirectory(configuration, directoryIdList.get(i).longValue(), directoryPath, connection, threadPool);
-                directoryPath.parent();
+            final Iterator<String> nameIterator = directoryNameList.iterator();
+            final Iterator<Long> idIterator = directoryIdList.iterator();
+            while (nameIterator.hasNext() && idIterator.hasNext()) {
+                directoryPath.child(nameIterator.next());
+                try {
+                    DriverManager_123pan.recursiveRefreshDirectory(configuration, idIterator.next().longValue(), directoryPath, connection, threadPool);
+                } finally {
+                    directoryPath.parent();
+                }
             }
+            assert !nameIterator.hasNext() && !idIterator.hasNext();
             if (_connection == null)
                 connection.commit();
         } finally {
@@ -229,7 +238,7 @@ public final class DriverManager_123pan {
         }
     }
 
-    static Pair.@NotNull ImmutablePair<@NotNull Integer, @NotNull List<@NotNull FileInformation>> listFilesWithCache(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath directoryPath, final int limit, final int page, final @Nullable OrderDirection direction, final @Nullable OrderPolicy policy, final @Nullable Connection _connection) throws SQLException {
+    static Pair.@NotNull ImmutablePair<@NotNull Integer, @NotNull @UnmodifiableView List<@NotNull FileInformation>> listFilesWithCache(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath directoryPath, final int limit, final int page, final @Nullable OrderDirection direction, final @Nullable OrderPolicy policy, final @Nullable Connection _connection) throws SQLException {
         return DriverSqlHelper.getFileByParentPathS(configuration.getLocalSide().getName(), directoryPath, limit, (page - 1) * limit,
                 Objects.requireNonNullElse(direction, configuration.getWebSide().getDefaultOrderDirection()),
                 Objects.requireNonNullElse(policy, configuration.getWebSide().getDefaultOrderPolicy()),

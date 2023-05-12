@@ -11,6 +11,7 @@ import com.xuxiaocheng.WList.Driver.Utils.FileInformation;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.UnmodifiableView;
 
 import java.io.InputStream;
 import java.sql.SQLException;
@@ -22,9 +23,9 @@ public final class LocalDisk implements DriverInterface<LocalDiskConfiguration> 
     @Override
     public void initiate(final @NotNull LocalDiskConfiguration configuration) throws SQLException {
         DriverSqlHelper.initiate(configuration.getLocalSide().getName());
-        DriverSqlHelper.insertFile(configuration.getLocalSide().getName(),
-                new FileInformation(0, new DrivePath("/"), true,
-                        0, null, null, "", null), null);
+//        DriverSqlHelper.insertFile(configuration.getLocalSide().getName(),
+//                new FileInformation(0, new DrivePath("/"), true,
+//                        0, null, null, "", null), null);
         this.configuration = configuration;
     }
 
@@ -37,7 +38,7 @@ public final class LocalDisk implements DriverInterface<LocalDiskConfiguration> 
     public void buildCache() throws IllegalParametersException {
         if (!HFileHelper.ensureDirectoryExist(this.configuration.getWebSide().getRootDirectoryPath()))
             throw new IllegalParametersException("Failed to create root directory.", this.configuration.getWebSide().getRootDirectoryPath());
-        this.configuration.getCacheSide().setNickname("Server Disk");
+        this.configuration.getCacheSide().setNickname("Server Disk (" + this.configuration.getLocalSide().getName() + ")");
         this.configuration.getCacheSide().setVip(true);
         this.configuration.getCacheSide().setSpaceAll(Math.min(this.configuration.getWebSide().getMaxSpaceUse(), this.configuration.getWebSide().getRootDirectoryPath().getTotalSpace()));
     }
@@ -50,7 +51,7 @@ public final class LocalDisk implements DriverInterface<LocalDiskConfiguration> 
 
     @Nullable
     @Override
-    public Pair.ImmutablePair<@NotNull Integer, @NotNull List<@NotNull FileInformation>> list(@NotNull DrivePath path, int limit, int page, @Nullable OrderDirection direction, @Nullable OrderPolicy policy) throws Exception {
+    public Pair.ImmutablePair<@NotNull Integer, @NotNull @UnmodifiableView List<@NotNull FileInformation>> list(@NotNull DrivePath path, int limit, int page, @Nullable OrderDirection direction, @Nullable OrderPolicy policy) throws Exception {
         return null;
     }
 

@@ -30,13 +30,13 @@ public final class LocalDiskConfiguration extends DriverConfiguration<LocalDiskC
     }
 
     public static final class WebSide extends WebSideDriverConfiguration {
-        private @NotNull File rootDirectoryPath = new File("C:/");
+        private @NotNull File rootDirectoryPath = new File(System.getProperty("user.dir"), "disk");
         private long maxSpaceUse = Long.MAX_VALUE;
 
         @Override
         protected void load(@NotNull final Map<? super @NotNull String, @NotNull Object> web, @NotNull final Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
             super.load(web, errors, prefix);
-            this.rootDirectoryPath = new File(YamlHelper.<String>getConfig(web, "root_directory_path", this.rootDirectoryPath.getAbsoluteFile(),
+            this.rootDirectoryPath = new File(YamlHelper.<String>getConfig(web, "root_directory_path", this.rootDirectoryPath.getAbsolutePath(),
                     o -> YamlHelper.transferString(o, errors, prefix + "root_directory_path")));
             this.maxSpaceUse = YamlHelper.getConfig(web, "max_space_use", () -> Long.toString(this.maxSpaceUse),
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "max_space_use", BigInteger.ZERO, BigInteger.valueOf(Long.MAX_VALUE))).longValue();

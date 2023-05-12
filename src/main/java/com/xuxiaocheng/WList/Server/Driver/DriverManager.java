@@ -76,7 +76,18 @@ public final class DriverManager {
         try {
             driver.initiate(configuration);
         } catch (final Exception exception) {
+            if (GlobalConfiguration.getInstance().deleteDriver())
+                try {
+                    driver.uninitiate();
+                } catch (final Exception e) {
+                    throw new IllegalParametersException("Failed to uninitiate after initiated.", Map.of("name", name, "type", type, "configuration", configuration, "exception", exception), e);
+                }
             throw new IllegalParametersException("Failed to login.", Map.of("name", name, "type", type, "configuration", configuration), exception);
+        }
+        try {
+            driver.buildCache();
+        } catch (final Exception exception) {
+            throw new IllegalParametersException("Failed to build cache.", Map.of("name", name, "type", type, "configuration", configuration), exception);
         } finally {
             if (GlobalConfiguration.getInstance().dumpConfiguration())
                 try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(path))) {
