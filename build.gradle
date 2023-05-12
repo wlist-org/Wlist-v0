@@ -1,0 +1,25 @@
+plugins {
+    id 'java'
+}
+
+group 'com.xuxiaocheng'
+version '0.1.0'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.jetbrains:annotations:24.0.1'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.2'
+
+    implementation files('libs/HeadLibs.main.jar')
+    implementation 'org.yaml:snakeyaml:2.0'
+    implementation 'io.netty:netty-all:4.1.90.Final'
+    implementation 'com.alibaba.fastjson2:fastjson2:2.0.25'
+}
+
+test {
+    useJUnitPlatform()
+}
