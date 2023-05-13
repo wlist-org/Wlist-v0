@@ -40,13 +40,16 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.net.SocketAddress;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 public class WListServer {
-    public static final int FileTransferBufferSize = 4 << 20;
+    public static final int FileTransferBufferSize = 1;
     public static final @NotNull EventExecutorGroup CodecExecutors =
             new DefaultEventExecutorGroup(Math.max(1, Runtime.getRuntime().availableProcessors() >>> 1), new DefaultThreadFactory("CodecExecutors"));
     public static final @NotNull EventExecutorGroup ServerExecutors =
@@ -164,7 +167,10 @@ public class WListServer {
 
         @Override
         protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) {
-            final Channel channel = ctx.channel();
+            final Channel channel = WList.DebugMode ?
+                    (Channel) Proxy.newProxyInstance(ctx.channel().getClass().getClassLoader(),
+                            ctx.channel().getClass().getInterfaces(), new ChannelProxy(ctx.channel()))
+                    : ctx.channel();
             WListServer.logger.log(HLogLevel.VERBOSE, "Read: ", channel.id().asLongText(), " len: ", msg.readableBytes());
             try {
                 final Operation.Type type = Operation.valueOfType(ByteBufIOUtil.readUTF(msg));
@@ -220,6 +226,15 @@ public class WListServer {
         public void exceptionCaught(final @NotNull ChannelHandlerContext ctx, final Throwable cause) {
             WListServer.logger.log(HLogLevel.WARN, "Exception: ", ctx.channel().id().asLongText(), cause);
             ServerHandler.doException(ctx.channel(), null);
+        }
+    }
+
+    protected record ChannelProxy(@NotNull Channel channel) implements InvocationHandler {
+        @Override
+        public Object invoke(final @NotNull Object proxy, final @NotNull Method method, final Object @NotNull [] args) throws IllegalAccessException, java.lang.reflect.InvocationTargetException {
+            if (method.getName().contains("write") && args.length > 0 && args[0] instanceof ByteBuf msg)
+                WListServer.logger.log(HLogLevel.VERBOSE, "Write: ", this.channel.id().asLongText(), " len: ", msg.readableBytes());
+            return method.invoke(this.channel, args);
         }
     }
 }

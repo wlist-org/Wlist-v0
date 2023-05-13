@@ -72,7 +72,7 @@ public final class LocalDisk implements DriverInterface<LocalDiskConfiguration> 
     }
 
     @Override
-    public @Nullable FileInformation upload(@NotNull DrivePath path, @NotNull InputStream stream, @NotNull String tag, @NotNull List<@NotNull String> partTags) throws Exception {
+    public @Nullable FileInformation upload(@NotNull DrivePath path, @NotNull InputStream stream, @NotNull String tag) throws Exception {
         return null;
     }
 

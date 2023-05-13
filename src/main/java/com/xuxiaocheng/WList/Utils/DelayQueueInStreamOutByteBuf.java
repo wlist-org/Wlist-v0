@@ -46,7 +46,7 @@ public class DelayQueueInStreamOutByteBuf implements Closeable {
                                 return;
                             buffer = ByteBufAllocator.DEFAULT.buffer(len, this.bufferSize);
                             buffer.writeBytes(this.inputStream, len);
-                            this.bufferQueue.put(buffer.retain());
+                            this.bufferQueue.put(buffer);
                             buffer = null;
                         }
                     } catch (final IOException exception) {
@@ -135,5 +135,25 @@ public class DelayQueueInStreamOutByteBuf implements Closeable {
         final ByteBuf cached = this.bufferQueue.take();
         this.addWorker(this.bufferCapacity - this.bufferQueue.size());
         return Pair.ImmutablePair.makeImmutablePair(this.counter.getAndIncrement(), cached);
+    }
+
+    @Override
+    public @NotNull String toString() {
+        final CompletableFuture<Void> worker;
+        synchronized (this) {
+            worker = this.worker;
+        }
+        return "DelayQueueInStreamOutByteBuf{" +
+                "inputStream=" + this.inputStream +
+                ", threadPool=" + this.threadPool +
+                ", bufferSize=" + this.bufferSize +
+                ", bufferCapacity=" + this.bufferCapacity +
+                ", worker=" + worker +
+                ", workingCount=" + this.workingCount +
+                ", bufferQueue=" + this.bufferQueue +
+                ", counter=" + this.counter +
+                ", started=" + this.started +
+                ", closed=" + this.closed +
+                '}';
     }
 }

@@ -86,7 +86,7 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
     }
 
     @Override
-    public @Nullable FileInformation upload(final @NotNull DrivePath path, final @NotNull InputStream stream, final @NotNull String tag, final @NotNull List<@NotNull String> ignoredPartTags) throws IllegalParametersException, IOException, SQLException {
+    public @Nullable FileInformation upload(final @NotNull DrivePath path, final @NotNull InputStream stream, final @NotNull String tag) throws IllegalParametersException, IOException, SQLException {
         if (this.mkdirs(path.getParent()) == null)
             return null;
         return DriverManager_123pan.uploadFile(this.configuration, path, stream, tag, stream.available(), null, WListServer.IOExecutors);

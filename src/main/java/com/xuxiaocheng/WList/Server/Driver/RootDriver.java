@@ -87,13 +87,13 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
     }
 
     @Override
-    public @Nullable FileInformation upload(@NotNull final DrivePath path, @NotNull final InputStream stream, @NotNull final String tag, @NotNull final List<@NotNull String> partTags) throws Exception {
+    public @Nullable FileInformation upload(@NotNull final DrivePath path, @NotNull final InputStream stream, @NotNull final String tag) throws Exception {
         final String root = path.getRoot();
         final DriverInterface<?> real = DriverManager.get(root);
         if (real == null)
             return null;
         try {
-            return real.upload(path.removedRoot(), stream, tag, partTags);
+            return real.upload(path.removedRoot(), stream, tag);
         } finally {
             path.addRoot(root);
         }

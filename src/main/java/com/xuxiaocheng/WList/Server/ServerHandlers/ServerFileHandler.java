@@ -69,8 +69,8 @@ public final class ServerFileHandler {
         try {
             list = RootDriver.getInstance().list(path, limit, page, orderDirection, orderPolicy);
         } catch (final UnsupportedOperationException exception) {
-           ServerHandler.writeMessage(channel, Operation.State.Unsupported, exception.getMessage());
-           return;
+            ServerHandler.writeMessage(channel, Operation.State.Unsupported, exception.getMessage());
+            return;
         } catch (final Exception exception) {
             throw new ServerException(exception);
         }
@@ -222,12 +222,11 @@ public final class ServerFileHandler {
             return;
         final long size = ByteBufIOUtil.readVariableLenLong(buf);
         final String tag = ByteBufIOUtil.readUTF(buf);
-        final List<String> tags = JSON.parseArray(ByteBufIOUtil.readUTF(buf), String.class);
-        if (size < 0 || size <= (long) (tags.size() - 1) * (4 << 20) || (long) tags.size() * (4 << 20) < size) {
+        if (size < 0) {
             ServerHandler.writeMessage(channel, Operation.State.DataError, "Size");
             return;
         }
-        if (!DriverUtil.tagPredication.test(tag) || !tags.stream().allMatch(DriverUtil.tagPredication)) {
+        if (!DriverUtil.tagPredication.test(tag)) {
             ServerHandler.writeMessage(channel, Operation.State.DataError, "Tag");
             return;
         }

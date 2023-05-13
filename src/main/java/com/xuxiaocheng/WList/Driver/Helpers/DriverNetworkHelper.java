@@ -34,8 +34,6 @@ public final class DriverNetworkHelper {
     }
 
     public static final @NotNull String defaultAgent = "WList/0.1.1";
-    public static final HLogLevel NETWORK = HLogLevel.createInstance("NETWORK",
-            WList.DebugMode ? -50 : -500, WList.DebugMode ? "!!!" : ""); // TODO
     public static final @NotNull OkHttpClient httpClient = new OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
@@ -44,12 +42,12 @@ public final class DriverNetworkHelper {
             .addNetworkInterceptor(chain -> {
                 final Request request = chain.request();
                 if (WList.DebugMode)
-                    HLog.DefaultLogger.log(DriverNetworkHelper.NETWORK, Thread.currentThread(), ": Request: ", request);
+                    HLog.DefaultLogger.log(HLogLevel.NETWORK, Thread.currentThread(), ": Request: ", request);
                 final long time1 = System.currentTimeMillis();
                 final Response response = chain.proceed(request);
                 final long time2 = System.currentTimeMillis();
                 if (WList.DebugMode)
-                    HLog.DefaultLogger.log(DriverNetworkHelper.NETWORK, Thread.currentThread(), ": Cost time: ", time2 - time1, "ms.");
+                    HLog.DefaultLogger.log(HLogLevel.NETWORK, Thread.currentThread(), ": Cost time: ", time2 - time1, "ms.");
                 return response;
             })
             .build();

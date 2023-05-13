@@ -85,11 +85,10 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @param path Target path.
      * @param stream Content stream of file.
      * @param tag File md5.
-     * @param partTags File md5 of per 4 MB file part.
      * @return The information of new file. Null means failure. (Invalid filename.)
      * @throws Exception Something went wrong.
      */
-    @Nullable FileInformation upload(final @NotNull DrivePath path, final @NotNull InputStream stream, final @NotNull String tag, final @NotNull List<@NotNull String> partTags) throws Exception;
+    @Nullable FileInformation upload(final @NotNull DrivePath path, final @NotNull InputStream stream, final @NotNull String tag) throws Exception;
 
     /**
      * Delete file.
@@ -105,10 +104,8 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
         if (url == null || info == null)
             return null;
         assert info.size() == url.getSecond().longValue();
-        if (info.size() > 4 << 20)
-            throw new UnsupportedOperationException();
         final InputStream inputStream = url.getFirst();
-        final FileInformation t =  this.upload(target, inputStream, info.tag(), List.of(info.tag()));
+        final FileInformation t =  this.upload(target, inputStream, info.tag());
         inputStream.close();
         return t;
     }
