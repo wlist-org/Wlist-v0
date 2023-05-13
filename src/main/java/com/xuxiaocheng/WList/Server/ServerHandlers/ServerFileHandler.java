@@ -12,7 +12,6 @@ import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.Driver.RootDriver;
-import com.xuxiaocheng.WList.Server.FileDownloadIdHelper;
 import com.xuxiaocheng.WList.Server.Operation;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
@@ -86,72 +85,6 @@ public final class ServerFileHandler {
         channel.writeAndFlush(buffer);
     }
 
-    public static void doRequestDownloadFile(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
-        if (ServerUserHandler.checkToken(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileDownload) == null)
-            return;
-        final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buf));
-        final long from = ByteBufIOUtil.readVariableLenLong(buf);
-        final long to = ByteBufIOUtil.readVariableLenLong(buf);
-        if (from < 0 || from >= to) {
-            ServerHandler.writeMessage(channel, Operation.State.DataError, "Parameters");
-            return;
-        }
-        final Pair.ImmutablePair<InputStream, Long> url;
-        try {
-            url = RootDriver.getInstance().download(path, from, to);
-        } catch (final UnsupportedOperationException exception) {
-            ServerHandler.writeMessage(channel, Operation.State.Unsupported, exception.getMessage());
-            return;
-        } catch (final Exception exception) {
-            throw new ServerException(exception);
-        }
-        if (url == null) {
-            ServerHandler.writeMessage(channel, Operation.State.DataError, "File");
-            return;
-        }
-        final String id = FileDownloadIdHelper.generateId(url.getFirst());
-        final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
-        ByteBufIOUtil.writeUTF(buffer, Operation.State.Success.name());
-        ByteBufIOUtil.writeVariableLenLong(buffer, url.getSecond().longValue());
-        ByteBufIOUtil.writeUTF(buffer, id);
-        channel.writeAndFlush(buffer);
-    }
-
-    public static void doDownloadFile(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
-        final Triad.ImmutableTriad<String, String, SortedSet<Operation.Permission>> user = ServerUserHandler.checkToken(buf, channel, Operation.Permission.FileDownload);
-        if (user == null)
-            return;
-        final String id = ByteBufIOUtil.readUTF(buf);
-        try {
-            final Pair.ImmutablePair<Integer, ByteBuf> file = FileDownloadIdHelper.download(id);
-            if (file == null) {
-                ServerHandler.writeMessage(channel, Operation.State.DataError, null);
-                return;
-            }
-            final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
-            ByteBufIOUtil.writeUTF(buffer, Operation.State.Success.name());
-            ByteBufIOUtil.writeVariableLenInt(buffer, file.getFirst().intValue());
-            ByteBufIOUtil.writeVariableLenInt(buffer, file.getSecond().readableBytes());
-            final CompositeByteBuf composite = ByteBufAllocator.DEFAULT.compositeBuffer(2);
-            composite.addComponent(true, buffer);
-            composite.addComponent(true, file.getSecond());
-            channel.writeAndFlush(composite);
-        } catch (final InterruptedException | IOException | ExecutionException exception) {
-            throw new ServerException(exception);
-        }
-    }
-
-    public static void doCancelDownloadFile(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
-        final Triad.ImmutableTriad<String, String, SortedSet<Operation.Permission>> user = ServerUserHandler.checkToken(buf, channel, Operation.Permission.FileDownload);
-        if (user == null)
-            return;
-        final String id = ByteBufIOUtil.readUTF(buf);
-        if (FileDownloadIdHelper.cancel(id))
-            ServerHandler.writeMessage(channel, Operation.State.Success, null);
-        else
-            ServerHandler.writeMessage(channel, Operation.State.DataError, null);
-    }
-
     public static void doMakeDirectories(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
         if (ServerUserHandler.checkToken(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileUpload) == null)
             return;
@@ -210,6 +143,73 @@ public final class ServerFileHandler {
             return;
         }
         ServerHandler.writeMessage(channel, Operation.State.Success, JSON.toJSONString(ServerFileHandler.getVisibleInfo(file)));
+    }
+
+    public static void doRequestDownloadFile(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
+        final Triad.ImmutableTriad<String, String, SortedSet<Operation.Permission>> user = ServerUserHandler.checkToken(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileDownload);
+        if (user == null)
+            return;
+        final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buf));
+        final long from = ByteBufIOUtil.readVariableLenLong(buf);
+        final long to = ByteBufIOUtil.readVariableLenLong(buf);
+        if (from < 0 || from >= to) {
+            ServerHandler.writeMessage(channel, Operation.State.DataError, "Parameters");
+            return;
+        }
+        final Pair.ImmutablePair<InputStream, Long> url;
+        try {
+            url = RootDriver.getInstance().download(path, from, to);
+        } catch (final UnsupportedOperationException exception) {
+            ServerHandler.writeMessage(channel, Operation.State.Unsupported, exception.getMessage());
+            return;
+        } catch (final Exception exception) {
+            throw new ServerException(exception);
+        }
+        if (url == null) {
+            ServerHandler.writeMessage(channel, Operation.State.DataError, "File");
+            return;
+        }
+        final String id = FileDownloadIdHelper.generateId(url.getFirst(), user.getA());
+        final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
+        ByteBufIOUtil.writeUTF(buffer, Operation.State.Success.name());
+        ByteBufIOUtil.writeVariableLenLong(buffer, url.getSecond().longValue());
+        ByteBufIOUtil.writeUTF(buffer, id);
+        channel.writeAndFlush(buffer);
+    }
+
+    public static void doDownloadFile(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
+        final Triad.ImmutableTriad<String, String, SortedSet<Operation.Permission>> user = ServerUserHandler.checkToken(buf, channel, Operation.Permission.FileDownload);
+        if (user == null)
+            return;
+        final String id = ByteBufIOUtil.readUTF(buf);
+        try {
+            final Pair.ImmutablePair<Integer, ByteBuf> file = FileDownloadIdHelper.download(id, user.getA());
+            if (file == null) {
+                ServerHandler.writeMessage(channel, Operation.State.DataError, null);
+                return;
+            }
+            final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
+            ByteBufIOUtil.writeUTF(buffer, Operation.State.Success.name());
+            ByteBufIOUtil.writeVariableLenInt(buffer, file.getFirst().intValue());
+            ByteBufIOUtil.writeVariableLenInt(buffer, file.getSecond().readableBytes());
+            final CompositeByteBuf composite = ByteBufAllocator.DEFAULT.compositeBuffer(2);
+            composite.addComponent(true, buffer);
+            composite.addComponent(true, file.getSecond());
+            channel.writeAndFlush(composite);
+        } catch (final InterruptedException | IOException | ExecutionException exception) {
+            throw new ServerException(exception);
+        }
+    }
+
+    public static void doCancelDownloadFile(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
+        final Triad.ImmutableTriad<String, String, SortedSet<Operation.Permission>> user = ServerUserHandler.checkToken(buf, channel, Operation.Permission.FileDownload);
+        if (user == null)
+            return;
+        final String id = ByteBufIOUtil.readUTF(buf);
+        if (FileDownloadIdHelper.cancel(id, user.getA()))
+            ServerHandler.writeMessage(channel, Operation.State.Success, null);
+        else
+            ServerHandler.writeMessage(channel, Operation.State.DataError, null);
     }
 
     public static void doRequestUploadFile(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {

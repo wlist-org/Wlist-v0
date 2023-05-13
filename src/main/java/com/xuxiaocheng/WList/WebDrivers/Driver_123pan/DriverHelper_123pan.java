@@ -96,6 +96,7 @@ public final class DriverHelper_123pan {
         final Headers.Builder builder = new Headers.Builder();
         if (token != null)
             builder.add("authorization", "Bearer " + token);
+        builder.add("user-agent", DriverNetworkHelper.defaultAgent);
 //        builder.add("user-agent", "123pan/1.0.100");
         builder.add("platform", "web").add("app-version", "3");
         return builder;

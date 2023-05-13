@@ -94,13 +94,16 @@ public final class DriverManager {
                     YamlHelper.dumpYaml(configuration.dump(), outputStream);
                 }
         }
-        final boolean[] flag = new boolean[] {true};
-        DriverManager.drivers.computeIfAbsent(name, (n) -> {
-            flag[0] = false;
-            return Pair.ImmutablePair.makeImmutablePair(type, driver);
-        });
-        if (flag[0])
+        DriverManager.drivers.merge(name, Pair.ImmutablePair.makeImmutablePair(type, driver), (o, n) -> {
             HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, "Conflict driver. Abort newer. name: ", name, " configuration: ", configuration);
+            if (GlobalConfiguration.getInstance().deleteDriver())
+                try {
+                    n.getSecond().uninitiate();
+                } catch (final Exception exception) {
+                    HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, "Failed to uninitiate when aborting. name: ", name, " configuration: ", configuration, exception);
+                }
+            return o;
+        });
     }
 
     public static void init() {

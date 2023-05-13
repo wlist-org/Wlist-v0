@@ -148,36 +148,38 @@ public final class DriverSqlHelper {
             return;
         final String table = DriverSqlHelper.getTableName(driverName);
         final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
-        try (final PreparedStatement checker = connection.prepareStatement(String.format("""
-                SELECT id FROM %s WHERE parent_path == ? AND name == ? LIMIT 1;
+        try (final PreparedStatement updater = connection.prepareStatement(String.format("""
+                    UPDATE %s SET
+                        is_directory = ?, size = ?,
+                        create_time = ?, update_time = ?,
+                        tag = ?, others = ?
+                    WHERE parent_path == ? AND name == ?;
                 """, table))) {
             if (_connection == null)
                 connection.setAutoCommit(false);
-            // TODO merge operate.
-            try (final PreparedStatement deleter = connection.prepareStatement(String.format("""
-                    DELETE FROM %s WHERE id == ?;
+            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+                    INSERT INTO %s (parent_path, name, is_directory, size, create_time, update_time, tag, others)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?);
                     """, table))) {
-                try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                        INSERT INTO %s (parent_path, name, is_directory, size, create_time, update_time, tag, others)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?);
-                        """, table))) {
-                    for (final FileInformation info: infoList) {
-                        checker.setString(1, info.path().getParentPath());
-                        checker.setString(2, info.path().getName());
-                        final Long id;
-                        try (final ResultSet result = checker.executeQuery()) {
-                            id = result.next() ? result.getLong("id") : null;
-                        }
-                        if (id != null) {
-                            deleter.setLong(1, id.longValue());
-                            deleter.executeUpdate();
-                        }
+                for (final FileInformation info: infoList) {
+                    final String create = DriverSqlHelper.serializeTime(info.createTime());
+                    final String update = DriverSqlHelper.serializeTime(info.updateTime());
+                    updater.setBoolean(1, info.is_dir());
+                    updater.setLong(2, info.size());
+                    updater.setString(3, create);
+                    updater.setString(4, update);
+                    updater.setString(5, info.tag());
+                    updater.setString(6, info.others());
+                    updater.setString(7, info.path().getParentPath());
+                    updater.setString(8, info.path().getName());
+                    final int row = updater.executeUpdate();
+                    if (row <= 0) {
                         statement.setString(1, info.path().getParentPath());
                         statement.setString(2, info.path().getName());
                         statement.setBoolean(3, info.is_dir());
                         statement.setLong(4, info.size());
-                        statement.setString(5, DriverSqlHelper.serializeTime(info.createTime()));
-                        statement.setString(6, DriverSqlHelper.serializeTime(info.updateTime()));
+                        statement.setString(5, create);
+                        statement.setString(6, update);
                         statement.setString(7, info.tag());
                         statement.setString(8, info.others());
                         statement.executeUpdate();

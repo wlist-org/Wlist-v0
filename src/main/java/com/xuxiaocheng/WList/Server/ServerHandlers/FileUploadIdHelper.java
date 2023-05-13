@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server;
+package com.xuxiaocheng.WList.Server.ServerHandlers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
@@ -12,7 +12,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public final class FileUploadIdHelper {
+final class FileUploadIdHelper {
     private FileUploadIdHelper() {
         super();
     }

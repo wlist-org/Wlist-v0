@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Utils;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import org.jetbrains.annotations.NotNull;
@@ -14,6 +15,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 public class DelayQueueInStreamOutByteBuf implements Closeable {
@@ -21,57 +23,87 @@ public class DelayQueueInStreamOutByteBuf implements Closeable {
     protected final @NotNull ExecutorService threadPool;
     protected final int bufferSize;
     protected final int bufferCapacity;
-    protected final @NotNull Consumer<Exception> exceptionCallback;
-    private @NotNull CompletableFuture<?> worker;
+    protected final @NotNull Consumer<@NotNull IOException> exceptionCallback;
+    private @NotNull CompletableFuture<Void> worker = CompletableFuture.completedFuture(null);
+    protected final @NotNull AtomicInteger workingCount = new AtomicInteger(-1);
     protected final @NotNull BlockingQueue<@NotNull ByteBuf> bufferQueue;
+    protected final @NotNull AtomicInteger counter = new AtomicInteger(0);
+    protected boolean started = false;
+    protected boolean closed = false;
 
-    private @NotNull CompletableFuture<?> newWorker(final int times) {
-        return CompletableFuture.runAsync(() -> {
-            ByteBuf buffer = null;
-            for (int i = 0; i < times; ++i)
-                try {
-                    synchronized (this.inputStream) {
-                        final int len = Math.min(this.inputStream.available(), this.bufferSize);
-                        if (len < 1)
-                            return;
-                        buffer = ByteBufAllocator.DEFAULT.buffer(len, this.bufferSize);
-                        buffer.writeBytes(this.inputStream, len);
-                        // Still in synchronized block because of the order in buffer queue.
-                        this.bufferQueue.put(buffer);
+    protected synchronized void addWorker(final int times) {
+        if (times < 0)
+            throw new IllegalArgumentException("Times is negative. times: " + times);
+        if (this.workingCount.getAndAdd(times) < 0)
+            this.worker = CompletableFuture.runAsync(() -> {
+                this.workingCount.getAndIncrement();
+                ByteBuf buffer = null;
+                while (this.workingCount.decrementAndGet() >= 0)
+                    try {
+                        synchronized (this.inputStream) {
+                            final int len = Math.min(this.inputStream.available(), this.bufferSize);
+                            if (len < 1)
+                                return;
+                            buffer = ByteBufAllocator.DEFAULT.buffer(len, this.bufferSize);
+                            buffer.writeBytes(this.inputStream, len);
+                            this.bufferQueue.put(buffer.retain());
+                            buffer = null;
+                        }
+                    } catch (final IOException exception) {
+                        this.exceptionCallback.accept(exception);
+                    } catch (final InterruptedException ignore) {
+                    } finally {
+                        if (buffer != null)
+                            buffer.release();
                     }
-                } catch (final IOException | InterruptedException exception) {
-                    if (buffer != null)
-                        buffer.release();
-                    this.exceptionCallback.accept(exception);
-                } finally {
-                    buffer = null;
-                }
-        }, this.threadPool);
+            }, this.threadPool);
     }
 
-    public DelayQueueInStreamOutByteBuf(final @NotNull InputStream inputStream, final @NotNull ExecutorService threadPool, final int bufferSize, final int bufferCapacity, final @NotNull Consumer<Exception> exceptionCallback) {
+    public DelayQueueInStreamOutByteBuf(final @NotNull InputStream inputStream, final @NotNull ExecutorService threadPool, final int bufferSize, final int bufferCapacity, final @NotNull Consumer<@NotNull IOException> exceptionCallback) {
         super();
         this.inputStream = inputStream;
         this.threadPool = threadPool;
         this.bufferSize = bufferSize;
         this.bufferCapacity = bufferCapacity;
-        this.exceptionCallback = exceptionCallback;
+        this.exceptionCallback = exceptionCallback.andThen((e) -> this.close());
         this.bufferQueue = new LinkedBlockingQueue<>(bufferCapacity);
-        this.worker = this.newWorker(bufferCapacity);
+    }
+
+    public void start() {
+        if (this.started)
+            return;
+        this.started = true;
+        this.addWorker(this.bufferCapacity);
     }
 
     public @NotNull InputStream getInputStream() {
         return this.inputStream;
     }
 
+    public @NotNull ExecutorService getThreadPool() {
+        return this.threadPool;
+    }
+
+    public int getBufferSize() {
+        return this.bufferSize;
+    }
+
+    public int getBufferCapacity() {
+        return this.bufferCapacity;
+    }
+
     @Override
     public void close() {
+        if (this.closed)
+            return;
+        this.closed = true;
         synchronized (this) {
             this.worker.cancel(true);
             try {
                 this.worker.get();
             } catch (final InterruptedException | ExecutionException ignore) {
             }
+            this.workingCount.set(0); // Skip #addWork
         }
         try {
             this.inputStream.close();
@@ -89,7 +121,11 @@ public class DelayQueueInStreamOutByteBuf implements Closeable {
         }
     }
 
-    public @Nullable ByteBuf get() throws InterruptedException {
+    public Pair.@Nullable ImmutablePair<@NotNull Integer, @NotNull ByteBuf> get() throws InterruptedException {
+        if (this.closed)
+            return null;
+        if (!this.started)
+            this.start();
         synchronized (this) {
             if (this.worker.isDone() && this.bufferQueue.isEmpty()) {
                 this.close();
@@ -97,30 +133,7 @@ public class DelayQueueInStreamOutByteBuf implements Closeable {
             }
         }
         final ByteBuf cached = this.bufferQueue.take();
-        try {
-            synchronized (this) {
-                if (this.worker.isDone()) {
-                    if (this.inputStream.available() > 0)
-                        this.worker = this.newWorker(this.bufferCapacity - this.bufferQueue.size());
-                    else
-                        this.inputStream.close();
-                }
-            }
-        } catch (final IOException exception) {
-            this.exceptionCallback.accept(exception);
-        }
-        return cached;
-    }
-
-    @Override
-    public synchronized @NotNull String toString() {
-        return "DelayQueueInStreamOutByteBuf{" +
-                "inputStream=" + this.inputStream +
-                ", threadPool=" + this.threadPool +
-                ", bufferSize=" + this.bufferSize +
-                ", bufferCapacity=" + this.bufferCapacity +
-                ", worker=" + this.worker +
-                ", bufferQueue=" + this.bufferQueue +
-                '}';
+        this.addWorker(this.bufferCapacity - this.bufferQueue.size());
+        return Pair.ImmutablePair.makeImmutablePair(this.counter.getAndIncrement(), cached);
     }
 }

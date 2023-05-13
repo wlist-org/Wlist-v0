@@ -85,6 +85,7 @@ public final class LocalDiskManager {
             Files.walkFileTree(root, Set.of(), Integer.MAX_VALUE, new SimpleFileVisitor<>() {
                 @Override
                 public FileVisitResult preVisitDirectory(final Path dir, final BasicFileAttributes attrs) throws IOException {
+//                    DriverSqlHelper.getFileByParentPath()
                     try {
                         DriverSqlHelper.deleteFileByParentPath(configuration.getLocalSide().getName(), LocalDiskManager.getDrivePath(root, dir), connection);
                         final FileInformation information = FileInformation_LocalDisk.create(root, dir, attrs);

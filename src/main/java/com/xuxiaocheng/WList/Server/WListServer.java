@@ -197,12 +197,12 @@ public class WListServer {
                     case ReducePermission -> ServerUserHandler.doChangePermission(msg, channel, false);
                     // TODO drivers operate. (dynamically add file)
                     case ListFiles -> ServerFileHandler.doListFiles(msg, channel);
-                    case RequestDownloadFile -> ServerFileHandler.doRequestDownloadFile(msg, channel);
-                    case DownloadFile -> ServerFileHandler.doDownloadFile(msg, channel);
-                    case CancelDownloadFile -> ServerFileHandler.doCancelDownloadFile(msg, channel);
                     case MakeDirectories -> ServerFileHandler.doMakeDirectories(msg, channel);
                     case DeleteFile -> ServerFileHandler.doDeleteFile(msg, channel);
                     case RenameFile -> ServerFileHandler.doRenameFile(msg, channel);
+                    case RequestDownloadFile -> ServerFileHandler.doRequestDownloadFile(msg, channel);
+                    case DownloadFile -> ServerFileHandler.doDownloadFile(msg, channel);
+                    case CancelDownloadFile -> ServerFileHandler.doCancelDownloadFile(msg, channel);
 //                    case RequestUploadFile -> ServerFileHandler.doRequestUploadFile(msg, channel);
                     default -> ServerHandler.writeMessage(channel, Operation.State.Unsupported, "TODO: Unsupported.");
                 }

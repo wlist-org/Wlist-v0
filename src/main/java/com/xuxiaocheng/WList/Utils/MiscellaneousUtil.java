@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Random;
+import java.util.function.Supplier;
 import java.util.random.RandomGenerator;
 import java.util.regex.Pattern;
 
@@ -115,5 +116,21 @@ public final class MiscellaneousUtil {
     public static <K, V> @NotNull V resetNonNull(final @NotNull Map<K, V> map, final @NotNull K key, final @NotNull V defaultValue) {
         map.putIfAbsent(key, defaultValue);
         return Objects.requireNonNullElse(map.get(key), defaultValue);
+    }
+
+    public static <K, V> @NotNull K randomKeyAndPut(final @NotNull Map<? super @NotNull K, V> map, final @NotNull Supplier<? extends @NotNull K> randomKey, final V value) {
+        K k;
+        while (true) {
+            k = randomKey.get();
+            final boolean[] flag = {false};
+            final K finalK = k;
+            map.computeIfAbsent(finalK, (i) -> {
+                flag[0] = true;
+                return value;
+            });
+            if (flag[0])
+                break;
+        }
+        return k;
     }
 }
