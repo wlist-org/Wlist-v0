@@ -4,6 +4,8 @@ import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
+import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
+import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverSqlHelper;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
@@ -22,7 +24,6 @@ import java.io.InputStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.function.Supplier;
 
 public final class Driver_123Pan implements DriverInterface<DriverConfiguration_123Pan> {
     private @NotNull DriverConfiguration_123Pan configuration = new DriverConfiguration_123Pan();
@@ -91,11 +92,10 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
 
     @Override
     public Triad.@Nullable ImmutableTriad<@NotNull List<Pair.ImmutablePair<@NotNull Long, @NotNull ConsumerE<@NotNull ByteBuf>>>,
-            @NotNull Supplier<@Nullable FileInformation>, @NotNull Runnable> upload(final @NotNull DrivePath path, final long size, final @NotNull String tag) {
-        throw new UnsupportedOperationException();
-        //        if (this.mkdirs(path.getParent()) == null)
-//            return null;
-//        return DriverManager_123pan.uploadFile(this.configuration, path, stream, tag, stream.available(), null, WListServer.IOExecutors);
+            @NotNull SupplierE<@Nullable FileInformation>, @NotNull RunnableE> upload(final @NotNull DrivePath path, final long size, final @NotNull String tag) throws IllegalParametersException, IOException, SQLException {
+        if (this.mkdirs(path.getParent()) == null)
+            return null;
+        return DriverManager_123pan.getUploadMethods(this.configuration, path, tag, size, null, WListServer.IOExecutors);
     }
 
     @Override
@@ -103,12 +103,23 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
         DriverManager_123pan.trashFile(this.configuration, path, true, null, WListServer.IOExecutors);
     }
 
+    @SuppressWarnings("OverlyBroadThrowsClause")
     @Override
-    public @Nullable FileInformation copy(final @NotNull DrivePath source, final @NotNull DrivePath target) throws IllegalParametersException, IOException, SQLException {
+    public @Nullable FileInformation copy(final @NotNull DrivePath source, final @NotNull DrivePath target) throws Exception {
         final FileInformation info = this.info(source);
         if (info == null)
             return null;
-        return DriverManager_123pan.uploadFile(this.configuration, target, InputStream.nullInputStream(), info.tag(), info.size(), null, WListServer.IOExecutors);
+        final Triad.ImmutableTriad<List<Pair.ImmutablePair<Long, ConsumerE<ByteBuf>>>, SupplierE<FileInformation>, RunnableE> methods =
+                DriverManager_123pan.getUploadMethods(this.configuration, target, info.tag(), info.size(), null, WListServer.IOExecutors);
+        if (methods == null)
+            return null;
+        try {
+            if (!methods.getA().isEmpty())
+                return null;
+            return methods.getB().get();
+        } finally {
+            methods.getC().run();
+        }
     }
 
     @Override

@@ -4,6 +4,8 @@ import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
+import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
+import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import com.xuxiaocheng.WList.Driver.Utils.DrivePath;
@@ -16,7 +18,6 @@ import org.jetbrains.annotations.UnmodifiableView;
 
 import java.io.InputStream;
 import java.util.List;
-import java.util.function.Supplier;
 
 public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     /**
@@ -96,7 +97,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @throws Exception Something went wrong.
      */
     Triad.@Nullable ImmutableTriad<@NotNull List<Pair.ImmutablePair<@NotNull Long, @NotNull ConsumerE<@NotNull ByteBuf>>>,
-            @NotNull Supplier<@Nullable FileInformation>, @NotNull Runnable> upload(final @NotNull DrivePath path, final long size, final @NotNull String tag) throws Exception;
+            @NotNull SupplierE<@Nullable FileInformation>, @NotNull RunnableE> upload(final @NotNull DrivePath path, final long size, final @NotNull String tag) throws Exception;
 
     /**
      * Delete file.
@@ -108,6 +109,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     @SuppressWarnings("OverlyBroadThrowsClause")
     default @Nullable FileInformation copy(final @NotNull DrivePath source, final @NotNull DrivePath target) throws Exception {
         throw new UnsupportedOperationException();
+
 //        final Pair.ImmutablePair<InputStream, Long> url = this.download(source, 0, Long.MAX_VALUE);
 //        final FileInformation info = this.info(source);
 //        if (url == null || info == null)

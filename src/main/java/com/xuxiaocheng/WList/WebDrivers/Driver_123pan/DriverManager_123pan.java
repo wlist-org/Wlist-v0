@@ -4,6 +4,10 @@ import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
+import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
+import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
+import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverSqlHelper;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
@@ -15,10 +19,10 @@ import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Exceptions.WrongResponseException;
 import com.xuxiaocheng.WList.Utils.DataBaseUtil;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
+import io.netty.buffer.ByteBuf;
 import okhttp3.Headers;
 import okhttp3.MediaType;
 import okhttp3.RequestBody;
-import okio.Buffer;
 import okio.BufferedSink;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -28,6 +32,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -292,14 +297,13 @@ public final class DriverManager_123pan {
         return obj;
     }
 
-    static @NotNull FileInformation uploadFile(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @NotNull InputStream stream, final @NotNull String md5, final long size, final @Nullable Connection _connection, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {
+    static Triad.@NotNull ImmutableTriad<@NotNull List<Pair.ImmutablePair<@NotNull Long, @NotNull ConsumerE<@NotNull ByteBuf>>>, @NotNull SupplierE<@Nullable FileInformation>, @NotNull RunnableE> getUploadMethods(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @NotNull String md5, final long size, final @Nullable Connection _connection, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {
         if (!DriverUtil.tagPredication.test(md5))
             throw new IllegalParametersException("Invalid etag (md5).", md5);
         final String newDirectoryName = path.getName();
         final DrivePath parentPath = path.getParent();
         final long parentDirectoryId = DriverManager_123pan.prepareUpload(configuration, parentPath, newDirectoryName, _connection, threadPool);
         final JSONObject requestUploadData = DriverHelper_123pan.doUploadRequest(configuration, parentDirectoryId, newDirectoryName, size, md5);
-        final FileInformation info;
         final Boolean reuse = requestUploadData.getBoolean("Reuse");
         if (reuse == null)
             throw new WrongResponseException("Abnormal data of 'requestUploadData'.", requestUploadData);
@@ -307,28 +311,34 @@ public final class DriverManager_123pan {
             final JSONObject fileInfo = requestUploadData.getJSONObject("Info");
             if (fileInfo == null)
                 throw new WrongResponseException("Abnormal data of 'requestUploadData'.", requestUploadData);
-            info = FileInformation_123pan.create(parentPath, fileInfo);
+            final FileInformation info = FileInformation_123pan.create(parentPath, fileInfo);
             if (info == null)
                 throw new WrongResponseException("Abnormal data of 'requestUploadData'.", requestUploadData);
-        } else {
-            final String bucket = requestUploadData.getString("Bucket");
-            final String node = requestUploadData.getString("StorageNode");
-            final String key = requestUploadData.getString("Key");
-            final String uploadId = requestUploadData.getString("UploadId");
-            final Long fileId = requestUploadData.getLong("FileId");
-            if (bucket == null || key == null || uploadId == null || fileId == null)
-                throw new WrongResponseException("Abnormal data of 'requestUploadData'.", requestUploadData);
-            final int partCount = (int) Math.ceil(((double) size) / DriverHelper_123pan.UploadPartSize);
-            final JSONObject s3PareData = DriverHelper_123pan.doUploadPare(configuration, bucket, node, key, uploadId, partCount);
-            final JSONObject urls = s3PareData.getJSONObject("presignedUrls");
-            if (urls == null)
+            return Triad.ImmutableTriad.makeImmutableTriad(List.of(), () -> info, () -> DriverSqlHelper.insertFile(configuration.getLocalSide().getName(), info, _connection));
+        }
+        final String bucket = requestUploadData.getString("Bucket");
+        final String node = requestUploadData.getString("StorageNode");
+        final String key = requestUploadData.getString("Key");
+        final String uploadId = requestUploadData.getString("UploadId");
+        final Long fileId = requestUploadData.getLong("FileId");
+        if (bucket == null || key == null || uploadId == null || fileId == null)
+            throw new WrongResponseException("Abnormal data of 'requestUploadData'.", requestUploadData);
+        final int partCount = (int) Math.ceil(((double) size) / DriverHelper_123pan.UploadPartSize);
+        final JSONObject s3PareData = DriverHelper_123pan.doUploadPare(configuration, bucket, node, key, uploadId, partCount);
+        final JSONObject urls = s3PareData.getJSONObject("presignedUrls");
+        if (urls == null)
+            throw new WrongResponseException("Abnormal data of 'presignedUrls'.", s3PareData);
+        assert urls.size() == partCount;
+        long readSize = 0;
+        final List<Pair.ImmutablePair<Long, ConsumerE<ByteBuf>>> list = new ArrayList<>(partCount);
+        final AtomicInteger countDown = new AtomicInteger(urls.size());
+        for (int i = 1; i <= urls.size(); ++i) {
+            final String url = urls.getString(String.valueOf(i));
+            if (url == null)
                 throw new WrongResponseException("Abnormal data of 'presignedUrls'.", s3PareData);
-            final Buffer buffer = new Buffer();
-            final long[] readSize = {0};
-            for (int i = 1; i <= urls.size(); ++i) {
-                final String url = urls.getString(String.valueOf(i));
-                if (url == null)
-                    throw new WrongResponseException("Abnormal data of 'presignedUrls'.", s3PareData);
+            final long len = Math.min(DriverHelper_123pan.UploadPartSize, size - readSize);
+            readSize += len;
+            list.add(Pair.ImmutablePair.makeImmutablePair(len, b -> {
                 DriverNetworkHelper.callRequestWithBody(DriverNetworkHelper.httpClient, Pair.ImmutablePair.makeImmutablePair(url, "PUT"), null,
                         new RequestBody() {
                             @Override
@@ -336,32 +346,39 @@ public final class DriverManager_123pan {
                                 return MediaType.parse("application/octet-stream");
                             }
 
-                            private final long len = Math.min(DriverHelper_123pan.UploadPartSize, size - readSize[0]);
-
                             @Override
                             public long contentLength() {
-                                return this.len;
+                                return len;
                             }
 
                             @Override
                             public void writeTo(final @NotNull BufferedSink bufferedSink) throws IOException {
-                                buffer.readFrom(stream, this.len);
-                                bufferedSink.write(buffer, this.len);
-                                readSize[0] += this.len;
+                                assert b.readableBytes() == len;
+                                final int bufferSize = (int) Math.min(len, 2 << 20);
+                                for (final byte[] buffer = new byte[bufferSize]; b.readableBytes() > 0; ) {
+                                    final int len = Math.min(bufferSize, b.readableBytes());
+                                    b.readBytes(buffer, 0, len);
+                                    bufferedSink.write(buffer, 0, len);
+                                }
                             }
                         }
                 ).execute().close();
-            }
+                countDown.getAndDecrement();
+            }));
+        }
+        return Triad.ImmutableTriad.makeImmutableTriad(list, () -> {
+            if (countDown.get() > 0)
+                return null;
             final JSONObject completeUploadData = DriverHelper_123pan.doUploadComplete(configuration, bucket, node, key, uploadId, partCount, size, fileId);
             final JSONObject fileInfo = completeUploadData.getJSONObject("file_info");
             if (fileInfo == null)
                 throw new WrongResponseException("Abnormal data of 'completeUploadData'.", completeUploadData);
-            info = FileInformation_123pan.create(parentPath, fileInfo);
+            final FileInformation info = FileInformation_123pan.create(parentPath, fileInfo);
             if (info == null)
                 throw new WrongResponseException("Abnormal data of 'completeUploadData'.", completeUploadData);
-        }
-        DriverSqlHelper.insertFile(configuration.getLocalSide().getName(), info, _connection);
-        return info;
+            DriverSqlHelper.insertFile(configuration.getLocalSide().getName(), info, _connection);
+            return info;
+        }, () -> {});
     }
 
     static void trashFile(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean useCache, final @Nullable Connection _connection, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {

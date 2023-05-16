@@ -215,13 +215,10 @@ public final class ServerFileHandler {
     }
 
     public static void doRequestUploadFile(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
-        Pair.@Nullable ImmutablePair<@NotNull DriverInterface<?>, @NotNull DrivePath> path = null;
-        if (ServerUserHandler.checkToken(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileUpload) != null) {
-            final DrivePath path1 = new DrivePath(ByteBufIOUtil.readUTF(buf));
-            path = Pair.ImmutablePair.makeImmutablePair(RootDriver.getInstance(), path1);
-        }
-        if (path == null)
+        final Triad.ImmutableTriad<String, String, SortedSet<Operation.Permission>> user = ServerUserHandler.checkToken(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileUpload);
+        if (user == null)
             return;
+        final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buf));
         final long size = ByteBufIOUtil.readVariableLenLong(buf);
         final String tag = ByteBufIOUtil.readUTF(buf);
         if (size < 0) {
@@ -232,7 +229,11 @@ public final class ServerFileHandler {
             ServerHandler.writeMessage(channel, Operation.State.DataError, "Tag");
             return;
         }
-        //todo
-        ServerHandler.writeMessage(channel, Operation.State.Unsupported, null);
+        final String id = FileUploadIdHelper.generateId(size, tag, user.getA());
+        final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
+        ByteBufIOUtil.writeByte(buffer, ServerHandler.defaultCipher);
+        ByteBufIOUtil.writeUTF(buffer, Operation.State.Success.name());
+        ByteBufIOUtil.writeUTF(buffer, id);
+        channel.writeAndFlush(buffer);
     }
 }
