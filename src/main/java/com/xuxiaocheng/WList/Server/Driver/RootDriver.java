@@ -1,6 +1,8 @@
 package com.xuxiaocheng.WList.Server.Driver;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
+import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.WList.Driver.DriverConfiguration;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
@@ -8,6 +10,7 @@ import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import com.xuxiaocheng.WList.Driver.Utils.DrivePath;
 import com.xuxiaocheng.WList.Driver.Utils.FileInformation;
 import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
+import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -15,6 +18,7 @@ import org.jetbrains.annotations.UnmodifiableView;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 public class RootDriver implements DriverInterface<RootDriver.RootDriverConfiguration> {
     protected static final RootDriver instance = new RootDriver();
@@ -87,13 +91,14 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
     }
 
     @Override
-    public @Nullable FileInformation upload(@NotNull final DrivePath path, @NotNull final InputStream stream, @NotNull final String tag) throws Exception {
+    public Triad.@Nullable ImmutableTriad<@NotNull List<Pair.ImmutablePair<@NotNull Long, @NotNull ConsumerE<@NotNull ByteBuf>>>,
+            @NotNull Supplier<@Nullable FileInformation>, @NotNull Runnable> upload(final @NotNull DrivePath path, final long size, final @NotNull String tag) throws Exception {
         final String root = path.getRoot();
         final DriverInterface<?> real = DriverManager.get(root);
         if (real == null)
             return null;
         try {
-            return real.upload(path.removedRoot(), stream, tag);
+            return real.upload(path.removedRoot(), size, tag);
         } finally {
             path.addRoot(root);
         }

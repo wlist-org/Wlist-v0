@@ -31,9 +31,11 @@ import java.util.zip.GZIPOutputStream;
 
 public class AesCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
     public static final byte doAes = 1;
+    public static final byte defaultDoAes = AesCipher.doAes;
     public static final byte doGZip = 1 << 1;
+    public static final byte defaultDoGZip = 0;
 
-    public static final byte defaultCipher = AesCipher.doAes | AesCipher.doGZip;
+    public static final byte defaultCipher = AesCipher.defaultDoAes | AesCipher.defaultDoGZip;
 
     protected final @NotNull Cipher decryptCipher;
     protected final @NotNull Cipher encryptCipher;
@@ -60,7 +62,7 @@ public class AesCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
     }
 
     @Override
-    public void encode(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg, final @NotNull List<Object> out) throws IOException {
+    protected void encode(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg, final @NotNull List<Object> out) throws IOException {
         if (msg.readableBytes() > this.maxSize)
             throw new IllegalArgumentException("Too long msg. len: " + msg.readableBytes());
         final byte flags = ByteBufIOUtil.readByte(msg);
@@ -89,7 +91,7 @@ public class AesCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
     }
 
     @Override
-    public void decode(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg, final @NotNull List<Object> out) throws IOException {
+    protected void decode(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg, final @NotNull List<Object> out) throws IOException {
         final byte flags = ByteBufIOUtil.readByte(msg);
         final int length = ByteBufIOUtil.readVariable2LenInt(msg);
         if (length > this.maxSize)
@@ -112,6 +114,9 @@ public class AesCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
 
     @Override
     public @NotNull String toString() {
-        return "AesCipher{" + super.toString() + '}';
+        return "AesCipher{" +
+                "maxSize=" + this.maxSize +
+                ", super=" + super.toString() +
+                '}';
     }
 }

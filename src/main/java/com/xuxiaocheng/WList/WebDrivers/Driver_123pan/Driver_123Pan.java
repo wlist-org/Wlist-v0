@@ -2,14 +2,17 @@ package com.xuxiaocheng.WList.WebDrivers.Driver_123pan;
 
 import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.WList.Driver.Utils.DrivePath;
+import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
+import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverSqlHelper;
-import com.xuxiaocheng.WList.Driver.Utils.FileInformation;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
+import com.xuxiaocheng.WList.Driver.Utils.DrivePath;
+import com.xuxiaocheng.WList.Driver.Utils.FileInformation;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.WListServer;
+import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -19,6 +22,7 @@ import java.io.InputStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.function.Supplier;
 
 public final class Driver_123Pan implements DriverInterface<DriverConfiguration_123Pan> {
     private @NotNull DriverConfiguration_123Pan configuration = new DriverConfiguration_123Pan();
@@ -86,10 +90,12 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
     }
 
     @Override
-    public @Nullable FileInformation upload(final @NotNull DrivePath path, final @NotNull InputStream stream, final @NotNull String tag) throws IllegalParametersException, IOException, SQLException {
-        if (this.mkdirs(path.getParent()) == null)
-            return null;
-        return DriverManager_123pan.uploadFile(this.configuration, path, stream, tag, stream.available(), null, WListServer.IOExecutors);
+    public Triad.@Nullable ImmutableTriad<@NotNull List<Pair.ImmutablePair<@NotNull Long, @NotNull ConsumerE<@NotNull ByteBuf>>>,
+            @NotNull Supplier<@Nullable FileInformation>, @NotNull Runnable> upload(final @NotNull DrivePath path, final long size, final @NotNull String tag) {
+        throw new UnsupportedOperationException();
+        //        if (this.mkdirs(path.getParent()) == null)
+//            return null;
+//        return DriverManager_123pan.uploadFile(this.configuration, path, stream, tag, stream.available(), null, WListServer.IOExecutors);
     }
 
     @Override

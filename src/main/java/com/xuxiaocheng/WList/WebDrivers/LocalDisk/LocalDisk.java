@@ -1,6 +1,8 @@
 package com.xuxiaocheng.WList.WebDrivers.LocalDisk;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
+import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverSqlHelper;
@@ -9,6 +11,7 @@ import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import com.xuxiaocheng.WList.Driver.Utils.DrivePath;
 import com.xuxiaocheng.WList.Driver.Utils.FileInformation;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
+import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -16,6 +19,7 @@ import org.jetbrains.annotations.UnmodifiableView;
 import java.io.InputStream;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.function.Supplier;
 
 public final class LocalDisk implements DriverInterface<LocalDiskConfiguration> {
     private @NotNull LocalDiskConfiguration configuration = new LocalDiskConfiguration();
@@ -72,7 +76,7 @@ public final class LocalDisk implements DriverInterface<LocalDiskConfiguration> 
     }
 
     @Override
-    public @Nullable FileInformation upload(@NotNull DrivePath path, @NotNull InputStream stream, @NotNull String tag) throws Exception {
+    public Triad.@Nullable ImmutableTriad<@NotNull List<Pair.ImmutablePair<@NotNull Long, @NotNull ConsumerE<@NotNull ByteBuf>>>, @NotNull Supplier<@Nullable FileInformation>, @NotNull Runnable> upload(@NotNull final DrivePath path, final long size, @NotNull final String tag) throws Exception {
         return null;
     }
 

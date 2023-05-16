@@ -234,7 +234,7 @@ public class WListServer {
         @Override
         public Object invoke(final @NotNull Object proxy, final @NotNull Method method, final Object @NotNull [] args) throws IllegalAccessException, java.lang.reflect.InvocationTargetException {
             if (method.getName().contains("write") && args.length > 0 && args[0] instanceof ByteBuf msg)
-                WListServer.logger.log(HLogLevel.VERBOSE, "Write: ", this.channel.id().asLongText(), " len: ", msg.readableBytes());
+                WListServer.logger.log(HLogLevel.VERBOSE, "Write: ", this.channel.id().asLongText(), " len: ", msg.readableBytes(), " cipher: ", msg.getByte(msg.readerIndex()), " (method: ", method.getName(), ')');
             return method.invoke(this.channel, args);
         }
     }

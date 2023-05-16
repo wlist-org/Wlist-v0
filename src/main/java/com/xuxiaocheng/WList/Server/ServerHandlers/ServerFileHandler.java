@@ -79,6 +79,7 @@ public final class ServerFileHandler {
             return;
         }
         final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
+        ByteBufIOUtil.writeByte(buffer, ServerHandler.defaultCipher);
         ByteBufIOUtil.writeUTF(buffer, Operation.State.Success.name());
         ByteBufIOUtil.writeVariableLenInt(buffer, list.getFirst().intValue());
         ByteBufIOUtil.writeUTF(buffer, JSON.toJSONString(list.getSecond().stream().map(ServerFileHandler::getVisibleInfo).collect(Collectors.toSet())));
@@ -171,6 +172,7 @@ public final class ServerFileHandler {
         }
         final String id = FileDownloadIdHelper.generateId(url.getFirst(), user.getA());
         final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
+        ByteBufIOUtil.writeByte(buffer, ServerHandler.defaultCipher);
         ByteBufIOUtil.writeUTF(buffer, Operation.State.Success.name());
         ByteBufIOUtil.writeVariableLenLong(buffer, url.getSecond().longValue());
         ByteBufIOUtil.writeUTF(buffer, id);
@@ -189,12 +191,12 @@ public final class ServerFileHandler {
                 return;
             }
             final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
+            ByteBufIOUtil.writeByte(buffer, AesCipher.defaultDoGZip);
             ByteBufIOUtil.writeUTF(buffer, Operation.State.Success.name());
             ByteBufIOUtil.writeVariableLenInt(buffer, file.getFirst().intValue());
             ByteBufIOUtil.writeVariableLenInt(buffer, file.getSecond().readableBytes());
             final CompositeByteBuf composite = ByteBufAllocator.DEFAULT.compositeBuffer(2);
-            composite.addComponent(true, buffer);
-            composite.addComponent(true, file.getSecond());
+            composite.addComponents(true, buffer, file.getSecond());
             channel.writeAndFlush(composite);
         } catch (final InterruptedException | IOException | ExecutionException exception) {
             throw new ServerException(exception);

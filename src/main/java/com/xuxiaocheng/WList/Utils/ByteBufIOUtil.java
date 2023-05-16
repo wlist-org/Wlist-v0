@@ -284,7 +284,6 @@ public final class ByteBufIOUtil {
         }
     }
 
-
     public static void writeByte(final @NotNull ByteBuf buffer, final byte b) throws IOException {
         try {
             buffer.writeByte(b);

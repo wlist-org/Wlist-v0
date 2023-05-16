@@ -16,6 +16,8 @@ import java.io.IOException;
 import java.util.Objects;
 
 public final class ServerHandler {
+    public static final byte defaultCipher = AesCipher.doAes | AesCipher.doGZip;
+
     private ServerHandler() {
         super();
     }
@@ -29,6 +31,7 @@ public final class ServerHandler {
     public static void writeMessage(final @NotNull Channel channel, final @NotNull Operation.State state, final @Nullable String message) throws ServerException {
         try {
             final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
+            ByteBufIOUtil.writeByte(buffer, ServerHandler.defaultCipher);
             ByteBufIOUtil.writeUTF(buffer, state.name());
             if (message != null)
                 ByteBufIOUtil.writeUTF(buffer, message);
