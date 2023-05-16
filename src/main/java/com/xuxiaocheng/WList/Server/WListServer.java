@@ -49,7 +49,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 public class WListServer {
-    public static final int FileTransferBufferSize = 1;
+    public static final int FileTransferBufferSize = 4 << 20;
+    public static final int MaxSizePerPacket = (64 << 10) + WListServer.FileTransferBufferSize;
     public static final @NotNull EventExecutorGroup CodecExecutors =
             new DefaultEventExecutorGroup(Math.max(1, Runtime.getRuntime().availableProcessors() >>> 1), new DefaultThreadFactory("CodecExecutors"));
     public static final @NotNull EventExecutorGroup ServerExecutors =
@@ -111,9 +112,9 @@ public class WListServer {
             @Override
             protected void initChannel(final @NotNull SocketChannel ch) {
                 final ChannelPipeline pipeline = ch.pipeline();
-                pipeline.addLast(WListServer.CodecExecutors, "LengthDecoder", new LengthFieldBasedFrameDecoder((64 << 10) + WListServer.FileTransferBufferSize, 0, 4, 0, 4));
+                pipeline.addLast(WListServer.CodecExecutors, "LengthDecoder", new LengthFieldBasedFrameDecoder(WListServer.MaxSizePerPacket, 0, 4, 0, 4));
                 pipeline.addLast(WListServer.CodecExecutors, "LengthEncoder", new LengthFieldPrepender(4));
-                pipeline.addLast(WListServer.CodecExecutors, "Cipher", new AesCipher(WList.key, WList.vector));
+                pipeline.addLast(WListServer.CodecExecutors, "Cipher", new AesCipher(WList.key, WList.vector, WListServer.MaxSizePerPacket));
                 pipeline.addLast(WListServer.ServerExecutors, "ServerHandler", WListServer.handlerInstance);
             }
         });
