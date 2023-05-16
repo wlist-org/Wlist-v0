@@ -15,6 +15,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
@@ -28,8 +29,8 @@ public class DelayQueueInStreamOutByteBuf implements Closeable {
     protected final @NotNull AtomicInteger workingCount = new AtomicInteger(-1);
     protected final @NotNull BlockingQueue<@NotNull ByteBuf> bufferQueue;
     protected final @NotNull AtomicInteger counter = new AtomicInteger(0);
-    protected boolean started = false;
-    protected boolean closed = false;
+    protected final @NotNull AtomicBoolean started = new AtomicBoolean(false);
+    protected final @NotNull AtomicBoolean closed = new AtomicBoolean(false);
 
     protected synchronized void addWorker(final int times) {
         if (times < 0)
@@ -70,9 +71,11 @@ public class DelayQueueInStreamOutByteBuf implements Closeable {
     }
 
     public void start() {
-        if (this.started)
-            return;
-        this.started = true;
+        synchronized (this.started) {
+            if (this.started.get())
+                return;
+            this.started.set(true);
+        }
         this.addWorker(this.bufferCapacity);
     }
 
@@ -94,9 +97,11 @@ public class DelayQueueInStreamOutByteBuf implements Closeable {
 
     @Override
     public void close() {
-        if (this.closed)
-            return;
-        this.closed = true;
+        synchronized (this.closed) {
+            if (this.closed.get())
+                return;
+            this.closed.set(true);
+        }
         synchronized (this) {
             this.worker.cancel(true);
             try {
@@ -122,10 +127,14 @@ public class DelayQueueInStreamOutByteBuf implements Closeable {
     }
 
     public Pair.@Nullable ImmutablePair<@NotNull Integer, @NotNull ByteBuf> get() throws InterruptedException {
-        if (this.closed)
-            return null;
-        if (!this.started)
-            this.start();
+        synchronized (this.closed) {
+            if (this.closed.get())
+                return null;
+        }
+        synchronized (this.started) {
+            if (!this.started.get())
+                this.start();
+        }
         synchronized (this) {
             if (this.worker.isDone() && this.bufferQueue.isEmpty()) {
                 this.close();
@@ -153,7 +162,7 @@ public class DelayQueueInStreamOutByteBuf implements Closeable {
                 ", bufferQueue=" + this.bufferQueue +
                 ", counter=" + this.counter +
                 ", started=" + this.started +
-                ", closed=" + this.closed +
+                ", closed=" + this.closed.get() +
                 '}';
     }
 }
