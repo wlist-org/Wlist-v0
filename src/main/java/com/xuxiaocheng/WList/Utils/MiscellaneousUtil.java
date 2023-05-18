@@ -42,13 +42,7 @@ public final class MiscellaneousUtil {
         return String.format("%32s", i.toString(16)).replace(' ', '0');
     }
 
-    public static @NotNull String getMd5(final @NotNull InputStream source) throws IOException {
-        final MessageDigest md5;
-        try {
-            md5 = MessageDigest.getInstance("MD5");
-        } catch (final NoSuchAlgorithmException exception) {
-            throw new RuntimeException("Unreachable!", exception);
-        }
+    public static void updateMessageDigest(final @NotNull MessageDigest digester, final @NotNull InputStream source) throws IOException {
         int remaining = source.available();
         final int size = Math.min(1 << 20, remaining);
         int nr;
@@ -56,10 +50,8 @@ public final class MiscellaneousUtil {
             nr = source.read(buffer, 0, Math.min(size, remaining));
             if (nr < 0)
                 break;
-            md5.update(buffer, 0, nr);
+            digester.update(buffer, 0, nr);
         }
-        final BigInteger i = new BigInteger(1, md5.digest());
-        return String.format("%32s", i.toString(16)).replace(' ', '0');
     }
 
     public static @NotNull KeyPair generateRsaKeyPair(final int keySize) {

@@ -1,22 +1,38 @@
 package com.xuxiaocheng.WList.Server.ServerHandlers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
+import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
+import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
+import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
+import com.xuxiaocheng.HeadLibs.Logger.HLog;
+import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.Driver.Utils.FileInformation;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
+import com.xuxiaocheng.WList.Utils.DelayQueueInByteBufOutByteBuf;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufInputStream;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.Closeable;
+import java.io.IOException;
+import java.io.InputStream;
+import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 final class FileUploadIdHelper {
     private FileUploadIdHelper() {
@@ -25,12 +41,13 @@ final class FileUploadIdHelper {
 
     private static final @NotNull Map<@NotNull String, @NotNull UploaderData> buffers = new ConcurrentHashMap<>();
 
-    public static @NotNull String generateId(final long size, final @NotNull String tag, final @NotNull String username) {
-        //noinspection IOResourceOpenedButNotSafelyClosed // In cleaner.
-        return new UploaderData(size, tag, username).id;
+    public static @NotNull String generateId(final Triad.@NotNull ImmutableTriad<? extends @NotNull List<Pair.ImmutablePair<@NotNull Integer, @NotNull ConsumerE<@NotNull ByteBuf>>>,
+            ? extends @NotNull SupplierE<@Nullable FileInformation>, ? extends @NotNull RunnableE> methods, final @NotNull String tag, final @NotNull String username) {
+        //noinspection IOResourceOpenedButNotSafelyClosed , resource // In cleaner.
+        return new UploaderData(methods, tag, username).id;
     }
 
-    public static boolean cancel(final @NotNull String id, final @NotNull String username) {
+    public static boolean cancel(final @NotNull String id, final @NotNull String username) throws IOException {
         final UploaderData data = FileUploadIdHelper.buffers.get(id);
         if (data == null || !data.username.equals(username))
             return false;
@@ -38,69 +55,138 @@ final class FileUploadIdHelper {
         return true;
     }
 
-    public static boolean upload(final @NotNull String id, final @NotNull String username, final @NotNull ByteBuf buf) {
+    private static final Pair.@NotNull ImmutablePair<@NotNull Boolean, @Nullable SupplierE<@Nullable FileInformation>> False = Pair.ImmutablePair.makeImmutablePair(false, null);
+    public static Pair.@NotNull ImmutablePair<@NotNull Boolean, @Nullable SupplierE<@Nullable FileInformation>> upload(final @NotNull String id, final @NotNull String username, final @NotNull ByteBuf buf, final int chunk) throws Exception {
         final UploaderData data = FileUploadIdHelper.buffers.get(id);
         if (data == null || !data.username.equals(username))
-            return false;
-        return data.put(buf);
+            return FileUploadIdHelper.False;
+        return Pair.ImmutablePair.makeImmutablePair(data.put(buf, chunk), data::tryGet);
     }
 
+    @SuppressWarnings("OverlyBroadThrowsClause")
     private static class UploaderData implements Closeable {
         private final @NotNull String username;
-        private final long size;
-        private long read;
-        private final @NotNull String tag;
+        private final Triad.@NotNull ImmutableTriad<? extends @NotNull List<Pair.ImmutablePair<@NotNull Integer, @NotNull ConsumerE<@NotNull ByteBuf>>>,
+                ? extends @NotNull SupplierE<@Nullable FileInformation>, ? extends @NotNull RunnableE> methods;
+        private final @NotNull AtomicInteger indexer = new AtomicInteger(0);
+        private final @NotNull DelayQueueInByteBufOutByteBuf bufferQueue = new DelayQueueInByteBufOutByteBuf();
         private final @NotNull String id;
+        private final @NotNull String tag;
         private @NotNull LocalDateTime expireTime = LocalDateTime.now();
-        private boolean closed = false;
-
-        private final @NotNull BlockingQueue<@NotNull ByteBuf> bufferQueue = new LinkedBlockingQueue<>();
+        private final @NotNull AtomicBoolean closed = new AtomicBoolean(false);
+        private final @NotNull AtomicBoolean finished = new AtomicBoolean(false);
         private final @NotNull MessageDigest md5;
+        private final @NotNull AtomicInteger getLock = new AtomicInteger(0);
 
         private void appendExpireTime() {
             this.expireTime = LocalDateTime.now().plusSeconds(GlobalConfiguration.getInstance().idIdleExpireTime());
             FileUploadIdHelper.checkTime.add(Pair.ImmutablePair.makeImmutablePair(this.expireTime, this));
         }
 
-        private UploaderData(final long size, final @NotNull String tag, final @NotNull String username) {
+        private UploaderData(final Triad.@NotNull ImmutableTriad<? extends @NotNull List<Pair.ImmutablePair<@NotNull Integer, @NotNull ConsumerE<@NotNull ByteBuf>>>,
+                ? extends @NotNull SupplierE<@Nullable FileInformation>, ? extends @NotNull RunnableE> methods, final @NotNull String tag, final @NotNull String username) {
             super();
             this.username = username;
-            this.size = size;
+            this.methods = methods;
             this.tag = tag;
+            this.id = MiscellaneousUtil.randomKeyAndPut(FileUploadIdHelper.buffers, () -> {
+                //noinspection SpellCheckingInspection
+                return HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890`~!@#$%^&*()-_=+[]{}\\|;:,.<>/?");
+            }, this);
             try {
                 this.md5 = MessageDigest.getInstance("MD5");
             } catch (final NoSuchAlgorithmException exception) {
                 throw new RuntimeException("Unreachable!", exception);
             }
-            this.id = MiscellaneousUtil.randomKeyAndPut(FileUploadIdHelper.buffers, () -> {
-                //noinspection SpellCheckingInspection
-                return HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890`~!@#$%^&*()-_=+[]{}\\|;:,.<>/?");
-            }, this);
+            this.appendExpireTime();
         }
 
         @Override
-        public void close() {
-            if (this.closed)
+        public void close() throws IOException {
+            if (this.closed.get())
                 return;
-            this.closed = true;
+            this.closed.set(true);
             FileUploadIdHelper.buffers.remove(this.id, this);
-            this.expireTime = LocalDateTime.now();
-            while (!this.bufferQueue.isEmpty()) {
-                try {
-                    final ByteBuf buf = this.bufferQueue.poll(0L, TimeUnit.NANOSECONDS);
-                    if (buf == null)
-                        break;
-                    buf.release();
-                } catch (final InterruptedException ignore) {
+            try {
+                this.methods.getC().run();
+            } catch (final Exception exception) {
+                throw new IOException(exception);
+            } finally {
+                this.expireTime = LocalDateTime.now();
+                this.bufferQueue.close();
+            }
+        }
+
+        public boolean put(final @NotNull ByteBuf buf, final int chunk) throws Exception {
+            if (this.closed.get())
+                return false;
+            this.appendExpireTime();
+            return this.bufferQueue.put(buf, chunk);
+        }
+
+        public @Nullable FileInformation tryGet() throws Exception {
+            if (this.finished.get())
+                return null;
+            this.getLock.getAndIncrement();
+            try {
+                final Pair.ImmutablePair<Integer, ByteBuf> pair;
+                synchronized (this.indexer) {
+                    if (this.indexer.get() > this.methods.getA().size() - 1)
+                        return null;
+                    final int length = this.methods.getA().get(this.indexer.get()).getFirst().intValue();
+                    if (this.bufferQueue.readableBytes() < length)
+                        return null;
+                    pair = this.bufferQueue.get(length);
+                    if (pair == null)
+                        return null;
+                    assert pair.getFirst().intValue() == this.indexer.get();
+                    this.indexer.getAndIncrement();
+                    try (final InputStream inputStream = new ByteBufInputStream(pair.getSecond().markReaderIndex())) {
+                        MiscellaneousUtil.updateMessageDigest(this.md5, inputStream);
+                    }
+                    pair.getSecond().resetReaderIndex();
+                }
+                this.methods.getA().get(pair.getFirst().intValue()).getSecond().accept(pair.getSecond());
+                if (this.indexer.get() < this.methods.getA().size() - 1)
+                    return null;
+                this.finished.set(true);
+                synchronized (this.getLock) {
+                    while (this.getLock.get() > 0)
+                        this.getLock.wait();
+                }
+                return this.finish();
+            } finally {
+                synchronized (this.getLock) {
+                    this.getLock.getAndDecrement();
+                    this.getLock.notify();
                 }
             }
         }
 
-        public synchronized boolean put(final @NotNull ByteBuf buf) {
-            if (this.closed)
-                return false;
-            // TODO
-            return true;
+        public @Nullable FileInformation finish() throws Exception {
+            try {
+                final BigInteger i = new BigInteger(1, this.md5.digest());
+                if (!this.tag.equals(String.format("%32s", i.toString(16)).replace(' ', '0')))
+                    return null;
+                return this.methods.getB().get();
+            } finally {
+                this.close();
+            }
+        }
+
+        @Override
+        public @NotNull String toString() {
+            return "UploaderData{" +
+                    "username='" + this.username + '\'' +
+                    ", methods=" + this.methods +
+                    ", indexer=" + this.indexer +
+                    ", bufferQueue=" + this.bufferQueue +
+                    ", id='" + this.id + '\'' +
+                    ", tag='" + this.tag + '\'' +
+                    ", expireTime=" + this.expireTime +
+                    ", closed=" + this.closed +
+                    ", md5=" + this.md5 +
+                    '}';
         }
     }
 
@@ -109,13 +195,19 @@ final class FileUploadIdHelper {
         while (true) {
             try {
                 final Pair.ImmutablePair<LocalDateTime, UploaderData> check = FileUploadIdHelper.checkTime.take();
+                if (check.getSecond().closed.get())
+                    continue;
                 final LocalDateTime now = LocalDateTime.now();
                 if (now.isBefore(check.getFirst()))
                     TimeUnit.MILLISECONDS.sleep(Duration.between(now, check.getFirst()).toMillis());
+                if (check.getSecond().closed.get())
+                    continue;
                 if (LocalDateTime.now().isAfter(check.getSecond().expireTime))
                     check.getSecond().close();
             } catch (final InterruptedException ignore) {
                 break;
+            } catch (final IOException exception) {
+                HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, exception);
             }
         }
     }, "UploadData Cleaner");

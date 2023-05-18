@@ -5,6 +5,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
+import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.WList.Driver.DriverConfiguration;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
@@ -92,7 +93,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
     }
 
     @Override
-    public Triad.@Nullable ImmutableTriad<@NotNull List<Pair.ImmutablePair<@NotNull Long, @NotNull ConsumerE<@NotNull ByteBuf>>>,
+    public Triad.@Nullable ImmutableTriad<@NotNull List<Pair.ImmutablePair<@NotNull Integer, @NotNull ConsumerE<@NotNull ByteBuf>>>,
             @NotNull SupplierE<@Nullable FileInformation>, @NotNull RunnableE> upload(final @NotNull DrivePath path, final long size, final @NotNull String tag) throws Exception {
         final String root = path.getRoot();
         final DriverInterface<?> real = DriverManager.get(root);
@@ -103,6 +104,11 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
         } finally {
             path.addRoot(root);
         }
+    }
+
+    public void completeUpload(final @NotNull FileInformation information) {
+        HLog.DefaultLogger.log("", information);
+        // TODO
     }
 
     @SuppressWarnings("OverlyBroadThrowsClause")

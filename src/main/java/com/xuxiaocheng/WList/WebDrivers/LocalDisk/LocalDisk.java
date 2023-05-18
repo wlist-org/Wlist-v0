@@ -77,7 +77,7 @@ public final class LocalDisk implements DriverInterface<LocalDiskConfiguration> 
     }
 
     @Override
-    public Triad.@Nullable ImmutableTriad<@NotNull List<Pair.ImmutablePair<@NotNull Long, @NotNull ConsumerE<@NotNull ByteBuf>>>, @NotNull SupplierE<@Nullable FileInformation>, @NotNull RunnableE> upload(@NotNull final DrivePath path, final long size, @NotNull final String tag) throws Exception {
+    public Triad.@Nullable ImmutableTriad<@NotNull List<Pair.ImmutablePair<@NotNull Integer, @NotNull ConsumerE<@NotNull ByteBuf>>>, @NotNull SupplierE<@Nullable FileInformation>, @NotNull RunnableE> upload(@NotNull final DrivePath path, final long size, @NotNull final String tag) throws Exception {
         return null;
     }
 

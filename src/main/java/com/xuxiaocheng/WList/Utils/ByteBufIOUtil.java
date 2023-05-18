@@ -487,9 +487,10 @@ public final class ByteBufIOUtil {
     public static byte[] allToByteArray(final @NotNull ByteBuf buffer) {
         if (buffer.hasArray())
             return buffer.array().clone();
+        final int index = buffer.readerIndex();
         final byte[] bytes = new byte[buffer.readableBytes()];
-        for (int i = 0; i < bytes.length; ++i)
-            bytes[i] = buffer.getByte(buffer.readerIndex() + i);
+        buffer.readBytes(bytes);
+        buffer.readerIndex(index);
         return bytes;
     }
 }

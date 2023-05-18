@@ -5,10 +5,10 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
-import com.xuxiaocheng.WList.Driver.Utils.FileInformation;
 import com.xuxiaocheng.WList.Driver.Options.DuplicatePolicy;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
+import com.xuxiaocheng.WList.Driver.Utils.FileInformation;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Exceptions.WrongResponseException;
 import okhttp3.Headers;
@@ -90,7 +90,7 @@ public final class DriverHelper_123pan {
         return true;
     };
 
-    static final long UploadPartSize = 16 << 20;
+    static final int UploadPartSize = 16 << 20;
 
     static @NotNull Headers.Builder headerBuilder(final @Nullable String token) {
         final Headers.Builder builder = new Headers.Builder();

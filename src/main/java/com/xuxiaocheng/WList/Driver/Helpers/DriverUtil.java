@@ -71,4 +71,16 @@ public final class DriverUtil {
             }
         };
     }
+
+    public static Pair.@NotNull ImmutablePair<@NotNull InputStream, @NotNull Long> getDownloadStreamByRangeHeader(final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull Long> url, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @Nullable Headers.Builder builder) throws IOException {
+        final long size = url.getSecond().longValue();
+        if (from >= size)
+            return Pair.ImmutablePair.makeImmutablePair(InputStream.nullInputStream(), 0L);
+        final long end = Math.min(to, size);
+        final long len = end - from;
+        return Pair.ImmutablePair.makeImmutablePair(DriverUtil.getDownloadStream(DriverNetworkHelper.httpClient,
+                Pair.ImmutablePair.makeImmutablePair(url.getFirst(), "GET"),
+                Objects.requireNonNullElseGet(builder, Headers.Builder::new).set("Range", String.format("bytes=%d-%d", from, end - 1)).build(),
+                null, 0, len), len);
+    }
 }

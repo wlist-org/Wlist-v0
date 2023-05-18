@@ -93,10 +93,10 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @param path Target path.
      * @param size File size.
      * @param tag File md5.
-     * @return Null means invalid filename. Second Consumer should return the information of new file. But null means failure.
+     * @return Null means invalid filename. Second Consumer should return the information of new file, but null means failure.
      * @throws Exception Something went wrong.
      */
-    Triad.@Nullable ImmutableTriad<@NotNull List<Pair.ImmutablePair<@NotNull Long, @NotNull ConsumerE<@NotNull ByteBuf>>>,
+    Triad.@Nullable ImmutableTriad<@NotNull List<Pair.ImmutablePair<@NotNull Integer, @NotNull ConsumerE<@NotNull ByteBuf>>>,
             @NotNull SupplierE<@Nullable FileInformation>, @NotNull RunnableE> upload(final @NotNull DrivePath path, final long size, final @NotNull String tag) throws Exception;
 
     /**

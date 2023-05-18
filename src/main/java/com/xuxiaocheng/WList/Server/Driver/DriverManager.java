@@ -82,7 +82,7 @@ public final class DriverManager {
                 } catch (final Exception e) {
                     throw new IllegalParametersException("Failed to uninitiate after initiated.", Map.of("name", name, "type", type, "configuration", configuration, "exception", exception), e);
                 }
-            throw new IllegalParametersException("Failed to login.", Map.of("name", name, "type", type, "configuration", configuration), exception);
+            throw new IllegalParametersException("Failed to initiate.", Map.of("name", name, "type", type, "configuration", configuration), exception);
         }
         try {
             driver.buildCache();

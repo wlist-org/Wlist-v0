@@ -166,13 +166,24 @@ public class WListServer {
             ServerHandler.doInactive(id);
         }
 
+        protected record ChannelProxy(@NotNull Channel channel) implements InvocationHandler {
+            private static final Class<?>[] proxy = new Class[] {Channel.class};
+
+            @Override
+            public Object invoke(final @NotNull Object proxy, final @NotNull Method method, final Object @NotNull [] args) throws IllegalAccessException, java.lang.reflect.InvocationTargetException {
+                if (method.getName().contains("write") && args.length > 0 && args[0] instanceof ByteBuf msg)
+                    WListServer.logger.log(HLogLevel.VERBOSE, "Write: ", this.channel.id().asLongText(), " len: ", msg.readableBytes(), " cipher: ", msg.getByte(msg.readerIndex()), " (method: ", method.getName(), ')');
+                return method.invoke(this.channel, args);
+            }
+        }
+
         @Override
         protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) {
             final Channel channel = WList.DebugMode ?
                     (Channel) Proxy.newProxyInstance(ctx.channel().getClass().getClassLoader(),
-                            ctx.channel().getClass().getInterfaces(), new ChannelProxy(ctx.channel()))
+                            ChannelProxy.proxy, new ChannelProxy(ctx.channel()))
                     : ctx.channel();
-            WListServer.logger.log(HLogLevel.VERBOSE, "Read: ", channel.id().asLongText(), " len: ", msg.readableBytes());
+            WListServer.logger.log(HLogLevel.VERBOSE, "Read: ", channel.id().asLongText(), " len: ", msg.readableBytes(), " cipher: ", msg.readByte());
             try {
                 final Operation.Type type = Operation.valueOfType(ByteBufIOUtil.readUTF(msg));
                 WListServer.logger.log(HLogLevel.DEBUG, "Operate: ", channel.id().asLongText(), " type: ", type, " user: ", (Supplier<String>) () -> {
@@ -181,7 +192,7 @@ public class WListServer {
                     try {
                         user = ByteBufIOUtil.readUTF(msg);
                     } catch (final IOException ignore) {
-                        return "error";
+                        return "error(IOException)";
                     } finally {
                         msg.resetReaderIndex();
                     }
@@ -210,7 +221,9 @@ public class WListServer {
                     case RequestDownloadFile -> ServerFileHandler.doRequestDownloadFile(msg, channel);
                     case DownloadFile -> ServerFileHandler.doDownloadFile(msg, channel);
                     case CancelDownloadFile -> ServerFileHandler.doCancelDownloadFile(msg, channel);
-//                    case RequestUploadFile -> ServerFileHandler.doRequestUploadFile(msg, channel);
+                    case RequestUploadFile -> ServerFileHandler.doRequestUploadFile(msg, channel);
+                    case UploadFile -> ServerFileHandler.doUploadFile(msg, channel);
+                    // TODO
                     default -> ServerHandler.writeMessage(channel, Operation.State.Unsupported, "TODO: Unsupported.");
                 }
                 if (msg.readableBytes() != 0)
@@ -227,15 +240,6 @@ public class WListServer {
         public void exceptionCaught(final @NotNull ChannelHandlerContext ctx, final Throwable cause) {
             WListServer.logger.log(HLogLevel.WARN, "Exception: ", ctx.channel().id().asLongText(), cause);
             ServerHandler.doException(ctx.channel(), null);
-        }
-    }
-
-    protected record ChannelProxy(@NotNull Channel channel) implements InvocationHandler {
-        @Override
-        public Object invoke(final @NotNull Object proxy, final @NotNull Method method, final Object @NotNull [] args) throws IllegalAccessException, java.lang.reflect.InvocationTargetException {
-            if (method.getName().contains("write") && args.length > 0 && args[0] instanceof ByteBuf msg)
-                WListServer.logger.log(HLogLevel.VERBOSE, "Write: ", this.channel.id().asLongText(), " len: ", msg.readableBytes(), " cipher: ", msg.getByte(msg.readerIndex()), " (method: ", method.getName(), ')');
-            return method.invoke(this.channel, args);
         }
     }
 }

@@ -8,6 +8,7 @@ import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverSqlHelper;
+import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import com.xuxiaocheng.WList.Driver.Utils.DrivePath;
@@ -68,7 +69,7 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
         final Pair.ImmutablePair<String, Long> url = DriverManager_123pan.getDownloadUrl(this.configuration, path, true, null, WListServer.IOExecutors);
         if (url == null)
             return null;
-        return DriverManager_123pan.getDownloadStream(url, from, to);
+        return DriverUtil.getDownloadStreamByRangeHeader(url, from, to, null);
     }
 
     @Override
@@ -91,7 +92,7 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
     }
 
     @Override
-    public Triad.@Nullable ImmutableTriad<@NotNull List<Pair.ImmutablePair<@NotNull Long, @NotNull ConsumerE<@NotNull ByteBuf>>>,
+    public Triad.@Nullable ImmutableTriad<@NotNull List<Pair.ImmutablePair<@NotNull Integer, @NotNull ConsumerE<@NotNull ByteBuf>>>,
             @NotNull SupplierE<@Nullable FileInformation>, @NotNull RunnableE> upload(final @NotNull DrivePath path, final long size, final @NotNull String tag) throws IllegalParametersException, IOException, SQLException {
         if (this.mkdirs(path.getParent()) == null)
             return null;
@@ -109,7 +110,7 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
         final FileInformation info = this.info(source);
         if (info == null)
             return null;
-        final Triad.ImmutableTriad<List<Pair.ImmutablePair<Long, ConsumerE<ByteBuf>>>, SupplierE<FileInformation>, RunnableE> methods =
+        final Triad.ImmutableTriad<List<Pair.ImmutablePair<Integer, ConsumerE<ByteBuf>>>, SupplierE<FileInformation>, RunnableE> methods =
                 DriverManager_123pan.getUploadMethods(this.configuration, target, info.tag(), info.size(), null, WListServer.IOExecutors);
         if (methods == null)
             return null;

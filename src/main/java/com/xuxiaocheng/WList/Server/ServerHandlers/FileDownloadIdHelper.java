@@ -48,10 +48,7 @@ final class FileDownloadIdHelper {
         final DownloaderData data = FileDownloadIdHelper.buffers.get(id);
         if (data == null || !data.username.equals(username))
             return null;
-        final Pair.ImmutablePair<Integer, ByteBuf> buf = data.get();
-        if (buf == null)
-            data.close();
-        return buf;
+        return data.get();
     }
 
     private static class DownloaderData implements Closeable {

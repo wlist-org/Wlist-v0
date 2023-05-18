@@ -35,6 +35,8 @@ public final class Operation {
         DownloadFile,
         CancelDownloadFile,
         RequestUploadFile,
+        UploadFile,
+        CancelUploadFile,
         CopyFile,
         MoveFile,
     }

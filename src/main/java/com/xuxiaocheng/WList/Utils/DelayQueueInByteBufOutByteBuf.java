@@ -156,6 +156,12 @@ public class DelayQueueInByteBufOutByteBuf implements Closeable {
         }
     }
 
+    public int readableBytes() {
+        synchronized (this.buffers) {
+            return this.buffers.readableBytes();
+        }
+    }
+
     @Override
     public @NotNull String toString() {
         return "DelayQueueInByteBufOutByteBuf{" +

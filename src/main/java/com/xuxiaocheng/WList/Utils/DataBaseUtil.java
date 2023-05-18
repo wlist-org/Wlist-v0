@@ -82,7 +82,7 @@ public class DataBaseUtil {
             this.createdSize.incrementAndGet();
         }
         return (Connection) Proxy.newProxyInstance(connection.getClass().getClassLoader(),
-                connection.getClass().getInterfaces(), new PooledConnectionProxy(connection, this));
+                PooledConnectionProxy.proxy, new PooledConnectionProxy(connection, this));
     }
 
     public @NotNull Connection getConnection() throws SQLException {
@@ -147,6 +147,8 @@ public class DataBaseUtil {
     }
 
     protected record PooledConnectionProxy(@NotNull Connection connection, @NotNull DataBaseUtil util) implements InvocationHandler {
+        private static final Class<?>[] proxy = new Class[] {Connection.class};
+
         @Override
         public @Nullable Object invoke(final @NotNull Object proxy, final @NotNull Method method, final Object @NotNull [] args) throws IllegalAccessException, InvocationTargetException, SQLException {
             if (!"close".equals(method.getName()))

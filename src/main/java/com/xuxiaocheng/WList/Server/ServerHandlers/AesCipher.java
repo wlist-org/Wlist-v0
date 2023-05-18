@@ -92,7 +92,7 @@ public class AesCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
 
     @Override
     protected void decode(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg, final @NotNull List<Object> out) throws IOException {
-        final byte flags = ByteBufIOUtil.readByte(msg);
+        final byte flags = ByteBufIOUtil.readByte(msg); // FIXME: no exception thrown.
         final int length = ByteBufIOUtil.readVariable2LenInt(msg);
         if (length > this.maxSize)
             throw new IllegalArgumentException("Too long source msg. len: " + length);

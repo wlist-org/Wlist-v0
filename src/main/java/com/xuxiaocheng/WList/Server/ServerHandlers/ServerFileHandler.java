@@ -3,23 +3,26 @@ package com.xuxiaocheng.WList.Server.ServerHandlers;
 import com.alibaba.fastjson2.JSON;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
-import com.xuxiaocheng.WList.Driver.Utils.DrivePath;
-import com.xuxiaocheng.WList.Driver.DriverInterface;
+import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
+import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
+import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
-import com.xuxiaocheng.WList.Driver.Utils.FileInformation;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
+import com.xuxiaocheng.WList.Driver.Utils.DrivePath;
+import com.xuxiaocheng.WList.Driver.Utils.FileInformation;
+import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
-import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.Driver.RootDriver;
+import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.Operation;
+import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.Channel;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -122,17 +125,13 @@ public final class ServerFileHandler {
     }
 
     public static void doRenameFile(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
-        Pair.@Nullable ImmutablePair<@NotNull DriverInterface<?>, @NotNull DrivePath> path = null;
-        if (ServerUserHandler.checkToken(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileUpload, Operation.Permission.FileDelete) != null) {
-            final DrivePath path1 = new DrivePath(ByteBufIOUtil.readUTF(buf));
-            path = Pair.ImmutablePair.makeImmutablePair(RootDriver.getInstance(), path1);
-        }
-        if (path == null)
+        if (ServerUserHandler.checkToken(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileUpload, Operation.Permission.FileDelete) == null)
             return;
+        final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buf));
         final String name = ByteBufIOUtil.readUTF(buf);
         final FileInformation file;
         try {
-            file = path.getFirst().rename(path.getSecond(), name);
+            file = RootDriver.getInstance().rename(path, name);
         } catch (final UnsupportedOperationException exception) {
             ServerHandler.writeMessage(channel, Operation.State.Unsupported, exception.getMessage());
             return;
@@ -175,6 +174,7 @@ public final class ServerFileHandler {
         ByteBufIOUtil.writeByte(buffer, ServerHandler.defaultCipher);
         ByteBufIOUtil.writeUTF(buffer, Operation.State.Success.name());
         ByteBufIOUtil.writeVariableLenLong(buffer, url.getSecond().longValue());
+        ByteBufIOUtil.writeVariableLenInt(buffer, WListServer.FileTransferBufferSize);
         ByteBufIOUtil.writeUTF(buffer, id);
         channel.writeAndFlush(buffer);
     }
@@ -194,7 +194,6 @@ public final class ServerFileHandler {
             ByteBufIOUtil.writeByte(buffer, AesCipher.defaultDoGZip);
             ByteBufIOUtil.writeUTF(buffer, Operation.State.Success.name());
             ByteBufIOUtil.writeVariableLenInt(buffer, file.getFirst().intValue());
-            ByteBufIOUtil.writeVariableLenInt(buffer, file.getSecond().readableBytes());
             final CompositeByteBuf composite = ByteBufAllocator.DEFAULT.compositeBuffer(2);
             composite.addComponents(true, buffer, file.getSecond());
             channel.writeAndFlush(composite);
@@ -229,11 +228,57 @@ public final class ServerFileHandler {
             ServerHandler.writeMessage(channel, Operation.State.DataError, "Tag");
             return;
         }
-        final String id = FileUploadIdHelper.generateId(size, tag, user.getA());
+        final Triad.ImmutableTriad<List<Pair.ImmutablePair<Integer, ConsumerE<ByteBuf>>>, SupplierE<FileInformation>, RunnableE> methods;
+        try {
+            methods = RootDriver.getInstance().upload(path, size, tag);
+        } catch (final UnsupportedOperationException exception) {
+            ServerHandler.writeMessage(channel, Operation.State.Unsupported, exception.getMessage());
+            return;
+        } catch (final Exception exception) {
+            throw new ServerException(exception);
+        }
+        if (methods == null) {
+            ServerHandler.writeMessage(channel, Operation.State.DataError, "File");
+            return;
+        }
+        int all = 0;
+        for (final Pair.ImmutablePair<Integer, ConsumerE<ByteBuf>> p: methods.getA())
+            all += p.getFirst().intValue();
+        if (all != size)
+            throw new ServerException(new IllegalParametersException("Assert error. All size in {methods.first(list)} should equal {size}.",
+                    Map.of("all", all, "size", size, "tag", tag, "username", user.getA())));
+        final String id = FileUploadIdHelper.generateId(methods, tag, user.getA());
         final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
         ByteBufIOUtil.writeByte(buffer, ServerHandler.defaultCipher);
         ByteBufIOUtil.writeUTF(buffer, Operation.State.Success.name());
         ByteBufIOUtil.writeUTF(buffer, id);
         channel.writeAndFlush(buffer);
     }
+
+    public static void doUploadFile(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
+        final Triad.ImmutableTriad<String, String, SortedSet<Operation.Permission>> user = ServerUserHandler.checkToken(buf, channel, Operation.Permission.FileUpload);
+        if (user == null)
+            return;
+        final String id = ByteBufIOUtil.readUTF(buf);
+        final int chunk = ByteBufIOUtil.readVariableLenInt(buf);
+        try {
+            final Pair.ImmutablePair<Boolean, SupplierE<FileInformation>> pair = FileUploadIdHelper.upload(id, user.getA(), buf, chunk);
+            if (!pair.getFirst().booleanValue()) {
+                ServerHandler.writeMessage(channel, Operation.State.DataError, null);
+                return;
+            }
+            buf.retain();
+            if (pair.getSecond() != null) {
+                final FileInformation info = pair.getSecond().get();
+                if (info != null)
+                    RootDriver.getInstance().completeUpload(info);
+            }
+            ServerHandler.writeMessage(channel, Operation.State.Success, null);
+        } catch (final ServerException exception) {
+            throw exception;
+        } catch (final Exception exception) {
+            throw new ServerException(exception);
+        }
+    }
+
 }
