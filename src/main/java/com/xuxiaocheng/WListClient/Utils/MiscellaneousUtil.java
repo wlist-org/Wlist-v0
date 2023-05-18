@@ -48,8 +48,9 @@ public final class MiscellaneousUtil {
     }
 
     public static void generateRandomByteArray(final @NotNull BigInteger seed, final byte @NotNull [] bytes) {
-        new Random(seed.mod(BigInteger.valueOf(Long.MAX_VALUE)).longValue()).nextBytes(bytes);
-        final RandomGenerator random = new Random(seed.longValue() ^ seed.getLowestSetBit() ^ seed.bitLength());
+        final BigInteger[] div = seed.divideAndRemainder(BigInteger.valueOf(Long.MAX_VALUE<<1));
+        new Random(div[0].longValue() ^ Integer.reverseBytes(div[1].intValue()) ^ div[0].bitLength()).nextBytes(bytes);
+        final RandomGenerator random = new Random(div[1].longValue() ^ seed.getLowestSetBit() ^ Integer.reverseBytes(seed.bitLength()));
         for (int i = 0; i < bytes.length; ++i)
             bytes[i] = (byte) (bytes[i] ^ (byte) random.nextInt(Byte.MIN_VALUE, Byte.MAX_VALUE));
     }

@@ -15,11 +15,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 public final class ByteBufIOUtil {
+    public static final byte[] EmptyByteArray = new byte[0];
+
     private ByteBufIOUtil() {
         super();
     }
-
-    public static final byte[] EmptyByteArray = new byte[0];
 
     public static byte readByte(final @NotNull ByteBuf buffer) throws IOException {
         try {
@@ -283,7 +283,6 @@ public final class ByteBufIOUtil {
         }
     }
 
-
     public static void writeByte(final @NotNull ByteBuf buffer, final byte b) throws IOException {
         try {
             buffer.writeByte(b);
@@ -482,5 +481,15 @@ public final class ByteBufIOUtil {
         } catch (final IndexOutOfBoundsException exception) {
             throw new IOException(exception);
         }
+    }
+
+    public static byte[] allToByteArray(final @NotNull ByteBuf buffer) {
+        if (buffer.hasArray())
+            return buffer.array().clone();
+        final int index = buffer.readerIndex();
+        final byte[] bytes = new byte[buffer.readableBytes()];
+        buffer.readBytes(bytes);
+        buffer.readerIndex(index);
+        return bytes;
     }
 }
