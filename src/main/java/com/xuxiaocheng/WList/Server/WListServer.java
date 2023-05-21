@@ -225,9 +225,9 @@ public class WListServer {
                     case RequestUploadFile -> ServerFileHandler.doRequestUploadFile(msg, channel);
                     case UploadFile -> ServerFileHandler.doUploadFile(msg, channel);
                     case CancelUploadFile -> ServerFileHandler.doCancelUploadFile(msg, channel);
-                    case CopyFile -> ServerFileHandler
-                    // TODO
-                    default -> ServerHandler.writeMessage(channel, Operation.State.Unsupported, "TODO: Unsupported.");
+                    case CopyFile -> ServerFileHandler.doCopyFile(msg, channel);
+                    case MoveFile -> ServerFileHandler.doMoveFile(msg, channel);
+                    default -> ServerHandler.writeMessage(channel, Operation.State.Unsupported, "Unsupported.");
                 }
                 if (type != Operation.Type.UploadFile && msg.readableBytes() != 0)
                     WListServer.logger.log(HLogLevel.MISTAKE, "Unexpected discarded bytes: ", channel.id().asLongText(), " len: ", msg.readableBytes());

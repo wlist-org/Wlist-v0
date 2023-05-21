@@ -322,10 +322,30 @@ public final class ServerFileHandler {
             throw new ServerException(exception);
         }
         if (file == null) {
-            ServerHandler.writeMessage(channel, Operation.State.DataError, "Name");
+            ServerHandler.writeMessage(channel, Operation.State.DataError, null);
             return;
         }
         ServerHandler.writeMessage(channel, Operation.State.Success, JSON.toJSONString(ServerFileHandler.getVisibleInfo(file)));
     }
 
+    public static void doMoveFile(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
+        if (ServerUserHandler.checkToken(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileUpload, Operation.Permission.FileDownload, Operation.Permission.FileDelete) == null)
+            return;
+        final DrivePath sourceFile = new DrivePath(ByteBufIOUtil.readUTF(buf));
+        final DrivePath targetDirectory = new DrivePath(ByteBufIOUtil.readUTF(buf));
+        final FileInformation file;
+        try {
+            file = RootDriver.getInstance().move(sourceFile, targetDirectory);
+        } catch (final UnsupportedOperationException exception) {
+            ServerHandler.writeMessage(channel, Operation.State.Unsupported, exception.getMessage());
+            return;
+        } catch (final Exception exception) {
+            throw new ServerException(exception);
+        }
+        if (file == null) {
+            ServerHandler.writeMessage(channel, Operation.State.DataError, null);
+            return;
+        }
+        ServerHandler.writeMessage(channel, Operation.State.Success, JSON.toJSONString(ServerFileHandler.getVisibleInfo(file)));
+    }
 }

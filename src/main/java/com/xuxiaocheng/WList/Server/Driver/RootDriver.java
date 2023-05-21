@@ -151,8 +151,12 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
             for (final Pair.ImmutablePair<@NotNull Integer, @NotNull ConsumerE<@NotNull ByteBuf>> pair : methods.getA()) {
                 final int length = pair.getFirst().intValue();
                 final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(length, length);
-                buffer.writeBytes(url.getFirst(), length);
-                pair.getSecond().accept(buffer);
+                try {
+                    buffer.writeBytes(url.getFirst(), length);
+                    pair.getSecond().accept(buffer);
+                } finally {
+                    buffer.release();
+                }
             }
             return methods.getB().get();
         } finally {

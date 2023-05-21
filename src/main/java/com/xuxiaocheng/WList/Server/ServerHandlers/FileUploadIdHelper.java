@@ -108,8 +108,6 @@ final class FileUploadIdHelper {
             FileUploadIdHelper.buffers.remove(this.id, this);
             try {
                 this.methods.getC().run();
-            } catch (final Exception exception) {
-                throw new IOException(exception);
             } finally {
                 this.expireTime = LocalDateTime.now();
                 this.bufferQueue.close();
@@ -146,6 +144,8 @@ final class FileUploadIdHelper {
                     pair.getSecond().resetReaderIndex();
                 }
                 this.methods.getA().get(pair.getFirst().intValue()).getSecond().accept(pair.getSecond());
+                pair.getSecond().release();
+                this.bufferQueue.discardSomeReadBytes();
                 if (this.indexer.get() < this.methods.getA().size() - 1)
                     return null;
                 this.finished.set(true);
