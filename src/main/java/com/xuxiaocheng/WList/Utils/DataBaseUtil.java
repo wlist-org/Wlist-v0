@@ -150,7 +150,7 @@ public class DataBaseUtil {
         private static final Class<?>[] proxy = new Class[] {Connection.class};
 
         @Override
-        public @Nullable Object invoke(final @NotNull Object proxy, final @NotNull Method method, final Object @NotNull [] args) throws IllegalAccessException, InvocationTargetException, SQLException {
+        public @Nullable Object invoke(final @NotNull Object proxy, final @NotNull Method method, final Object @Nullable [] args) throws IllegalAccessException, InvocationTargetException, SQLException {
             if (!"close".equals(method.getName()))
                 return method.invoke(this.connection, args);
             this.util.recycleConnection(this.connection);
