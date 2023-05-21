@@ -3,7 +3,6 @@ package com.xuxiaocheng.WList.Server.ServerHandlers;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
-import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -42,7 +41,7 @@ final class FileUploadIdHelper {
     private static final @NotNull Map<@NotNull String, @NotNull UploaderData> buffers = new ConcurrentHashMap<>();
 
     public static @NotNull String generateId(final Triad.@NotNull ImmutableTriad<? extends @NotNull List<Pair.ImmutablePair<@NotNull Integer, @NotNull ConsumerE<@NotNull ByteBuf>>>,
-            ? extends @NotNull SupplierE<@Nullable FileInformation>, ? extends @NotNull RunnableE> methods, final @NotNull String tag, final @NotNull String username) {
+            ? extends @NotNull SupplierE<@Nullable FileInformation>, ? extends @NotNull Runnable> methods, final @NotNull String tag, final @NotNull String username) {
         //noinspection IOResourceOpenedButNotSafelyClosed , resource // In cleaner.
         return new UploaderData(methods, tag, username).id;
     }
@@ -67,7 +66,7 @@ final class FileUploadIdHelper {
     private static class UploaderData implements Closeable {
         private final @NotNull String username;
         private final Triad.@NotNull ImmutableTriad<? extends @NotNull List<Pair.ImmutablePair<@NotNull Integer, @NotNull ConsumerE<@NotNull ByteBuf>>>,
-                ? extends @NotNull SupplierE<@Nullable FileInformation>, ? extends @NotNull RunnableE> methods;
+                ? extends @NotNull SupplierE<@Nullable FileInformation>, ? extends @NotNull Runnable> methods;
         private final @NotNull AtomicInteger indexer = new AtomicInteger(0);
         private final @NotNull DelayQueueInByteBufOutByteBuf bufferQueue = new DelayQueueInByteBufOutByteBuf();
         private final @NotNull String id;
@@ -84,7 +83,7 @@ final class FileUploadIdHelper {
         }
 
         private UploaderData(final Triad.@NotNull ImmutableTriad<? extends @NotNull List<Pair.ImmutablePair<@NotNull Integer, @NotNull ConsumerE<@NotNull ByteBuf>>>,
-                ? extends @NotNull SupplierE<@Nullable FileInformation>, ? extends @NotNull RunnableE> methods, final @NotNull String tag, final @NotNull String username) {
+                ? extends @NotNull SupplierE<@Nullable FileInformation>, ? extends @NotNull Runnable> methods, final @NotNull String tag, final @NotNull String username) {
             super();
             this.username = username;
             this.methods = methods;
@@ -151,7 +150,7 @@ final class FileUploadIdHelper {
                     return null;
                 this.finished.set(true);
                 synchronized (this.getLock) {
-                    while (this.getLock.get() > 0)
+                    while (this.getLock.get() > 1)
                         this.getLock.wait();
                 }
                 return this.finish();

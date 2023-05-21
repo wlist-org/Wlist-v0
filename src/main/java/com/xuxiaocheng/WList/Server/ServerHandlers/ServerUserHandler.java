@@ -19,7 +19,7 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedSet;
@@ -133,7 +133,7 @@ public final class ServerUserHandler {
         }
         ServerHandler.writeMessage(channel, Operation.State.Success, JSON.toJSONString(list.stream()
                 .map(u -> {
-                    final Map<String, Object> map = new HashMap<>(2);
+                    final Map<String, Object> map = new LinkedHashMap<>(2);
                     map.put("name", u.getA());
                     map.put("permissions", u.getB());
                     return map;

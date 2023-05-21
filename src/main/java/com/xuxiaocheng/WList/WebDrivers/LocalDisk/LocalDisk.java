@@ -3,7 +3,6 @@ package com.xuxiaocheng.WList.WebDrivers.LocalDisk;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
-import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
@@ -77,7 +76,7 @@ public final class LocalDisk implements DriverInterface<LocalDiskConfiguration> 
     }
 
     @Override
-    public Triad.@Nullable ImmutableTriad<@NotNull List<Pair.ImmutablePair<@NotNull Integer, @NotNull ConsumerE<@NotNull ByteBuf>>>, @NotNull SupplierE<@Nullable FileInformation>, @NotNull RunnableE> upload(@NotNull final DrivePath path, final long size, @NotNull final String tag) throws Exception {
+    public Triad.@Nullable ImmutableTriad<@NotNull List<Pair.ImmutablePair<@NotNull Integer, @NotNull ConsumerE<@NotNull ByteBuf>>>, @NotNull SupplierE<@Nullable FileInformation>, @NotNull Runnable> upload(@NotNull final DrivePath path, final long size, @NotNull final String tag) throws Exception {
         return null;
     }
 

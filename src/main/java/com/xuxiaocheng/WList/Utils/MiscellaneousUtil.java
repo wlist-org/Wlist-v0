@@ -127,4 +127,8 @@ public final class MiscellaneousUtil {
         }
         return k;
     }
+
+    public static @NotNull String bin(final byte b) {
+        return String.format("0b%8s", Integer.toString(b < 0 ? b + 0xff : b, 2)).replace(' ', '0');
+    }
 }

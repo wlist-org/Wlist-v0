@@ -4,7 +4,6 @@ import com.alibaba.fastjson2.JSON;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
-import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
@@ -228,7 +227,7 @@ public final class ServerFileHandler {
             ServerHandler.writeMessage(channel, Operation.State.DataError, "Tag");
             return;
         }
-        final Triad.ImmutableTriad<List<Pair.ImmutablePair<Integer, ConsumerE<ByteBuf>>>, SupplierE<FileInformation>, RunnableE> methods;
+        final Triad.ImmutableTriad<List<Pair.ImmutablePair<Integer, ConsumerE<ByteBuf>>>, SupplierE<FileInformation>, Runnable> methods;
         try {
             methods = RootDriver.getInstance().upload(path, size, tag);
         } catch (final UnsupportedOperationException exception) {
@@ -241,17 +240,33 @@ public final class ServerFileHandler {
             ServerHandler.writeMessage(channel, Operation.State.DataError, "File");
             return;
         }
-        int all = 0;
-        for (final Pair.ImmutablePair<Integer, ConsumerE<ByteBuf>> p: methods.getA())
-            all += p.getFirst().intValue();
-        if (all != size)
-            throw new ServerException(new IllegalParametersException("Assert error. All size in {methods.first(list)} should equal {size}.",
-                    Map.of("all", all, "size", size, "tag", tag, "username", user.getA())));
-        final String id = FileUploadIdHelper.generateId(methods, tag, user.getA());
+        final boolean reuse = methods.getA().isEmpty();
+        if (reuse) {
+            try {
+                final FileInformation info;
+                info = methods.getB().get();
+                if (info != null)
+                    RootDriver.getInstance().completeUpload(info);
+            } catch (final Exception exception) {
+                throw new ServerException(exception);
+            } finally {
+                methods.getC().run();
+            }
+        } else { // assert
+            int all = 0;
+            for (final Pair.ImmutablePair<Integer, ConsumerE<ByteBuf>> p : methods.getA())
+                all += p.getFirst().intValue();
+            if (all != size)
+                throw new ServerException(new IllegalParametersException("Assert error. All size in {methods.first(list)} should equal {size}.",
+                        Map.of("all", all, "size", size, "tag", tag, "username", user.getA())));
+        }
+        final String id = reuse ? null : FileUploadIdHelper.generateId(methods, tag, user.getA());
         final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
         ByteBufIOUtil.writeByte(buffer, ServerHandler.defaultCipher);
         ByteBufIOUtil.writeUTF(buffer, Operation.State.Success.name());
-        ByteBufIOUtil.writeUTF(buffer, id);
+        ByteBufIOUtil.writeBoolean(buffer, reuse);
+        if (!reuse)
+            ByteBufIOUtil.writeUTF(buffer, id);
         channel.writeAndFlush(buffer);
     }
 
@@ -279,6 +294,38 @@ public final class ServerFileHandler {
         } catch (final Exception exception) {
             throw new ServerException(exception);
         }
+    }
+
+    public static void doCancelUploadFile(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
+        final Triad.ImmutableTriad<String, String, SortedSet<Operation.Permission>> user = ServerUserHandler.checkToken(buf, channel, Operation.Permission.FileUpload);
+        if (user == null)
+            return;
+        final String id = ByteBufIOUtil.readUTF(buf);
+        if (FileUploadIdHelper.cancel(id, user.getA()))
+            ServerHandler.writeMessage(channel, Operation.State.Success, null);
+        else
+            ServerHandler.writeMessage(channel, Operation.State.DataError, null);
+    }
+
+    public static void doCopyFile(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
+        if (ServerUserHandler.checkToken(buf, channel, Operation.Permission.FilesList, Operation.Permission.FileUpload, Operation.Permission.FileDownload) == null)
+            return;
+        final DrivePath source = new DrivePath(ByteBufIOUtil.readUTF(buf));
+        final DrivePath target = new DrivePath(ByteBufIOUtil.readUTF(buf));
+        final FileInformation file;
+        try {
+            file = RootDriver.getInstance().copy(source, target);
+        } catch (final UnsupportedOperationException exception) {
+            ServerHandler.writeMessage(channel, Operation.State.Unsupported, exception.getMessage());
+            return;
+        } catch (final Exception exception) {
+            throw new ServerException(exception);
+        }
+        if (file == null) {
+            ServerHandler.writeMessage(channel, Operation.State.DataError, "Name");
+            return;
+        }
+        ServerHandler.writeMessage(channel, Operation.State.Success, JSON.toJSONString(ServerFileHandler.getVisibleInfo(file)));
     }
 
 }

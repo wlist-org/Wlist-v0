@@ -11,6 +11,7 @@ import com.xuxiaocheng.WList.Server.ServerHandlers.ServerHandler;
 import com.xuxiaocheng.WList.Server.ServerHandlers.ServerStateHandler;
 import com.xuxiaocheng.WList.Server.ServerHandlers.ServerUserHandler;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
+import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.WList;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
@@ -172,7 +173,7 @@ public class WListServer {
             @Override
             public Object invoke(final @NotNull Object proxy, final @NotNull Method method, final Object @NotNull [] args) throws IllegalAccessException, java.lang.reflect.InvocationTargetException {
                 if (method.getName().contains("write") && args.length > 0 && args[0] instanceof ByteBuf msg)
-                    WListServer.logger.log(HLogLevel.VERBOSE, "Write: ", this.channel.id().asLongText(), " len: ", msg.readableBytes(), " cipher: ", msg.getByte(msg.readerIndex()), " (method: ", method.getName(), ')');
+                    WListServer.logger.log(HLogLevel.VERBOSE, "Write: ", this.channel.id().asLongText(), " len: ", msg.readableBytes(), " cipher: ", MiscellaneousUtil.bin(msg.getByte(msg.readerIndex())), " (method: ", method.getName(), ')');
                 return method.invoke(this.channel, args);
             }
         }
@@ -183,7 +184,7 @@ public class WListServer {
                     (Channel) Proxy.newProxyInstance(ctx.channel().getClass().getClassLoader(),
                             ChannelProxy.proxy, new ChannelProxy(ctx.channel()))
                     : ctx.channel();
-            WListServer.logger.log(HLogLevel.VERBOSE, "Read: ", channel.id().asLongText(), " len: ", msg.readableBytes(), " cipher: ", msg.readByte());
+            WListServer.logger.log(HLogLevel.VERBOSE, "Read: ", channel.id().asLongText(), " len: ", msg.readableBytes(), " cipher: ", MiscellaneousUtil.bin(msg.readByte()));
             try {
                 final Operation.Type type = Operation.valueOfType(ByteBufIOUtil.readUTF(msg));
                 WListServer.logger.log(HLogLevel.DEBUG, "Operate: ", channel.id().asLongText(), " type: ", type, " user: ", (Supplier<String>) () -> {
@@ -213,7 +214,7 @@ public class WListServer {
                     case DeleteUser -> ServerUserHandler.doDeleteUser(msg, channel);
                     case AddPermission -> ServerUserHandler.doChangePermission(msg, channel, true);
                     case ReducePermission -> ServerUserHandler.doChangePermission(msg, channel, false);
-                    // TODO drivers operate. (dynamically add file)
+                    // TODO drivers operate. (dynamically modify config file)
                     case ListFiles -> ServerFileHandler.doListFiles(msg, channel);
                     case MakeDirectories -> ServerFileHandler.doMakeDirectories(msg, channel);
                     case DeleteFile -> ServerFileHandler.doDeleteFile(msg, channel);
@@ -223,10 +224,12 @@ public class WListServer {
                     case CancelDownloadFile -> ServerFileHandler.doCancelDownloadFile(msg, channel);
                     case RequestUploadFile -> ServerFileHandler.doRequestUploadFile(msg, channel);
                     case UploadFile -> ServerFileHandler.doUploadFile(msg, channel);
+                    case CancelUploadFile -> ServerFileHandler.doCancelUploadFile(msg, channel);
+                    case CopyFile -> ServerFileHandler
                     // TODO
                     default -> ServerHandler.writeMessage(channel, Operation.State.Unsupported, "TODO: Unsupported.");
                 }
-                if (msg.readableBytes() != 0)
+                if (type != Operation.Type.UploadFile && msg.readableBytes() != 0)
                     WListServer.logger.log(HLogLevel.MISTAKE, "Unexpected discarded bytes: ", channel.id().asLongText(), " len: ", msg.readableBytes());
             } catch (final IOException | JSONException exception) {
                 ServerHandler.doException(channel, exception.getMessage());

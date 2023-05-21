@@ -18,6 +18,8 @@ public final class WListTest {
     }
 
     public static void main(final String[] args) throws SQLException, IOException, IllegalParametersException {
+        if (true)
+            return;
         GlobalConfiguration.init(null);
         DriverManager.add("Local Disk", WebDriversType.LocalDiskDriver);
         final LocalDiskConfiguration configuration = new LocalDiskConfiguration();

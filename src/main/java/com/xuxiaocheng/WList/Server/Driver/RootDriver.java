@@ -3,7 +3,6 @@ package com.xuxiaocheng.WList.Server.Driver;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
-import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.WList.Driver.DriverConfiguration;
@@ -14,6 +13,7 @@ import com.xuxiaocheng.WList.Driver.Utils.DrivePath;
 import com.xuxiaocheng.WList.Driver.Utils.FileInformation;
 import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -94,7 +94,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
 
     @Override
     public Triad.@Nullable ImmutableTriad<@NotNull List<Pair.ImmutablePair<@NotNull Integer, @NotNull ConsumerE<@NotNull ByteBuf>>>,
-            @NotNull SupplierE<@Nullable FileInformation>, @NotNull RunnableE> upload(final @NotNull DrivePath path, final long size, final @NotNull String tag) throws Exception {
+            @NotNull SupplierE<@Nullable FileInformation>, @NotNull Runnable> upload(final @NotNull DrivePath path, final long size, final @NotNull String tag) throws Exception {
         final String root = path.getRoot();
         final DriverInterface<?> real = DriverManager.get(root);
         if (real == null)
@@ -129,6 +129,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
         }
     }
 
+    @SuppressWarnings("OverlyBroadThrowsClause")
     @Override
     public @Nullable FileInformation copy(@NotNull final DrivePath source, @NotNull final DrivePath target) throws Exception {
         if (source.getRoot().equals(target.getRoot())) {
@@ -137,7 +138,27 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
                 return null;
             return real.copy(source.getRemovedRoot(), target.getRemovedRoot());
         }
-        return DriverInterface.super.copy(source, target);
+        final Pair.ImmutablePair<InputStream, Long> url = this.download(source, 0, Long.MAX_VALUE);
+        final FileInformation info = this.info(source);
+        if (url == null || info == null)
+            return null;
+        assert info.size() == url.getSecond().longValue();
+        final Triad.ImmutableTriad<List<Pair.ImmutablePair<Integer, ConsumerE<ByteBuf>>>,
+                SupplierE<FileInformation>, Runnable> methods = this.upload(target, info.size(), info.tag());
+        if (methods == null)
+            return null;
+        try {
+            for (final Pair.ImmutablePair<@NotNull Integer, @NotNull ConsumerE<@NotNull ByteBuf>> pair : methods.getA()) {
+                final int length = pair.getFirst().intValue();
+                final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(length, length);
+                buffer.writeBytes(url.getFirst(), length);
+                pair.getSecond().accept(buffer);
+            }
+            return methods.getB().get();
+        } finally {
+            methods.getC().run();
+            url.getFirst().close();
+        }
     }
 
     @Override

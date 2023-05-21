@@ -5,7 +5,6 @@ import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
-import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverSqlHelper;
@@ -284,7 +283,7 @@ public final class DriverManager_123pan {
         return obj;
     }
 
-    static Triad.@Nullable ImmutableTriad<@NotNull List<Pair.ImmutablePair<@NotNull Integer, @NotNull ConsumerE<@NotNull ByteBuf>>>, @NotNull SupplierE<@Nullable FileInformation>, @NotNull RunnableE> getUploadMethods(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @NotNull String md5, final long size, final @Nullable Connection _connection, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {
+    static Triad.@Nullable ImmutableTriad<@NotNull List<Pair.ImmutablePair<@NotNull Integer, @NotNull ConsumerE<@NotNull ByteBuf>>>, @NotNull SupplierE<@Nullable FileInformation>, @NotNull Runnable> getUploadMethods(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @NotNull String md5, final long size, final @Nullable Connection _connection, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {
         if (!DriverUtil.tagPredication.test(md5))
             throw new IllegalParametersException("Invalid etag (md5).", md5);
         final String newFileName = path.getName();
@@ -303,7 +302,10 @@ public final class DriverManager_123pan {
             final FileInformation info = FileInformation_123pan.create(parentPath, fileInfo);
             if (info == null)
                 throw new WrongResponseException("Abnormal data of 'requestUploadData'.", requestUploadData);
-            return Triad.ImmutableTriad.makeImmutableTriad(List.of(), () -> info, () -> DriverSqlHelper.insertFile(configuration.getLocalSide().getName(), info, _connection));
+            return Triad.ImmutableTriad.makeImmutableTriad(List.of(), () -> {
+                DriverSqlHelper.insertFile(configuration.getLocalSide().getName(), info, _connection);
+                return info;
+            }, () -> {});
         }
         final String bucket = requestUploadData.getString("Bucket");
         final String node = requestUploadData.getString("StorageNode");
