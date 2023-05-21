@@ -2,12 +2,9 @@ package com.xuxiaocheng.WListClient;
 
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
 import com.xuxiaocheng.WListClient.Server.DrivePath;
-import com.xuxiaocheng.WListClient.Server.Operation;
-import com.xuxiaocheng.WListClient.Utils.ByteBufIOUtil;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
+import com.xuxiaocheng.WListClient.Utils.MiscellaneousUtil;
+import io.netty.buffer.Unpooled;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.BufferedInputStream;
@@ -18,6 +15,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Random;
 import java.util.random.RandomGenerator;
@@ -67,7 +66,16 @@ public final class Main {
                 OperateHelper.changePassword(client, token, oldPassword, Main.password);
             }
             final String token = OperateHelper.login(client, "admin", Main.password);
-
+            {
+                final byte[] content = "%CS WList Tester".getBytes(StandardCharsets.UTF_8);
+                final Optional<String> id =
+                        OperateHelper.requestUploadFile(client, token, new DrivePath("/123pan/test.txt"),
+                                content.length, MiscellaneousUtil.getMd5(content));
+                Main.logger.log(HLogLevel.FINE, id);
+                if (id.isPresent()) {
+                    OperateHelper.uploadFile(client, token, id.get(), 0, Unpooled.wrappedBuffer(content));
+                }
+            }
             OperateHelper.closeServer(client, token);
         } finally {
             client.stop();

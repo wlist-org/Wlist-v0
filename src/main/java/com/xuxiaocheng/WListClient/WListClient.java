@@ -24,6 +24,8 @@ import org.jetbrains.annotations.Nullable;
 import java.net.SocketAddress;
 
 public class WListClient {
+    public static final int FileTransferBufferSize = 4 << 20;
+    public static final int MaxSizePerPacket = (64 << 10) + WListClient.FileTransferBufferSize;
     private static final @NotNull HLog logger = HLog.createInstance("ClientLogger",
             Main.DebugMode ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1,
             true);
@@ -45,9 +47,9 @@ public class WListClient {
             @Override
             protected void initChannel(final @NotNull SocketChannel ch) {
                 final ChannelPipeline pipeline = ch.pipeline();
-                pipeline.addLast("LengthDecoder", new LengthFieldBasedFrameDecoder(1 << 20, 0, 4, 0, 4));
+                pipeline.addLast("LengthDecoder", new LengthFieldBasedFrameDecoder(WListClient.MaxSizePerPacket, 0, 4, 0, 4));
                 pipeline.addLast("LengthEncoder", new LengthFieldPrepender(4));
-                pipeline.addLast("Cipher", new AesCipher(Main.key, Main.vector));
+                pipeline.addLast("Cipher", new AesCipher(Main.key, Main.vector, WListClient.MaxSizePerPacket));
                 pipeline.addLast("ClientHandler", new ClientChannelInboundHandler(WListClient.this));
             }
         });
@@ -91,7 +93,7 @@ public class WListClient {
         @Override
         protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) {
             WListClient.logger.log(HLogLevel.VERBOSE, "Read len: ", msg.readableBytes());
-            synchronized (this.client.receiveLock) {
+            synchronized (this.client.receiveLock) { // TODO support Broadcast
                 if (this.client.receive != null)
                     this.client.receive.release();
                 msg.retain();
