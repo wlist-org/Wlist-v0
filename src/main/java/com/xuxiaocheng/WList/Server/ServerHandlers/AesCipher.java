@@ -71,13 +71,13 @@ public class AesCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
         if (!aes && !gzip) {
             final ByteBuf prefix = ByteBufAllocator.DEFAULT.buffer();
             ByteBufIOUtil.writeByte(prefix, flags);
-            ByteBufIOUtil.writeVariable2LenInt(prefix, msg.readableBytes());
+            ByteBufIOUtil.writeVariableLenInt(prefix, msg.readableBytes());
             out.add(ByteBufAllocator.DEFAULT.compositeBuffer(2).addComponents(true, prefix, msg.retain()));
             return;
         }
         final ByteBuf buf = ByteBufAllocator.DEFAULT.buffer(msg.readableBytes() + 128);
         ByteBufIOUtil.writeByte(buf, flags);
-        ByteBufIOUtil.writeVariable2LenInt(buf, msg.readableBytes());
+        ByteBufIOUtil.writeVariableLenInt(buf, msg.readableBytes());
         InputStream is = new ByteBufInputStream(msg);
         if (aes)
             is = new CipherInputStream(is, this.encryptCipher);
@@ -92,8 +92,8 @@ public class AesCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
 
     @Override
     protected void decode(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg, final @NotNull List<Object> out) throws IOException {
-        final byte flags = ByteBufIOUtil.readByte(msg); // FIXME: no exception thrown.
-        final int length = ByteBufIOUtil.readVariable2LenInt(msg);
+        final byte flags = ByteBufIOUtil.readByte(msg);
+        final int length = ByteBufIOUtil.readVariableLenInt(msg);
         if (length > this.maxSize)
             throw new IllegalArgumentException("Too long source msg. len: " + length);
         final boolean aes = (flags & AesCipher.doAes) > 0;

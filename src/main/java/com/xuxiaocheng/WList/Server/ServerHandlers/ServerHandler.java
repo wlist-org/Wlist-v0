@@ -35,6 +35,8 @@ public final class ServerHandler {
             ByteBufIOUtil.writeUTF(buffer, state.name());
             if (message != null)
                 ByteBufIOUtil.writeUTF(buffer, message);
+            if (buffer.readableBytes() < 127) // Magic Number
+                buffer.setByte(0, AesCipher.doAes/*ServerHandler.defaultCipher & (~AesCipher.doGZip)*/);
             channel.writeAndFlush(buffer);
         } catch (final IOException exception) {
             throw new ServerException(exception);
