@@ -1,16 +1,14 @@
 package com.xuxiaocheng.WList.Server.Driver;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
-import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
-import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
+import com.xuxiaocheng.WList.DataAccessObjects.FileInformation;
 import com.xuxiaocheng.WList.Driver.DriverConfiguration;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import com.xuxiaocheng.WList.Driver.Utils.DrivePath;
-import com.xuxiaocheng.WList.Driver.Utils.FileInformation;
+import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
 import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -93,8 +91,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
     }
 
     @Override
-    public Triad.@Nullable ImmutableTriad<@NotNull List<Pair.ImmutablePair<@NotNull Integer, @NotNull ConsumerE<@NotNull ByteBuf>>>,
-            @NotNull SupplierE<@Nullable FileInformation>, @NotNull Runnable> upload(final @NotNull DrivePath path, final long size, final @NotNull String tag) throws Exception {
+    public @Nullable UploadMethods upload(final @NotNull DrivePath path, final long size, final @NotNull String tag) throws Exception {
         final String root = path.getRoot();
         final DriverInterface<?> real = DriverManager.get(root);
         if (real == null)
@@ -143,24 +140,22 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
         if (url == null || info == null)
             return null;
         assert info.size() == url.getSecond().longValue();
-        final Triad.ImmutableTriad<List<Pair.ImmutablePair<Integer, ConsumerE<ByteBuf>>>,
-                SupplierE<FileInformation>, Runnable> methods = this.upload(target, info.size(), info.tag());
+        final UploadMethods methods = this.upload(target, info.size(), info.tag());
         if (methods == null)
             return null;
         try {
-            for (final Pair.ImmutablePair<@NotNull Integer, @NotNull ConsumerE<@NotNull ByteBuf>> pair : methods.getA()) {
-                final int length = pair.getFirst().intValue();
-                final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(length, length);
+            for (final UploadMethods.UploadPartMethod partMethod: methods.methods()) {
+                final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(partMethod.size(), partMethod.size());
                 try {
-                    buffer.writeBytes(url.getFirst(), length);
-                    pair.getSecond().accept(buffer);
+                    buffer.writeBytes(url.getFirst(), partMethod.size());
+                    partMethod.consumer().accept(buffer);
                 } finally {
                     buffer.release();
                 }
             }
-            return methods.getB().get();
+            return methods.supplier().get();
         } finally {
-            methods.getC().run();
+            methods.finisher().run();
             url.getFirst().close();
         }
     }

@@ -1,18 +1,16 @@
 package com.xuxiaocheng.WList.Server.ServerHandlers;
 
-import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
-import com.xuxiaocheng.WList.Exceptions.ServerException;
+import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.WList.Server.Operation;
+import com.xuxiaocheng.WList.Server.Polymers.MessageProto;
+import com.xuxiaocheng.WList.Server.Polymers.UserTokenInfo;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.CompositeByteBuf;
-import io.netty.channel.Channel;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.IOException;
-import java.util.SortedSet;
 import java.util.concurrent.TimeUnit;
 
 public final class ServerStateHandler {
@@ -20,24 +18,26 @@ public final class ServerStateHandler {
         super();
     }
 
-    public static void doCloseServer(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
-        if (ServerUserHandler.checkToken(buf, channel, Operation.Permission.ServerOperate) == null)
-            return;
+    public static final @NotNull ServerHandler doCloseServer = buffer -> {
+        final UnionPair<UserTokenInfo, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.ServerOperate);
+        if (user.isFailure())
+            return user.getE();
         WListServer.ServerExecutors.schedule(() -> WListServer.getInstance().stop(), 3, TimeUnit.SECONDS);
-        ServerHandler.writeMessage(channel, Operation.State.Success, null);
-    }
+        return ServerHandler.composeMessage(Operation.State.Success, null);
+    };
 
-    public static void doBroadcast(final @NotNull ByteBuf buf, final @NotNull Channel channel) throws IOException, ServerException {
-        final Triad.ImmutableTriad<String, String, SortedSet<Operation.Permission>> user = ServerUserHandler.checkToken(buf, channel, Operation.Permission.Broadcast);
-        if (user == null)
-            return;
-        buf.retain();
+    // TODO Broadcast.
+    public static final @NotNull ServerHandler doBroadcast = buffer -> {
+        final UnionPair<UserTokenInfo, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.Broadcast);
+        if (user.isFailure())
+            return user.getE();
+        buffer.retain();
         final ByteBuf head = ByteBufAllocator.DEFAULT.buffer();
         ByteBufIOUtil.writeUTF(head, Operation.State.Broadcast.name());
-        ByteBufIOUtil.writeUTF(head, user.getA());
+        ByteBufIOUtil.writeUTF(head, user.getT().username());
         final CompositeByteBuf msg = ByteBufAllocator.DEFAULT.compositeBuffer(2);
-        msg.addComponents(true, head, buf);
+        msg.addComponents(true, head, buffer);
         WListServer.ServerExecutors.schedule(() -> WListServer.getInstance().writeChannels(msg), 1, TimeUnit.SECONDS);
-        ServerHandler.writeMessage(channel, Operation.State.Success, null);
-    }
+        return ServerHandler.composeMessage(Operation.State.Success, null);
+    };
 }

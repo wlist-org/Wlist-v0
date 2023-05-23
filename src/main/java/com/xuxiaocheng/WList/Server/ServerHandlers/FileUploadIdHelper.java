@@ -1,14 +1,13 @@
 package com.xuxiaocheng.WList.Server.ServerHandlers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
-import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.WList.Driver.Utils.FileInformation;
+import com.xuxiaocheng.WList.DataAccessObjects.FileInformation;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
+import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
 import com.xuxiaocheng.WList.Utils.DelayQueueInByteBufOutByteBuf;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
@@ -24,7 +23,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,8 +38,7 @@ final class FileUploadIdHelper {
 
     private static final @NotNull Map<@NotNull String, @NotNull UploaderData> buffers = new ConcurrentHashMap<>();
 
-    public static @NotNull String generateId(final Triad.@NotNull ImmutableTriad<? extends @NotNull List<Pair.ImmutablePair<@NotNull Integer, @NotNull ConsumerE<@NotNull ByteBuf>>>,
-            ? extends @NotNull SupplierE<@Nullable FileInformation>, ? extends @NotNull Runnable> methods, final @NotNull String tag, final @NotNull String username) {
+    public static @NotNull String generateId(final @NotNull UploadMethods methods, final @NotNull String tag, final @NotNull String username) {
         //noinspection IOResourceOpenedButNotSafelyClosed , resource // In cleaner.
         return new UploaderData(methods, tag, username).id;
     }
@@ -54,19 +51,17 @@ final class FileUploadIdHelper {
         return true;
     }
 
-    private static final Pair.@NotNull ImmutablePair<@NotNull Boolean, @Nullable SupplierE<@Nullable FileInformation>> False = Pair.ImmutablePair.makeImmutablePair(false, null);
-    public static Pair.@NotNull ImmutablePair<@NotNull Boolean, @Nullable SupplierE<@Nullable FileInformation>> upload(final @NotNull String id, final @NotNull String username, final @NotNull ByteBuf buf, final int chunk) throws Exception {
+    public static @Nullable SupplierE<@Nullable FileInformation> upload(final @NotNull String id, final @NotNull String username, final @NotNull ByteBuf buf, final int chunk) throws Exception {
         final UploaderData data = FileUploadIdHelper.buffers.get(id);
         if (data == null || !data.username.equals(username))
-            return FileUploadIdHelper.False;
-        return Pair.ImmutablePair.makeImmutablePair(data.put(buf, chunk), data::tryGet);
+            return null;
+        return data.put(buf, chunk) ? data::tryGet : null;
     }
 
     @SuppressWarnings("OverlyBroadThrowsClause")
     private static class UploaderData implements Closeable {
         private final @NotNull String username;
-        private final Triad.@NotNull ImmutableTriad<? extends @NotNull List<Pair.ImmutablePair<@NotNull Integer, @NotNull ConsumerE<@NotNull ByteBuf>>>,
-                ? extends @NotNull SupplierE<@Nullable FileInformation>, ? extends @NotNull Runnable> methods;
+        private final @NotNull UploadMethods methods;
         private final @NotNull AtomicInteger indexer = new AtomicInteger(0);
         private final @NotNull DelayQueueInByteBufOutByteBuf bufferQueue = new DelayQueueInByteBufOutByteBuf();
         private final @NotNull String id;
@@ -82,8 +77,7 @@ final class FileUploadIdHelper {
             FileUploadIdHelper.checkTime.add(Pair.ImmutablePair.makeImmutablePair(this.expireTime, this));
         }
 
-        private UploaderData(final Triad.@NotNull ImmutableTriad<? extends @NotNull List<Pair.ImmutablePair<@NotNull Integer, @NotNull ConsumerE<@NotNull ByteBuf>>>,
-                ? extends @NotNull SupplierE<@Nullable FileInformation>, ? extends @NotNull Runnable> methods, final @NotNull String tag, final @NotNull String username) {
+        private UploaderData(final @NotNull UploadMethods methods, final @NotNull String tag, final @NotNull String username) {
             super();
             this.username = username;
             this.methods = methods;
@@ -107,7 +101,7 @@ final class FileUploadIdHelper {
             this.closed.set(true);
             FileUploadIdHelper.buffers.remove(this.id, this);
             try {
-                this.methods.getC().run();
+                this.methods.finisher().run();
             } finally {
                 this.expireTime = LocalDateTime.now();
                 this.bufferQueue.close();
@@ -128,9 +122,9 @@ final class FileUploadIdHelper {
             try {
                 final Pair.ImmutablePair<Integer, ByteBuf> pair;
                 synchronized (this.indexer) {
-                    if (this.indexer.get() > this.methods.getA().size() - 1)
+                    if (this.indexer.get() > this.methods.methods().size() - 1)
                         return null;
-                    final int length = this.methods.getA().get(this.indexer.get()).getFirst().intValue();
+                    final int length = this.methods.methods().get(this.indexer.get()).size();
                     if (this.bufferQueue.readableBytes() < length)
                         return null;
                     pair = this.bufferQueue.get(length);
@@ -143,10 +137,10 @@ final class FileUploadIdHelper {
                     }
                     pair.getSecond().resetReaderIndex();
                 }
-                this.methods.getA().get(pair.getFirst().intValue()).getSecond().accept(pair.getSecond());
+                this.methods.methods().get(pair.getFirst().intValue()).consumer().accept(pair.getSecond());
                 pair.getSecond().release();
                 this.bufferQueue.discardSomeReadBytes();
-                if (this.indexer.get() < this.methods.getA().size() - 1)
+                if (this.indexer.get() < this.methods.methods().size() - 1)
                     return null;
                 this.finished.set(true);
                 synchronized (this.getLock) {
@@ -167,7 +161,7 @@ final class FileUploadIdHelper {
                 final BigInteger i = new BigInteger(1, this.md5.digest());
                 if (!this.tag.equals(String.format("%32s", i.toString(16)).replace(' ', '0')))
                     return null;
-                return this.methods.getB().get();
+                return this.methods.supplier().get();
             } finally {
                 this.close();
             }

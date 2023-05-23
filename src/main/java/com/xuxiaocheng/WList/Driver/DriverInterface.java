@@ -2,15 +2,12 @@ package com.xuxiaocheng.WList.Driver;
 
 import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
-import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
-import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
+import com.xuxiaocheng.WList.DataAccessObjects.FileInformation;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import com.xuxiaocheng.WList.Driver.Utils.DrivePath;
-import com.xuxiaocheng.WList.Driver.Utils.FileInformation;
+import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
 import com.xuxiaocheng.WList.Utils.DataBaseUtil;
-import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -85,18 +82,14 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     @Nullable FileInformation mkdirs(final @NotNull DrivePath path) throws Exception;
 
     /**
-     * Upload file to path.
-     * The server will first call back the methods in the first list in order based on their size,
-     * and then call the second method to complete the upload task after all are completed.
-     * Finally, whether the upload is cancelled or completed, the third method will be called.
+     * Upload file to path. {@link UploadMethods}
      * @param path Target path.
      * @param size File size.
      * @param tag File md5.
      * @return Null means invalid filename. Second Consumer should return the information of new file, but null means failure.
      * @throws Exception Something went wrong.
      */
-    Triad.@Nullable ImmutableTriad<@NotNull List<Pair.ImmutablePair<@NotNull Integer, @NotNull ConsumerE<@NotNull ByteBuf>>>,
-            @NotNull SupplierE<@Nullable FileInformation>, @NotNull Runnable> upload(final @NotNull DrivePath path, final long size, final @NotNull String tag) throws Exception;
+    @Nullable UploadMethods upload(final @NotNull DrivePath path, final long size, final @NotNull String tag) throws Exception;
 
     /**
      * Delete file.

@@ -1,9 +1,10 @@
 package com.xuxiaocheng.WList.Server;
 
-import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.DataAccessObjects.UserInformation;
+import com.xuxiaocheng.WList.Server.Polymers.UserSqlInfo;
 import com.xuxiaocheng.WList.Utils.DataBaseUtil;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import org.jetbrains.annotations.NotNull;
@@ -167,7 +168,7 @@ public final class UserSqlHelper {
         }
     }
 
-    public static Triad.@Nullable ImmutableTriad<@NotNull String, @NotNull SortedSet<Operation.@NotNull Permission>, @NotNull LocalDateTime> selectUser(final @NotNull String username) throws SQLException {
+    public static @Nullable UserSqlInfo selectUser(final @NotNull String username) throws SQLException {
         try (final Connection connection = DataBaseUtil.getDataInstance().getConnection()) {
             try (final PreparedStatement statement = connection.prepareStatement("""
                         SELECT password, permission, modify_time FROM users WHERE username == ? LIMIT 1;
@@ -176,7 +177,7 @@ public final class UserSqlHelper {
                 try (final ResultSet user = statement.executeQuery()) {
                     if (!user.next())
                         return null;
-                    return Triad.ImmutableTriad.makeImmutableTriad(user.getString(1),
+                    return new UserSqlInfo(user.getString(1),
                             Operation.parsePermissions(user.getString(2)),
                             LocalDateTime.parse(user.getString(3), DateTimeFormatter.ISO_LOCAL_DATE_TIME));
                 }
@@ -184,18 +185,20 @@ public final class UserSqlHelper {
         }
     }
 
-    public static @NotNull List<Triad.@NotNull ImmutableTriad<@NotNull String, @NotNull SortedSet<Operation.@NotNull Permission>, @NotNull LocalDateTime>> selectAllUsers() throws SQLException {
+    public static @NotNull List<UserInformation> selectAllUsers() throws SQLException {
         // TODO limit and page.
         try (final Connection connection = DataBaseUtil.getDataInstance().getConnection()) {
             try (final Statement statement = connection.createStatement()) {
                 try (final ResultSet user = statement.executeQuery("""
-                        SELECT password, permission, modify_time FROM users;
+                        SELECT * FROM users;
                         """)) {
-                    final List<Triad.ImmutableTriad<String, SortedSet<Operation.Permission>, LocalDateTime>> list = new LinkedList<>();
+                    final List<UserInformation> list = new LinkedList<>();
                     while (user.next())
-                        list.add(Triad.ImmutableTriad.makeImmutableTriad(user.getString(1),
-                            Operation.parsePermissions(user.getString(2)),
-                            LocalDateTime.parse(user.getString(3), DateTimeFormatter.ISO_LOCAL_DATE_TIME)));
+                        list.add(new UserInformation(user.getLong("id"),
+                                user.getString("username"),
+                                user.getString("password"),
+                            Operation.parsePermissions(user.getString("permission")),
+                            LocalDateTime.parse(user.getString("modify_time"), DateTimeFormatter.ISO_LOCAL_DATE_TIME)));
                     return list;
                 }
             }

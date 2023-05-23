@@ -5,6 +5,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
+import com.xuxiaocheng.WList.Server.Polymers.MessageProto;
 import com.xuxiaocheng.WList.Server.ServerCodecs.MessageServerCiphers;
 import com.xuxiaocheng.WList.Server.ServerHandlers.ServerFileHandler;
 import com.xuxiaocheng.WList.Server.ServerHandlers.ServerHandler;
@@ -15,6 +16,7 @@ import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.WList;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -31,6 +33,7 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.codec.CodecException;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
@@ -42,11 +45,9 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.crypto.NoSuchPaddingException;
 import java.io.IOException;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 import java.net.SocketAddress;
 import java.security.NoSuchAlgorithmException;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
@@ -154,38 +155,32 @@ public class WListServer {
 
     @ChannelHandler.Sharable
     public static class ServerChannelHandler extends SimpleChannelInboundHandler<ByteBuf> {
+
         @Override
         public void channelActive(final @NotNull ChannelHandlerContext ctx) {
             final ChannelId id = ctx.channel().id();
             WListServer.logger.log(HLogLevel.DEBUG, "Active: ", id.asLongText());
 //            WListServer.getInstance().channelGroup.add(ctx.channel()); TODO: broadcast
-            ServerHandler.doActive(id);
         }
 
         @Override
         public void channelInactive(final @NotNull ChannelHandlerContext ctx) {
             final ChannelId id = ctx.channel().id();
             WListServer.logger.log(HLogLevel.DEBUG, "Inactive: ", id.asLongText());
-            ServerHandler.doInactive(id);
         }
 
-        protected record ChannelProxy(@NotNull Channel channel) implements InvocationHandler {
-            private static final Class<?>[] proxy = new Class[] {Channel.class};
-
-            @Override
-            public Object invoke(final @NotNull Object proxy, final @NotNull Method method, final Object @Nullable [] args) throws IllegalAccessException, java.lang.reflect.InvocationTargetException {
-                if (args != null && method.getName().contains("write") && args.length > 0 && args[0] instanceof ByteBuf msg)
-                    WListServer.logger.log(HLogLevel.VERBOSE, "Write: ", this.channel.id().asLongText(), " len: ", msg.readableBytes(), " cipher: ", MiscellaneousUtil.bin(msg.getByte(msg.readerIndex())), " (method: ", method.getName(), ')');
-                return method.invoke(this.channel, args);
-            }
+        protected static void write(final @NotNull Channel channel, final @NotNull MessageProto message) throws IOException {
+            final ByteBuf prefix = ByteBufAllocator.DEFAULT.buffer();
+            prefix.writeByte(message.cipher());
+            ByteBufIOUtil.writeUTF(prefix, message.state().name());
+            final ByteBuf buffer = message.appender().apply(prefix);
+            WListServer.logger.log(HLogLevel.VERBOSE, "Write: ", channel.id().asLongText(), " len: ", buffer.readableBytes(), " cipher: ", MiscellaneousUtil.bin(message.cipher()));
+            channel.writeAndFlush(buffer);
         }
 
         @Override
         protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) {
-            final Channel channel = WList.DebugMode ?
-                    (Channel) Proxy.newProxyInstance(ctx.channel().getClass().getClassLoader(),
-                            ChannelProxy.proxy, new ChannelProxy(ctx.channel()))
-                    : ctx.channel();
+            final Channel channel = ctx.channel();
             WListServer.logger.log(HLogLevel.VERBOSE, "Read: ", channel.id().asLongText(), " len: ", msg.readableBytes(), " cipher: ", MiscellaneousUtil.bin(msg.readByte()));
             try {
                 final Operation.Type type = Operation.valueOfType(ByteBufIOUtil.readUTF(msg));
@@ -202,49 +197,69 @@ public class WListServer {
                     return user;
                 });
                 if (type == null || type == Operation.Type.Undefined) {
-                    ServerHandler.writeMessage(channel, Operation.State.Unsupported, "Undefined operation!");
+                    ServerChannelHandler.directlyWriteMessage(channel, Operation.State.Unsupported, "Undefined operation!");
                     return;
                 }
-                switch (type) {
-                    case CloseServer -> ServerStateHandler.doCloseServer(msg, channel);
-                    case Broadcast -> ServerStateHandler.doBroadcast(msg, channel);
-                    case Login -> ServerUserHandler.doLogin(msg, channel);
-                    case Register -> ServerUserHandler.doRegister(msg, channel);
-                    case ChangePassword -> ServerUserHandler.doChangePassword(msg, channel);
-                    case Logoff -> ServerUserHandler.doLogoff(msg, channel);
-                    case ListUsers -> ServerUserHandler.doListUsers(msg, channel);
-                    case DeleteUser -> ServerUserHandler.doDeleteUser(msg, channel);
-                    case AddPermission -> ServerUserHandler.doChangePermission(msg, channel, true);
-                    case ReducePermission -> ServerUserHandler.doChangePermission(msg, channel, false);
+                final ServerHandler handler = switch (type) {
+                    case CloseServer -> ServerStateHandler.doCloseServer;
+                    case Broadcast -> ServerStateHandler.doBroadcast;
+                    case Register -> ServerUserHandler.doRegister;
+                    case Login -> ServerUserHandler.doLogin;
+                    case ChangePassword -> ServerUserHandler.doChangePassword;
+                    case Logoff -> ServerUserHandler.doLogoff;
+                    case ListUsers -> ServerUserHandler.doListUsers;
+                    case DeleteUser -> ServerUserHandler.doDeleteUser;
+                    case AddPermission -> ServerUserHandler.doAddPermission;
+                    case ReducePermission -> ServerUserHandler.doReducePermission;
                     // TODO drivers operate. (dynamically modify config file)
-                    case ListFiles -> ServerFileHandler.doListFiles(msg, channel);
-                    case MakeDirectories -> ServerFileHandler.doMakeDirectories(msg, channel);
-                    case DeleteFile -> ServerFileHandler.doDeleteFile(msg, channel);
-                    case RenameFile -> ServerFileHandler.doRenameFile(msg, channel);
-                    case RequestDownloadFile -> ServerFileHandler.doRequestDownloadFile(msg, channel);
-                    case DownloadFile -> ServerFileHandler.doDownloadFile(msg, channel);
-                    case CancelDownloadFile -> ServerFileHandler.doCancelDownloadFile(msg, channel);
-                    case RequestUploadFile -> ServerFileHandler.doRequestUploadFile(msg, channel);
-                    case UploadFile -> ServerFileHandler.doUploadFile(msg, channel);
-                    case CancelUploadFile -> ServerFileHandler.doCancelUploadFile(msg, channel);
-                    case CopyFile -> ServerFileHandler.doCopyFile(msg, channel);
-                    case MoveFile -> ServerFileHandler.doMoveFile(msg, channel);
-                    default -> ServerHandler.writeMessage(channel, Operation.State.Unsupported, "Unsupported.");
+                    case ListFiles -> ServerFileHandler.doListFiles;
+                    case MakeDirectories -> ServerFileHandler.doMakeDirectories;
+                    case DeleteFile -> ServerFileHandler.doDeleteFile;
+                    case RenameFile -> ServerFileHandler.doRenameFile;
+                    case RequestDownloadFile -> ServerFileHandler.doRequestDownloadFile;
+                    case DownloadFile -> ServerFileHandler.doDownloadFile;
+                    case CancelDownloadFile -> ServerFileHandler.doCancelDownloadFile;
+                    case RequestUploadFile -> ServerFileHandler.doRequestUploadFile;
+                    case UploadFile -> ServerFileHandler.doUploadFile;
+                    case CancelUploadFile -> ServerFileHandler.doCancelUploadFile;
+                    case CopyFile -> ServerFileHandler.doCopyFile;
+                    case MoveFile -> ServerFileHandler.doMoveFile;
+                    default -> null;
+                };
+                if (handler == null) {
+                    ServerChannelHandler.directlyWriteMessage(channel, Operation.State.Unsupported, "Unsupported operation.");
+                    return;
                 }
                 if (type != Operation.Type.UploadFile && msg.readableBytes() != 0)
                     WListServer.logger.log(HLogLevel.MISTAKE, "Unexpected discarded bytes: ", channel.id().asLongText(), " len: ", msg.readableBytes());
+                ServerChannelHandler.write(channel, handler.handle(msg));
             } catch (final IOException | JSONException exception) {
-                ServerHandler.doException(channel, exception.getMessage());
+                ServerChannelHandler.directlyWriteMessage(channel, Operation.State.FormatError, exception.getMessage());
             } catch (final ServerException exception) {
                 WListServer.logger.log(HLogLevel.WARN, "Exception: ", channel.id().asLongText(), exception);
-                ServerHandler.doException(channel, null);
+                ServerChannelHandler.directlyWriteMessage(channel, Operation.State.ServerError, null);
             }
         }
 
         @Override
         public void exceptionCaught(final @NotNull ChannelHandlerContext ctx, final Throwable cause) {
+            if (cause instanceof CodecException) {
+                WListServer.logger.log(HLogLevel.MISTAKE, "Codec Exception: ", ctx.channel().id().asLongText(), cause.getMessage());
+                ServerChannelHandler.directlyWriteMessage(ctx.channel(), Operation.State.FormatError, "Codec");
+                return;
+            }
             WListServer.logger.log(HLogLevel.WARN, "Exception: ", ctx.channel().id().asLongText(), cause);
-            ServerHandler.doException(ctx.channel(), null);
+            ServerChannelHandler.directlyWriteMessage(ctx.channel(), Operation.State.ServerError, null);
+        }
+
+        protected static void directlyWriteMessage(final @NotNull Channel channel, final @NotNull Operation.State state, final @Nullable String message) {
+            try {
+                final MessageProto composition = ServerHandler.composeMessage(state, Objects.requireNonNullElse(message, ""));
+                ServerChannelHandler.write(channel, composition);
+            } catch (final IOException exception) {
+                HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, exception);
+                channel.close();
+            }
         }
     }
 }

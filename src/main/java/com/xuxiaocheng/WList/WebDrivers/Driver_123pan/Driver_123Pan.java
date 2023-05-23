@@ -2,19 +2,16 @@ package com.xuxiaocheng.WList.WebDrivers.Driver_123pan;
 
 import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
-import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
-import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
+import com.xuxiaocheng.WList.DataAccessObjects.FileInformation;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverSqlHelper;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import com.xuxiaocheng.WList.Driver.Utils.DrivePath;
-import com.xuxiaocheng.WList.Driver.Utils.FileInformation;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
+import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
 import com.xuxiaocheng.WList.Server.WListServer;
-import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -91,8 +88,7 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
     }
 
     @Override
-    public Triad.@Nullable ImmutableTriad<@NotNull List<Pair.ImmutablePair<@NotNull Integer, @NotNull ConsumerE<@NotNull ByteBuf>>>,
-            @NotNull SupplierE<@Nullable FileInformation>, @NotNull Runnable> upload(final @NotNull DrivePath path, final long size, final @NotNull String tag) throws IllegalParametersException, IOException, SQLException {
+    public @Nullable UploadMethods upload(final @NotNull DrivePath path, final long size, final @NotNull String tag) throws IllegalParametersException, IOException, SQLException {
         if (this.mkdirs(path.getParent()) == null)
             return null;
         return DriverManager_123pan.getUploadMethods(this.configuration, path, tag, size, null, WListServer.IOExecutors);
@@ -109,16 +105,15 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
         final FileInformation info = this.info(source);
         if (info == null)
             return null;
-        final Triad.ImmutableTriad<List<Pair.ImmutablePair<Integer, ConsumerE<ByteBuf>>>, SupplierE<FileInformation>, Runnable> methods =
-                DriverManager_123pan.getUploadMethods(this.configuration, target, info.tag(), info.size(), null, WListServer.IOExecutors);
+        final UploadMethods methods = DriverManager_123pan.getUploadMethods(this.configuration, target, info.tag(), info.size(), null, WListServer.IOExecutors);
         if (methods == null)
             return null;
         try {
-            if (!methods.getA().isEmpty())
+            if (!methods.methods().isEmpty())
                 return null;
-            return methods.getB().get();
+            return methods.supplier().get();
         } finally {
-            methods.getC().run();
+            methods.finisher().run();
         }
     }
 

@@ -1,6 +1,6 @@
 package com.xuxiaocheng.WList.WebDrivers.LocalDisk;
 
-import com.xuxiaocheng.WList.Driver.Utils.FileInformation;
+import com.xuxiaocheng.WList.DataAccessObjects.FileInformation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

@@ -19,8 +19,8 @@ public final class Operation {
         Undefined,
         CloseServer,
         Broadcast,
-        Login,
         Register,
+        Login,
         ChangePassword,
         Logoff,
         ListUsers,
@@ -61,6 +61,7 @@ public final class Operation {
         Unsupported,
         NoPermission,
         DataError,
+        FormatError,
     }
 
     public static @Nullable Type valueOfType(final @NotNull String type) {
