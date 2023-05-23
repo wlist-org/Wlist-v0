@@ -28,16 +28,12 @@ public abstract class MessageCiphers extends MessageToMessageCodec<ByteBuf, Byte
     public static final byte defaultDoAes = MessageCiphers.doAes;
     public static final byte doGZip = 1 << 1;
     public static final byte defaultDoGZip = 0;
-    public static final byte doRsa = 1 << 2;
-    public static final byte defaultDoRsa = 0;
 
-    public static final byte defaultCipher = MessageCiphers.defaultDoAes | MessageCiphers.defaultDoGZip | MessageCiphers.defaultDoRsa;
+    public static final byte defaultCipher = MessageCiphers.defaultDoAes | MessageCiphers.defaultDoGZip;
 
     protected final int maxSize;
     protected final @NotNull Cipher aesDecryptCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
     protected final @NotNull Cipher aesEncryptCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-    protected final @NotNull Cipher rsaDecryptCipher = Cipher.getInstance("RSA");
-    protected final @NotNull Cipher rsaEncryptCipher = Cipher.getInstance("RSA");
 
     protected MessageCiphers(final int maxSize) throws NoSuchPaddingException, NoSuchAlgorithmException {
         super();
@@ -51,8 +47,7 @@ public abstract class MessageCiphers extends MessageToMessageCodec<ByteBuf, Byte
         final byte flags = ByteBufIOUtil.readByte(msg);
         final boolean aes = (flags & MessageCiphers.doAes) > 0;
         final boolean gzip = (flags & MessageCiphers.doGZip) > 0;
-        final boolean rsa = (flags & MessageCiphers.doRsa) > 0;
-        if (!aes && !gzip && !rsa) {
+        if (!aes && !gzip) {
             final ByteBuf prefix = ByteBufAllocator.DEFAULT.buffer();
             ByteBufIOUtil.writeByte(prefix, flags);
             ByteBufIOUtil.writeVariableLenInt(prefix, msg.readableBytes());
@@ -65,8 +60,6 @@ public abstract class MessageCiphers extends MessageToMessageCodec<ByteBuf, Byte
         InputStream is = new ByteBufInputStream(msg);
         if (aes)
             is = new CipherInputStream(is, this.aesEncryptCipher);
-        if (rsa)
-            is = new CipherInputStream(is, this.rsaEncryptCipher);
         OutputStream os = new ByteBufOutputStream(buf);
         if (gzip)
             os = new GZIPOutputStream(os);
@@ -84,8 +77,7 @@ public abstract class MessageCiphers extends MessageToMessageCodec<ByteBuf, Byte
             throw new IllegalArgumentException("Too long source msg. len: " + length);
         final boolean aes = (flags & MessageCiphers.doAes) > 0;
         final boolean gzip = (flags & MessageCiphers.doGZip) > 0;
-        final boolean rsa = (flags & MessageCiphers.doRsa) > 0;
-        if (!aes && !gzip && !rsa) {
+        if (!aes && !gzip) {
             final ByteBuf prefix = ByteBufAllocator.DEFAULT.buffer();
             ByteBufIOUtil.writeByte(prefix, flags);
             out.add(ByteBufAllocator.DEFAULT.compositeBuffer(2).addComponents(true, prefix, msg.retain()));
@@ -99,8 +91,6 @@ public abstract class MessageCiphers extends MessageToMessageCodec<ByteBuf, Byte
         OutputStream os = new ByteBufOutputStream(buf);
         if (aes)
             os = new CipherOutputStream(os, this.aesDecryptCipher);
-        if (rsa)
-            os = new CipherOutputStream(os, this.rsaDecryptCipher);
         try (final InputStream inputStream = is; final OutputStream outputStream = os) {
             inputStream.transferTo(outputStream);
         }

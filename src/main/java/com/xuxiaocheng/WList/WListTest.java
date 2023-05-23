@@ -9,7 +9,6 @@ import com.xuxiaocheng.WList.WebDrivers.LocalDisk.LocalDiskConfiguration;
 import com.xuxiaocheng.WList.WebDrivers.LocalDisk.LocalDiskManager;
 import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
 
-import javax.crypto.Cipher;
 import java.net.InetSocketAddress;
 
 public final class WListTest {
@@ -18,8 +17,6 @@ public final class WListTest {
     }
 
     public static void main(final String[] args) throws Exception {
-        Cipher.getInstance("RSA/EBC/PKCS1Padding");
-        if(true)return;
         GlobalConfiguration.init(null);
         WListServer.init(new InetSocketAddress(5212));
         final WListServer server = WListServer.getInstance();

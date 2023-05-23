@@ -4,14 +4,17 @@ import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.ChannelHandlerContext;
 import org.jetbrains.annotations.NotNull;
 
 import javax.crypto.Cipher;
+import javax.crypto.CipherOutputStream;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.Key;
@@ -29,6 +32,8 @@ public class MessageServerCiphers extends MessageCiphers {
     protected final byte @NotNull [] aesKey = new byte[32];
     protected final byte @NotNull [] aesVector = new byte[16];
 
+    protected final @NotNull Cipher rsaEncryptCipher = Cipher.getInstance("RSA");
+
     public MessageServerCiphers(final int maxSize) throws NoSuchPaddingException, NoSuchAlgorithmException {
         super(maxSize);
         final KeyPairGenerator rsaGenerator = KeyPairGenerator.getInstance("RSA");
@@ -43,7 +48,6 @@ public class MessageServerCiphers extends MessageCiphers {
             final AlgorithmParameterSpec vector = new IvParameterSpec(this.aesVector);
             this.aesDecryptCipher.init(Cipher.DECRYPT_MODE, key, vector);
             this.aesEncryptCipher.init(Cipher.ENCRYPT_MODE, key, vector);
-            this.rsaDecryptCipher.init(Cipher.DECRYPT_MODE, rsaKeys.getPrivate());
             this.rsaEncryptCipher.init(Cipher.ENCRYPT_MODE, rsaKeys.getPrivate());
         } catch (final InvalidKeyException | InvalidAlgorithmParameterException exception) {
             throw new RuntimeException("Unreachable!", exception);
@@ -56,7 +60,10 @@ public class MessageServerCiphers extends MessageCiphers {
         ByteBufIOUtil.writeUTF(buffer, MessageCiphers.defaultHeader);
         ByteBufIOUtil.writeByteArray(buffer, this.rsaModulus);
         ByteBufIOUtil.writeByteArray(buffer, this.rsaExponent);
-        buffer.writeBytes(this.aesKey).writeBytes(this.aesVector);
+        try (final OutputStream stream = new CipherOutputStream(new ByteBufOutputStream(buffer), this.rsaEncryptCipher)) {
+            stream.write(this.aesKey);
+            stream.write(this.aesVector);
+        }
         ctx.writeAndFlush(buffer);
         ctx.fireChannelActive();
     }
