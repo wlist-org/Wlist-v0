@@ -2,10 +2,11 @@ package com.xuxiaocheng.WList.Driver;
 
 import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.WList.DataAccessObjects.DriverSqlHelper;
 import com.xuxiaocheng.WList.DataAccessObjects.FileInformation;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
-import com.xuxiaocheng.WList.Driver.Utils.DrivePath;
+import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
 import com.xuxiaocheng.WList.Utils.DataBaseUtil;
 import org.jetbrains.annotations.NotNull;
@@ -39,7 +40,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     /**
      * Build file index into sql database {@link DataBaseUtil#getIndexInstance()}.
      * @throws Exception Something went wrong.
-     * @see com.xuxiaocheng.WList.Driver.Helpers.DriverSqlHelper
+     * @see DriverSqlHelper
      */
     void buildIndex() throws Exception;
 

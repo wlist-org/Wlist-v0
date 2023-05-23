@@ -11,7 +11,7 @@ import com.xuxiaocheng.WList.Server.Operation;
 import com.xuxiaocheng.WList.Server.Polymers.MessageProto;
 import com.xuxiaocheng.WList.Server.Polymers.UserSqlInfo;
 import com.xuxiaocheng.WList.Server.Polymers.UserTokenInfo;
-import com.xuxiaocheng.WList.Server.UserSqlHelper;
+import com.xuxiaocheng.WList.DataAccessObjects.UserSqlHelper;
 import com.xuxiaocheng.WList.Server.UserTokenHelper;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;

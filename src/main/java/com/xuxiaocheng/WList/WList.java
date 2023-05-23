@@ -6,7 +6,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.Driver.DriverManager;
 import com.xuxiaocheng.WList.Server.ServerHandlers.ServerUserHandler;
-import com.xuxiaocheng.WList.Server.UserSqlHelper;
+import com.xuxiaocheng.WList.DataAccessObjects.UserSqlHelper;
 import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 
