@@ -5,7 +5,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
-import com.xuxiaocheng.WList.Server.ServerHandlers.AesCipher;
+import com.xuxiaocheng.WList.Server.ServerCodecs.MessageServerCiphers;
 import com.xuxiaocheng.WList.Server.ServerHandlers.ServerFileHandler;
 import com.xuxiaocheng.WList.Server.ServerHandlers.ServerHandler;
 import com.xuxiaocheng.WList.Server.ServerHandlers.ServerStateHandler;
@@ -40,11 +40,13 @@ import io.netty.util.concurrent.GlobalEventExecutor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import javax.crypto.NoSuchPaddingException;
 import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.net.SocketAddress;
+import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
@@ -111,11 +113,11 @@ public class WListServer {
         serverBootstrap.childOption(ChannelOption.SO_KEEPALIVE, true);
         serverBootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
             @Override
-            protected void initChannel(final @NotNull SocketChannel ch) {
+            protected void initChannel(final @NotNull SocketChannel ch) throws NoSuchPaddingException, NoSuchAlgorithmException {
                 final ChannelPipeline pipeline = ch.pipeline();
                 pipeline.addLast(WListServer.CodecExecutors, "LengthDecoder", new LengthFieldBasedFrameDecoder(WListServer.MaxSizePerPacket, 0, 4, 0, 4));
                 pipeline.addLast(WListServer.CodecExecutors, "LengthEncoder", new LengthFieldPrepender(4));
-                pipeline.addLast(WListServer.CodecExecutors, "Cipher", new AesCipher(WList.key, WList.vector, WListServer.MaxSizePerPacket));
+                pipeline.addLast(WListServer.CodecExecutors, "Cipher", new MessageServerCiphers(WListServer.MaxSizePerPacket));
                 pipeline.addLast(WListServer.ServerExecutors, "ServerHandler", WListServer.handlerInstance);
             }
         });
@@ -156,7 +158,7 @@ public class WListServer {
         public void channelActive(final @NotNull ChannelHandlerContext ctx) {
             final ChannelId id = ctx.channel().id();
             WListServer.logger.log(HLogLevel.DEBUG, "Active: ", id.asLongText());
-            WListServer.getInstance().channelGroup.add(ctx.channel());
+//            WListServer.getInstance().channelGroup.add(ctx.channel()); TODO: broadcast
             ServerHandler.doActive(id);
         }
 

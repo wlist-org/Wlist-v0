@@ -15,6 +15,7 @@ import com.xuxiaocheng.WList.Exceptions.ServerException;
 import com.xuxiaocheng.WList.Server.Driver.RootDriver;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.Operation;
+import com.xuxiaocheng.WList.Server.ServerCodecs.MessageServerCiphers;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
@@ -190,7 +191,7 @@ public final class ServerFileHandler {
                 return;
             }
             final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
-            ByteBufIOUtil.writeByte(buffer, AesCipher.defaultDoGZip);
+            ByteBufIOUtil.writeByte(buffer, MessageServerCiphers.defaultDoGZip);
             ByteBufIOUtil.writeUTF(buffer, Operation.State.Success.name());
             ByteBufIOUtil.writeVariableLenInt(buffer, file.getFirst().intValue());
             final CompositeByteBuf composite = ByteBufAllocator.DEFAULT.compositeBuffer(2);

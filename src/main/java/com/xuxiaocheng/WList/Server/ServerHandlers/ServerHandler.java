@@ -4,6 +4,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
 import com.xuxiaocheng.WList.Server.Operation;
+import com.xuxiaocheng.WList.Server.ServerCodecs.MessageServerCiphers;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -16,7 +17,7 @@ import java.io.IOException;
 import java.util.Objects;
 
 public final class ServerHandler {
-    public static final byte defaultCipher = AesCipher.doAes | AesCipher.doGZip;
+    public static final byte defaultCipher = MessageServerCiphers.doAes | MessageServerCiphers.doGZip;
 
     private ServerHandler() {
         super();
@@ -36,7 +37,7 @@ public final class ServerHandler {
             if (message != null)
                 ByteBufIOUtil.writeUTF(buffer, message);
             if (buffer.readableBytes() < 127) // Magic Number
-                buffer.setByte(0, AesCipher.doAes/*ServerHandler.defaultCipher & (~AesCipher.doGZip)*/);
+                buffer.setByte(0, MessageServerCiphers.doAes/*ServerHandler.defaultCipher & (~MessageServerCiphers.doGZip)*/);
             channel.writeAndFlush(buffer);
         } catch (final IOException exception) {
             throw new ServerException(exception);

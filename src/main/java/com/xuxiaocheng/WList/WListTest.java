@@ -1,23 +1,31 @@
 package com.xuxiaocheng.WList;
 
 import com.xuxiaocheng.WList.Driver.Utils.DrivePath;
-import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.Driver.DriverManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
+import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.WebDrivers.LocalDisk.LocalDisk;
 import com.xuxiaocheng.WList.WebDrivers.LocalDisk.LocalDiskConfiguration;
 import com.xuxiaocheng.WList.WebDrivers.LocalDisk.LocalDiskManager;
 import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
 
-import java.io.IOException;
-import java.sql.SQLException;
+import javax.crypto.Cipher;
+import java.net.InetSocketAddress;
 
 public final class WListTest {
     private WListTest() {
         super();
     }
 
-    public static void main(final String[] args) throws SQLException, IOException, IllegalParametersException {
+    public static void main(final String[] args) throws Exception {
+        Cipher.getInstance("RSA/EBC/PKCS1Padding");
+        if(true)return;
+        GlobalConfiguration.init(null);
+        WListServer.init(new InetSocketAddress(5212));
+        final WListServer server = WListServer.getInstance();
+        server.start();
+        server.awaitStop();
+        if(true)return;
         GlobalConfiguration.init(null);
         DriverManager.add("Local Disk", WebDriversType.LocalDiskDriver);
         final LocalDiskConfiguration configuration = new LocalDiskConfiguration();
