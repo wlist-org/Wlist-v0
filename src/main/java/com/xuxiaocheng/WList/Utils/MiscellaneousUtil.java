@@ -1,22 +1,16 @@
 package com.xuxiaocheng.WList.Utils;
 
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Objects;
-import java.util.Random;
 import java.util.function.Supplier;
-import java.util.random.RandomGenerator;
 import java.util.regex.Pattern;
 
 public final class MiscellaneousUtil {
@@ -62,39 +56,6 @@ public final class MiscellaneousUtil {
                 throw new NoSuchElementException();
             }
         };
-    }
-
-    /**
-     * Automatically get not null connection with DataBaseUtil.
-     * Standard code: @code {
-     *  final Connection connection = MiscellaneousUtil.requireConnection(_connection, databaseUtil);
-     *  try {
-     *      // use connection.
-     *  } finally {
-     *      if (_connection == null)
-     *          connection.close();
-     *  }
-     * }
-     */
-    public static @NotNull Connection requireConnection(final @Nullable Connection _connection, final @NotNull DataBaseUtil util) throws SQLException {
-        if (_connection != null)
-            return _connection;
-        // Objects.requireNonNullElseGet(_connection, DataBaseUtil.getIndexInstance()::getConnection); (With SQLException)
-        return util.getConnection();
-    }
-
-    public static void generateRandomByteArray(final @NotNull BigInteger seed, final byte @NotNull [] bytes) {
-        // TODO check validity
-        final BigInteger[] div = seed.divideAndRemainder(BigInteger.valueOf(Long.MAX_VALUE<<1));
-        new Random(div[0].longValue() ^ Integer.reverseBytes(div[1].intValue()) ^ div[0].bitLength()).nextBytes(bytes);
-        final RandomGenerator random = new Random(div[1].longValue() ^ seed.getLowestSetBit() ^ Integer.reverseBytes(seed.bitLength()));
-        for (int i = 0; i < bytes.length; ++i)
-            bytes[i] = (byte) (bytes[i] ^ (byte) random.nextInt(Byte.MIN_VALUE, Byte.MAX_VALUE));
-    }
-
-    public static <K, V> @NotNull V resetNonNull(final @NotNull Map<K, V> map, final @NotNull K key, final @NotNull V defaultValue) {
-        map.putIfAbsent(key, defaultValue);
-        return Objects.requireNonNullElse(map.get(key), defaultValue);
     }
 
     public static <K, V> @NotNull K randomKeyAndPut(final @NotNull Map<? super @NotNull K, V> map, final @NotNull Supplier<? extends @NotNull K> randomKey, final V value) {

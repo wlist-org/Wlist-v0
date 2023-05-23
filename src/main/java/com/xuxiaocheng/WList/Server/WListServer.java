@@ -20,7 +20,6 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelId;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
@@ -158,15 +157,12 @@ public class WListServer {
 
         @Override
         public void channelActive(final @NotNull ChannelHandlerContext ctx) {
-            final ChannelId id = ctx.channel().id();
-            WListServer.logger.log(HLogLevel.DEBUG, "Active: ", id.asLongText());
-//            WListServer.getInstance().channelGroup.add(ctx.channel()); TODO: broadcast
+            WListServer.logger.log(HLogLevel.DEBUG, "Active: ", ctx.channel().id().asLongText());
         }
 
         @Override
         public void channelInactive(final @NotNull ChannelHandlerContext ctx) {
-            final ChannelId id = ctx.channel().id();
-            WListServer.logger.log(HLogLevel.DEBUG, "Inactive: ", id.asLongText());
+            WListServer.logger.log(HLogLevel.DEBUG, "Inactive: ", ctx.channel().id().asLongText());
         }
 
         protected static void write(final @NotNull Channel channel, final @NotNull MessageProto message) throws IOException {
@@ -201,8 +197,16 @@ public class WListServer {
                     return;
                 }
                 final ServerHandler handler = switch (type) {
-                    case CloseServer -> ServerStateHandler.doCloseServer;
                     case Broadcast -> ServerStateHandler.doBroadcast;
+                    case SetBroadcastMode -> buffer -> {
+                        final boolean receive = ByteBufIOUtil.readBoolean(buffer);
+                        if (receive)
+                            WListServer.getInstance().channelGroup.add(channel);
+                        else
+                            WListServer.getInstance().channelGroup.remove(channel);
+                        return ServerHandler.composeMessage(Operation.State.Success, null);
+                    };
+                    case CloseServer -> ServerStateHandler.doCloseServer;
                     case Register -> ServerUserHandler.doRegister;
                     case Login -> ServerUserHandler.doLogin;
                     case ChangePassword -> ServerUserHandler.doChangePassword;

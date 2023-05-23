@@ -6,7 +6,6 @@ import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import com.xuxiaocheng.WList.Driver.Utils.DrivePath;
 import com.xuxiaocheng.WList.DataAccessObjects.FileInformation;
 import com.xuxiaocheng.WList.Utils.DataBaseUtil;
-import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -106,7 +105,7 @@ public final class DriverSqlHelper {
     public static void insertFiles(final @NotNull String driverName, final @NotNull Collection<FileInformation> infoList, final @Nullable Connection _connection) throws SQLException {
         if (infoList.isEmpty())
             return;
-        final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
+        final Connection connection = DataBaseUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
         try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                 INSERT INTO %s (id, parent_path, name, is_directory, size, create_time, update_time, tag, others)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -147,7 +146,7 @@ public final class DriverSqlHelper {
         if (infoList.isEmpty())
             return;
         final String table = DriverSqlHelper.getTableName(driverName);
-        final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
+        final Connection connection = DataBaseUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
         try (final PreparedStatement updater = connection.prepareStatement(String.format("""
                     UPDATE %s SET
                         is_directory = ?, size = ?,
@@ -204,7 +203,7 @@ public final class DriverSqlHelper {
     public static void deleteFiles(final @NotNull String driverName, final @NotNull Collection<? extends @NotNull DrivePath> pathList, final Connection _connection) throws SQLException {
         if (pathList.isEmpty())
             return;
-        final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
+        final Connection connection = DataBaseUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
         try (final PreparedStatement statement = connection.prepareStatement(String.format(
                 "DELETE FROM %s WHERE parent_path == ? AND NAME == ?;", DriverSqlHelper.getTableName(driverName)))) {
             if (_connection == null)
@@ -229,7 +228,7 @@ public final class DriverSqlHelper {
     public static void deleteFilesById(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> idList, final @Nullable Connection _connection) throws SQLException {
         if (idList.isEmpty())
             return;
-        final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
+        final Connection connection = DataBaseUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
         try (final PreparedStatement statement = connection.prepareStatement(String.format(
                 "DELETE FROM %s WHERE id == ?;", DriverSqlHelper.getTableName(driverName)))) {
             if (_connection == null)
@@ -253,7 +252,7 @@ public final class DriverSqlHelper {
     public static void deleteFilesByParentPath(final @NotNull String driverName, final @NotNull Collection<? extends @NotNull DrivePath> parentPathList, final @Nullable Connection _connection) throws SQLException {
         if (parentPathList.isEmpty())
             return;
-        final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
+        final Connection connection = DataBaseUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
         try (final PreparedStatement statement = connection.prepareStatement(String.format(
                 "DELETE FROM %s WHERE parent_path == ? AND name GLOB '?*';", DriverSqlHelper.getTableName(driverName)))) {
             if (_connection == null)
@@ -277,7 +276,7 @@ public final class DriverSqlHelper {
     public static void deleteFilesByTag(final @NotNull String driverName, final @NotNull Collection<@NotNull String> tagList, final @Nullable Connection _connection) throws SQLException {
         if (tagList.isEmpty())
             return;
-        final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
+        final Connection connection = DataBaseUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
         try (final PreparedStatement statement = connection.prepareStatement(String.format(
                 "DELETE FROM %s WHERE tag == ?;", DriverSqlHelper.getTableName(driverName)))) {
             if (_connection == null)
@@ -303,7 +302,7 @@ public final class DriverSqlHelper {
     public static @NotNull @UnmodifiableView List<@Nullable FileInformation> getFiles(final @NotNull String driverName, final @NotNull Collection<? extends @NotNull DrivePath> pathList, final @Nullable Connection _connection) throws SQLException {
         if (pathList.isEmpty())
             return List.of();
-        final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
+        final Connection connection = DataBaseUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
         try (final PreparedStatement statement = connection.prepareStatement(String.format(
                 "SELECT * FROM %s WHERE parent_path == ? AND name == ? LIMIT 1;", DriverSqlHelper.getTableName(driverName)))) {
             if (_connection == null)
@@ -330,7 +329,7 @@ public final class DriverSqlHelper {
     public static @NotNull @UnmodifiableView List<@Nullable FileInformation> getFilesById(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> idList, final @Nullable Connection _connection) throws SQLException {
         if (idList.isEmpty())
             return List.of();
-        final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
+        final Connection connection = DataBaseUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
         try (final PreparedStatement statement = connection.prepareStatement(String.format(
                 "SELECT * FROM %s WHERE id == ? LIMIT 1;", DriverSqlHelper.getTableName(driverName)))) {
             if (_connection == null)
@@ -356,7 +355,7 @@ public final class DriverSqlHelper {
     public static @NotNull @UnmodifiableView List<@NotNull @UnmodifiableView List<@NotNull FileInformation>> getFilesByParentPath(final @NotNull String driverName, final @NotNull Collection<? extends @NotNull DrivePath> parentPathList, final @Nullable Connection _connection) throws SQLException {
         if (parentPathList.isEmpty())
             return List.of();
-        final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
+        final Connection connection = DataBaseUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
         try (final PreparedStatement statement = connection.prepareStatement(String.format(
                 "SELECT * FROM %s WHERE parent_path == ?;", DriverSqlHelper.getTableName(driverName)))) {
             if (_connection == null)
@@ -382,7 +381,7 @@ public final class DriverSqlHelper {
     public static @NotNull @UnmodifiableView List<@NotNull @UnmodifiableView List<@NotNull FileInformation>> getFilesByTag(final @NotNull String driverName, final @NotNull Collection<@NotNull String> tagList, final @Nullable Connection _connection) throws SQLException {
         if (tagList.isEmpty())
             return List.of();
-        final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
+        final Connection connection = DataBaseUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
         try (final PreparedStatement statement = connection.prepareStatement(String.format(
                 "SELECT * FROM %s WHERE tag == ?;", DriverSqlHelper.getTableName(driverName)))) {
             if (_connection == null)
@@ -406,7 +405,7 @@ public final class DriverSqlHelper {
     }
 
     public static Pair.@NotNull ImmutablePair<@NotNull Integer, @UnmodifiableView List<@NotNull FileInformation>> getFileByParentPathS(final @NotNull String driverName, final @NotNull DrivePath parentPath, final int limit, final int offset, final @NotNull OrderDirection direction, final @NotNull OrderPolicy policy, final @Nullable Connection _connection) throws SQLException {
-        final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
+        final Connection connection = DataBaseUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
         try (final PreparedStatement statement = connection.prepareStatement(String.format(
                 "SELECT * FROM %s WHERE parent_path == ? ORDER BY ? %s LIMIT ? OFFSET ?;", DriverSqlHelper.getTableName(driverName),
                 switch (direction) {case ASCEND -> "ASC";case DESCEND -> "DESC";}))) {

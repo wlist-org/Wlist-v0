@@ -19,6 +19,7 @@ public final class Operation {
         Undefined,
         CloseServer,
         Broadcast,
+        SetBroadcastMode,
         Register,
         Login,
         ChangePassword,

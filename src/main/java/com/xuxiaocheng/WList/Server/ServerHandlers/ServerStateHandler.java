@@ -26,7 +26,6 @@ public final class ServerStateHandler {
         return ServerHandler.composeMessage(Operation.State.Success, null);
     };
 
-    // TODO Broadcast.
     public static final @NotNull ServerHandler doBroadcast = buffer -> {
         final UnionPair<UserTokenInfo, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.Broadcast);
         if (user.isFailure())

@@ -157,4 +157,23 @@ public class DataBaseUtil {
             return null;
         }
     }
+
+    /**
+     * Automatically get not null connection with DataBaseUtil.
+     * Standard code: @code {
+     *  final Connection connection = DataBaseUtil.requireConnection(_connection, databaseUtil);
+     *  try {
+     *      // use connection.
+     *  } finally {
+     *      if (_connection == null)
+     *          connection.close();
+     *  }
+     * }
+     */
+    public static @NotNull Connection requireConnection(final @Nullable Connection _connection, final @NotNull DataBaseUtil util) throws SQLException {
+        if (_connection != null)
+            return _connection;
+        // Objects.requireNonNullElseGet(_connection, DataBaseUtil.getIndexInstance()::getConnection); (With SQLException)
+        return util.getConnection();
+    }
 }

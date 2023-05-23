@@ -5,7 +5,6 @@ import com.xuxiaocheng.WList.Driver.Helpers.DriverSqlHelper;
 import com.xuxiaocheng.WList.Driver.Utils.DrivePath;
 import com.xuxiaocheng.WList.DataAccessObjects.FileInformation;
 import com.xuxiaocheng.WList.Utils.DataBaseUtil;
-import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -76,7 +75,7 @@ public final class LocalDiskManager {
     }
 
     public static void recursiveRefreshDirectory(final @NotNull LocalDiskConfiguration configuration, final @NotNull DrivePath directoryPath, final @Nullable Connection _connection) throws IOException, SQLException {
-        final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
+        final Connection connection = DataBaseUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
         try {
             if (_connection == null)
                 connection.setAutoCommit(false);

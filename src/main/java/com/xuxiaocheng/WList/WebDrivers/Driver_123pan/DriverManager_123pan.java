@@ -69,7 +69,7 @@ public final class DriverManager_123pan {
 
     static Pair.@NotNull ImmutablePair<@NotNull Integer, @NotNull Iterator<@NotNull FileInformation>> listAllFilesNoCache(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final @NotNull DrivePath directoryPath, final @Nullable Connection _connection, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {
         boolean noThread = true;
-        final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
+        final Connection connection = DataBaseUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
         try {
             if (_connection == null)
                 connection.setAutoCommit(false);
@@ -194,7 +194,7 @@ public final class DriverManager_123pan {
     }
 
     static void recursiveRefreshDirectory(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final @NotNull DrivePath directoryPath, final @Nullable Connection _connection, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {
-        final Connection connection = MiscellaneousUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
+        final Connection connection = DataBaseUtil.requireConnection(_connection, DataBaseUtil.getIndexInstance());
         try {
             if (_connection == null)
                 connection.setAutoCommit(false);
