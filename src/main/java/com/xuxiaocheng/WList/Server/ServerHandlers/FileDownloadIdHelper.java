@@ -4,6 +4,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.DataAccessObjects.ConstantSqlHelper;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.DelayQueueInStreamOutByteBuf;
@@ -69,10 +70,8 @@ final class FileDownloadIdHelper {
             this.queue = new DelayQueueInStreamOutByteBuf(inputStream, WListServer.IOExecutors,
                     WListServer.FileTransferBufferSize, 3,
                     e -> HLog.getInstance("ServerLogger").log(HLogLevel.ERROR, e));
-            this.id = MiscellaneousUtil.randomKeyAndPut(FileDownloadIdHelper.buffers, () -> {
-                //noinspection SpellCheckingInspection
-                return HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890`~!@#$%^&*()-_=+[]{}\\|;:,.<>/?");
-            }, this);
+            this.id = MiscellaneousUtil.randomKeyAndPut(FileDownloadIdHelper.buffers,
+                    () -> HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, ConstantSqlHelper.DefaultRandomChars), this);
             this.appendExpireTime();
             this.queue.start();
         }

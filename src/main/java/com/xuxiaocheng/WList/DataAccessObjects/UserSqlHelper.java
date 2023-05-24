@@ -5,7 +5,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Server.Operation;
 import com.xuxiaocheng.WList.Server.Polymers.UserSqlInfo;
-import com.xuxiaocheng.WList.Utils.DataBaseUtil;
+import com.xuxiaocheng.WList.Utils.DatabaseUtil;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -22,6 +22,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.SortedSet;
 
+// TODO user group.
 public final class UserSqlHelper {
     private UserSqlHelper() {
         super();
@@ -29,30 +30,35 @@ public final class UserSqlHelper {
 
     // Util
 
+    private static final @NotNull String ServerPasswordSlat = ConstantSqlHelper.getSafely("PasswordSlat",
+            () -> HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 64, ConstantSqlHelper.DefaultRandomChars),
+            "With( Server: SALT***#WListServer%CreateBy@XXC#***TokenMD5&SALT ");
+
     private static @NotNull String encryptPassword(final @NotNull String password) {
-        return MiscellaneousUtil.getMd5((password + /*UserSqlHelper.ServerPasswordSlat*/"With Server:SALT***#WListServer%CreateBy@XXC#***TokenMD5&SALT").getBytes(StandardCharsets.UTF_8));
+        return MiscellaneousUtil.getMd5((password + UserSqlHelper.ServerPasswordSlat).getBytes(StandardCharsets.UTF_8));
     }
 
     private static @NotNull String generateRandomPassword() {
-        final char[] word = new char[8];
         //noinspection SpellCheckingInspection
-        HRandomHelper.setArray(HRandomHelper.DefaultSecureRandom, word, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_".toCharArray());
-        return new String(word);
-    }
-
-    private static @NotNull String getModifyTime() {
-        return LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        return HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 8, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_");
     }
 
     public static boolean isWrongPassword(final @NotNull String source, final @NotNull String encrypted) {
         return !UserSqlHelper.encryptPassword(source).equals(encrypted);
     }
 
+    private static @NotNull String getModifyTime() {
+        return LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+    }
+
+    public record UserInformation(long id, @NotNull String username, @NotNull String password, @NotNull SortedSet<Operation.@NotNull Permission> permissions, @NotNull LocalDateTime modifyTime) {
+    }
+
     // Helper
 
     @SuppressWarnings("TypeMayBeWeakened")
     public static void init(final @NotNull SortedSet<Operation.@NotNull Permission> defaultPermission, final @NotNull SortedSet<Operation.@NotNull Permission> adminPermission) throws SQLException {
-        try (final Connection connection = DataBaseUtil.getDataInstance().getConnection()) {
+        try (final Connection connection = DatabaseUtil.getInstance().getConnection()) {
             connection.setAutoCommit(false);
             final boolean needCreate;
             try (final Statement statement = connection.createStatement()) {
@@ -98,7 +104,7 @@ public final class UserSqlHelper {
 
     @SuppressWarnings("TypeMayBeWeakened")
     public static boolean insertUser(final @NotNull String username, final @NotNull String password, final @Nullable SortedSet<Operation.@NotNull Permission> permissions) throws SQLException {
-        try (final Connection connection = DataBaseUtil.getDataInstance().getConnection()) {
+        try (final Connection connection = DatabaseUtil.getInstance().getConnection()) {
             if (permissions == null)
                 try (final PreparedStatement statement = connection.prepareStatement("""
                         INSERT INTO users (username, password, modify_time)
@@ -133,7 +139,7 @@ public final class UserSqlHelper {
     public static void updateUser(final @NotNull String username, final @Nullable String password, final @Nullable SortedSet<Operation.@NotNull Permission> permissions) throws SQLException {
         if (password == null && permissions == null)
             return;
-        try (final Connection connection = DataBaseUtil.getDataInstance().getConnection()) {
+        try (final Connection connection = DatabaseUtil.getInstance().getConnection()) {
             connection.setAutoCommit(false);
             if (password != null)
                 try (final PreparedStatement statement = connection.prepareStatement("""
@@ -158,7 +164,7 @@ public final class UserSqlHelper {
     }
 
     public static void deleteUser(final @NotNull String username) throws SQLException {
-        try (final Connection connection = DataBaseUtil.getDataInstance().getConnection()) {
+        try (final Connection connection = DatabaseUtil.getInstance().getConnection()) {
             try (final PreparedStatement statement = connection.prepareStatement("""
                         DELETE FROM users WHERE username == ?;
                         """)) {
@@ -169,7 +175,7 @@ public final class UserSqlHelper {
     }
 
     public static @Nullable UserSqlInfo selectUser(final @NotNull String username) throws SQLException {
-        try (final Connection connection = DataBaseUtil.getDataInstance().getConnection()) {
+        try (final Connection connection = DatabaseUtil.getInstance().getConnection()) {
             try (final PreparedStatement statement = connection.prepareStatement("""
                         SELECT password, permission, modify_time FROM users WHERE username == ? LIMIT 1;
                         """)) {
@@ -187,7 +193,7 @@ public final class UserSqlHelper {
 
     public static @NotNull List<UserInformation> selectAllUsers() throws SQLException {
         // TODO limit and page.
-        try (final Connection connection = DataBaseUtil.getDataInstance().getConnection()) {
+        try (final Connection connection = DatabaseUtil.getInstance().getConnection()) {
             try (final Statement statement = connection.createStatement()) {
                 try (final ResultSet user = statement.executeQuery("""
                         SELECT * FROM users;

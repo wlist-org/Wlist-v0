@@ -5,6 +5,7 @@ import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.DataAccessObjects.ConstantSqlHelper;
 import com.xuxiaocheng.WList.DataAccessObjects.FileInformation;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
@@ -20,7 +21,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -82,15 +82,9 @@ final class FileUploadIdHelper {
             this.username = username;
             this.methods = methods;
             this.tag = tag;
-            this.id = MiscellaneousUtil.randomKeyAndPut(FileUploadIdHelper.buffers, () -> {
-                //noinspection SpellCheckingInspection
-                return HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890`~!@#$%^&*()-_=+[]{}\\|;:,.<>/?");
-            }, this);
-            try {
-                this.md5 = MessageDigest.getInstance("MD5");
-            } catch (final NoSuchAlgorithmException exception) {
-                throw new RuntimeException("Unreachable!", exception);
-            }
+            this.id = MiscellaneousUtil.randomKeyAndPut(FileUploadIdHelper.buffers,
+                    () -> HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, ConstantSqlHelper.DefaultRandomChars), this);
+            this.md5 = MiscellaneousUtil.getMd5Digester();
             this.appendExpireTime();
         }
 

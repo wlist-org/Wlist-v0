@@ -20,13 +20,16 @@ public final class MiscellaneousUtil {
 
     public static final @NotNull Pattern md5Pattern = Pattern.compile("^[a-z0-9]{32}$");
 
-    public static @NotNull String getMd5(final byte @NotNull [] source) {
-        final MessageDigest md5;
+    public static @NotNull MessageDigest getMd5Digester() {
         try {
-            md5 = MessageDigest.getInstance("MD5");
+            return MessageDigest.getInstance("MD5");
         } catch (final NoSuchAlgorithmException exception) {
             throw new RuntimeException("Unreachable!", exception);
         }
+    }
+
+    public static @NotNull String getMd5(final byte @NotNull [] source) {
+        final MessageDigest md5 = MiscellaneousUtil.getMd5Digester();
         md5.update(source);
         final BigInteger i = new BigInteger(1, md5.digest());
         return String.format("%32s", i.toString(16)).replace(' ', '0');

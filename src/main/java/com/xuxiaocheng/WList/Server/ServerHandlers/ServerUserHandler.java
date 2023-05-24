@@ -5,7 +5,6 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.WList.DataAccessObjects.UserInformation;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
 import com.xuxiaocheng.WList.Server.Operation;
 import com.xuxiaocheng.WList.Server.Polymers.MessageProto;
@@ -43,7 +42,7 @@ public final class ServerUserHandler {
         super();
     }
 
-    static @NotNull Map<String, Object> getVisibleInfo(final @NotNull UserInformation u) {
+    static @NotNull Map<String, Object> getVisibleInfo(final @NotNull UserSqlHelper.UserInformation u) {
         final Map<String, Object> map = new LinkedHashMap<>(3);
         map.put("id", u.id());
         map.put("name", u.username());
@@ -149,7 +148,7 @@ public final class ServerUserHandler {
         final UnionPair<UserTokenInfo, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.UsersList);
         if (user.isFailure())
             return user.getE();
-        final List<UserInformation> list;
+        final List<UserSqlHelper.UserInformation> list;
         try {
             list = UserSqlHelper.selectAllUsers();
         } catch (final SQLException exception) {

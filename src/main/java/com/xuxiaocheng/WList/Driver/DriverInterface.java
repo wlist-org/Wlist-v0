@@ -8,7 +8,7 @@ import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
-import com.xuxiaocheng.WList.Utils.DataBaseUtil;
+import com.xuxiaocheng.WList.Utils.DatabaseUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -38,7 +38,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     void buildCache() throws Exception;
 
     /**
-     * Build file index into sql database {@link DataBaseUtil#getIndexInstance()}.
+     * Build file index into sql database {@link DatabaseUtil#getInstance()}.
      * @throws Exception Something went wrong.
      * @see DriverSqlHelper
      */
