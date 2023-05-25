@@ -3,7 +3,7 @@ plugins {
 }
 
 group 'com.xuxiaocheng'
-version '0.1.1'
+version '0.1.2'
 
 repositories {
     mavenCentral()
@@ -20,9 +20,9 @@ dependencies {
     implementation 'org.snakeyaml:snakeyaml-engine:2.6'
     implementation 'com.squareup.okhttp3:okhttp:4.10.0'
     implementation 'com.alibaba.fastjson2:fastjson2:2.0.25'
+    implementation 'com.auth0:java-jwt:4.3.0'
     implementation 'io.netty:netty-all:4.1.90.Final'
     implementation 'org.xerial:sqlite-jdbc:3.41.0.0'
-    implementation 'com.auth0:java-jwt:4.3.0'
 }
 
 test {

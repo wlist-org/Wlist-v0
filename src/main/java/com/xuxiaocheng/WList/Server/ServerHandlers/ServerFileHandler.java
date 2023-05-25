@@ -4,18 +4,18 @@ import com.alibaba.fastjson2.JSON;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
-import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
+import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
-import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
+import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
+import com.xuxiaocheng.WList.Server.Databases.User.UserSqlInformation;
 import com.xuxiaocheng.WList.Server.Driver.RootDriver;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.Operation;
 import com.xuxiaocheng.WList.Server.Polymers.MessageProto;
 import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
-import com.xuxiaocheng.WList.Server.Polymers.UserTokenInfo;
 import com.xuxiaocheng.WList.Server.ServerCodecs.MessageCiphers;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
@@ -51,22 +51,21 @@ public final class ServerFileHandler {
         return map;
     }
 
+    public static final @NotNull MessageProto FileNotFound = ServerHandler.composeMessage(Operation.State.DataError, "File");
+
     public static final @NotNull ServerHandler doListFiles = buffer -> {
-        final UnionPair<UserTokenInfo, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList);
+        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList);
         if (user.isFailure())
             return user.getE();
         final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
         final int page = ByteBufIOUtil.readVariableLenInt(buffer);
-        final String direction = ByteBufIOUtil.readUTF(buffer);
-        final String policy = ByteBufIOUtil.readUTF(buffer);
-        final OrderDirection orderDirection = OrderDirection.Map.get(direction);
-        final OrderPolicy orderPolicy = OrderPolicy.Map.get(policy);
-        if (limit < 1 || limit > GlobalConfiguration.getInstance().maxLimitPerPage() || page < 0
-                || (orderDirection == null && !"D".equals(direction))
-                || (orderPolicy == null && !"D".equals(policy)))
-            return ServerHandler.composeMessage(Operation.State.DataError, "Parameters");
-        final Pair.ImmutablePair<Integer, List<FileSqlInformation>> list;
+        final OrderDirection orderDirection = OrderDirection.Map.get(ByteBufIOUtil.readUTF(buffer));
+        final OrderPolicy orderPolicy = OrderPolicy.Map.get(ByteBufIOUtil.readUTF(buffer));
+        if (limit < 1 || limit > GlobalConfiguration.getInstance().maxLimitPerPage()
+                || page < 0 || orderDirection == null || orderPolicy == null)
+            return ServerHandler.WrongParameters;
+        final Pair.ImmutablePair<Long, List<FileSqlInformation>> list;
         try {
             list = RootDriver.getInstance().list(path, limit, page, orderDirection, orderPolicy);
         } catch (final UnsupportedOperationException exception) {
@@ -75,18 +74,18 @@ public final class ServerFileHandler {
             throw new ServerException(exception);
         }
         if (list == null)
-            return ServerHandler.composeMessage(Operation.State.DataError, "File");
+            return ServerFileHandler.FileNotFound;
         final String json = JSON.toJSONString(list.getSecond().stream()
                 .map(ServerFileHandler::getVisibleInfo).collect(Collectors.toList()));
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
-            ByteBufIOUtil.writeVariableLenInt(buf, list.getFirst().intValue());
+            ByteBufIOUtil.writeVariableLenLong(buf, list.getFirst().longValue());
             ByteBufIOUtil.writeUTF(buf, json);
             return buf;
         });
     };
 
     public static final @NotNull ServerHandler doMakeDirectories = buffer -> {
-        final UnionPair<UserTokenInfo, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload);
+        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload);
         if (user.isFailure())
             return user.getE();
         final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
@@ -99,12 +98,12 @@ public final class ServerFileHandler {
             throw new ServerException(exception);
         }
         if (dir == null)
-            return ServerHandler.composeMessage(Operation.State.DataError, "Name");
+            return ServerFileHandler.FileNotFound;
         return ServerHandler.composeMessage(Operation.State.Success, JSON.toJSONString(ServerFileHandler.getVisibleInfo(dir)));
     };
 
     public static final @NotNull ServerHandler doDeleteFile = buffer -> {
-        final UnionPair<UserTokenInfo, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDelete);
+        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDelete);
         if (user.isFailure())
             return user.getE();
         final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
@@ -115,11 +114,11 @@ public final class ServerFileHandler {
         } catch (final Exception exception) {
             throw new ServerException(exception);
         }
-        return ServerHandler.composeMessage(Operation.State.Success, null);
+        return ServerHandler.Success;
     };
 
     public static final @NotNull ServerHandler doRenameFile = buffer -> {
-        final UnionPair<UserTokenInfo, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDownload, Operation.Permission.FileUpload, Operation.Permission.FileDelete);
+        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDownload, Operation.Permission.FileUpload, Operation.Permission.FileDelete);
         if (user.isFailure())
             return user.getE();
         final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
@@ -133,19 +132,20 @@ public final class ServerFileHandler {
             throw new ServerException(exception);
         }
         if (file == null)
-            return ServerHandler.composeMessage(Operation.State.DataError, "Name");
+            return ServerFileHandler.FileNotFound;
         return ServerHandler.composeMessage(Operation.State.Success, JSON.toJSONString(ServerFileHandler.getVisibleInfo(file)));
     };
 
     public static final @NotNull ServerHandler doRequestDownloadFile = buffer -> {
-        final UnionPair<UserTokenInfo, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDownload);
+        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDownload);
         if (user.isFailure())
             return user.getE();
         final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         final long from = ByteBufIOUtil.readVariableLenLong(buffer);
         final long to = ByteBufIOUtil.readVariableLenLong(buffer);
         if (from < 0 || from >= to)
-            return ServerHandler.composeMessage(Operation.State.DataError, "Parameters");
+            return ServerHandler.WrongParameters;
+        // TODO: download methods.
         final Pair.ImmutablePair<InputStream, Long> url;
         try {
             url = RootDriver.getInstance().download(path, from, to);
@@ -155,58 +155,54 @@ public final class ServerFileHandler {
             throw new ServerException(exception);
         }
         if (url == null)
-            return ServerHandler.composeMessage(Operation.State.DataError, "File");
+            return ServerFileHandler.FileNotFound;
         final String id = FileDownloadIdHelper.generateId(url.getFirst(), user.getT().username());
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
             ByteBufIOUtil.writeVariableLenLong(buf, url.getSecond().longValue());
-            ByteBufIOUtil.writeVariableLenInt(buf, WListServer.FileTransferBufferSize);
+            ByteBufIOUtil.writeVariableLenInt(buf, (int) Math.ceil((double) url.getSecond().longValue() / WListServer.FileTransferBufferSize));
             ByteBufIOUtil.writeUTF(buf, id);
             return buf;
         });
     };
 
     public static final @NotNull ServerHandler doDownloadFile = buffer -> {
-        final UnionPair<UserTokenInfo, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FileDownload);
+        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FileDownload);
         if (user.isFailure())
             return user.getE();
         final String id = ByteBufIOUtil.readUTF(buffer);
+        final Pair.ImmutablePair<Integer, ByteBuf> file;
         try {
-            final Pair.ImmutablePair<Integer, ByteBuf> file = FileDownloadIdHelper.download(id, user.getT().username());
-            if (file == null)
-                return ServerHandler.composeMessage(Operation.State.DataError, null);
-            return new MessageProto(MessageCiphers.defaultDoGZip, Operation.State.Success, (buf) -> {
-                ByteBufIOUtil.writeVariableLenInt(buf, file.getFirst().intValue());
-                final CompositeByteBuf composite = ByteBufAllocator.DEFAULT.compositeBuffer(2);
-                composite.addComponents(true, buf, file.getSecond());
-                return composite;
-            });
+            file = FileDownloadIdHelper.download(id, user.getT().username());
         } catch (final InterruptedException | IOException | ExecutionException exception) {
             throw new ServerException(exception);
         }
+        if (file == null)
+            return ServerHandler.DataError;
+        return new MessageProto(MessageCiphers.defaultDoGZip, Operation.State.Success, (buf) -> {
+            ByteBufIOUtil.writeVariableLenInt(buf, file.getFirst().intValue());
+            final CompositeByteBuf composite = ByteBufAllocator.DEFAULT.compositeBuffer(2);
+            composite.addComponents(true, buf, file.getSecond());
+            return composite;
+        });
     };
 
     public static final @NotNull ServerHandler doCancelDownloadFile = buffer -> {
-        final UnionPair<UserTokenInfo, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FileDownload);
+        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FileDownload);
         if (user.isFailure())
             return user.getE();
         final String id = ByteBufIOUtil.readUTF(buffer);
-        if (FileDownloadIdHelper.cancel(id, user.getT().username()))
-            return ServerHandler.composeMessage(Operation.State.Success, null);
-        else
-            return ServerHandler.composeMessage(Operation.State.DataError, null);
+        return FileDownloadIdHelper.cancel(id, user.getT().username()) ? ServerHandler.Success : ServerHandler.DataError;
     };
 
     public static final @NotNull ServerHandler doRequestUploadFile = buffer -> {
-        final UnionPair<UserTokenInfo, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload);
+        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload);
         if (user.isFailure())
             return user.getE();
         final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         final long size = ByteBufIOUtil.readVariableLenLong(buffer);
         final String tag = ByteBufIOUtil.readUTF(buffer);
-        if (size < 0)
-            return ServerHandler.composeMessage(Operation.State.DataError, "Size");
-        if (!DriverUtil.tagPredication.test(tag))
-            return ServerHandler.composeMessage(Operation.State.DataError, "Tag");
+        if (size < 0 || !DriverUtil.tagPredication.test(tag))
+            return ServerHandler.WrongParameters;
         final UploadMethods methods;
         try {
             methods = RootDriver.getInstance().upload(path, size, tag);
@@ -216,8 +212,8 @@ public final class ServerFileHandler {
             throw new ServerException(exception);
         }
         if (methods == null)
-            return ServerHandler.composeMessage(Operation.State.DataError, "File");
-        if (methods.methods().isEmpty()) { // (reuse/empty)
+            return ServerFileHandler.FileNotFound;
+        if (methods.methods().isEmpty()) { // (reuse / empty file)
             try {
                 final FileSqlInformation info;
                 info = methods.supplier().get();
@@ -242,7 +238,7 @@ public final class ServerFileHandler {
     };
 
     public static final @NotNull ServerHandler doUploadFile = buffer -> {
-        final UnionPair<UserTokenInfo, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FileUpload);
+        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FileUpload);
         if (user.isFailure())
             return user.getE();
         final String id = ByteBufIOUtil.readUTF(buffer);
@@ -250,12 +246,21 @@ public final class ServerFileHandler {
         try {
             final SupplierE<FileSqlInformation> supplier = FileUploadIdHelper.upload(id, user.getT().username(), buffer, chunk);
             if (supplier == null)
-                return ServerHandler.composeMessage(Operation.State.DataError, null);
+                return ServerHandler.DataError;
             buffer.retain();
             final FileSqlInformation info = supplier.get();
-            if (info != null)
-                RootDriver.getInstance().completeUpload(info);
-            return ServerHandler.composeMessage(Operation.State.Success, null);
+            if (info == null)
+                return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
+                    ByteBufIOUtil.writeBoolean(buf, true);
+                    return buf;
+                });
+            RootDriver.getInstance().completeUpload(info);
+            final String json = JSON.toJSONString(ServerFileHandler.getVisibleInfo(info));
+            return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
+                ByteBufIOUtil.writeBoolean(buf, false);
+                ByteBufIOUtil.writeUTF(buf, json);
+                return buf;
+            });
         } catch (final ServerException exception) {
             throw exception;
         } catch (final Exception exception) {
@@ -264,16 +269,15 @@ public final class ServerFileHandler {
     };
 
     public static final @NotNull ServerHandler doCancelUploadFile = buffer -> {
-        final UnionPair<UserTokenInfo, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FileUpload);
+        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FileUpload);
         if (user.isFailure())
             return user.getE();
         final String id = ByteBufIOUtil.readUTF(buffer);
-        boolean success = FileUploadIdHelper.cancel(id, user.getT().username());
-        return ServerHandler.composeMessage(success ? Operation.State.Success : Operation.State.DataError, null);
+        return FileUploadIdHelper.cancel(id, user.getT().username()) ? ServerHandler.Success : ServerHandler.DataError;
     };
 
     public static final @NotNull ServerHandler doCopyFile = buffer -> {
-        final UnionPair<UserTokenInfo, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload, Operation.Permission.FileDownload);
+        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload, Operation.Permission.FileDownload);
         if (user.isFailure())
             return user.getE();
         final DrivePath source = new DrivePath(ByteBufIOUtil.readUTF(buffer));
@@ -287,12 +291,12 @@ public final class ServerFileHandler {
             throw new ServerException(exception);
         }
         if (file == null)
-            return ServerHandler.composeMessage(Operation.State.DataError, null);
+            return ServerFileHandler.FileNotFound;
         return ServerHandler.composeMessage(Operation.State.Success, JSON.toJSONString(ServerFileHandler.getVisibleInfo(file)));
     };
 
     public static final @NotNull ServerHandler doMoveFile = buffer -> {
-        final UnionPair<UserTokenInfo, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload, Operation.Permission.FileDownload, Operation.Permission.FileDelete);
+        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload, Operation.Permission.FileDownload, Operation.Permission.FileDelete);
         if (user.isFailure())
             return user.getE();
         final DrivePath sourceFile = new DrivePath(ByteBufIOUtil.readUTF(buffer));
@@ -306,7 +310,7 @@ public final class ServerFileHandler {
             throw new ServerException(exception);
         }
         if (file == null)
-            return ServerHandler.composeMessage(Operation.State.DataError, null);
+            return ServerFileHandler.FileNotFound;
         return ServerHandler.composeMessage(Operation.State.Success, JSON.toJSONString(ServerFileHandler.getVisibleInfo(file)));
     };
 }

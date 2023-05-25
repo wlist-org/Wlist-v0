@@ -13,8 +13,13 @@ import java.io.IOException;
 
 @FunctionalInterface
 public interface ServerHandler {
-    byte defaultCipher = MessageCiphers.doAes | MessageCiphers.doGZip;
     @NotNull MessageProto handle(final @NotNull ByteBuf buffer) throws IOException, ServerException;
+
+    byte defaultCipher = MessageCiphers.doAes | MessageCiphers.doGZip;
+
+    @NotNull MessageProto DataError = ServerHandler.composeMessage(Operation.State.DataError, null);
+    @NotNull MessageProto Success = ServerHandler.composeMessage(Operation.State.Success, null);
+    @NotNull MessageProto WrongParameters = ServerHandler.composeMessage(Operation.State.DataError, "Parameters");
 
     static @NotNull MessageProto composeMessage(final @NotNull Operation.State state, final @Nullable String message) {
         return new MessageProto(ServerHandler.defaultCipher, state, buf -> {

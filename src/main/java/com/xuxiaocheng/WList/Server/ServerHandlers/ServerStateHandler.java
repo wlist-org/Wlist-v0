@@ -1,9 +1,9 @@
 package com.xuxiaocheng.WList.Server.ServerHandlers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.WList.Server.Databases.User.UserSqlInformation;
 import com.xuxiaocheng.WList.Server.Operation;
 import com.xuxiaocheng.WList.Server.Polymers.MessageProto;
-import com.xuxiaocheng.WList.Server.Polymers.UserTokenInfo;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
@@ -19,15 +19,15 @@ public final class ServerStateHandler {
     }
 
     public static final @NotNull ServerHandler doCloseServer = buffer -> {
-        final UnionPair<UserTokenInfo, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.ServerOperate);
+        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.ServerOperate);
         if (user.isFailure())
             return user.getE();
         WListServer.ServerExecutors.schedule(() -> WListServer.getInstance().stop(), 3, TimeUnit.SECONDS);
-        return ServerHandler.composeMessage(Operation.State.Success, null);
+        return ServerHandler.Success;
     };
 
     public static final @NotNull ServerHandler doBroadcast = buffer -> {
-        final UnionPair<UserTokenInfo, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.Broadcast);
+        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.Broadcast);
         if (user.isFailure())
             return user.getE();
         buffer.retain();
@@ -37,6 +37,6 @@ public final class ServerStateHandler {
         final CompositeByteBuf msg = ByteBufAllocator.DEFAULT.compositeBuffer(2);
         msg.addComponents(true, head, buffer);
         WListServer.ServerExecutors.schedule(() -> WListServer.getInstance().writeChannels(msg), 1, TimeUnit.SECONDS);
-        return ServerHandler.composeMessage(Operation.State.Success, null);
+        return ServerHandler.Success;
     };
 }

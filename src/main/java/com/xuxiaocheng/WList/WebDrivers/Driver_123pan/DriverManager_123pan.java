@@ -236,7 +236,7 @@ public final class DriverManager_123pan {
     }
 
     static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> listFilesWithCache(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath directoryPath, final int limit, final int page, final @Nullable OrderDirection direction, final @Nullable OrderPolicy policy, final @Nullable String connectionId) throws SQLException {
-        return FileSqlHelper.selectFileByParentPathInPage(configuration.getLocalSide().getName(), directoryPath, limit, (long) (page - 1) * limit,
+        return FileSqlHelper.selectFileByParentPathInPage(configuration.getLocalSide().getName(), directoryPath, limit, (long) page * limit,
                 Objects.requireNonNullElse(direction, configuration.getWebSide().getDefaultOrderDirection()),
                 Objects.requireNonNullElse(policy, configuration.getWebSide().getDefaultOrderPolicy()),
                 connectionId);

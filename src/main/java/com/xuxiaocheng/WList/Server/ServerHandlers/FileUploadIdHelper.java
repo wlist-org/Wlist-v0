@@ -51,6 +51,7 @@ final class FileUploadIdHelper {
         return true;
     }
 
+    // TODO check chunk.
     public static @Nullable SupplierE<@Nullable FileSqlInformation> upload(final @NotNull String id, final @NotNull String username, final @NotNull ByteBuf buf, final int chunk) throws Exception {
         final UploaderData data = FileUploadIdHelper.buffers.get(id);
         if (data == null || !data.username.equals(username))

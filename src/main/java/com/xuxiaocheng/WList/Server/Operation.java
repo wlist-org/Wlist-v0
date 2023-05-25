@@ -1,6 +1,7 @@
 package com.xuxiaocheng.WList.Server;
 
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -94,7 +95,11 @@ public final class Operation {
         return JSON.toJSONString(permissions.stream().map(Enum::name).collect(Collectors.toCollection(TreeSet::new)));
     }
 
-    public static @NotNull SortedSet<@NotNull Permission> parsePermissions(final @NotNull String permissions) {
-        return new TreeSet<>(JSON.parseArray(permissions).stream().map(Object::toString).map(Operation::valueOfPermission).filter(Objects::nonNull).toList());
+    public static @Nullable SortedSet<@NotNull Permission> parsePermissions(final @NotNull String permissions) {
+        try {
+            return new TreeSet<>(JSON.parseArray(permissions).stream().map(Object::toString).map(Operation::valueOfPermission).filter(Objects::nonNull).toList());
+        } catch (final JSONException exception) {
+            return null;
+        }
     }
 }

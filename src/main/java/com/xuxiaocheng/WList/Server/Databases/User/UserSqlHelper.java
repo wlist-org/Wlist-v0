@@ -36,11 +36,13 @@ public final class UserSqlHelper {
 
     private static final @NotNull DateTimeFormatter DefaultFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
     
-    private static @NotNull @UnmodifiableView Collection<Operation.@NotNull Permission> DefaultPermissions = List.of();
+    private static @NotNull @UnmodifiableView SortedSet<Operation.@NotNull Permission> DefaultPermissions = Collections.emptySortedSet();
 
     public static @NotNull @UnmodifiableView Collection<Operation.@NotNull Permission> getDefaultPermissions() {
         return UserSqlHelper.DefaultPermissions;
     }
+
+    // TODO cache.
 
     // Util
 
@@ -58,7 +60,7 @@ public final class UserSqlHelper {
             return null;
         return new UserSqlInformation(result.getLong("id"),
                 result.getString("username"), result.getString("password"),
-                Operation.parsePermissions(result.getString("permissions")),
+                Objects.requireNonNullElse(Operation.parsePermissions(result.getString("permissions")), UserSqlHelper.DefaultPermissions),
                 LocalDateTime.parse(result.getString("modify_time"), UserSqlHelper.DefaultFormatter));
     }
 
