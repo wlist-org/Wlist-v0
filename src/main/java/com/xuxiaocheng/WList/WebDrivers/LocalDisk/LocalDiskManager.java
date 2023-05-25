@@ -1,9 +1,9 @@
 package com.xuxiaocheng.WList.WebDrivers.LocalDisk;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.WList.DataAccessObjects.DriverSqlHelper;
+import com.xuxiaocheng.WList.Server.Databases.File.FileSqlHelper;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
-import com.xuxiaocheng.WList.DataAccessObjects.FileInformation;
+import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Utils.DatabaseUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -38,9 +38,9 @@ public final class LocalDiskManager {
         return new DrivePath(full.toString().substring(root.toString().length()));
     }
 
-    static @Nullable FileInformation getFileInformation(final @NotNull LocalDiskConfiguration configuration, final @NotNull DrivePath path, final boolean useCache, final @Nullable Connection _connection) throws IOException, SQLException {
+    static @Nullable FileSqlInformation getFileInformation(final @NotNull LocalDiskConfiguration configuration, final @NotNull DrivePath path, final boolean useCache, final @Nullable String connectionId) throws IOException, SQLException {
         if (useCache) {
-            final FileInformation info = DriverSqlHelper.getFile(configuration.getLocalSide().getName(), path, _connection);
+            final FileSqlInformation info = FileSqlHelper.selectFile(configuration.getLocalSide().getName(), path, connectionId);
             if (info != null)
                 return info;
         }
@@ -49,45 +49,45 @@ public final class LocalDiskManager {
         return FileInformation_LocalDisk.create(configuration.getWebSide().getRootDirectoryPath().toPath(), file, attributes);
     }
 
-    static Pair.@NotNull ImmutablePair<@NotNull Integer, @NotNull List<@NotNull FileInformation>> listFileNoCache(final @NotNull LocalDiskConfiguration configuration, final @NotNull DrivePath directoryPath, final int limit, final int page, final @Nullable Connection _connection) throws IOException, SQLException {
+    static Pair.@NotNull ImmutablePair<@NotNull Integer, @NotNull List<@NotNull FileSqlInformation>> listFileNoCache(final @NotNull LocalDiskConfiguration configuration, final @NotNull DrivePath directoryPath, final int limit, final int page, final @Nullable String id) throws IOException, SQLException {
         final File root = LocalDiskManager.toFile(configuration.getWebSide().getRootDirectoryPath(), directoryPath);
         final File[] children = root.listFiles();
         if (children == null)
             return Pair.ImmutablePair.makeImmutablePair(0, new LinkedList<>());
-        final List<FileInformation> list = new LinkedList<>();
+        final List<FileSqlInformation> list = new LinkedList<>();
         for (int i = (page - 1) * limit; list.size() < limit && i < children.length; ++i) {
             directoryPath.child(children[i].getName());
             try {
-                final FileInformation information = LocalDiskManager.getFileInformation(configuration, directoryPath, false, _connection);
+                final FileSqlInformation information = LocalDiskManager.getFileInformation(configuration, directoryPath, false, _connection);
                 if (information != null)
                     list.add(information);
             } finally {
                 directoryPath.parent();
             }
         }
-        DriverSqlHelper.insertFilesIgnoreId(configuration.getLocalSide().getName(), list, _connection);
+//        FileSqlHelper.insertFilesIgnoreId(configuration.getLocalSide().getName(), list, _connection);
         return Pair.ImmutablePair.makeImmutablePair(children.length, list);
     }
 
-    static Pair.@NotNull ImmutablePair<@NotNull Integer, @NotNull Iterator<@NotNull FileInformation>> listAllFilesNoCache(final @NotNull LocalDiskConfiguration configuration, final @NotNull DrivePath directoryPath, final @Nullable Connection _connection, final @NotNull ExecutorService threadPool) throws IOException, SQLException {
-        final Pair.ImmutablePair<Integer, List<FileInformation>> files = LocalDiskManager.listFileNoCache(configuration, directoryPath, Integer.MAX_VALUE, 1, _connection);
+    static Pair.@NotNull ImmutablePair<@NotNull Integer, @NotNull Iterator<@NotNull FileSqlInformation>> listAllFilesNoCache(final @NotNull LocalDiskConfiguration configuration, final @NotNull DrivePath directoryPath, final @Nullable String id, final @NotNull ExecutorService threadPool) throws IOException, SQLException {
+        final Pair.ImmutablePair<Integer, List<FileSqlInformation>> files = LocalDiskManager.listFileNoCache(configuration, directoryPath, Integer.MAX_VALUE, 1, _connection);
         return Pair.ImmutablePair.makeImmutablePair(files.getFirst(), files.getSecond().iterator());
     }
 
-    public static void recursiveRefreshDirectory(final @NotNull LocalDiskConfiguration configuration, final @NotNull DrivePath directoryPath, final @Nullable Connection _connection) throws IOException, SQLException {
+    public static void recursiveRefreshDirectory(final @NotNull LocalDiskConfiguration configuration, final @NotNull DrivePath directoryPath, final @Nullable String id) throws IOException, SQLException {
         final Connection connection = DatabaseUtil.requireConnection(_connection, DatabaseUtil.getInstance());
         try {
             if (_connection == null)
                 connection.setAutoCommit(false);
             final Path root = new File(configuration.getWebSide().getRootDirectoryPath(), directoryPath.getPath()).toPath();
-            final Collection<FileInformation> list = new LinkedList<>();
+            final Collection<FileSqlInformation> list = new LinkedList<>();
             Files.walkFileTree(root, Set.of(), Integer.MAX_VALUE, new SimpleFileVisitor<>() {
                 @Override
                 public FileVisitResult preVisitDirectory(final Path dir, final BasicFileAttributes attrs) throws IOException {
-//                    DriverSqlHelper.getFileByParentPath()
+//                    FileSqlHelper.getFileByParentPath()
                     try {
-                        DriverSqlHelper.deleteFileByParentPath(configuration.getLocalSide().getName(), LocalDiskManager.getDrivePath(root, dir), connection);
-                        final FileInformation information = FileInformation_LocalDisk.create(root, dir, attrs);
+                        FileSqlHelper.deleteFileByParentPath(configuration.getLocalSide().getName(), LocalDiskManager.getDrivePath(root, dir), connection);
+                        final FileSqlInformation information = FileInformation_LocalDisk.create(root, dir, attrs);
                         if (information != null)
                             list.add(information);
                     } catch (final SQLException exception) {
@@ -98,13 +98,13 @@ public final class LocalDiskManager {
 
                 @Override
                 public @NotNull FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) throws IOException {
-                    final FileInformation information = FileInformation_LocalDisk.create(root, file, attrs);
+                    final FileSqlInformation information = FileInformation_LocalDisk.create(root, file, attrs);
                     if (information != null)
                         list.add(information);
                     return FileVisitResult.CONTINUE;
                 }
             });
-            DriverSqlHelper.insertFilesIgnoreId(configuration.getLocalSide().getName(), list, connection);
+//            FileSqlHelper.insertFilesIgnoreId(configuration.getLocalSide().getName(), list, connection);
             if (_connection == null)
                 connection.commit();
         } finally {

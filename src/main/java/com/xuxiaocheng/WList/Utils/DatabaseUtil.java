@@ -1,8 +1,10 @@
 package com.xuxiaocheng.WList.Utils;
 
-import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
+import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
+import io.netty.util.IllegalReferenceCountException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.sqlite.JDBC;
@@ -17,11 +19,12 @@ import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Map;
-import java.util.Queue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 public class DatabaseUtil {
     private static @Nullable DatabaseUtil Instance;
@@ -30,7 +33,7 @@ public class DatabaseUtil {
         if (DatabaseUtil.Instance == null)
             DatabaseUtil.Instance = new DatabaseUtil(new PooledDatabaseConfig(
                     new File(GlobalConfiguration.getInstance().databasePath()),
-                    3, 2, 10, false, true, Connection.TRANSACTION_READ_COMMITTED
+                    2, 3, 10, false, true, Connection.TRANSACTION_READ_COMMITTED
             ));
         return DatabaseUtil.Instance;
     }
@@ -38,8 +41,8 @@ public class DatabaseUtil {
     protected final @NotNull DataSource dataSource;
     protected final @NotNull PooledDatabaseConfig config;
     protected final @NotNull AtomicInteger createdSize = new AtomicInteger(0);
-    protected final @NotNull Queue<@NotNull Connection> freeConnections = new ConcurrentLinkedQueue<>();
-    protected final @NotNull Map<@NotNull Thread, Pair.@NotNull ImmutablePair<@NotNull Connection, @NotNull AtomicInteger>> threadConnections = new ConcurrentHashMap<>();
+    protected final @NotNull BlockingQueue<@NotNull ReferencedConnection> freeConnections = new LinkedBlockingQueue<>();
+    protected final @NotNull ConcurrentMap<@NotNull String, @NotNull ReferencedConnection> activeConnections = new ConcurrentHashMap<>();
     protected final @NotNull Object needIdleConnection = new Object();
 
     protected DatabaseUtil(final @NotNull PooledDatabaseConfig config) throws SQLException {
@@ -53,7 +56,7 @@ public class DatabaseUtil {
         this.dataSource = new SQLiteDataSource();
         ((SQLiteDataSource) this.dataSource).setUrl(JDBC.PREFIX + path.getPath());
         if (config.walMode) {
-            final Connection connection = this.createNewConnection();
+            final ReferencedConnection connection = this.createNewConnection();
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate("PRAGMA journal_mode = WAL;");
             }
@@ -65,18 +68,18 @@ public class DatabaseUtil {
         assert this.createdSize.get() == this.config.initSize;
     }
 
-    protected final @NotNull Connection createNewConnection() throws SQLException {
+    protected final @NotNull ReferencedConnection createNewConnection() throws SQLException {
         if (this.createdSize.getAndIncrement() < this.config.maxSize) {
             final Connection rawConnection = this.dataSource.getConnection();
             if (rawConnection == null) {
                 this.createdSize.getAndDecrement();
                 throw new SQLException("Failed to get connection with sqlite database source.");
             }
-            return (Connection) Proxy.newProxyInstance(rawConnection.getClass().getClassLoader(),
-                    DatabaseUtil.ConnectionProxy, new PooledConnectionProxy(rawConnection, this));
+            return (ReferencedConnection) Proxy.newProxyInstance(rawConnection.getClass().getClassLoader(),
+                    PooledConnectionProxy.ConnectionProxy, new PooledConnectionProxy(rawConnection, this));
         }
         this.createdSize.getAndDecrement();
-        Connection connection = null;
+        ReferencedConnection connection = null;
         try {
             synchronized (this.needIdleConnection) {
                 while (connection == null) {
@@ -90,44 +93,114 @@ public class DatabaseUtil {
         return connection;
     }
 
-    private static final Class<?>[] ConnectionProxy = new Class[] {Connection.class};
+    protected interface ReferencedConnection extends Connection {
+        void retain();
+        @NotNull String id();
+        void setId(final @NotNull String id);
+        @NotNull Connection inside();
+    }
 
-    protected record PooledConnectionProxy(@NotNull Connection connection, @NotNull DatabaseUtil util) implements InvocationHandler {
+    protected static final class PooledConnectionProxy implements InvocationHandler {
+        private static final Class<?>[] ConnectionProxy = new Class[] {ReferencedConnection.class};
+
+        private final @NotNull Connection connection;
+        private final @NotNull DatabaseUtil util;
+        private int referenceCounter = 0;
+        private @NotNull String id = "";
+
+        private PooledConnectionProxy(final @NotNull Connection connection, final @NotNull DatabaseUtil util) {
+            super();
+            this.connection = connection;
+            this.util = util;
+        }
+
         @Override
-        public @Nullable Object invoke(final @NotNull Object proxy, final @NotNull Method method, final Object @Nullable [] args) throws IllegalAccessException, InvocationTargetException, SQLException {
-            if (!"close".equals(method.getName()))
-                return method.invoke(this.connection, args);
-            this.util.recycleConnection(this.connection);
-            return null;
+        public synchronized @Nullable Object invoke(final @NotNull Object proxy, final @NotNull Method method, final Object @Nullable [] args) throws IllegalAccessException, InvocationTargetException, SQLException {
+            if (this.referenceCounter < 0)
+                throw new IllegalReferenceCountException(this.referenceCounter);
+            switch (method.getName()) {
+                case "retain": {
+                    ++this.referenceCounter;
+                    return null;
+                }
+                case "id": {
+                    if (this.referenceCounter < 1)
+                        throw new IllegalReferenceCountException(0);
+                    return this.id;
+                }
+                case "setId": {
+                    if (this.referenceCounter > 0)
+                        throw new IllegalReferenceCountException(this.referenceCounter);
+                    assert args != null && args.length == 1;
+                    this.id = (String) args[0];
+                    return null;
+                }
+                case "close": {
+                    if (this.referenceCounter < 1)
+                        throw new IllegalReferenceCountException(0);
+                    if (--this.referenceCounter < 1)
+                        this.util.recycleConnection(this.id);
+                    return null;
+                }
+                case "inside": return this.connection;
+                case "commit": {
+                    if (this.referenceCounter != 1)
+                        return null;
+                }
+            }
+            return method.invoke(this.connection, args);
+        }
+
+        @Override
+        public synchronized @NotNull String toString() {
+            return "PooledConnectionProxy{" +
+                    "connection=" + this.connection +
+                    ", util=" + this.util +
+                    ", referenceCounter=" + this.referenceCounter +
+                    ", id='" + this.id + '\'' +
+                    '}';
         }
     }
 
-    // Due to thread dependency, synchronization is not required.
-    public @NotNull Connection getConnection() throws SQLException {
-        final Thread current = Thread.currentThread();
-        final Pair.ImmutablePair<Connection, AtomicInteger> pair = this.threadConnections.get(current);
-        if (pair != null) {
-            pair.getSecond().getAndIncrement();
-            return pair.getFirst();
+    public @NotNull Connection getConnection(final @Nullable String connectionId) throws SQLException {
+        if (connectionId == null)
+            return this.getNewConnection(null);
+        final ReferencedConnection connection;
+        try {
+            connection = this.activeConnections.computeIfAbsent(connectionId, HExceptionWrapper.wrapFunction(k -> {
+                ReferencedConnection newConnection = this.freeConnections.poll();
+                if (newConnection == null)
+                    newConnection = this.createNewConnection();
+                newConnection.setId(connectionId);
+                return newConnection;
+            }));
+            assert connectionId.equals(connection.id());
+        } catch (final RuntimeException exception) {
+            throw HExceptionWrapper.unwrapException(exception, SQLException.class);
         }
-        Connection connection = this.freeConnections.poll();
-        if (connection == null)
-            connection = this.createNewConnection();
-        this.threadConnections.put(current, Pair.ImmutablePair.makeImmutablePair(connection, new AtomicInteger(1)));
+        connection.retain();
         return connection;
     }
 
-    // Due to thread dependency, synchronization is not required.
-    public void recycleConnection(final @NotNull Connection connection) throws SQLException {
-        final Thread current = Thread.currentThread();
-        final Pair.ImmutablePair<Connection, AtomicInteger> pair = this.threadConnections.get(current);
-        assert pair != null && pair.getFirst() == connection;
-        if (pair.getSecond().getAndDecrement() > 1)
-            return;
-        this.threadConnections.remove(current);
+    public @NotNull Connection getNewConnection(final @Nullable Consumer<? super @NotNull String> indexSaver) throws SQLException {
+        ReferencedConnection connection = this.freeConnections.poll();
+        if (connection == null)
+            connection = this.createNewConnection();
+        final String id = MiscellaneousUtil.randomKeyAndPut(this.activeConnections,
+                () -> HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, HRandomHelper.DefaultWords),
+                connection);
+        connection.setId(id);
+        if (indexSaver != null)
+            indexSaver.accept(id);
+        connection.retain();
+        return connection;
+    }
+
+    protected void recycleConnection(final @NotNull String id) throws SQLException {
+        final ReferencedConnection connection = this.activeConnections.remove(id);
         this.resetConnection(connection);
         if (this.createdSize.get() > this.config.averageSize) {
-            connection.close();
+            connection.inside().close();
             this.createdSize.getAndDecrement();
             return;
         }
@@ -155,7 +228,7 @@ public class DatabaseUtil {
                 "config=" + this.config +
                 ", createdSize=" + this.createdSize +
                 ", freeConnections=" + this.freeConnections +
-                ", threadConnections=" + this.threadConnections +
+                ", activeConnections=" + this.activeConnections +
                 '}';
     }
 
@@ -175,10 +248,8 @@ public class DatabaseUtil {
      * }
      */
     @Deprecated
-    public static @NotNull Connection requireConnection(final @Nullable Connection _connection, final @NotNull DatabaseUtil util) throws SQLException {
-        if (_connection != null)
-            return _connection;
+    public static @NotNull Connection requireConnection(final @Nullable String id, final @NotNull DatabaseUtil util) throws SQLException {
         // Objects.requireNonNullElseGet(_connection, DatabaseUtil.getIndexInstance()::getConnection); (With SQLException)
-        return util.getConnection();
+        return util.getConnection(id);
     }
 }

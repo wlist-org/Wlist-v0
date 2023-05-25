@@ -2,8 +2,8 @@ package com.xuxiaocheng.WList.Driver;
 
 import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.WList.DataAccessObjects.DriverSqlHelper;
-import com.xuxiaocheng.WList.DataAccessObjects.FileInformation;
+import com.xuxiaocheng.WList.Server.Databases.File.FileSqlHelper;
+import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
@@ -23,13 +23,13 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @param configuration The modified configuration.
      * @throws Exception Something went wrong.
      */
-    void initiate(final @NotNull C configuration) throws Exception;
+    void initialize(final @NotNull C configuration) throws Exception;
 
     /**
-     * Completely uninitiate this driver. (cleaner/deleter)
+     * Completely uninitialize this driver. (cleaner/deleter)
      * @throws Exception Something went wrong.
      */
-    void uninitiate() throws Exception;
+    void uninitialize() throws Exception;
 
     /**
      * Login the web server. Check token etc.
@@ -40,7 +40,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     /**
      * Build file index into sql database {@link DatabaseUtil#getInstance()}.
      * @throws Exception Something went wrong.
-     * @see DriverSqlHelper
+     * @see FileSqlHelper
      */
     void buildIndex() throws Exception;
 
@@ -49,12 +49,12 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @param path The directory path to get files list.
      * @param page The page of the list.
      * @param limit Max length in one page.
-     * @return Integer means all files in directory count. The second is the files list. The String in the list means file name.
+     * @return Long means all files in directory count. The second is the files list. The String in the list means file name.
      *          Null means directory is not available.
      * @throws Exception Something went wrong.
      */
-    Pair.@Nullable ImmutablePair<@NotNull Integer, @NotNull @UnmodifiableView List<@NotNull FileInformation>> list(final @NotNull DrivePath path, final int limit, final int page,
-                                                                                                                   final @Nullable OrderDirection direction, final @Nullable OrderPolicy policy) throws Exception;
+    Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(final @NotNull DrivePath path, final int limit, final int page,
+                                                                                                                      final @Nullable OrderDirection direction, final @Nullable OrderPolicy policy) throws Exception;
 
     /**
      * Get the file information of a specific file.
@@ -62,7 +62,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @return The file information. Null means not existed.
      * @throws Exception Something went wrong.
      */
-    @Nullable FileInformation info(final @NotNull DrivePath path) throws Exception;
+    @Nullable FileSqlInformation info(final @NotNull DrivePath path) throws Exception;
 
     /**
      * Get download link of a specific file.
@@ -80,7 +80,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @return The information of new directory. Null means failure. (Invalid filename.)
      * @throws Exception Something went wrong.
      */
-    @Nullable FileInformation mkdirs(final @NotNull DrivePath path) throws Exception;
+    @Nullable FileSqlInformation mkdirs(final @NotNull DrivePath path) throws Exception;
 
     /**
      * Upload file to path. {@link UploadMethods}
@@ -100,24 +100,24 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     void delete(final @NotNull DrivePath path) throws Exception;
 
     @SuppressWarnings("OverlyBroadThrowsClause")
-    default @Nullable FileInformation copy(final @NotNull DrivePath source, final @NotNull DrivePath target) throws Exception {
+    default @Nullable FileSqlInformation copy(final @NotNull DrivePath source, final @NotNull DrivePath target) throws Exception {
         throw new UnsupportedOperationException();
     }
 
-    default @Nullable FileInformation move(final @NotNull DrivePath sourceFile, final @NotNull DrivePath targetDirectory) throws Exception {
+    default @Nullable FileSqlInformation move(final @NotNull DrivePath sourceFile, final @NotNull DrivePath targetDirectory) throws Exception {
         if (targetDirectory.equals(sourceFile.getParent()))
             return this.info(sourceFile);
-        final FileInformation t = this.copy(sourceFile, targetDirectory.getChild(sourceFile.getName()));
+        final FileSqlInformation t = this.copy(sourceFile, targetDirectory.getChild(sourceFile.getName()));
         if (t == null)
             return null;
         this.delete(sourceFile);
         return t;
     }
 
-    default @Nullable FileInformation rename(final @NotNull DrivePath source, final @NotNull String name) throws Exception {
+    default @Nullable FileSqlInformation rename(final @NotNull DrivePath source, final @NotNull String name) throws Exception {
         if (source.getName().equals(name))
             return this.info(source);
-        final FileInformation t = this.copy(source, source.getParent().child(name));
+        final FileSqlInformation t = this.copy(source, source.getParent().child(name));
         this.delete(source);
         return t;
     }

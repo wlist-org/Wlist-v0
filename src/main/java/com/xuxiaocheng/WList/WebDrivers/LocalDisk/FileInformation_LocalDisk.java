@@ -1,6 +1,6 @@
 package com.xuxiaocheng.WList.WebDrivers.LocalDisk;
 
-import com.xuxiaocheng.WList.DataAccessObjects.FileInformation;
+import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -15,13 +15,13 @@ public final class FileInformation_LocalDisk {
         super();
     }
 
-    static @Nullable FileInformation create(final @NotNull Path root, final @NotNull Path child, final @Nullable BasicFileAttributes attributes) throws IOException {
+    static @Nullable FileSqlInformation create(final @NotNull Path root, final @NotNull Path child, final @Nullable BasicFileAttributes attributes) throws IOException {
         if (attributes == null)
             return null;
         if (!child.startsWith(root))
             return null;
         try {
-            return new FileInformation(-1, LocalDiskManager.getDrivePath(root, child),
+            return new FileSqlInformation(-1, LocalDiskManager.getDrivePath(root, child),
                     !attributes.isRegularFile(), attributes.size(),
                     LocalDateTime.ofInstant(attributes.creationTime().toInstant(), ZoneId.systemDefault()),
                     LocalDateTime.ofInstant(attributes.lastModifiedTime().toInstant(), ZoneId.systemDefault()),

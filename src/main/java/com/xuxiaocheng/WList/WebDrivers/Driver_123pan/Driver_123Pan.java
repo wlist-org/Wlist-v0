@@ -2,9 +2,9 @@ package com.xuxiaocheng.WList.WebDrivers.Driver_123pan;
 
 import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.WList.DataAccessObjects.FileInformation;
+import com.xuxiaocheng.WList.Server.Databases.File.FileSqlHelper;
+import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
-import com.xuxiaocheng.WList.DataAccessObjects.DriverSqlHelper;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
@@ -26,17 +26,18 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
     private @NotNull DriverConfiguration_123Pan configuration = new DriverConfiguration_123Pan();
 
     @Override
-    public void initiate(final @NotNull DriverConfiguration_123Pan configuration) throws SQLException {
-        DriverSqlHelper.initiate(configuration.getLocalSide().getName());
-        DriverSqlHelper.insertFile(configuration.getLocalSide().getName(),
-                new FileInformation(configuration.getWebSide().getRootDirectoryId(),
+    public void initialize(final @NotNull DriverConfiguration_123Pan configuration) throws SQLException {
+        FileSqlHelper.initialize(configuration.getLocalSide().getName(), "initialize");
+        // TODO specially handle root directory.
+        FileSqlHelper.insertFile(configuration.getLocalSide().getName(),
+                new FileSqlInformation(configuration.getWebSide().getRootDirectoryId(),
                         new DrivePath("/"), true, 0, null, null, "", null), null);
         this.configuration = configuration;
     }
 
     @Override
-    public void uninitiate() throws SQLException {
-        DriverSqlHelper.uninitiate(this.configuration.getLocalSide().getName());
+    public void uninitialize() throws SQLException {
+        FileSqlHelper.uninitialize(this.configuration.getLocalSide().getName(), "initialize");
     }
 
     @Override
@@ -50,13 +51,13 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
     }
 
     @Override
-    public Pair.@NotNull ImmutablePair<@NotNull Integer, @NotNull @UnmodifiableView List<@NotNull FileInformation>> list(final @NotNull DrivePath path, final int limit, final int page,
-                                                                                                                         final @Nullable OrderDirection direction, final @Nullable OrderPolicy policy) throws SQLException {
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(final @NotNull DrivePath path, final int limit, final int page,
+                                                                                                                            final @Nullable OrderDirection direction, final @Nullable OrderPolicy policy) throws SQLException {
         return DriverManager_123pan.listFilesWithCache(this.configuration, path, limit, page, direction, policy, null);
     }
 
     @Override
-    public @Nullable FileInformation info(final @NotNull DrivePath path) throws IllegalParametersException, IOException, SQLException {
+    public @Nullable FileSqlInformation info(final @NotNull DrivePath path) throws IllegalParametersException, IOException, SQLException {
         return DriverManager_123pan.getFileInformation(this.configuration, path, true, null, WListServer.IOExecutors);
     }
 
@@ -69,8 +70,8 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
     }
 
     @Override
-    public @Nullable FileInformation mkdirs(final @NotNull DrivePath path) throws IllegalParametersException, IOException, SQLException {
-        final FileInformation info = DriverManager_123pan.getFileInformation(this.configuration, path, true, null, WListServer.IOExecutors);
+    public @Nullable FileSqlInformation mkdirs(final @NotNull DrivePath path) throws IllegalParametersException, IOException, SQLException {
+        final FileSqlInformation info = DriverManager_123pan.getFileInformation(this.configuration, path, true, null, WListServer.IOExecutors);
         if (info != null) {
             if (info.is_dir())
                 return info;
@@ -101,11 +102,11 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
 
     @SuppressWarnings("OverlyBroadThrowsClause")
     @Override
-    public @Nullable FileInformation copy(final @NotNull DrivePath source, final @NotNull DrivePath target) throws Exception {
-        final FileInformation info = this.info(source);
+    public @Nullable FileSqlInformation copy(final @NotNull DrivePath source, final @NotNull DrivePath target) throws Exception {
+        final FileSqlInformation info = this.info(source);
         if (info == null)
             return null;
-        final UploadMethods methods = DriverManager_123pan.getUploadMethods(this.configuration, target, info.tag(), info.size(), null, WListServer.IOExecutors);
+        final UploadMethods methods = DriverManager_123pan.getUploadMethods(this.configuration, target, info.md5(), info.size(), null, WListServer.IOExecutors);
         if (methods == null)
             return null;
         try {
@@ -118,14 +119,14 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
     }
 
     @Override
-    public @Nullable FileInformation move(final @NotNull DrivePath sourceFile, final @NotNull DrivePath targetDirectory) throws IllegalParametersException, IOException, SQLException {
+    public @Nullable FileSqlInformation move(final @NotNull DrivePath sourceFile, final @NotNull DrivePath targetDirectory) throws IllegalParametersException, IOException, SQLException {
         if (targetDirectory.equals(sourceFile.getParent()))
             return this.info(sourceFile);
         return DriverManager_123pan.moveFile(this.configuration, sourceFile, targetDirectory, true, null, WListServer.IOExecutors);
     }
 
     @Override
-    public @Nullable FileInformation rename(@NotNull final DrivePath source, @NotNull final String name) throws IllegalParametersException, IOException, SQLException {
+    public @Nullable FileSqlInformation rename(@NotNull final DrivePath source, @NotNull final String name) throws IllegalParametersException, IOException, SQLException {
         if (source.getName().equals(name))
             return this.info(source);
         return DriverManager_123pan.renameFile(this.configuration, source, name, true, null, WListServer.IOExecutors);

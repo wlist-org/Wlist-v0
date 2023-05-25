@@ -8,7 +8,7 @@ import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Driver.Options.DuplicatePolicy;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
-import com.xuxiaocheng.WList.DataAccessObjects.FileInformation;
+import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Exceptions.WrongResponseException;
 import okhttp3.Headers;
@@ -235,14 +235,14 @@ public final class DriverHelper_123pan {
                 DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 
-    static @NotNull JSONObject doGetFileDownloadUrl(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull FileInformation info) throws IllegalParametersException, IOException {
+    static @NotNull JSONObject doGetFileDownloadUrl(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull FileSqlInformation info) throws IllegalParametersException, IOException {
         final String token = DriverHelper_123pan.ensureToken(configuration);
         final Map<String, Object> request = new LinkedHashMap<>(6);
         request.put("driveId", 0);
         request.put("fileId", info.id());
         request.put("fileName", info.path().getName());
         request.put("size", info.size());
-        request.put("etag", info.tag());
+        request.put("etag", info.md5());
         final FileInformation_123pan.FileInfoExtra_123pan extra = FileInformation_123pan.deserializeOther(info);
         request.put("s3keyFlag",extra.s3key());
         return DriverHelper_123pan.extractResponseData(DriverNetworkHelper.sendRequestReceiveJson(DriverNetworkHelper.httpClient, DriverHelper_123pan.SingleFileDownloadURL,

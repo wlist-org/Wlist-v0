@@ -5,7 +5,7 @@ import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
-import com.xuxiaocheng.WList.DataAccessObjects.FileInformation;
+import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -27,7 +27,7 @@ public final class FileInformation_123pan {
         return 'J' + json.toJSONString();
     }
 
-    public static @NotNull FileInfoExtra_123pan deserializeOther(final @NotNull FileInformation information) throws IllegalParametersException {
+    public static @NotNull FileInfoExtra_123pan deserializeOther(final @NotNull FileSqlInformation information) throws IllegalParametersException {
         final String others = information.others();
         if (others == null || others.isEmpty())
             throw new IllegalParametersException("No extra part.", information);
@@ -46,7 +46,7 @@ public final class FileInformation_123pan {
         throw new IllegalParametersException("Invalid information.", information);
     }
 
-    static @Nullable FileInformation create(final @NotNull DrivePath parentPath, final @Nullable JSONObject info) {
+    static @Nullable FileSqlInformation create(final @NotNull DrivePath parentPath, final @Nullable JSONObject info) {
         if (info == null)
             return null;
         try {
@@ -62,7 +62,7 @@ public final class FileInformation_123pan {
                     || create == null || update == null || flag == null
                     || etag == null || (!etag.isEmpty() && !DriverUtil.tagPredication.test(etag)))
                 return null;
-            return new FileInformation(id.longValue(), parentPath.getChild(name),
+            return new FileSqlInformation(id.longValue(), parentPath.getChild(name),
                     type.intValue() == 1, size.longValue(),
                     LocalDateTime.parse(create, DateTimeFormatter.ISO_ZONED_DATE_TIME),
                     LocalDateTime.parse(update, DateTimeFormatter.ISO_ZONED_DATE_TIME),

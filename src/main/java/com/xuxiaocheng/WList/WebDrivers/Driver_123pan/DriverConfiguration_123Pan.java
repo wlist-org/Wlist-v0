@@ -8,7 +8,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.math.BigInteger;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.Map;
 
@@ -105,17 +104,17 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
             this.token = YamlHelper.getConfigNullable(cache, "token",
                     o -> YamlHelper.transferString(o, errors, prefix + "token"));
             this.tokenExpire = YamlHelper.getConfigNullable(cache, "token_expire",
-                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "token_expire", DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "token_expire", DriverConfiguration.TokenExpireTimeFormatter));
             this.refreshExpire = YamlHelper.getConfigNullable(cache, "refresh_expire",
-                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "refresh_expire", DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "refresh_expire", DriverConfiguration.TokenExpireTimeFormatter));
         }
 
         @Override
         protected @NotNull Map<@NotNull String, @NotNull Object> dump() {
             final Map<String, Object> cache = super.dump();
             cache.put("token", this.token);
-            cache.put("token_expire", this.tokenExpire == null ? null : DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(this.tokenExpire));
-            cache.put("refresh_expire", this.refreshExpire == null ? null : DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(this.refreshExpire));
+            cache.put("token_expire", this.tokenExpire == null ? null : DriverConfiguration.TokenExpireTimeFormatter.format(this.tokenExpire));
+            cache.put("refresh_expire", this.refreshExpire == null ? null : DriverConfiguration.TokenExpireTimeFormatter.format(this.refreshExpire));
             return cache;
         }
 

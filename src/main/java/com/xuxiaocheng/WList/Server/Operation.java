@@ -89,6 +89,7 @@ public final class Operation {
         }
     }
 
+    // TODO: Using binary bits to compress.
     public static @NotNull String dumpPermissions(final @NotNull Collection<@NotNull Permission> permissions) {
         return JSON.toJSONString(permissions.stream().map(Enum::name).collect(Collectors.toCollection(TreeSet::new)));
     }

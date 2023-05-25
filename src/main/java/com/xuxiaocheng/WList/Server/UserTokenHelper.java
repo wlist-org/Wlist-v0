@@ -5,8 +5,8 @@ import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.Payload;
-import com.xuxiaocheng.WList.DataAccessObjects.UserSqlHelper;
-import com.xuxiaocheng.WList.Server.Polymers.UserSqlInfo;
+import com.xuxiaocheng.WList.Server.Databases.User.UserSqlHelper;
+import com.xuxiaocheng.WList.Server.Databases.User.UserCommonInformation;
 import com.xuxiaocheng.WList.Server.Polymers.UserTokenInfo;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -47,7 +47,7 @@ public final class UserTokenHelper {
         } catch (final RuntimeException ignore) {
             return null;
         }
-        final UserSqlInfo user = UserSqlHelper.selectUser(username);
+        final UserCommonInformation user = UserSqlHelper.selectUserByName(username);
         if (user == null || !user.modifyTime().equals(modifyTime))
             return null;
         return new UserTokenInfo(username, user.password(),  user.permissions());

@@ -2,7 +2,7 @@ package com.xuxiaocheng.WList.Server.Driver;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
-import com.xuxiaocheng.WList.DataAccessObjects.FileInformation;
+import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Driver.DriverConfiguration;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
@@ -27,18 +27,18 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
     }
 
     @Override
-    public void initiate(final @Nullable RootDriverConfiguration configuration) {
+    public void initialize(final @Nullable RootDriverConfiguration configuration) {
         DriverManager.init();
         // TODO get root user config.
     }
 
     @Override
-    public void uninitiate() throws IllegalAccessException {
+    public void uninitialize() throws IllegalAccessException {
         throw new IllegalAccessException("Root Driver is the core driver of WList. Shouldn't delete.");
     }
 
     @Override
-    public Pair.@Nullable ImmutablePair<@NotNull Integer, @NotNull @UnmodifiableView List<@NotNull FileInformation>> list(@NotNull final DrivePath path, final int limit, final int page, @Nullable final OrderDirection direction, @Nullable final OrderPolicy policy) throws Exception {
+    public Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(@NotNull final DrivePath path, final int limit, final int page, @Nullable final OrderDirection direction, @Nullable final OrderPolicy policy) throws Exception {
         final String root = path.getRoot();
         final DriverInterface<?> real = DriverManager.get(root);
         if (real == null)
@@ -52,7 +52,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
     }
 
     @Override
-    public @Nullable FileInformation info(@NotNull final DrivePath path) throws Exception {
+    public @Nullable FileSqlInformation info(@NotNull final DrivePath path) throws Exception {
         final String root = path.getRoot();
         final DriverInterface<?> real = DriverManager.get(root);
         if (real == null)
@@ -78,7 +78,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
     }
 
     @Override
-    public @Nullable FileInformation mkdirs(@NotNull final DrivePath path) throws Exception {
+    public @Nullable FileSqlInformation mkdirs(@NotNull final DrivePath path) throws Exception {
         final String root = path.getRoot();
         final DriverInterface<?> real = DriverManager.get(root);
         if (real == null)
@@ -103,7 +103,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
         }
     }
 
-    public void completeUpload(final @NotNull FileInformation information) {
+    public void completeUpload(final @NotNull FileSqlInformation information) {
         HLog.DefaultLogger.log("", information);
         // TODO
     }
@@ -128,7 +128,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
 
     @SuppressWarnings("OverlyBroadThrowsClause")
     @Override
-    public @Nullable FileInformation copy(@NotNull final DrivePath source, @NotNull final DrivePath target) throws Exception {
+    public @Nullable FileSqlInformation copy(@NotNull final DrivePath source, @NotNull final DrivePath target) throws Exception {
         if (source.getRoot().equals(target.getRoot())) {
             final DriverInterface<?> real = DriverManager.get(source.getRoot());
             if (real == null)
@@ -136,11 +136,11 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
             return real.copy(source.getRemovedRoot(), target.getRemovedRoot());
         }
         final Pair.ImmutablePair<InputStream, Long> url = this.download(source, 0, Long.MAX_VALUE);
-        final FileInformation info = this.info(source);
+        final FileSqlInformation info = this.info(source);
         if (url == null || info == null)
             return null;
         assert info.size() == url.getSecond().longValue();
-        final UploadMethods methods = this.upload(target, info.size(), info.tag());
+        final UploadMethods methods = this.upload(target, info.size(), info.md5());
         if (methods == null)
             return null;
         try {
@@ -161,7 +161,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
     }
 
     @Override
-    public @Nullable FileInformation move(@NotNull final DrivePath sourceFile, @NotNull final DrivePath targetDirectory) throws Exception {
+    public @Nullable FileSqlInformation move(@NotNull final DrivePath sourceFile, @NotNull final DrivePath targetDirectory) throws Exception {
         if (sourceFile.getRoot().equals(targetDirectory.getRoot())) {
             final DriverInterface<?> real = DriverManager.get(sourceFile.getRoot());
             if (real == null)
@@ -172,7 +172,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
     }
 
     @Override
-    public @Nullable FileInformation rename(@NotNull final DrivePath source, @NotNull final String name) throws Exception {
+    public @Nullable FileSqlInformation rename(@NotNull final DrivePath source, @NotNull final String name) throws Exception {
         final String root = source.getRoot();
         final DriverInterface<?> real = DriverManager.get(root);
         if (real == null)

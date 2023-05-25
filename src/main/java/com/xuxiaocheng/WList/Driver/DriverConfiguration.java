@@ -10,12 +10,15 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.math.BigInteger;
+import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
 public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSideDriverConfiguration, W extends DriverConfiguration.WebSideDriverConfiguration, C extends DriverConfiguration.CacheSideDriverConfiguration> {
+    public static final @NotNull DateTimeFormatter TokenExpireTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+
     protected final @NotNull L localSide;
     protected final @NotNull W webSide;
     protected final @NotNull C cacheSide;

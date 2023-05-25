@@ -74,15 +74,15 @@ public final class DriverManager {
         configuration.load(config, errors);
         YamlHelper.throwErrors(errors);
         try {
-            driver.initiate(configuration);
+            driver.initialize(configuration);
         } catch (final Exception exception) {
             if (GlobalConfiguration.getInstance().deleteDriver())
                 try {
-                    driver.uninitiate();
+                    driver.uninitialize();
                 } catch (final Exception e) {
-                    throw new IllegalParametersException("Failed to uninitiate after initiated.", Map.of("name", name, "type", type, "configuration", configuration, "exception", exception), e);
+                    throw new IllegalParametersException("Failed to uninitialize after initialized.", Map.of("name", name, "type", type, "configuration", configuration, "exception", exception), e);
                 }
-            throw new IllegalParametersException("Failed to initiate.", Map.of("name", name, "type", type, "configuration", configuration), exception);
+            throw new IllegalParametersException("Failed to initialize.", Map.of("name", name, "type", type, "configuration", configuration), exception);
         }
         try {
             driver.buildCache();
@@ -98,9 +98,9 @@ public final class DriverManager {
             HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, "Conflict driver. Abort newer. name: ", name, " configuration: ", configuration);
             if (GlobalConfiguration.getInstance().deleteDriver())
                 try {
-                    n.getSecond().uninitiate();
+                    n.getSecond().uninitialize();
                 } catch (final Exception exception) {
-                    HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, "Failed to uninitiate when aborting. name: ", name, " configuration: ", configuration, exception);
+                    HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, "Failed to uninitialize when aborting. name: ", name, " configuration: ", configuration, exception);
                 }
             return o;
         });
@@ -141,7 +141,7 @@ public final class DriverManager {
 //        GlobalConfiguration.subDriver(name);
         if (GlobalConfiguration.getInstance().deleteDriver())
             try {
-                driver.getSecond().uninitiate();
+                driver.getSecond().uninitialize();
             } catch (final Exception exception) {
                 throw new IOException(exception);
             }

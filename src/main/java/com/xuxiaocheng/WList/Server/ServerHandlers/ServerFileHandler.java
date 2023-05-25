@@ -4,7 +4,7 @@ import com.alibaba.fastjson2.JSON;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
-import com.xuxiaocheng.WList.DataAccessObjects.FileInformation;
+import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
@@ -38,7 +38,7 @@ public final class ServerFileHandler {
         super();
     }
 
-    static @NotNull Map<String, Object> getVisibleInfo(final @NotNull FileInformation f) {
+    static @NotNull Map<String, Object> getVisibleInfo(final @NotNull FileSqlInformation f) {
         final Map<String, Object> map = new HashMap<>(6);
         map.put("path", f.path().getPath());
         map.put("is_dir", f.is_dir());
@@ -47,7 +47,7 @@ public final class ServerFileHandler {
             map.put("create_time", f.createTime().format(DateTimeFormatter.ISO_DATE_TIME));
         if (f.updateTime() != null)
             map.put("update_time", f.updateTime().format(DateTimeFormatter.ISO_DATE_TIME));
-        map.put("tag", f.tag());
+        map.put("md5", f.md5());
         return map;
     }
 
@@ -66,7 +66,7 @@ public final class ServerFileHandler {
                 || (orderDirection == null && !"D".equals(direction))
                 || (orderPolicy == null && !"D".equals(policy)))
             return ServerHandler.composeMessage(Operation.State.DataError, "Parameters");
-        final Pair.ImmutablePair<Integer, List<FileInformation>> list;
+        final Pair.ImmutablePair<Integer, List<FileSqlInformation>> list;
         try {
             list = RootDriver.getInstance().list(path, limit, page, orderDirection, orderPolicy);
         } catch (final UnsupportedOperationException exception) {
@@ -90,7 +90,7 @@ public final class ServerFileHandler {
         if (user.isFailure())
             return user.getE();
         final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
-        final FileInformation dir;
+        final FileSqlInformation dir;
         try {
             dir = RootDriver.getInstance().mkdirs(path);
         } catch (final UnsupportedOperationException exception) {
@@ -124,7 +124,7 @@ public final class ServerFileHandler {
             return user.getE();
         final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         final String name = ByteBufIOUtil.readUTF(buffer);
-        final FileInformation file;
+        final FileSqlInformation file;
         try {
             file = RootDriver.getInstance().rename(path, name);
         } catch (final UnsupportedOperationException exception) {
@@ -219,7 +219,7 @@ public final class ServerFileHandler {
             return ServerHandler.composeMessage(Operation.State.DataError, "File");
         if (methods.methods().isEmpty()) { // (reuse/empty)
             try {
-                final FileInformation info;
+                final FileSqlInformation info;
                 info = methods.supplier().get();
                 if (info != null)
                     RootDriver.getInstance().completeUpload(info);
@@ -248,11 +248,11 @@ public final class ServerFileHandler {
         final String id = ByteBufIOUtil.readUTF(buffer);
         final int chunk = ByteBufIOUtil.readVariableLenInt(buffer);
         try {
-            final SupplierE<FileInformation> supplier = FileUploadIdHelper.upload(id, user.getT().username(), buffer, chunk);
+            final SupplierE<FileSqlInformation> supplier = FileUploadIdHelper.upload(id, user.getT().username(), buffer, chunk);
             if (supplier == null)
                 return ServerHandler.composeMessage(Operation.State.DataError, null);
             buffer.retain();
-            final FileInformation info = supplier.get();
+            final FileSqlInformation info = supplier.get();
             if (info != null)
                 RootDriver.getInstance().completeUpload(info);
             return ServerHandler.composeMessage(Operation.State.Success, null);
@@ -278,7 +278,7 @@ public final class ServerFileHandler {
             return user.getE();
         final DrivePath source = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         final DrivePath target = new DrivePath(ByteBufIOUtil.readUTF(buffer));
-        final FileInformation file;
+        final FileSqlInformation file;
         try {
             file = RootDriver.getInstance().copy(source, target);
         } catch (final UnsupportedOperationException exception) {
@@ -297,7 +297,7 @@ public final class ServerFileHandler {
             return user.getE();
         final DrivePath sourceFile = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         final DrivePath targetDirectory = new DrivePath(ByteBufIOUtil.readUTF(buffer));
-        final FileInformation file;
+        final FileSqlInformation file;
         try {
             file = RootDriver.getInstance().move(sourceFile, targetDirectory);
         } catch (final UnsupportedOperationException exception) {

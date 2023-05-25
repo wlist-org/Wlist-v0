@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.DataAccessObjects;
+package com.xuxiaocheng.WList.Server.Databases.File;
 
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import org.jetbrains.annotations.NotNull;
@@ -14,10 +14,10 @@ import java.time.LocalDateTime;
  * @param size File size. 0 means a directory, -1 means unknown.
  * @param createTime File first create time. Null means unknown.
  * @param updateTime File the latest update time. Null means unknown.
- * @param tag File md5 (or sha256 etc.).
+ * @param md5 File md5.
  * @param others Something extra for driver.
  */
-public record FileInformation(long id, @NotNull DrivePath path, boolean is_dir, long size,
-                              @Nullable LocalDateTime createTime, @Nullable LocalDateTime updateTime,
-                              @NotNull String tag, @Nullable String others) {
+public record FileSqlInformation(long id, @NotNull DrivePath path, boolean is_dir, long size,
+                                 @Nullable LocalDateTime createTime, @Nullable LocalDateTime updateTime,
+                                 @NotNull String md5, @Nullable String others) {
 }

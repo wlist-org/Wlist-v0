@@ -1,7 +1,9 @@
-package com.xuxiaocheng.WList.DataAccessObjects;
+package com.xuxiaocheng.WList.Server.Databases;
 
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.WList.Utils.DatabaseUtil;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -15,11 +17,13 @@ public final class ConstantSqlHelper {
         super();
     }
 
+    private static final @NotNull DatabaseUtil DefaultDatabaseUtil = HExceptionWrapper.wrapSupplier(DatabaseUtil::getInstance).get();
+
     @SuppressWarnings("SpellCheckingInspection")
     public static final @NotNull String DefaultRandomChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890`~!@#$%^&*()-_=+[]{}\\|;:,.<>/? ";
 
-    public static void init() throws SQLException {
-        try (final Connection connection = DatabaseUtil.getInstance().getConnection()) {
+    public static void initialize(final @Nullable String connectionId) throws SQLException {
+        try (final Connection connection = ConstantSqlHelper.DefaultDatabaseUtil.getConnection(connectionId)) {
             connection.setAutoCommit(false);
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate("""
@@ -36,7 +40,7 @@ public final class ConstantSqlHelper {
     }
 
     public static @NotNull String get(final @NotNull String key, final @NotNull Supplier<@NotNull String> defaultValue) throws SQLException {
-        try (final Connection connection = DatabaseUtil.getInstance().getConnection()) {
+        try (final Connection connection = ConstantSqlHelper.DefaultDatabaseUtil.getConnection(null)) {
             try (final PreparedStatement statement = connection.prepareStatement("""
                         SELECT value FROM constants WHERE key == ? LIMIT 1;
                         """)) {
@@ -58,15 +62,6 @@ public final class ConstantSqlHelper {
             }
             connection.commit();
             return value;
-        }
-    }
-
-    public static @NotNull String getSafely(final @NotNull String key, final @NotNull Supplier<@NotNull String> defaultValue, final @NotNull String constDefaultValue) {
-        try {
-            return ConstantSqlHelper.get(key, defaultValue);
-        } catch (final SQLException exception) {
-            Thread.getDefaultUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), exception);
-            return constDefaultValue;
         }
     }
 }

@@ -5,8 +5,8 @@ import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.WList.DataAccessObjects.ConstantSqlHelper;
-import com.xuxiaocheng.WList.DataAccessObjects.FileInformation;
+import com.xuxiaocheng.WList.Server.Databases.ConstantSqlHelper;
+import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
 import com.xuxiaocheng.WList.Utils.DelayQueueInByteBufOutByteBuf;
@@ -51,7 +51,7 @@ final class FileUploadIdHelper {
         return true;
     }
 
-    public static @Nullable SupplierE<@Nullable FileInformation> upload(final @NotNull String id, final @NotNull String username, final @NotNull ByteBuf buf, final int chunk) throws Exception {
+    public static @Nullable SupplierE<@Nullable FileSqlInformation> upload(final @NotNull String id, final @NotNull String username, final @NotNull ByteBuf buf, final int chunk) throws Exception {
         final UploaderData data = FileUploadIdHelper.buffers.get(id);
         if (data == null || !data.username.equals(username))
             return null;
@@ -109,7 +109,7 @@ final class FileUploadIdHelper {
             return this.bufferQueue.put(buf, chunk);
         }
 
-        public @Nullable FileInformation tryGet() throws Exception {
+        public @Nullable FileSqlInformation tryGet() throws Exception {
             if (this.finished.get())
                 return null;
             this.getLock.getAndIncrement();
@@ -150,7 +150,7 @@ final class FileUploadIdHelper {
             }
         }
 
-        public @Nullable FileInformation finish() throws Exception {
+        public @Nullable FileSqlInformation finish() throws Exception {
             try {
                 final BigInteger i = new BigInteger(1, this.md5.digest());
                 if (!this.tag.equals(String.format("%32s", i.toString(16)).replace(' ', '0')))
@@ -169,7 +169,7 @@ final class FileUploadIdHelper {
                     ", indexer=" + this.indexer +
                     ", bufferQueue=" + this.bufferQueue +
                     ", id='" + this.id + '\'' +
-                    ", tag='" + this.tag + '\'' +
+                    ", md5='" + this.tag + '\'' +
                     ", expireTime=" + this.expireTime +
                     ", closed=" + this.closed +
                     ", md5=" + this.md5 +

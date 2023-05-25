@@ -14,11 +14,13 @@ public final class WListTest {
     }
 
     public static void main(final String[] args) throws Exception {
+
+        if(true)return;
         GlobalConfiguration.init(null);
         DriverManager.add("Local Disk", WebDriversType.LocalDiskDriver);
         final LocalDiskConfiguration configuration = new LocalDiskConfiguration();
         final LocalDisk disk = new LocalDisk();
-        disk.initiate(configuration);
+        disk.initialize(configuration);
         disk.buildCache();
         LocalDiskManager.recursiveRefreshDirectory(configuration, new DrivePath(""), null);
     }
