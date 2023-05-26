@@ -30,7 +30,7 @@ public final class FileSqlHelper {
         super();
     }
 
-    private static final @NotNull DatabaseUtil DefaultDatabaseUtil = HExceptionWrapper.wrapSupplier(DatabaseUtil::getInstance).get();
+    public static final @NotNull DatabaseUtil DefaultDatabaseUtil = HExceptionWrapper.wrapSupplier(DatabaseUtil::getInstance).get();
 
     private static final @NotNull DateTimeFormatter DefaultFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 

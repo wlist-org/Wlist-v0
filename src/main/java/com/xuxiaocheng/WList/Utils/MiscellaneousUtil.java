@@ -10,6 +10,11 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
@@ -79,5 +84,37 @@ public final class MiscellaneousUtil {
 
     public static @NotNull String bin(final byte b) {
         return String.format("0b%8s", Integer.toString(b < 0 ? b + 0xff : b, 2)).replace(' ', '0');
+    }
+
+    public static <T> @NotNull Iterator<@NotNull T> wrapBlockingQueueCounted(final @NotNull BlockingQueue<? extends @NotNull T> queue, final long count, final @NotNull AtomicBoolean cancelFlag, final long query) {
+        final AtomicLong spareElement = new AtomicLong(count);
+        final AtomicInteger takingElement = new AtomicInteger(0);
+        return new Iterator<>() {
+            @Override
+            public boolean hasNext() {
+                return spareElement.get() > takingElement.get() && !cancelFlag.get();
+            }
+
+            @Override
+            public @NotNull T next() {
+                if (!this.hasNext())
+                    throw new NoSuchElementException();
+                takingElement.getAndIncrement();
+                try {
+                    T t = null;
+                    while (t == null) {
+                        t = queue.poll(query, TimeUnit.MILLISECONDS);
+                        if (t == null && cancelFlag.get())
+                            throw new InterruptedException();
+                    }
+                    spareElement.getAndDecrement();
+                    return t;
+                } catch (final InterruptedException exception) {
+                    throw new NoSuchElementException(exception);
+                } finally {
+                    takingElement.getAndDecrement();
+                }
+            }
+        };
     }
 }

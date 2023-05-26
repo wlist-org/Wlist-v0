@@ -1,10 +1,9 @@
 package com.xuxiaocheng.WList.WebDrivers.LocalDisk;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.WList.Server.Databases.File.FileSqlHelper;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
+import com.xuxiaocheng.WList.Server.Databases.File.FileSqlHelper;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
-import com.xuxiaocheng.WList.Utils.DatabaseUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -26,6 +25,7 @@ import java.util.concurrent.ExecutorService;
 
 @SuppressWarnings("SameParameterValue")
 public final class LocalDiskManager {
+    // TODO
     private LocalDiskManager() {
         super();
     }
@@ -49,7 +49,8 @@ public final class LocalDiskManager {
         return FileInformation_LocalDisk.create(configuration.getWebSide().getRootDirectoryPath().toPath(), file, attributes);
     }
 
-    static Pair.@NotNull ImmutablePair<@NotNull Integer, @NotNull List<@NotNull FileSqlInformation>> listFileNoCache(final @NotNull LocalDiskConfiguration configuration, final @NotNull DrivePath directoryPath, final int limit, final int page, final @Nullable String id) throws IOException, SQLException {
+    static Pair.@NotNull ImmutablePair<@NotNull Integer, @NotNull List<@NotNull FileSqlInformation>> listFileNoCache(final @NotNull LocalDiskConfiguration configuration, final @NotNull DrivePath directoryPath, final int limit, final int page, final @Nullable String connectionId
+    ) throws IOException, SQLException {
         final File root = LocalDiskManager.toFile(configuration.getWebSide().getRootDirectoryPath(), directoryPath);
         final File[] children = root.listFiles();
         if (children == null)
@@ -58,7 +59,7 @@ public final class LocalDiskManager {
         for (int i = (page - 1) * limit; list.size() < limit && i < children.length; ++i) {
             directoryPath.child(children[i].getName());
             try {
-                final FileSqlInformation information = LocalDiskManager.getFileInformation(configuration, directoryPath, false, _connection);
+                final FileSqlInformation information = LocalDiskManager.getFileInformation(configuration, directoryPath, false, connectionId);
                 if (information != null)
                     list.add(information);
             } finally {
@@ -69,16 +70,14 @@ public final class LocalDiskManager {
         return Pair.ImmutablePair.makeImmutablePair(children.length, list);
     }
 
-    static Pair.@NotNull ImmutablePair<@NotNull Integer, @NotNull Iterator<@NotNull FileSqlInformation>> listAllFilesNoCache(final @NotNull LocalDiskConfiguration configuration, final @NotNull DrivePath directoryPath, final @Nullable String id, final @NotNull ExecutorService threadPool) throws IOException, SQLException {
-        final Pair.ImmutablePair<Integer, List<FileSqlInformation>> files = LocalDiskManager.listFileNoCache(configuration, directoryPath, Integer.MAX_VALUE, 1, _connection);
+    static Pair.@NotNull ImmutablePair<@NotNull Integer, @NotNull Iterator<@NotNull FileSqlInformation>> listAllFilesNoCache(final @NotNull LocalDiskConfiguration configuration, final @NotNull DrivePath directoryPath, final @Nullable String connectionId, final @NotNull ExecutorService threadPool) throws IOException, SQLException {
+        final Pair.ImmutablePair<Integer, List<FileSqlInformation>> files = LocalDiskManager.listFileNoCache(configuration, directoryPath, Integer.MAX_VALUE, 1, connectionId);
         return Pair.ImmutablePair.makeImmutablePair(files.getFirst(), files.getSecond().iterator());
     }
 
-    public static void recursiveRefreshDirectory(final @NotNull LocalDiskConfiguration configuration, final @NotNull DrivePath directoryPath, final @Nullable String id) throws IOException, SQLException {
-        final Connection connection = DatabaseUtil.requireConnection(_connection, DatabaseUtil.getInstance());
-        try {
-            if (_connection == null)
-                connection.setAutoCommit(false);
+    public static void recursiveRefreshDirectory(final @NotNull LocalDiskConfiguration configuration, final @NotNull DrivePath directoryPath, final @NotNull String connectionId) throws IOException, SQLException {
+        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getConnection(connectionId)) {
+            connection.setAutoCommit(false);
             final Path root = new File(configuration.getWebSide().getRootDirectoryPath(), directoryPath.getPath()).toPath();
             final Collection<FileSqlInformation> list = new LinkedList<>();
             Files.walkFileTree(root, Set.of(), Integer.MAX_VALUE, new SimpleFileVisitor<>() {
@@ -86,7 +85,7 @@ public final class LocalDiskManager {
                 public FileVisitResult preVisitDirectory(final Path dir, final BasicFileAttributes attrs) throws IOException {
 //                    FileSqlHelper.getFileByParentPath()
                     try {
-                        FileSqlHelper.deleteFileByParentPath(configuration.getLocalSide().getName(), LocalDiskManager.getDrivePath(root, dir), connection);
+                        FileSqlHelper.deleteFileByParentPath(configuration.getLocalSide().getName(), LocalDiskManager.getDrivePath(root, dir), connectionId);
                         final FileSqlInformation information = FileInformation_LocalDisk.create(root, dir, attrs);
                         if (information != null)
                             list.add(information);
@@ -105,11 +104,7 @@ public final class LocalDiskManager {
                 }
             });
 //            FileSqlHelper.insertFilesIgnoreId(configuration.getLocalSide().getName(), list, connection);
-            if (_connection == null)
-                connection.commit();
-        } finally {
-            if (_connection == null)
-                connection.close();
+            connection.commit();
         }
     }
 }

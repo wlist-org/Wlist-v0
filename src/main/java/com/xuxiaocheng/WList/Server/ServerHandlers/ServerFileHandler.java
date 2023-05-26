@@ -5,7 +5,6 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
-import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
@@ -19,6 +18,7 @@ import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
 import com.xuxiaocheng.WList.Server.ServerCodecs.MessageCiphers;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
+import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.CompositeByteBuf;
@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public final class ServerFileHandler {
@@ -200,12 +201,12 @@ public final class ServerFileHandler {
             return user.getE();
         final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         final long size = ByteBufIOUtil.readVariableLenLong(buffer);
-        final String tag = ByteBufIOUtil.readUTF(buffer);
-        if (size < 0 || !DriverUtil.tagPredication.test(tag))
+        final String md5 = ByteBufIOUtil.readUTF(buffer);
+        if (size < 0 || !MiscellaneousUtil.md5Pattern.matcher(md5).matches())
             return ServerHandler.WrongParameters;
         final UploadMethods methods;
         try {
-            methods = RootDriver.getInstance().upload(path, size, tag);
+            methods = RootDriver.getInstance().upload(path, size, md5);
         } catch (final UnsupportedOperationException exception) {
             return ServerHandler.composeMessage(Operation.State.Unsupported, exception.getMessage());
         } catch (final Exception exception) {
@@ -229,7 +230,7 @@ public final class ServerFileHandler {
                 return buf;
             });
         }
-        final String id = FileUploadIdHelper.generateId(methods, tag, user.getT().username());
+        final String id = FileUploadIdHelper.generateId(methods, md5, user.getT().username());
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
             ByteBufIOUtil.writeBoolean(buf, false);
             ByteBufIOUtil.writeUTF(buf, id);

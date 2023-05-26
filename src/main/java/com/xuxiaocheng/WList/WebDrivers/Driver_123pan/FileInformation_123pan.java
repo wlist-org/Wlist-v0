@@ -3,9 +3,9 @@ package com.xuxiaocheng.WList.WebDrivers.Driver_123pan;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
-import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
+import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -60,7 +60,7 @@ public final class FileInformation_123pan {
             final String etag = info.getString("Etag");
             if (id == null || name == null || type == null || size == null || size.longValue() < 0
                     || create == null || update == null || flag == null
-                    || etag == null || (!etag.isEmpty() && !DriverUtil.tagPredication.test(etag)))
+                    || etag == null || (!etag.isEmpty() && !MiscellaneousUtil.md5Pattern.matcher(etag).matches()))
                 return null;
             return new FileSqlInformation(id.longValue(), parentPath.getChild(name),
                     type.intValue() == 1, size.longValue(),
