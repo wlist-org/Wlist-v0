@@ -6,5 +6,5 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.SortedSet;
 
-public record UserCommonInformation(@NotNull String username, @NotNull String password, @Nullable SortedSet<Operation.@NotNull Permission> permissions) {
+public record UserSqlInformationUpdater(@NotNull String username, @NotNull String password, @Nullable SortedSet<Operation.@NotNull Permission> permissions) {
 }

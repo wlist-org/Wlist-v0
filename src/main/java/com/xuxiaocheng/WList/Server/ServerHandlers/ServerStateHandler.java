@@ -36,7 +36,7 @@ public final class ServerStateHandler {
         buffer.retain();
         final ByteBuf head = ByteBufAllocator.DEFAULT.buffer();
         ByteBufIOUtil.writeUTF(head, Operation.State.Broadcast.name());
-        ByteBufIOUtil.writeUTF(head, user.getT().username());
+        ByteBufIOUtil.writeUTF(head, user.getT().getUsername());
         final CompositeByteBuf msg = ByteBufAllocator.DEFAULT.compositeBuffer(2);
         msg.addComponents(true, head, buffer);
         WListServer.ServerExecutors.schedule(() -> WListServer.getInstance().writeChannels(msg), 1, TimeUnit.SECONDS);

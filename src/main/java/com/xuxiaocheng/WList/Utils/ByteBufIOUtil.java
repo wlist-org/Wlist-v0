@@ -283,6 +283,12 @@ public final class ByteBufIOUtil {
         }
     }
 
+    public static <T> @Nullable T readObjectNullable(final @NotNull ByteBuf buffer, final @NotNull Deserializer<@NotNull T> deserializer) throws IOException {
+        if (ByteBufIOUtil.readBoolean(buffer))
+            return null;
+        return deserializer.deserialize(buffer);
+    }
+
     public static void writeByte(final @NotNull ByteBuf buffer, final byte b) throws IOException {
         try {
             buffer.writeByte(b);
@@ -483,6 +489,12 @@ public final class ByteBufIOUtil {
         }
     }
 
+    public static <T> void writeObjectNullable(final @NotNull ByteBuf buffer, final @Nullable T object, final @NotNull Serializer<@NotNull T> serializer) throws IOException {
+        ByteBufIOUtil.writeBoolean(buffer, object == null);
+        if (object != null)
+            serializer.serialize(buffer, object);
+    }
+
     public static byte[] allToByteArray(final @NotNull ByteBuf buffer) {
         if (buffer.hasArray())
             return buffer.array().clone();
@@ -491,5 +503,15 @@ public final class ByteBufIOUtil {
         buffer.readBytes(bytes);
         buffer.readerIndex(index);
         return bytes;
+    }
+
+    @FunctionalInterface
+    public interface Deserializer<T> {
+        T deserialize(final @NotNull ByteBuf buffer) throws IOException;
+    }
+
+    @FunctionalInterface
+    public interface Serializer<T> {
+        void serialize(final @NotNull ByteBuf buffer, final T object) throws IOException;
     }
 }

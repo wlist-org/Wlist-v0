@@ -6,6 +6,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Exceptions.NetworkException;
+import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.WList;
 import okhttp3.Call;
@@ -27,27 +28,59 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 public final class DriverNetworkHelper {
     private DriverNetworkHelper() {
         super();
     }
 
-    public static final @NotNull String defaultAgent = "WList/0.1.1";
+    public static final @NotNull String defaultAgent = "WList/0.1.3";
+    private static final @NotNull AtomicInteger frequencyControl = new AtomicInteger(0);
     public static final @NotNull OkHttpClient httpClient = new OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.SECONDS)
+            .connectTimeout(15, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .dispatcher(new Dispatcher(WListServer.IOExecutors))
-            .addNetworkInterceptor(chain -> {
+            .addInterceptor(chain -> {
                 final Request request = chain.request();
                 if (WList.DebugMode)
-                    HLog.DefaultLogger.log(HLogLevel.NETWORK, Thread.currentThread(), ": Request: ", request);
+                    HLog.DefaultLogger.log(HLogLevel.NETWORK, Thread.currentThread(), ": SEND ",
+                            request.method(), " on ", request.url(), " Headers: ", (Supplier<?>) () -> {
+                                final StringBuilder builder = new StringBuilder("[");
+                                request.headers().forEach(p -> builder.append(p.getFirst()).append(':').append(p.getSecond()).append(','));
+                                return builder.append(']').toString();
+                            });
                 final long time1 = System.currentTimeMillis();
                 final Response response = chain.proceed(request);
                 final long time2 = System.currentTimeMillis();
                 if (WList.DebugMode)
-                    HLog.DefaultLogger.log(HLogLevel.NETWORK, Thread.currentThread(), ": Cost time: ", time2 - time1, "ms.");
+                    HLog.DefaultLogger.log(HLogLevel.NETWORK, Thread.currentThread(), ": RECEIVE for ",
+                            response.request().url(), "' Cost time: ", time2 - time1, "ms. Headers: ", (Supplier<?>) () -> {
+                                final StringBuilder builder = new StringBuilder("[");
+                                response.headers().forEach(p -> builder.append(p.getFirst()).append(':').append(p.getSecond()).append(','));
+                                return builder.append(']').toString();
+                            });
+                return response;
+            }).addNetworkInterceptor(chain -> {
+                synchronized (DriverNetworkHelper.frequencyControl) {
+                    while (DriverNetworkHelper.frequencyControl.get() > GlobalConfiguration.getInstance().maxRequestPerSecond()) {
+                        try {
+                            DriverNetworkHelper.frequencyControl.wait();
+                        } catch (final InterruptedException exception) {
+                            throw new IOException(exception);
+                        }
+                    }
+                    DriverNetworkHelper.frequencyControl.getAndIncrement();
+                }
+                final Response response = chain.proceed(chain.request());
+                WListServer.IOExecutors.schedule(() -> {
+                    synchronized (DriverNetworkHelper.frequencyControl) {
+                        DriverNetworkHelper.frequencyControl.getAndDecrement();
+                        DriverNetworkHelper.frequencyControl.notifyAll();
+                    }
+                }, 1, TimeUnit.SECONDS);
                 return response;
             })
             .build();

@@ -28,7 +28,7 @@ public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxCo
                                   long tokenExpireTime, long idIdleExpireTime,
                                   int maxLimitPerPage,
                                   @NotNull Map<@NotNull String, @NotNull WebDriversType> drivers,
-                                  boolean deleteDriver) {
+                                  boolean deleteDriver, int maxRequestPerSecond) {
     private static @Nullable GlobalConfiguration instance;
 
     public static synchronized void init(final @Nullable File path) throws IOException {
@@ -72,7 +72,9 @@ public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxCo
                                     .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond));
                         }),
                 YamlHelper.getConfig(config, "delete_driver", "false",
-                        o -> YamlHelper.transferBooleanFromStr(o, errors, "delete_driver")).booleanValue()
+                        o -> YamlHelper.transferBooleanFromStr(o, errors, "delete_driver")).booleanValue(),
+                YamlHelper.getConfig(config, "max_request_per_second", "20",
+                        o -> YamlHelper.transferIntegerFromStr(o, errors, "max_request_per_second", BigInteger.ONE, BigInteger.valueOf(Integer.MAX_VALUE))).intValue()
             );
         } catch (final RuntimeException exception) {
             throw new IOException(exception);
@@ -90,6 +92,7 @@ public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxCo
                     .map(e -> Pair.ImmutablePair.makeImmutablePair(e.getKey(), e.getValue().name()))
                     .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond)));
             config.put("delete_driver", GlobalConfiguration.instance.deleteDriver);
+            config.put("max_request_per_second", GlobalConfiguration.instance.maxRequestPerSecond);
             try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(path))) {
                 YamlHelper.dumpYaml(config, outputStream);
             }

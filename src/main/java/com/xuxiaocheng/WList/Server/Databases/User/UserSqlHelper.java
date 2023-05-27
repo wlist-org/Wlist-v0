@@ -127,7 +127,7 @@ public final class UserSqlHelper {
 
     // Insert
 
-    public static @NotNull List<@NotNull Boolean> insertUsers(final @NotNull Collection<@NotNull UserCommonInformation> infoList, final @Nullable String connectionId) throws SQLException {
+    public static @NotNull List<@NotNull Boolean> insertUsers(final @NotNull Collection<@NotNull UserSqlInformationUpdater> infoList, final @Nullable String connectionId) throws SQLException {
         if (infoList.isEmpty())
             return List.of();
         try (final Connection connection = UserSqlHelper.DefaultDatabaseUtil.getConnection(connectionId)) {
@@ -136,7 +136,7 @@ public final class UserSqlHelper {
                         INSERT OR IGNORE INTO users (username, password, permissions, modify_time)
                             VALUES (?, ?, ?, ?);
                         """)) {
-                for (final UserCommonInformation info: infoList) {
+                for (final UserSqlInformationUpdater info: infoList) {
                     statement.setString(1, info.username());
                     statement.setString(2, PasswordGuard.encryptPassword(info.password()));
                     statement.setString(3, Operation.dumpPermissions(Objects.requireNonNullElse(info.permissions(), UserSqlHelper.DefaultPermissions)));
@@ -149,7 +149,7 @@ public final class UserSqlHelper {
         }
     }
 
-    public static boolean insertUser(final @NotNull UserCommonInformation info, final @Nullable String connectionId) throws SQLException {
+    public static boolean insertUser(final @NotNull UserSqlInformationUpdater info, final @Nullable String connectionId) throws SQLException {
         return UserSqlHelper.insertUsers(List.of(info), connectionId).get(0).booleanValue();
     }
 
@@ -164,11 +164,11 @@ public final class UserSqlHelper {
                         UPDATE users SET username = ?, password = ?, permissions = ?, modify_time = ? WHERE id == ?;
                         """)) {
                 for (final UserSqlInformation info: infoList) {
-                    statement.setString(1, info.username());
-                    statement.setString(2, PasswordGuard.encryptPassword(info.password()));
-                    statement.setString(3, Operation.dumpPermissions(info.permissions()));
+                    statement.setString(1, info.getUsername());
+                    statement.setString(2, PasswordGuard.encryptPassword(info.getPassword()));
+                    statement.setString(3, Operation.dumpPermissions(info.getPermissions()));
                     statement.setString(4, UserSqlHelper.getModifyTime());
-                    statement.setLong(5, info.id());
+                    statement.setLong(5, info.getId());
                     statement.executeUpdate();
                 }
             }
@@ -180,7 +180,7 @@ public final class UserSqlHelper {
         UserSqlHelper.updateUsers(List.of(info), connectionId);
     }
 
-    public static void updateUsersByName(final @NotNull Collection<@NotNull UserCommonInformation> infoList, final @Nullable String connectionId) throws SQLException {
+    public static void updateUsersByName(final @NotNull Collection<@NotNull UserSqlInformationUpdater> infoList, final @Nullable String connectionId) throws SQLException {
         if (infoList.isEmpty())
             return;
         try (final Connection connection = UserSqlHelper.DefaultDatabaseUtil.getConnection(connectionId)) {
@@ -188,7 +188,7 @@ public final class UserSqlHelper {
             try (final PreparedStatement statement = connection.prepareStatement("""
                         UPDATE users SET password = ?, permissions = ?, modify_time = ? WHERE username == ?;
                         """)) {
-                for (final UserCommonInformation info: infoList) {
+                for (final UserSqlInformationUpdater info: infoList) {
                     statement.setString(1, PasswordGuard.encryptPassword(info.password()));
                     statement.setString(2, Operation.dumpPermissions(Objects.requireNonNullElse(info.permissions(), UserSqlHelper.DefaultPermissions)));
                     statement.setString(3, UserSqlHelper.getModifyTime());
@@ -200,7 +200,7 @@ public final class UserSqlHelper {
         }
     }
 
-    public static void updateUserByName(final @NotNull UserCommonInformation info, final @Nullable String connectionId) throws SQLException {
+    public static void updateUserByName(final @NotNull UserSqlInformationUpdater info, final @Nullable String connectionId) throws SQLException {
         UserSqlHelper.updateUsersByName(List.of(info), connectionId);
     }
 

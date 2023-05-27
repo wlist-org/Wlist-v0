@@ -49,7 +49,7 @@ public final class UserTokenHelper {
             return null;
         }
         final UserSqlInformation user = UserSqlHelper.selectUser(id, "token_decoder");
-        if (user == null || !user.modifyTime().equals(modifyTime))
+        if (user == null || !user.getModifyTime().equals(modifyTime))
             return null;
         return user;
     }

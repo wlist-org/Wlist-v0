@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.SortedSet;
 
+// TODO back to record.
 public final class UserSqlInformation {
     private final long id;
     private @NotNull String username;
@@ -25,11 +26,11 @@ public final class UserSqlInformation {
         this.modifyTime = modifyTime;
     }
 
-    public long id() {
+    public long getId() {
         return this.id;
     }
 
-    public @NotNull String username() {
+    public @NotNull String getUsername() {
         return this.username;
     }
 
@@ -37,7 +38,7 @@ public final class UserSqlInformation {
         this.username = username;
     }
 
-    public @NotNull String password() {
+    public @NotNull String getPassword() {
         return this.password;
     }
 
@@ -45,7 +46,7 @@ public final class UserSqlInformation {
         this.password = password;
     }
 
-    public @NotNull SortedSet<Operation.@NotNull Permission> permissions() {
+    public @NotNull SortedSet<Operation.@NotNull Permission> getPermissions() {
         return this.permissions;
     }
 
@@ -53,7 +54,7 @@ public final class UserSqlInformation {
         this.permissions = permissions;
     }
 
-    public @NotNull LocalDateTime modifyTime() {
+    public @NotNull LocalDateTime getModifyTime() {
         return this.modifyTime;
     }
 

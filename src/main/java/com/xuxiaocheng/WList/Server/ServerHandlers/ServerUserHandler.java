@@ -8,7 +8,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
 import com.xuxiaocheng.WList.Server.Databases.User.PasswordGuard;
-import com.xuxiaocheng.WList.Server.Databases.User.UserCommonInformation;
+import com.xuxiaocheng.WList.Server.Databases.User.UserSqlInformationUpdater;
 import com.xuxiaocheng.WList.Server.Databases.User.UserSqlHelper;
 import com.xuxiaocheng.WList.Server.Databases.User.UserSqlInformation;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
@@ -46,9 +46,9 @@ public final class ServerUserHandler {
 
     static @NotNull Map<String, Object> getVisibleInfo(final @NotNull UserSqlInformation u) {
         final Map<String, Object> map = new LinkedHashMap<>(3);
-        map.put("id", u.id());
-        map.put("name", u.username());
-        map.put("permissions", u.permissions());
+        map.put("id", u.getId());
+        map.put("name", u.getUsername());
+        map.put("permissions", u.getPermissions());
         return map;
     }
 
@@ -57,7 +57,7 @@ public final class ServerUserHandler {
         final String password = ByteBufIOUtil.readUTF(buffer);
         final boolean success;
         try {
-            success = UserSqlHelper.insertUser(new UserCommonInformation(username, password, null), Thread.currentThread().getName());
+            success = UserSqlHelper.insertUser(new UserSqlInformationUpdater(username, password, null), Thread.currentThread().getName());
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
@@ -73,9 +73,9 @@ public final class ServerUserHandler {
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
-        if (user == null || PasswordGuard.isWrongPassword(password, user.password()))
+        if (user == null || PasswordGuard.isWrongPassword(password, user.getPassword()))
             return ServerHandler.DataError;
-        final String token = UserTokenHelper.encodeToken(user.id(), user.modifyTime());
+        final String token = UserTokenHelper.encodeToken(user.getId(), user.getModifyTime());
         HLog.getInstance("ServerLogger").log(HLogLevel.DEBUG, "Signed token for user: ", username, " token: ", token);
         return ServerHandler.composeMessage(Operation.State.Success, token);
     };
@@ -88,7 +88,7 @@ public final class ServerUserHandler {
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
-        if (user == null || (permissions.length > 0 && !user.permissions().containsAll(List.of(permissions))))
+        if (user == null || (permissions.length > 0 && !user.getPermissions().containsAll(List.of(permissions))))
             return UnionPair.fail(ServerHandler.composeMessage(Operation.State.NoPermission, null));
         return UnionPair.ok(user);
     }
@@ -98,7 +98,7 @@ public final class ServerUserHandler {
         if (user.isFailure())
             return user;
         final String verifyingPassword = ByteBufIOUtil.readUTF(buffer);
-        if (PasswordGuard.isWrongPassword(verifyingPassword, user.getT().password()))
+        if (PasswordGuard.isWrongPassword(verifyingPassword, user.getT().getPassword()))
             return UnionPair.fail(ServerHandler.DataError);
         return user;
     }
@@ -122,7 +122,7 @@ public final class ServerUserHandler {
         if (user.isFailure())
             return user.getE();
         try {
-            UserSqlHelper.deleteUser(user.getT().id(), Thread.currentThread().getName());
+            UserSqlHelper.deleteUser(user.getT().getId(), Thread.currentThread().getName());
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
@@ -134,7 +134,7 @@ public final class ServerUserHandler {
         if (changer.isFailure())
             return UnionPair.fail(changer.getE());
         final String username = ByteBufIOUtil.readUTF(buffer);
-        if (username.equals(changer.getT().username()))
+        if (username.equals(changer.getT().getUsername()))
             return UnionPair.ok(Pair.ImmutablePair.makeImmutablePair(changer.getT(), changer.getT()));
         final UserSqlInformation user;
         try {
@@ -176,7 +176,7 @@ public final class ServerUserHandler {
         if (userPair.isFailure())
             return userPair.getE();
         try {
-            UserSqlHelper.deleteUserByName(userPair.getT().getSecond().username(), Thread.currentThread().getName());
+            UserSqlHelper.deleteUserByName(userPair.getT().getSecond().getUsername(), Thread.currentThread().getName());
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
@@ -190,7 +190,7 @@ public final class ServerUserHandler {
         final SortedSet<Operation.Permission> modified = Operation.parsePermissions(ByteBufIOUtil.readUTF(buffer));
         if (modified == null)
             return ServerUserHandler.WrongPermissionsList;
-        final SortedSet<Operation.Permission> permissions = userPair.getT().getSecond().permissions();
+        final SortedSet<Operation.Permission> permissions = userPair.getT().getSecond().getPermissions();
         if (add)
             permissions.addAll(modified);
         else
