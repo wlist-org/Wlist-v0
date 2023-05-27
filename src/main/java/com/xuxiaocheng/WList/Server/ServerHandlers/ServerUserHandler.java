@@ -1,6 +1,5 @@
 package com.xuxiaocheng.WList.Server.ServerHandlers;
 
-import com.alibaba.fastjson2.JSON;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -8,9 +7,10 @@ import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
 import com.xuxiaocheng.WList.Server.Databases.User.PasswordGuard;
-import com.xuxiaocheng.WList.Server.Databases.User.UserSqlInformationUpdater;
 import com.xuxiaocheng.WList.Server.Databases.User.UserSqlHelper;
 import com.xuxiaocheng.WList.Server.Databases.User.UserSqlInformation;
+import com.xuxiaocheng.WList.Server.Databases.User.UserSqlInformationUpdater;
+import com.xuxiaocheng.WList.Server.Databases.User.VisibleUserInformation;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.Operation;
 import com.xuxiaocheng.WList.Server.Polymers.MessageProto;
@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.stream.Collectors;
 
 public final class ServerUserHandler {
     public static final @NotNull @UnmodifiableView SortedSet<Operation.@NotNull Permission> AdminPermission =
@@ -162,11 +161,11 @@ public final class ServerUserHandler {
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
-        final String json = JSON.toJSONString(list.getSecond().stream()
-                .map(ServerUserHandler::getVisibleInfo).collect(Collectors.toList()));
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
             ByteBufIOUtil.writeVariableLenLong(buf, list.getFirst().longValue());
-            ByteBufIOUtil.writeUTF(buf, json);
+            ByteBufIOUtil.writeVariableLenInt(buf, list.getSecond().size());
+            for (final UserSqlInformation information: list.getSecond())
+                VisibleUserInformation.dump(buf, information);
             return buf;
         });
     };
