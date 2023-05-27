@@ -5,9 +5,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
-import com.xuxiaocheng.WList.Driver.Options.DuplicatePolicy;
-import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
-import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
+import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Server.Databases.User.UserSqlInformation;
@@ -61,8 +59,8 @@ public final class ServerFileHandler {
         final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
         final int page = ByteBufIOUtil.readVariableLenInt(buffer);
-        final OrderPolicy orderPolicy = OrderPolicy.Map.get(ByteBufIOUtil.readUTF(buffer));
-        final OrderDirection orderDirection = OrderDirection.Map.get(ByteBufIOUtil.readUTF(buffer));
+        final Options.OrderPolicy orderPolicy = Options.valueOfOrderPolicy(ByteBufIOUtil.readUTF(buffer));
+        final Options.OrderDirection orderDirection = Options.valueOfOrderDirection(ByteBufIOUtil.readUTF(buffer));
         if (limit < 1 || limit > GlobalConfiguration.getInstance().maxLimitPerPage()
                 || page < 0 || orderPolicy == null || orderDirection == null)
             return ServerHandler.WrongParameters;
@@ -90,7 +88,7 @@ public final class ServerFileHandler {
         if (user.isFailure())
             return user.getE();
         final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
-        final DuplicatePolicy duplicatePolicy = DuplicatePolicy.Map.get(ByteBufIOUtil.readUTF(buffer));
+        final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
         if (duplicatePolicy == null)
             return ServerHandler.WrongParameters;
         final FileSqlInformation dir;
@@ -127,7 +125,7 @@ public final class ServerFileHandler {
             return user.getE();
         final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         final String name = ByteBufIOUtil.readUTF(buffer);
-        final DuplicatePolicy duplicatePolicy = DuplicatePolicy.Map.get(ByteBufIOUtil.readUTF(buffer));
+        final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
         if (duplicatePolicy == null)
             return ServerHandler.WrongParameters;
         final FileSqlInformation file;
@@ -210,7 +208,7 @@ public final class ServerFileHandler {
         final String md5 = ByteBufIOUtil.readUTF(buffer);
         if (size < 0 || !MiscellaneousUtil.md5Pattern.matcher(md5).matches())
             return ServerHandler.WrongParameters;
-        final DuplicatePolicy duplicatePolicy = DuplicatePolicy.Map.get(ByteBufIOUtil.readUTF(buffer));
+        final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
         if (duplicatePolicy == null)
             return ServerHandler.WrongParameters;
         final UploadMethods methods;
@@ -288,7 +286,7 @@ public final class ServerFileHandler {
             return user.getE();
         final DrivePath source = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         final DrivePath target = new DrivePath(ByteBufIOUtil.readUTF(buffer));
-        final DuplicatePolicy duplicatePolicy = DuplicatePolicy.Map.get(ByteBufIOUtil.readUTF(buffer));
+        final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
         if (duplicatePolicy == null)
             return ServerHandler.WrongParameters;
         final FileSqlInformation file;
@@ -310,7 +308,7 @@ public final class ServerFileHandler {
             return user.getE();
         final DrivePath sourceFile = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         final DrivePath targetDirectory = new DrivePath(ByteBufIOUtil.readUTF(buffer));
-        final DuplicatePolicy duplicatePolicy = DuplicatePolicy.Map.get(ByteBufIOUtil.readUTF(buffer));
+        final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
         if (duplicatePolicy == null)
             return ServerHandler.WrongParameters;
         final FileSqlInformation file;

@@ -5,7 +5,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
+import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
 import com.xuxiaocheng.WList.Server.Databases.User.PasswordGuard;
 import com.xuxiaocheng.WList.Server.Databases.User.UserCommonInformation;
@@ -153,7 +153,7 @@ public final class ServerUserHandler {
             return user.getE();
         final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
         final int page = ByteBufIOUtil.readVariableLenInt(buffer);
-        final OrderDirection orderDirection = OrderDirection.Map.get(ByteBufIOUtil.readUTF(buffer));
+        final Options.OrderDirection orderDirection = Options.valueOfOrderDirection(ByteBufIOUtil.readUTF(buffer));
         if (limit < 1 || limit > GlobalConfiguration.getInstance().maxLimitPerPage() || page < 0 || orderDirection == null)
             return ServerHandler.WrongParameters;
         final Pair.ImmutablePair<Long, List<UserSqlInformation>> list;

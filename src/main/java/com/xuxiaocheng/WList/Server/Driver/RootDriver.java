@@ -5,9 +5,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.WList.Driver.DriverConfiguration;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
-import com.xuxiaocheng.WList.Driver.Options.DuplicatePolicy;
-import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
-import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
+import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
 import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
@@ -37,7 +35,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
     }
 
     @Override
-    public Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(@NotNull final DrivePath path, final int limit, final int page, final @NotNull OrderPolicy policy, final @NotNull OrderDirection direction) throws Exception {
+    public Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(@NotNull final DrivePath path, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws Exception {
         final String root = path.getRoot();
         final DriverInterface<?> real = DriverManager.get(root);
         if (real == null)
@@ -77,7 +75,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
     }
 
     @Override
-    public @Nullable FileSqlInformation mkdirs(@NotNull final DrivePath path, final @NotNull DuplicatePolicy policy) throws Exception {
+    public @Nullable FileSqlInformation mkdirs(@NotNull final DrivePath path, final Options.@NotNull DuplicatePolicy policy) throws Exception {
         final String root = path.getRoot();
         final DriverInterface<?> real = DriverManager.get(root);
         if (real == null)
@@ -90,7 +88,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
     }
 
     @Override
-    public @Nullable UploadMethods upload(final @NotNull DrivePath path, final long size, final @NotNull String md5, final @NotNull DuplicatePolicy policy) throws Exception {
+    public @Nullable UploadMethods upload(final @NotNull DrivePath path, final long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws Exception {
         final String root = path.getRoot();
         final DriverInterface<?> real = DriverManager.get(root);
         if (real == null)
@@ -130,7 +128,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
     }
 
     @Override
-    public @Nullable FileSqlInformation copy(@NotNull final DrivePath source, @NotNull final DrivePath target, final @NotNull DuplicatePolicy policy) throws Exception {
+    public @Nullable FileSqlInformation copy(@NotNull final DrivePath source, @NotNull final DrivePath target, final Options.@NotNull DuplicatePolicy policy) throws Exception {
         if (source.getRoot().equals(target.getRoot())) {
             final DriverInterface<?> real = DriverManager.get(source.getRoot());
             if (real == null)
@@ -141,7 +139,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
     }
 
     @Override
-    public @Nullable FileSqlInformation move(@NotNull final DrivePath sourceFile, @NotNull final DrivePath targetDirectory, final @NotNull DuplicatePolicy policy) throws Exception {
+    public @Nullable FileSqlInformation move(@NotNull final DrivePath sourceFile, @NotNull final DrivePath targetDirectory, final Options.@NotNull DuplicatePolicy policy) throws Exception {
         if (sourceFile.getRoot().equals(targetDirectory.getRoot())) {
             final DriverInterface<?> real = DriverManager.get(sourceFile.getRoot());
             if (real == null)
@@ -152,7 +150,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
     }
 
     @Override
-    public @Nullable FileSqlInformation rename(@NotNull final DrivePath source, @NotNull final String name, final @NotNull DuplicatePolicy policy) throws Exception {
+    public @Nullable FileSqlInformation rename(@NotNull final DrivePath source, @NotNull final String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
         final String root = source.getRoot();
         final DriverInterface<?> real = DriverManager.get(root);
         if (real == null)

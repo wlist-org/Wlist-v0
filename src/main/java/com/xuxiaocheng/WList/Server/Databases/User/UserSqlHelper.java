@@ -5,7 +5,7 @@ import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
+import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Server.Operation;
 import com.xuxiaocheng.WList.Utils.DatabaseUtil;
 import org.jetbrains.annotations.NotNull;
@@ -294,7 +294,7 @@ public final class UserSqlHelper {
         return UserSqlHelper.selectUsersByName(List.of(username), connectionId).get(0);
     }
 
-    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull UserSqlInformation>> selectAllUsersInPage(final int limit, final long offset, final @NotNull OrderDirection direction, final @Nullable String connectionId) throws SQLException {
+    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull UserSqlInformation>> selectAllUsersInPage(final int limit, final long offset, final Options.@NotNull OrderDirection direction, final @Nullable String connectionId) throws SQLException {
         try (final Connection connection = UserSqlHelper.DefaultDatabaseUtil.getConnection(connectionId)) {
             connection.setAutoCommit(false);
             final long count;

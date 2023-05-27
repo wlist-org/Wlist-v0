@@ -5,13 +5,11 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
-import com.xuxiaocheng.WList.Driver.Options.DuplicatePolicy;
-import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
-import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
-import com.xuxiaocheng.WList.Exceptions.IllegalResponseCodeException;
-import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
+import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
+import com.xuxiaocheng.WList.Exceptions.IllegalResponseCodeException;
 import com.xuxiaocheng.WList.Exceptions.WrongResponseException;
+import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import okhttp3.Headers;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -51,20 +49,19 @@ public final class DriverHelper_123pan {
     static final int TokenExpireResponseCode = 401;
     static final int NoSuchFileResponseCode = 400;
 
-    private static final @NotNull DuplicatePolicy defaultDuplicatePolicy = DuplicatePolicy.KEEP;
-    private static final @NotNull OrderPolicy defaultOrderPolicy = OrderPolicy.FileName;
-    private static final @NotNull OrderDirection defaultOrderDirection = OrderDirection.ASCEND;
-    @Contract(pure = true) static int getDuplicatePolicy(final @Nullable DuplicatePolicy policy) {
+    private static final Options.@NotNull DuplicatePolicy defaultDuplicatePolicy = Options.DuplicatePolicy.KEEP;
+    private static final Options.@NotNull OrderPolicy defaultOrderPolicy = Options.OrderPolicy.FileName;
+    private static final Options.@NotNull OrderDirection defaultOrderDirection = Options.OrderDirection.ASCEND;
+    @Contract(pure = true) static int getDuplicatePolicy(final Options.@Nullable DuplicatePolicy policy) {
         if (policy == null)
             return DriverHelper_123pan.getDuplicatePolicy(DriverHelper_123pan.defaultDuplicatePolicy);
         return switch (policy) {
             case ERROR -> 0;
             case OVER -> 2;
             case KEEP -> 1;
-            default -> DriverHelper_123pan.getDuplicatePolicy(DriverHelper_123pan.defaultDuplicatePolicy);
         };
     }
-    @Contract(pure = true) static @NotNull String getOrderPolicy(final @Nullable OrderPolicy policy) {
+    @Contract(pure = true) static @NotNull String getOrderPolicy(final Options.@Nullable OrderPolicy policy) {
         if (policy == null)
             return DriverHelper_123pan.getOrderPolicy(DriverHelper_123pan.defaultOrderPolicy);
         return switch (policy) {
@@ -72,10 +69,9 @@ public final class DriverHelper_123pan {
             case Size -> "size";
             case CreateTime -> "fileId";
             case UpdateTime -> "update_at";
-//            default -> DriverHelper_123pan.getOrderPolicy(DriverHelper_123pan.defaultOrderPolicy);
         };
     }
-    @Contract(pure = true) static @NotNull String getOrderDirection(final @Nullable OrderDirection policy) {
+    @Contract(pure = true) static @NotNull String getOrderDirection(final Options.@Nullable OrderDirection policy) {
         if (policy == null)
             return DriverHelper_123pan.getOrderDirection(DriverHelper_123pan.defaultOrderDirection);
         return switch (policy) {
@@ -213,7 +209,7 @@ public final class DriverHelper_123pan {
                 DriverHelper_123pan.headerBuilder(token).build(), null), 0, "ok");
     }
 
-    static @NotNull JSONObject doListFiles(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final int limit, final int page, final @NotNull OrderPolicy policy, final @NotNull OrderDirection direction) throws IllegalParametersException, IOException {
+    static @NotNull JSONObject doListFiles(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws IllegalParametersException, IOException {
         final String token = DriverHelper_123pan.ensureToken(configuration);
         final Map<String, Object> request = new LinkedHashMap<>(7);
         request.put("driveId", 0);
@@ -253,7 +249,7 @@ public final class DriverHelper_123pan {
                 DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 
-    static @NotNull JSONObject doCreateDirectory(final @NotNull DriverConfiguration_123Pan configuration, final long parentId, final @NotNull String name, final @NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException {
+    static @NotNull JSONObject doCreateDirectory(final @NotNull DriverConfiguration_123Pan configuration, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException {
         final String token = DriverHelper_123pan.ensureToken(configuration);
         final Map<String, Object> request = new LinkedHashMap<>(8);
         request.put("driveId", 0);
@@ -268,7 +264,7 @@ public final class DriverHelper_123pan {
                 DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 
-    static @NotNull JSONObject doUploadRequest(final @NotNull DriverConfiguration_123Pan configuration, final long parentId, final @NotNull String name, final long size, final @NotNull String etag, final @NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException {
+    static @NotNull JSONObject doUploadRequest(final @NotNull DriverConfiguration_123Pan configuration, final long parentId, final @NotNull String name, final long size, final @NotNull String etag, final Options.@NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException {
         final String token = DriverHelper_123pan.ensureToken(configuration);
         final Map<String, Object> request = new LinkedHashMap<>(7);
         request.put("driveId", 0);
@@ -327,7 +323,7 @@ public final class DriverHelper_123pan {
                 DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 
-    static @NotNull JSONObject doRenameFile(final @NotNull DriverConfiguration_123Pan configuration, final long id, final @NotNull String name, final @NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException {
+    static @NotNull JSONObject doRenameFile(final @NotNull DriverConfiguration_123Pan configuration, final long id, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException {
         final String token = DriverHelper_123pan.ensureToken(configuration);
         final Map<String, Object> request = new LinkedHashMap<>(4);
         request.put("driveId", 0);

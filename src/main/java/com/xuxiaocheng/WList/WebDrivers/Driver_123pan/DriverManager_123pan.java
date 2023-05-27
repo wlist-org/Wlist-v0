@@ -10,9 +10,7 @@ import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
-import com.xuxiaocheng.WList.Driver.Options.DuplicatePolicy;
-import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
-import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
+import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Exceptions.IllegalResponseCodeException;
 import com.xuxiaocheng.WList.Exceptions.WrongResponseException;
@@ -58,7 +56,7 @@ public final class DriverManager_123pan {
 
     // File Information Getter
 
-    private static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull List<@NotNull FileSqlInformation>> listFilesNoCache(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final int limit, final int page, final @NotNull OrderPolicy policy, final @NotNull OrderDirection direction, final @NotNull DrivePath directoryPath, final @Nullable String connectionId) throws IllegalParametersException, IOException, SQLException {
+    private static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull List<@NotNull FileSqlInformation>> listFilesNoCache(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction, final @NotNull DrivePath directoryPath, final @Nullable String connectionId) throws IllegalParametersException, IOException, SQLException {
         final JSONObject data = DriverHelper_123pan.doListFiles(configuration, directoryId, limit, page, policy, direction);
         final Long total = data.getLong("Total");
         final JSONArray info = data.getJSONArray("InfoList");
@@ -184,7 +182,7 @@ public final class DriverManager_123pan {
         }
     }
 
-    static Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> listFiles(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath directoryPath, final int limit, final int page, final @NotNull OrderPolicy policy, final @NotNull OrderDirection direction, final boolean useCache, final @Nullable String connectionId, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {
+    static Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> listFiles(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath directoryPath, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction, final boolean useCache, final @Nullable String connectionId, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {
         final AtomicReference<String> id = new AtomicReference<>(connectionId);
         try (final Connection connection = connectionId == null ? FileSqlHelper.DefaultDatabaseUtil.getNewConnection(id::set) : FileSqlHelper.DefaultDatabaseUtil.getConnection(connectionId)) {
             connection.setAutoCommit(false);
@@ -217,7 +215,7 @@ public final class DriverManager_123pan {
         return Pair.ImmutablePair.makeImmutablePair(DriverHelper_123pan.extractDownloadUrl(url), info.size());
     }
 
-    static @Nullable FileSqlInformation createDirectoriesRecursively(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @NotNull DuplicatePolicy policy, final @Nullable String connectionId, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {
+    static @Nullable FileSqlInformation createDirectoriesRecursively(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final Options.@NotNull DuplicatePolicy policy, final @Nullable String connectionId, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {
         final AtomicReference<String> id = new AtomicReference<>(connectionId);
         try (final Connection connection = connectionId == null ? FileSqlHelper.DefaultDatabaseUtil.getNewConnection(id::set) : FileSqlHelper.DefaultDatabaseUtil.getConnection(connectionId)) {
             connection.setAutoCommit(false);
@@ -244,7 +242,7 @@ public final class DriverManager_123pan {
         }
     }
 
-    static @Nullable UploadMethods getUploadMethods(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @NotNull String md5, final long size, final @NotNull DuplicatePolicy policy, final @Nullable String connectionId, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {
+    static @Nullable UploadMethods getUploadMethods(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @NotNull String md5, final long size, final Options.@NotNull DuplicatePolicy policy, final @Nullable String connectionId, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {
         if (!MiscellaneousUtil.md5Pattern.matcher(md5).matches())
             throw new IllegalParametersException("Invalid md5.", md5);
         final String newFileName = path.getName();
@@ -334,7 +332,7 @@ public final class DriverManager_123pan {
         }
     }
 
-    static @Nullable FileSqlInformation renameFile(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @NotNull String name, final @NotNull DuplicatePolicy policy, final boolean useCache, final @Nullable String connectionId, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {
+    static @Nullable FileSqlInformation renameFile(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final boolean useCache, final @Nullable String connectionId, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {
         if (!DriverHelper_123pan.filenamePredication.test(name))
             return null;
         final AtomicReference<String> id = new AtomicReference<>(connectionId);

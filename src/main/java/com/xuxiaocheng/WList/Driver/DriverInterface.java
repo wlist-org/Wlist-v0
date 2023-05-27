@@ -2,12 +2,9 @@ package com.xuxiaocheng.WList.Driver;
 
 import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.WList.Driver.Options.DuplicatePolicy;
+import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlHelper;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
-import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
-import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
-import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
 import com.xuxiaocheng.WList.Utils.DatabaseUtil;
 import io.netty.buffer.ByteBuf;
@@ -56,7 +53,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      *          Null means directory is not available.
      * @throws Exception Something went wrong.
      */
-    Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(final @NotNull DrivePath path, final int limit, final int page, final @NotNull OrderPolicy policy, final @NotNull OrderDirection direction) throws Exception;
+    Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(final @NotNull DrivePath path, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws Exception;
 
     /**
      * Get the file information of a specific file.
@@ -82,7 +79,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @return The information of new directory. Null means failure. (Invalid filename/File already exists.)
      * @throws Exception Something went wrong.
      */
-    @Nullable FileSqlInformation mkdirs(final @NotNull DrivePath path, final @NotNull DuplicatePolicy policy) throws Exception;
+    @Nullable FileSqlInformation mkdirs(final @NotNull DrivePath path, final Options.@NotNull DuplicatePolicy policy) throws Exception;
 
     /**
      * Upload file to path. {@link UploadMethods}
@@ -92,7 +89,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @return Null means invalid filename. Second Consumer should return the information of new file, but null means failure.
      * @throws Exception Something went wrong.
      */
-    @Nullable UploadMethods upload(final @NotNull DrivePath path, final long size, final @NotNull String md5, final @NotNull DuplicatePolicy policy) throws Exception;
+    @Nullable UploadMethods upload(final @NotNull DrivePath path, final long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws Exception;
 
     /**
      * Delete file.
@@ -102,7 +99,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     void delete(final @NotNull DrivePath path) throws Exception;
 
     @SuppressWarnings("OverlyBroadThrowsClause")
-    default @Nullable FileSqlInformation copy(final @NotNull DrivePath source, final @NotNull DrivePath target, final @NotNull DuplicatePolicy policy) throws Exception {
+    default @Nullable FileSqlInformation copy(final @NotNull DrivePath source, final @NotNull DrivePath target, final Options.@NotNull DuplicatePolicy policy) throws Exception {
         final FileSqlInformation info = this.info(source);
         final Pair.ImmutablePair<InputStream, Long> url = this.download(source, 0, Long.MAX_VALUE);
         if (url == null || info == null)
@@ -128,7 +125,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
         }
     }
 
-    default @Nullable FileSqlInformation move(final @NotNull DrivePath sourceFile, final @NotNull DrivePath targetDirectory, final @NotNull DuplicatePolicy policy) throws Exception {
+    default @Nullable FileSqlInformation move(final @NotNull DrivePath sourceFile, final @NotNull DrivePath targetDirectory, final Options.@NotNull DuplicatePolicy policy) throws Exception {
         if (targetDirectory.equals(sourceFile.getParent()))
             return this.info(sourceFile);
         final FileSqlInformation t = this.copy(sourceFile, targetDirectory.getChild(sourceFile.getName()), policy);
@@ -138,7 +135,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
         return t;
     }
 
-    default @Nullable FileSqlInformation rename(final @NotNull DrivePath source, final @NotNull String name, final @NotNull DuplicatePolicy policy) throws Exception {
+    default @Nullable FileSqlInformation rename(final @NotNull DrivePath source, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
         if (source.getName().equals(name))
             return this.info(source);
         final FileSqlInformation t = this.copy(source, source.getParent().child(name), policy);
