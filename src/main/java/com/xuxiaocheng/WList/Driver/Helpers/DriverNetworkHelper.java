@@ -57,7 +57,7 @@ public final class DriverNetworkHelper {
                 MediaType.parse("application/json;charset=utf-8"));
     }
 
-    public static @NotNull Call callRequestWithParameters(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<String, String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> parameters) {
+    public static @NotNull Call callRequestWithParameters(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> parameters) {
         assert !HttpMethod.requiresRequestBody(url.getSecond());
         final Request.Builder request = new Request.Builder();
         if (parameters == null)
@@ -75,7 +75,7 @@ public final class DriverNetworkHelper {
                 .method(url.getSecond(), null).build());
     }
 
-    public static @NotNull Call callRequestWithBody(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<String, String> url, final @Nullable Headers headers, final @Nullable RequestBody body) {
+    public static @NotNull Call callRequestWithBody(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable Headers headers, final @Nullable RequestBody body) {
         assert HttpMethod.requiresRequestBody(url.getSecond());
         return client.newCall(new Request.Builder().url(url.getFirst())
                 .headers(Objects.requireNonNullElseGet(headers, () -> new Headers.Builder().build()))
@@ -84,13 +84,13 @@ public final class DriverNetworkHelper {
                 .build());
     }
 
-    public static @NotNull Response sendRequestJson(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<String, String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body) throws IOException {
+    public static @NotNull Response sendRequestJson(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body) throws IOException {
         return (HttpMethod.requiresRequestBody(url.getSecond()) ?
                 DriverNetworkHelper.callRequestWithBody(client, url, headers, DriverNetworkHelper.createJsonRequestBody(body)) :
                 DriverNetworkHelper.callRequestWithParameters(client, url, headers, body)).execute();
     }
 
-    public static void sendRequestAsync(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<String, String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body, final @NotNull Callback callback) {
+    public static void sendRequestAsync(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body, final @NotNull Callback callback) {
         (HttpMethod.requiresRequestBody(url.getSecond()) ?
                 DriverNetworkHelper.callRequestWithBody(client, url, headers, DriverNetworkHelper.createJsonRequestBody(body)) :
                 DriverNetworkHelper.callRequestWithParameters(client, url, headers, body)).enqueue(callback);
@@ -105,7 +105,7 @@ public final class DriverNetworkHelper {
         return responseBody;
     }
 
-    public static @NotNull JSONObject sendRequestReceiveJson(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<String, String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body) throws IOException {
+    public static @NotNull JSONObject sendRequestReceiveJson(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body) throws IOException {
         return JSON.parseObject(DriverNetworkHelper.extraResponse(DriverNetworkHelper.sendRequestJson(client, url, headers, body)).byteStream());
     }
 }

@@ -277,7 +277,7 @@ public final class UserSqlHelper {
             connection.setAutoCommit(false);
             final List<UserSqlInformation> list = new LinkedList<>();
             try (final PreparedStatement statement = connection.prepareStatement("""
-                        SELECT password, permissions, modify_time FROM users WHERE username == ? LIMIT 1;
+                        SELECT * FROM users WHERE username == ? LIMIT 1;
                         """)) {
                 for (final String username: usernameList) {
                     statement.setString(1, username);
