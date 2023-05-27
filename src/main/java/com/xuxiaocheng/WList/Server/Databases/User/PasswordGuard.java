@@ -15,7 +15,7 @@ public final class PasswordGuard {
 
     // Due to the salt being stored in the database, additional salt needs to be added to prevent password leakage.
     private static final @NotNull String ServerPasswordSlat = "WList/PasswordSlat/AdditionalSlat: " + HExceptionWrapper.wrapSupplier(() -> ConstantSqlHelper.get("PasswordSlat",
-            () -> HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 64, ConstantSqlHelper.DefaultRandomChars))).get();
+            () -> HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 64, ConstantSqlHelper.DefaultRandomChars), "initialize")).get();
 
     static @NotNull String encryptPassword(final @NotNull String password) {
         return MiscellaneousUtil.getMd5((password + PasswordGuard.ServerPasswordSlat).getBytes(StandardCharsets.UTF_8));

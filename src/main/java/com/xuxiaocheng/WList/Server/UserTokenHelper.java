@@ -23,7 +23,7 @@ public final class UserTokenHelper {
     }
 
     private static final @NotNull Algorithm sign = Algorithm.HMAC512(HExceptionWrapper.wrapSupplier(() -> ConstantSqlHelper.get("TokenHMAC",
-            () -> HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 128, ConstantSqlHelper.DefaultRandomChars))).get());
+            () -> HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 128, ConstantSqlHelper.DefaultRandomChars), "initialize")).get());
     private static final JWTCreator.Builder builder = JWT.create().withIssuer("WList");
     private static final JWTVerifier verifier = JWT.require(UserTokenHelper.sign).withIssuer("WList").build();
 

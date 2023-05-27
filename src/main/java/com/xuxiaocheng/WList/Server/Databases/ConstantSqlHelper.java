@@ -39,8 +39,9 @@ public final class ConstantSqlHelper {
         }
     }
 
-    public static @NotNull String get(final @NotNull String key, final @NotNull Supplier<@NotNull String> defaultValue) throws SQLException {
-        try (final Connection connection = ConstantSqlHelper.DefaultDatabaseUtil.getConnection(null)) {
+    public static @NotNull String get(final @NotNull String key, final @NotNull Supplier<@NotNull String> defaultValue, final @Nullable String connectionId) throws SQLException {
+        try (final Connection connection = ConstantSqlHelper.DefaultDatabaseUtil.getConnection(connectionId)) {
+            connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement("""
                         SELECT value FROM constants WHERE key == ? LIMIT 1;
                         """)) {
@@ -51,7 +52,6 @@ public final class ConstantSqlHelper {
                 }
             }
             final String value = defaultValue.get();
-            connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement("""
                         INSERT INTO constants (key, value)
                             VALUES (?, ?);
