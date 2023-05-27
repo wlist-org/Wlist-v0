@@ -61,10 +61,9 @@ public final class LocalDiskConfiguration extends DriverConfiguration<LocalDiskC
         @Override
         public @NotNull String toString() {
             return "LocalDiskConfiguration$WebSide{" +
-                    "defaultLimitPerPage=" + this.defaultLimitPerPage +
-                    ", duplicatePolicy=" + this.defaultDuplicatePolicy +
-                    ", orderPolicy=" + this.defaultOrderPolicy +
-                    ", orderDirection=" + this.defaultOrderDirection +
+                    "rootDirectoryPath=" + this.rootDirectoryPath +
+                    ", maxSpaceUse=" + this.maxSpaceUse +
+                    ", defaultLimitPerPage=" + this.defaultLimitPerPage +
                     "}";
         }
     }

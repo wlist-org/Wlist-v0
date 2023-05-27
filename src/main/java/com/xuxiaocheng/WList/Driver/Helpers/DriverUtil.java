@@ -4,10 +4,16 @@ import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.FunctionE;
+import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
+import com.xuxiaocheng.WList.Driver.Options.DuplicatePolicy;
+import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
+import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import okhttp3.Headers;
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
+import okhttp3.RequestBody;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -27,7 +33,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.regex.Pattern;
 
 public final class DriverUtil {
@@ -37,6 +42,10 @@ public final class DriverUtil {
 
     public static final @NotNull Pattern phoneNumberPattern = Pattern.compile("^1([38][0-9]|4[579]|5[0-3,5-9]|66|7[0135678]|9[89])\\d{8}$");
     public static final @NotNull Pattern mailAddressPattern = Pattern.compile("^\\w+@[a-zA-Z0-9]+(\\.[a-zA-Z0-9]+){1,2}$");
+
+    public static final @NotNull OrderPolicy DefaultOrderPolicy = OrderPolicy.FileName;
+    public static final @NotNull OrderDirection DefaultOrderDirection = OrderDirection.ASCEND;
+    public static final @NotNull DuplicatePolicy DefaultDuplicatePolicy = DuplicatePolicy.KEEP;
 
     public static @NotNull InputStream getDownloadStream(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws IOException {
         if (from >= to)
@@ -97,27 +106,28 @@ public final class DriverUtil {
                 null, 0, len), len);
     }
 
-    public static Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Iterator<@NotNull FileSqlInformation>, @NotNull Runnable> wrapAllFilesListerInPages(final @NotNull FunctionE<? super @NotNull Integer, ? extends Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull List<@NotNull FileSqlInformation>>> fileSupplierInPage, final @NotNull Function<? super @NotNull Long, @NotNull Integer> pageCountCalculator, final @NotNull Consumer<? super @Nullable Exception> finisher, final @NotNull ExecutorService threadPool) {
+    public static Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Iterator<@NotNull FileSqlInformation>, @NotNull Runnable> wrapAllFilesListerInPages(final @NotNull FunctionE<? super @NotNull Integer, ? extends Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull List<@NotNull FileSqlInformation>>> fileSupplierInPage, final int defaultLimit, final @NotNull Consumer<? super @Nullable Exception> finisher, final @NotNull ExecutorService threadPool) {
         final Pair.ImmutablePair<Long, List<FileSqlInformation>> firstPage;
         try {
             firstPage = fileSupplierInPage.apply(0);
         } catch (final Exception exception) {
             finisher.accept(exception);
-            return Triad.ImmutableTriad.makeImmutableTriad(0L, MiscellaneousUtil.getEmptyIterator(), () -> {});
+            return Triad.ImmutableTriad.makeImmutableTriad(0L, MiscellaneousUtil.getEmptyIterator(), RunnableE.EmptyRunnable);
         }
         final long fileCount = firstPage.getFirst().intValue();
         if (fileCount <= 0 || firstPage.getSecond().isEmpty()) {
             finisher.accept(null);
-            return Triad.ImmutableTriad.makeImmutableTriad(0L, MiscellaneousUtil.getEmptyIterator(), () -> {});
+            return Triad.ImmutableTriad.makeImmutableTriad(0L, MiscellaneousUtil.getEmptyIterator(), RunnableE.EmptyRunnable);
         }
-        final int pageCount = pageCountCalculator.apply(fileCount).intValue();
+        assert firstPage.getSecond().size() <= defaultLimit;
+        final int pageCount = MiscellaneousUtil.calculatePartCount(fileCount, defaultLimit);
         if (pageCount <= 1) {
             finisher.accept(null);
-            return Triad.ImmutableTriad.makeImmutableTriad(fileCount, firstPage.getSecond().iterator(), () -> {});
+            return Triad.ImmutableTriad.makeImmutableTriad(fileCount, firstPage.getSecond().iterator(), RunnableE.EmptyRunnable);
         }
         final BlockingQueue<FileSqlInformation> allFiles = new LinkedBlockingQueue<>(Math.max((int) fileCount, firstPage.getSecond().size()));
         allFiles.addAll(firstPage.getSecond());
-        final AtomicInteger finishedPage = new AtomicInteger(0);
+        final AtomicInteger countDown = new AtomicInteger(pageCount);
         final AtomicBoolean calledFinisher = new AtomicBoolean(false);
         final AtomicBoolean cancelFlag = new AtomicBoolean(false);
         final CompletableFuture<?>[] futures = new CompletableFuture[pageCount - 1];
@@ -131,9 +141,10 @@ public final class DriverUtil {
                 try {
                     final Pair.ImmutablePair<Long, List<FileSqlInformation>> infos = fileSupplierInPage.apply(current);
                     assert infos.getFirst().longValue() == fileCount;
+                    assert current == pageCount - 1 ? infos.getSecond().size() <= defaultLimit : infos.getSecond().size() == defaultLimit;
                     allFiles.addAll(infos.getSecond());
                     futures[current - 1].complete(null);
-                    if (finishedPage.incrementAndGet() == pageCount && calledFinisher.compareAndSet(false, true))
+                    if (countDown.decrementAndGet() == 1 && calledFinisher.compareAndSet(false, true))
                         finisher.accept(null);
                 } catch (final Exception exception) {
                     cancelFlag.set(true);
@@ -144,7 +155,7 @@ public final class DriverUtil {
                 }
             }, threadPool);
         }
-        return Triad.ImmutableTriad.makeImmutableTriad(fileCount, MiscellaneousUtil.wrapBlockingQueueCounted(allFiles, fileCount,
+        return Triad.ImmutableTriad.makeImmutableTriad(fileCount, MiscellaneousUtil.wrapCountedBlockingQueueCancellable(allFiles, fileCount,
                 cancelFlag, TimeUnit.SECONDS.toMillis(10)), () -> {
             cancelFlag.set(true);
             future.cancel(true);
@@ -155,5 +166,32 @@ public final class DriverUtil {
             if (calledFinisher.compareAndSet(false, true))
                 finisher.accept(new CancellationException());
         });
+    }
+
+    public abstract static class OctetStreamRequestBody extends RequestBody {
+        protected final long length;
+
+        protected OctetStreamRequestBody(final long length) {
+            super();
+            this.length = length;
+        }
+
+        @Override
+        public @Nullable MediaType contentType() {
+            return MediaType.parse("application/octet-stream");
+        }
+
+        @Override
+        public long contentLength() {
+            return this.length;
+        }
+
+        @Override
+        public @NotNull String toString() {
+            return "OctetStreamRequestBody{" +
+                    "length=" + this.length +
+                    ", super=" + super.toString() +
+                    "}";
+        }
     }
 }

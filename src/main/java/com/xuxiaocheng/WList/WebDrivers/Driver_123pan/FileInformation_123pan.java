@@ -49,19 +49,19 @@ public final class FileInformation_123pan {
     static @Nullable FileSqlInformation create(final @NotNull DrivePath parentPath, final @Nullable JSONObject info) {
         if (info == null)
             return null;
+        final Long id = info.getLong("FileId");
+        final String name = info.getString("FileName");
+        final Integer type = info.getInteger("Type");
+        final Long size = info.getLong("Size");
+        final String create = info.getString("CreateAt");
+        final String update = info.getString("UpdateAt");
+        final String flag = info.getString("S3KeyFlag");
+        final String etag = info.getString("Etag");
+        if (id == null || name == null || type == null || size == null || size.longValue() < 0
+                || create == null || update == null || flag == null
+                || etag == null || (!etag.isEmpty() && !MiscellaneousUtil.md5Pattern.matcher(etag).matches()))
+            return null;
         try {
-            final Long id = info.getLong("FileId");
-            final String name = info.getString("FileName");
-            final Integer type = info.getInteger("Type");
-            final Long size = info.getLong("Size");
-            final String create = info.getString("CreateAt");
-            final String update = info.getString("UpdateAt");
-            final String flag = info.getString("S3KeyFlag");
-            final String etag = info.getString("Etag");
-            if (id == null || name == null || type == null || size == null || size.longValue() < 0
-                    || create == null || update == null || flag == null
-                    || etag == null || (!etag.isEmpty() && !MiscellaneousUtil.md5Pattern.matcher(etag).matches()))
-                return null;
             return new FileSqlInformation(id.longValue(), parentPath.getChild(name),
                     type.intValue() == 1, size.longValue(),
                     LocalDateTime.parse(create, DateTimeFormatter.ISO_ZONED_DATE_TIME),

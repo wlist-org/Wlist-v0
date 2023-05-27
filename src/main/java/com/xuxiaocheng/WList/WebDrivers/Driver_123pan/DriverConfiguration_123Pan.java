@@ -86,9 +86,6 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
                     ", loginType=" + this.loginType +
                     ", rootDirectoryId=" + this.rootDirectoryId +
                     ", defaultLimitPerPage=" + this.defaultLimitPerPage +
-                    ", defaultDuplicatePolicy=" + this.defaultDuplicatePolicy +
-                    ", defaultOrderPolicy=" + this.defaultOrderPolicy +
-                    ", defaultOrderDirection=" + this.defaultOrderDirection +
                     '}';
         }
     }

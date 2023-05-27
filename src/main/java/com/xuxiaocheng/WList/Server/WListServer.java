@@ -237,11 +237,10 @@ public class WListServer {
                 if (type != Operation.Type.UploadFile && msg.readableBytes() != 0)
                     WListServer.logger.log(HLogLevel.MISTAKE, "Unexpected discarded bytes: ", channel.id().asLongText(), " len: ", msg.readableBytes());
                 ServerChannelHandler.write(channel, handler.handle(msg));
-            } catch (final IOException | JSONException exception) {
+            } catch (final IOException exception) {
                 ServerChannelHandler.directlyWriteMessage(channel, Operation.State.FormatError, exception.getMessage());
-            } catch (final ServerException exception) {
-                WListServer.logger.log(HLogLevel.WARN, "Exception: ", channel.id().asLongText(), exception);
-                ServerChannelHandler.directlyWriteMessage(channel, Operation.State.ServerError, null);
+            } catch (final ServerException | JSONException exception) {
+                this.exceptionCaught(ctx, exception);
             }
         }
 

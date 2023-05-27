@@ -19,6 +19,4 @@ public record UploadMethods(@NotNull List<UploadPartMethod> methods,
                             @NotNull Runnable finisher) {
     public record UploadPartMethod(int size, @NotNull ConsumerE<@NotNull ByteBuf> consumer) {
     }
-
-    public static final @NotNull Runnable EmptyFinisher = () -> {};
 }

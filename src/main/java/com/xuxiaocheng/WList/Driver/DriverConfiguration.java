@@ -1,9 +1,6 @@
 package com.xuxiaocheng.WList.Driver;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.WList.Driver.Options.DuplicatePolicy;
-import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
-import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Utils.YamlHelper;
 import org.jetbrains.annotations.NotNull;
@@ -116,29 +113,17 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
         }
     }
 
-    public abstract static class WebSideDriverConfiguration {
+    public static class WebSideDriverConfiguration {
         protected int defaultLimitPerPage = 20;
-        protected @NotNull DuplicatePolicy defaultDuplicatePolicy = DuplicatePolicy.KEEP;
-        protected @NotNull OrderPolicy defaultOrderPolicy = OrderPolicy.FileName;
-        protected @NotNull OrderDirection defaultOrderDirection = OrderDirection.ASCEND;
 
         protected void load(final @NotNull Map<? super @NotNull String, @NotNull Object> web, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
             this.defaultLimitPerPage = YamlHelper.getConfig(web, "default_limit_per_page", () -> Integer.toString(this.defaultLimitPerPage),
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "default_limit_per_page", BigInteger.ONE, BigInteger.valueOf(GlobalConfiguration.getInstance().maxLimitPerPage()))).intValue();
-            this.defaultDuplicatePolicy = YamlHelper.getConfig(web, "default_duplicate_policy", this.defaultDuplicatePolicy::name,
-                    o -> YamlHelper.transferEnumFromStr(o, errors, prefix + "default_duplicate_policy", DuplicatePolicy.class));
-            this.defaultOrderPolicy = YamlHelper.getConfig(web, "default_order_policy", this.defaultOrderPolicy::name,
-                    o -> YamlHelper.transferEnumFromStr(o, errors, prefix + "default_order_policy", OrderPolicy.class));
-            this.defaultOrderDirection = YamlHelper.getConfig(web, "default_order_direction", this.defaultOrderDirection::name,
-                    o -> YamlHelper.transferEnumFromStr(o, errors, prefix + "default_order_direction", OrderDirection.class));
         }
 
         protected @NotNull Map<@NotNull String, @NotNull Object> dump() {
             final Map<String, Object> web = new LinkedHashMap<>();
             web.put("default_limit_per_page", this.defaultLimitPerPage);
-            web.put("default_duplicate_policy", this.defaultDuplicatePolicy.name());
-            web.put("default_order_policy", this.defaultOrderPolicy.name());
-            web.put("default_order_direction", this.defaultOrderDirection.name());
             return web;
         }
 
@@ -146,25 +131,10 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
             return this.defaultLimitPerPage;
         }
 
-        public @NotNull DuplicatePolicy getDefaultDuplicatePolicy() {
-            return this.defaultDuplicatePolicy;
-        }
-
-        public @NotNull OrderPolicy getDefaultOrderPolicy() {
-            return this.defaultOrderPolicy;
-        }
-
-        public @NotNull OrderDirection getDefaultOrderDirection() {
-            return this.defaultOrderDirection;
-        }
-
         @Override
         public @NotNull String toString() {
             return "WebSideDriverConfiguration{" +
                     "defaultLimitPerPage=" + this.defaultLimitPerPage +
-                    ", duplicatePolicy=" + this.defaultDuplicatePolicy +
-                    ", orderPolicy=" + this.defaultOrderPolicy +
-                    ", orderDirection=" + this.defaultOrderDirection +
                     "}";
         }
     }

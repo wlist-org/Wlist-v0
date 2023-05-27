@@ -2,16 +2,15 @@ package com.xuxiaocheng.WList.Server.Driver;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
-import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Driver.DriverConfiguration;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
+import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
+import com.xuxiaocheng.WList.Driver.Options.DuplicatePolicy;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
-import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
+import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
 import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -38,14 +37,14 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
     }
 
     @Override
-    public Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(@NotNull final DrivePath path, final int limit, final int page, @Nullable final OrderDirection direction, @Nullable final OrderPolicy policy) throws Exception {
+    public Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(@NotNull final DrivePath path, final int limit, final int page, final @NotNull OrderPolicy policy, final @NotNull OrderDirection direction) throws Exception {
         final String root = path.getRoot();
         final DriverInterface<?> real = DriverManager.get(root);
         if (real == null)
             return null;
         try {
             path.removedRoot();
-            return real.list(path, limit, page, direction, policy);
+            return real.list(path, limit, page, policy, direction);
         } finally {
             path.addRoot(root);
         }
@@ -78,34 +77,38 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
     }
 
     @Override
-    public @Nullable FileSqlInformation mkdirs(@NotNull final DrivePath path) throws Exception {
+    public @Nullable FileSqlInformation mkdirs(@NotNull final DrivePath path, final @NotNull DuplicatePolicy policy) throws Exception {
         final String root = path.getRoot();
         final DriverInterface<?> real = DriverManager.get(root);
         if (real == null)
             return null;
         try {
-            return real.mkdirs(path.removedRoot());
+            return real.mkdirs(path.removedRoot(), policy);
         } finally {
             path.addRoot(root);
         }
     }
 
     @Override
-    public @Nullable UploadMethods upload(final @NotNull DrivePath path, final long size, final @NotNull String tag) throws Exception {
+    public @Nullable UploadMethods upload(final @NotNull DrivePath path, final long size, final @NotNull String md5, final @NotNull DuplicatePolicy policy) throws Exception {
         final String root = path.getRoot();
         final DriverInterface<?> real = DriverManager.get(root);
         if (real == null)
             return null;
         try {
-            return real.upload(path.removedRoot(), size, tag);
+            final UploadMethods raw = real.upload(path.removedRoot(), size, md5, policy);
+            if (raw == null)
+                return null;
+            return new UploadMethods(raw.methods(), raw.supplier().transfer(f -> {
+                if (f != null) {
+                    HLog.DefaultLogger.log("", f);
+                    // TODO
+                }
+                return f;
+            }), raw.finisher());
         } finally {
             path.addRoot(root);
         }
-    }
-
-    public void completeUpload(final @NotNull FileSqlInformation information) {
-        HLog.DefaultLogger.log("", information);
-        // TODO
     }
 
     @SuppressWarnings("OverlyBroadThrowsClause")
@@ -126,59 +129,36 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
         }
     }
 
-    @SuppressWarnings("OverlyBroadThrowsClause")
     @Override
-    public @Nullable FileSqlInformation copy(@NotNull final DrivePath source, @NotNull final DrivePath target) throws Exception {
+    public @Nullable FileSqlInformation copy(@NotNull final DrivePath source, @NotNull final DrivePath target, final @NotNull DuplicatePolicy policy) throws Exception {
         if (source.getRoot().equals(target.getRoot())) {
             final DriverInterface<?> real = DriverManager.get(source.getRoot());
             if (real == null)
                 return null;
-            return real.copy(source.getRemovedRoot(), target.getRemovedRoot());
+            return real.copy(source.getRemovedRoot(), target.getRemovedRoot(), policy);
         }
-        final Pair.ImmutablePair<InputStream, Long> url = this.download(source, 0, Long.MAX_VALUE);
-        final FileSqlInformation info = this.info(source);
-        if (url == null || info == null)
-            return null;
-        assert info.size() == url.getSecond().longValue();
-        final UploadMethods methods = this.upload(target, info.size(), info.md5());
-        if (methods == null)
-            return null;
-        try {
-            for (final UploadMethods.UploadPartMethod partMethod: methods.methods()) {
-                final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(partMethod.size(), partMethod.size());
-                try {
-                    buffer.writeBytes(url.getFirst(), partMethod.size());
-                    partMethod.consumer().accept(buffer);
-                } finally {
-                    buffer.release();
-                }
-            }
-            return methods.supplier().get();
-        } finally {
-            methods.finisher().run();
-            url.getFirst().close();
-        }
+        return DriverInterface.super.copy(source, target, policy);
     }
 
     @Override
-    public @Nullable FileSqlInformation move(@NotNull final DrivePath sourceFile, @NotNull final DrivePath targetDirectory) throws Exception {
+    public @Nullable FileSqlInformation move(@NotNull final DrivePath sourceFile, @NotNull final DrivePath targetDirectory, final @NotNull DuplicatePolicy policy) throws Exception {
         if (sourceFile.getRoot().equals(targetDirectory.getRoot())) {
             final DriverInterface<?> real = DriverManager.get(sourceFile.getRoot());
             if (real == null)
                 return null;
-            return real.move(sourceFile.getRemovedRoot(), targetDirectory.getRemovedRoot());
+            return real.move(sourceFile.getRemovedRoot(), targetDirectory.getRemovedRoot(), policy);
         }
-        return DriverInterface.super.move(sourceFile, targetDirectory);
+        return DriverInterface.super.move(sourceFile, targetDirectory, policy);
     }
 
     @Override
-    public @Nullable FileSqlInformation rename(@NotNull final DrivePath source, @NotNull final String name) throws Exception {
+    public @Nullable FileSqlInformation rename(@NotNull final DrivePath source, @NotNull final String name, final @NotNull DuplicatePolicy policy) throws Exception {
         final String root = source.getRoot();
         final DriverInterface<?> real = DriverManager.get(root);
         if (real == null)
             return null;
         try {
-            return real.rename(source.removedRoot(), name);
+            return real.rename(source.removedRoot(), name, policy);
         } finally {
             source.addRoot(root);
         }

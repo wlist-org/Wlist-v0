@@ -184,7 +184,7 @@ public final class FileSqlHelper {
         FileSqlHelper.deleteFilesByPath(driverName, List.of(path), connectionId);
     }
 
-    public static void deleteFilesByParentPath(final @NotNull String driverName, final @NotNull Collection<? extends @NotNull DrivePath> parentPathList, final @Nullable String connectionId) throws SQLException {
+    public static void deleteFilesByParentPathRecursively(final @NotNull String driverName, final @NotNull Collection<? extends @NotNull DrivePath> parentPathList, final @Nullable String connectionId) throws SQLException {
         if (parentPathList.isEmpty())
             return;
         try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getConnection(connectionId)) {
@@ -200,8 +200,8 @@ public final class FileSqlHelper {
         }
     }
 
-    public static void deleteFileByParentPath(final @NotNull String driverName, final @NotNull DrivePath parentPath, final @Nullable String connectionId) throws SQLException {
-        FileSqlHelper.deleteFilesByParentPath(driverName, List.of(parentPath), connectionId);
+    public static void deleteFileByParentPathRecursively(final @NotNull String driverName, final @NotNull DrivePath parentPath, final @Nullable String connectionId) throws SQLException {
+        FileSqlHelper.deleteFilesByParentPathRecursively(driverName, List.of(parentPath), connectionId);
     }
 
     public static void deleteFilesByMd5(final @NotNull String driverName, final @NotNull Collection<@NotNull String> md5List, final @Nullable String connectionId) throws SQLException {

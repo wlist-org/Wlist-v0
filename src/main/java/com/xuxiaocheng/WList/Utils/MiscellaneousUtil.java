@@ -86,7 +86,11 @@ public final class MiscellaneousUtil {
         return String.format("0b%8s", Integer.toString(b < 0 ? b + 0xff : b, 2)).replace(' ', '0');
     }
 
-    public static <T> @NotNull Iterator<@NotNull T> wrapBlockingQueueCounted(final @NotNull BlockingQueue<? extends @NotNull T> queue, final long count, final @NotNull AtomicBoolean cancelFlag, final long query) {
+    public static int calculatePartCount(final long total, final int limit) {
+        return (int) Math.ceil(((double) total) / limit);
+    }
+
+    public static <T> @NotNull Iterator<@NotNull T> wrapCountedBlockingQueueCancellable(final @NotNull BlockingQueue<? extends @NotNull T> queue, final long count, final @NotNull AtomicBoolean cancelFlag, final long query) {
         final AtomicLong spareElement = new AtomicLong(count);
         final AtomicInteger takingElement = new AtomicInteger(0);
         return new Iterator<>() {

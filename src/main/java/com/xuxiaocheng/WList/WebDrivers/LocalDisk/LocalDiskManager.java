@@ -80,18 +80,15 @@ public final class LocalDiskManager {
             connection.setAutoCommit(false);
             final Path root = new File(configuration.getWebSide().getRootDirectoryPath(), directoryPath.getPath()).toPath();
             final Collection<FileSqlInformation> list = new LinkedList<>();
+            // TODO
+//            FileSqlHelper.deleteFileByParentPathRecursively(configuration.getLocalSide().getName(), LocalDiskManager.getDrivePath(root, dir), connectionId);
             Files.walkFileTree(root, Set.of(), Integer.MAX_VALUE, new SimpleFileVisitor<>() {
                 @Override
                 public FileVisitResult preVisitDirectory(final Path dir, final BasicFileAttributes attrs) throws IOException {
 //                    FileSqlHelper.getFileByParentPath()
-                    try {
-                        FileSqlHelper.deleteFileByParentPath(configuration.getLocalSide().getName(), LocalDiskManager.getDrivePath(root, dir), connectionId);
-                        final FileSqlInformation information = FileInformation_LocalDisk.create(root, dir, attrs);
-                        if (information != null)
-                            list.add(information);
-                    } catch (final SQLException exception) {
-                        throw new IOException(exception);
-                    }
+                    final FileSqlInformation information = FileInformation_LocalDisk.create(root, dir, attrs);
+                    if (information != null)
+                        list.add(information);
                     return FileVisitResult.CONTINUE;
                 }
 

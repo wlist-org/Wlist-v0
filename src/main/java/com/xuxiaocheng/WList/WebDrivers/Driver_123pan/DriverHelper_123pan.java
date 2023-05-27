@@ -8,6 +8,7 @@ import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Driver.Options.DuplicatePolicy;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
+import com.xuxiaocheng.WList.Exceptions.IllegalResponseCodeException;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Exceptions.WrongResponseException;
@@ -46,6 +47,9 @@ public final class DriverHelper_123pan {
     static final Pair.@NotNull ImmutablePair<String, String> TrashFileURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/trash", "POST");
     static final Pair.@NotNull ImmutablePair<String, String> RenameFileURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/rename", "POST");
     static final Pair.@NotNull ImmutablePair<String, String> MoveFilesURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/mod_pid", "POST");
+
+    static final int TokenExpireResponseCode = 401;
+    static final int NoSuchFileResponseCode = 400;
 
     private static final @NotNull DuplicatePolicy defaultDuplicatePolicy = DuplicatePolicy.KEEP;
     private static final @NotNull OrderPolicy defaultOrderPolicy = OrderPolicy.FileName;
@@ -106,7 +110,7 @@ public final class DriverHelper_123pan {
         final int code = json.getIntValue("code", -1);
         final String message = json.getString("message");
         if (code != successCode || !successMessage.equals(message))
-            throw new WrongResponseException(code, message);
+            throw new IllegalResponseCodeException(code, message);
         final JSONObject data = json.getJSONObject("data");
         if (data == null)
             throw new WrongResponseException("Null response data.", json);
@@ -174,12 +178,12 @@ public final class DriverHelper_123pan {
     private static boolean refreshToken(final @NotNull DriverConfiguration_123Pan configuration) throws IOException {
         // Quick response.
         if (configuration.getCacheSide().getToken() == null)
-            throw new WrongResponseException(401, "token contains an invalid number of segments");
+            return true;
         final JSONObject data;
         try {
             data = DriverHelper_123pan.doRefresh(configuration.getCacheSide().getToken());
-        } catch (final WrongResponseException exception) {
-            if (exception.getMessage().startsWith("Code: 401"))
+        } catch (final IllegalResponseCodeException exception) {
+            if (exception.getCode() == DriverHelper_123pan.TokenExpireResponseCode)
                 return true; // throw new TokenExpiredException();
             throw exception;
         }
@@ -209,13 +213,13 @@ public final class DriverHelper_123pan {
                 DriverHelper_123pan.headerBuilder(token).build(), null), 0, "ok");
     }
 
-    static @NotNull JSONObject doListFiles(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final int limit, final int page) throws IllegalParametersException, IOException {
+    static @NotNull JSONObject doListFiles(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final int limit, final int page, final @NotNull OrderPolicy policy, final @NotNull OrderDirection direction) throws IllegalParametersException, IOException {
         final String token = DriverHelper_123pan.ensureToken(configuration);
         final Map<String, Object> request = new LinkedHashMap<>(7);
         request.put("driveId", 0);
         request.put("limit", limit);
-        request.put("orderBy", DriverHelper_123pan.getOrderPolicy(configuration.getWebSide().getDefaultOrderPolicy()));
-        request.put("orderDirection", DriverHelper_123pan.getOrderDirection(configuration.getWebSide().getDefaultOrderDirection()));
+        request.put("orderBy", DriverHelper_123pan.getOrderPolicy(policy));
+        request.put("orderDirection", DriverHelper_123pan.getOrderDirection(direction));
         request.put("parentFileId", directoryId);
         request.put("Page", page);
         request.put("trashed", false);
@@ -249,7 +253,7 @@ public final class DriverHelper_123pan {
                 DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 
-    static @NotNull JSONObject doCreateDirectory(final @NotNull DriverConfiguration_123Pan configuration, final long parentId, final @NotNull String name) throws IllegalParametersException, IOException {
+    static @NotNull JSONObject doCreateDirectory(final @NotNull DriverConfiguration_123Pan configuration, final long parentId, final @NotNull String name, final @NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException {
         final String token = DriverHelper_123pan.ensureToken(configuration);
         final Map<String, Object> request = new LinkedHashMap<>(8);
         request.put("driveId", 0);
@@ -259,12 +263,12 @@ public final class DriverHelper_123pan {
         request.put("size", 0);
         request.put("type", 1);
         request.put("NotReuse", true);
-        request.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(configuration.getWebSide().getDefaultDuplicatePolicy()));
+        request.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(policy));
         return DriverHelper_123pan.extractResponseData(DriverNetworkHelper.sendRequestReceiveJson(DriverNetworkHelper.httpClient, DriverHelper_123pan.UploadRequestURL,
                 DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 
-    static @NotNull JSONObject doUploadRequest(final @NotNull DriverConfiguration_123Pan configuration, final long parentId, final @NotNull String name, final long size, final @NotNull String etag) throws IllegalParametersException, IOException {
+    static @NotNull JSONObject doUploadRequest(final @NotNull DriverConfiguration_123Pan configuration, final long parentId, final @NotNull String name, final long size, final @NotNull String etag, final @NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException {
         final String token = DriverHelper_123pan.ensureToken(configuration);
         final Map<String, Object> request = new LinkedHashMap<>(7);
         request.put("driveId", 0);
@@ -273,7 +277,7 @@ public final class DriverHelper_123pan {
         request.put("parentFileId", parentId);
         request.put("size", size);
         request.put("type", 0);
-        request.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(configuration.getWebSide().getDefaultDuplicatePolicy()));
+        request.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(policy));
         return DriverHelper_123pan.extractResponseData(DriverNetworkHelper.sendRequestReceiveJson(DriverNetworkHelper.httpClient, DriverHelper_123pan.UploadRequestURL,
                 DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
@@ -323,13 +327,13 @@ public final class DriverHelper_123pan {
                 DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }
 
-    static @NotNull JSONObject doRenameFile(final @NotNull DriverConfiguration_123Pan configuration, final long id, final @NotNull String name) throws IllegalParametersException, IOException {
+    static @NotNull JSONObject doRenameFile(final @NotNull DriverConfiguration_123Pan configuration, final long id, final @NotNull String name, final @NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException {
         final String token = DriverHelper_123pan.ensureToken(configuration);
         final Map<String, Object> request = new LinkedHashMap<>(4);
         request.put("driveId", 0);
         request.put("fileId", id);
         request.put("fileName", name);
-        request.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(configuration.getWebSide().getDefaultDuplicatePolicy()));
+        request.put("duplicate", DriverHelper_123pan.getDuplicatePolicy(policy));
         return DriverHelper_123pan.extractResponseData(DriverNetworkHelper.sendRequestReceiveJson(DriverNetworkHelper.httpClient, DriverHelper_123pan.RenameFileURL,
                 DriverHelper_123pan.headerBuilder(token).build(), request), 0, "ok");
     }

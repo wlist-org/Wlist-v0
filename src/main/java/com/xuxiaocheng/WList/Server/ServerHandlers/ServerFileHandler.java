@@ -5,6 +5,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
+import com.xuxiaocheng.WList.Driver.Options.DuplicatePolicy;
 import com.xuxiaocheng.WList.Driver.Options.OrderDirection;
 import com.xuxiaocheng.WList.Driver.Options.OrderPolicy;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
@@ -31,7 +32,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public final class ServerFileHandler {
@@ -61,14 +61,14 @@ public final class ServerFileHandler {
         final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
         final int page = ByteBufIOUtil.readVariableLenInt(buffer);
-        final OrderDirection orderDirection = OrderDirection.Map.get(ByteBufIOUtil.readUTF(buffer));
         final OrderPolicy orderPolicy = OrderPolicy.Map.get(ByteBufIOUtil.readUTF(buffer));
+        final OrderDirection orderDirection = OrderDirection.Map.get(ByteBufIOUtil.readUTF(buffer));
         if (limit < 1 || limit > GlobalConfiguration.getInstance().maxLimitPerPage()
-                || page < 0 || orderDirection == null || orderPolicy == null)
+                || page < 0 || orderPolicy == null || orderDirection == null)
             return ServerHandler.WrongParameters;
         final Pair.ImmutablePair<Long, List<FileSqlInformation>> list;
         try {
-            list = RootDriver.getInstance().list(path, limit, page, orderDirection, orderPolicy);
+            list = RootDriver.getInstance().list(path, limit, page, orderPolicy, orderDirection);
         } catch (final UnsupportedOperationException exception) {
             return ServerHandler.composeMessage(Operation.State.Unsupported, exception.getMessage());
         } catch (final Exception exception) {
@@ -90,9 +90,12 @@ public final class ServerFileHandler {
         if (user.isFailure())
             return user.getE();
         final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
+        final DuplicatePolicy duplicatePolicy = DuplicatePolicy.Map.get(ByteBufIOUtil.readUTF(buffer));
+        if (duplicatePolicy == null)
+            return ServerHandler.WrongParameters;
         final FileSqlInformation dir;
         try {
-            dir = RootDriver.getInstance().mkdirs(path);
+            dir = RootDriver.getInstance().mkdirs(path, duplicatePolicy);
         } catch (final UnsupportedOperationException exception) {
             return ServerHandler.composeMessage(Operation.State.Unsupported, exception.getMessage());
         } catch (final Exception exception) {
@@ -124,9 +127,12 @@ public final class ServerFileHandler {
             return user.getE();
         final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         final String name = ByteBufIOUtil.readUTF(buffer);
+        final DuplicatePolicy duplicatePolicy = DuplicatePolicy.Map.get(ByteBufIOUtil.readUTF(buffer));
+        if (duplicatePolicy == null)
+            return ServerHandler.WrongParameters;
         final FileSqlInformation file;
         try {
-            file = RootDriver.getInstance().rename(path, name);
+            file = RootDriver.getInstance().rename(path, name, duplicatePolicy);
         } catch (final UnsupportedOperationException exception) {
             return ServerHandler.composeMessage(Operation.State.Unsupported, exception.getMessage());
         } catch (final Exception exception) {
@@ -204,9 +210,12 @@ public final class ServerFileHandler {
         final String md5 = ByteBufIOUtil.readUTF(buffer);
         if (size < 0 || !MiscellaneousUtil.md5Pattern.matcher(md5).matches())
             return ServerHandler.WrongParameters;
+        final DuplicatePolicy duplicatePolicy = DuplicatePolicy.Map.get(ByteBufIOUtil.readUTF(buffer));
+        if (duplicatePolicy == null)
+            return ServerHandler.WrongParameters;
         final UploadMethods methods;
         try {
-            methods = RootDriver.getInstance().upload(path, size, md5);
+            methods = RootDriver.getInstance().upload(path, size, md5, duplicatePolicy);
         } catch (final UnsupportedOperationException exception) {
             return ServerHandler.composeMessage(Operation.State.Unsupported, exception.getMessage());
         } catch (final Exception exception) {
@@ -216,10 +225,7 @@ public final class ServerFileHandler {
             return ServerFileHandler.FileNotFound;
         if (methods.methods().isEmpty()) { // (reuse / empty file)
             try {
-                final FileSqlInformation info;
-                info = methods.supplier().get();
-                if (info != null)
-                    RootDriver.getInstance().completeUpload(info);
+                methods.supplier().get();
             } catch (final Exception exception) {
                 throw new ServerException(exception);
             } finally {
@@ -255,7 +261,6 @@ public final class ServerFileHandler {
                     ByteBufIOUtil.writeBoolean(buf, true);
                     return buf;
                 });
-            RootDriver.getInstance().completeUpload(info);
             final String json = JSON.toJSONString(ServerFileHandler.getVisibleInfo(info));
             return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
                 ByteBufIOUtil.writeBoolean(buf, false);
@@ -283,9 +288,12 @@ public final class ServerFileHandler {
             return user.getE();
         final DrivePath source = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         final DrivePath target = new DrivePath(ByteBufIOUtil.readUTF(buffer));
+        final DuplicatePolicy duplicatePolicy = DuplicatePolicy.Map.get(ByteBufIOUtil.readUTF(buffer));
+        if (duplicatePolicy == null)
+            return ServerHandler.WrongParameters;
         final FileSqlInformation file;
         try {
-            file = RootDriver.getInstance().copy(source, target);
+            file = RootDriver.getInstance().copy(source, target, duplicatePolicy);
         } catch (final UnsupportedOperationException exception) {
             return ServerHandler.composeMessage(Operation.State.Unsupported, exception.getMessage());
         } catch (final Exception exception) {
@@ -302,9 +310,12 @@ public final class ServerFileHandler {
             return user.getE();
         final DrivePath sourceFile = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         final DrivePath targetDirectory = new DrivePath(ByteBufIOUtil.readUTF(buffer));
+        final DuplicatePolicy duplicatePolicy = DuplicatePolicy.Map.get(ByteBufIOUtil.readUTF(buffer));
+        if (duplicatePolicy == null)
+            return ServerHandler.WrongParameters;
         final FileSqlInformation file;
         try {
-            file = RootDriver.getInstance().move(sourceFile, targetDirectory);
+            file = RootDriver.getInstance().move(sourceFile, targetDirectory, duplicatePolicy);
         } catch (final UnsupportedOperationException exception) {
             return ServerHandler.composeMessage(Operation.State.Unsupported, exception.getMessage());
         } catch (final Exception exception) {

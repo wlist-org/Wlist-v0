@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.WebDrivers.LocalDisk;
 
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -27,9 +28,7 @@ public final class FileInformation_LocalDisk {
                     LocalDateTime.ofInstant(attributes.lastModifiedTime().toInstant(), ZoneId.systemDefault()),
                     "", attributes.isSymbolicLink() ? "S" : attributes.isOther() ? "O" : "");
         } catch (final RuntimeException exception) {
-            if (exception.getCause() instanceof IOException ioException)
-                throw ioException;
-            throw exception;
+            throw HExceptionWrapper.unwrapException(exception, IOException.class);
         }
     }
 }

@@ -2,6 +2,7 @@ package com.xuxiaocheng.WList.WebDrivers.LocalDisk;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
+import com.xuxiaocheng.WList.Driver.Options.DuplicatePolicy;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlHelper;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
@@ -24,9 +25,6 @@ public final class LocalDisk implements DriverInterface<LocalDiskConfiguration> 
     @Override
     public void initialize(final @NotNull LocalDiskConfiguration configuration) throws SQLException {
         FileSqlHelper.initialize(configuration.getLocalSide().getName(), "initialize");
-//        FileSqlHelper.insertFile(configuration.getLocalSide().getName(),
-//                new FileSqlInformation(0, new DrivePath("/"), true,
-//                        0, null, null, "", null), null);
         this.configuration = configuration;
     }
 
@@ -50,50 +48,56 @@ public final class LocalDisk implements DriverInterface<LocalDiskConfiguration> 
         this.configuration.getCacheSide().setSpaceUsed(this.configuration.getWebSide().getRootDirectoryPath().getUsableSpace() /*TODO: count each file*/);
     }
 
+    @Override
+    public Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(final @NotNull DrivePath path, final int limit, final int page, final @NotNull OrderPolicy policy, final @NotNull OrderDirection direction) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public @Nullable FileSqlInformation info(final @NotNull DrivePath path) {
+        throw new UnsupportedOperationException();
+    }
+
     @Nullable
     @Override
-    public Pair.ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(@NotNull DrivePath path, int limit, int page, @Nullable OrderDirection direction, @Nullable OrderPolicy policy) throws Exception {
-        return null;
+    public Pair.ImmutablePair<@NotNull InputStream, @NotNull Long> download(final @NotNull DrivePath path, final long from, final long to) {
+        throw new UnsupportedOperationException();
     }
 
     @Override
-    public @Nullable FileSqlInformation info(@NotNull DrivePath path) throws Exception {
-        return null;
-    }
-
-    @Nullable
-    @Override
-    public Pair.ImmutablePair<@NotNull InputStream, @NotNull Long> download(@NotNull DrivePath path, long from, long to) throws Exception {
-        return null;
+    public @Nullable FileSqlInformation mkdirs(final @NotNull DrivePath path, final @NotNull DuplicatePolicy policy) {
+        throw new UnsupportedOperationException();
     }
 
     @Override
-    public @Nullable FileSqlInformation mkdirs(@NotNull DrivePath path) throws Exception {
-        return null;
+    public @Nullable UploadMethods upload(@NotNull final DrivePath path, final long size, @NotNull final String tag, final @NotNull DuplicatePolicy policy) {
+        throw new UnsupportedOperationException();
     }
 
     @Override
-    public @Nullable UploadMethods upload(@NotNull final DrivePath path, final long size, @NotNull final String tag) throws Exception {
-        return null;
+    public void delete(final @NotNull DrivePath path) {
+        throw new UnsupportedOperationException();
     }
 
     @Override
-    public void delete(@NotNull DrivePath path) throws Exception {
-
+    public @Nullable FileSqlInformation copy(final @NotNull DrivePath source, final @NotNull DrivePath target, final @NotNull DuplicatePolicy policy) {
+        throw new UnsupportedOperationException();
     }
 
     @Override
-    public @Nullable FileSqlInformation copy(@NotNull DrivePath source, @NotNull DrivePath target) throws Exception {
-        return DriverInterface.super.copy(source, target);
+    public @Nullable FileSqlInformation move(final @NotNull DrivePath sourceFile, final @NotNull DrivePath targetDirectory, final @NotNull DuplicatePolicy policy) {
+        throw new UnsupportedOperationException();
     }
 
     @Override
-    public @Nullable FileSqlInformation move(@NotNull DrivePath sourceFile, @NotNull DrivePath targetDirectory) throws Exception {
-        return DriverInterface.super.move(sourceFile, targetDirectory);
+    public @Nullable FileSqlInformation rename(final @NotNull DrivePath source, final @NotNull String name, final @NotNull DuplicatePolicy policy) {
+        throw new UnsupportedOperationException();
     }
 
     @Override
-    public @Nullable FileSqlInformation rename(@NotNull DrivePath source, @NotNull String name) throws Exception {
-        return DriverInterface.super.rename(source, name);
+    public @NotNull String toString() {
+        return "LocalDisk{" +
+                "configuration=" + this.configuration +
+                '}';
     }
 }

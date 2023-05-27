@@ -17,6 +17,10 @@ public class WrongResponseException extends NetworkException {
         super("Code: " + code + " Message: " + message);
     }
 
+    public WrongResponseException(final @Nullable Object response) {
+        super("Response: " + response);
+    }
+
     public WrongResponseException(final @NotNull String message, final @Nullable Object response) {
         super(message + " Response: " + response);
     }

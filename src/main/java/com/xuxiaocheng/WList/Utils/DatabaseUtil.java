@@ -162,19 +162,19 @@ public class DatabaseUtil {
         }
     }
 
-    public @NotNull Connection getConnection(final @Nullable String connectionId) throws SQLException {
-        if (connectionId == null)
+    public @NotNull Connection getConnection(final @Nullable String id) throws SQLException {
+        if (id == null)
             return this.getNewConnection(null);
         final ReferencedConnection connection;
         try {
-            connection = this.activeConnections.computeIfAbsent(connectionId, HExceptionWrapper.wrapFunction(k -> {
+            connection = this.activeConnections.computeIfAbsent(id, HExceptionWrapper.wrapFunction(k -> {
                 ReferencedConnection newConnection = this.freeConnections.poll();
                 if (newConnection == null)
                     newConnection = this.createNewConnection();
-                newConnection.setId(connectionId);
+                newConnection.setId(id);
                 return newConnection;
             }));
-            assert connectionId.equals(connection.id());
+            assert id.equals(connection.id());
         } catch (final RuntimeException exception) {
             throw HExceptionWrapper.unwrapException(exception, SQLException.class);
         }
@@ -182,7 +182,7 @@ public class DatabaseUtil {
         return connection;
     }
 
-    public @NotNull Connection getNewConnection(final @Nullable Consumer<? super @NotNull String> indexSaver) throws SQLException {
+    public @NotNull Connection getNewConnection(final @Nullable Consumer<? super @NotNull String> idSaver) throws SQLException {
         ReferencedConnection connection = this.freeConnections.poll();
         if (connection == null)
             connection = this.createNewConnection();
@@ -190,8 +190,8 @@ public class DatabaseUtil {
                 () -> HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, HRandomHelper.DefaultWords),
                 connection);
         connection.setId(id);
-        if (indexSaver != null)
-            indexSaver.accept(id);
+        if (idSaver != null)
+            idSaver.accept(id);
         connection.retain();
         return connection;
     }
