@@ -198,14 +198,7 @@ public class WListServer {
                 }
                 final ServerHandler handler = switch (type) {
                     case Broadcast -> ServerStateHandler.doBroadcast;
-                    case SetBroadcastMode -> buffer -> {
-                        final boolean receive = ByteBufIOUtil.readBoolean(buffer);
-                        if (receive)
-                            WListServer.getInstance().channelGroup.add(channel);
-                        else
-                            WListServer.getInstance().channelGroup.remove(channel);
-                        return ServerHandler.composeMessage(Operation.State.Success, null);
-                    };
+                    case SetBroadcastMode -> b -> ServerStateHandler.doSetBroadcastMode(b, WListServer.getInstance().channelGroup, channel);
                     case CloseServer -> ServerStateHandler.doCloseServer;
                     case Register -> ServerUserHandler.doRegister;
                     case Login -> ServerUserHandler.doLogin;
@@ -213,8 +206,8 @@ public class WListServer {
                     case Logoff -> ServerUserHandler.doLogoff;
                     case ListUsers -> ServerUserHandler.doListUsers;
                     case DeleteUser -> ServerUserHandler.doDeleteUser;
-                    case AddPermission -> ServerUserHandler.doAddPermission;
-                    case ReducePermission -> ServerUserHandler.doReducePermission;
+                    case AddPermission -> b -> ServerUserHandler.doChangePermission(b, true);
+                    case ReducePermission -> b -> ServerUserHandler.doChangePermission(b, false);
                     // TODO drivers operate. (dynamically modify config file)
                     case ListFiles -> ServerFileHandler.doListFiles;
                     case MakeDirectories -> ServerFileHandler.doMakeDirectories;

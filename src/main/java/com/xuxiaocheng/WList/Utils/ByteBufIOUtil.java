@@ -15,7 +15,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 public final class ByteBufIOUtil {
-
     public static final byte[] EmptyByteArray = new byte[0];
 
     private ByteBufIOUtil() {

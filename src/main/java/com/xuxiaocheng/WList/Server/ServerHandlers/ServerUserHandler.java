@@ -183,7 +183,7 @@ public final class ServerUserHandler {
         return ServerHandler.Success;
     };
 
-    private static @NotNull MessageProto doChangePermission(final @NotNull ByteBuf buffer, final boolean add) throws IOException, ServerException {
+    public static @NotNull MessageProto doChangePermission(final @NotNull ByteBuf buffer, final boolean add) throws IOException, ServerException {
         final UnionPair<Pair.ImmutablePair<UserSqlInformation, UserSqlInformation>, MessageProto> userPair = ServerUserHandler.checkChangerTokenAndUsername(buffer, Operation.Permission.UsersOperate);
         if (userPair.isFailure())
             return userPair.getE();
@@ -202,8 +202,4 @@ public final class ServerUserHandler {
         }
         return ServerHandler.Success;
     }
-
-    public static final @NotNull ServerHandler doAddPermission = buffer -> ServerUserHandler.doChangePermission(buffer, true);
-
-    public static final @NotNull ServerHandler doReducePermission = buffer -> ServerUserHandler.doChangePermission(buffer, false);
 }

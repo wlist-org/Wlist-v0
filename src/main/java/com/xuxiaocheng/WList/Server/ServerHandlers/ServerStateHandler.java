@@ -9,8 +9,11 @@ import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.CompositeByteBuf;
+import io.netty.channel.Channel;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.IOException;
+import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
 public final class ServerStateHandler {
@@ -39,4 +42,13 @@ public final class ServerStateHandler {
         WListServer.ServerExecutors.schedule(() -> WListServer.getInstance().writeChannels(msg), 1, TimeUnit.SECONDS);
         return ServerHandler.Success;
     };
+
+    public static @NotNull MessageProto doSetBroadcastMode(final @NotNull ByteBuf buffer, final @NotNull Collection<? super @NotNull Channel> group, final @NotNull Channel channel) throws IOException {
+        final boolean allow = ByteBufIOUtil.readBoolean(buffer);
+        if (allow)
+            group.add(channel);
+        else
+            group.remove(channel);
+        return ServerHandler.Success;
+    }
 }
