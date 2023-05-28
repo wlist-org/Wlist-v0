@@ -1,6 +1,7 @@
 package com.xuxiaocheng.WListClient.Server;
 
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -19,8 +20,9 @@ public final class Operation {
         Undefined,
         CloseServer,
         Broadcast,
-        Login,
+        SetBroadcastMode,
         Register,
+        Login,
         ChangePassword,
         Logoff,
         ListUsers,
@@ -61,37 +63,43 @@ public final class Operation {
         Unsupported,
         NoPermission,
         DataError,
+        FormatError,
     }
 
-    public static @Nullable Type valueOfType(final @NotNull String type) {
+    public static @NotNull Type valueOfType(final @NotNull String type) {
         try {
             return Type.valueOf(type);
         } catch (final IllegalArgumentException exception) {
-            return null;
+            return Type.Undefined;
         }
     }
 
-    public static @Nullable Permission valueOfPermission(final @NotNull String permission) {
+    public static @NotNull Permission valueOfPermission(final @NotNull String permission) {
         try {
             return Permission.valueOf(permission);
         } catch (final IllegalArgumentException exception) {
-            return null;
+            return Permission.Undefined;
         }
     }
 
-    public static @Nullable State valueOfState(final @NotNull String state) {
+    public static @NotNull State valueOfState(final @NotNull String state) {
         try {
             return State.valueOf(state);
         } catch (final IllegalArgumentException exception) {
-            return null;
+            return State.Undefined;
         }
     }
 
+    // TODO: Using binary bits to compress.
     public static @NotNull String dumpPermissions(final @NotNull Collection<@NotNull Permission> permissions) {
         return JSON.toJSONString(permissions.stream().map(Enum::name).collect(Collectors.toCollection(TreeSet::new)));
     }
 
-    public static @NotNull SortedSet<@NotNull Permission> parsePermissions(final @NotNull String permissions) {
-        return new TreeSet<>(JSON.parseArray(permissions).stream().map(Object::toString).map(Operation::valueOfPermission).filter(Objects::nonNull).toList());
+    public static @Nullable SortedSet<@NotNull Permission> parsePermissions(final @NotNull String permissions) {
+        try {
+            return new TreeSet<>(JSON.parseArray(permissions).stream().map(Object::toString).map(Operation::valueOfPermission).filter(Objects::nonNull).toList());
+        } catch (final JSONException exception) {
+            return null;
+        }
     }
 }

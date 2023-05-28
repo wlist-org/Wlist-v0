@@ -1,5 +1,6 @@
-package com.xuxiaocheng.WListClient.Utils;
+package com.xuxiaocheng.WListClient.Server;
 
+import com.xuxiaocheng.WListClient.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufInputStream;
@@ -12,51 +13,31 @@ import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
 import javax.crypto.CipherOutputStream;
 import javax.crypto.NoSuchPaddingException;
-import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.math.BigInteger;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.Key;
 import java.security.NoSuchAlgorithmException;
-import java.security.spec.AlgorithmParameterSpec;
 import java.util.List;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-public class AesCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
+public abstract class MessageCiphers extends MessageToMessageCodec<ByteBuf, ByteBuf> {
+    static final @NotNull String defaultHeader = "WList/Ciphers-Initializing";
+
     public static final byte doAes = 1;
-    public static final byte defaultDoAes = AesCipher.doAes;
+    public static final byte defaultDoAes = MessageCiphers.doAes;
     public static final byte doGZip = 1 << 1;
     public static final byte defaultDoGZip = 0;
 
-    public static final byte defaultCipher = AesCipher.defaultDoAes | AesCipher.defaultDoGZip;
+    public static final byte defaultCipher = MessageCiphers.defaultDoAes | MessageCiphers.defaultDoGZip;
 
-    protected final @NotNull Cipher decryptCipher;
-    protected final @NotNull Cipher encryptCipher;
     protected final int maxSize;
+    protected final @NotNull Cipher aesDecryptCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+    protected final @NotNull Cipher aesEncryptCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
 
-    public AesCipher(final BigInteger keySeed, final BigInteger vectorSeed, final int maxSize) {
+    protected MessageCiphers(final int maxSize) throws NoSuchPaddingException, NoSuchAlgorithmException {
         super();
         this.maxSize = maxSize;
-        final byte[] keys = new byte[32];
-        MiscellaneousUtil.generateRandomByteArray(keySeed, keys);
-        final Key key = new SecretKeySpec(keys, "AES");
-        final byte[] vectors = new byte[16];
-        MiscellaneousUtil.generateRandomByteArray(vectorSeed, vectors);
-        final AlgorithmParameterSpec vector = new IvParameterSpec(vectors);
-        try {
-            this.decryptCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-            this.decryptCipher.init(Cipher.DECRYPT_MODE, key, vector);
-            this.encryptCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-            this.encryptCipher.init(Cipher.ENCRYPT_MODE, key, vector);
-        } catch (final NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException |
-                       InvalidAlgorithmParameterException exception) {
-            throw new RuntimeException("Unreachable!", exception);
-        }
     }
 
     @Override
@@ -64,21 +45,21 @@ public class AesCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
         if (msg.readableBytes() > this.maxSize)
             throw new IllegalArgumentException("Too long msg. len: " + msg.readableBytes());
         final byte flags = ByteBufIOUtil.readByte(msg);
-        final boolean aes = (flags & AesCipher.doAes) > 0;
-        final boolean gzip = (flags & AesCipher.doGZip) > 0;
+        final boolean aes = (flags & MessageCiphers.doAes) > 0;
+        final boolean gzip = (flags & MessageCiphers.doGZip) > 0;
         if (!aes && !gzip) {
             final ByteBuf prefix = ByteBufAllocator.DEFAULT.buffer();
             ByteBufIOUtil.writeByte(prefix, flags);
-            ByteBufIOUtil.writeVariable2LenInt(prefix, msg.readableBytes());
+            ByteBufIOUtil.writeVariableLenInt(prefix, msg.readableBytes());
             out.add(ByteBufAllocator.DEFAULT.compositeBuffer(2).addComponents(true, prefix, msg.retain()));
             return;
         }
         final ByteBuf buf = ByteBufAllocator.DEFAULT.buffer(msg.readableBytes() + 128);
         ByteBufIOUtil.writeByte(buf, flags);
-        ByteBufIOUtil.writeVariable2LenInt(buf, msg.readableBytes());
+        ByteBufIOUtil.writeVariableLenInt(buf, msg.readableBytes());
         InputStream is = new ByteBufInputStream(msg);
         if (aes)
-            is = new CipherInputStream(is, this.encryptCipher);
+            is = new CipherInputStream(is, this.aesEncryptCipher);
         OutputStream os = new ByteBufOutputStream(buf);
         if (gzip)
             os = new GZIPOutputStream(os);
@@ -90,12 +71,18 @@ public class AesCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
 
     @Override
     protected void decode(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg, final @NotNull List<Object> out) throws IOException {
-        final byte flags = ByteBufIOUtil.readByte(msg); // FIXME: no exception thrown.
-        final int length = ByteBufIOUtil.readVariable2LenInt(msg);
+        final byte flags = ByteBufIOUtil.readByte(msg);
+        final int length = ByteBufIOUtil.readVariableLenInt(msg);
         if (length > this.maxSize)
             throw new IllegalArgumentException("Too long source msg. len: " + length);
-        final boolean aes = (flags & AesCipher.doAes) > 0;
-        final boolean gzip = (flags & AesCipher.doGZip) > 0;
+        final boolean aes = (flags & MessageCiphers.doAes) > 0;
+        final boolean gzip = (flags & MessageCiphers.doGZip) > 0;
+        if (!aes && !gzip) {
+            final ByteBuf prefix = ByteBufAllocator.DEFAULT.buffer();
+            ByteBufIOUtil.writeByte(prefix, flags);
+            out.add(ByteBufAllocator.DEFAULT.compositeBuffer(2).addComponents(true, prefix, msg.retain()));
+            return;
+        }
         final ByteBuf buf = ByteBufAllocator.DEFAULT.buffer(length + 1);
         ByteBufIOUtil.writeByte(buf, flags);
         InputStream is = new ByteBufInputStream(msg);
@@ -103,7 +90,7 @@ public class AesCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
             is = new GZIPInputStream(is);
         OutputStream os = new ByteBufOutputStream(buf);
         if (aes)
-            os = new CipherOutputStream(os, this.decryptCipher);
+            os = new CipherOutputStream(os, this.aesDecryptCipher);
         try (final InputStream inputStream = is; final OutputStream outputStream = os) {
             inputStream.transferTo(outputStream);
         }
@@ -112,7 +99,7 @@ public class AesCipher extends MessageToMessageCodec<ByteBuf, ByteBuf> {
 
     @Override
     public @NotNull String toString() {
-        return "AesCipher{" +
+        return "MessageServerCiphers{" +
                 "maxSize=" + this.maxSize +
                 ", super=" + super.toString() +
                 '}';

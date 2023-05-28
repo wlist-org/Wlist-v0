@@ -2,8 +2,7 @@ package com.xuxiaocheng.WListClient;
 
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
-import com.xuxiaocheng.WListClient.Utils.AesCipher;
+import com.xuxiaocheng.WListClient.Server.MessageClientCiphers;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
@@ -21,7 +20,10 @@ import io.netty.handler.codec.LengthFieldPrepender;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import javax.crypto.NoSuchPaddingException;
 import java.net.SocketAddress;
+import java.security.NoSuchAlgorithmException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class WListClient {
     public static final int FileTransferBufferSize = 4 << 20;
@@ -43,17 +45,22 @@ public class WListClient {
         bootstrap.channel(NioSocketChannel.class);
         bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
         bootstrap.option(ChannelOption.SO_REUSEADDR, true);
+        final AtomicBoolean uninitialized = new AtomicBoolean(true);
         bootstrap.handler(new ChannelInitializer<SocketChannel>() {
             @Override
-            protected void initChannel(final @NotNull SocketChannel ch) {
+            protected void initChannel(final @NotNull SocketChannel ch) throws NoSuchPaddingException, NoSuchAlgorithmException {
                 final ChannelPipeline pipeline = ch.pipeline();
                 pipeline.addLast("LengthDecoder", new LengthFieldBasedFrameDecoder(WListClient.MaxSizePerPacket, 0, 4, 0, 4));
                 pipeline.addLast("LengthEncoder", new LengthFieldPrepender(4));
-                pipeline.addLast("Cipher", new AesCipher(Main.key, Main.vector, WListClient.MaxSizePerPacket));
+                pipeline.addLast("Cipher", new MessageClientCiphers(WListClient.MaxSizePerPacket, uninitialized));
                 pipeline.addLast("ClientHandler", new ClientChannelInboundHandler(WListClient.this));
             }
         });
         this.channel = bootstrap.connect(this.address).sync().channel();
+        synchronized (uninitialized) {
+            while (uninitialized.get())
+                uninitialized.wait();
+        }
         WListClient.logger.log(HLogLevel.VERBOSE, "WListClient started.");
     }
 
@@ -64,9 +71,10 @@ public class WListClient {
     private @Nullable ByteBuf receive = null;
     protected final @NotNull Object receiveLock = new Object();
 
-    public @NotNull ByteBuf send(final @NotNull ByteBuf buf) throws InterruptedException {
-        synchronized (this.receiveLock) {
+    public @NotNull ByteBuf send(final @Nullable ByteBuf buf) throws InterruptedException {
+        if (buf != null)
             this.channel.writeAndFlush(buf);
+        synchronized (this.receiveLock) {
             while (this.receive == null)
                 this.receiveLock.wait();
             final ByteBuf r = this.receive;
