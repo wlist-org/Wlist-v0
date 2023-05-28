@@ -28,39 +28,37 @@ impl Read for VecU8Reader {
     }
 }
 
-pub fn read_u8(source: &mut impl Read) -> Result<u8, io::Error> {
-    let mut bytes = [0;1];
-    source.read_exact(&mut bytes)?;
-    Ok(u8::from_le_bytes(bytes))
-}
-pub fn read_u8_be(source: &mut impl Read) -> Result<u8, io::Error> {
-    let mut bytes = [0;1];
-    source.read_exact(&mut bytes)?;
-    Ok(u8::from_be_bytes(bytes))
-}
-pub fn write_u8(target: &mut impl Write, message: u8) -> Result<usize, io::Error> {
-    target.write(&mut u8::to_le_bytes(message))
-}
-pub fn write_u8_be(target: &mut impl Write, message: u8) -> Result<usize, io::Error> {
-    target.write(&mut u8::to_be_bytes(message))
-}
 
-pub fn read_i8(source: &mut impl Read) -> Result<i8, io::Error> {
-    let mut bytes = [0;1];
-    source.read_exact(&mut bytes)?;
-    Ok(i8::from_le_bytes(bytes))
+macro_rules! primitive_util {
+    ($primitive: ident, $read: ident, $read_be: ident, $write: ident, $write_be: ident, $length: literal) => {
+        pub fn $read(source: &mut impl Read) -> Result<$primitive, io::Error> {
+            let mut bytes = [0;$length];
+            source.read_exact(&mut bytes)?;
+            Ok($primitive::from_le_bytes(bytes))
+        }
+        pub fn $read_be(source: &mut impl Read) -> Result<$primitive, io::Error> {
+            let mut bytes = [0;$length];
+            source.read_exact(&mut bytes)?;
+            Ok($primitive::from_be_bytes(bytes))
+        }
+        pub fn $write(target: &mut impl Write, message: $primitive) -> Result<usize, io::Error> {
+            target.write(&mut $primitive::to_le_bytes(message))
+        }
+        pub fn $write_be(target: &mut impl Write, message: $primitive) -> Result<usize, io::Error> {
+            target.write(&mut $primitive::to_be_bytes(message))
+        }
+    };
 }
-pub fn read_i8_be(source: &mut impl Read) -> Result<i8, io::Error> {
-    let mut bytes = [0;1];
-    source.read_exact(&mut bytes)?;
-    Ok(i8::from_be_bytes(bytes))
-}
-pub fn write_i8(target: &mut impl Write, message: i8) -> Result<usize, io::Error> {
-    target.write(&mut i8::to_le_bytes(message))
-}
-pub fn write_i8_be(target: &mut impl Write, message: i8) -> Result<usize, io::Error> {
-    target.write(&mut i8::to_be_bytes(message))
-}
+primitive_util!(u8, read_u8, read_u8_be, write_u8, write_u8_be, 1);
+primitive_util!(i8, read_i8, read_i8_be, write_i8, write_i8_be, 1);
+primitive_util!(u16, read_u16, read_u16_be, write_u16, write_u16_be, 2);
+primitive_util!(i16, read_i16, read_i16_be, write_i16, write_i16_be, 2);
+primitive_util!(u32, read_u32, read_u32_be, write_u32, write_u32_be, 4);
+primitive_util!(i32, read_i32, read_i32_be, write_i32, write_i32_be, 4);
+primitive_util!(u64, read_u64, read_u64_be, write_u64, write_u64_be, 8);
+primitive_util!(i64, read_i64, read_i64_be, write_i64, write_i64_be, 8);
+primitive_util!(u128, read_u128, read_u128_be, write_u128, write_u64_128, 16);
+primitive_util!(i128, read_i128, read_i128_be, write_i128, write_i64_128, 16);
 
 pub fn read_bool(source: &mut impl Read) -> Result<bool, io::Error> {
     Ok(read_u8(source)? != 0)
@@ -75,138 +73,104 @@ pub fn write_bool_be(target: &mut impl Write, message: bool) -> Result<usize, io
     write_u8_be(target, if message { 1 } else { 0 })
 }
 
-pub fn read_u16(source: &mut impl Read) -> Result<u16, io::Error> {
-    let mut bytes = [0;2];
-    source.read_exact(&mut bytes)?;
-    Ok(u16::from_le_bytes(bytes))
-}
-pub fn read_u16_be(source: &mut impl Read) -> Result<u16, io::Error> {
-    let mut bytes = [0;2];
-    source.read_exact(&mut bytes)?;
-    Ok(u16::from_be_bytes(bytes))
-}
-pub fn write_u16(target: &mut impl Write, message: u16) -> Result<usize, io::Error> {
-    target.write(&mut u16::to_le_bytes(message))
-}
-pub fn write_u16_be(target: &mut impl Write, message: u16) -> Result<usize, io::Error> {
-    target.write(&mut u16::to_be_bytes(message))
+
+fn create_length_error(name: &str) -> io::Error {
+    io::Error::new(ErrorKind::InvalidData, format!("Variable {} in stream is too long.", name))
 }
 
-pub fn read_i16(source: &mut impl Read) -> Result<i16, io::Error> {
-    let mut bytes = [0;2];
-    source.read_exact(&mut bytes)?;
-    Ok(i16::from_le_bytes(bytes))
+macro_rules! variable_len_util {
+    ($name: ident, $read_variable: ident, $write_variable: ident, $length: literal, $cause: literal) => {
+        pub fn $read_variable(source: &mut impl Read) -> Result<$name, io::Error> {
+            let mut value = 0;
+            let mut position = 0;
+            loop {
+                let current = read_u8(source)?;
+                value |= ((current & 0x7f) as $name) << position;
+                if current & 0x80 == 0 {
+                    break;
+                }
+                position += 7;
+                if position >= $length {
+                    return Err(create_length_error($cause));
+                }
+            }
+            Ok(value)
+        }
+        pub fn $write_variable(target: &mut impl Write, message: $name) -> Result<usize, io::Error> {
+            let mut size = 0;
+            let mut value = message;
+            while value >> 7 > 0 {
+                size += write_u8(target, ((value & 0x7f) as u8) | 0x80)?;
+                value >>= 7;
+            }
+            size += write_u8(target, (value & 0x7f) as u8)?;
+            Ok(size)
+        }
+    };
 }
-pub fn read_i16_be(source: &mut impl Read) -> Result<i16, io::Error> {
-    let mut bytes = [0;2];
-    source.read_exact(&mut bytes)?;
-    Ok(i16::from_be_bytes(bytes))
+variable_len_util!(u16, read_variable_u16, write_variable_u16, 16, "u16");
+variable_len_util!(u32, read_variable_u32, write_variable_u32, 32, "u32");
+variable_len_util!(u64, read_variable_u64, write_variable_u64, 64, "u64");
+variable_len_util!(u128, read_variable_u128, write_variable_u128, 128, "u128");
+
+macro_rules! variable_len_2_util {
+    ($name: ident, $read_variable: ident, $write_variable: ident, $length: literal, $cause: literal) => {
+        pub fn $read_variable(source: &mut impl Read) -> Result<$name, io::Error> {
+            let mut value = 0;
+            let mut position = 0;
+            loop {
+                let current = read_u16(source)?;
+                value |= ((current & 0x7fff) as $name) << position;
+                if current & 0x8000 == 0 {
+                    break;
+                }
+                position += 15;
+                if position >= $length {
+                    return Err(create_length_error($cause));
+                }
+            }
+            Ok(value)
+        }
+        pub fn $write_variable(target: &mut impl Write, message: $name) -> Result<usize, io::Error> {
+            let mut size = 0;
+            let mut value = message;
+            while value >> 15 > 0 {
+                size += write_u16(target, ((value & 0x7fff) as u16) | 0x8000)?;
+                value >>= 15;
+            }
+            size += write_u16(target, (value & 0x7fff) as u16)?;
+            Ok(size)
+        }
+    };
 }
-pub fn write_i16(target: &mut impl Write, message: i16) -> Result<usize, io::Error> {
-    target.write(&mut i16::to_le_bytes(message))
+variable_len_2_util!(u32, read_variable2_u32, write_variable2_u32, 32, "2 u32");
+variable_len_2_util!(u64, read_variable2_u64, write_variable2_u64, 64, "2 u64");
+variable_len_2_util!(u128, read_variable2_u128, write_variable2_u128, 128, "2 u128");
+
+pub fn read_u8_vec(source: &mut impl Read) -> Result<Vec<u8>, io::Error> {
+    let length = read_variable_u32(source)? as usize;
+    let mut bytes = Vec::with_capacity(length);
+    bytes.resize(length, 0);
+    source.read_exact(bytes.as_mut_slice())?;
+    Ok(bytes)
 }
-pub fn write_i16_be(target: &mut impl Write, message: i16) -> Result<usize, io::Error> {
-    target.write(&mut i16::to_be_bytes(message))
+pub fn write_u8_vec(target: &mut impl Write, message: Vec<u8>) -> Result<usize, io::Error> {
+    let mut size = write_variable_u32(target, message.len() as u32)?;
+    size += target.write(message.as_slice())?;
+    Ok(size)
+}
+pub fn write_u8_array(target: &mut impl Write, message: &[u8]) -> Result<usize, io::Error> {
+    let mut size = write_variable_u32(target, message.len() as u32)?;
+    size += target.write(&message)?;
+    Ok(size)
 }
 
-pub fn read_u32(source: &mut impl Read) -> Result<u32, io::Error> {
-    let mut bytes = [0;4];
-    source.read_exact(&mut bytes)?;
-    Ok(u32::from_le_bytes(bytes))
+pub fn read_string(source: &mut impl Read) -> Result<String, io::Error> {
+    match String::from_utf8(read_u8_vec(source)?) {
+        Ok(s) => Ok(s),
+        Err(e) => Err(io::Error::new(ErrorKind::InvalidData, e.to_string())),
+    }
 }
-pub fn read_u32_be(source: &mut impl Read) -> Result<u32, io::Error> {
-    let mut bytes = [0;4];
-    source.read_exact(&mut bytes)?;
-    Ok(u32::from_be_bytes(bytes))
-}
-pub fn write_u32(target: &mut impl Write, message: u32) -> Result<usize, io::Error> {
-    target.write(&mut u32::to_le_bytes(message))
-}
-pub fn write_u32_be(target: &mut impl Write, message: u32) -> Result<usize, io::Error> {
-    target.write(&mut u32::to_be_bytes(message))
-}
-
-pub fn read_i32(source: &mut impl Read) -> Result<i32, io::Error> {
-    let mut bytes = [0;4];
-    source.read_exact(&mut bytes)?;
-    Ok(i32::from_le_bytes(bytes))
-}
-pub fn read_i32_be(source: &mut impl Read) -> Result<i32, io::Error> {
-    let mut bytes = [0;4];
-    source.read_exact(&mut bytes)?;
-    Ok(i32::from_be_bytes(bytes))
-}
-pub fn write_i32(target: &mut impl Write, message: i32) -> Result<usize, io::Error> {
-    target.write(&mut i32::to_le_bytes(message))
-}
-pub fn write_i32_be(target: &mut impl Write, message: i32) -> Result<usize, io::Error> {
-    target.write(&mut i32::to_be_bytes(message))
-}
-
-pub fn read_u64(source: &mut impl Read) -> Result<u64, io::Error> {
-    let mut bytes = [0;8];
-    source.read_exact(&mut bytes)?;
-    Ok(u64::from_le_bytes(bytes))
-}
-pub fn read_u64_be(source: &mut impl Read) -> Result<u64, io::Error> {
-    let mut bytes = [0;8];
-    source.read_exact(&mut bytes)?;
-    Ok(u64::from_be_bytes(bytes))
-}
-pub fn write_u64(target: &mut impl Write, message: u64) -> Result<usize, io::Error> {
-    target.write(&mut u64::to_le_bytes(message))
-}
-pub fn write_u64_be(target: &mut impl Write, message: u64) -> Result<usize, io::Error> {
-    target.write(&mut u64::to_be_bytes(message))
-}
-
-pub fn read_i64(source: &mut impl Read) -> Result<i64, io::Error> {
-    let mut bytes = [0;8];
-    source.read_exact(&mut bytes)?;
-    Ok(i64::from_le_bytes(bytes))
-}
-pub fn read_i64_be(source: &mut impl Read) -> Result<i64, io::Error> {
-    let mut bytes = [0;8];
-    source.read_exact(&mut bytes)?;
-    Ok(i64::from_be_bytes(bytes))
-}
-pub fn write_i64(target: &mut impl Write, message: i64) -> Result<usize, io::Error> {
-    target.write(&mut i64::to_le_bytes(message))
-}
-pub fn write_i64_be(target: &mut impl Write, message: i64) -> Result<usize, io::Error> {
-    target.write(&mut i64::to_be_bytes(message))
-}
-
-pub fn read_u128(source: &mut impl Read) -> Result<u128, io::Error> {
-    let mut bytes = [0;16];
-    source.read_exact(&mut bytes)?;
-    Ok(u128::from_le_bytes(bytes))
-}
-pub fn read_u128_be(source: &mut impl Read) -> Result<u128, io::Error> {
-    let mut bytes = [0;16];
-    source.read_exact(&mut bytes)?;
-    Ok(u128::from_be_bytes(bytes))
-}
-pub fn write_u128(target: &mut impl Write, message: u128) -> Result<usize, io::Error> {
-    target.write(&mut u128::to_le_bytes(message))
-}
-pub fn write_u128_be(target: &mut impl Write, message: u128) -> Result<usize, io::Error> {
-    target.write(&mut u128::to_be_bytes(message))
-}
-
-pub fn read_i128(source: &mut impl Read) -> Result<i128, io::Error> {
-    let mut bytes = [0;16];
-    source.read_exact(&mut bytes)?;
-    Ok(i128::from_le_bytes(bytes))
-}
-pub fn read_i128_be(source: &mut impl Read) -> Result<i128, io::Error> {
-    let mut bytes = [0;16];
-    source.read_exact(&mut bytes)?;
-    Ok(i128::from_be_bytes(bytes))
-}
-pub fn write_i128(target: &mut impl Write, message: i128) -> Result<usize, io::Error> {
-    target.write(&mut i128::to_le_bytes(message))
-}
-pub fn write_i128_be(target: &mut impl Write, message: i128) -> Result<usize, io::Error> {
-    target.write(&mut i128::to_be_bytes(message))
+pub fn write_string(target: &mut impl Write, message: &String) -> Result<usize, io::Error> {
+    write_u8_array(target, message.as_bytes())
 }

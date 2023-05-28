@@ -2,9 +2,11 @@ pub mod handlers;
 
 #[cfg(test)]
 mod tests {
-    use std::io::{BufReader};
+    use std::io;
+    use std::io::{BufReader, ErrorKind};
     use std::net::TcpStream;
-    use crate::handlers::client::length_based_decode;
+    use crate::handlers::bytes_util::{read_string, read_u8_vec};
+    use crate::handlers::client::{DEFAULT_HEADER, length_based_decode};
 
     static ADDRESS: &str = "127.0.0.1:5212";
 
@@ -16,10 +18,16 @@ mod tests {
     // }
 
     #[test]
-    fn client() {
-        let mut stream = TcpStream::connect(ADDRESS).unwrap();
-        let msg = length_based_decode(&mut stream).unwrap();
-        println!("{:?}", msg);
+    fn client() -> Result<(), io::Error>{
+        let mut stream = BufReader::new(TcpStream::connect(ADDRESS)?);
+        let mut msg = length_based_decode(&mut stream)?;
+        let header = read_string(&mut msg)?;
+        if header != DEFAULT_HEADER {
+            return Err(io::Error::new(ErrorKind::InvalidData, "Invalid header: ".to_string() + header.as_str()));
+        }
+        let rsa_modulus = read_u8_vec(&mut msg)?;
+        let rsa_exponent = read_u8_vec(&mut msg)?;
+        Ok(())
     }
 
     // fn send_and_receive(send: Vec<u8>) -> Result<Vec<u8>, io::Error> {
