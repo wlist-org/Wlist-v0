@@ -12,6 +12,7 @@ import com.xuxiaocheng.WList.Server.ServerHandlers.ServerHandler;
 import com.xuxiaocheng.WList.Server.ServerHandlers.ServerStateHandler;
 import com.xuxiaocheng.WList.Server.ServerHandlers.ServerUserHandler;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
+import com.xuxiaocheng.WList.Utils.ForkJoinEventExecutorGroup;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.WList;
 import io.netty.bootstrap.ServerBootstrap;
@@ -58,8 +59,9 @@ public class WListServer {
             new DefaultEventExecutorGroup(Math.max(1, Runtime.getRuntime().availableProcessors() >>> 1), new DefaultThreadFactory("CodecExecutors"));
     public static final @NotNull EventExecutorGroup ServerExecutors =
             new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 1, new DefaultThreadFactory("ServerExecutors"));
-    public static final @NotNull EventExecutorGroup IOExecutors =
-            new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 3, new DefaultThreadFactory("IOExecutors"));
+    public static final @NotNull ForkJoinEventExecutorGroup IOExecutors =
+            new ForkJoinEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 3, Runtime.getRuntime().availableProcessors(),
+                    new DefaultThreadFactory("IOExecutors"));
 
     private static final @NotNull HLog logger = HLog.createInstance("ServerLogger",
             WList.DebugMode ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1,

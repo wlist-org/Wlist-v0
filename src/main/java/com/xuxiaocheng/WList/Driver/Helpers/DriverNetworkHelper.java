@@ -6,13 +6,13 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Exceptions.NetworkException;
-import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.WList;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.Dispatcher;
 import okhttp3.Headers;
+import okhttp3.Interceptor;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -37,8 +37,7 @@ public final class DriverNetworkHelper {
     }
 
     public static final @NotNull String defaultAgent = "WList/0.1.3";
-    private static final @NotNull AtomicInteger frequencyControl = new AtomicInteger(0);
-    public static final @NotNull OkHttpClient httpClient = new OkHttpClient.Builder()
+    public static final OkHttpClient.@NotNull Builder httpClientBuilder = new OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
@@ -46,8 +45,8 @@ public final class DriverNetworkHelper {
             .addInterceptor(chain -> {
                 final Request request = chain.request();
                 if (WList.DebugMode)
-                    HLog.DefaultLogger.log(HLogLevel.NETWORK, Thread.currentThread(), ": SEND ",
-                            request.method(), " on ", request.url(), " Headers: ", (Supplier<?>) () -> {
+                    HLog.DefaultLogger.log(HLogLevel.NETWORK, "Send: ", request.method(), ' ', request.url(),
+                            " Headers: ", (Supplier<?>) () -> {
                                 final StringBuilder builder = new StringBuilder("[");
                                 request.headers().forEach(p -> builder.append(p.getFirst()).append(':').append(p.getSecond()).append(','));
                                 return builder.append(']').toString();
@@ -56,34 +55,88 @@ public final class DriverNetworkHelper {
                 final Response response = chain.proceed(request);
                 final long time2 = System.currentTimeMillis();
                 if (WList.DebugMode)
-                    HLog.DefaultLogger.log(HLogLevel.NETWORK, Thread.currentThread(), ": RECEIVE for ",
-                            response.request().url(), "' Cost time: ", time2 - time1, "ms. Headers: ", (Supplier<?>) () -> {
+                    HLog.DefaultLogger.log(HLogLevel.NETWORK, "Receive: ", response.request().url(),
+                            " Cost time: ", time2 - time1, "ms. Headers: ", (Supplier<?>) () -> {
                                 final StringBuilder builder = new StringBuilder("[");
                                 response.headers().forEach(p -> builder.append(p.getFirst()).append(':').append(p.getSecond()).append(','));
                                 return builder.append(']').toString();
                             });
                 return response;
-            }).addNetworkInterceptor(chain -> {
-                synchronized (DriverNetworkHelper.frequencyControl) {
-                    while (DriverNetworkHelper.frequencyControl.get() > GlobalConfiguration.getInstance().maxRequestPerSecond()) {
-                        try {
-                            DriverNetworkHelper.frequencyControl.wait();
-                        } catch (final InterruptedException exception) {
-                            throw new IOException(exception);
+            });
+
+    public static class FrequencyControlInterceptor implements Interceptor {
+        protected final int perSecond;
+        protected final int perMinute;
+
+        protected final @NotNull AtomicInteger frequencyControlSecond = new AtomicInteger(0);
+        protected final @NotNull AtomicInteger frequencyControlMinute = new AtomicInteger(0);
+
+        public FrequencyControlInterceptor(final int perSecond, final int perMinute) {
+            super();
+            this.perSecond = perSecond;
+            this.perMinute = perMinute;
+        }
+
+        @Override
+        public @NotNull Response intercept(final Interceptor.@NotNull Chain chain) throws IOException {
+            synchronized (this.frequencyControlSecond) {
+                boolean first = true;
+                while (this.frequencyControlSecond.get() > this.perSecond)
+                    try {
+                        if (first) {
+                            HLog.DefaultLogger.log(HLogLevel.NETWORK, "At frequency control: Second.");
+                            first = false;
                         }
+                        this.frequencyControlSecond.wait();
+                    } catch (final InterruptedException exception) {
+                        throw new IOException(exception);
                     }
-                    DriverNetworkHelper.frequencyControl.getAndIncrement();
+                this.frequencyControlSecond.getAndIncrement();
+            }
+            synchronized (this.frequencyControlMinute) {
+                boolean first = true;
+                while (this.frequencyControlMinute.get() > this.perMinute)
+                    try {
+                        if (first) {
+                            HLog.DefaultLogger.log(HLogLevel.NETWORK, "At frequency control: Minute.");
+                            first = false;
+                        }
+                        this.frequencyControlMinute.wait();
+                    } catch (final InterruptedException exception) {
+                        throw new IOException(exception);
+                    }
+                this.frequencyControlMinute.getAndIncrement();
+            }
+            final Response response = chain.proceed(chain.request());
+            WListServer.IOExecutors.scheduleJoin(() -> {
+                synchronized (this.frequencyControlSecond) {
+                    if (this.frequencyControlSecond.getAndDecrement() > 1)
+                        this.frequencyControlSecond.notify();
+                    else
+                        this.frequencyControlSecond.notifyAll();
                 }
-                final Response response = chain.proceed(chain.request());
-                WListServer.IOExecutors.schedule(() -> {
-                    synchronized (DriverNetworkHelper.frequencyControl) {
-                        DriverNetworkHelper.frequencyControl.getAndDecrement();
-                        DriverNetworkHelper.frequencyControl.notifyAll();
-                    }
-                }, 1, TimeUnit.SECONDS);
-                return response;
-            })
-            .build();
+            }, 1, TimeUnit.SECONDS);
+            WListServer.IOExecutors.scheduleJoin(() -> {
+                synchronized (this.frequencyControlMinute) {
+                    if (this.frequencyControlMinute.getAndDecrement() > 1)
+                        this.frequencyControlMinute.notify();
+                    else
+                        this.frequencyControlMinute.notifyAll();
+                }
+            }, 1, TimeUnit.MINUTES);
+            return response;
+        }
+
+        @Override
+        public @NotNull String toString() {
+            return "FrequencyControlInterceptor{" +
+                    "perSecond=" + this.perSecond +
+                    ", perMinute=" + this.perMinute +
+                    ", frequencyControlSecond=" + this.frequencyControlSecond +
+                    ", frequencyControlMinute=" + this.frequencyControlMinute +
+                    '}';
+        }
+    }
 
     public static @NotNull RequestBody createJsonRequestBody(final @Nullable Object obj) {
         return RequestBody.create(JSON.toJSONBytes(obj),

@@ -62,7 +62,7 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
     public Pair.@Nullable ImmutablePair<@NotNull InputStream, @NotNull Long> download(final @NotNull DrivePath path, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws IllegalParametersException, IOException, SQLException {
         final Pair.ImmutablePair<String, Long> url = DriverManager_123pan.getDownloadUrl(this.configuration, path, true, null, WListServer.IOExecutors);
         if (url == null) return null;
-        return DriverUtil.getDownloadStreamByRangeHeader(url, from, to, null);
+        return DriverUtil.getDownloadStreamByRangeHeader(DriverHelper_123pan.httpClient, url, from, to, null);
     }
 
     @Override

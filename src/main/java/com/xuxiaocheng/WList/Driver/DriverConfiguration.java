@@ -114,7 +114,7 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
     }
 
     public static class WebSideDriverConfiguration {
-        protected int defaultLimitPerPage = 20;
+        protected int defaultLimitPerPage = 50;
 
         protected void load(final @NotNull Map<? super @NotNull String, @NotNull Object> web, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
             this.defaultLimitPerPage = YamlHelper.getConfig(web, "default_limit_per_page", () -> Integer.toString(this.defaultLimitPerPage),

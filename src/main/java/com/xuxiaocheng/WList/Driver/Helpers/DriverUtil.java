@@ -92,13 +92,13 @@ public final class DriverUtil {
         };
     }
 
-    public static Pair.@NotNull ImmutablePair<@NotNull InputStream, @NotNull Long> getDownloadStreamByRangeHeader(final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull Long> url, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final Headers.@Nullable Builder builder) throws IOException {
+    public static Pair.@NotNull ImmutablePair<@NotNull InputStream, @NotNull Long> getDownloadStreamByRangeHeader(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull Long> url, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final Headers.@Nullable Builder builder) throws IOException {
         final long size = url.getSecond().longValue();
         final long end = Math.min(to, size);
         final long len = end - from;
         if (from >= size || len < 0)
             return Pair.ImmutablePair.makeImmutablePair(InputStream.nullInputStream(), 0L);
-        return Pair.ImmutablePair.makeImmutablePair(DriverUtil.getDownloadStream(DriverNetworkHelper.httpClient,
+        return Pair.ImmutablePair.makeImmutablePair(DriverUtil.getDownloadStream(client,
                 Pair.ImmutablePair.makeImmutablePair(url.getFirst(), "GET"),
                 Objects.requireNonNullElseGet(builder, Headers.Builder::new).set("Range", String.format("bytes=%d-%d", from, end - 1)).build(),
                 null, 0, len), len);

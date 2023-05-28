@@ -288,7 +288,7 @@ public final class DriverManager_123pan {
             final int len = Math.min(DriverHelper_123pan.UploadPartSize, (int) (size - readSize));
             readSize += len;
             list.add(new UploadMethods.UploadPartMethod(len, b -> {
-                DriverNetworkHelper.callRequestWithBody(DriverNetworkHelper.httpClient, Pair.ImmutablePair.makeImmutablePair(url, "PUT"), null,
+                DriverNetworkHelper.callRequestWithBody(DriverHelper_123pan.httpClient, Pair.ImmutablePair.makeImmutablePair(url, "PUT"), null,
                         new DriverUtil.OctetStreamRequestBody(len) {
                             @Override
                             public void writeTo(final @NotNull BufferedSink bufferedSink) throws IOException {

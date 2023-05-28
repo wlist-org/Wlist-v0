@@ -28,7 +28,7 @@ public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxCo
                                   long tokenExpireTime, long idIdleExpireTime,
                                   int maxLimitPerPage,
                                   @NotNull Map<@NotNull String, @NotNull WebDriversType> drivers,
-                                  boolean deleteDriver, int maxRequestPerSecond) {
+                                  boolean deleteDriver) {
     private static @Nullable GlobalConfiguration instance;
 
     public static synchronized void init(final @Nullable File path) throws IOException {
@@ -57,7 +57,7 @@ public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxCo
                         o -> YamlHelper.transferIntegerFromStr(o, errors, "token_expire_time", BigInteger.ONE, BigInteger.valueOf(Long.MAX_VALUE))).longValue(),
                 YamlHelper.getConfig(config, "id_idle_expire_time", "1800",
                         o -> YamlHelper.transferIntegerFromStr(o, errors, "id_idle_expire_time", BigInteger.ONE, BigInteger.valueOf(Long.MAX_VALUE))).longValue(),
-                YamlHelper.getConfig(config, "max_limit_per_page", "100",
+                YamlHelper.getConfig(config, "max_limit_per_page", "500",
                         o -> YamlHelper.transferIntegerFromStr(o, errors, "max_limit_per_page", BigInteger.ONE, BigInteger.valueOf(Integer.MAX_VALUE))).intValue(),
                 YamlHelper.getConfig(config, "drivers", new LinkedHashMap<>(),
                         o -> { final Map<String, Object> map = YamlHelper.transferMapNode(o, errors, "drivers");
@@ -72,9 +72,7 @@ public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxCo
                                     .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond));
                         }),
                 YamlHelper.getConfig(config, "delete_driver", "false",
-                        o -> YamlHelper.transferBooleanFromStr(o, errors, "delete_driver")).booleanValue(),
-                YamlHelper.getConfig(config, "max_request_per_second", "20",
-                        o -> YamlHelper.transferIntegerFromStr(o, errors, "max_request_per_second", BigInteger.ONE, BigInteger.valueOf(Integer.MAX_VALUE))).intValue()
+                        o -> YamlHelper.transferBooleanFromStr(o, errors, "delete_driver")).booleanValue()
             );
         } catch (final RuntimeException exception) {
             throw new IOException(exception);
@@ -92,7 +90,6 @@ public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxCo
                     .map(e -> Pair.ImmutablePair.makeImmutablePair(e.getKey(), e.getValue().name()))
                     .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond)));
             config.put("delete_driver", GlobalConfiguration.instance.deleteDriver);
-            config.put("max_request_per_second", GlobalConfiguration.instance.maxRequestPerSecond);
             try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(path))) {
                 YamlHelper.dumpYaml(config, outputStream);
             }
