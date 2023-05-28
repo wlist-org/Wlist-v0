@@ -27,9 +27,10 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Supplier;
 
 public final class DriverNetworkHelper {
     private DriverNetworkHelper() {
@@ -45,31 +46,23 @@ public final class DriverNetworkHelper {
             .addInterceptor(chain -> {
                 final Request request = chain.request();
                 if (WList.DebugMode)
-                    HLog.DefaultLogger.log(HLogLevel.NETWORK, "Send: ", request.method(), ' ', request.url(),
-                            " Headers: ", (Supplier<?>) () -> {
-                                final StringBuilder builder = new StringBuilder("[");
-                                request.headers().forEach(p -> builder.append(p.getFirst()).append(':').append(p.getSecond()).append(','));
-                                return builder.append(']').toString();
-                            });
+                    HLog.DefaultLogger.log(HLogLevel.NETWORK, "Sending: ", request.method(), ' ', request.url());
                 final long time1 = System.currentTimeMillis();
                 final Response response = chain.proceed(request);
                 final long time2 = System.currentTimeMillis();
                 if (WList.DebugMode)
-                    HLog.DefaultLogger.log(HLogLevel.NETWORK, "Receive: ", response.request().url(),
-                            " Cost time: ", time2 - time1, "ms. Headers: ", (Supplier<?>) () -> {
-                                final StringBuilder builder = new StringBuilder("[");
-                                response.headers().forEach(p -> builder.append(p.getFirst()).append(':').append(p.getSecond()).append(','));
-                                return builder.append(']').toString();
-                            });
+                    HLog.DefaultLogger.log(HLogLevel.NETWORK, "Received. Cost time: ", time2 - time1, "ms.");
                 return response;
             });
 
     public static class FrequencyControlInterceptor implements Interceptor {
         protected final int perSecond;
-        protected final int perMinute;
-
         protected final @NotNull AtomicInteger frequencyControlSecond = new AtomicInteger(0);
+        protected static final Executor threadPoolSecond = CompletableFuture.delayedExecutor(1, TimeUnit.SECONDS);
+
+        protected final int perMinute;
         protected final @NotNull AtomicInteger frequencyControlMinute = new AtomicInteger(0);
+        protected static final Executor threadPoolMinute = CompletableFuture.delayedExecutor(1, TimeUnit.MINUTES);
 
         public FrequencyControlInterceptor(final int perSecond, final int perMinute) {
             super();
@@ -108,22 +101,22 @@ public final class DriverNetworkHelper {
                 this.frequencyControlMinute.getAndIncrement();
             }
             final Response response = chain.proceed(chain.request());
-            WListServer.IOExecutors.scheduleJoin(() -> {
+            FrequencyControlInterceptor.threadPoolSecond.execute(() -> {
                 synchronized (this.frequencyControlSecond) {
                     if (this.frequencyControlSecond.getAndDecrement() > 1)
                         this.frequencyControlSecond.notify();
                     else
                         this.frequencyControlSecond.notifyAll();
                 }
-            }, 1, TimeUnit.SECONDS);
-            WListServer.IOExecutors.scheduleJoin(() -> {
+            });
+            FrequencyControlInterceptor.threadPoolMinute.execute(() -> {
                 synchronized (this.frequencyControlMinute) {
                     if (this.frequencyControlMinute.getAndDecrement() > 1)
                         this.frequencyControlMinute.notify();
                     else
                         this.frequencyControlMinute.notifyAll();
                 }
-            }, 1, TimeUnit.MINUTES);
+            });
             return response;
         }
 
