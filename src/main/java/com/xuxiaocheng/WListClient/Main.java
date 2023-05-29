@@ -52,7 +52,7 @@ public final class Main {
         vector = new BigInteger(bytes);
     }
 
-    static final int state = 0; static final String password = "123456";
+    static final int state = 4; static final String password = "123456";
     public static void main(final String[] args) throws IOException, InterruptedException, WrongStateException {
         Main.logger.log(HLogLevel.FINE, "Hello WList Client!");
         final Properties properties = new Properties(); {
@@ -95,8 +95,10 @@ public final class Main {
                     Main.logger.log(HLogLevel.FINE, info);
                 }
             }
-            final boolean success = OperateServerHelper.closeServer(client, token);
-            assert success;
+            if ((Main.state & 4) > 0) {
+                final boolean success = OperateServerHelper.closeServer(client, token);
+                assert success;
+            }
         } finally {
             client.stop();
         }

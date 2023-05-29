@@ -51,7 +51,7 @@ public class MessageClientCiphers extends MessageCiphers {
                 throw new IllegalFormatFlagsException("Header");
             final byte[] rsaModulus = ByteBufIOUtil.readByteArray(msg);
             final byte[] rsaExponent = ByteBufIOUtil.readByteArray(msg);
-            final byte[] aesKey = new byte[32 + 16];
+            final byte[] aesKey = new byte[128];
             HRandomHelper.DefaultSecureRandom.nextBytes(aesKey);
             try {
                 final Key rsaPublicKey = KeyFactory.getInstance("RSA").generatePublic(new RSAPublicKeySpec(
@@ -61,7 +61,7 @@ public class MessageClientCiphers extends MessageCiphers {
                 final AlgorithmParameterSpec vector = new IvParameterSpec(aesKey, 32, 16);
                 this.aesDecryptCipher.init(Cipher.DECRYPT_MODE, key, vector);
                 this.aesEncryptCipher.init(Cipher.ENCRYPT_MODE, key, vector);
-                final Cipher rsaEncryptCipher = Cipher.getInstance("RSA");
+                final Cipher rsaEncryptCipher = Cipher.getInstance("RSA/ECB/NoPadding");
                 rsaEncryptCipher.init(Cipher.ENCRYPT_MODE, rsaPublicKey);
                 final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
                 ByteBufIOUtil.writeByteArray(buffer, rsaEncryptCipher.doFinal(aesKey));
