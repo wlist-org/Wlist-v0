@@ -79,14 +79,13 @@ public final class Main {
             final String token = OperateUserHelper.login(client, "admin", Main.password);
             assert token != null;
             final Pair.ImmutablePair<Long, List<VisibleFileInformation>> list =
-                    OperateFileHelper.listFiles(client, token, new DrivePath("/123pan_136"), 20, 3, Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND);
+                    OperateFileHelper.listFiles(client, token, new DrivePath("/123pan/test"), 3, 0, Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND);
             assert list != null;
             HLog.DefaultLogger.log("", list);
-//            if (false)
-            {
+            if ((Main.state & 2) > 0) {
                 final byte[] content = "CS WList Tester-Client".getBytes(StandardCharsets.UTF_8);
-                final OptionalNullable<String> id = OperateFileHelper.requestUploadFile(client, token, new DrivePath("/123pan_136/test/t.txt"),
-                                content.length, MiscellaneousUtil.getMd5(content), Options.DuplicatePolicy.KEEP);
+                final OptionalNullable<String> id = OperateFileHelper.requestUploadFile(client, token, new DrivePath("/123pan/test/t.txt"),
+                                content.length, MiscellaneousUtil.getMd5(content), Options.DuplicatePolicy.ERROR);
                 assert id != null;
                 Main.logger.log(HLogLevel.FINE, id);
                 if (id.isPresent()) {

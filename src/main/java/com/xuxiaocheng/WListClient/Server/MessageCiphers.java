@@ -22,7 +22,8 @@ import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 public abstract class MessageCiphers extends MessageToMessageCodec<ByteBuf, ByteBuf> {
-    static final @NotNull String defaultHeader = "WList/Ciphers-Initializing";
+    static final @NotNull String defaultHeader = "WList/Ciphers/Initializing";
+    static final @NotNull String defaultTailor = "WList/Ciphers/Checking";
 
     public static final byte doAes = 1;
     public static final byte defaultDoAes = MessageCiphers.doAes;
