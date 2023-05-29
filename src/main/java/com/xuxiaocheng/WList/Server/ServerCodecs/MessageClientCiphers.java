@@ -1,19 +1,21 @@
 package com.xuxiaocheng.WList.Server.ServerCodecs;
 
+import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufInputStream;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelHandlerContext;
 import org.jetbrains.annotations.NotNull;
 
+import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
-import javax.crypto.CipherInputStream;
+import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
-import java.io.InputStream;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.Key;
@@ -27,57 +29,56 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MessageClientCiphers extends MessageCiphers {
-    protected final @NotNull AtomicBoolean uninitialized;
+    protected final @NotNull AtomicBoolean initializingStage;
 
-    public MessageClientCiphers(final int maxSize, final @NotNull AtomicBoolean uninitialized) throws NoSuchPaddingException, NoSuchAlgorithmException {
+    public MessageClientCiphers(final int maxSize, final @NotNull AtomicBoolean initializingStage) throws NoSuchPaddingException, NoSuchAlgorithmException {
         super(maxSize);
-        this.uninitialized = uninitialized;
-        assert this.uninitialized.get();
+        this.initializingStage = initializingStage;
+        assert this.initializingStage.get();
     }
 
     @Override
     protected void encode(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg, final @NotNull List<Object> out) throws IOException {
-        if (this.uninitialized.get())
+        if (this.initializingStage.get())
             throw new IllegalStateException("Uninitialized. Please wait.");
         super.encode(ctx, msg, out);
     }
 
     @Override
     protected void decode(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg, final @NotNull List<Object> out) throws IOException {
-        if (this.uninitialized.get()) {
+        if (this.initializingStage.get()) {
             if (!MessageCiphers.defaultHeader.equals(ByteBufIOUtil.readUTF(msg)))
                 throw new IllegalFormatFlagsException("Header");
             final byte[] rsaModulus = ByteBufIOUtil.readByteArray(msg);
             final byte[] rsaExponent = ByteBufIOUtil.readByteArray(msg);
-            final byte[] aesKey = new byte[32];
-            final byte[] aesVector = new byte[16];
+            final byte[] aesKey = new byte[32 + 16];
+            HRandomHelper.DefaultSecureRandom.nextBytes(aesKey);
             try {
-                final Key publicKey = KeyFactory.getInstance("RSA").generatePublic(new RSAPublicKeySpec(
+                final Key rsaPublicKey = KeyFactory.getInstance("RSA").generatePublic(new RSAPublicKeySpec(
                         new BigInteger(rsaModulus), new BigInteger(rsaExponent)
                 ));
-                final Cipher rsaDecryptCipher = Cipher.getInstance("RSA");
-                rsaDecryptCipher.init(Cipher.DECRYPT_MODE, publicKey);
-                try (final InputStream stream = new CipherInputStream(new ByteBufInputStream(msg), rsaDecryptCipher)) {
-                    final int keyLen = stream.read(aesKey);
-                    final int vectorLen = stream.read(aesVector);
-                    if (keyLen != 32 || vectorLen != 16)
-                        throw new IllegalFormatFlagsException("AES key or vector");
-                }
-                assert !msg.isReadable();
-                final Key key = new SecretKeySpec(aesKey, "AES");
-                final AlgorithmParameterSpec vector = new IvParameterSpec(aesVector);
+                final Key key = new SecretKeySpec(aesKey, 0, 32, "AES");
+                final AlgorithmParameterSpec vector = new IvParameterSpec(aesKey, 32, 16);
                 this.aesDecryptCipher.init(Cipher.DECRYPT_MODE, key, vector);
                 this.aesEncryptCipher.init(Cipher.ENCRYPT_MODE, key, vector);
+                final Cipher rsaEncryptCipher = Cipher.getInstance("RSA");
+                rsaEncryptCipher.init(Cipher.ENCRYPT_MODE, rsaPublicKey);
+                final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
+                ByteBufIOUtil.writeByteArray(buffer, rsaEncryptCipher.doFinal(aesKey));
+                ByteBufIOUtil.writeByteArray(buffer, this.aesEncryptCipher.doFinal(
+                        MessageCiphers.defaultTailor.getBytes(StandardCharsets.UTF_8)));
+                ctx.writeAndFlush(buffer);
             } catch (final InvalidKeyException | InvalidKeySpecException |
                            InvalidAlgorithmParameterException exception) {
                 throw new IllegalStateException(exception);
-            } catch (final NoSuchAlgorithmException | NoSuchPaddingException exception) {
+            } catch (final NoSuchAlgorithmException | NoSuchPaddingException |
+                           IllegalBlockSizeException | BadPaddingException exception) {
                 throw new RuntimeException("Unreachable!", exception);
             }
-            synchronized (this.uninitialized) {
-                this.uninitialized.set(false);
+            synchronized (this.initializingStage) {
+                this.initializingStage.set(false);
                 //noinspection NotifyWithoutCorrespondingWait
-                this.uninitialized.notifyAll();
+                this.initializingStage.notifyAll();
             }
             return;
         }
@@ -88,7 +89,7 @@ public class MessageClientCiphers extends MessageCiphers {
     public @NotNull String toString() {
         return "MessageServerCiphers{" +
                 "maxSize=" + this.maxSize +
-                ", uninitialized=" + this.uninitialized +
+                ", initializingStage=" + this.initializingStage +
                 ", super=" + super.toString() +
                 '}';
     }

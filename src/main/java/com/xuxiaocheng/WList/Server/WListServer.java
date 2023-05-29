@@ -227,9 +227,10 @@ public class WListServer {
                     ServerChannelHandler.directlyWriteMessage(channel, Operation.State.Unsupported, "Unsupported operation.");
                     return;
                 }
+                final MessageProto res = handler.handle(msg);
                 if (type != Operation.Type.UploadFile && msg.readableBytes() != 0)
                     WListServer.logger.log(HLogLevel.MISTAKE, "Unexpected discarded bytes: ", channel.id().asLongText(), " len: ", msg.readableBytes());
-                ServerChannelHandler.write(channel, handler.handle(msg));
+                ServerChannelHandler.write(channel, res);
             } catch (final IOException exception) {
                 ServerChannelHandler.directlyWriteMessage(channel, Operation.State.FormatError, exception.getMessage());
             } catch (final ServerException | JSONException exception) {

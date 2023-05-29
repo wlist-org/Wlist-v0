@@ -15,9 +15,6 @@ public final class WListTest {
     }
 
     public static void main(final String[] args) throws Exception {
-        GlobalConfiguration.init(null);
-        DriverManager.add("123pan", WebDriversType.Driver_123Pan);
-        DriverManager.get("123pan").buildIndex();
 
         WListServer.CodecExecutors.shutdownGracefully().syncUninterruptibly();
         WListServer.ServerExecutors.shutdownGracefully().syncUninterruptibly();

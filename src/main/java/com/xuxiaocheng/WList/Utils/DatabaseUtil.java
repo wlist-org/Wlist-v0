@@ -26,6 +26,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
+// TODO SQLCipher
 public class DatabaseUtil {
     private static @Nullable DatabaseUtil Instance;
 
