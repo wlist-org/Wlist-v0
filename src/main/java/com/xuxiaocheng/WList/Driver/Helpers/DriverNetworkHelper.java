@@ -37,7 +37,7 @@ public final class DriverNetworkHelper {
         super();
     }
 
-    public static final @NotNull String defaultAgent = "WList/0.1.3";
+    public static final @NotNull String defaultAgent = "WList/0.1.4";
     public static final OkHttpClient.@NotNull Builder httpClientBuilder = new OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)

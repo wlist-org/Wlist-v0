@@ -241,11 +241,11 @@ public class WListServer {
         @Override
         public void exceptionCaught(final @NotNull ChannelHandlerContext ctx, final Throwable cause) {
             if (cause instanceof CodecException) {
-                WListServer.logger.log(HLogLevel.MISTAKE, "Codec Exception: ", ctx.channel().id().asLongText(), cause.getMessage());
+                WListServer.logger.log(HLogLevel.MISTAKE, "Codec Exception at ", ctx.channel().id().asLongText(), ": ", cause.getMessage());
                 ServerChannelHandler.directlyWriteMessage(ctx.channel(), Operation.State.FormatError, "Codec");
                 return;
             }
-            WListServer.logger.log(HLogLevel.WARN, "Exception: ", ctx.channel().id().asLongText(), cause);
+            WListServer.logger.log(HLogLevel.WARN, "Exception at ", ctx.channel().id().asLongText(), ": ", cause);
             ServerChannelHandler.directlyWriteMessage(ctx.channel(), Operation.State.ServerError, null);
         }
 

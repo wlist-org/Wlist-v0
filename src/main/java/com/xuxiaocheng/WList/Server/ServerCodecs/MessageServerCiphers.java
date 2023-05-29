@@ -30,7 +30,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class MessageServerCiphers extends MessageCiphers {
-    protected final @NotNull AtomicReference<@Nullable Cipher> initializingStage = new AtomicReference<>(Cipher.getInstance("RSA"));
+    protected final @NotNull AtomicReference<@Nullable Cipher> initializingStage =
+            new AtomicReference<>(Cipher.getInstance("RSA/ECB/NoPadding"));
 
     public MessageServerCiphers(final int maxSize) throws NoSuchPaddingException, NoSuchAlgorithmException {
         super(maxSize);
