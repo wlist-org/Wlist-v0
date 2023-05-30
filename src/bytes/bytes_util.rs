@@ -1,42 +1,6 @@
 use std::io;
 use std::io::{ErrorKind, Read, Write};
 
-pub struct VecU8Reader {
-    bytes: Vec<u8>,
-    index: usize
-}
-
-impl VecU8Reader {
-    pub fn new(bytes: Vec<u8>) -> VecU8Reader {
-        VecU8Reader { bytes, index: 0 }
-    }
-
-    pub fn readable_bytes(&self) -> usize {
-        self.bytes.len() - self.index
-    }
-
-    pub fn left_bytes_slice<'a>(mut self) -> &'a [u8] {
-        &self.bytes[self.index..]
-    }
-}
-
-impl Read for VecU8Reader {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        if self.bytes.len() < self.index + buf.len() {
-            return Err(io::Error::new(ErrorKind::UnexpectedEof,
-                                      format!("Out of index. Total: {}, Index: {}, Require: {}",
-                                              self.bytes.len(), self.index, buf.len())));
-        }
-        let start = self.index;
-        for i in 0..buf.len() {
-            buf[i] = self.bytes[self.index];
-            self.index += 1;
-        }
-        Ok(self.index - start)
-    }
-}
-
-
 macro_rules! primitive_util {
     ($primitive: ident, $read: ident, $read_be: ident, $write: ident, $write_be: ident, $length: literal) => {
         pub fn $read(source: &mut impl Read) -> Result<$primitive, io::Error> {
@@ -50,10 +14,10 @@ macro_rules! primitive_util {
             Ok($primitive::from_be_bytes(bytes))
         }
         pub fn $write(target: &mut impl Write, message: $primitive) -> Result<usize, io::Error> {
-            target.write(&mut $primitive::to_le_bytes(message))
+            target.write(&$primitive::to_le_bytes(message))
         }
         pub fn $write_be(target: &mut impl Write, message: $primitive) -> Result<usize, io::Error> {
-            target.write(&mut $primitive::to_be_bytes(message))
+            target.write(&$primitive::to_be_bytes(message))
         }
     };
 }
@@ -158,8 +122,7 @@ variable_len_2_util!(u128, read_variable2_u128, write_variable2_u128, 128, "2 u1
 
 pub fn read_u8_vec(source: &mut impl Read) -> Result<Vec<u8>, io::Error> {
     let length = read_variable_u32(source)? as usize;
-    let mut bytes = Vec::with_capacity(length);
-    bytes.resize(length, 0);
+    let mut bytes = vec![0; length];
     source.read_exact(bytes.as_mut_slice())?;
     Ok(bytes)
 }
@@ -170,7 +133,7 @@ pub fn write_u8_vec(target: &mut impl Write, message: Vec<u8>) -> Result<usize, 
 }
 pub fn write_u8_array(target: &mut impl Write, message: &[u8]) -> Result<usize, io::Error> {
     let mut size = write_variable_u32(target, message.len() as u32)?;
-    size += target.write(&message)?;
+    size += target.write(message)?;
     Ok(size)
 }
 
