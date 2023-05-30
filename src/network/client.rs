@@ -12,7 +12,7 @@ use rsa::rand_core::{OsRng, RngCore};
 
 use crate::bytes::bytes_util::{read_string, read_u8_vec, write_u8_array};
 use crate::bytes::vec_u8_reader::VecU8Reader;
-use crate::handlers::codecs::{cipher_encode, length_based_decode, length_based_encode};
+use crate::network::codecs::{cipher_decode, cipher_encode, length_based_decode, length_based_encode};
 
 pub struct WListClient {
     stream: BufReader<TcpStream>,
@@ -20,8 +20,8 @@ pub struct WListClient {
     vector: GenericArray<u8, U16>,
 }
 
-pub static DEFAULT_HEADER: &str = "WList/Ciphers/Initializing";
-pub static DEFAULT_TAILOR: &str = "Checking";
+static DEFAULT_HEADER: &str = "WList/Ciphers/Initializing";
+static DEFAULT_TAILOR: &str = "Checking";
 
 impl WListClient {
     pub fn new(address: &String) -> Result<WListClient, io::Error> {
@@ -63,8 +63,7 @@ impl WListClient {
         let mut sender = Vec::new();
         cipher_encode(&mut sender, self.key, self.vector, message)?;
         length_based_encode(self.stream.get_mut(), &sender)?;
-        let mut receiver = length_based_decode(self.stream.get_mut())?;
-        // todo!(cipher_decode);
-        Ok(receiver)
+        let mut receiver = VecU8Reader::new(length_based_decode(self.stream.get_mut())?);
+        cipher_decode(&mut receiver, self.key, self.vector)
     }
 }
