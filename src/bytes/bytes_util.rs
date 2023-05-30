@@ -123,12 +123,12 @@ variable_len_2_util!(u128, read_variable2_u128, write_variable2_u128, 128, "2 u1
 pub fn read_u8_vec(source: &mut impl Read) -> Result<Vec<u8>, io::Error> {
     let length = read_variable_u32(source)? as usize;
     let mut bytes = vec![0; length];
-    source.read_exact(bytes.as_mut_slice())?;
+    source.read_exact(&mut bytes)?;
     Ok(bytes)
 }
-pub fn write_u8_vec(target: &mut impl Write, message: Vec<u8>) -> Result<usize, io::Error> {
+pub fn write_u8_vec(target: &mut impl Write, message: &Vec<u8>) -> Result<usize, io::Error> {
     let mut size = write_variable_u32(target, message.len() as u32)?;
-    size += target.write(message.as_slice())?;
+    size += target.write(message)?;
     Ok(size)
 }
 pub fn write_u8_array(target: &mut impl Write, message: &[u8]) -> Result<usize, io::Error> {

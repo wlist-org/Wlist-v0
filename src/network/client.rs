@@ -31,8 +31,8 @@ impl WListClient {
         if header != DEFAULT_HEADER {
             return Err(io::Error::new(ErrorKind::InvalidData, format!("Invalid header: {}", header)));
         }
-        let rsa_modulus = BigUint::from_bytes_be(read_u8_vec(&mut receiver)?.as_slice());
-        let rsa_exponent = BigUint::from_bytes_be(read_u8_vec(&mut receiver)?.as_slice());
+        let rsa_modulus = BigUint::from_bytes_be(&read_u8_vec(&mut receiver)?);
+        let rsa_exponent = BigUint::from_bytes_be(&read_u8_vec(&mut receiver)?);
         let rsa_pub_key = match RsaPublicKey::new(rsa_modulus, rsa_exponent) {
             Ok(k) => k,
             Err(e) => return Err(io::Error::new(ErrorKind::InvalidData, format!("Invalid rsa public key. {}", e))),
@@ -41,29 +41,31 @@ impl WListClient {
         let mut sender = Vec::new();
         let mut aes_key = [0; 48];
         OsRng.try_fill_bytes(&mut aes_key)?;
-        let encrypted = match rsa_pub_key.encrypt(&mut OsRng::default(), Pkcs1v15Encrypt/*NoPadding*/, &aes_key) {
+        let rsa_encrypted = match rsa_pub_key.encrypt(&mut OsRng::default(), Pkcs1v15Encrypt/*NoPadding*/, &aes_key) {
             Ok(v) => v,
             Err(e) => return Err(io::Error::new(ErrorKind::InvalidData, format!("Failed to encrypt aes keys. {}", e)))
         };
-        assert_eq!(encrypted.len(), 128);
-        write_u8_array(&mut sender, &encrypted)?;
+        assert_eq!(rsa_encrypted.len(), 128);
+        write_u8_array(&mut sender, &rsa_encrypted)?;
         let key = Key::<Encryptor<Aes256>>::from_slice(&aes_key[0..32]);
         let vector = Iv::<Encryptor<Aes256>>::from_slice(&aes_key[32..48]);
         let encipher = Encryptor::<Aes256>::new(key, vector);
         let mut buffer = Vec::new();
         buffer.extend_from_slice(DEFAULT_TAILOR.as_bytes());
         buffer.resize(DEFAULT_TAILOR.len() + 8, 0);
-        let k = encipher.encrypt_padded_mut::<Pkcs7>(buffer.as_mut_slice(), DEFAULT_TAILOR.len()).unwrap();
-        write_u8_array(&mut sender, k)?;
+        let aes_encrypted = match encipher.encrypt_padded_mut::<Pkcs7>(&mut buffer, DEFAULT_TAILOR.len()) {
+            Ok(b) => b,
+            Err(e) => return Err(io::Error::new(ErrorKind::InvalidData, format!("Failed to encrypt tailor. {}", e))),
+        };
+        write_u8_array(&mut sender, aes_encrypted)?;
         length_based_encode(client.get_mut(), &sender)?;
         Ok(WListClient { stream: client, key: GenericArray::clone_from_slice(key), vector: GenericArray::clone_from_slice(vector) })
     }
 
-    pub fn send(&mut self, message: Vec<u8>) -> Result<Vec<u8>, io::Error> {
-        let mut sender = Vec::new();
-        cipher_encode(&mut sender, self.key, self.vector, message)?;
+    pub fn send(&mut self, message: &Vec<u8>) -> Result<Vec<u8>, io::Error> {
+        let sender = cipher_encode(&message, self.key, self.vector)?;
         length_based_encode(self.stream.get_mut(), &sender)?;
-        let mut receiver = VecU8Reader::new(length_based_decode(self.stream.get_mut())?);
+        let mut receiver = length_based_decode(self.stream.get_mut())?;
         cipher_decode(&mut receiver, self.key, self.vector)
     }
 }

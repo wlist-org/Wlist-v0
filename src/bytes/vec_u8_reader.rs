@@ -11,6 +11,10 @@ impl VecU8Reader {
         VecU8Reader { bytes, index: 0 }
     }
 
+    pub fn index(&self) -> usize {
+        self.index
+    }
+
     pub fn readable_bytes(&self) -> usize {
         self.bytes.len() - self.index
     }

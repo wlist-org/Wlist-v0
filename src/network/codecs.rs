@@ -7,15 +7,11 @@ use aes::cipher::consts::{U16, U32};
 use aes::cipher::generic_array::GenericArray;
 use cbc::{Decryptor, Encryptor};
 use flate2::Compression;
-use flate2::read::GzDecoder;
-use flate2::write::GzEncoder;
+use flate2::write::{GzDecoder, GzEncoder};
 
 use crate::bytes::bytes_util;
 use crate::bytes::vec_u8_reader::VecU8Reader;
-use crate::network::{DO_AES, DO_GZIP};
-
-pub static FILE_TRANSFER_BUFFER_SIZE: usize = 4 << 20;
-pub static MAX_SIZE_PER_PACKET: usize = (64 << 10) + FILE_TRANSFER_BUFFER_SIZE;
+use crate::network::{DO_AES, DO_GZIP, MAX_SIZE_PER_PACKET};
 
 pub fn length_based_encode(target: &mut impl Write, message: &Vec<u8>) -> Result<usize, io::Error> {
     if message.len() > MAX_SIZE_PER_PACKET {
@@ -32,59 +28,74 @@ pub fn length_based_decode(source: &mut impl Read) -> Result<Vec<u8>, io::Error>
         return Err(io::Error::new(ErrorKind::InvalidInput, "Message is too long when decoding."));
     }
     let mut message = vec![0; length];
-    source.read_exact(message.as_mut_slice())?;
+    source.read_exact(&mut message)?;
     Ok(message)
 }
 
-pub fn cipher_encode(target: &mut impl Write, key: GenericArray<u8, U32>, vector: GenericArray<u8, U16>, mut message: Vec<u8>) -> Result<(), io::Error> {
-    if message.len() <= 1 {
+pub fn cipher_encode(source: &Vec<u8>, key: GenericArray<u8, U32>, vector: GenericArray<u8, U16>) -> Result<Vec<u8>, io::Error> {
+    if source.len() <= 1 {
         return Err(io::Error::new(ErrorKind::UnexpectedEof, "Need cipher flags and message."));
     }
-    let flags = message[0];
+    let flags = source[0];
     let aes = flags & DO_AES > 0;
     let gzip = flags & DO_GZIP > 0;
-    bytes_util::write_u8(target, flags)?;
-    let mut len = message.len() - 1;
-    bytes_util::write_variable_u32(target, len as u32)?;
+    let mut message = Vec::new();
+    bytes_util::write_u8(&mut message, flags)?;
+    let len = source.len() - 1;
+    bytes_util::write_variable_u32(&mut message, len as u32)?;
+    let mut message_buffer = &source[1..];
+    let mut aes_buffer = Vec::new();
     if aes {
+        aes_buffer.resize(message_buffer.len() + 32, 0);
         let cipher = Encryptor::<Aes256>::new(&key, &vector);
-        message.extend_from_slice(&[0; 32]);
-        len = match cipher.encrypt_padded_mut::<Pkcs7>(&mut message[1..], len) {
-            Ok(b) => b.len(),
+        message_buffer = match cipher.encrypt_padded_b2b_mut::<Pkcs7>(message_buffer, &mut aes_buffer) {
+            Ok(b) => b,
             Err(e) => return Err(io::Error::new(ErrorKind::InvalidData, format!("Failed to encrypt. {}", e))),
         };
     }
+    let mut gzip_buffer = Vec::new();
     if gzip {
-        let mut writer = GzEncoder::new(target, Compression::default());
-        writer.write_all(&message[1..len + 1])?;
-        writer.try_finish()?;
-        return Ok(());
+        let mut writer = GzEncoder::new(&mut gzip_buffer, Compression::default());
+        writer.write_all(message_buffer)?;
+        message_buffer = writer.finish()?;
     }
-    let _ = target.write(&message[1..len + 1])?;
-    Ok(())
+    message.write_all(message_buffer)?;
+    Ok(message)
 }
 
-pub fn cipher_decode(source: &mut impl Read, key: GenericArray<u8, U32>, vector: GenericArray<u8, U16>) -> Result<Vec<u8>, io::Error> {
-    let flags = bytes_util::read_u8(source)?;
-    let mut len = bytes_util::read_variable_u32(source)? as usize;
-    if len <= 1 {
-        return Err(io::Error::new(ErrorKind::UnexpectedEof, "Need message."));
+pub fn cipher_decode(source: &Vec<u8>, key: GenericArray<u8, U32>, vector: GenericArray<u8, U16>) -> Result<Vec<u8>, io::Error> {
+    if source.len() < 7 {
+        return Err(io::Error::new(ErrorKind::UnexpectedEof, "Too short message."));
     }
+    let flags = source[0];
     let aes = flags & DO_AES > 0;
     let gzip = flags & DO_GZIP > 0;
-    let mut message = vec![0; len];
+    let mut len = Vec::with_capacity(6);
+    len.write_all(&source[1..7])?;
+    let mut len_reader = VecU8Reader::new(len);
+    let len = bytes_util::read_variable_u32(&mut len_reader)? as usize;
+    if len <= 1 {
+        return Err(io::Error::new(ErrorKind::InvalidData, "Need message."));
+    }
+    let start = len_reader.index() + 1;
+    let mut message = Vec::new();
+    bytes_util::write_u8(&mut message, flags)?;
+    let mut message_buffer = &source[start..];
+    let mut gzip_buffer = Vec::new();
+    if gzip {
+        let mut writer = GzDecoder::new(&mut gzip_buffer);
+        writer.write_all(message_buffer)?;
+        message_buffer = writer.finish()?;
+    }
+    let mut aes_buffer = Vec::new();
     if aes {
+        aes_buffer.resize(message_buffer.len(), 0);
         let cipher = Decryptor::<Aes256>::new(&key, &vector);
-        len = match cipher.decrypt_padded_mut::<Pkcs7>(message.as_mut_slice()) {
-            Ok(b) => b.len(),
+        message_buffer = match cipher.decrypt_padded_b2b_mut::<Pkcs7>(message_buffer, &mut aes_buffer) {
+            Ok(b) => b,
             Err(e) => return Err(io::Error::new(ErrorKind::InvalidData, format!("Failed to decrypt. {}", e))),
         };
     }
-    if gzip {
-        let mut reader = GzDecoder::new(VecU8Reader::new(message));
-        let mut buffer = Vec::new();
-        reader.read_to_end(&mut buffer)?;
-        return Ok(buffer);
-    }
+    message.write_all(message_buffer)?;
     Ok(message)
 }
