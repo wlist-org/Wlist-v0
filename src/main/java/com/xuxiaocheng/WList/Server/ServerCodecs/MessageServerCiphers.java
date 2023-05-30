@@ -67,12 +67,11 @@ public class MessageServerCiphers extends MessageCiphers {
         if (rsaDecryptCipher != null) {
             try {
                 final byte[] aesKey = rsaDecryptCipher.doFinal(ByteBufIOUtil.readByteArray(msg));
-                final Key key = new SecretKeySpec(aesKey, 0, 32, "AES");
-                final AlgorithmParameterSpec vector = new IvParameterSpec(aesKey, 32, 16);
+                final Key key = new SecretKeySpec(aesKey, 80, 32, "AES");
+                final AlgorithmParameterSpec vector = new IvParameterSpec(aesKey, 112, 16);
                 this.aesDecryptCipher.init(Cipher.DECRYPT_MODE, key, vector);
                 this.aesEncryptCipher.init(Cipher.ENCRYPT_MODE, key, vector);
-                if (!MessageCiphers.defaultTailor.equals(new String(
-                        this.aesDecryptCipher.doFinal(ByteBufIOUtil.readByteArray(msg)), StandardCharsets.UTF_8)))
+                if (!MessageCiphers.defaultTailor.equals(new String(this.aesDecryptCipher.doFinal(ByteBufIOUtil.readByteArray(msg)), StandardCharsets.UTF_8)))
                     throw new IllegalStateException("Invalid AES key.");
             } catch (final IllegalBlockSizeException | BadPaddingException |
                            InvalidKeyException | InvalidAlgorithmParameterException exception) {

@@ -157,6 +157,7 @@ public class WListServer {
 
         @Override
         public void channelActive(final @NotNull ChannelHandlerContext ctx) {
+            // TODO show ip.
             WListServer.logger.log(HLogLevel.DEBUG, "Active: ", ctx.channel().id().asLongText());
         }
 
