@@ -1,4 +1,4 @@
-use super::client::DEFAULT_CIPHER;
+use crate::handlers::codec::DEFAULT_CIPHER;
 
 pub fn login(username: String, password: String) -> Vec<u8> {
     let mut client = Vec::new();

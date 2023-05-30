@@ -10,6 +10,14 @@ impl VecU8Reader {
     pub fn new(bytes: Vec<u8>) -> VecU8Reader {
         VecU8Reader { bytes, index: 0 }
     }
+
+    pub fn readable_bytes(&self) -> usize {
+        self.bytes.len() - self.index
+    }
+
+    pub fn left_bytes_slice<'a>(mut self) -> &'a [u8] {
+        &self.bytes[self.index..]
+    }
 }
 
 impl Read for VecU8Reader {
@@ -17,7 +25,7 @@ impl Read for VecU8Reader {
         if self.bytes.len() < self.index + buf.len() {
             return Err(io::Error::new(ErrorKind::UnexpectedEof,
                                       format!("Out of index. Total: {}, Index: {}, Require: {}",
-                                      self.bytes.len(), self.index, buf.len())));
+                                              self.bytes.len(), self.index, buf.len())));
         }
         let start = self.index;
         for i in 0..buf.len() {
@@ -146,6 +154,7 @@ macro_rules! variable_len_2_util {
 variable_len_2_util!(u32, read_variable2_u32, write_variable2_u32, 32, "2 u32");
 variable_len_2_util!(u64, read_variable2_u64, write_variable2_u64, 64, "2 u64");
 variable_len_2_util!(u128, read_variable2_u128, write_variable2_u128, 128, "2 u128");
+
 
 pub fn read_u8_vec(source: &mut impl Read) -> Result<Vec<u8>, io::Error> {
     let length = read_variable_u32(source)? as usize;
