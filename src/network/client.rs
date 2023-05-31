@@ -61,11 +61,15 @@ impl WListClient {
         length_based_encode(client.get_mut(), &sender)?;
         Ok(WListClient { stream: client, key: GenericArray::clone_from_slice(key), vector: GenericArray::clone_from_slice(vector) })
     }
+    
+    pub fn no_send(&mut self) -> Result<Vec<u8>, io::Error> {
+        let receiver = length_based_decode(self.stream.get_mut())?;
+        cipher_decode(&receiver, self.key, self.vector)
+    }
 
     pub fn send(&mut self, message: &Vec<u8>) -> Result<Vec<u8>, io::Error> {
-        let sender = cipher_encode(&message, self.key, self.vector)?;
+        let sender = cipher_encode(message, self.key, self.vector)?;
         length_based_encode(self.stream.get_mut(), &sender)?;
-        let mut receiver = length_based_decode(self.stream.get_mut())?;
-        cipher_decode(&mut receiver, self.key, self.vector)
+        self.no_send()
     }
 }
