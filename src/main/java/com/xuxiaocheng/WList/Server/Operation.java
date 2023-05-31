@@ -1,15 +1,10 @@
 package com.xuxiaocheng.WList.Server;
 
-import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.JSONException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Collection;
-import java.util.Objects;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.stream.Collectors;
 
 public final class Operation {
     private Operation() {
@@ -44,15 +39,23 @@ public final class Operation {
     }
 
     public enum Permission {
-        Undefined,
-        ServerOperate,
-        Broadcast,
-        UsersList,
-        UsersOperate,
-        FilesList, // TODO permissions for each file
-        FileDownload,
-        FileUpload,
-        FileDelete,
+        Undefined(0),
+        ServerOperate(1),
+        Broadcast(1 << 1),
+        UsersList(1 << 2),
+        UsersOperate(1 << 3),
+        FilesList(1 << 4), // TODO permissions for each file
+        FileDownload(1 << 5),
+        FileUpload(1 << 6),
+        FileDelete(1 << 7);
+        private final long index;
+        Permission(final long index) {
+            this.index = index;
+        }
+        @Override
+        public @NotNull String toString() {
+            return super.toString() + '(' + this.index + ')';
+        }
     }
 
     public enum State {
@@ -66,39 +69,46 @@ public final class Operation {
         FormatError,
     }
 
-    public static @Nullable Type valueOfType(final @NotNull String type) {
+    public static @NotNull Type valueOfType(final @NotNull String type) {
         try {
             return Type.valueOf(type);
         } catch (final IllegalArgumentException exception) {
-            return null;
+            return Type.Undefined;
         }
     }
 
-    public static @Nullable Permission valueOfPermission(final @NotNull String permission) {
+    public static @NotNull Permission valueOfPermission(final @NotNull String permission) {
         try {
             return Permission.valueOf(permission);
         } catch (final IllegalArgumentException exception) {
-            return null;
+            return Permission.Undefined;
         }
     }
 
-    public static @Nullable State valueOfState(final @NotNull String state) {
+    public static @NotNull State valueOfState(final @NotNull String state) {
         try {
             return State.valueOf(state);
         } catch (final IllegalArgumentException exception) {
-            return null;
+            return State.Undefined;
         }
     }
 
-    // TODO: Using binary bits to compress.
-    public static @NotNull String dumpPermissions(final @NotNull Collection<@NotNull Permission> permissions) {
-        return JSON.toJSONString(permissions.stream().map(Enum::name).collect(Collectors.toCollection(TreeSet::new)));
+    public static @NotNull String dumpPermissions(final @NotNull Iterable<@NotNull Permission> permissions) {
+        long p = 0;
+        for (final Permission permission: permissions)
+            p |= permission.index;
+        return Long.toString(p, 36);
     }
 
     public static @Nullable SortedSet<@NotNull Permission> parsePermissions(final @NotNull String permissions) {
         try {
-            return new TreeSet<>(JSON.parseArray(permissions).stream().map(Object::toString).map(Operation::valueOfPermission).filter(Objects::nonNull).toList());
-        } catch (final JSONException exception) {
+            final long p = Long.valueOf(permissions, 36).longValue();
+            final SortedSet<Permission> permissionsSet = new TreeSet<>();
+            for (final Permission permission: Permission.values())
+                if ((p & permission.index) > 0)
+                    permissionsSet.add(permission);
+            return permissionsSet;
+        } catch (final NumberFormatException exception) {
             return null;
         }
     }

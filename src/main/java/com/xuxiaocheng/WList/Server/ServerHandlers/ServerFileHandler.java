@@ -242,6 +242,7 @@ public final class ServerFileHandler {
             if (supplier == null)
                 return ServerHandler.DataError;
             buffer.retain();
+            buffer.readerIndex(buffer.writerIndex());
             final FileSqlInformation file = supplier.get();
             return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
                 ByteBufIOUtil.writeBoolean(buf, file == null);

@@ -157,13 +157,12 @@ public class WListServer {
 
         @Override
         public void channelActive(final @NotNull ChannelHandlerContext ctx) {
-            // TODO show ip.
-            WListServer.logger.log(HLogLevel.DEBUG, "Active: ", ctx.channel().id().asLongText());
+            WListServer.logger.log(HLogLevel.DEBUG, "Active: ", ctx.channel().id().asLongText(), " (", ctx.channel().remoteAddress(), ')');
         }
 
         @Override
         public void channelInactive(final @NotNull ChannelHandlerContext ctx) {
-            WListServer.logger.log(HLogLevel.DEBUG, "Inactive: ", ctx.channel().id().asLongText());
+            WListServer.logger.log(HLogLevel.DEBUG, "Inactive: ", ctx.channel().id().asLongText(), " (", ctx.channel().remoteAddress(), ')');
         }
 
         protected static void write(final @NotNull Channel channel, final @NotNull MessageProto message) throws IOException {
@@ -193,11 +192,8 @@ public class WListServer {
                     }
                     return user;
                 });
-                if (type == null || type == Operation.Type.Undefined) {
-                    ServerChannelHandler.directlyWriteMessage(channel, Operation.State.Unsupported, "Undefined operation!");
-                    return;
-                }
                 final ServerHandler handler = switch (type) {
+                    case Undefined -> b -> ServerHandler.Undefined;
                     case Broadcast -> ServerStateHandler.doBroadcast;
                     case SetBroadcastMode -> b -> ServerStateHandler.doSetBroadcastMode(b, WListServer.getInstance().channelGroup, channel);
                     case CloseServer -> ServerStateHandler.doCloseServer;
@@ -222,14 +218,9 @@ public class WListServer {
                     case CancelUploadFile -> ServerFileHandler.doCancelUploadFile;
                     case CopyFile -> ServerFileHandler.doCopyFile;
                     case MoveFile -> ServerFileHandler.doMoveFile;
-                    default -> null;
                 };
-                if (handler == null) {
-                    ServerChannelHandler.directlyWriteMessage(channel, Operation.State.Unsupported, "Unsupported operation.");
-                    return;
-                }
                 final MessageProto res = handler.handle(msg);
-                if (type != Operation.Type.UploadFile && msg.readableBytes() != 0)
+                if (msg.readableBytes() != 0)
                     WListServer.logger.log(HLogLevel.MISTAKE, "Unexpected discarded bytes: ", channel.id().asLongText(), " len: ", msg.readableBytes());
                 ServerChannelHandler.write(channel, res);
             } catch (final IOException exception) {

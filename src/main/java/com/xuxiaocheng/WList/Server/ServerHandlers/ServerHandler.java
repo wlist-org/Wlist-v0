@@ -17,6 +17,7 @@ public interface ServerHandler {
 
     byte defaultCipher = MessageCiphers.doAes | MessageCiphers.doGZip;
 
+    @NotNull MessageProto Undefined = ServerHandler.composeMessage(Operation.State.Unsupported, "Undefined operation!");
     @NotNull MessageProto DataError = ServerHandler.composeMessage(Operation.State.DataError, null);
     @NotNull MessageProto Success = ServerHandler.composeMessage(Operation.State.Success, null);
     @NotNull MessageProto WrongParameters = ServerHandler.composeMessage(Operation.State.DataError, "Parameters");

@@ -90,6 +90,7 @@ public abstract class MessageCiphers extends MessageToMessageCodec<ByteBuf, Byte
         if (gzip)
             is = new GZIPInputStream(is);
         OutputStream os = new ByteBufOutputStream(buf);
+        // TODO: Random aes vector.
         if (aes)
             os = new CipherOutputStream(os, this.aesDecryptCipher);
         try (final InputStream inputStream = is; final OutputStream outputStream = os) {
