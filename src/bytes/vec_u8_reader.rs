@@ -18,12 +18,6 @@ impl VecU8Reader {
     pub fn readable_bytes(&self) -> usize {
         self.bytes.len() - self.index
     }
-
-    pub fn transfer_all(&mut self, target: &mut impl Write) -> Result<usize, io::Error> {
-        let size = target.write(&self.bytes[self.index..])?;
-        self.index += size;
-        Ok(size)
-    }
 }
 
 impl Read for VecU8Reader {

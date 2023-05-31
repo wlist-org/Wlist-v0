@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 
 pub enum Permission {
@@ -50,3 +51,34 @@ impl From<&String> for Permission {
     }
 }
 
+impl From<&Permission> for u64 {
+    fn from(value: &Permission) -> Self {
+        match value {
+            Permission::Undefined => 0,
+            Permission::ServerOperate => 1 << 0,
+            Permission::Broadcast => 1 << 1,
+            Permission::UsersList => 1 << 2,
+            Permission::UsersOperate => 1 << 3,
+            Permission::FilesList => 1 << 4,
+            Permission::FileDownload => 1 << 5,
+            Permission::FileUpload => 1 << 6,
+            Permission::FileDelete => 1 << 7,
+        }
+    }
+}
+
+impl From<u64> for Permission {
+    fn from(value: u64) -> Self {
+        match value {
+            v if v == 1 << 0 => Permission::ServerOperate,
+            v if v == 1 << 1 => Permission::Broadcast,
+            v if v == 1 << 2 => Permission::UsersList,
+            v if v == 1 << 3 => Permission::UsersOperate,
+            v if v == 1 << 4 => Permission::FilesList,
+            v if v == 1 << 5 => Permission::FileDownload,
+            v if v == 1 << 6 => Permission::FileUpload,
+            v if v == 1 << 7 => Permission::FileDelete,
+            _ => Permission::Undefined,
+        }
+    }
+}

@@ -3,9 +3,9 @@ use std::io::{ErrorKind, Read};
 
 use crate::bytes::bytes_util::{read_string, read_u8, write_string, write_u8};
 use crate::network::DEFAULT_CIPHER;
-use crate::operation::states::State;
-use crate::operation::types::Type;
-use crate::operation::wrong_state_error::WrongStateError;
+use crate::operations::states::State;
+use crate::operations::types::Type;
+use crate::operations::wrong_state_error::WrongStateError;
 
 pub fn handle_state(receiver: &mut impl Read) -> Result<Result<bool, WrongStateError>, io::Error> {
     let _cipher = read_u8(receiver)?;
@@ -18,7 +18,7 @@ pub fn handle_state(receiver: &mut impl Read) -> Result<Result<bool, WrongStateE
         State::Broadcast => Err(WrongStateError::new(State::Broadcast, "Unsupported broadcast.".to_string())),
         State::ServerError => Err(WrongStateError::new(State::ServerError, read_string(receiver)?)),
         State::Unsupported => Err(WrongStateError::new(State::Unsupported, read_string(receiver)?)),
-        State::Undefined => Err(WrongStateError::new(State::Undefined, "Undefined operation.".to_string())),
+        State::Undefined => Err(WrongStateError::new(State::Undefined, "Undefined operations.".to_string())),
     })
 }
 
@@ -32,7 +32,7 @@ pub fn handle_broadcast_state(receiver: &mut impl Read) -> Result<Result<(), Wro
         State::NoPermission => Err(WrongStateError::new(State::NoPermission, "No permission.".to_string())),
         State::ServerError => Err(WrongStateError::new(State::ServerError, read_string(receiver)?)),
         State::Unsupported => Err(WrongStateError::new(State::Unsupported, read_string(receiver)?)),
-        State::Undefined => Err(WrongStateError::new(State::Undefined, "Undefined operation.".to_string())),
+        State::Undefined => Err(WrongStateError::new(State::Undefined, "Undefined operations.".to_string())),
         State::Broadcast => Ok(()),
     })
 }

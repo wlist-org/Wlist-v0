@@ -1,7 +1,8 @@
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::ErrorKind;
-use crate::operation::states::State;
+
+use crate::operations::states::State;
 
 pub struct WrongStateError {
     state: State,
