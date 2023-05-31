@@ -57,8 +57,8 @@ public class MessageClientCiphers extends MessageCiphers {
                 final Key rsaPublicKey = KeyFactory.getInstance("RSA").generatePublic(new RSAPublicKeySpec(
                         new BigInteger(rsaModulus), new BigInteger(rsaExponent)
                 ));
-                final Key key = new SecretKeySpec(aesKey, 0, 32, "AES");
-                final AlgorithmParameterSpec vector = new IvParameterSpec(aesKey, 32, 16);
+                final Key key = new SecretKeySpec(aesKey, 80, 32, "AES");
+                final AlgorithmParameterSpec vector = new IvParameterSpec(aesKey, 112, 16);
                 this.aesDecryptCipher.init(Cipher.DECRYPT_MODE, key, vector);
                 this.aesEncryptCipher.init(Cipher.ENCRYPT_MODE, key, vector);
                 final Cipher rsaEncryptCipher = Cipher.getInstance("RSA/ECB/NoPadding");
