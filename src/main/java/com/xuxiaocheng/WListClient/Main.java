@@ -2,6 +2,7 @@ package com.xuxiaocheng.WListClient;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.OptionalNullable;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WListClient.OperationHelpers.OperateFileHelper;
@@ -84,13 +85,13 @@ public final class Main {
             HLog.DefaultLogger.log("", list);
             if ((Main.state & 2) > 0) {
                 final byte[] content = "CS WList Tester-Client".getBytes(StandardCharsets.UTF_8);
-                final OptionalNullable<String> id = OperateFileHelper.requestUploadFile(client, token, new DrivePath("/123pan/test/t.txt"),
+                final UnionPair<VisibleFileInformation, String> id = OperateFileHelper.requestUploadFile(client, token, new DrivePath("/123pan/test/t.txt"),
                                 content.length, MiscellaneousUtil.getMd5(content), Options.DuplicatePolicy.ERROR);
                 assert id != null;
                 Main.logger.log(HLogLevel.FINE, id);
-                if (id.isPresent()) {
+                if (id.isFailure()) {
                     final ByteBuf buffer = Unpooled.wrappedBuffer(content);
-                    final OptionalNullable<VisibleFileInformation> info = OperateFileHelper.uploadFile(client, token, id.get(), 0, buffer);
+                    final OptionalNullable<VisibleFileInformation> info = OperateFileHelper.uploadFile(client, token, id.getE(), 0, buffer);
                     assert info != null && info.isPresent();
                     Main.logger.log(HLogLevel.FINE, info);
                 }

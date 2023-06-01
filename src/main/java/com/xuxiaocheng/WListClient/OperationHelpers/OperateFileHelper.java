@@ -3,6 +3,7 @@ package com.xuxiaocheng.WListClient.OperationHelpers;
 import com.xuxiaocheng.HeadLibs.DataStructures.OptionalNullable;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
+import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.WListClient.Server.DrivePath;
 import com.xuxiaocheng.WListClient.Server.Operation;
 import com.xuxiaocheng.WListClient.Server.Options;
@@ -142,8 +143,7 @@ public final class OperateFileHelper {
         }
     }
 
-    // Null: failure, Optional.null: reused, Optional.of: upload
-    public static @Nullable OptionalNullable<@Nullable String> requestUploadFile(final @NotNull WListClient client, final @NotNull String token, final @NotNull DrivePath path, final long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
+    public static @Nullable UnionPair<@NotNull VisibleFileInformation, @NotNull String> requestUploadFile(final @NotNull WListClient client, final @NotNull String token, final @NotNull DrivePath path, final long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.RequestUploadFile, token);
         ByteBufIOUtil.writeUTF(send, path.getPath());
         ByteBufIOUtil.writeVariableLenLong(send, size);
@@ -152,7 +152,10 @@ public final class OperateFileHelper {
         final ByteBuf receive = client.send(send);
         try {
             if (OperateHelper.handleState(receive))
-                return OptionalNullable.ofNullable(ByteBufIOUtil.readBoolean(receive) ? null : ByteBufIOUtil.readUTF(receive));
+                if (ByteBufIOUtil.readBoolean(receive))
+                    return UnionPair.ok(VisibleFileInformation.parse(receive));
+                else
+                    return UnionPair.fail(ByteBufIOUtil.readUTF(receive));
             final String reason = ByteBufIOUtil.readUTF(receive);
             if ("Parameters".equals(reason))
                 throw new IllegalArgumentException();
