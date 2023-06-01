@@ -1,15 +1,24 @@
 use std::io;
 use std::io::{ErrorKind, Read, Write};
 
+pub fn check_index(len: usize, offset: usize, require: usize) -> Result<(), io::Error> {
+    if len < offset + require {
+        Err(io::Error::new(ErrorKind::UnexpectedEof, format!("Array len ({}) < offset ({}) + require ({}).", len, offset, require)))
+    } else {
+        Ok(())
+    }
+}
+
 macro_rules! primitive_util {
-    ($primitive: ident, $read: ident, $read_be: ident, $write: ident, $write_be: ident, $length: literal) => {
+    ($primitive: ident, $length: literal, $read: ident, $read_be: ident, $write: ident, $write_be: ident,
+            $read_buf: ident, $read_be_buf: ident, $write_buf: ident, $write_be_buf: ident) => {
         pub fn $read(source: &mut impl Read) -> Result<$primitive, io::Error> {
-            let mut bytes = [0;$length];
+            let mut bytes = [0; $length];
             source.read_exact(&mut bytes)?;
             Ok($primitive::from_le_bytes(bytes))
         }
         pub fn $read_be(source: &mut impl Read) -> Result<$primitive, io::Error> {
-            let mut bytes = [0;$length];
+            let mut bytes = [0; $length];
             source.read_exact(&mut bytes)?;
             Ok($primitive::from_be_bytes(bytes))
         }
@@ -19,18 +28,43 @@ macro_rules! primitive_util {
         pub fn $write_be(target: &mut impl Write, message: $primitive) -> Result<usize, io::Error> {
             target.write(&$primitive::to_be_bytes(message))
         }
+
+        pub fn $read_buf(buffer: &[u8], offset: &mut usize) -> Result<$primitive, io::Error> {
+            check_index(buffer.len(), *offset, $length)?;
+            let mut bytes = [0; $length];
+            for i in 0..$length {
+                bytes[i] = buffer[*offset + i];
+            }
+            *offset += $length;
+            Ok($primitive::from_le_bytes(bytes))
+        }
+        pub fn $read_be_buf(buffer: &[u8], offset: &mut usize) -> Result<$primitive, io::Error> {
+            check_index(buffer.len(), *offset, $length)?;
+            let mut bytes = [0; $length];
+            for i in 0..$length {
+                bytes[i] = buffer[*offset + i];
+            }
+            *offset += $length;
+            Ok($primitive::from_be_bytes(bytes))
+        }
+        pub fn $write_buf(message: $primitive) -> Vec<u8> {
+            Vec::from($primitive::to_le_bytes(message))
+        }
+        pub fn $write_be_buf(message: $primitive) -> Vec<u8> {
+            Vec::from($primitive::to_be_bytes(message))
+        }
     };
 }
-primitive_util!(u8, read_u8, read_u8_be, write_u8, write_u8_be, 1);
-primitive_util!(i8, read_i8, read_i8_be, write_i8, write_i8_be, 1);
-primitive_util!(u16, read_u16, read_u16_be, write_u16, write_u16_be, 2);
-primitive_util!(i16, read_i16, read_i16_be, write_i16, write_i16_be, 2);
-primitive_util!(u32, read_u32, read_u32_be, write_u32, write_u32_be, 4);
-primitive_util!(i32, read_i32, read_i32_be, write_i32, write_i32_be, 4);
-primitive_util!(u64, read_u64, read_u64_be, write_u64, write_u64_be, 8);
-primitive_util!(i64, read_i64, read_i64_be, write_i64, write_i64_be, 8);
-primitive_util!(u128, read_u128, read_u128_be, write_u128, write_u64_128, 16);
-primitive_util!(i128, read_i128, read_i128_be, write_i128, write_i64_128, 16);
+primitive_util!(u8, 1, read_u8, read_u8_be, write_u8, write_u8_be, read_u8_buf, read_u8_be_buf, write_u8_buf, write_u8_be_buf);
+primitive_util!(i8, 1, read_i8, read_i8_be, write_i8, write_i8_be, read_i8_buf, read_i8_be_buf, write_i8_buf, write_i8_be_buf);
+primitive_util!(u16, 2, read_u16, read_u16_be, write_u16, write_u16_be, read_u16_buf, read_u16_be_buf, write_u16_buf, write_u16_be_buf);
+primitive_util!(i16, 2, read_i16, read_i16_be, write_i16, write_i16_be, read_i16_buf, read_i16_be_buf, write_i16_buf, write_i16_be_buf);
+primitive_util!(u32, 4, read_u32, read_u32_be, write_u32, write_u32_be, read_u32_buf, read_u32_be_buf, write_u32_buf, write_u32_be_buf);
+primitive_util!(i32, 4, read_i32, read_i32_be, write_i32, write_i32_be, read_i32_buf, read_i32_be_buf, write_i32_buf, write_i32_be_buf);
+primitive_util!(u64, 8, read_u64, read_u64_be, write_u64, write_u64_be, read_u64_buf, read_u64_be_buf, write_u64_buf, write_u64_be_buf);
+primitive_util!(i64, 8, read_i64, read_i64_be, write_i64, write_i64_be, read_i64_buf, read_i64_be_buf, write_i64_buf, write_i64_be_buf);
+primitive_util!(u128, 16, read_u128, read_u128_be, write_u128, write_u128_be, read_u128_buf, read_u128_be_buf, write_u128_buf, write_u128_be_buf);
+primitive_util!(i128, 16, read_i128, read_i128_be, write_i128, write_i128_be, read_i128_buf, read_i128_be_buf, write_i128_buf, write_i128_be_buf);
 
 pub fn read_bool(source: &mut impl Read) -> Result<bool, io::Error> {
     Ok(read_u8(source)? != 0)
@@ -45,79 +79,93 @@ pub fn write_bool_be(target: &mut impl Write, message: bool) -> Result<usize, io
     write_u8_be(target, if message { 1 } else { 0 })
 }
 
-
-fn create_length_error(name: &str) -> io::Error {
-    io::Error::new(ErrorKind::InvalidData, format!("Variable {} in stream is too long.", name))
+pub fn read_bool_buf(buffer: &[u8], offset: &mut usize) -> Result<bool, io::Error> {
+    Ok(read_u8_buf(buffer, offset)? != 0)
 }
+pub fn read_bool_be_buf(buffer: &[u8], offset: &mut usize) -> Result<bool, io::Error> {
+    Ok(read_u8_be_buf(buffer, offset)? != 0)
+}
+pub fn write_bool_buf(message: bool) -> Vec<u8> {
+    if message { vec![1] } else { vec![0] }
+}
+pub fn write_bool_be_buf(message: bool) -> Vec<u8> {
+    if message { vec![1] } else { vec![0] }
+}
+
 
 macro_rules! variable_len_util {
-    ($name: ident, $read_variable: ident, $write_variable: ident, $length: literal, $cause: literal) => {
-        pub fn $read_variable(source: &mut impl Read) -> Result<$name, io::Error> {
+    ($primitive: ident, $length: literal, $read_variable: ident, $write_variable: ident,
+            $read_variable_buf: ident, $write_variable_buf: ident, $cause: literal,
+            $read: ident, $write: ident, $read_buf: ident, $write_buf: ident, $inside_type: ident,
+            $num_bits: literal, $next_bit: literal, $offset_position: literal) => {
+        pub fn $read_variable(source: &mut impl Read) -> Result<$primitive, io::Error> {
             let mut value = 0;
             let mut position = 0;
             loop {
-                let current = read_u8(source)?;
-                value |= ((current & 0x7f) as $name) << position;
-                if current & 0x80 == 0 {
+                let current = $read(source)?;
+                value |= ((current & $num_bits) as $primitive) << position;
+                if current & $next_bit == 0 {
                     break;
                 }
-                position += 7;
+                position += $offset_position;
                 if position >= $length {
-                    return Err(create_length_error($cause));
+                    return Err(io::Error::new(ErrorKind::InvalidData, format!("Variable {} in stream is too long.", $cause)));
                 }
             }
             Ok(value)
         }
-        pub fn $write_variable(target: &mut impl Write, message: $name) -> Result<usize, io::Error> {
+        pub fn $write_variable(target: &mut impl Write, message: $primitive) -> Result<usize, io::Error> {
             let mut size = 0;
             let mut value = message;
-            while value >> 7 > 0 {
-                size += write_u8(target, ((value & 0x7f) as u8) | 0x80)?;
-                value >>= 7;
+            while value >> $offset_position > 0 {
+                size += $write(target, ((value & $num_bits) as $inside_type) | $next_bit)?;
+                value >>= $offset_position;
             }
-            size += write_u8(target, (value & 0x7f) as u8)?;
+            size += $write(target, (value & $num_bits) as $inside_type)?;
             Ok(size)
         }
-    };
-}
-variable_len_util!(u16, read_variable_u16, write_variable_u16, 16, "u16");
-variable_len_util!(u32, read_variable_u32, write_variable_u32, 32, "u32");
-variable_len_util!(u64, read_variable_u64, write_variable_u64, 64, "u64");
-variable_len_util!(u128, read_variable_u128, write_variable_u128, 128, "u128");
-
-macro_rules! variable_len_2_util {
-    ($name: ident, $read_variable: ident, $write_variable: ident, $length: literal, $cause: literal) => {
-        pub fn $read_variable(source: &mut impl Read) -> Result<$name, io::Error> {
+        
+        pub fn $read_variable_buf(buffer: &[u8], offset: &mut usize) -> Result<$primitive, io::Error> {
             let mut value = 0;
             let mut position = 0;
+            let mut length = 0;
             loop {
-                let current = read_u16(source)?;
-                value |= ((current & 0x7fff) as $name) << position;
-                if current & 0x8000 == 0 {
+                let current = $read_buf(&buffer[*offset..], &mut length)?;
+                value |= ((current & $num_bits) as $primitive) << position;
+                if current & $next_bit == 0 {
                     break;
                 }
-                position += 15;
+                position += $offset_position;
                 if position >= $length {
-                    return Err(create_length_error($cause));
+                    return Err(io::Error::new(ErrorKind::InvalidData, format!("Variable {} in stream is too long.", $cause)));
                 }
             }
+            *offset += length;
             Ok(value)
         }
-        pub fn $write_variable(target: &mut impl Write, message: $name) -> Result<usize, io::Error> {
-            let mut size = 0;
-            let mut value = message;
-            while value >> 15 > 0 {
-                size += write_u16(target, ((value & 0x7fff) as u16) | 0x8000)?;
-                value >>= 15;
-            }
-            size += write_u16(target, (value & 0x7fff) as u16)?;
-            Ok(size)
+        pub fn $write_variable_buf(message: $primitive) -> Vec<u8> {
+            let mut bytes = Vec::new();
+            $write_variable(&mut bytes, message).unwrap();
+            bytes
         }
     };
 }
-variable_len_2_util!(u32, read_variable2_u32, write_variable2_u32, 32, "2 u32");
-variable_len_2_util!(u64, read_variable2_u64, write_variable2_u64, 64, "2 u64");
-variable_len_2_util!(u128, read_variable2_u128, write_variable2_u128, 128, "2 u128");
+variable_len_util!(u16, 16, read_variable_u16, write_variable_u16,read_variable_u16_buf, write_variable_u16_buf, "u16",
+    read_u8, write_u8, read_u8_buf, write_u8_buf, u8, 0x7f, 0x80, 7);
+variable_len_util!(u32, 32, read_variable_u32, write_variable_u32,read_variable_u32_buf, write_variable_u32_buf, "u32",
+    read_u8, write_u8, read_u8_buf, write_u8_buf, u8, 0x7f, 0x80, 7);
+variable_len_util!(u32, 32, read_variable2_u32, write_variable2_u32, read_variable2_u32_buf, write_variable2_u32_buf, "2 u32",
+    read_u16, write_u16, read_u16_buf, write_u16_buf, u16, 0x7fff, 0x8000, 15);
+variable_len_util!(u64, 64, read_variable_u64, write_variable_u64, read_variable_u64_buf, write_variable_u64_buf, "u64",
+    read_u8, write_u8, read_u8_buf, write_u8_buf, u8, 0x7f, 0x80, 7);
+variable_len_util!(u64, 64, read_variable2_u64, write_variable2_u64, read_variable2_u64_buf, write_variable2_u64_buf, "2 u64",
+    read_u16, write_u16, read_u16_buf, write_u16_buf, u16, 0x7fff, 0x8000, 15);
+variable_len_util!(u128, 128, read_variable_u128, write_variable_u128, read_variable_u128_buf, write_variable_u128_buf, "u128",
+    read_u8, write_u8, read_u8_buf, write_u8_buf, u8, 0x7f, 0x80, 7);
+variable_len_util!(u128, 128, read_variable2_u128, write_variable2_u128, read_variable2_u128_buf, write_variable2_u128_buf, "2 u128",
+    read_u16, write_u16, read_u16_buf, write_u16_buf, u16, 0x7fff, 0x8000, 15);
+variable_len_util!(u128, 128, read_variable4_u128, write_variable4_u128, read_variable4_u128_buf, write_variable4_u128_buf, "4 u128",
+    read_u32, write_u32, read_u32_buf, write_u32_buf, u32, 0x7fffffff, 0x80000000, 31);
 
 
 pub fn read_u8_vec(source: &mut impl Read) -> Result<Vec<u8>, io::Error> {

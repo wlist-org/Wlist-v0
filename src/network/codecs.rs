@@ -10,7 +10,6 @@ use flate2::Compression;
 use flate2::write::{GzDecoder, GzEncoder};
 
 use crate::bytes::bytes_util;
-use crate::bytes::vec_u8_reader::VecU8Reader;
 use crate::network::{DO_AES, DO_GZIP, MAX_SIZE_PER_PACKET};
 
 pub fn length_based_encode(target: &mut impl Write, message: &Vec<u8>) -> Result<usize, io::Error> {
@@ -70,14 +69,8 @@ pub fn cipher_decode(source: &Vec<u8>, key: GenericArray<u8, U32>, vector: Gener
     let flags = source[0];
     let aes = flags & DO_AES > 0;
     let gzip = flags & DO_GZIP > 0;
-    let mut len = Vec::with_capacity(6);
-    len.write_all(&source[1..7])?;
-    let mut len_reader = VecU8Reader::new(len);
-    let len = bytes_util::read_variable_u32(&mut len_reader)? as usize;
-    if len <= 1 {
-        return Err(io::Error::new(ErrorKind::InvalidData, "Need message."));
-    }
-    let start = len_reader.index() + 1;
+    let mut start = 1;
+    let len = bytes_util::read_variable_u32_buf(source, &mut start)? as usize;
     let mut message = Vec::new();
     bytes_util::write_u8(&mut message, flags)?;
     let mut message_buffer = &source[start..];
@@ -96,6 +89,7 @@ pub fn cipher_decode(source: &Vec<u8>, key: GenericArray<u8, U32>, vector: Gener
             Err(e) => return Err(io::Error::new(ErrorKind::InvalidData, format!("Failed to decrypt. {}", e))),
         };
     }
+    assert_eq!(message_buffer.len(), len);
     message.write_all(message_buffer)?;
     Ok(message)
 }

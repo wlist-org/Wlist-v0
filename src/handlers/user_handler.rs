@@ -52,19 +52,19 @@ pub fn list_users(client: &mut WListClient, token: &String, limit: u32, page: u3
     write_variable_u32(&mut sender, page)?;
     write_string(&mut sender, &direction.to_string())?;
     let mut receiver = VecU8Reader::new(client.send(&sender)?);
-    if match handle_state(&mut receiver)? {
-        Ok(s) => s,
-        Err(e) => return Ok(Err(e)),
-    } {
-        let total = read_variable_u64(&mut receiver)?;
-        let count = read_variable_u32(&mut receiver)?;
-        let mut infos = Vec::new();
-        for _ in 0..count {
-            infos.push(UserInformation::parse(&mut receiver)?);
-        }
-        return Ok(Ok((total, infos)));
-    }
-    Ok(Err(WrongStateError::new(State::DataError, "Illegal argument.".to_string())))
+    Ok(match handle_state(&mut receiver)? {
+        Ok(true) => {
+            let total = read_variable_u64(&mut receiver)?;
+            let count = read_variable_u32(&mut receiver)?;
+            let mut infos = Vec::new();
+            for _ in 0..count {
+                infos.push(UserInformation::parse(&mut receiver)?);
+            }
+            Ok((total, infos))
+        },
+        Ok(false) => Err(WrongStateError::new(State::DataError, "Illegal argument.".to_string())),
+        Err(e) => Err(e),
+    })
 }
 
 pub fn delete_user(client: &mut WListClient, token: &String, username: &String) -> Result<Result<bool, WrongStateError>, io::Error> {
@@ -81,8 +81,8 @@ pub fn change_permission(client: &mut WListClient, token: &String, username: &St
     let mut receiver = VecU8Reader::new(client.send(&sender)?);
     Ok(match handle_state(&mut receiver)? {
         Ok(true) => Ok(true),
-        Ok(false) => if read_string(&mut receiver)? == "Permissions"
-        { Err(WrongStateError::new(State::DataError, "Illegal argument.".to_string())) } else { Ok(false) },
+        Ok(false) => if read_string(&mut receiver)? == "User" { Ok(false) } else {
+            Err(WrongStateError::new(State::DataError, "Illegal argument.".to_string())) },
         Err(e) => Err(e),
     })
 }

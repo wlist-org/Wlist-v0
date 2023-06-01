@@ -11,6 +11,20 @@ pub struct UserInformation {
     permissions: Vec<Permission>,
 }
 
+impl UserInformation {
+    pub fn id(&self) -> u64 {
+        self.id
+    }
+
+    pub fn username(&self) -> &String {
+        &self.username
+    }
+
+    pub fn permissions(&self) -> &Vec<Permission> {
+        &self.permissions
+    }
+}
+
 fn e_x36(ch: u8) -> Result<char, io::Error> {
     Ok(match ch {
          0 => '0',  1 => '1',  2 => '2',  3 => '3',  4 => '4',  5 => '5',

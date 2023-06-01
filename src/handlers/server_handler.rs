@@ -15,6 +15,7 @@ pub fn close_server(client: &mut WListClient, token: &String) -> Result<Result<b
 }
 
 pub fn wait_broadcast(client: &mut WListClient) -> Result<Result<(String, VecU8Reader), WrongStateError>, io::Error> {
+    // TODO: (String, Vec<u8>)
     let mut receiver = VecU8Reader::new(client.no_send()?);
     Ok(match handle_broadcast_state(&mut receiver)? {
         Ok(()) => Ok((read_string(&mut receiver)?, receiver)),
@@ -22,9 +23,9 @@ pub fn wait_broadcast(client: &mut WListClient) -> Result<Result<(String, VecU8R
     })
 }
 
-pub fn broadcast(client: &mut WListClient, token: &String, message: &Vec<u8>) -> Result<Result<bool, WrongStateError>, io::Error> {
+pub fn broadcast(client: &mut WListClient, token: &String, message: &[u8]) -> Result<Result<bool, WrongStateError>, io::Error> {
     let mut sender = operate_with_token(&Type::Broadcast, token)?;
-    sender.extend(message);
+    sender.extend_from_slice(message);
     let mut receiver = VecU8Reader::new(client.send(&sender)?);
     handle_state(&mut receiver)
 }
