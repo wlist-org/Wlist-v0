@@ -211,15 +211,19 @@ public final class ServerFileHandler {
         if (methods == null)
             return ServerFileHandler.FileNotFound;
         if (methods.methods().isEmpty()) { // (reuse / empty file)
+            final FileSqlInformation file;
             try {
-                methods.supplier().get();
+                file = methods.supplier().get();
             } catch (final Exception exception) {
                 throw new ServerException(exception);
             } finally {
                 methods.finisher().run();
             }
+            if (file == null)
+                return ServerFileHandler.FileNotFound;
             return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
                 ByteBufIOUtil.writeBoolean(buf, true);
+                VisibleFileInformation.dump(buf, file);
                 return buf;
             });
         }
