@@ -55,7 +55,7 @@ public final class ServerUserHandler {
         final String password = ByteBufIOUtil.readUTF(buffer);
         final boolean success;
         try {
-            success = UserManager.insertUser(new UserSqlInformation.Inserter(username, password, null), Thread.currentThread().getName());
+            success = UserManager.insertUser(new UserSqlInformation.Inserter(username, password, UserManager.getDefaultGroupId()), Thread.currentThread().getName());
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }

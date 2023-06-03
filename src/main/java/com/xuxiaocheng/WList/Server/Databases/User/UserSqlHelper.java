@@ -60,7 +60,8 @@ final class UserSqlHelper {
                 throw new SQLException("Missing 'admin' or 'default' user group.");
             this.adminId = map.get("admin").id();
             this.defaultId = map.get("default").id();
-            try (final PreparedStatement statement = connection.prepareStatement("""
+            try (final Statement statement = connection.createStatement()) {
+                statement.executeUpdate(String.format("""
                     CREATE TABLE IF NOT EXISTS users (
                         id          INTEGER    PRIMARY KEY AUTOINCREMENT
                                                UNIQUE
@@ -69,12 +70,10 @@ final class UserSqlHelper {
                                                NOT NULL,
                         password    TEXT       NOT NULL,
                         group_id    INTEGER    NOT NULL
-                                               DEFAULT ?,
+                                               DEFAULT %d,
                         modify_time TEXT       NOT NULL
                     );
-                """)) {
-                statement.setLong(1, this.defaultId);
-                statement.executeUpdate();
+                """, this.defaultId));
             }
             final boolean noAdmin;
             try (final PreparedStatement statement = connection.prepareStatement("""
@@ -268,7 +267,7 @@ final class UserSqlHelper {
             connection.setAutoCommit(false);
             final Map<Long, UserSqlInformation> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement("""
-                    SELECT * FROM users WHERE id == ? LIMIT 1;
+                    SELECT * FROM users NATURAL JOIN groups WHERE users.id == ? LIMIT 1;
                 """)) {
                 for (final Long id: idList) {
                     statement.setLong(1, id.longValue());
@@ -291,7 +290,7 @@ final class UserSqlHelper {
             connection.setAutoCommit(false);
             final Map<String, UserSqlInformation> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement("""
-                    SELECT * FROM users WHERE username == ? LIMIT 1;
+                    SELECT * FROM users NATURAL JOIN groups WHERE username == ? LIMIT 1;
                 """)) {
                 for (final String username: usernameList) {
                     statement.setString(1, username);
@@ -321,7 +320,7 @@ final class UserSqlHelper {
                 return Pair.ImmutablePair.makeImmutablePair(count, List.of());
             final List<UserSqlInformation> list;
             try (final PreparedStatement statement = connection.prepareStatement(String.format(
-                    "SELECT * FROM users ORDER BY id %s LIMIT ? OFFSET ?;",
+                    "SELECT * FROM users NATURAL JOIN groups ORDER BY id %s LIMIT ? OFFSET ?;",
                     switch (direction) {case ASCEND -> "ASC";case DESCEND -> "DESC";}))) {
                 statement.setInt(1, limit);
                 statement.setLong(2, offset);
@@ -341,7 +340,7 @@ final class UserSqlHelper {
             connection.setAutoCommit(false);
             final List<UserSqlInformation> list;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM users WHERE username %s ? ORDER BY id ASC LIMIT ?;
+                    SELECT * FROM users NATURAL JOIN groups WHERE username %s ? ORDER BY id ASC LIMIT ?;
                 """, caseSensitive ? "GLOB" : "LIKE"))) {
                 statement.setString(1, rule);
                 statement.setInt(2, limit);

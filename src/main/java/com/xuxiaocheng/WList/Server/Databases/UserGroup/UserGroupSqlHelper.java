@@ -49,7 +49,7 @@ final class UserGroupSqlHelper {
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate(String.format("""
                         CREATE TABLE IF NOT EXISTS groups (
-                            id          INTEGER    PRIMARY KEY AUTOINCREMENT
+                            group_id    INTEGER    PRIMARY KEY AUTOINCREMENT
                                                    UNIQUE
                                                    NOT NULL,
                             name        TEXT       UNIQUE
@@ -64,7 +64,7 @@ final class UserGroupSqlHelper {
             final boolean noAdmin;
             final boolean noDefault;
             try (final PreparedStatement statement = connection.prepareStatement("""
-                        SELECT 1 FROM users WHERE name == ? AND permissions == ? LIMIT 1;
+                        SELECT 1 FROM groups WHERE name == ? AND permissions == ? LIMIT 1;
                 """)) {
                 statement.setString(1, "admin");
                 statement.setString(2, adminPermissions);
@@ -82,7 +82,7 @@ final class UserGroupSqlHelper {
                         INSERT INTO groups (name, permissions)
                             VALUES (?, ?)
                         ON CONFLICT (name) DO UPDATE SET
-                            id = excluded.id, permissions = excluded.permissions;
+                            group_id = excluded.group_id, permissions = excluded.permissions;
                     """)) {
                     if (noAdmin) {
                         statement.setString(1, "admin");
@@ -102,7 +102,7 @@ final class UserGroupSqlHelper {
     private static @Nullable UserGroupSqlInformation createNextUserGroupInfo(final @NotNull ResultSet result) throws SQLException {
         if (!result.next())
             return null;
-        return new UserGroupSqlInformation(result.getLong("id"),
+        return new UserGroupSqlInformation(result.getLong("group_id"),
                 result.getString("name"),
                 Objects.requireNonNullElseGet(Operation.parsePermissions(result.getString("permissions")),
                         Operation::emptyPermissions));
@@ -148,7 +148,7 @@ final class UserGroupSqlHelper {
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement("""
-                    UPDATE groups SET name = ?, permissions = ? WHERE id == ?;
+                    UPDATE groups SET name = ?, permissions = ? WHERE group_id == ?;
                 """)) {
                 for (final UserGroupSqlInformation info: infoList) {
                     statement.setString(1, info.name());
@@ -187,7 +187,7 @@ final class UserGroupSqlHelper {
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement("""
-                    DELETE FROM groups WHERE id == ?;
+                    DELETE FROM groups WHERE group_id == ?;
                 """)) {
                 for (final Long id: idList) {
                     statement.setLong(1, id.longValue());
@@ -224,7 +224,7 @@ final class UserGroupSqlHelper {
             connection.setAutoCommit(false);
             final Map<Long, UserGroupSqlInformation> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement("""
-                    SELECT * FROM groups WHERE id == ? LIMIT 1;
+                    SELECT * FROM groups WHERE group_id == ? LIMIT 1;
                 """)) {
                 for (final Long id: idList) {
                     statement.setLong(1, id.longValue());
@@ -277,7 +277,7 @@ final class UserGroupSqlHelper {
                 return Pair.ImmutablePair.makeImmutablePair(count, List.of());
             final List<UserGroupSqlInformation> list;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM groups ORDER BY id %s LIMIT ? OFFSET ?;
+                    SELECT * FROM groups ORDER BY group_id %s LIMIT ? OFFSET ?;
                 """, switch (direction) {case ASCEND -> "ASC";case DESCEND -> "DESC";}))) {
                 statement.setInt(1, limit);
                 statement.setLong(2, offset);
@@ -297,7 +297,7 @@ final class UserGroupSqlHelper {
             connection.setAutoCommit(false);
             final List<UserGroupSqlInformation> list;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM users WHERE username %s ? ORDER BY id ASC LIMIT ?;
+                    SELECT * FROM users WHERE username %s ? ORDER BY group_id ASC LIMIT ?;
                 """, caseSensitive ? "GLOB" : "LIKE"))) {
                 statement.setString(1, rule);
                 statement.setInt(2, limit);

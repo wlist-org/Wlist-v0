@@ -12,6 +12,7 @@ import org.jetbrains.annotations.Nullable;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.List;
 
 public final class FileInformation_123pan {
     private FileInformation_123pan() {
@@ -66,7 +67,7 @@ public final class FileInformation_123pan {
                     type.intValue() == 1, size.longValue(),
                     LocalDateTime.parse(create, DateTimeFormatter.ISO_ZONED_DATE_TIME),
                     LocalDateTime.parse(update, DateTimeFormatter.ISO_ZONED_DATE_TIME),
-                    etag, FileInformation_123pan.serializeOther(new FileInfoExtra_123pan(
+                    etag, List.of()/*TODO*/, FileInformation_123pan.serializeOther(new FileInfoExtra_123pan(
                             type.intValue(), flag)));
         } catch (final DateTimeParseException ignore) {
             return null;

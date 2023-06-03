@@ -7,7 +7,6 @@ import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
-import com.xuxiaocheng.WList.Server.Databases.File.VisibleFileInformation;
 import com.xuxiaocheng.WList.Server.Databases.User.UserSqlInformation;
 import com.xuxiaocheng.WList.Server.Driver.RootDriver;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
@@ -61,7 +60,7 @@ public final class ServerFileHandler {
             ByteBufIOUtil.writeVariableLenLong(buf, list.getFirst().longValue());
             ByteBufIOUtil.writeVariableLenInt(buf, list.getSecond().size());
             for (final FileSqlInformation information: list.getSecond())
-                VisibleFileInformation.dump(buf, information);
+                FileSqlInformation.dump(buf, information);
             return buf;
         });
     };
@@ -85,7 +84,7 @@ public final class ServerFileHandler {
         if (dir == null)
             return ServerFileHandler.FileNotFound;
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
-            VisibleFileInformation.dump(buf, dir);
+            FileSqlInformation.dump(buf, dir);
             return buf;
         });
     };
@@ -125,7 +124,7 @@ public final class ServerFileHandler {
         if (file == null)
             return ServerFileHandler.FileNotFound;
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
-            VisibleFileInformation.dump(buf, file);
+            FileSqlInformation.dump(buf, file);
             return buf;
         });
     };
@@ -223,7 +222,7 @@ public final class ServerFileHandler {
                 return ServerFileHandler.FileNotFound;
             return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
                 ByteBufIOUtil.writeBoolean(buf, true);
-                VisibleFileInformation.dump(buf, file);
+                FileSqlInformation.dump(buf, file);
                 return buf;
             });
         }
@@ -251,7 +250,7 @@ public final class ServerFileHandler {
             return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
                 ByteBufIOUtil.writeBoolean(buf, file == null);
                 if (file != null)
-                    VisibleFileInformation.dump(buf, file);
+                    FileSqlInformation.dump(buf, file);
                 return buf;
             });
         } catch (final ServerException exception) {
@@ -289,7 +288,7 @@ public final class ServerFileHandler {
         if (file == null)
             return ServerFileHandler.FileNotFound;
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
-            VisibleFileInformation.dump(buf, file);
+            FileSqlInformation.dump(buf, file);
             return buf;
         });
     };
@@ -314,7 +313,7 @@ public final class ServerFileHandler {
         if (file == null)
             return ServerFileHandler.FileNotFound;
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
-            VisibleFileInformation.dump(buf, file);
+            FileSqlInformation.dump(buf, file);
             return buf;
         });
     };
