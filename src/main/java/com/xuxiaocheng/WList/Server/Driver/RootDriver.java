@@ -45,7 +45,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
             path.removedRoot();
             return real.list(path, limit, page, policy, direction);
         } finally {
-            path.addRoot(root);
+            path.addedRoot(root);
         }
     }
 
@@ -58,7 +58,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
         try {
             return real.info(path.removedRoot());
         } finally {
-            path.addRoot(root);
+            path.addedRoot(root);
         }
     }
 
@@ -71,7 +71,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
         try {
             return real.download(path.removedRoot(), from, to);
         } finally {
-            path.addRoot(root);
+            path.addedRoot(root);
         }
     }
 
@@ -84,7 +84,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
         try {
             return real.mkdirs(path.removedRoot(), policy);
         } finally {
-            path.addRoot(root);
+            path.addedRoot(root);
         }
     }
 
@@ -106,7 +106,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
                 return f;
             }), raw.finisher());
         } finally {
-            path.addRoot(root);
+            path.addedRoot(root);
         }
     }
 
@@ -124,7 +124,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
         try {
             real.delete(path.removedRoot());
         } finally {
-            path.addRoot(root);
+            path.addedRoot(root);
         }
     }
 
@@ -159,7 +159,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
         try {
             return real.rename(source.removedRoot(), name, policy);
         } finally {
-            source.addRoot(root);
+            source.addedRoot(root);
         }
     }
 

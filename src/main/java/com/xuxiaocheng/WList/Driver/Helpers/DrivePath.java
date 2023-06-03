@@ -25,8 +25,8 @@ public class DrivePath implements Iterable<String> {
     }
 
     protected final @NotNull List<String> path;
-    // TODO Path cache
     protected @Nullable String pathCache;
+    protected @Nullable String parentPathCache;
 
     public DrivePath(final @Nullable CharSequence path) {
         this(DrivePath.split(path));
@@ -50,15 +50,28 @@ public class DrivePath implements Iterable<String> {
     public @NotNull DrivePath parent() {
         if (!this.path.isEmpty())
             this.path.remove(this.path.size() - 1);
+        this.pathCache = this.parentPathCache;
+        this.parentPathCache = null;
         return this;
     }
 
     public @NotNull DrivePath getParent() {
-        return new DrivePath(this.path).parent();
+        final DrivePath parent = new DrivePath(this.path).parent();
+        parent.pathCache = this.parentPathCache;
+        return parent;
     }
 
     public @NotNull DrivePath child(final @NotNull CharSequence child) {
-        this.path.addAll(DrivePath.split(child));
+        final List<String> children = DrivePath.split(child);
+        this.path.addAll(children);
+        if (child.length() == 1) {
+            this.parentPathCache = this.pathCache;
+            if (this.pathCache != null)
+                this.pathCache += '/' + children.get(0);
+        } else if (!child.isEmpty()) {
+            this.pathCache = null;
+            this.parentPathCache = null;
+        }
         return this;
     }
 
@@ -70,6 +83,8 @@ public class DrivePath implements Iterable<String> {
         if (this.path.size() < 1)
             return this;
         this.path.remove(0);
+        this.pathCache = null;
+        this.parentPathCache = null;
         return this;
     }
 
@@ -77,39 +92,49 @@ public class DrivePath implements Iterable<String> {
         return new DrivePath(this.path).removedRoot();
     }
 
-    public @NotNull DrivePath addRoot(final @NotNull CharSequence root) {
+    public @NotNull DrivePath addedRoot(final @NotNull CharSequence root) {
         if (this.path.size() < 1)
             return this;
         this.path.addAll(0, DrivePath.split(root));
+        this.pathCache = null;
+        this.parentPathCache = null;
         return this;
     }
 
     public @NotNull DrivePath getAddedRoot(final @NotNull CharSequence root) {
-        return new DrivePath(this.path).addRoot(root);
+        return new DrivePath(this.path).addedRoot(root);
     }
 
     public @NotNull String getPath() {
-        if (this.path.isEmpty())
-            return "/";
+        if (this.pathCache != null)
+            return this.pathCache;
+        if (this.path.isEmpty()) {
+            this.pathCache = "/";
+            return this.pathCache;
+        }
         final StringBuilder builder = new StringBuilder();
         for (final String p: this.path)
             builder.append('/').append(p);
+        this.pathCache = builder.toString();
         return builder.toString();
     }
 
     public @NotNull String getParentPath() {
-        if (this.path.size() < 2)
-            return "/";
+        if (this.parentPathCache != null)
+            return this.parentPathCache;
+        if (this.path.size() < 2) {
+            this.parentPathCache = "/";
+            return this.parentPathCache;
+        }
         final StringBuilder builder = new StringBuilder();
         for (int i = 0; i < this.path.size() - 1; ++i)
             builder.append('/').append(this.path.get(i));
+        this.parentPathCache = builder.toString();
         return builder.toString();
     }
 
     public @NotNull String getChildPath(final @NotNull CharSequence child) {
-        final StringBuilder builder = new StringBuilder();
-        for (final String p: this.path)
-            builder.append('/').append(p);
+        final StringBuilder builder = new StringBuilder(this.getParentPath());
         for (final String p: DrivePath.split(child))
             builder.append('/').append(p);
         return builder.toString();
@@ -150,8 +175,6 @@ public class DrivePath implements Iterable<String> {
 
     @Override
     public @NotNull String toString() {
-        return "DrivePath{" +
-                "path='" + this.path + '\'' +
-                '}';
+        return "DrivePath(" + this.getPath() + ')';
     }
 }
