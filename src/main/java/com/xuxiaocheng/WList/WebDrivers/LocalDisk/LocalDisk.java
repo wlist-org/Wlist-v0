@@ -6,7 +6,7 @@ import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
-import com.xuxiaocheng.WList.Server.Databases.File.FileSqlHelper;
+import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
 import org.jetbrains.annotations.NotNull;
@@ -22,13 +22,13 @@ public final class LocalDisk implements DriverInterface<LocalDiskConfiguration> 
 
     @Override
     public void initialize(final @NotNull LocalDiskConfiguration configuration) throws SQLException {
-        FileSqlHelper.initialize(configuration.getLocalSide().getName(), "initialize");
+        FileManager.initialize(configuration.getLocalSide().getName());
         this.configuration = configuration;
     }
 
     @Override
     public void uninitialize() throws SQLException {
-        FileSqlHelper.uninitialize(this.configuration.getLocalSide().getName(), "initialize");
+        FileManager.uninitialize(this.configuration.getLocalSide().getName());
     }
 
     @Override

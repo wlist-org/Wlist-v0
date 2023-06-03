@@ -2,7 +2,7 @@ package com.xuxiaocheng.WList.WebDrivers.LocalDisk;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
-import com.xuxiaocheng.WList.Server.Databases.File.FileSqlHelper;
+import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -40,7 +40,7 @@ public final class LocalDiskManager {
 
     static @Nullable FileSqlInformation getFileInformation(final @NotNull LocalDiskConfiguration configuration, final @NotNull DrivePath path, final boolean useCache, final @Nullable String connectionId) throws IOException, SQLException {
         if (useCache) {
-            final FileSqlInformation info = FileSqlHelper.selectFile(configuration.getLocalSide().getName(), path, connectionId);
+            final FileSqlInformation info = FileManager.selectFileByPath(configuration.getLocalSide().getName(), path, connectionId);
             if (info != null)
                 return info;
         }
@@ -66,7 +66,7 @@ public final class LocalDiskManager {
                 directoryPath.parent();
             }
         }
-//        FileSqlHelper.insertFilesIgnoreId(configuration.getLocalSide().getName(), list, _connection);
+//        FileManager.insertFilesIgnoreId(configuration.getLocalSide().getName(), list, _connection);
         return Pair.ImmutablePair.makeImmutablePair(children.length, list);
     }
 
@@ -76,16 +76,16 @@ public final class LocalDiskManager {
     }
 
     public static void recursiveRefreshDirectory(final @NotNull LocalDiskConfiguration configuration, final @NotNull DrivePath directoryPath, final @NotNull String connectionId) throws IOException, SQLException {
-        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
+        try (final Connection connection = FileManager.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
             connection.setAutoCommit(false);
             final Path root = new File(configuration.getWebSide().getRootDirectoryPath(), directoryPath.getPath()).toPath();
             final Collection<FileSqlInformation> list = new LinkedList<>();
             // TODO
-//            FileSqlHelper.deleteFileByParentPathRecursively(configuration.getLocalSide().getName(), LocalDiskManager.getDrivePath(root, dir), connectionId);
+//            FileManager.deleteFileByParentPathRecursively(configuration.getLocalSide().getName(), LocalDiskManager.getDrivePath(root, dir), connectionId);
             Files.walkFileTree(root, Set.of(), Integer.MAX_VALUE, new SimpleFileVisitor<>() {
                 @Override
                 public FileVisitResult preVisitDirectory(final Path dir, final BasicFileAttributes attrs) throws IOException {
-//                    FileSqlHelper.getFileByParentPath()
+//                    FileManager.getFileByParentPath()
                     final FileSqlInformation information = FileInformation_LocalDisk.create(root, dir, attrs);
                     if (information != null)
                         list.add(information);
@@ -100,7 +100,7 @@ public final class LocalDiskManager {
                     return FileVisitResult.CONTINUE;
                 }
             });
-//            FileSqlHelper.insertFilesIgnoreId(configuration.getLocalSide().getName(), list, connection);
+//            FileManager.insertFilesIgnoreId(configuration.getLocalSide().getName(), list, connection);
             connection.commit();
         }
     }

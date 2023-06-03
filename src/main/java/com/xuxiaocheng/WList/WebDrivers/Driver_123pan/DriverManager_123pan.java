@@ -14,7 +14,7 @@ import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Exceptions.IllegalResponseCodeException;
 import com.xuxiaocheng.WList.Exceptions.WrongResponseException;
-import com.xuxiaocheng.WList.Server.Databases.File.FileSqlHelper;
+import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
@@ -65,15 +65,15 @@ public final class DriverManager_123pan {
             throw new WrongResponseException("Listing file.", data);
         final List<FileSqlInformation> list = new LinkedList<>(info.toList(JSONObject.class).stream()
                 .map(j -> FileInformation_123pan.create(directoryPath, j)).filter(Objects::nonNull).toList());
-        FileSqlHelper.insertFiles(configuration.getLocalSide().getName(), list, connectionId);
+        FileManager.insertFiles(configuration.getLocalSide().getName(), list, connectionId);
         return Pair.ImmutablePair.makeImmutablePair(total, list);
     }
 
     private static Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Iterator<@NotNull FileSqlInformation>, Runnable> listAllFilesNoCache(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final @NotNull DrivePath directoryPath, final @Nullable String connectionId, final @NotNull ExecutorService threadPool) throws SQLException {
         final AtomicReference<String> id = new AtomicReference<>(connectionId);
-        final Connection connection = connectionId == null ? FileSqlHelper.DefaultDatabaseUtil.getNewConnection(id::set) : FileSqlHelper.DefaultDatabaseUtil.getExplicitConnection(connectionId);
+        final Connection connection = connectionId == null ? FileManager.DefaultDatabaseUtil.getNewConnection(id::set) : FileManager.DefaultDatabaseUtil.getExplicitConnection(connectionId);
         // TODO
-        //        FileSqlHelper.deleteFileByParentPathRecursively();
+        //        FileManager.deleteFileByParentPathRecursively();
         return DriverUtil.wrapAllFilesListerInPages(page -> DriverManager_123pan.listFilesNoCache(configuration, directoryId,
                         configuration.getWebSide().getDefaultLimitPerPage(), page.intValue(), DriverUtil.DefaultOrderPolicy, DriverUtil.DefaultOrderDirection, directoryPath, id.get()),
                 configuration.getWebSide().getDefaultLimitPerPage(), HExceptionWrapper.wrapConsumer(e -> {
@@ -90,13 +90,13 @@ public final class DriverManager_123pan {
         if (path.getDepth() == 0)
             return configuration.getWebSide().getRootDirectoryId();
         if (useCache) {
-            final FileSqlInformation information = FileSqlHelper.selectFile(configuration.getLocalSide().getName(), path, connectionId);
+            final FileSqlInformation information = FileManager.selectFileByPath(configuration.getLocalSide().getName(), path, connectionId);
             if (information != null)
                 return infoPredicate.test(information) ? information.id() : -1;
         }
         final String name = path.getName();
         final DrivePath parentPath = path.getParent();
-        final long parentId = DriverManager_123pan.getFileId(configuration, parentPath, FileSqlInformation::is_dir, useCache, connectionId, threadPool);
+        final long parentId = DriverManager_123pan.getFileId(configuration, parentPath, FileSqlInformation::isDir, useCache, connectionId, threadPool);
         if (parentId < 0)
             return -1;
         FileSqlInformation information = null;
@@ -124,7 +124,7 @@ public final class DriverManager_123pan {
 
     static @Nullable FileSqlInformation getFileInformation(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean useCache, final @Nullable String connectionId, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {
         if (useCache) {
-            final FileSqlInformation information = FileSqlHelper.selectFile(configuration.getLocalSide().getName(), path, connectionId);
+            final FileSqlInformation information = FileManager.selectFileByPath(configuration.getLocalSide().getName(), path, connectionId);
             if (information != null)
                 return information;
         }
@@ -144,20 +144,20 @@ public final class DriverManager_123pan {
         if (list == null || list.isEmpty())
             return null;
         assert list.size() == 1;
-        final FileSqlInformation file = FileInformation_123pan.create(path.getParent(), list.getJSONObject(0));
+        final FileSqlInformation.Inserter file = FileInformation_123pan.create(path.getParent(), list.getJSONObject(0));
         if (file == null)
             throw new WrongResponseException("Getting file information.", data);
-        FileSqlHelper.insertFile(configuration.getLocalSide().getName(), file, connectionId);
+        FileManager.insertOrUpdateFile(configuration.getLocalSide().getName(), file, connectionId);
         return file;
     }
 
     static void refreshDirectoryRecursively(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final @NotNull DrivePath directoryPath, final @Nullable String connectionId, final @NotNull ExecutorService threadPool) throws SQLException {
         final AtomicReference<String> id = new AtomicReference<>(connectionId);
-        try (final Connection connection = connectionId == null ? FileSqlHelper.DefaultDatabaseUtil.getNewConnection(id::set) : FileSqlHelper.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
+        try (final Connection connection = connectionId == null ? FileManager.DefaultDatabaseUtil.getNewConnection(id::set) : FileManager.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
             connection.setAutoCommit(false);
             if (connectionId == null) { // first time called.
                 assert !"refreshDirectoryRecursively".equals(new Throwable().getStackTrace()[1].getMethodName());
-                FileSqlHelper.deleteFileByParentPathRecursively(configuration.getLocalSide().getName(), directoryPath, id.get());
+                FileManager.deleteFileByPathRecursively(configuration.getLocalSide().getName(), directoryPath, id.get());
             }
             final Triad.ImmutableTriad<Long, Iterator<FileSqlInformation>, Runnable> lister = DriverManager_123pan.listAllFilesNoCache(configuration, directoryId, directoryPath, id.get(), threadPool);
             final Collection<DrivePath> directoryNameList = new LinkedList<>();
@@ -166,7 +166,7 @@ public final class DriverManager_123pan {
             try {
                 while (iterator.hasNext()) {
                     final FileSqlInformation info = iterator.next();
-                    if (info.is_dir()) {
+                    if (info.isDir()) {
                         directoryNameList.add(info.path());
                         directoryIdList.add(info.id());
                     }
@@ -189,15 +189,15 @@ public final class DriverManager_123pan {
 
     static Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> listFiles(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath directoryPath, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction, final boolean useCache, final @Nullable String connectionId, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {
         final AtomicReference<String> id = new AtomicReference<>(connectionId);
-        try (final Connection connection = connectionId == null ? FileSqlHelper.DefaultDatabaseUtil.getNewConnection(id::set) : FileSqlHelper.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
+        try (final Connection connection = connectionId == null ? FileManager.DefaultDatabaseUtil.getNewConnection(id::set) : FileManager.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
             connection.setAutoCommit(false);
             if (useCache) {
-                final Pair.ImmutablePair<Long, List<FileSqlInformation>> list = FileSqlHelper.selectFileByParentPathInPage(configuration.getLocalSide().getName(),
+                final Pair.ImmutablePair<Long, List<FileSqlInformation>> list = FileManager.selectFileByParentPathInPage(configuration.getLocalSide().getName(),
                         directoryPath, limit, (long) page * limit, direction, policy, id.get());
                 if (list.getFirst().longValue() > 0)
                     return list;
             }
-            final long directoryId = DriverManager_123pan.getFileId(configuration, directoryPath, FileSqlInformation::is_dir, useCache, id.get(), threadPool);
+            final long directoryId = DriverManager_123pan.getFileId(configuration, directoryPath, FileSqlInformation::isDir, useCache, id.get(), threadPool);
             if (directoryId < 0)
                 return null;
             final Pair.ImmutablePair<Long, List<FileSqlInformation>> list = DriverManager_123pan.listFilesNoCache(configuration, directoryId,
@@ -211,7 +211,7 @@ public final class DriverManager_123pan {
 
     static Pair.@Nullable ImmutablePair<@NotNull String, @NotNull Long> getDownloadUrl(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean useCache, final @Nullable String connectionId, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {
         final FileSqlInformation info = DriverManager_123pan.getFileInformation(configuration, path, useCache, connectionId, threadPool);
-        if (info == null || info.is_dir())
+        if (info == null || info.isDir())
             return null;
         final JSONObject data = DriverHelper_123pan.doGetFileDownloadUrl(configuration, info);
         final String url = data.getString("DownloadUrl");
@@ -222,11 +222,11 @@ public final class DriverManager_123pan {
 
     static @Nullable FileSqlInformation createDirectoriesRecursively(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final Options.@NotNull DuplicatePolicy policy, final @Nullable String connectionId, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {
         final AtomicReference<String> id = new AtomicReference<>(connectionId);
-        try (final Connection connection = connectionId == null ? FileSqlHelper.DefaultDatabaseUtil.getNewConnection(id::set) : FileSqlHelper.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
+        try (final Connection connection = connectionId == null ? FileManager.DefaultDatabaseUtil.getNewConnection(id::set) : FileManager.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
             connection.setAutoCommit(false);
             final FileSqlInformation info = DriverManager_123pan.getFileInformation(configuration, path, true, id.get(), threadPool);
             if (info != null)
-                return info.is_dir() ? info : null;
+                return info.isDir() ? info : null;
             final FileSqlInformation parentInformation;
             final String name = path.getName();
             if (!DriverHelper_123pan.filenamePredication.test(name))
@@ -246,10 +246,10 @@ public final class DriverManager_123pan {
                     return null;
                 throw exception;
             }
-            final FileSqlInformation information = FileInformation_123pan.create(path.getParent(), data.getJSONObject("Info"));
+            final FileSqlInformation.Inserter information = FileInformation_123pan.create(path.getParent(), data.getJSONObject("Info"));
             if (information == null)
                 throw new WrongResponseException("Creating directory.", data);
-            FileSqlHelper.insertFile(configuration.getLocalSide().getName(), information, id.get());
+            FileManager.insertOrUpdateFile(configuration.getLocalSide().getName(), information, id.get());
             return information;
         }
     }
@@ -276,11 +276,11 @@ public final class DriverManager_123pan {
         if (reuse == null)
             throw new WrongResponseException("PreUploading file (Reuse).", requestUploadData);
         if (reuse.booleanValue()) {
-            final FileSqlInformation info = FileInformation_123pan.create(parentPath, requestUploadData.getJSONObject("Info"));
+            final FileSqlInformation.Inserter info = FileInformation_123pan.create(parentPath, requestUploadData.getJSONObject("Info"));
             if (info == null)
                 throw new WrongResponseException("PreUploading file.", requestUploadData);
             return new UploadMethods(List.of(), () -> {
-                FileSqlHelper.insertFile(configuration.getLocalSide().getName(), info, connectionId);
+                FileManager.insertOrUpdateFile(configuration.getLocalSide().getName(), info, connectionId);
                 return info;
             }, RunnableE.EmptyRunnable);
         }
@@ -328,17 +328,17 @@ public final class DriverManager_123pan {
             if (countDown.get() > 0)
                 return null;
             final JSONObject completeUploadData = DriverHelper_123pan.doUploadComplete(configuration, bucket, node, key, uploadId, partCount, size, fileId);
-            final FileSqlInformation info = FileInformation_123pan.create(parentPath, completeUploadData.getJSONObject("file_info"));
+            final FileSqlInformation.Inserter info = FileInformation_123pan.create(parentPath, completeUploadData.getJSONObject("file_info"));
             if (info == null)
                 throw new WrongResponseException("CompleteUploading file.", completeUploadData);
-            FileSqlHelper.insertFile(configuration.getLocalSide().getName(), info, connectionId);
+            FileManager.insertOrUpdateFile(configuration.getLocalSide().getName(), info, connectionId);
             return info;
         }, RunnableE.EmptyRunnable);
     }
 
     static void trashFile(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean useCache, final @Nullable String connectionId, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {
         final AtomicReference<String> id = new AtomicReference<>(connectionId);
-        try (final Connection connection = connectionId == null ? FileSqlHelper.DefaultDatabaseUtil.getNewConnection(id::set) : FileSqlHelper.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
+        try (final Connection connection = connectionId == null ? FileManager.DefaultDatabaseUtil.getNewConnection(id::set) : FileManager.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
             connection.setAutoCommit(false);
             final long fileId = DriverManager_123pan.getFileId(configuration, path, PredicateE.truePredicate(), useCache, id.get(), threadPool);
             final JSONObject data = DriverHelper_123pan.doTrashFiles(configuration, List.of(fileId));
@@ -346,16 +346,16 @@ public final class DriverManager_123pan {
             assert list != null && list.size() == 1;
             final JSONObject info = list.getJSONObject(0);
             assert info != null && Long.valueOf(fileId).equals(info.getLong("FileId"));
-            FileSqlHelper.deleteFile(configuration.getLocalSide().getName(), fileId, id.get());
+            FileManager.deleteFileRecursively(configuration.getLocalSide().getName(), fileId, id.get());
             connection.commit();
         }
     }
 
-    static @Nullable FileSqlInformation renameFile(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final boolean useCache, final @Nullable String connectionId, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {
+    static @Nullable FileSqlInformation.Inserter renameFile(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final boolean useCache, final @Nullable String connectionId, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {
         if (!DriverHelper_123pan.filenamePredication.test(name))
             return null;
         final AtomicReference<String> id = new AtomicReference<>(connectionId);
-        try (final Connection connection = connectionId == null ? FileSqlHelper.DefaultDatabaseUtil.getNewConnection(id::set) : FileSqlHelper.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
+        try (final Connection connection = connectionId == null ? FileManager.DefaultDatabaseUtil.getNewConnection(id::set) : FileManager.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
             connection.setAutoCommit(false);
             final long fileId = DriverManager_123pan.getFileId(configuration, path, PredicateE.truePredicate(), useCache, connectionId, threadPool);
             final JSONObject data;
@@ -370,11 +370,11 @@ public final class DriverManager_123pan {
             if (infos == null || infos.isEmpty())
                 throw new WrongResponseException("Renaming file.", data);
             assert infos.size() == 1;
-            final FileSqlInformation info = FileInformation_123pan.create(path.getParent(), infos.getJSONObject(0));
+            final FileSqlInformation.Inserter info = FileInformation_123pan.create(path.getParent(), infos.getJSONObject(0));
             if (info == null)
                 throw new WrongResponseException("Renaming file.", data);
             assert info.id() == fileId;
-            FileSqlHelper.insertFile(configuration.getLocalSide().getName(), info, connectionId);
+            FileManager.insertOrUpdateFile(configuration.getLocalSide().getName(), info, connectionId);
             connection.commit();
             return info;
         }
@@ -382,19 +382,19 @@ public final class DriverManager_123pan {
 
     static @NotNull FileSqlInformation moveFile(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath sourceFile, final @NotNull DrivePath targetParent, final boolean useCache, final @Nullable String connectionId, final @NotNull ExecutorService threadPool) throws IllegalParametersException, IOException, SQLException {
         final AtomicReference<String> id = new AtomicReference<>(connectionId);
-        try (final Connection connection = connectionId == null ? FileSqlHelper.DefaultDatabaseUtil.getNewConnection(id::set) : FileSqlHelper.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
+        try (final Connection connection = connectionId == null ? FileManager.DefaultDatabaseUtil.getNewConnection(id::set) : FileManager.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
             final long sourceId = DriverManager_123pan.getFileId(configuration, sourceFile, PredicateE.truePredicate(), useCache, id.get(), threadPool);
-            final long targetId = DriverManager_123pan.getFileId(configuration, sourceFile, FileSqlInformation::is_dir, useCache, id.get(), threadPool);
+            final long targetId = DriverManager_123pan.getFileId(configuration, sourceFile, FileSqlInformation::isDir, useCache, id.get(), threadPool);
             final JSONObject data = DriverHelper_123pan.doMoveFiles(configuration, List.of(sourceId), targetId);
             final JSONArray infos = data.getJSONArray("Info");
             if (infos == null || infos.isEmpty())
                 throw new WrongResponseException("Moving file.", data);
             assert infos.size() == 1;
-            final FileSqlInformation info = FileInformation_123pan.create(targetParent, infos.getJSONObject(0));
+            final FileSqlInformation.Inserter info = FileInformation_123pan.create(targetParent, infos.getJSONObject(0));
             if (info == null)
                 throw new WrongResponseException("Moving file.", data);
             assert info.id() == sourceId;
-            FileSqlHelper.insertFile(configuration.getLocalSide().getName(), info, id.get());
+            FileManager.insertOrUpdateFile(configuration.getLocalSide().getName(), info, id.get());
             connection.commit();
             return info;
         }

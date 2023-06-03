@@ -25,7 +25,10 @@ public record UserGroupSqlInformation(long id, @NotNull String name, @NotNull En
 
     @Deprecated // only for client
     public static @NotNull VisibleUserGroupInformation parseVisible(final @NotNull ByteBuf buffer) throws IOException {
-        return new VisibleUserGroupInformation(ByteBufIOUtil.readVariableLenLong(buffer), ByteBufIOUtil.readUTF(buffer),
-                Objects.requireNonNullElseGet(Operation.parsePermissions(ByteBufIOUtil.readUTF(buffer)), Operation::emptyPermissions));
+        final long id = ByteBufIOUtil.readVariableLenLong(buffer);
+        final String name = ByteBufIOUtil.readUTF(buffer);
+        final EnumSet<Operation.Permission> permissions = Objects.requireNonNullElseGet(
+                Operation.parsePermissions(ByteBufIOUtil.readUTF(buffer)), Operation::emptyPermissions);
+        return new VisibleUserGroupInformation(id, name, permissions);
     }
 }

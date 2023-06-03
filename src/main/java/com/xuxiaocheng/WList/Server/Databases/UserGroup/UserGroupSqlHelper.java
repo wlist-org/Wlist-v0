@@ -29,7 +29,7 @@ final class UserGroupSqlHelper {
     public static synchronized void initialize(final @NotNull DatabaseUtil database, final @Nullable String _connectionId) throws SQLException {
         if (UserGroupSqlHelper.instance != null)
             throw new IllegalStateException("User group sql helper is initialized. instance: " + UserGroupSqlHelper.instance);
-        UserGroupSqlHelper.instance = new UserGroupSqlHelper(database ,_connectionId);
+        UserGroupSqlHelper.instance = new UserGroupSqlHelper(database, _connectionId);
     }
 
     public static synchronized @NotNull UserGroupSqlHelper getInstance() {
@@ -297,10 +297,12 @@ final class UserGroupSqlHelper {
             connection.setAutoCommit(false);
             final List<UserGroupSqlInformation> list;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM users WHERE username %s ? ORDER BY group_id ASC LIMIT ?;
+                    SELECT * FROM groups WHERE name %s ?
+                    ORDER BY abs(length(name) - ?) ASC, id DESC LIMIT ?;
                 """, caseSensitive ? "GLOB" : "LIKE"))) {
                 statement.setString(1, rule);
-                statement.setInt(2, limit);
+                statement.setInt(2, rule.length());
+                statement.setInt(3, limit);
                 try (final ResultSet result = statement.executeQuery()) {
                     list = UserGroupSqlHelper.createUserGroupsInfo(result);
                 }

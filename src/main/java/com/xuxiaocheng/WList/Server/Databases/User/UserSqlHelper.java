@@ -36,7 +36,7 @@ final class UserSqlHelper {
     public static synchronized void initialize(final @NotNull DatabaseUtil database, final @Nullable String _connectionId) throws SQLException {
         if (UserSqlHelper.instance != null)
             throw new IllegalStateException("User sql helper is initialized. instance: " + UserSqlHelper.instance);
-        UserSqlHelper.instance = new UserSqlHelper(database ,_connectionId);
+        UserSqlHelper.instance = new UserSqlHelper(database, _connectionId);
     }
 
     public static synchronized @NotNull UserSqlHelper getInstance() {
@@ -107,7 +107,6 @@ final class UserSqlHelper {
         }
     }
 
-    // Util
 
     private static final @NotNull DateTimeFormatter DefaultFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
@@ -319,9 +318,9 @@ final class UserSqlHelper {
             if (offset >= count)
                 return Pair.ImmutablePair.makeImmutablePair(count, List.of());
             final List<UserSqlInformation> list;
-            try (final PreparedStatement statement = connection.prepareStatement(String.format(
-                    "SELECT * FROM users NATURAL JOIN groups ORDER BY id %s LIMIT ? OFFSET ?;",
-                    switch (direction) {case ASCEND -> "ASC";case DESCEND -> "DESC";}))) {
+            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+                    SELECT * FROM users NATURAL JOIN groups ORDER BY id %s LIMIT ? OFFSET ?;
+                """, switch (direction) {case ASCEND -> "ASC";case DESCEND -> "DESC";}))) {
                 statement.setInt(1, limit);
                 statement.setLong(2, offset);
                 try (final ResultSet result = statement.executeQuery()) {
@@ -340,10 +339,12 @@ final class UserSqlHelper {
             connection.setAutoCommit(false);
             final List<UserSqlInformation> list;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM users NATURAL JOIN groups WHERE username %s ? ORDER BY id ASC LIMIT ?;
+                    SELECT * FROM users NATURAL JOIN groups WHERE username %s ?
+                    ORDER BY abs(length(username) - ?) ASC, id DESC LIMIT ?;
                 """, caseSensitive ? "GLOB" : "LIKE"))) {
                 statement.setString(1, rule);
-                statement.setInt(2, limit);
+                statement.setInt(2, rule.length());
+                statement.setInt(3, limit);
                 try (final ResultSet result = statement.executeQuery()) {
                     list = UserSqlHelper.createUsersInfo(result);
                 }

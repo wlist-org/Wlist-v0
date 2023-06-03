@@ -33,7 +33,7 @@ public final class FileInformation_123pan {
         if (others == null || others.isEmpty())
             throw new IllegalParametersException("No extra part.", information);
         if (others.charAt(0) == 'S')
-            return new FileInfoExtra_123pan(information.is_dir() ? 1 : 0, others.substring(1));
+            return new FileInfoExtra_123pan(information.isDir() ? 1 : 0, others.substring(1));
         if (others.charAt(0) == 'J') {
             final JSONObject json = JSON.parseObject(others.substring(1));
             final Integer type = json.getInteger("type");
@@ -47,7 +47,7 @@ public final class FileInformation_123pan {
         throw new IllegalParametersException("Invalid information.", information);
     }
 
-    static @Nullable FileSqlInformation create(final @NotNull DrivePath parentPath, final @Nullable JSONObject info) {
+    static FileSqlInformation.@Nullable Inserter create(final @NotNull DrivePath parentPath, final @Nullable JSONObject info) {
         if (info == null)
             return null;
         final Long id = info.getLong("FileId");
@@ -63,11 +63,11 @@ public final class FileInformation_123pan {
                 || etag == null || (!etag.isEmpty() && !MiscellaneousUtil.md5Pattern.matcher(etag).matches()))
             return null;
         try {
-            return new FileSqlInformation(id.longValue(), parentPath.getChild(name),
+            return new FileSqlInformation.Inserter(id.longValue(), parentPath.getChild(name),
                     type.intValue() == 1, size.longValue(),
                     LocalDateTime.parse(create, DateTimeFormatter.ISO_ZONED_DATE_TIME),
                     LocalDateTime.parse(update, DateTimeFormatter.ISO_ZONED_DATE_TIME),
-                    etag, List.of()/*TODO*/, FileInformation_123pan.serializeOther(new FileInfoExtra_123pan(
+                    etag, FileInformation_123pan.serializeOther(new FileInfoExtra_123pan(
                             type.intValue(), flag)));
         } catch (final DateTimeParseException ignore) {
             return null;

@@ -24,7 +24,9 @@ public record UserSqlInformation(long id, @NotNull String username, @NotNull Str
 
     @Deprecated // only for client
     public static @NotNull VisibleUserInformation parseVisible(final @NotNull ByteBuf buffer) throws IOException {
-        return new VisibleUserInformation(ByteBufIOUtil.readVariableLenLong(buffer),
-                ByteBufIOUtil.readUTF(buffer), UserGroupSqlInformation.parseVisible(buffer));
+        final long id = ByteBufIOUtil.readVariableLenLong(buffer);
+        final String username = ByteBufIOUtil.readUTF(buffer);
+        final UserGroupSqlInformation.VisibleUserGroupInformation group = UserGroupSqlInformation.parseVisible(buffer);
+        return new VisibleUserInformation(id, username, group);
     }
 }

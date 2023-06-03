@@ -3,7 +3,7 @@ package com.xuxiaocheng.WList.Driver;
 import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
-import com.xuxiaocheng.WList.Server.Databases.File.FileSqlHelper;
+import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
 import com.xuxiaocheng.WList.Utils.DatabaseUtil;
@@ -40,7 +40,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     /**
      * Build file index into sql database {@link DatabaseUtil#getInstance()}.
      * @throws Exception Something went wrong.
-     * @see FileSqlHelper
+     * @see FileManager
      */
     void buildIndex() throws Exception;
 

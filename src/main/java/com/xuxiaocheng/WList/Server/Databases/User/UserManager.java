@@ -91,7 +91,6 @@ public final class UserManager {
         UserManager.deleteUsers(List.of(id), _connectionId);
     }
 
-    @Deprecated
     public static void deleteUsersByName(final @NotNull Collection<@NotNull String> usernameList, final @Nullable String _connectionId) throws SQLException {
         if (usernameList.isEmpty())
             return;
@@ -105,7 +104,6 @@ public final class UserManager {
         }
     }
 
-    @Deprecated
     public static void deleteUserByName(final @NotNull String username, final @Nullable String _connectionId) throws SQLException {
         UserManager.deleteUsersByName(List.of(username), _connectionId);
     }
@@ -124,14 +122,12 @@ public final class UserManager {
         return UserManager.selectUsers(List.of(id), _connectionId).get(id);
     }
 
-//    @Deprecated
     public static @NotNull @UnmodifiableView Map<@NotNull String, @NotNull UserSqlInformation> selectUsersByName(final @NotNull Collection<@NotNull String> usernameList, final @Nullable String _connectionId) throws SQLException {
         final Map<String, UserSqlInformation> map = UserSqlHelper.getInstance().selectUsersByName(usernameList, _connectionId);
         UserManager.Cache.putAll(map.values().stream().collect(Collectors.toMap(UserSqlInformation::id, Function.identity())));
         return map;
     }
 
-//    @Deprecated
     public static @Nullable UserSqlInformation selectUserByName(final @NotNull String username, final @Nullable String _connectionId) throws SQLException {
         return UserManager.selectUsersByName(List.of(username), _connectionId).get(username);
     }

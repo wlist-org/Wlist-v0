@@ -7,7 +7,7 @@ import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
-import com.xuxiaocheng.WList.Server.Databases.File.FileSqlHelper;
+import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
 import com.xuxiaocheng.WList.Server.WListServer;
@@ -25,17 +25,17 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
 
     @Override
     public void initialize(final @NotNull DriverConfiguration_123Pan configuration) throws SQLException {
-        FileSqlHelper.initialize(configuration.getLocalSide().getName(), "initialize");
+        FileManager.initialize(configuration.getLocalSide().getName());
         // TODO specially handle root directory.
-        FileSqlHelper.insertFile(configuration.getLocalSide().getName(),
-                new FileSqlInformation(configuration.getWebSide().getRootDirectoryId(),
-                        new DrivePath("/"), true, 0, null, null, "", List.of()/*TODO*/, null), null);
+        FileManager.insertOrUpdateFile(configuration.getLocalSide().getName(),
+                new FileSqlInformation.Inserter(configuration.getWebSide().getRootDirectoryId(),
+                        new DrivePath("/"), true, 0, null, null, "", null), null);
         this.configuration = configuration;
     }
 
     @Override
     public void uninitialize() throws SQLException {
-        FileSqlHelper.uninitialize(this.configuration.getLocalSide().getName(), "initialize");
+        FileManager.uninitialize(this.configuration.getLocalSide().getName());
     }
 
     @Override
