@@ -88,6 +88,10 @@ public final class Operation {
         return EnumSet.noneOf(Permission.class);
     }
 
+    public static @NotNull EnumSet<Permission> defaultPermissions() {
+        return EnumSet.of(Permission.FilesList);
+    }
+
     public static @NotNull EnumSet<Permission> allPermissions() {
         final EnumSet<Permission> permissions = EnumSet.allOf(Permission.class);
         permissions.remove(Permission.Undefined);

@@ -7,8 +7,8 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.Payload;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
-import com.xuxiaocheng.WList.Server.Databases.ConstantSqlHelper;
-import com.xuxiaocheng.WList.Server.Databases.User.UserDataHelper;
+import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
+import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.User.UserSqlInformation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -22,8 +22,8 @@ public final class UserTokenHelper {
         super();
     }
 
-    private static final @NotNull Algorithm sign = Algorithm.HMAC512(HExceptionWrapper.wrapSupplier(() -> ConstantSqlHelper.get("TokenHMAC",
-            () -> HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 128, ConstantSqlHelper.DefaultRandomChars), "initialize")).get());
+    private static final @NotNull Algorithm sign = Algorithm.HMAC512(HExceptionWrapper.wrapSupplier(() -> ConstantManager.get("TokenHMAC",
+            () -> HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 128, ConstantManager.DefaultRandomChars), "initialize")).get());
     private static final JWTCreator.Builder builder = JWT.create().withIssuer("WList");
     private static final JWTVerifier verifier = JWT.require(UserTokenHelper.sign).withIssuer("WList").build();
 
@@ -48,7 +48,7 @@ public final class UserTokenHelper {
         } catch (@SuppressWarnings("OverlyBroadCatchBlock") final RuntimeException ignore) {
             return null;
         }
-        final UserSqlInformation user = UserDataHelper.selectUser(id, "token_decoder");
+        final UserSqlInformation user = UserManager.selectUser(id, "token_decoder");
         if (user == null || !user.modifyTime().equals(modifyTime))
             return null;
         return user;

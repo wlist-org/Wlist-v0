@@ -20,17 +20,16 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 @SuppressWarnings("ClassHasNoToStringMethod")
 final class UserGroupSqlHelper {
     private static @Nullable UserGroupSqlHelper instance;
 
-    public static synchronized void initialize(final @NotNull DatabaseUtil database) throws SQLException {
+    public static synchronized void initialize(final @NotNull DatabaseUtil database, final @Nullable String _connectionId) throws SQLException {
         if (UserGroupSqlHelper.instance != null)
             throw new IllegalStateException("User group sql helper is initialized. instance: " + UserGroupSqlHelper.instance);
-        UserGroupSqlHelper.instance = new UserGroupSqlHelper(database ,"initialize");
+        UserGroupSqlHelper.instance = new UserGroupSqlHelper(database ,_connectionId);
     }
 
     public static synchronized @NotNull UserGroupSqlHelper getInstance() {
@@ -41,18 +40,12 @@ final class UserGroupSqlHelper {
 
     private final @NotNull DatabaseUtil database;
 
-    public @NotNull DatabaseUtil getDatabase() {
-        return this.database;
-    }
-
     private UserGroupSqlHelper(final @NotNull DatabaseUtil database, final @Nullable String _connectionId) throws SQLException {
         super();
         this.database = database;
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
-            final boolean needCreate;
-            final String adminPermissions = Operation.dumpPermissions(Operation.allPermissions());
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate(String.format("""
                         CREATE TABLE IF NOT EXISTS groups (
@@ -65,22 +58,42 @@ final class UserGroupSqlHelper {
                                                    DEFAULT '%s'
                         );
                     """, Operation.dumpPermissions(Operation.emptyPermissions())));
-                try (final ResultSet admins = statement.executeQuery(String.format("""
-                        SELECT 1 FROM users WHERE permissions == '%s' LIMIT 1;
-                    """, adminPermissions))) {
-                    needCreate = !admins.next();
+            }
+            final String adminPermissions = Operation.dumpPermissions(Operation.allPermissions());
+            final String defaultPermissions = Operation.dumpPermissions(Operation.defaultPermissions());
+            final boolean noAdmin;
+            final boolean noDefault;
+            try (final PreparedStatement statement = connection.prepareStatement("""
+                        SELECT 1 FROM users WHERE name == ? AND permissions == ? LIMIT 1;
+                """)) {
+                statement.setString(1, "admin");
+                statement.setString(2, adminPermissions);
+                try (final ResultSet admins = statement.executeQuery()) {
+                    noAdmin = !admins.next();
+                }
+                statement.setString(1, "default");
+                statement.setString(2, defaultPermissions);
+                try (final ResultSet defaults = statement.executeQuery()) {
+                    noDefault = !defaults.next();
                 }
             }
-            if (needCreate)
+            if (noAdmin || noDefault)
                 try (final PreparedStatement statement = connection.prepareStatement("""
                         INSERT INTO groups (name, permissions)
                             VALUES (?, ?)
                         ON CONFLICT (name) DO UPDATE SET
                             id = excluded.id, permissions = excluded.permissions;
                     """)) {
-                    statement.setString(1, "admin");
-                    statement.setString(2, adminPermissions);
-                    statement.executeUpdate();
+                    if (noAdmin) {
+                        statement.setString(1, "admin");
+                        statement.setString(2, adminPermissions);
+                        statement.executeUpdate();
+                    }
+                    if (noDefault) {
+                        statement.setString(1, "default");
+                        statement.setString(2, defaultPermissions);
+                        statement.executeUpdate();
+                    }
                 }
             connection.commit();
         }
@@ -107,7 +120,7 @@ final class UserGroupSqlHelper {
     }
 
 
-    public @NotNull @UnmodifiableView Map<UserGroupSqlInformation.@NotNull Inserter, @NotNull Boolean> insertGroups(final @NotNull Set<UserGroupSqlInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException {
+    public @NotNull @UnmodifiableView Map<UserGroupSqlInformation.@NotNull Inserter, @NotNull Boolean> insertGroups(final @NotNull Collection<UserGroupSqlInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException {
         if (inserters.isEmpty())
             return Map.of();
         final AtomicReference<String> connectionId = new AtomicReference<>();
@@ -148,8 +161,8 @@ final class UserGroupSqlHelper {
         }
     }
 
-    public void updateGroupsByName(final @NotNull Collection<UserGroupSqlInformation.@NotNull Inserter> infoList, final @Nullable String _connectionId) throws SQLException {
-        if (infoList.isEmpty())
+    public void updateGroupsByName(final @NotNull Collection<UserGroupSqlInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException {
+        if (inserters.isEmpty())
             return;
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
@@ -157,9 +170,9 @@ final class UserGroupSqlHelper {
             try (final PreparedStatement statement = connection.prepareStatement("""
                     UPDATE groups SET permissions = ? WHERE name == ?;
                 """)) {
-                for (final UserGroupSqlInformation.Inserter info: infoList) {
-                    statement.setString(1, Operation.dumpPermissions(info.permissions()));
-                    statement.setString(2, info.name());
+                for (final UserGroupSqlInformation.Inserter inserter: inserters) {
+                    statement.setString(1, Operation.dumpPermissions(inserter.permissions()));
+                    statement.setString(2, inserter.name());
                     statement.executeUpdate();
                 }
             }
@@ -203,7 +216,7 @@ final class UserGroupSqlHelper {
         }
     }
 
-    public @NotNull @UnmodifiableView Map<@NotNull Long, @Nullable UserGroupSqlInformation> selectGroups(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
+    public @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull UserGroupSqlInformation> selectGroups(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
         if (idList.isEmpty())
             return Map.of();
         final AtomicReference<String> connectionId = new AtomicReference<>();
@@ -216,7 +229,9 @@ final class UserGroupSqlHelper {
                 for (final Long id: idList) {
                     statement.setLong(1, id.longValue());
                     try (final ResultSet result = statement.executeQuery()) {
-                        map.put(id, UserGroupSqlHelper.createNextUserGroupInfo(result));
+                        final UserGroupSqlInformation information = UserGroupSqlHelper.createNextUserGroupInfo(result);
+                        if (information != null)
+                            map.put(id, information);
                     }
                 }
             }
@@ -224,24 +239,26 @@ final class UserGroupSqlHelper {
         }
     }
 
-    public @NotNull @UnmodifiableView List<@Nullable UserGroupSqlInformation> selectGroupsByName(final @NotNull Collection<@NotNull String> nameList, final @Nullable String _connectionId) throws SQLException {
+    public @NotNull @UnmodifiableView Map<@NotNull String, @NotNull UserGroupSqlInformation> selectGroupsByName(final @NotNull Collection<@NotNull String> nameList, final @Nullable String _connectionId) throws SQLException {
         if (nameList.isEmpty())
-            return List.of();
+            return Map.of();
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
-            final List<UserGroupSqlInformation> list = new LinkedList<>();
+            final Map<String, UserGroupSqlInformation> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement("""
                         SELECT * FROM groups WHERE name == ? LIMIT 1;
                         """)) {
                 for (final String name: nameList) {
                     statement.setString(1, name);
                     try (final ResultSet result = statement.executeQuery()) {
-                        list.add(UserGroupSqlHelper.createNextUserGroupInfo(result));
+                        final UserGroupSqlInformation information = UserGroupSqlHelper.createNextUserGroupInfo(result);
+                        if (information != null)
+                            map.put(name, information);
                     }
                 }
             }
-            return Collections.unmodifiableList(list);
+            return Collections.unmodifiableMap(map);
         }
     }
 
@@ -272,7 +289,7 @@ final class UserGroupSqlHelper {
         }
     }
 
-    public @NotNull @UnmodifiableView List<@Nullable UserGroupSqlInformation> searchUsersByNameLimited(final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
+    public @NotNull @UnmodifiableView List<@Nullable UserGroupSqlInformation> searchUserGroupsByNameLimited(final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
         if (limit <= 0)
             return List.of();
         final AtomicReference<String> connectionId = new AtomicReference<>();

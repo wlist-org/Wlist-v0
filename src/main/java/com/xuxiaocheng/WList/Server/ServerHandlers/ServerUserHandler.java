@@ -7,7 +7,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
 import com.xuxiaocheng.WList.Server.Databases.User.PasswordGuard;
-import com.xuxiaocheng.WList.Server.Databases.User.UserDataHelper;
+import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.User.UserSqlInformation;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.Operation;
@@ -55,7 +55,7 @@ public final class ServerUserHandler {
         final String password = ByteBufIOUtil.readUTF(buffer);
         final boolean success;
         try {
-            success = UserDataHelper.insertUser(new UserSqlInformation.Inserter(username, password, null), Thread.currentThread().getName());
+            success = UserManager.insertUser(new UserSqlInformation.Inserter(username, password, null), Thread.currentThread().getName());
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
@@ -67,7 +67,7 @@ public final class ServerUserHandler {
         final String password = ByteBufIOUtil.readUTF(buffer);
         final UserSqlInformation user;
         try {
-            user = UserDataHelper.selectUserByName(username, Thread.currentThread().getName());
+            user = UserManager.selectUserByName(username, Thread.currentThread().getName());
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
@@ -108,7 +108,7 @@ public final class ServerUserHandler {
         final String newPassword = ByteBufIOUtil.readUTF(buffer);
 //        user.getT().setPassword(newPassword);
         try {
-            UserDataHelper.updateUser(user.getT(), Thread.currentThread().getName());
+            UserManager.updateUser(user.getT(), Thread.currentThread().getName());
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
@@ -120,7 +120,7 @@ public final class ServerUserHandler {
         if (user.isFailure())
             return user.getE();
         try {
-            UserDataHelper.deleteUser(user.getT().id(), Thread.currentThread().getName());
+            UserManager.deleteUser(user.getT().id(), Thread.currentThread().getName());
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
@@ -136,7 +136,7 @@ public final class ServerUserHandler {
             return UnionPair.ok(Pair.ImmutablePair.makeImmutablePair(changer.getT(), changer.getT()));
         final UserSqlInformation user;
         try {
-            user = UserDataHelper.selectUserByName(username, Thread.currentThread().getName());
+            user = UserManager.selectUserByName(username, Thread.currentThread().getName());
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
@@ -156,7 +156,7 @@ public final class ServerUserHandler {
             return ServerHandler.WrongParameters;
         final Pair.ImmutablePair<Long, List<UserSqlInformation>> list;
         try {
-            list = UserDataHelper.selectAllUsersInPage(limit, (long) page * limit, orderDirection, Thread.currentThread().getName());
+            list = UserManager.selectAllUsersInPage(limit, (long) page * limit, orderDirection, Thread.currentThread().getName());
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
@@ -174,7 +174,7 @@ public final class ServerUserHandler {
         if (userPair.isFailure())
             return userPair.getE();
         try {
-            UserDataHelper.deleteUserByName(userPair.getT().getSecond().username(), Thread.currentThread().getName());
+            UserManager.deleteUser(userPair.getT().getSecond().id(), Thread.currentThread().getName());
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
@@ -194,7 +194,7 @@ public final class ServerUserHandler {
         else
             permissions.removeAll(modified);
         try {
-            UserDataHelper.updateUser(userPair.getT().getSecond(), Thread.currentThread().getName());
+            UserManager.updateUser(userPair.getT().getSecond(), Thread.currentThread().getName());
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }

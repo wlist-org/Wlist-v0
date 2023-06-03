@@ -3,11 +3,11 @@ package com.xuxiaocheng.WList;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
-import com.xuxiaocheng.WList.Server.Databases.ConstantSqlHelper;
-import com.xuxiaocheng.WList.Server.Databases.User.UserDataHelper;
+import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
+import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
+import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Server.Driver.DriverManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
-import com.xuxiaocheng.WList.Server.ServerHandlers.ServerUserHandler;
 import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 
@@ -38,14 +38,14 @@ public final class WList {
         final File configuration = new File(args.length > 0 ? args[0] : "server.yaml");
         WList.logger.log(HLogLevel.LESS, "Initializing global configuration. file: ", configuration.getAbsolutePath());
         GlobalConfiguration.initialize(configuration);
-        ConstantSqlHelper.initialize("initialize");
+        ConstantManager.initialize();
         WList.logger.log(HLogLevel.VERBOSE, "Initialized global configuration.");
         WList.logger.log(HLogLevel.LESS, "Initializing driver manager.");
         DriverManager.init();
         WList.logger.log(HLogLevel.VERBOSE, "Initialized driver manager.");
         WList.logger.log(HLogLevel.LESS, "Initializing user database.");
-        // TODO: If this project is successful and there are many users, SQL operations will choose to add middleware.
-        UserDataHelper.initialize(ServerUserHandler.DefaultPermission, ServerUserHandler.AdminPermission);
+        UserGroupManager.initialize();
+        UserManager.initialize();
         WList.logger.log(HLogLevel.VERBOSE, "Initialized user database.");
         WListServer.init(new InetSocketAddress(GlobalConfiguration.getInstance().port()));
         WList.logger.log(HLogLevel.VERBOSE, "Initialized WList server.");

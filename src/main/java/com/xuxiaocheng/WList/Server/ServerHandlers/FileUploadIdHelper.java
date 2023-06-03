@@ -5,7 +5,7 @@ import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.WList.Server.Databases.ConstantSqlHelper;
+import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
@@ -84,7 +84,7 @@ final class FileUploadIdHelper {
             this.methods = methods;
             this.tag = tag;
             this.id = MiscellaneousUtil.randomKeyAndPut(FileUploadIdHelper.buffers,
-                    () -> HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, ConstantSqlHelper.DefaultRandomChars), this);
+                    () -> HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, ConstantManager.DefaultRandomChars), this);
             this.md5 = MiscellaneousUtil.getMd5Digester();
             this.appendExpireTime();
         }

@@ -13,10 +13,6 @@ public record UserGroupSqlInformation(long id, @NotNull String name, @NotNull En
     public record Inserter(@NotNull String name, @NotNull EnumSet<Operation.Permission> permissions) {
     }
 
-    public @NotNull Inserter toInsert() {
-        return new Inserter(this.name, this.permissions);
-    }
-
     @Deprecated // only for client
     public record VisibleUserGroupInformation(long id, @NotNull String name, @NotNull EnumSet<Operation.Permission> permissions) {
     }
@@ -30,7 +26,6 @@ public record UserGroupSqlInformation(long id, @NotNull String name, @NotNull En
     @Deprecated // only for client
     public static @NotNull VisibleUserGroupInformation parseVisible(final @NotNull ByteBuf buffer) throws IOException {
         return new VisibleUserGroupInformation(ByteBufIOUtil.readVariableLenLong(buffer), ByteBufIOUtil.readUTF(buffer),
-                Objects.requireNonNullElseGet(Operation.parsePermissions(ByteBufIOUtil.readUTF(buffer)),
-                        Operation::emptyPermissions));
+                Objects.requireNonNullElseGet(Operation.parsePermissions(ByteBufIOUtil.readUTF(buffer)), Operation::emptyPermissions));
     }
 }

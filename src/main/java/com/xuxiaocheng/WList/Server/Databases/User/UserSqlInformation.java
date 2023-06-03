@@ -4,16 +4,12 @@ import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupSqlInformation;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
 
 public record UserSqlInformation(long id, @NotNull String username, @NotNull String password, @NotNull UserGroupSqlInformation group, @NotNull LocalDateTime modifyTime) {
-    public record Inserter(@NotNull String username, @NotNull String password, @Nullable UserGroupSqlInformation group) {
-    }
-
-    public record Updater(long id, @Nullable String password, @Nullable UserGroupSqlInformation group) {
+    public record Inserter(@NotNull String username, @NotNull String password, long groupId) {
     }
 
     @Deprecated // only for client
@@ -27,7 +23,7 @@ public record UserSqlInformation(long id, @NotNull String username, @NotNull Str
     }
 
     @Deprecated // only for client
-    public static @NotNull VisibleUserInformation parse(final @NotNull ByteBuf buffer) throws IOException {
+    public static @NotNull VisibleUserInformation parseVisible(final @NotNull ByteBuf buffer) throws IOException {
         return new VisibleUserInformation(ByteBufIOUtil.readVariableLenLong(buffer),
                 ByteBufIOUtil.readUTF(buffer), UserGroupSqlInformation.parseVisible(buffer));
     }
