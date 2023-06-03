@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class MessageServerCiphers extends MessageCiphers {
     protected final @NotNull AtomicReference<@Nullable Cipher> initializingStage =
-            new AtomicReference<>(Cipher.getInstance("RSA/ECB/NoPadding"));
+            new AtomicReference<>(Cipher.getInstance("RSA/ECB/PKCS1Padding"));
 
     public MessageServerCiphers(final int maxSize) throws NoSuchPaddingException, NoSuchAlgorithmException {
         super(maxSize);
@@ -67,8 +67,8 @@ public class MessageServerCiphers extends MessageCiphers {
         if (rsaDecryptCipher != null) {
             try {
                 final byte[] aesKey = rsaDecryptCipher.doFinal(ByteBufIOUtil.readByteArray(msg));
-                final Key key = new SecretKeySpec(aesKey, 80, 32, "AES");
-                final AlgorithmParameterSpec vector = new IvParameterSpec(aesKey, 112, 16);
+                final Key key = new SecretKeySpec(aesKey, 50, 32, "AES");
+                final AlgorithmParameterSpec vector = new IvParameterSpec(aesKey, 82, 16);
                 this.aesDecryptCipher.init(Cipher.DECRYPT_MODE, key, vector);
                 this.aesEncryptCipher.init(Cipher.ENCRYPT_MODE, key, vector);
                 if (!MessageCiphers.defaultTailor.equals(new String(this.aesDecryptCipher.doFinal(ByteBufIOUtil.readByteArray(msg)), StandardCharsets.UTF_8)))

@@ -1,9 +1,13 @@
 package com.xuxiaocheng.WList.Server.Databases.File;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Driver.Options;
+import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupSqlInformation;
+import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Utils.DatabaseUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -65,10 +69,16 @@ public final class FileSqlHelper {
         return Collections.unmodifiableList(list);
     }
 
+
+    //TODO
+    private static final @NotNull com.github.benmanes.caffeine.cache.Cache<@NotNull Long, @NotNull UserGroupSqlInformation> Cache = Caffeine.newBuilder()
+            .maximumSize(GlobalConfiguration.getInstance().maxCacheSize())
+            .softValues().build();
+
     // Initialize
 
     public static void initialize(final @NotNull String driverName, final @Nullable String connectionId) throws SQLException {
-        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getConnection(connectionId)) {
+        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
             connection.setAutoCommit(true);
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate(String.format("""
@@ -95,7 +105,7 @@ public final class FileSqlHelper {
     }
 
     public static void uninitialize(final @NotNull String driverName, final @Nullable String connectionId) throws SQLException {
-        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getConnection(connectionId)) {
+        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
             connection.setAutoCommit(true);
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate(String.format("DROP TABLE %s;", FileSqlHelper.getTableName(driverName)));
@@ -108,7 +118,7 @@ public final class FileSqlHelper {
     public static void insertFiles(final @NotNull String driverName, final @NotNull Collection<@NotNull FileSqlInformation> infoList, final @Nullable String connectionId) throws SQLException {
         if (infoList.isEmpty())
             return;
-        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getConnection(connectionId)) {
+        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
             connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     INSERT INTO %s (id, parent_path, name, is_directory, size, create_time, update_time, md5, others)
@@ -145,7 +155,7 @@ public final class FileSqlHelper {
     public static void deleteFiles(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> idList, final @Nullable String connectionId) throws SQLException {
         if (idList.isEmpty())
             return;
-        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getConnection(connectionId)) {
+        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
             connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement(String.format(
                     "DELETE FROM %s WHERE id == ?;", FileSqlHelper.getTableName(driverName)))) {
@@ -165,7 +175,7 @@ public final class FileSqlHelper {
     public static void deleteFilesByPath(final @NotNull String driverName, final @NotNull Collection<? extends @NotNull DrivePath> pathList, final @Nullable String connectionId) throws SQLException {
         if (pathList.isEmpty())
             return;
-        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getConnection(connectionId)) {
+        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
             connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement(String.format(
                     "DELETE FROM %s WHERE parent_path == ? AND NAME == ?;", FileSqlHelper.getTableName(driverName)))) {
@@ -186,7 +196,7 @@ public final class FileSqlHelper {
     public static void deleteFilesByParentPathRecursively(final @NotNull String driverName, final @NotNull Collection<? extends @NotNull DrivePath> parentPathList, final @Nullable String connectionId) throws SQLException {
         if (parentPathList.isEmpty())
             return;
-        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getConnection(connectionId)) {
+        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
             connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement(String.format(
                     "DELETE FROM %s WHERE parent_path == ?;", FileSqlHelper.getTableName(driverName)))) {
@@ -206,7 +216,7 @@ public final class FileSqlHelper {
     public static void deleteFilesByMd5(final @NotNull String driverName, final @NotNull Collection<@NotNull String> md5List, final @Nullable String connectionId) throws SQLException {
         if (md5List.isEmpty())
             return;
-        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getConnection(connectionId)) {
+        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
             connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement(String.format(
                     "DELETE FROM %s WHERE md5 == ?;", FileSqlHelper.getTableName(driverName)))) {
@@ -228,7 +238,7 @@ public final class FileSqlHelper {
     public static @NotNull @UnmodifiableView List<@Nullable FileSqlInformation> selectFiles(final @NotNull String driverName, final @NotNull Collection<? extends @NotNull DrivePath> pathList, final @Nullable String connectionId) throws SQLException {
         if (pathList.isEmpty())
             return List.of();
-        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getConnection(connectionId)) {
+        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
             connection.setAutoCommit(false);
             final List<FileSqlInformation> list = new LinkedList<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format(
@@ -252,7 +262,7 @@ public final class FileSqlHelper {
     public static @NotNull @UnmodifiableView List<@Nullable FileSqlInformation> selectFilesById(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> idList, final @Nullable String connectionId) throws SQLException {
         if (idList.isEmpty())
             return List.of();
-        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getConnection(connectionId)) {
+        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
             connection.setAutoCommit(false);
             final List<FileSqlInformation> list = new LinkedList<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format(
@@ -275,7 +285,7 @@ public final class FileSqlHelper {
     public static @NotNull @UnmodifiableView List<@NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> selectFilesByParentPath(final @NotNull String driverName, final @NotNull Collection<? extends @NotNull DrivePath> parentPathList, final @Nullable String connectionId) throws SQLException {
         if (parentPathList.isEmpty())
             return List.of();
-        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getConnection(connectionId)) {
+        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
             connection.setAutoCommit(false);
             final List<List<FileSqlInformation>> list = new LinkedList<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format(
@@ -298,7 +308,7 @@ public final class FileSqlHelper {
     public static @NotNull @UnmodifiableView List<@NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> selectFilesByMd5(final @NotNull String driverName, final @NotNull Collection<@NotNull String> md5List, final @Nullable String connectionId) throws SQLException {
         if (md5List.isEmpty())
             return List.of();
-        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getConnection(connectionId)) {
+        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
             connection.setAutoCommit(false);
             final List<List<FileSqlInformation>> list = new LinkedList<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format(
@@ -319,7 +329,7 @@ public final class FileSqlHelper {
     }
 
     public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> selectFileByParentPathInPage(final @NotNull String driverName, final @NotNull DrivePath parentPath, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final @Nullable String connectionId) throws SQLException {
-        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getConnection(connectionId)) {
+        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
             connection.setAutoCommit(false);
             final long count;
             try (final PreparedStatement statement = connection.prepareStatement(String.format(

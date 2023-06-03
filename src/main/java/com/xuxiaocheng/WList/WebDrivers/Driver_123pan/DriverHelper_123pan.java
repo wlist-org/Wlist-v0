@@ -52,6 +52,7 @@ public final class DriverHelper_123pan {
 
     static final int TokenExpireResponseCode = 401;
     static final int NoSuchFileResponseCode = 400;
+    static final int FileAlreadyExist = 5060;
 
     private static final Options.@NotNull DuplicatePolicy defaultDuplicatePolicy = Options.DuplicatePolicy.KEEP;
     private static final Options.@NotNull OrderPolicy defaultOrderPolicy = Options.OrderPolicy.FileName;

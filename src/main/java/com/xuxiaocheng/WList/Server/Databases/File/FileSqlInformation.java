@@ -19,5 +19,5 @@ import java.time.LocalDateTime;
  */
 public record FileSqlInformation(long id, @NotNull DrivePath path, boolean is_dir, long size,
                                  @Nullable LocalDateTime createTime, @Nullable LocalDateTime updateTime,
-                                 @NotNull String md5, @Nullable String others) {
+                                 @NotNull String md5, /*@NotNull String availableForGroup, TODO*/@Nullable String others) {
 }

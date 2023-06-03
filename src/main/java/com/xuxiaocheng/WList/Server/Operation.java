@@ -3,8 +3,7 @@ package com.xuxiaocheng.WList.Server;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.EnumSet;
 
 public final class Operation {
     private Operation() {
@@ -39,23 +38,15 @@ public final class Operation {
     }
 
     public enum Permission {
-        Undefined(0),
-        ServerOperate(1),
-        Broadcast(1 << 1),
-        UsersList(1 << 2),
-        UsersOperate(1 << 3),
-        FilesList(1 << 4), // TODO permissions for each file
-        FileDownload(1 << 5),
-        FileUpload(1 << 6),
-        FileDelete(1 << 7);
-        private final long index;
-        Permission(final long index) {
-            this.index = index;
-        }
-        @Override
-        public @NotNull String toString() {
-            return super.toString() + '(' + this.index + ')';
-        }
+        Undefined,
+        ServerOperate,
+        Broadcast,
+        UsersList,
+        UsersOperate,
+        FilesList,
+        FileDownload,
+        FileUpload,
+        FileDelete,
     }
 
     public enum State {
@@ -93,20 +84,32 @@ public final class Operation {
         }
     }
 
-    public static @NotNull String dumpPermissions(final @NotNull Iterable<@NotNull Permission> permissions) {
+    public static @NotNull EnumSet<Permission> emptyPermissions() {
+        return EnumSet.noneOf(Permission.class);
+    }
+
+    public static @NotNull EnumSet<Permission> allPermissions() {
+        final EnumSet<Permission> permissions = EnumSet.allOf(Permission.class);
+        permissions.remove(Permission.Undefined);
+        return permissions;
+    }
+
+    public static @NotNull String dumpPermissions(final @NotNull Iterable<Permission> permissions) {
         long p = 0;
         for (final Permission permission: permissions)
-            p |= permission.index;
+            p |= 1L << permission.ordinal();
         return Long.toString(p, 36);
     }
 
-    public static @Nullable SortedSet<@NotNull Permission> parsePermissions(final @NotNull String permissions) {
+    public static @Nullable EnumSet<Permission> parsePermissions(final @NotNull String permissions) {
         try {
-            final long p = Long.valueOf(permissions, 36).longValue();
-            final SortedSet<Permission> permissionsSet = new TreeSet<>();
-            for (final Permission permission: Permission.values())
-                if ((p & permission.index) > 0)
-                    permissionsSet.add(permission);
+            final EnumSet<Permission> permissionsSet = Operation.emptyPermissions();
+            long p = Long.valueOf(permissions, 36).longValue();
+            while (p != 0) {
+                final long current = p & -p;
+                p -= current;
+                permissionsSet.add(Permission.values()[Long.numberOfTrailingZeros(current)]);
+            }
             return permissionsSet;
         } catch (final NumberFormatException exception) {
             return null;

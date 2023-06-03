@@ -150,7 +150,7 @@ public final class ServerFileHandler {
         }
         if (url == null)
             return ServerFileHandler.FileNotFound;
-        final String id = FileDownloadIdHelper.generateId(url.getFirst(), user.getT().getUsername());
+        final String id = FileDownloadIdHelper.generateId(url.getFirst(), user.getT().username());
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
             ByteBufIOUtil.writeVariableLenLong(buf, url.getSecond().longValue());
             ByteBufIOUtil.writeVariableLenInt(buf, (int) Math.ceil((double) url.getSecond().longValue() / WListServer.FileTransferBufferSize));
@@ -166,7 +166,7 @@ public final class ServerFileHandler {
         final String id = ByteBufIOUtil.readUTF(buffer);
         final Pair.ImmutablePair<Integer, ByteBuf> file;
         try {
-            file = FileDownloadIdHelper.download(id, user.getT().getUsername());
+            file = FileDownloadIdHelper.download(id, user.getT().username());
         } catch (final InterruptedException | IOException | ExecutionException exception) {
             throw new ServerException(exception);
         }
@@ -185,7 +185,7 @@ public final class ServerFileHandler {
         if (user.isFailure())
             return user.getE();
         final String id = ByteBufIOUtil.readUTF(buffer);
-        return FileDownloadIdHelper.cancel(id, user.getT().getUsername()) ? ServerHandler.Success : ServerHandler.DataError;
+        return FileDownloadIdHelper.cancel(id, user.getT().username()) ? ServerHandler.Success : ServerHandler.DataError;
     };
 
     public static final @NotNull ServerHandler doRequestUploadFile = buffer -> {
@@ -227,7 +227,7 @@ public final class ServerFileHandler {
                 return buf;
             });
         }
-        final String id = FileUploadIdHelper.generateId(methods, md5, user.getT().getUsername());
+        final String id = FileUploadIdHelper.generateId(methods, md5, user.getT().username());
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
             ByteBufIOUtil.writeBoolean(buf, false);
             ByteBufIOUtil.writeUTF(buf, id);
@@ -242,7 +242,7 @@ public final class ServerFileHandler {
         final String id = ByteBufIOUtil.readUTF(buffer);
         final int chunk = ByteBufIOUtil.readVariableLenInt(buffer);
         try {
-            final SupplierE<FileSqlInformation> supplier = FileUploadIdHelper.upload(id, user.getT().getUsername(), buffer, chunk);
+            final SupplierE<FileSqlInformation> supplier = FileUploadIdHelper.upload(id, user.getT().username(), buffer, chunk);
             if (supplier == null)
                 return ServerHandler.DataError;
             buffer.retain();
@@ -266,7 +266,7 @@ public final class ServerFileHandler {
         if (user.isFailure())
             return user.getE();
         final String id = ByteBufIOUtil.readUTF(buffer);
-        return FileUploadIdHelper.cancel(id, user.getT().getUsername()) ? ServerHandler.Success : ServerHandler.DataError;
+        return FileUploadIdHelper.cancel(id, user.getT().username()) ? ServerHandler.Success : ServerHandler.DataError;
     };
 
     public static final @NotNull ServerHandler doCopyFile = buffer -> {

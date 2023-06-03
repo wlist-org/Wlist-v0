@@ -76,7 +76,7 @@ public final class LocalDiskManager {
     }
 
     public static void recursiveRefreshDirectory(final @NotNull LocalDiskConfiguration configuration, final @NotNull DrivePath directoryPath, final @NotNull String connectionId) throws IOException, SQLException {
-        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getConnection(connectionId)) {
+        try (final Connection connection = FileSqlHelper.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
             connection.setAutoCommit(false);
             final Path root = new File(configuration.getWebSide().getRootDirectoryPath(), directoryPath.getPath()).toPath();
             final Collection<FileSqlInformation> list = new LinkedList<>();

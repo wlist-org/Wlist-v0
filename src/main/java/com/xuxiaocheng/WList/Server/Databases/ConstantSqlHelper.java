@@ -23,7 +23,7 @@ public final class ConstantSqlHelper {
     public static final @NotNull String DefaultRandomChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890`~!@#$%^&*()-_=+[]{}\\|;:,.<>/? ";
 
     public static void initialize(final @Nullable String connectionId) throws SQLException {
-        try (final Connection connection = ConstantSqlHelper.DefaultDatabaseUtil.getConnection(connectionId)) {
+        try (final Connection connection = ConstantSqlHelper.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
             connection.setAutoCommit(false);
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate("""
@@ -40,7 +40,7 @@ public final class ConstantSqlHelper {
     }
 
     public static @NotNull String get(final @NotNull String key, final @NotNull Supplier<@NotNull String> defaultValue, final @Nullable String connectionId) throws SQLException {
-        try (final Connection connection = ConstantSqlHelper.DefaultDatabaseUtil.getConnection(connectionId)) {
+        try (final Connection connection = ConstantSqlHelper.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
             connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement("""
                         SELECT value FROM constants WHERE key == ? LIMIT 1;

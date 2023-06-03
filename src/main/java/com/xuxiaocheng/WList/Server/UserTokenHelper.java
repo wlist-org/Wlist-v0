@@ -8,7 +8,7 @@ import com.auth0.jwt.interfaces.Payload;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.WList.Server.Databases.ConstantSqlHelper;
-import com.xuxiaocheng.WList.Server.Databases.User.UserSqlHelper;
+import com.xuxiaocheng.WList.Server.Databases.User.UserDataHelper;
 import com.xuxiaocheng.WList.Server.Databases.User.UserSqlInformation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -48,8 +48,8 @@ public final class UserTokenHelper {
         } catch (@SuppressWarnings("OverlyBroadCatchBlock") final RuntimeException ignore) {
             return null;
         }
-        final UserSqlInformation user = UserSqlHelper.selectUser(id, "token_decoder");
-        if (user == null || !user.getModifyTime().equals(modifyTime))
+        final UserSqlInformation user = UserDataHelper.selectUser(id, "token_decoder");
+        if (user == null || !user.modifyTime().equals(modifyTime))
             return null;
         return user;
     }

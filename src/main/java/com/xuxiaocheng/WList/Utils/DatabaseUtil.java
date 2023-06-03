@@ -24,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 // TODO SQLCipher
@@ -163,9 +164,7 @@ public class DatabaseUtil {
         }
     }
 
-    public @NotNull Connection getConnection(final @Nullable String id) throws SQLException {
-        if (id == null)
-            return this.getNewConnection(null);
+    public @NotNull Connection getExplicitConnection(final @NotNull String id) throws SQLException {
         final ReferencedConnection connection;
         try {
             connection = this.activeConnections.computeIfAbsent(id, HExceptionWrapper.wrapFunction(k -> {
@@ -195,6 +194,13 @@ public class DatabaseUtil {
             idSaver.accept(id);
         connection.retain();
         return connection;
+    }
+
+    public @NotNull Connection getConnection(final @Nullable String id, final @NotNull AtomicReference<? super String> connectionId) throws SQLException {
+        if (id == null)
+            return this.getNewConnection(connectionId::set);
+        connectionId.set(id);
+        return this.getExplicitConnection(id);
     }
 
     protected void recycleConnection(final @NotNull String id) throws SQLException {
@@ -234,23 +240,5 @@ public class DatabaseUtil {
     }
 
     protected record PooledDatabaseConfig(@NotNull File path, int initSize, int averageSize, int maxSize, boolean walMode, boolean autoCommit, int transactionIsolationLevel) {
-    }
-
-    /**
-     * Automatically get not null connection with DatabaseUtil.
-     * Standard code: @code {
-     *  final Connection connection = DatabaseUtil.requireConnection(_connection, databaseUtil);
-     *  try {
-     *      // use connection.
-     *  } finally {
-     *      if (_connection == null)
-     *          connection.close();
-     *  }
-     * }
-     */
-    @Deprecated
-    public static @NotNull Connection requireConnection(final @Nullable String id, final @NotNull DatabaseUtil util) throws SQLException {
-        // Objects.requireNonNullElseGet(_connection, DatabaseUtil.getIndexInstance()::getConnection); (With SQLException)
-        return util.getConnection(id);
     }
 }

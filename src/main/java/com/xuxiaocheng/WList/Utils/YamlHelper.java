@@ -30,7 +30,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
- * @see com.xuxiaocheng.WList.Server.GlobalConfiguration#init(java.io.File) for example.
+ * @see com.xuxiaocheng.WList.Server.GlobalConfiguration#initialize(java.io.File) for example.
  */
 public final class YamlHelper {
     private YamlHelper() {

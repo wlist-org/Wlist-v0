@@ -7,10 +7,8 @@ import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
 import com.xuxiaocheng.WList.Server.Databases.User.PasswordGuard;
-import com.xuxiaocheng.WList.Server.Databases.User.UserSqlHelper;
+import com.xuxiaocheng.WList.Server.Databases.User.UserDataHelper;
 import com.xuxiaocheng.WList.Server.Databases.User.UserSqlInformation;
-import com.xuxiaocheng.WList.Server.Databases.User.UserSqlInformationUpdater;
-import com.xuxiaocheng.WList.Server.Databases.User.VisibleUserInformation;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.Operation;
 import com.xuxiaocheng.WList.Server.Polymers.MessageProto;
@@ -24,6 +22,7 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,9 +44,9 @@ public final class ServerUserHandler {
 
     static @NotNull Map<String, Object> getVisibleInfo(final @NotNull UserSqlInformation u) {
         final Map<String, Object> map = new LinkedHashMap<>(3);
-        map.put("id", u.getId());
-        map.put("name", u.getUsername());
-        map.put("permissions", u.getPermissions());
+        map.put("id", u.id());
+        map.put("name", u.username());
+        map.put("permissions", u.group());
         return map;
     }
 
@@ -56,7 +55,7 @@ public final class ServerUserHandler {
         final String password = ByteBufIOUtil.readUTF(buffer);
         final boolean success;
         try {
-            success = UserSqlHelper.insertUser(new UserSqlInformationUpdater(username, password, null), Thread.currentThread().getName());
+            success = UserDataHelper.insertUser(new UserSqlInformation.Inserter(username, password, null), Thread.currentThread().getName());
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
@@ -68,13 +67,13 @@ public final class ServerUserHandler {
         final String password = ByteBufIOUtil.readUTF(buffer);
         final UserSqlInformation user;
         try {
-            user = UserSqlHelper.selectUserByName(username, Thread.currentThread().getName());
+            user = UserDataHelper.selectUserByName(username, Thread.currentThread().getName());
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
-        if (user == null || PasswordGuard.isWrongPassword(password, user.getPassword()))
+        if (user == null || PasswordGuard.isWrongPassword(password, user.password()))
             return ServerHandler.DataError;
-        final String token = UserTokenHelper.encodeToken(user.getId(), user.getModifyTime());
+        final String token = UserTokenHelper.encodeToken(user.id(), user.modifyTime());
         HLog.getInstance("ServerLogger").log(HLogLevel.DEBUG, "Signed token for user: ", username, " token: ", token);
         return ServerHandler.composeMessage(Operation.State.Success, token);
     };
@@ -87,7 +86,7 @@ public final class ServerUserHandler {
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
-        if (user == null || (permissions.length > 0 && !user.getPermissions().containsAll(List.of(permissions))))
+        if (user == null || (permissions.length > 0 && !user.group().permissions().containsAll(List.of(permissions))))
             return UnionPair.fail(ServerHandler.composeMessage(Operation.State.NoPermission, null));
         return UnionPair.ok(user);
     }
@@ -97,7 +96,7 @@ public final class ServerUserHandler {
         if (user.isFailure())
             return user;
         final String verifyingPassword = ByteBufIOUtil.readUTF(buffer);
-        if (PasswordGuard.isWrongPassword(verifyingPassword, user.getT().getPassword()))
+        if (PasswordGuard.isWrongPassword(verifyingPassword, user.getT().password()))
             return UnionPair.fail(ServerHandler.DataError);
         return user;
     }
@@ -107,9 +106,9 @@ public final class ServerUserHandler {
         if (user.isFailure())
             return user.getE();
         final String newPassword = ByteBufIOUtil.readUTF(buffer);
-        user.getT().setPassword(newPassword);
+//        user.getT().setPassword(newPassword);
         try {
-            UserSqlHelper.updateUser(user.getT(), Thread.currentThread().getName());
+            UserDataHelper.updateUser(user.getT(), Thread.currentThread().getName());
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
@@ -121,7 +120,7 @@ public final class ServerUserHandler {
         if (user.isFailure())
             return user.getE();
         try {
-            UserSqlHelper.deleteUser(user.getT().getId(), Thread.currentThread().getName());
+            UserDataHelper.deleteUser(user.getT().id(), Thread.currentThread().getName());
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
@@ -133,11 +132,11 @@ public final class ServerUserHandler {
         if (changer.isFailure())
             return UnionPair.fail(changer.getE());
         final String username = ByteBufIOUtil.readUTF(buffer);
-        if (username.equals(changer.getT().getUsername()))
+        if (username.equals(changer.getT().username()))
             return UnionPair.ok(Pair.ImmutablePair.makeImmutablePair(changer.getT(), changer.getT()));
         final UserSqlInformation user;
         try {
-            user = UserSqlHelper.selectUserByName(username, Thread.currentThread().getName());
+            user = UserDataHelper.selectUserByName(username, Thread.currentThread().getName());
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
@@ -157,7 +156,7 @@ public final class ServerUserHandler {
             return ServerHandler.WrongParameters;
         final Pair.ImmutablePair<Long, List<UserSqlInformation>> list;
         try {
-            list = UserSqlHelper.selectAllUsersInPage(limit, (long) page * limit, orderDirection, Thread.currentThread().getName());
+            list = UserDataHelper.selectAllUsersInPage(limit, (long) page * limit, orderDirection, Thread.currentThread().getName());
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
@@ -165,7 +164,7 @@ public final class ServerUserHandler {
             ByteBufIOUtil.writeVariableLenLong(buf, list.getFirst().longValue());
             ByteBufIOUtil.writeVariableLenInt(buf, list.getSecond().size());
             for (final UserSqlInformation information: list.getSecond())
-                VisibleUserInformation.dump(buf, information);
+                UserSqlInformation.dumpVisible(buf, information);
             return buf;
         });
     };
@@ -175,7 +174,7 @@ public final class ServerUserHandler {
         if (userPair.isFailure())
             return userPair.getE();
         try {
-            UserSqlHelper.deleteUserByName(userPair.getT().getSecond().getUsername(), Thread.currentThread().getName());
+            UserDataHelper.deleteUserByName(userPair.getT().getSecond().username(), Thread.currentThread().getName());
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
@@ -186,16 +185,16 @@ public final class ServerUserHandler {
         final UnionPair<Pair.ImmutablePair<UserSqlInformation, UserSqlInformation>, MessageProto> userPair = ServerUserHandler.checkChangerTokenAndUsername(buffer, Operation.Permission.UsersOperate);
         if (userPair.isFailure())
             return userPair.getE();
-        final SortedSet<Operation.Permission> modified = Operation.parsePermissions(ByteBufIOUtil.readUTF(buffer));
+        final EnumSet<Operation.Permission> modified = Operation.parsePermissions(ByteBufIOUtil.readUTF(buffer));
         if (modified == null)
             return ServerUserHandler.WrongPermissionsList;
-        final SortedSet<Operation.Permission> permissions = userPair.getT().getSecond().getPermissions();
+        final EnumSet<Operation.Permission> permissions = userPair.getT().getSecond().group().permissions();
         if (add)
             permissions.addAll(modified);
         else
             permissions.removeAll(modified);
         try {
-            UserSqlHelper.updateUser(userPair.getT().getSecond(), Thread.currentThread().getName());
+            UserDataHelper.updateUser(userPair.getT().getSecond(), Thread.currentThread().getName());
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }

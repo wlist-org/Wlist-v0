@@ -28,10 +28,10 @@ public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxCo
                                   long tokenExpireTime, long idIdleExpireTime,
                                   int maxLimitPerPage,
                                   @NotNull Map<@NotNull String, @NotNull WebDriversType> drivers,
-                                  boolean deleteDriver) {
+                                  boolean deleteDriver, long maxCacheSize) {
     private static @Nullable GlobalConfiguration instance;
 
-    public static synchronized void init(final @Nullable File path) throws IOException {
+    public static synchronized void initialize(final @Nullable File path) throws IOException {
         if (GlobalConfiguration.instance != null)
             throw new IllegalStateException("Global configuration is initialized. instance: " + GlobalConfiguration.instance + " path: " + (path == null ? "null" : path.getAbsolutePath()));
         final Map<String, Object> config = new LinkedHashMap<>();
@@ -72,7 +72,9 @@ public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxCo
                                     .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond));
                         }),
                 YamlHelper.getConfig(config, "delete_driver", "false",
-                        o -> YamlHelper.transferBooleanFromStr(o, errors, "delete_driver")).booleanValue()
+                        o -> YamlHelper.transferBooleanFromStr(o, errors, "delete_driver")).booleanValue(),
+                YamlHelper.getConfig(config, "max_cache_size", "1000",
+                        o -> YamlHelper.transferIntegerFromStr(o, errors, "max_cache_size", BigInteger.ONE, BigInteger.valueOf(Long.MAX_VALUE))).longValue()
             );
         } catch (final RuntimeException exception) {
             throw new IOException(exception);
@@ -90,6 +92,7 @@ public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxCo
                     .map(e -> Pair.ImmutablePair.makeImmutablePair(e.getKey(), e.getValue().name()))
                     .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond)));
             config.put("delete_driver", GlobalConfiguration.instance.deleteDriver);
+            config.put("max_cache_size", GlobalConfiguration.instance.maxCacheSize);
             try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(path))) {
                 YamlHelper.dumpYaml(config, outputStream);
             }

@@ -4,7 +4,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
 import com.xuxiaocheng.WList.Server.Databases.ConstantSqlHelper;
-import com.xuxiaocheng.WList.Server.Databases.User.UserSqlHelper;
+import com.xuxiaocheng.WList.Server.Databases.User.UserDataHelper;
 import com.xuxiaocheng.WList.Server.Driver.DriverManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.ServerHandlers.ServerUserHandler;
@@ -37,7 +37,7 @@ public final class WList {
         WList.logger.log(HLogLevel.FINE, "Hello WList! Initializing...");
         final File configuration = new File(args.length > 0 ? args[0] : "server.yaml");
         WList.logger.log(HLogLevel.LESS, "Initializing global configuration. file: ", configuration.getAbsolutePath());
-        GlobalConfiguration.init(configuration);
+        GlobalConfiguration.initialize(configuration);
         ConstantSqlHelper.initialize("initialize");
         WList.logger.log(HLogLevel.VERBOSE, "Initialized global configuration.");
         WList.logger.log(HLogLevel.LESS, "Initializing driver manager.");
@@ -45,7 +45,7 @@ public final class WList {
         WList.logger.log(HLogLevel.VERBOSE, "Initialized driver manager.");
         WList.logger.log(HLogLevel.LESS, "Initializing user database.");
         // TODO: If this project is successful and there are many users, SQL operations will choose to add middleware.
-        UserSqlHelper.initialize(ServerUserHandler.DefaultPermission, ServerUserHandler.AdminPermission, "initialize");
+        UserDataHelper.initialize(ServerUserHandler.DefaultPermission, ServerUserHandler.AdminPermission);
         WList.logger.log(HLogLevel.VERBOSE, "Initialized user database.");
         WListServer.init(new InetSocketAddress(GlobalConfiguration.getInstance().port()));
         WList.logger.log(HLogLevel.VERBOSE, "Initialized WList server.");
