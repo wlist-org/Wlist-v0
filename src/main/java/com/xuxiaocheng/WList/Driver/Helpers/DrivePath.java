@@ -25,6 +25,8 @@ public class DrivePath implements Iterable<String> {
     }
 
     protected final @NotNull List<String> path;
+    // TODO Path cache
+    protected @Nullable String pathCache;
 
     public DrivePath(final @Nullable CharSequence path) {
         this(DrivePath.split(path));

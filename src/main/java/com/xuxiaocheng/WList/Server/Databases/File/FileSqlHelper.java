@@ -17,7 +17,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
@@ -89,6 +88,8 @@ final class FileSqlHelper {
                         rule_id      INTEGER PRIMARY KEY AUTOINCREMENT
                                              UNIQUE
                                              NOT NULL,
+                        identifier   TEXT    UNIQUE
+                                             NOT NULL,
                         id           INTEGER NOT NULL,
                         group_id     INTEGER NOT NULL
                     );
@@ -106,6 +107,12 @@ final class FileSqlHelper {
                         DELETE FROM %s WHERE new.is_directory == 0 AND parent_path == old.parent_path || '/' || old.name;
                     END;
                 """, this.tableName, this.tableName, this.tableName));
+                statement.executeUpdate(String.format("""
+                    CREATE TRIGGER IF NOT EXISTS %s_group_deleter AFTER delete ON groups FOR EACH ROW
+                    BEGIN
+                        DELETE FROM %s_permissions WHERE group_id == old.group_id;
+                    END;
+                """, this.tableName, this.tableName));
             }
             connection.commit();
         }
@@ -119,6 +126,9 @@ final class FileSqlHelper {
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate(String.format("DROP TABLE %s;", helper.tableName));
                 statement.executeUpdate(String.format("DROP TABLE %s_permissions;", helper.tableName));
+                statement.executeUpdate(String.format("DROP TRIGGER %s_deleter;", helper.tableName));
+                statement.executeUpdate(String.format("DROP TRIGGER %s_updater;", helper.tableName));
+                statement.executeUpdate(String.format("DROP TRIGGER %s_group_deleter;", helper.tableName));
             }
             connection.commit();
         }
@@ -144,7 +154,7 @@ final class FileSqlHelper {
         final LocalDateTime updateTime = LocalDateTime.parse(result.getString("update_time"), FileSqlHelper.DefaultFormatter);
         final String md5 = result.getString("md5");
         final String others = result.getString("others");
-        final List<Long> groups = new ArrayList<>();
+        final Set<Long> groups = new HashSet<>();
         boolean hasNext;
         while (true) {
             hasNext = result.next();
@@ -324,13 +334,15 @@ final class FileSqlHelper {
         }
     }
 
-    public @NotNull @UnmodifiableView Set<@NotNull Long> selectAllFilesIdByPathRecursively(final @NotNull Collection<? extends @NotNull DrivePath> pathList, final @Nullable String _connectionId) throws SQLException {
+    public @NotNull @UnmodifiableView Map<@NotNull DrivePath, @NotNull Set<@NotNull Long>> selectAllFilesIdByPathRecursively(final @NotNull Collection<? extends @NotNull DrivePath> pathList, final @Nullable String _connectionId) throws SQLException {
         if (pathList.isEmpty())
-            return Set.of();
+            return Map.of();
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
-            final Set<Long> set = new HashSet<>();
+            final Map<DrivePath, Set<Long>> map = new HashMap<>(pathList.size());
+            for (final DrivePath path: pathList)
+                map.put(path, new HashSet<>());
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT id FROM %s WHERE parent_path == ? AND name == ?;
                 """, this.tableName))) {
@@ -339,7 +351,7 @@ final class FileSqlHelper {
                     statement.setString(2, path.getName());
                     try (final ResultSet result = statement.executeQuery()) {
                         while (result.next())
-                            set.add(result.getLong("id"));
+                            map.get(path).add(result.getLong("id"));
                     }
                 }
             }
@@ -350,7 +362,7 @@ final class FileSqlHelper {
                     statement.setString(1, path.getPath());
                     try (final ResultSet result = statement.executeQuery()) {
                         while (result.next())
-                            set.add(result.getLong("id"));
+                            map.get(path).add(result.getLong("id"));
                     }
                 }
             }
@@ -361,11 +373,11 @@ final class FileSqlHelper {
                     statement.setString(1, path.getPath() + "/*");
                     try (final ResultSet result = statement.executeQuery()) {
                         while (result.next())
-                            set.add(result.getLong("id"));
+                            map.get(path).add(result.getLong("id"));
                     }
                 }
             }
-            return set;
+            return Collections.unmodifiableMap(map);
         }
     }
 
@@ -419,6 +431,47 @@ final class FileSqlHelper {
                 }
             }
             return list;
+        }
+    }
+
+
+    public void insertPermissionsForEachFile(final @NotNull Collection<@NotNull Long> idList, final @NotNull Collection<@NotNull Long> groups, final @Nullable String _connectionId) throws SQLException {
+        if (idList.isEmpty() || groups.isEmpty())
+            return;
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+            connection.setAutoCommit(false);
+            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+                    INSERT OR IGNORE INTO %s_permissions (identifier, id, group_id)
+                        VALUES (?, ?, ?);
+                """, this.tableName))) {
+                for (final Long id: idList)
+                    for (final Long groupId: groups) {
+                        statement.setString(1, String.format("%d %d", id.longValue(), groupId.longValue()));
+                        statement.setLong(2, id.longValue());
+                        statement.setLong(3, groupId.longValue());
+                        statement.executeUpdate();
+                    }
+            }
+        }
+    }
+
+    public void deletePermissionsForEachFile(final @NotNull Collection<@NotNull Long> idList, final @NotNull Collection<@NotNull Long> groups, final @Nullable String _connectionId) throws SQLException {
+        if (idList.isEmpty() || groups.isEmpty())
+            return;
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+            connection.setAutoCommit(false);
+            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+                    DELETE FROM %s_permissions WHERE id == ? AND group_id == ?;
+                """, this.tableName))) {
+                for (final Long id: idList)
+                    for (final Long groupId: groups) {
+                        statement.setLong(1, id.longValue());
+                        statement.setLong(2, groupId.longValue());
+                        statement.executeUpdate();
+                    }
+            }
         }
     }
 }

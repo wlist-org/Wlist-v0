@@ -13,9 +13,11 @@ import org.jetbrains.annotations.UnmodifiableView;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -66,10 +68,10 @@ public final class FileManager {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = FileManager.getDatabaseUtil().getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
-            final Set<Long> ids = FileSqlHelper.getInstance(driverName).selectAllFilesIdByPathRecursively(pathList, connectionId.get());
+            final Map<DrivePath, Set<Long>> map = FileSqlHelper.getInstance(driverName).selectAllFilesIdByPathRecursively(pathList, connectionId.get());
             FileSqlHelper.getInstance(driverName).deleteFilesByPathRecursively(pathList, connectionId.get());
             connection.commit();
-            FileManager.Cache.invalidateAll(ids);
+            FileManager.Cache.invalidateAll(map.values().stream().flatMap(Set::stream).collect(Collectors.toSet()));
         }
     }
 
@@ -128,6 +130,14 @@ public final class FileManager {
         return FileManager.selectFilesByMd5(driverName, List.of(md5), _connectionId).get(md5);
     }
 
+    public static @NotNull @UnmodifiableView Map<@NotNull DrivePath, @Nullable Set<@NotNull Long>> selectAllFilesIdByPathRecursively(final @NotNull String driverName, final @NotNull Collection<? extends @NotNull DrivePath> pathList, final @Nullable String _connectionId) throws SQLException {
+        return FileSqlHelper.getInstance(driverName).selectAllFilesIdByPathRecursively(pathList, _connectionId);
+    }
+
+    public static @NotNull @UnmodifiableView Set<@NotNull Long> selectAllFileIdByPathRecursively(final @NotNull String driverName, final @NotNull DrivePath path, final @Nullable String _connectionId) throws SQLException {
+        return Collections.unmodifiableSet(Objects.requireNonNullElseGet(FileManager.selectAllFilesIdByPathRecursively(driverName, List.of(path), _connectionId).get(path), HashSet::new));
+    }
+
     public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> selectFileByParentPathInPage(final @NotNull String driverName, final @NotNull DrivePath parentPath, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final @Nullable String _connectionId) throws SQLException {
         final Pair.ImmutablePair<Long, List<FileSqlInformation>> list = FileSqlHelper.getInstance(driverName).selectFilesByParentPathInPage(parentPath, limit, offset, direction, policy, _connectionId);
         FileManager.Cache.putAll(list.getSecond().stream().collect(Collectors.toMap(FileSqlInformation::id, Function.identity())));
@@ -138,5 +148,39 @@ public final class FileManager {
         final List<FileSqlInformation> list = FileSqlHelper.getInstance(driverName).searchFilesByNameInParentPathRecursivelyLimited(parentPath, rule, caseSensitive, limit, _connectionId);
         FileManager.Cache.putAll(list.stream().collect(Collectors.toMap(FileSqlInformation::id, Function.identity())));
         return list;
+    }
+
+    public static void insertPermissionsForEachFile(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> idList, final @NotNull Collection<@NotNull Long> groups, final @Nullable String _connectionId) throws SQLException {
+        FileSqlHelper.getInstance(driverName).insertPermissionsForEachFile(idList, groups, _connectionId);
+        FileManager.Cache.getAllPresent(idList).values().forEach(i -> i.availableForGroup().addAll(groups));
+    }
+
+    public static void insertPermissionsForFile(final @NotNull String driverName, final long id, final @NotNull Collection<@NotNull Long> groups, final @Nullable String _connectionId) throws SQLException {
+        FileManager.insertPermissionsForEachFile(driverName, List.of(id), groups, _connectionId);
+    }
+
+    public static void insertPermissionForEachFile(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> idList, final long group, final @Nullable String _connectionId) throws SQLException {
+        FileManager.insertPermissionsForEachFile(driverName, idList, List.of(group), _connectionId);
+    }
+
+    public static void insertPermissionForFile(final @NotNull String driverName, final long id, final long group, final @Nullable String _connectionId) throws SQLException {
+        FileManager.insertPermissionsForEachFile(driverName, List.of(id), List.of(id), _connectionId);
+    }
+
+    public static void deletePermissionsForEachFile(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> idList, final @NotNull Collection<@NotNull Long> groups, final @Nullable String _connectionId) throws SQLException {
+        FileSqlHelper.getInstance(driverName).deletePermissionsForEachFile(idList, groups, _connectionId);
+        FileManager.Cache.getAllPresent(idList).values().forEach(i -> i.availableForGroup().removeAll(groups));
+    }
+
+    public static void deletePermissionsForFile(final @NotNull String driverName, final long id, final @NotNull Collection<@NotNull Long> groups, final @Nullable String _connectionId) throws SQLException {
+        FileManager.deletePermissionsForEachFile(driverName, List.of(id), groups, _connectionId);
+    }
+
+    public static void deletePermissionForEachFile(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> idList, final long group, final @Nullable String _connectionId) throws SQLException {
+        FileManager.deletePermissionsForEachFile(driverName, idList, List.of(group), _connectionId);
+    }
+
+    public static void deletePermissionForFile(final @NotNull String driverName, final long id, final long group, final @Nullable String _connectionId) throws SQLException {
+        FileManager.deletePermissionsForEachFile(driverName, List.of(id), List.of(id), _connectionId);
     }
 }

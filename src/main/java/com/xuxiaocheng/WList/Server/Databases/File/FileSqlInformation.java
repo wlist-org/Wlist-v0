@@ -9,8 +9,8 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * @param id File id. Primary key.
@@ -25,7 +25,7 @@ import java.util.List;
  */
 public record FileSqlInformation(long id, @NotNull DrivePath path, boolean isDir, long size,
                                  @NotNull LocalDateTime createTime, @NotNull LocalDateTime updateTime,
-                                 @NotNull String md5, @Nullable String others, @NotNull List<@NotNull Long> availableForGroup) {
+                                 @NotNull String md5, @Nullable String others, @NotNull Set<@NotNull Long> availableForGroup) {
     public record Inserter(long id, @NotNull DrivePath path, boolean isDir, long size,
                            @Nullable LocalDateTime createTime, @Nullable LocalDateTime updateTime,
                            @NotNull String md5, @Nullable String others) {
@@ -34,7 +34,7 @@ public record FileSqlInformation(long id, @NotNull DrivePath path, boolean isDir
     @Deprecated // only for client
     public record VisibleFileInformation(@NotNull DrivePath path, boolean isDir, long size,
                                          @Nullable LocalDateTime createTime, @Nullable LocalDateTime updateTime,
-                                         @NotNull String md5, @NotNull List<@NotNull Long> availableForGroup) {
+                                         @NotNull String md5, @NotNull Set<@NotNull Long> availableForGroup) {
     }
 
     public static void dumpVisible(final @NotNull ByteBuf buffer, final @NotNull FileSqlInformation information) throws IOException {
@@ -62,7 +62,7 @@ public record FileSqlInformation(long id, @NotNull DrivePath path, boolean isDir
                 LocalDateTime.parse(ByteBufIOUtil.readUTF(b), DateTimeFormatter.ISO_DATE_TIME));
         final String md5 = ByteBufIOUtil.readUTF(buffer);
         final int length = ByteBufIOUtil.readVariableLenInt(buffer);
-        final List<Long> availableForGroup = new ArrayList<>(length);
+        final Set<Long> availableForGroup = new HashSet<>(length);
         for (int i = 0; i < length; ++i)
             availableForGroup.add(ByteBufIOUtil.readVariableLenLong(buffer));
         return new VisibleFileInformation(path, isDir, size, createTime, updateTime, md5, availableForGroup);
