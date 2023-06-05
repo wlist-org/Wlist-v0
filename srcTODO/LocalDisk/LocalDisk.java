@@ -1,6 +1,7 @@
 package com.xuxiaocheng.WList.WebDrivers.LocalDisk;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
@@ -8,6 +9,7 @@ import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
+import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformationWithGroups;
 import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -47,7 +49,7 @@ public final class LocalDisk implements DriverInterface<LocalDiskConfiguration> 
     }
 
     @Override
-    public Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(final @NotNull DrivePath path, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) {
+    public Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformationWithGroups>> list(final @NotNull DrivePath path, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) {
         throw new UnsupportedOperationException();
     }
 
@@ -63,7 +65,7 @@ public final class LocalDisk implements DriverInterface<LocalDiskConfiguration> 
     }
 
     @Override
-    public @Nullable FileSqlInformation mkdirs(final @NotNull DrivePath path, final Options.@NotNull DuplicatePolicy policy) {
+    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull Boolean> mkdirs(final @NotNull DrivePath path, final Options.@NotNull DuplicatePolicy policy) {
         throw new UnsupportedOperationException();
     }
 
@@ -83,12 +85,12 @@ public final class LocalDisk implements DriverInterface<LocalDiskConfiguration> 
     }
 
     @Override
-    public @Nullable FileSqlInformation move(final @NotNull DrivePath sourceFile, final @NotNull DrivePath targetDirectory, final Options.@NotNull DuplicatePolicy policy) {
+    public @Nullable FileSqlInformationWithGroups move(final @NotNull DrivePath sourceFile, final @NotNull DrivePath targetDirectory, final Options.@NotNull DuplicatePolicy policy) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public @Nullable FileSqlInformation rename(final @NotNull DrivePath source, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) {
+    public @Nullable FileSqlInformationWithGroups rename(final @NotNull DrivePath source, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) {
         throw new UnsupportedOperationException();
     }
 

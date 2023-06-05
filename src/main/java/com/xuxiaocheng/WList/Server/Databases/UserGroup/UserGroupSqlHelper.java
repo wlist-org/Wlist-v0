@@ -100,12 +100,10 @@ final class UserGroupSqlHelper {
     }
 
     private static @Nullable UserGroupSqlInformation createNextUserGroupInfo(final @NotNull ResultSet result) throws SQLException {
-        if (!result.next())
-            return null;
-        return new UserGroupSqlInformation(result.getLong("group_id"),
+        return result.next() ? new UserGroupSqlInformation(result.getLong("group_id"),
                 result.getString("name"),
                 Objects.requireNonNullElseGet(Operation.parsePermissions(result.getString("permissions")),
-                        Operation::emptyPermissions));
+                        Operation::emptyPermissions)) : null;
     }
 
     private static @NotNull @UnmodifiableView List<@NotNull UserGroupSqlInformation> createUserGroupsInfo(final @NotNull ResultSet result) throws SQLException {

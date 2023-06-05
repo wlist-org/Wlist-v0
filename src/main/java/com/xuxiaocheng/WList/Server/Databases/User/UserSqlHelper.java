@@ -127,12 +127,10 @@ final class UserSqlHelper {
     }
 
     private static @Nullable UserSqlInformation createNextUserInfo(final @NotNull ResultSet result) throws SQLException {
-        if (!result.next())
-            return null;
-        return new UserSqlInformation(result.getLong("id"),
+        return result.next() ? new UserSqlInformation(result.getLong("id"),
                 result.getString("username"), result.getString("password"),
                 UserSqlHelper.getUserGroupInformation(result),
-                LocalDateTime.parse(result.getString("modify_time"), UserSqlHelper.DefaultFormatter));
+                LocalDateTime.parse(result.getString("modify_time"), UserSqlHelper.DefaultFormatter)) : null;
     }
 
     private static @NotNull @UnmodifiableView List<@NotNull UserSqlInformation> createUsersInfo(final @NotNull ResultSet result) throws SQLException {

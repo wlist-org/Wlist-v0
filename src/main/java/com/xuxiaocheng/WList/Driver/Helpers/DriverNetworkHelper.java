@@ -37,7 +37,9 @@ public final class DriverNetworkHelper {
         super();
     }
 
-    public static final @NotNull String defaultAgent = "WList/0.1.4";
+    @SuppressWarnings("SpellCheckingInspection")
+    public static final @NotNull String defaultWebAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.37";
+    public static final @NotNull String defaultAgent = "WList/0.2.0";
     public static final OkHttpClient.@NotNull Builder httpClientBuilder = new OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)

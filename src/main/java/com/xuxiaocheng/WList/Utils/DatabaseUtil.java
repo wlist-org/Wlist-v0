@@ -35,7 +35,7 @@ public class DatabaseUtil {
         if (DatabaseUtil.Instance == null)
             DatabaseUtil.Instance = new DatabaseUtil(new PooledDatabaseConfig(
                     new File(GlobalConfiguration.getInstance().databasePath()),
-                    2, 3, 10, false, true, Connection.TRANSACTION_READ_COMMITTED
+                    2, 3, 10, false, false, Connection.TRANSACTION_READ_COMMITTED
             ));
         return DatabaseUtil.Instance;
     }
@@ -150,6 +150,8 @@ public class DatabaseUtil {
                         return null;
                 }
             }
+            // TODO A SQLException occurred that caused the transaction to rollback,
+            //  requiring rejection of commit method from other threads.
             return method.invoke(this.connection, args);
         }
 

@@ -10,7 +10,6 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.List;
 
 public final class FileInformation_LocalDisk {
     private FileInformation_LocalDisk() {
@@ -27,7 +26,7 @@ public final class FileInformation_LocalDisk {
                     !attributes.isRegularFile(), attributes.size(),
                     LocalDateTime.ofInstant(attributes.creationTime().toInstant(), ZoneId.systemDefault()),
                     LocalDateTime.ofInstant(attributes.lastModifiedTime().toInstant(), ZoneId.systemDefault()),
-                    "", List.of(), /*TODO*/attributes.isSymbolicLink() ? "S" : attributes.isOther() ? "O" : "");
+                    "", attributes.isSymbolicLink() ? "S" : attributes.isOther() ? "O" : "");
         } catch (final RuntimeException exception) {
             throw HExceptionWrapper.unwrapException(exception, IOException.class);
         }

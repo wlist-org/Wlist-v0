@@ -2,6 +2,7 @@ package com.xuxiaocheng.WList.Driver;
 
 import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
@@ -44,6 +45,10 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      */
     void buildIndex() throws Exception;
 
+    default void forceRefreshDirectory(final @NotNull DrivePath path) throws Exception {
+        this.buildIndex();
+    }
+
     /**
      * Get the list of files in this directory.
      * @param path The directory path to get files list.
@@ -76,20 +81,20 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     /**
      * Create a new empty directory.
      * @param path The directory path to create.
-     * @return The information of new directory. Null means failure. (Invalid filename/File already exists.)
+     * @return The information of new directory.
      * @throws Exception Something went wrong.
      */
-    @Nullable FileSqlInformation mkdirs(final @NotNull DrivePath path, final Options.@NotNull DuplicatePolicy policy) throws Exception;
+    @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> mkdirs(final @NotNull DrivePath path, final Options.@NotNull DuplicatePolicy policy) throws Exception;
 
     /**
      * Upload file to path. {@link UploadMethods}
      * @param path Target path.
      * @param size File size.
-     * @param md5 File md5.
-     * @return Null means invalid filename. Second Consumer should return the information of new file, but null means failure.
+     * @param md5  File md5.
+     * @return Upload methods for chunks of file.
      * @throws Exception Something went wrong.
      */
-    @Nullable UploadMethods upload(final @NotNull DrivePath path, final long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws Exception;
+    @NotNull UnionPair<@NotNull UploadMethods, @NotNull FailureReason> upload(final @NotNull DrivePath path, final long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws Exception;
 
     /**
      * Delete file.
@@ -99,17 +104,20 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     void delete(final @NotNull DrivePath path) throws Exception;
 
     @SuppressWarnings("OverlyBroadThrowsClause")
-    default @Nullable FileSqlInformation copy(final @NotNull DrivePath source, final @NotNull DrivePath target, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+    default @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> copy(final @NotNull DrivePath source, final @NotNull DrivePath target, final Options.@NotNull DuplicatePolicy policy) throws Exception {
         final FileSqlInformation info = this.info(source);
         final Pair.ImmutablePair<InputStream, Long> url = this.download(source, 0, Long.MAX_VALUE);
         if (url == null || info == null)
-            return null;
-        assert info.size() == url.getSecond().longValue();
-        final UploadMethods methods = this.upload(target, info.size(), info.md5(), policy);
-        if (methods == null)
-            return null;
+            return UnionPair.fail(FailureReason.byNoSuchFile("Copying.", source));
+        Runnable finisher = null;
         try {
-            for (final UploadMethods.UploadPartMethod partMethod: methods.methods()) {
+            if (info.size() != url.getSecond().longValue())
+                return UnionPair.fail(FailureReason.byNoSuchFile("Copying.", source));
+            final UnionPair<UploadMethods, FailureReason> methods = this.upload(target, info.size(), info.md5(), policy);
+            finisher = methods.getT().finisher();
+            if (methods.isFailure())
+                return UnionPair.fail(methods.getE());
+            for (final UploadMethods.UploadPartMethod partMethod: methods.getT().methods()) {
                 final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(partMethod.size(), partMethod.size());
                 try {
                     buffer.writeBytes(url.getFirst(), partMethod.size());
@@ -118,27 +126,41 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
                     buffer.release();
                 }
             }
-            return methods.supplier().get();
+            final FileSqlInformation information = methods.getT().supplier().get();
+            if (information == null)
+                throw new IllegalStateException("Failed to copy file. [Unknown]. source: " + source + ", sourceInfo: " + info + ", target: " + target + ", policy: " + policy);
+            return UnionPair.ok(information);
         } finally {
-            methods.finisher().run();
+            if (finisher != null)
+                finisher.run();
             url.getFirst().close();
         }
     }
 
-    default @Nullable FileSqlInformation move(final @NotNull DrivePath sourceFile, final @NotNull DrivePath targetDirectory, final Options.@NotNull DuplicatePolicy policy) throws Exception {
-        if (targetDirectory.equals(sourceFile.getParent()))
-            return this.info(sourceFile);
-        final FileSqlInformation t = this.copy(sourceFile, targetDirectory.getChild(sourceFile.getName()), policy);
-        if (t == null)
-            return null;
+    default @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> move(final @NotNull DrivePath sourceFile, final @NotNull DrivePath targetDirectory, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+        if (targetDirectory.equals(sourceFile.getParent())) {
+            final FileSqlInformation information = this.info(sourceFile);
+            if (information == null)
+                return UnionPair.fail(FailureReason.byNoSuchFile("Moving.", sourceFile));
+            return UnionPair.ok(information);
+        }
+        final UnionPair<FileSqlInformation, FailureReason> t = this.copy(sourceFile, targetDirectory.getChild(sourceFile.getName()), policy);
+        if (t.isFailure())
+            return UnionPair.fail(t.getE());
         this.delete(sourceFile);
         return t;
     }
 
-    default @Nullable FileSqlInformation rename(final @NotNull DrivePath source, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
-        if (source.getName().equals(name))
-            return this.info(source);
-        final FileSqlInformation t = this.copy(source, source.getParent().child(name), policy);
+    default @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> rename(final @NotNull DrivePath source, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+        if (source.getName().equals(name)){
+            final FileSqlInformation information = this.info(source);
+            if (information == null)
+                return UnionPair.fail(FailureReason.byNoSuchFile("Renaming.", source));
+            return UnionPair.ok(information);
+        }
+        final UnionPair<FileSqlInformation, FailureReason> t = this.copy(source, source.getParent().child(name), policy);
+        if (t.isFailure())
+            return UnionPair.fail(t.getE());
         this.delete(source);
         return t;
     }

@@ -3,6 +3,7 @@ package com.xuxiaocheng.WList.Server.ServerHandlers;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
+import com.xuxiaocheng.WList.Driver.FailureReason;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
@@ -48,6 +49,7 @@ public final class ServerFileHandler {
             return ServerHandler.WrongParameters;
         final Pair.ImmutablePair<Long, List<FileSqlInformation>> list;
         try {
+            // TODO with groups
             list = RootDriver.getInstance().list(path, limit, page, orderPolicy, orderDirection);
         } catch (final UnsupportedOperationException exception) {
             return ServerHandler.composeMessage(Operation.State.Unsupported, exception.getMessage());
@@ -60,7 +62,7 @@ public final class ServerFileHandler {
             ByteBufIOUtil.writeVariableLenLong(buf, list.getFirst().longValue());
             ByteBufIOUtil.writeVariableLenInt(buf, list.getSecond().size());
             for (final FileSqlInformation information: list.getSecond())
-                FileSqlInformation.dump(buf, information);
+                FileSqlInformation.dumpVisible(buf, information);
             return buf;
         });
     };
@@ -73,7 +75,7 @@ public final class ServerFileHandler {
         final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
         if (duplicatePolicy == null)
             return ServerHandler.WrongParameters;
-        final FileSqlInformation dir;
+        final UnionPair<FileSqlInformation, FailureReason> dir;
         try {
             dir = RootDriver.getInstance().mkdirs(path, duplicatePolicy);
         } catch (final UnsupportedOperationException exception) {
@@ -81,10 +83,10 @@ public final class ServerFileHandler {
         } catch (final Exception exception) {
             throw new ServerException(exception);
         }
-        if (dir == null)
+        if (dir.isFailure()) // TODO reasons.
             return ServerFileHandler.FileNotFound;
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
-            FileSqlInformation.dump(buf, dir);
+            FileSqlInformation.dumpVisible(buf, dir.getT());
             return buf;
         });
     };
@@ -113,7 +115,7 @@ public final class ServerFileHandler {
         final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
         if (duplicatePolicy == null)
             return ServerHandler.WrongParameters;
-        final FileSqlInformation file;
+        final UnionPair<FileSqlInformation, FailureReason> file;
         try {
             file = RootDriver.getInstance().rename(path, name, duplicatePolicy);
         } catch (final UnsupportedOperationException exception) {
@@ -121,10 +123,10 @@ public final class ServerFileHandler {
         } catch (final Exception exception) {
             throw new ServerException(exception);
         }
-        if (file == null)
+        if (file.isFailure()) // TODO reasons.
             return ServerFileHandler.FileNotFound;
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
-            FileSqlInformation.dump(buf, file);
+            FileSqlInformation.dumpVisible(buf, file.getT());
             return buf;
         });
     };
@@ -199,7 +201,7 @@ public final class ServerFileHandler {
         final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
         if (duplicatePolicy == null)
             return ServerHandler.WrongParameters;
-        final UploadMethods methods;
+        final UnionPair<UploadMethods, FailureReason> methods;
         try {
             methods = RootDriver.getInstance().upload(path, size, md5, duplicatePolicy);
         } catch (final UnsupportedOperationException exception) {
@@ -207,26 +209,26 @@ public final class ServerFileHandler {
         } catch (final Exception exception) {
             throw new ServerException(exception);
         }
-        if (methods == null)
+        if (methods.isFailure()) // TODO reasons.
             return ServerFileHandler.FileNotFound;
-        if (methods.methods().isEmpty()) { // (reuse / empty file)
+        if (methods.getT().methods().isEmpty()) { // (reuse / empty file)
             final FileSqlInformation file;
             try {
-                file = methods.supplier().get();
+                file = methods.getT().supplier().get();
             } catch (final Exception exception) {
                 throw new ServerException(exception);
             } finally {
-                methods.finisher().run();
+                methods.getT().finisher().run();
             }
             if (file == null)
                 return ServerFileHandler.FileNotFound;
             return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
                 ByteBufIOUtil.writeBoolean(buf, true);
-                FileSqlInformation.dump(buf, file);
+                FileSqlInformation.dumpVisible(buf, file);
                 return buf;
             });
         }
-        final String id = FileUploadIdHelper.generateId(methods, md5, user.getT().username());
+        final String id = FileUploadIdHelper.generateId(methods.getT(), md5, user.getT().username());
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
             ByteBufIOUtil.writeBoolean(buf, false);
             ByteBufIOUtil.writeUTF(buf, id);
@@ -250,7 +252,7 @@ public final class ServerFileHandler {
             return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
                 ByteBufIOUtil.writeBoolean(buf, file == null);
                 if (file != null)
-                    FileSqlInformation.dump(buf, file);
+                    FileSqlInformation.dumpVisible(buf, file);
                 return buf;
             });
         } catch (final ServerException exception) {
@@ -277,7 +279,7 @@ public final class ServerFileHandler {
         final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
         if (duplicatePolicy == null)
             return ServerHandler.WrongParameters;
-        final FileSqlInformation file;
+        final UnionPair<FileSqlInformation, FailureReason> file;
         try {
             file = RootDriver.getInstance().copy(source, target, duplicatePolicy);
         } catch (final UnsupportedOperationException exception) {
@@ -285,10 +287,10 @@ public final class ServerFileHandler {
         } catch (final Exception exception) {
             throw new ServerException(exception);
         }
-        if (file == null)
+        if (file.isFailure()) // TODO reasons.
             return ServerFileHandler.FileNotFound;
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
-            FileSqlInformation.dump(buf, file);
+            FileSqlInformation.dumpVisible(buf, file.getT());
             return buf;
         });
     };
@@ -302,7 +304,7 @@ public final class ServerFileHandler {
         final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
         if (duplicatePolicy == null)
             return ServerHandler.WrongParameters;
-        final FileSqlInformation file;
+        final UnionPair<FileSqlInformation, FailureReason> file;
         try {
             file = RootDriver.getInstance().move(sourceFile, targetDirectory, duplicatePolicy);
         } catch (final UnsupportedOperationException exception) {
@@ -310,10 +312,10 @@ public final class ServerFileHandler {
         } catch (final Exception exception) {
             throw new ServerException(exception);
         }
-        if (file == null)
+        if (file.isFailure()) // TODO reasons.
             return ServerFileHandler.FileNotFound;
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
-            FileSqlInformation.dump(buf, file);
+            FileSqlInformation.dumpVisible(buf, file.getT());
             return buf;
         });
     };

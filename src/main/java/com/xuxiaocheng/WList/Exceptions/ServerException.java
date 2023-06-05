@@ -1,5 +1,7 @@
 package com.xuxiaocheng.WList.Exceptions;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.Serial;
 
 public class ServerException extends Exception {
@@ -10,15 +12,15 @@ public class ServerException extends Exception {
         super();
     }
 
-    public ServerException(final String message) {
+    public ServerException(final @NotNull String message) {
         super(message);
     }
 
-    public ServerException(final Throwable cause) {
+    public ServerException(final @NotNull Throwable cause) {
         super(cause);
     }
 
-    public ServerException(final String message, final Throwable cause) {
+    public ServerException(final @NotNull String message, final @NotNull Throwable cause) {
         super(message, cause);
     }
 }

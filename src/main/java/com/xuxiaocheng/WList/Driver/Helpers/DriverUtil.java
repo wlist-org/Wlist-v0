@@ -3,10 +3,13 @@ package com.xuxiaocheng.WList.Driver.Helpers;
 import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
+import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.FunctionE;
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
+import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import okhttp3.Headers;
 import okhttp3.MediaType;
@@ -30,7 +33,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 public final class DriverUtil {
@@ -41,9 +43,13 @@ public final class DriverUtil {
     public static final @NotNull Pattern phoneNumberPattern = Pattern.compile("^1([38][0-9]|4[579]|5[0-3,5-9]|66|7[0135678]|9[89])\\d{8}$");
     public static final @NotNull Pattern mailAddressPattern = Pattern.compile("^\\w+@[a-zA-Z0-9]+(\\.[a-zA-Z0-9]+){1,2}$");
 
+    public static final @NotNull String InvalidPhoneNumber = "\u8bf7\u8f93\u5165\u6b63\u786e\u7684\u624b\u673a\u53f7\u7801";
+    public static final @NotNull String InvalidMailAddress = "\u8bf7\u8f93\u5165\u6b63\u786e\u7684\u90ae\u7bb1\u53f7";
+
     public static final Options.@NotNull OrderPolicy DefaultOrderPolicy = Options.OrderPolicy.FileName;
     public static final Options.@NotNull OrderDirection DefaultOrderDirection = Options.OrderDirection.ASCEND;
     public static final Options.@NotNull DuplicatePolicy DefaultDuplicatePolicy = Options.DuplicatePolicy.KEEP;
+
 
     public static @NotNull InputStream getDownloadStream(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws IOException {
         if (from >= to)
@@ -104,26 +110,23 @@ public final class DriverUtil {
                 null, 0, len), len);
     }
 
-    public static Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Iterator<@NotNull FileSqlInformation>, @NotNull Runnable> wrapAllFilesListerInPages(final @NotNull FunctionE<? super @NotNull Integer, ? extends Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull List<@NotNull FileSqlInformation>>> fileSupplierInPage, final int defaultLimit, final @NotNull Consumer<? super @Nullable Exception> finisher, final @NotNull ExecutorService threadPool) {
+    public static Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Iterator<@NotNull FileSqlInformation>, @NotNull RunnableE> wrapAllFilesListerInPages(final @NotNull FunctionE<? super @NotNull Integer, ? extends Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull List<@NotNull FileSqlInformation>>> fileSupplierInPage, final int defaultLimit, final @NotNull ConsumerE<? super @Nullable Exception> finisher, final @Nullable ExecutorService _threadPool) {
         final Pair.ImmutablePair<Long, List<FileSqlInformation>> firstPage;
         try {
             firstPage = fileSupplierInPage.apply(0);
         } catch (final Exception exception) {
-            finisher.accept(exception);
-            return Triad.ImmutableTriad.makeImmutableTriad(0L, MiscellaneousUtil.getEmptyIterator(), RunnableE.EmptyRunnable);
+            return Triad.ImmutableTriad.makeImmutableTriad(0L, MiscellaneousUtil.getEmptyIterator(), () -> finisher.accept(exception));
         }
         final long fileCount = firstPage.getFirst().intValue();
         if (fileCount <= 0 || firstPage.getSecond().isEmpty()) {
-            finisher.accept(null);
-            return Triad.ImmutableTriad.makeImmutableTriad(0L, MiscellaneousUtil.getEmptyIterator(), RunnableE.EmptyRunnable);
+            return Triad.ImmutableTriad.makeImmutableTriad(0L, MiscellaneousUtil.getEmptyIterator(), () -> finisher.accept(null));
         }
         assert firstPage.getSecond().size() <= defaultLimit;
         final int pageCount = MiscellaneousUtil.calculatePartCount(fileCount, defaultLimit);
-        if (pageCount <= 1) {
-            finisher.accept(null);
-            return Triad.ImmutableTriad.makeImmutableTriad(fileCount, firstPage.getSecond().iterator(), RunnableE.EmptyRunnable);
-        }
-        final BlockingQueue<FileSqlInformation> allFiles = new LinkedBlockingQueue<>(Math.max((int) fileCount, firstPage.getSecond().size()));
+        if (pageCount <= 1)
+            return Triad.ImmutableTriad.makeImmutableTriad(fileCount, firstPage.getSecond().iterator(), () -> finisher.accept(null));
+        final ExecutorService threadPool = Objects.requireNonNullElse(_threadPool, WListServer.IOExecutors);
+        final BlockingQueue<FileSqlInformation> allFiles = new LinkedBlockingQueue<>(Math.max((int) fileCount, firstPage.getSecond().size() << 1));
         allFiles.addAll(firstPage.getSecond());
         final AtomicInteger countDown = new AtomicInteger(pageCount);
         final AtomicBoolean calledFinisher = new AtomicBoolean(false);
@@ -149,7 +152,7 @@ public final class DriverUtil {
                     future.completeExceptionally(exception);
                     futures[current - 1].completeExceptionally(exception);
                     if (calledFinisher.compareAndSet(false, true))
-                        finisher.accept(exception);
+                        HExceptionWrapper.wrapConsumer(finisher).accept(exception);
                 }
             }, threadPool);
         }

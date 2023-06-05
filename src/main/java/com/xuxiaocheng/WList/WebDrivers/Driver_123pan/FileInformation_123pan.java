@@ -12,7 +12,6 @@ import org.jetbrains.annotations.Nullable;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.List;
 
 public final class FileInformation_123pan {
     private FileInformation_123pan() {
@@ -44,10 +43,10 @@ public final class FileInformation_123pan {
                 throw new IllegalParametersException("No s3key.", information);
             return new FileInfoExtra_123pan(type.intValue(), s3key);
         }
-        throw new IllegalParametersException("Invalid information.", information);
+        throw new IllegalParametersException("Invalid extra part.", information);
     }
 
-    static FileSqlInformation.@Nullable Inserter create(final @NotNull DrivePath parentPath, final @Nullable JSONObject info) {
+    static @Nullable FileSqlInformation create(final @NotNull DrivePath parentPath, final @Nullable JSONObject info) {
         if (info == null)
             return null;
         final Long id = info.getLong("FileId");
@@ -63,7 +62,7 @@ public final class FileInformation_123pan {
                 || etag == null || (!etag.isEmpty() && !MiscellaneousUtil.md5Pattern.matcher(etag).matches()))
             return null;
         try {
-            return new FileSqlInformation.Inserter(id.longValue(), parentPath.getChild(name),
+            return new FileSqlInformation(id.longValue(), parentPath.getChild(name),
                     type.intValue() == 1, size.longValue(),
                     LocalDateTime.parse(create, DateTimeFormatter.ISO_ZONED_DATE_TIME),
                     LocalDateTime.parse(update, DateTimeFormatter.ISO_ZONED_DATE_TIME),
