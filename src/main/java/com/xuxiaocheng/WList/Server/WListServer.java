@@ -181,16 +181,14 @@ public class WListServer {
             try {
                 final Operation.Type type = Operation.valueOfType(ByteBufIOUtil.readUTF(msg));
                 WListServer.logger.log(HLogLevel.DEBUG, "Operate: ", channel.id().asLongText(), " type: ", type, " user: ", (Supplier<String>) () -> {
-                    final String user;
                     msg.markReaderIndex();
                     try {
-                        user = ByteBufIOUtil.readUTF(msg);
+                        return ByteBufIOUtil.readUTF(msg);
                     } catch (final IOException ignore) {
                         return "error(IOException)";
                     } finally {
                         msg.resetReaderIndex();
                     }
-                    return user;
                 });
                 final ServerHandler handler = switch (type) {
                     case Undefined -> b -> ServerHandler.Undefined;

@@ -23,7 +23,6 @@ import java.time.format.DateTimeFormatter;
 public record FileSqlInformation(long id, @NotNull DrivePath path, boolean isDir, long size,
                                  @Nullable LocalDateTime createTime, @Nullable LocalDateTime updateTime,
                                  @NotNull String md5, @Nullable String others) {
-
     @Deprecated // only for client
     public record VisibleFileInformation(@NotNull DrivePath path, boolean isDir, long size,
                                          @Nullable LocalDateTime createTime, @Nullable LocalDateTime updateTime,
@@ -51,7 +50,6 @@ public record FileSqlInformation(long id, @NotNull DrivePath path, boolean isDir
         final LocalDateTime updateTime = ByteBufIOUtil.readObjectNullable(buffer, b ->
                 LocalDateTime.parse(ByteBufIOUtil.readUTF(b), DateTimeFormatter.ISO_DATE_TIME));
         final String md5 = ByteBufIOUtil.readUTF(buffer);
-        final int length = ByteBufIOUtil.readVariableLenInt(buffer);
         return new VisibleFileInformation(path, isDir, size, createTime, updateTime, md5);
     }
 }

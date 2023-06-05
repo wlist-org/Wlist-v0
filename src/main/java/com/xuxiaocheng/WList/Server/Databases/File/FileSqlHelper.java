@@ -37,14 +37,17 @@ final class FileSqlHelper {
     private static final @NotNull ConcurrentMap<@NotNull String, @NotNull FileSqlHelper> instances = new ConcurrentHashMap<>();
 
     public static void initialize(final @NotNull String driverName, final @NotNull DatabaseUtil database, final @Nullable String _connectionId) throws SQLException {
-        final FileSqlHelper helper;
+        final boolean[] flag = {true};
         try {
-            helper = FileSqlHelper.instances.computeIfAbsent(driverName, HExceptionWrapper.wrapFunction(k -> new FileSqlHelper(driverName, database, _connectionId)));
+            FileSqlHelper.instances.computeIfAbsent(driverName, HExceptionWrapper.wrapFunction(k -> {
+                flag[0] = false;
+                return new FileSqlHelper(driverName, database, _connectionId);
+            }));
         } catch (final RuntimeException exception) {
             throw HExceptionWrapper.unwrapException(exception, SQLException.class);
         }
-        if (helper != null)
-            throw new IllegalStateException("File sql helper for (" + driverName + ") is initialized. instance: " + helper);
+        if (flag[0])
+            throw new IllegalStateException("File sql helper for (" + driverName + ") is initialized.");
     }
 
     public static @NotNull FileSqlHelper getInstance(final @NotNull String driverName) {

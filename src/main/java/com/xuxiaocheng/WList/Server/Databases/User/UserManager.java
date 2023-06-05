@@ -12,6 +12,8 @@ import org.jetbrains.annotations.UnmodifiableView;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -109,13 +111,13 @@ public final class UserManager {
     }
 
     public static @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull UserSqlInformation> selectUsers(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
-        final Map<Long, UserSqlInformation> cached = UserManager.Cache.getAllPresent(idList);
+        final Map<Long, UserSqlInformation> cached = new HashMap<>(UserManager.Cache.getAllPresent(idList));
         final Collection<Long> rest = new HashSet<>(idList);
         rest.removeAll(cached.keySet());
         final Map<Long, UserSqlInformation> required = UserSqlHelper.getInstance().selectUsers(rest, _connectionId);
         UserManager.Cache.putAll(required);
         cached.putAll(required);
-        return cached;
+        return Collections.unmodifiableMap(cached);
     }
 
     public static @Nullable UserSqlInformation selectUser(final long id, final @Nullable String _connectionId) throws SQLException {

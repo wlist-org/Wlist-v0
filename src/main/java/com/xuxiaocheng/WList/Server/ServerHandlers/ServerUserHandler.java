@@ -103,12 +103,12 @@ public final class ServerUserHandler {
 
     public static final @NotNull ServerHandler doChangePassword = buffer -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkTokenAndPassword(buffer);
+        final String newPassword = ByteBufIOUtil.readUTF(buffer);
         if (user.isFailure())
             return user.getE();
-        final String newPassword = ByteBufIOUtil.readUTF(buffer);
-//        user.getT().setPassword(newPassword);
         try {
-            UserManager.updateUser(user.getT(), Thread.currentThread().getName());
+            UserManager.updateUser(new UserSqlInformation(user.getT().id(), user.getT().username(),
+                    newPassword, user.getT().group(), user.getT().modifyTime()), Thread.currentThread().getName());
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
@@ -147,11 +147,11 @@ public final class ServerUserHandler {
 
     public static final @NotNull ServerHandler doListUsers = buffer -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.UsersList);
-        if (user.isFailure())
-            return user.getE();
         final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
         final int page = ByteBufIOUtil.readVariableLenInt(buffer);
         final Options.OrderDirection orderDirection = Options.valueOfOrderDirection(ByteBufIOUtil.readUTF(buffer));
+        if (user.isFailure())
+            return user.getE();
         if (limit < 1 || limit > GlobalConfiguration.getInstance().maxLimitPerPage() || page < 0 || orderDirection == null)
             return ServerHandler.WrongParameters;
         final Pair.ImmutablePair<Long, List<UserSqlInformation>> list;
