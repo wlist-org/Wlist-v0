@@ -1,9 +1,7 @@
-package com.xuxiaocheng.WListClient.OperationHelpers;
+package com.xuxiaocheng.WListClient.Client.OperationHelpers;
 
 import com.xuxiaocheng.WListClient.Server.Operation;
-import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.Serial;
 

@@ -1,11 +1,11 @@
-package com.xuxiaocheng.WListClient.OperationHelpers;
+package com.xuxiaocheng.WListClient.Client.OperationHelpers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.WListClient.Client.WListClient;
 import com.xuxiaocheng.WListClient.Server.Operation;
 import com.xuxiaocheng.WListClient.Server.Options;
 import com.xuxiaocheng.WListClient.Server.VisibleUserInformation;
 import com.xuxiaocheng.WListClient.Utils.ByteBufIOUtil;
-import com.xuxiaocheng.WListClient.WListClient;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -13,7 +13,6 @@ import org.jetbrains.annotations.UnmodifiableView;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -107,7 +106,7 @@ public final class OperateUserHelper {
         }
     }
 
-    public static boolean changePermission(final @NotNull WListClient client, final @NotNull String token, final @NotNull String username, final boolean add, final @NotNull Collection<Operation.@NotNull Permission> permissions) throws IOException, InterruptedException, WrongStateException {
+    public static boolean changePermission(final @NotNull WListClient client, final @NotNull String token, final @NotNull String username, final boolean add, final @NotNull Iterable<Operation.@NotNull Permission> permissions) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(add ? Operation.Type.AddPermission : Operation.Type.ReducePermission, token);
         ByteBufIOUtil.writeUTF(send, username);
         ByteBufIOUtil.writeUTF(send, Operation.dumpPermissions(permissions));

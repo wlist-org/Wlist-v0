@@ -1,9 +1,9 @@
-package com.xuxiaocheng.WListClient.OperationHelpers;
+package com.xuxiaocheng.WListClient.Client.OperationHelpers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WListClient.Server.Operation;
 import com.xuxiaocheng.WListClient.Utils.ByteBufIOUtil;
-import com.xuxiaocheng.WListClient.WListClient;
+import com.xuxiaocheng.WListClient.Client.WListClient;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import org.jetbrains.annotations.NotNull;

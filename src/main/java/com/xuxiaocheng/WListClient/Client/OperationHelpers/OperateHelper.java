@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListClient.OperationHelpers;
+package com.xuxiaocheng.WListClient.Client.OperationHelpers;
 
 import com.xuxiaocheng.WListClient.Server.Operation;
 import com.xuxiaocheng.WListClient.Server.MessageCiphers;

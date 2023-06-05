@@ -1,7 +1,8 @@
-package com.xuxiaocheng.WListClient;
+package com.xuxiaocheng.WListClient.Client;
 
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WListClient.Main;
 import com.xuxiaocheng.WListClient.Server.MessageClientCiphers;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
@@ -21,6 +22,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.crypto.NoSuchPaddingException;
+import java.net.ConnectException;
 import java.net.SocketAddress;
 import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -31,17 +33,16 @@ public class WListClient {
     private static final @NotNull HLog logger = HLog.createInstance("ClientLogger",
             Main.DebugMode ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1,
             true);
+    public static final @NotNull EventLoopGroup ClientEventLoop = new NioEventLoopGroup(1);
 
     protected final @NotNull SocketAddress address;
-    protected final @NotNull EventLoopGroup group = new NioEventLoopGroup(1);
     private final @NotNull Channel channel;
 
-    public WListClient(final @NotNull SocketAddress address) throws InterruptedException {
+    public WListClient(final @NotNull SocketAddress address) throws InterruptedException, ConnectException {
         super();
         this.address = address;
-        WListClient.logger.log(HLogLevel.DEBUG, "WListClient is starting...");
         final Bootstrap bootstrap = new Bootstrap();
-        bootstrap.group(this.group);
+        bootstrap.group(WListClient.ClientEventLoop);
         bootstrap.channel(NioSocketChannel.class);
         bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
         bootstrap.option(ChannelOption.SO_REUSEADDR, true);
@@ -61,7 +62,6 @@ public class WListClient {
             while (uninitialized.get())
                 uninitialized.wait();
         }
-        WListClient.logger.log(HLogLevel.VERBOSE, "WListClient started.");
     }
 
     public @NotNull SocketAddress getAddress() {
@@ -71,9 +71,11 @@ public class WListClient {
     private @Nullable ByteBuf receive = null;
     protected final @NotNull Object receiveLock = new Object();
 
-    public @NotNull ByteBuf send(final @Nullable ByteBuf buf) throws InterruptedException {
-        if (buf != null)
-            this.channel.writeAndFlush(buf);
+    public @NotNull ByteBuf send(final @Nullable ByteBuf msg) throws InterruptedException {
+        if (msg != null) {
+            WListClient.logger.log(HLogLevel.VERBOSE, "Write len: ", msg.readableBytes());
+            this.channel.writeAndFlush(msg);
+        }
         synchronized (this.receiveLock) {
             while (this.receive == null)
                 this.receiveLock.wait();
@@ -84,10 +86,7 @@ public class WListClient {
     }
 
     public void stop() throws InterruptedException {
-        WListClient.logger.log(HLogLevel.DEBUG, "WListClient is stopping...");
         this.channel.close().sync();
-        this.group.shutdownGracefully().sync();
-        WListClient.logger.log(HLogLevel.INFO, "WListClient stopped gracefully.");
     }
 
     public static class ClientChannelInboundHandler extends SimpleChannelInboundHandler<ByteBuf> {
@@ -101,7 +100,7 @@ public class WListClient {
         @Override
         protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) {
             WListClient.logger.log(HLogLevel.VERBOSE, "Read len: ", msg.readableBytes());
-            synchronized (this.client.receiveLock) { // TODO support Broadcast
+            synchronized (this.client.receiveLock) {
                 if (this.client.receive != null)
                     this.client.receive.release();
                 msg.retain();
@@ -115,6 +114,12 @@ public class WListClient {
             return "ClientChannelInboundHandler{" +
                     "client=" + this.client +
                     "} " + super.toString();
+        }
+
+        @Override
+        public void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) {
+            WListClient.logger.log(HLogLevel.FAULT, "Uncaught exception. thread: ", Thread.currentThread().getName(), cause);
+            ctx.close();
         }
     }
 
