@@ -20,7 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.Map;
 
-public record GlobalConfiguration(boolean dumpConfiguration, String host, int port, int limit, boolean showPermissions) {
+public record GlobalConfiguration(boolean dumpConfiguration, String host, int port, int limit) {
     private static @Nullable GlobalConfiguration instance;
 
     public static synchronized void init(final @Nullable File path) throws IOException {
@@ -44,9 +44,7 @@ public record GlobalConfiguration(boolean dumpConfiguration, String host, int po
                 YamlHelper.getConfig(config, "port", "5212",
                         o -> YamlHelper.transferIntegerFromStr(o, errors, "port", BigInteger.ONE, BigInteger.valueOf(65535))).intValue(),
                 YamlHelper.getConfig(config, "limit", "20",
-                        o -> YamlHelper.transferIntegerFromStr(o, errors, "limit", BigInteger.ONE, BigInteger.valueOf(200))).intValue(),
-                YamlHelper.getConfig(config, "show_permissions", "false",
-                        o -> YamlHelper.transferBooleanFromStr(o, errors, "show_permissions")).booleanValue()
+                        o -> YamlHelper.transferIntegerFromStr(o, errors, "limit", BigInteger.ONE, BigInteger.valueOf(200))).intValue()
             );
         } catch (final RuntimeException exception) {
             throw new IOException(exception);
@@ -57,7 +55,6 @@ public record GlobalConfiguration(boolean dumpConfiguration, String host, int po
             config.put("host", GlobalConfiguration.instance.host);
             config.put("port", GlobalConfiguration.instance.port);
             config.put("limit", GlobalConfiguration.instance.limit);
-            config.put("show_permissions", GlobalConfiguration.instance.showPermissions);
             try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(path))) {
                 YamlHelper.dumpYaml(config, outputStream);
             }

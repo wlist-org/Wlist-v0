@@ -106,17 +106,9 @@ public final class ConsoleMenus {
                             if (page.getSecond().isEmpty() && i > 0)
                                 break;
                             System.out.printf("Total: %d, Page: %d %n", page.getFirst().longValue(), i);
-                            final PrintTable table = PrintTable.create();
-                            if (GlobalConfiguration.getInstance().showPermissions()) {
-                                table.setHeader(List.of("id", "username", "permissions"));
-                                for (final VisibleUserInformation information : page.getSecond())
-                                    table.addBody(List.of(String.valueOf(information.id()),
-                                            information.username(), information.permissions().toString()));
-                            } else {
-                                table.setHeader(List.of("id", "username"));
-                                for (final VisibleUserInformation information : page.getSecond())
-                                    table.addBody(List.of(String.valueOf(information.id()), information.username()));
-                            }
+                            final PrintTable table = PrintTable.create().setHeader(List.of("id", "username", "group"));
+                            for (final VisibleUserInformation information : page.getSecond())
+                                table.addBody(List.of(String.valueOf(information.id()), information.username(), information.group()));
                             table.print();
                             ++i;
                         } while (true);
