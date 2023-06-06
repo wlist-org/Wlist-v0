@@ -185,7 +185,7 @@ final class DriverHelper_123pan {
                 return exception.getMessage();
             throw exception;
         }
-        DriverHelper_123pan.logger.log(HLogLevel.LESS, "123pan: Logged in: ", data);
+        DriverHelper_123pan.logger.log(HLogLevel.LESS, "Logged in for: ", configuration.getLocalSide().getName() + ", passport: " + configuration.getWebSide().getPassport());
         DriverHelper_123pan.handleLoginData(configuration.getCacheSide(), data);
         return null;
     }
@@ -212,7 +212,7 @@ final class DriverHelper_123pan {
                 return true;
             throw exception;
         }
-        DriverHelper_123pan.logger.log(HLogLevel.LESS, "123pan: Refreshed token: ", data);
+        DriverHelper_123pan.logger.log(HLogLevel.LESS, "Refreshed token for: ", configuration.getLocalSide().getName() + ", passport: " + configuration.getWebSide().getPassport());
         DriverHelper_123pan.handleLoginData(configuration.getCacheSide(), data);
         return false;
     }

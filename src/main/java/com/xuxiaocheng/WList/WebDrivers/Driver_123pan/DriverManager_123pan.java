@@ -14,7 +14,7 @@ import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Exceptions.IllegalResponseCodeException;
 import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
-import com.xuxiaocheng.WList.Server.Driver.BackgroundTask;
+import com.xuxiaocheng.WList.Server.Driver.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import okio.BufferedSink;
@@ -34,8 +34,10 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -60,9 +62,9 @@ public final class DriverManager_123pan {
     static Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Iterator<@NotNull FileSqlInformation>, @NotNull RunnableE> listAllFilesNoCache(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final @NotNull DrivePath directoryPath, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         final Connection connection = FileManager.getDatabaseUtil().getConnection(_connectionId, connectionId);
-        final Set<Long> allIds;
+        final Set<Long> allIds = ConcurrentHashMap.newKeySet();
         try {
-            allIds = FileManager.selectFileIdByParentPath(configuration.getLocalSide().getName(), directoryPath, connectionId.get());
+            allIds.addAll(FileManager.selectFileIdByParentPath(configuration.getLocalSide().getName(), directoryPath, connectionId.get()));
         } catch (final SQLException | RuntimeException exception) {
             connection.close();
             throw exception;
@@ -102,9 +104,20 @@ public final class DriverManager_123pan {
                 if (name.equals(info.path().getName())) {
                     information = info;
                     if (useCache) { // Sync from web.
-                        BackgroundTask.background(() -> {
-                            while (lister.getB().hasNext()) lister.getB().next();
-                        });
+                        final String taskType = "Driver_123pan: " + configuration.getLocalSide().getName();
+                        final String taskName = "Sync directory: " + parentPath.getPath();
+                        final AtomicLong lock = BackgroundTaskManager.getLock(taskType, taskName, () -> new AtomicLong(0), AtomicLong.class);
+                        //noinspection SynchronizationOnLocalVariableOrMethodParameter
+                        synchronized (lock) {
+                            if (lock.get() != lister.getA().longValue()) {
+                                if (lock.get() != 0)
+                                    BackgroundTaskManager.cancel(taskType, taskName);
+                                BackgroundTaskManager.background(taskType, taskName, () -> {
+                                    while (lister.getB().hasNext())
+                                        lister.getB().next();
+                                }, true, RunnableE.EmptyRunnableE);
+                            }
+                        }
                     } else lister.getC().run();
                     break;
                 }
@@ -193,6 +206,27 @@ public final class DriverManager_123pan {
                 return null;
             final Pair.ImmutablePair<Long, List<FileSqlInformation>> list = DriverManager_123pan.listFilesNoCache(configuration, directoryId, directoryPath,
                     limit, page, policy, direction, connectionId.get());
+            final long total = useCache ? 0 : FileManager.selectFileCountByParentPath(configuration.getLocalSide().getName(), directoryPath, connectionId.get());
+            if (total != list.getFirst().longValue() && total != list.getSecond().size()) {
+                final String taskType = "Driver_123pan: " + configuration.getLocalSide().getName();
+                final String taskName = "Sync directory: " + directoryPath.getPath();
+                final AtomicLong lock = BackgroundTaskManager.getLock(taskType, taskName, () -> new AtomicLong(0), AtomicLong.class);
+                //noinspection SynchronizationOnLocalVariableOrMethodParameter
+                synchronized (lock) {
+                    if (lock.get() != list.getFirst().longValue()) {
+                        if (lock.get() != 0)
+                            BackgroundTaskManager.cancel(taskType, taskName);
+                        if (FileManager.getDatabaseUtil().getExplicitConnection(connectionId.get()) == null)
+                            throw new IllegalStateException("Failure to retain connection. [Unreachable!]");
+                        BackgroundTaskManager.background(taskType, taskName, () -> {
+                            final Iterator<FileSqlInformation> iterator = DriverManager_123pan.listAllFilesNoCache(configuration, directoryId, directoryPath, connectionId.get(), _threadPool).getB();
+                            while (iterator.hasNext())
+                                iterator.next();
+                            connection.commit();
+                        }, true, connection::close);
+                    }
+                }
+            }
             connection.commit();
             return list;
         }

@@ -67,7 +67,7 @@ public final class ServerUserHandler {
         final String password = ByteBufIOUtil.readUTF(buffer);
         final UserSqlInformation user;
         try {
-            user = UserManager.selectUserByName(username, Thread.currentThread().getName());
+            user = UserManager.selectUserByName(username, null);
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
