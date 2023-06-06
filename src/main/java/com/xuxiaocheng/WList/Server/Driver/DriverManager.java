@@ -8,6 +8,7 @@ import com.xuxiaocheng.WList.Driver.DriverConfiguration;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
+import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.YamlHelper;
 import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
 import org.jetbrains.annotations.NotNull;
@@ -25,12 +26,14 @@ import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class DriverManager {
@@ -108,13 +111,18 @@ public final class DriverManager {
 
     public static void init() {
         DriverManager.drivers.clear();
+        final Collection<CompletableFuture<?>> futures = new ArrayList<>(GlobalConfiguration.getInstance().drivers().size());
         for (final Map.Entry<String, WebDriversType> entry: GlobalConfiguration.getInstance().drivers().entrySet())
-            try {
-                HLog.getInstance("DefaultLogger").log(HLogLevel.INFO, "Driver: ", entry.getKey(), " type: ", entry.getValue().name());
-                DriverManager.add0(entry.getKey(), entry.getValue());
-            } catch (final IllegalParametersException | IOException exception) {
-                HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, "Driver: ", entry.getKey(), " type: ", entry.getValue().name(), exception);
-            }
+            futures.add(CompletableFuture.runAsync(() -> {
+                try {
+                    HLog.getInstance("DefaultLogger").log(HLogLevel.INFO, "Driver: ", entry.getKey(), " type: ", entry.getValue().name());
+                    DriverManager.add0(entry.getKey(), entry.getValue());
+                } catch (final IllegalParametersException | IOException exception) {
+                    HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, "Driver: ", entry.getKey(), " type: ", entry.getValue().name(), exception);
+                }
+            }, WListServer.ServerExecutors));
+        for (final CompletableFuture<?> future: futures)
+            future.join();
     }
 
     public static @Nullable DriverInterface<?> get(final @NotNull String name) {

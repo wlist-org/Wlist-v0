@@ -28,7 +28,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
 
     @Override
     public void initialize(final @Nullable RootDriverConfiguration configuration) {
-        DriverManager.init();
+//        DriverManager.init();
         // TODO get root user config.
     }
 
