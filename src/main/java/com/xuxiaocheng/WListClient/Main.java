@@ -4,8 +4,6 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WListClient.Client.ConsoleMenus;
 import com.xuxiaocheng.WListClient.Client.GlobalConfiguration;
-import com.xuxiaocheng.WListClient.Client.OperationHelpers.OperateServerHelper;
-import com.xuxiaocheng.WListClient.Client.OperationHelpers.WrongStateException;
 import com.xuxiaocheng.WListClient.Client.WListClient;
 
 import java.io.File;
@@ -29,27 +27,28 @@ public final class Main {
             Main.DebugMode ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1,
             true);
 
-    public static void main(final String[] args) throws IOException, InterruptedException, WrongStateException {
+    public static void main(final String[] args) throws IOException, InterruptedException {
         Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
             Main.logger.log(HLogLevel.FAULT, "Uncaught exception. thread: ", t.getName(), e);
             WListClient.ClientEventLoop.shutdownGracefully().syncUninterruptibly();
         });
-        Main.logger.log(HLogLevel.FINE, "Hello WList Client! Initializing...");
+        Main.logger.log(HLogLevel.FINE, "Hello WList Client (Console Version)! Initializing...");
         final File configuration = new File(args.length > 0 ? args[0] : "client.yaml");
         Main.logger.log(HLogLevel.LESS, "Initializing global configuration. file: ", configuration.getAbsolutePath());
         GlobalConfiguration.init(configuration);
         Main.logger.log(HLogLevel.VERBOSE, "Initialized global configuration.");
         final WListClient client = new WListClient(new InetSocketAddress(GlobalConfiguration.getInstance().host(), GlobalConfiguration.getInstance().port()));
-        final WListClient broadcast = new WListClient(new InetSocketAddress(GlobalConfiguration.getInstance().host(), GlobalConfiguration.getInstance().port()));
-        OperateServerHelper.setBroadcastMode(broadcast, true);
+//        final WListClient broadcast = new WListClient(new InetSocketAddress(GlobalConfiguration.getInstance().host(), GlobalConfiguration.getInstance().port()));
+//        OperateServerHelper.setBroadcastMode(broadcast, true);
         Main.logger.log(HLogLevel.VERBOSE, "Initialized WList clients.");
-        broadcast.stop();// TODO broadcast
+//        broadcast.stop();// TODO broadcast
         final AtomicReference<String> token = new AtomicReference<>(null);
         //noinspection StatementWithEmptyBody
         while (ConsoleMenus.chooseMenu(client, token));
+        Main.logger.log(HLogLevel.FINE, "Shutting down the clients...");
         client.stop();
         WListClient.ClientEventLoop.shutdownGracefully().sync();
         Main.logger.log(HLogLevel.INFO, "WList clients stopped gracefully.");
-        Main.logger.log(HLogLevel.MISTAKE, "Thanks to use WList Client.");
+        Main.logger.log(HLogLevel.MISTAKE, "Thanks to use WList Client (Console Version).");
     }
 }

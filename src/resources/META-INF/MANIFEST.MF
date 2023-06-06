@@ -1,0 +1,24 @@
+Manifest-Version: 1.0
+Main-Class: com.xuxiaocheng.WListClient.Main
+Class-Path: netty-transport-native-unix-common-4.1.90.Final.jar netty-ha
+ ndler-ssl-ocsp-4.1.90.Final.jar netty-resolver-dns-native-macos-4.1.90.
+ Final-osx-aarch_64.jar netty-codec-mqtt-4.1.90.Final.jar netty-transpor
+ t-native-epoll-4.1.90.Final-linux-x86_64.jar HeadLibs.main.jar netty-ha
+ ndler-proxy-4.1.90.Final.jar netty-common-4.1.90.Final.jar netty-transp
+ ort-sctp-4.1.90.Final.jar netty-codec-haproxy-4.1.90.Final.jar netty-co
+ dec-socks-4.1.90.Final.jar netty-resolver-4.1.90.Final.jar netty-codec-
+ http-4.1.90.Final.jar netty-transport-udt-4.1.90.Final.jar netty-all-4.
+ 1.90.Final.jar netty-codec-dns-4.1.90.Final.jar netty-resolver-dns-clas
+ ses-macos-4.1.90.Final.jar netty-transport-native-epoll-4.1.90.Final-li
+ nux-aarch_64.jar netty-transport-rxtx-4.1.90.Final.jar netty-codec-smtp
+ -4.1.90.Final.jar netty-codec-stomp-4.1.90.Final.jar netty-handler-4.1.
+ 90.Final.jar netty-codec-4.1.90.Final.jar netty-transport-4.1.90.Final.
+ jar netty-codec-memcache-4.1.90.Final.jar annotations-24.0.1.jar netty-
+ transport-classes-epoll-4.1.90.Final.jar netty-resolver-dns-4.1.90.Fina
+ l.jar netty-resolver-dns-native-macos-4.1.90.Final-osx-x86_64.jar netty
+ -codec-redis-4.1.90.Final.jar netty-transport-classes-kqueue-4.1.90.Fin
+ al.jar snakeyaml-engine-2.6.jar netty-buffer-4.1.90.Final.jar netty-tra
+ nsport-native-kqueue-4.1.90.Final-osx-aarch_64.jar netty-codec-xml-4.1.
+ 90.Final.jar netty-transport-native-kqueue-4.1.90.Final-osx-x86_64.jar 
+ netty-codec-http2-4.1.90.Final.jar
+
