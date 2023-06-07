@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Utils;
 
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
@@ -165,10 +166,21 @@ public class DatabaseUtil {
         }
     }
 
-    public @Nullable Connection getExplicitConnection(final @NotNull String id) {
-        final ReferencedConnection connection = this.activeConnections.get(id);
-        if (connection != null)
-            connection.retain();
+    public @NotNull Connection getExplicitConnection(final @NotNull String id) throws SQLException {
+        final ReferencedConnection connection;
+        try {
+            connection = this.activeConnections.computeIfAbsent(id, HExceptionWrapper.wrapFunction(k -> {
+                ReferencedConnection newConnection = this.freeConnections.poll();
+                if (newConnection == null)
+                    newConnection = this.createNewConnection();
+                newConnection.setId(id);
+                return newConnection;
+            }));
+            assert id.equals(connection.id());
+        } catch (final RuntimeException exception) {
+            throw HExceptionWrapper.unwrapException(exception, SQLException.class);
+        }
+        connection.retain();
         return connection;
     }
 
@@ -189,11 +201,8 @@ public class DatabaseUtil {
     public @NotNull Connection getConnection(final @Nullable String id, final @NotNull AtomicReference<? super String> connectionId) throws SQLException {
         if (id == null)
             return this.getNewConnection(connectionId::set);
-        final Connection connection = this.getExplicitConnection(id);
-        if (connection == null)
-            return this.getNewConnection(connectionId::set);
         connectionId.set(id);
-        return connection;
+        return this.getExplicitConnection(id);
     }
 
     protected void recycleConnection(final @NotNull String id) throws SQLException {

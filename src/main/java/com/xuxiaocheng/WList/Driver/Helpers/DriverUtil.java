@@ -3,9 +3,7 @@ package com.xuxiaocheng.WList.Driver.Helpers;
 import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
-import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.FunctionE;
-import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
@@ -33,6 +31,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 public final class DriverUtil {
@@ -110,21 +109,25 @@ public final class DriverUtil {
                 null, 0, len), len);
     }
 
-    public static Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Iterator<@NotNull FileSqlInformation>, @NotNull RunnableE> wrapAllFilesListerInPages(final @NotNull FunctionE<? super @NotNull Integer, ? extends Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull List<@NotNull FileSqlInformation>>> fileSupplierInPage, final int defaultLimit, final @NotNull ConsumerE<? super @Nullable Exception> finisher, final @Nullable ExecutorService _threadPool) {
+    public static Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Iterator<@NotNull FileSqlInformation>, @NotNull Runnable> wrapAllFilesListerInPages(final @NotNull FunctionE<? super @NotNull Integer, ? extends Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull List<@NotNull FileSqlInformation>>> fileSupplierInPage, final int defaultLimit, final @NotNull Consumer<? super @Nullable Exception> finisher, final @Nullable ExecutorService _threadPool) {
         final Pair.ImmutablePair<Long, List<FileSqlInformation>> firstPage;
         try {
             firstPage = fileSupplierInPage.apply(0);
         } catch (final Exception exception) {
-            return Triad.ImmutableTriad.makeImmutableTriad(0L, MiscellaneousUtil.getEmptyIterator(), () -> finisher.accept(exception));
+            finisher.accept(exception);
+            return Triad.ImmutableTriad.makeImmutableTriad(0L, MiscellaneousUtil.getEmptyIterator(), RunnableE.EmptyRunnable);
         }
         final long fileCount = firstPage.getFirst().intValue();
         if (fileCount <= 0 || firstPage.getSecond().isEmpty()) {
-            return Triad.ImmutableTriad.makeImmutableTriad(0L, MiscellaneousUtil.getEmptyIterator(), () -> finisher.accept(null));
+            finisher.accept(null);
+            return Triad.ImmutableTriad.makeImmutableTriad(0L, MiscellaneousUtil.getEmptyIterator(), RunnableE.EmptyRunnable);
         }
         assert firstPage.getSecond().size() <= defaultLimit;
         final int pageCount = MiscellaneousUtil.calculatePartCount(fileCount, defaultLimit);
-        if (pageCount <= 1)
-            return Triad.ImmutableTriad.makeImmutableTriad(fileCount, firstPage.getSecond().iterator(), () -> finisher.accept(null));
+        if (pageCount <= 1) {
+            finisher.accept(null);
+            return Triad.ImmutableTriad.makeImmutableTriad(fileCount, firstPage.getSecond().iterator(), RunnableE.EmptyRunnable);
+        }
         final ExecutorService threadPool = Objects.requireNonNullElse(_threadPool, WListServer.IOExecutors);
         final BlockingQueue<FileSqlInformation> allFiles = new LinkedBlockingQueue<>(Math.max((int) fileCount, firstPage.getSecond().size() << 1));
         allFiles.addAll(firstPage.getSecond());
@@ -152,7 +155,7 @@ public final class DriverUtil {
                     future.completeExceptionally(exception);
                     futures[current - 1].completeExceptionally(exception);
                     if (calledFinisher.compareAndSet(false, true))
-                        HExceptionWrapper.wrapConsumer(finisher).accept(exception);
+                        finisher.accept(exception);
                 }
             }, threadPool);
         }

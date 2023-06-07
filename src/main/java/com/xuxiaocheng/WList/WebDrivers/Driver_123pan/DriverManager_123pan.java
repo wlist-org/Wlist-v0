@@ -59,7 +59,7 @@ public final class DriverManager_123pan {
         return data;
     }
 
-    static Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Iterator<@NotNull FileSqlInformation>, @NotNull RunnableE> listAllFilesNoCache(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final @NotNull DrivePath directoryPath, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws SQLException {
+    static Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Iterator<@NotNull FileSqlInformation>, @NotNull Runnable> listAllFilesNoCache(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final @NotNull DrivePath directoryPath, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         final Connection connection = FileManager.getDatabaseUtil().getConnection(_connectionId, connectionId);
         final Set<Long> allIds = ConcurrentHashMap.newKeySet();
@@ -74,13 +74,13 @@ public final class DriverManager_123pan {
                             configuration.getWebSide().getDefaultLimitPerPage(), page.intValue(), DriverUtil.DefaultOrderPolicy, DriverUtil.DefaultOrderDirection, connectionId.get());
                     allIds.removeAll(list.getSecond().stream().map(FileSqlInformation::id).collect(Collectors.toSet()));
                     return list;
-                }, configuration.getWebSide().getDefaultLimitPerPage(), e -> {
+                }, configuration.getWebSide().getDefaultLimitPerPage(), HExceptionWrapper.wrapConsumer(e -> {
                     try (connection) {
                         if (e != null) throw e;
                         FileManager.deleteFilesRecursively(configuration.getLocalSide().getName(), allIds, connectionId.get());
                         connection.commit();
                     }
-                }, _threadPool);
+                }), _threadPool);
     }
 
     static long getFileId(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean requireDirectory, final boolean useCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws SQLException {
@@ -97,7 +97,7 @@ public final class DriverManager_123pan {
         if (parentId < 0)
             return -1;
         FileSqlInformation information = null;
-        final Triad.ImmutableTriad<Long, Iterator<FileSqlInformation>, RunnableE> lister = DriverManager_123pan.listAllFilesNoCache(configuration, parentId, parentPath, _connectionId, _threadPool);
+        final Triad.ImmutableTriad<Long, Iterator<FileSqlInformation>, Runnable> lister = DriverManager_123pan.listAllFilesNoCache(configuration, parentId, parentPath, _connectionId, _threadPool);
         try {
             while (lister.getB().hasNext()) {
                 final FileSqlInformation info = lister.getB().next();
@@ -107,7 +107,6 @@ public final class DriverManager_123pan {
                         final String taskType = "Driver_123pan: " + configuration.getLocalSide().getName();
                         final String taskName = "Sync directory: " + parentPath.getPath();
                         final AtomicLong lock = BackgroundTaskManager.getLock(taskType, taskName, () -> new AtomicLong(0), AtomicLong.class);
-                        //noinspection SynchronizationOnLocalVariableOrMethodParameter
                         synchronized (lock) {
                             if (lock.get() != lister.getA().longValue()) {
                                 if (lock.get() != 0)
@@ -127,8 +126,6 @@ public final class DriverManager_123pan {
         } catch (final RuntimeException exception) {
             if (!(exception.getCause() instanceof CancellationException))
                 throw HExceptionWrapper.unwrapException(exception, SQLException.class);
-        } catch (final SQLException exception) {
-            throw exception;
         } catch (final Exception exception) {
             throw new RuntimeException(exception);
         }
@@ -163,7 +160,7 @@ public final class DriverManager_123pan {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = FileManager.getDatabaseUtil().getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
-            final Triad.ImmutableTriad<Long, Iterator<FileSqlInformation>, RunnableE> lister = DriverManager_123pan.listAllFilesNoCache(configuration, directoryId, directoryPath, connectionId.get(), _threadPool);
+            final Triad.ImmutableTriad<Long, Iterator<FileSqlInformation>, Runnable> lister = DriverManager_123pan.listAllFilesNoCache(configuration, directoryId, directoryPath, connectionId.get(), _threadPool);
             final Collection<DrivePath> directoryNameList = new LinkedList<>();
             final Collection<Long> directoryIdList = new LinkedList<>();
             final Iterator<FileSqlInformation> iterator = lister.getB();
@@ -211,15 +208,14 @@ public final class DriverManager_123pan {
                 final String taskType = "Driver_123pan: " + configuration.getLocalSide().getName();
                 final String taskName = "Sync directory: " + directoryPath.getPath();
                 final AtomicLong lock = BackgroundTaskManager.getLock(taskType, taskName, () -> new AtomicLong(0), AtomicLong.class);
-                //noinspection SynchronizationOnLocalVariableOrMethodParameter
                 synchronized (lock) {
                     if (lock.get() != list.getFirst().longValue()) {
                         if (lock.get() != 0)
                             BackgroundTaskManager.cancel(taskType, taskName);
-                        if (FileManager.getDatabaseUtil().getExplicitConnection(connectionId.get()) == null)
-                            throw new IllegalStateException("Failure to retain connection. [Unreachable!]");
+                        FileManager.getDatabaseUtil().getExplicitConnection(connectionId.get()); // retain
+                        final DrivePath path = new DrivePath(directoryPath);
                         BackgroundTaskManager.background(taskType, taskName, () -> {
-                            final Iterator<FileSqlInformation> iterator = DriverManager_123pan.listAllFilesNoCache(configuration, directoryId, directoryPath, connectionId.get(), _threadPool).getB();
+                            final Iterator<FileSqlInformation> iterator = DriverManager_123pan.listAllFilesNoCache(configuration, directoryId, path, connectionId.get(), _threadPool).getB();
                             while (iterator.hasNext())
                                 iterator.next();
                             connection.commit();

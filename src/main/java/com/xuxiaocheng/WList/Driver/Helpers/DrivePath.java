@@ -32,6 +32,12 @@ public class DrivePath implements Iterable<String> {
         this(DrivePath.split(path));
     }
 
+    public DrivePath(final @NotNull DrivePath path) {
+        this(path.path);
+        this.pathCache = path.pathCache;
+        this.parentPathCache = path.parentPathCache;
+    }
+
     public DrivePath(final @Nullable CharSequence path, final @NotNull DrivePath child) {
         this(DrivePath.split(path));
         this.path.addAll(child.path);

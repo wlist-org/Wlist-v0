@@ -222,13 +222,15 @@ final class DriverHelper_123pan {
         if (configuration.getCacheSide().getToken() == null
                 || configuration.getCacheSide().getTokenExpire() == null
                 || time.isAfter(configuration.getCacheSide().getTokenExpire()))
-            if (configuration.getCacheSide().getToken() == null
-                || configuration.getCacheSide().getRefreshExpire() == null
-                || time.isAfter(configuration.getCacheSide().getRefreshExpire())
-                || DriverHelper_123pan.refreshToken(configuration)) {
-                final String message = DriverHelper_123pan.login(configuration);
-                if (message != null)
-                    throw new DriverTokenExpiredException(message);
+            synchronized (configuration) {
+                if (configuration.getCacheSide().getToken() == null
+                        || configuration.getCacheSide().getRefreshExpire() == null
+                        || time.isAfter(configuration.getCacheSide().getRefreshExpire())
+                        || DriverHelper_123pan.refreshToken(configuration)) {
+                    final String message = DriverHelper_123pan.login(configuration);
+                    if (message != null)
+                        throw new DriverTokenExpiredException(message);
+                }
             }
         return configuration.getCacheSide().getToken();
     }
