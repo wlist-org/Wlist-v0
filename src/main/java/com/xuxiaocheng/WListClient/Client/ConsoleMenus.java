@@ -56,8 +56,12 @@ public final class ConsoleMenus {
                     else {
                         System.out.print("WARNING! Close server. Enter to confirm.");
                         if (ConsoleMenus.Scanner.nextLine().isBlank()) {
-                            OperateServerHelper.closeServer(client, token.get());
-                            return false;
+                            final boolean success = OperateServerHelper.closeServer(client, token.get());
+                            if (success) {
+                                System.out.println("Success!");
+                                return false;
+                            } else
+                                System.out.println("Error, unknown reason.");
                         }
                     }
                 }
@@ -114,7 +118,7 @@ public final class ConsoleMenus {
                             System.out.println("Success!");
                             token.set(null);
                         } else
-                            System.out.println("Error, unknown reason.");
+                            System.out.println("Error, unknown reason. May expired token.");
                     }
                 }
                 case 20 -> {
@@ -158,7 +162,7 @@ public final class ConsoleMenus {
                         if (success)
                             System.out.println("Success!");
                         else
-                            System.out.println("Error, unknown reason.");
+                            System.out.println("No such user.");
                     }
                 }
                 // TODO
@@ -178,7 +182,7 @@ public final class ConsoleMenus {
                             final Pair.ImmutablePair<Long, List<VisibleFileInformation>> page = OperateFileHelper.listFiles(client, token.get(),
                                     path, GlobalConfiguration.getInstance().limit(), i, Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND);
                             if (page == null) {
-                                System.out.print("Path is not exist.");
+                                System.out.println("No such directory.");
                                 break;
                             }
                             if (page.getSecond().isEmpty() && i > 0)

@@ -1,6 +1,5 @@
 package com.xuxiaocheng.WListClient.Client;
 
-import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WListClient.Main;
@@ -121,7 +120,6 @@ public class WListClient {
         public void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) {
             WListClient.logger.log(HLogLevel.FAULT, "Uncaught exception. thread: ", Thread.currentThread().getName(), cause);
             ctx.close();
-            WListClient.ClientEventLoop.submit(HExceptionWrapper.wrapRunnable(ClientChannelInboundHandler.this.client::stop));
         }
     }
 

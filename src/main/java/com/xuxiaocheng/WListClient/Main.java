@@ -9,6 +9,7 @@ import com.xuxiaocheng.WListClient.Client.WListClient;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class Main {
@@ -37,7 +38,10 @@ public final class Main {
         Main.logger.log(HLogLevel.LESS, "Initializing global configuration. file: ", configuration.getAbsolutePath());
         GlobalConfiguration.init(configuration);
         Main.logger.log(HLogLevel.VERBOSE, "Initialized global configuration.");
-        final WListClient client = new WListClient(new InetSocketAddress(GlobalConfiguration.getInstance().host(), GlobalConfiguration.getInstance().port()));
+        final SocketAddress address = new InetSocketAddress(GlobalConfiguration.getInstance().host(), GlobalConfiguration.getInstance().port());
+        Main.logger.log(HLogLevel.LESS, "Connecting to WList Server...");
+        Main.logger.log(HLogLevel.INFO, "Address: ", address);
+        final WListClient client = new WListClient(address);
 //        final WListClient broadcast = new WListClient(new InetSocketAddress(GlobalConfiguration.getInstance().host(), GlobalConfiguration.getInstance().port()));
 //        OperateServerHelper.setBroadcastMode(broadcast, true);
         Main.logger.log(HLogLevel.VERBOSE, "Initialized WList clients.");
