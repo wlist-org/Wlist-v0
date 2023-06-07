@@ -47,6 +47,10 @@ public final class DriverManager_123pan {
         super();
     }
 
+    private static @NotNull FileSqlInformation getRootInformation(final long id) {
+        return new FileSqlInformation(id, new DrivePath("/"), true, 0, null, null, "", null);
+    }
+
     static void resetUserInformation(final @NotNull DriverConfiguration_123Pan configuration) throws IllegalParametersException, IOException {
         DriverHelper_123pan.resetUserInformation(configuration);
     }
@@ -133,6 +137,8 @@ public final class DriverManager_123pan {
     }
 
     static @Nullable FileSqlInformation getFileInformation(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean useCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
+        if (path.getDepth() == 0)
+            return DriverManager_123pan.getRootInformation(configuration.getWebSide().getRootDirectoryId());
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = FileManager.getDatabaseUtil().getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
@@ -142,9 +148,10 @@ public final class DriverManager_123pan {
                     return information;
             }
             final long id = DriverManager_123pan.getFileId(configuration, path, false, useCache, connectionId.get(), _threadPool);
-            connection.commit();
-            if (id < 0)
+            if (id < 0) {
+                connection.commit();
                 return null;
+            }
             final FileSqlInformation information = FileManager.selectFile(configuration.getLocalSide().getName(), id, connectionId.get());
             if (information != null)
                 return information;
@@ -197,6 +204,7 @@ public final class DriverManager_123pan {
                         directoryPath, limit, (long) page * limit, direction, policy, connectionId.get());
                 if (list.getFirst().longValue() > 0)
                     return list;
+                // TODO cache empty directory.
             }
             final long directoryId = DriverManager_123pan.getFileId(configuration, directoryPath, true, useCache, connectionId.get(), _threadPool);
             if (directoryId < 0)
@@ -209,6 +217,7 @@ public final class DriverManager_123pan {
                 final String taskName = "Sync directory: " + directoryPath.getPath();
                 final AtomicLong lock = BackgroundTaskManager.getLock(taskType, taskName, () -> new AtomicLong(0), AtomicLong.class);
                 synchronized (lock) {
+                    // TODO if list contains all file needn't run background task.
                     if (lock.get() != list.getFirst().longValue()) {
                         if (lock.get() != 0)
                             BackgroundTaskManager.cancel(taskType, taskName);
@@ -241,15 +250,19 @@ public final class DriverManager_123pan {
     }
 
     static @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> createDirectoriesRecursively(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final Options.@NotNull DuplicatePolicy policy, final boolean useCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
+        if (path.getDepth() == 0)
+            return UnionPair.ok(DriverManager_123pan.getRootInformation(configuration.getWebSide().getRootDirectoryId()));
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = FileManager.getDatabaseUtil().getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
-            final FileSqlInformation info = DriverManager_123pan.getFileInformation(configuration, path, useCache, connectionId.get(), _threadPool);
-            if (info != null) {
-                if (info.isDir())
-                    return UnionPair.ok(info);
-                if (policy == Options.DuplicatePolicy.ERROR)
-                    return UnionPair.fail(FailureReason.byDuplicateError("Creating directories recursively.", path));
+            if (useCache) {
+                final FileSqlInformation info = FileManager.selectFileByPath(configuration.getLocalSide().getName(), path, connectionId.get());
+                if (info != null) {
+                    if (info.isDir())
+                        return UnionPair.ok(info);
+                    if (policy == Options.DuplicatePolicy.ERROR)
+                        return UnionPair.fail(FailureReason.byDuplicateError("Creating directories recursively.", path));
+                }
             }
             final String name = path.getName();
             if (!DriverHelper_123pan.filenamePredication.test(name))
@@ -339,6 +352,7 @@ public final class DriverManager_123pan {
     }
 
     static void trashFile(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean useCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
+        // TODO Specially handle root ?
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = FileManager.getDatabaseUtil().getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);

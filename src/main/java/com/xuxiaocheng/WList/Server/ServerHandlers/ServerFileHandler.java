@@ -77,6 +77,7 @@ public final class ServerFileHandler {
             return ServerHandler.WrongParameters;
         final UnionPair<FileSqlInformation, FailureReason> dir;
         try {
+            // TODO: Over duplicate require delete permission.
             dir = RootDriver.getInstance().mkdirs(path, duplicatePolicy);
         } catch (final UnsupportedOperationException exception) {
             return ServerHandler.composeMessage(Operation.State.Unsupported, exception.getMessage());
