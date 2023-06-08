@@ -47,8 +47,9 @@ public final class DriverManager_123pan {
         super();
     }
 
+    private static final @NotNull Map<@NotNull Long, @NotNull FileSqlInformation> RootInformationCache = new ConcurrentHashMap<>();
     private static @NotNull FileSqlInformation getRootInformation(final long id) {
-        return new FileSqlInformation(id, new DrivePath("/"), true, 0, null, null, "", null);
+        return DriverManager_123pan.RootInformationCache.computeIfAbsent(id, k -> new FileSqlInformation(k.longValue(), new DrivePath("/"), true, 0, null, null, "", null));
     }
 
     static void resetUserInformation(final @NotNull DriverConfiguration_123Pan configuration) throws IllegalParametersException, IOException {
@@ -60,6 +61,7 @@ public final class DriverManager_123pan {
     static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull List<@NotNull FileSqlInformation>> listFilesNoCache(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final @NotNull DrivePath directoryPath, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction, final @Nullable String _connectionId) throws IllegalParametersException, IOException, SQLException {
         final Pair.ImmutablePair<Long, List<FileSqlInformation>> data = DriverHelper_123pan.listFiles(configuration, directoryId, directoryPath, limit, page, policy, direction);
         FileManager.insertOrUpdateFiles(configuration.getLocalSide().getName(), data.getSecond(), _connectionId);
+
         return data;
     }
 
@@ -204,20 +206,19 @@ public final class DriverManager_123pan {
                         directoryPath, limit, (long) page * limit, direction, policy, connectionId.get());
                 if (list.getFirst().longValue() > 0)
                     return list;
-                // TODO cache empty directory.
+                assert list.getSecond().isEmpty();
             }
             final long directoryId = DriverManager_123pan.getFileId(configuration, directoryPath, true, useCache, connectionId.get(), _threadPool);
             if (directoryId < 0)
                 return null;
             final Pair.ImmutablePair<Long, List<FileSqlInformation>> list = DriverManager_123pan.listFilesNoCache(configuration, directoryId, directoryPath,
                     limit, page, policy, direction, connectionId.get());
-            final long total = useCache ? 0 : FileManager.selectFileCountByParentPath(configuration.getLocalSide().getName(), directoryPath, connectionId.get());
-            if (total != list.getFirst().longValue() && total != list.getSecond().size()) {
+            final long cached = useCache ? 0 : FileManager.selectFileCountByParentPath(configuration.getLocalSide().getName(), directoryPath, connectionId.get());
+            if (cached != list.getFirst().longValue() && list.getFirst().longValue() != list.getSecond().size()) {
                 final String taskType = "Driver_123pan: " + configuration.getLocalSide().getName();
                 final String taskName = "Sync directory: " + directoryPath.getPath();
                 final AtomicLong lock = BackgroundTaskManager.getLock(taskType, taskName, () -> new AtomicLong(0), AtomicLong.class);
                 synchronized (lock) {
-                    // TODO if list contains all file needn't run background task.
                     if (lock.get() != list.getFirst().longValue()) {
                         if (lock.get() != 0)
                             BackgroundTaskManager.cancel(taskType, taskName);
@@ -258,7 +259,6 @@ public final class DriverManager_123pan {
             if (useCache) {
                 final FileSqlInformation info = FileManager.selectFileByPath(configuration.getLocalSide().getName(), path, connectionId.get());
                 if (info != null) {
-                    // TODO keep should create a new directory.
                     if (info.isDir())
                         return UnionPair.ok(info);
                     if (policy == Options.DuplicatePolicy.ERROR)
