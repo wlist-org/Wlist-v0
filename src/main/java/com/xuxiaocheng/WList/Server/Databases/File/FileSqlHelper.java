@@ -95,11 +95,11 @@ final class FileSqlHelper {
                         identifier   TEXT    UNIQUE
                                              NOT NULL,
                         id           INTEGER NOT NULL
-                                             REFERENCES users (id),
+                                             REFERENCES %s (id),
                         group_id     INTEGER NOT NULL
                                              REFERENCES groups (group_id)
                     );
-                """, this.tableName));
+                """, this.tableName, this.tableName));
                 statement.executeUpdate(String.format("""
                     CREATE TRIGGER IF NOT EXISTS %s_deleter AFTER delete ON %s FOR EACH ROW
                     BEGIN
@@ -167,36 +167,6 @@ final class FileSqlHelper {
             if (info == null)
                 break;
             list.add(info);
-        }
-        return Collections.unmodifiableList(list);
-    }
-
-    private static Pair.@NotNull ImmutablePair<@NotNull FileSqlInformationWithGroups, @NotNull Boolean> createFileInfoWithGroups(final @NotNull ResultSet result) throws SQLException {
-        final FileSqlInformation information = new FileSqlInformation(result.getLong("id"),
-                new DrivePath(result.getString("parent_path")).child(result.getString("name")),
-                result.getBoolean("is_directory"), result.getLong("size"),
-                LocalDateTime.parse(result.getString("create_time"), FileSqlHelper.DefaultFormatter),
-                LocalDateTime.parse(result.getString("update_time"), FileSqlHelper.DefaultFormatter),
-                result.getString("md5"), result.getString("others"));
-        final Set<Long> groups = new HashSet<>();
-        boolean hasNext;
-        while (true) {
-            hasNext = result.next();
-            if (hasNext && result.getLong("id") == information.id())
-                groups.add(result.getLong("group_id"));
-            else
-                break;
-        }
-        return Pair.ImmutablePair.makeImmutablePair(new FileSqlInformationWithGroups(information, groups), hasNext);
-    }
-
-    private static @NotNull @UnmodifiableView List<@NotNull FileSqlInformationWithGroups> createFilesInfoWithGroups(final @NotNull ResultSet result) throws SQLException {
-        final List<FileSqlInformationWithGroups> list = new LinkedList<>();
-        while (true) {
-            final Pair.ImmutablePair<FileSqlInformationWithGroups, Boolean> info = FileSqlHelper.createFileInfoWithGroups(result);
-            list.add(info.getFirst());
-            if (!info.getSecond().booleanValue())
-                break;
         }
         return Collections.unmodifiableList(list);
     }
@@ -327,28 +297,6 @@ final class FileSqlHelper {
         }
     }
 
-    public @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull FileSqlInformationWithGroups> selectFilesWithGroups(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
-        if (idList.isEmpty())
-            return Map.of();
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            final Map<Long, FileSqlInformationWithGroups> map = new HashMap<>();
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM %s NATURAL JOIN %s_permissions WHERE id == ? LIMIT 1;
-                """, this.tableName, this.tableName))) {
-                for (final Long id: idList) {
-                    statement.setLong(1, id.longValue());
-                    try (final ResultSet result = statement.executeQuery()) {
-                        if (result.next())
-                            map.put(id, FileSqlHelper.createFileInfoWithGroups(result).getFirst());
-                    }
-                }
-            }
-            return Collections.unmodifiableMap(map);
-        }
-    }
-
     public @NotNull @UnmodifiableView Map<@NotNull DrivePath, @NotNull FileSqlInformation> selectFilesByPath(final @NotNull Collection<? extends @NotNull DrivePath> pathList, final @Nullable String _connectionId) throws SQLException {
         if (pathList.isEmpty())
             return Map.of();
@@ -371,29 +319,6 @@ final class FileSqlHelper {
         }
     }
 
-    public @NotNull @UnmodifiableView Map<@NotNull DrivePath, @NotNull FileSqlInformationWithGroups> selectFilesByPathWithGroups(final @NotNull Collection<? extends @NotNull DrivePath> pathList, final @Nullable String _connectionId) throws SQLException {
-        if (pathList.isEmpty())
-            return Map.of();
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            final Map<DrivePath, FileSqlInformationWithGroups> map = new HashMap<>();
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM %s NATURAL JOIN %s_permissions WHERE parent_path == ? AND name == ? LIMIT 1;
-                """, this.tableName, this.tableName))) {
-                for (final DrivePath path: pathList) {
-                    statement.setString(1, path.getParentPath());
-                    statement.setString(2, path.getName());
-                    try (final ResultSet result = statement.executeQuery()) {
-                        if (result.next())
-                            map.put(path, FileSqlHelper.createFileInfoWithGroups(result).getFirst());
-                    }
-                }
-            }
-            return Collections.unmodifiableMap(map);
-        }
-    }
-
     public @NotNull @UnmodifiableView Map<@NotNull String, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> selectFilesByMd5(final @NotNull Collection<@NotNull String> md5List, final @Nullable String _connectionId) throws SQLException {
         if (md5List.isEmpty())
             return Map.of();
@@ -408,28 +333,6 @@ final class FileSqlHelper {
                     statement.setString(1, md5);
                     try (final ResultSet result = statement.executeQuery()) {
                         map.put(md5, FileSqlHelper.createFilesInfo(result));
-                    }
-                }
-            }
-            return Collections.unmodifiableMap(map);
-        }
-    }
-
-    public @NotNull @UnmodifiableView Map<@NotNull String, @NotNull @UnmodifiableView List<@NotNull FileSqlInformationWithGroups>> selectFilesByMd5WithGroups(final @NotNull Collection<@NotNull String> md5List, final @Nullable String _connectionId) throws SQLException {
-        if (md5List.isEmpty())
-            return Map.of();
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            final Map<String, List<FileSqlInformationWithGroups>> map = new HashMap<>();
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM %s NATURAL JOIN %s_permissions WHERE md5 == ? LIMIT 1;
-                """, this.tableName, this.tableName))) {
-                for (final String md5: md5List) {
-                    statement.setString(1, md5);
-                    try (final ResultSet result = statement.executeQuery()) {
-                        if (result.next())
-                            map.put(md5, FileSqlHelper.createFilesInfoWithGroups(result));
                     }
                 }
             }
@@ -563,46 +466,51 @@ final class FileSqlHelper {
         }
     }
 
-    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformationWithGroups>> selectFilesByParentPathInPageWithGroups(final @NotNull DrivePath parentPath, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final @Nullable String _connectionId) throws SQLException {
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> selectFilesByParentPathInPageRequireGroup(final @NotNull DrivePath parentPath, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final long groupId, final @Nullable String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
             final long count = this.selectFilesCountByParentPath(List.of(parentPath), connectionId.get()).get(parentPath).longValue();
             if (offset >= count)
                 return Pair.ImmutablePair.makeImmutablePair(count, List.of());
-            final List<FileSqlInformationWithGroups> list;
+            final List<FileSqlInformation> list;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM %s NATURAL JOIN %s_permissions WHERE parent_path == ? ORDER BY ? %s LIMIT ? OFFSET ?;
+                    SELECT * FROM %s
+                    WHERE parent_path == ? AND id in (select id FROM %s_permissions WHERE group_id == ?)
+                    ORDER BY ? %s LIMIT ? OFFSET ?;
                 """, this.tableName, this.tableName, FileSqlHelper.getOrderDirection(direction)))) {
                 statement.setString(1, parentPath.getPath());
-                statement.setString(2, FileSqlHelper.getOrderPolicy(policy));
-                statement.setInt(3, limit);
-                statement.setLong(4, offset);
+                statement.setLong(2, groupId);
+                statement.setString(3, FileSqlHelper.getOrderPolicy(policy));
+                statement.setInt(4, limit);
+                statement.setLong(5, offset);
                 try (final ResultSet result = statement.executeQuery()) {
-                    list = FileSqlHelper.createFilesInfoWithGroups(result);
+                    list = FileSqlHelper.createFilesInfo(result);
                 }
             }
             return Pair.ImmutablePair.makeImmutablePair(count, list);
         }
     }
 
-    public @NotNull @UnmodifiableView List<@Nullable FileSqlInformationWithGroups> searchFilesByNameInParentPathRecursivelyLimitedWithGroups(final @NotNull DrivePath parentPath, final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
+    public @NotNull @UnmodifiableView List<@Nullable FileSqlInformation> searchFilesByNameInParentPathRecursivelyLimitedRequireGroup(final @NotNull DrivePath parentPath, final @NotNull String rule, final boolean caseSensitive, final int limit, final long groupId, final @Nullable String _connectionId) throws SQLException {
         if (limit <= 0)
             return List.of();
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
-            final List<FileSqlInformationWithGroups> list;
+            final List<FileSqlInformation> list;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM %s NATURAL JOIN %s_permissions WHERE parent_path GLOB ? AND name %s ?
+                    SELECT * FROM %s
+                    WHERE parent_path GLOB ? AND name %s ? AND id in (select id FROM %s_permissions WHERE group_id == ?)
                     ORDER BY abs(length(name) - ?) ASC, id DESC LIMIT ?;
-                """, this.tableName, this.tableName, caseSensitive ? "GLOB" : "LIKE"))) {
+                """, this.tableName, caseSensitive ? "GLOB" : "LIKE", this.tableName))) {
                 statement.setString(1, parentPath.getPath() + "/*");
                 statement.setString(2, rule);
-                statement.setInt(3, rule.length());
-                statement.setInt(4, limit);
+                statement.setLong(3, groupId);
+                statement.setInt(4, rule.length());
+                statement.setInt(5, limit);
                 try (final ResultSet result = statement.executeQuery()) {
-                    list = FileSqlHelper.createFilesInfoWithGroups(result);
+                    list = FileSqlHelper.createFilesInfo(result);
                 }
             }
             return list;

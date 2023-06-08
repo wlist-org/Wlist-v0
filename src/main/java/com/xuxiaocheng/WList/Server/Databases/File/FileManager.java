@@ -72,28 +72,12 @@ public final class FileManager {
         return FileManager.selectFiles(driverName, List.of(id), _connectionId).get(id);
     }
 
-    public static @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull FileSqlInformationWithGroups> selectFilesWithGroups(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
-        return FileSqlHelper.getInstance(driverName).selectFilesWithGroups(idList, _connectionId);
-    }
-
-    public static @Nullable FileSqlInformationWithGroups selectFileWithGroups(final @NotNull String driverName, final long id, final @Nullable String _connectionId) throws SQLException {
-        return FileManager.selectFilesWithGroups(driverName, List.of(id), _connectionId).get(id);
-    }
-
     public static @NotNull @UnmodifiableView Map<@NotNull DrivePath, @NotNull FileSqlInformation> selectFilesByPath(final @NotNull String driverName, final @NotNull Collection<? extends @NotNull DrivePath> pathList, final @Nullable String _connectionId) throws SQLException {
         return FileSqlHelper.getInstance(driverName).selectFilesByPath(pathList, _connectionId);
     }
 
     public static @Nullable FileSqlInformation selectFileByPath(final @NotNull String driverName, final @NotNull DrivePath path, final @Nullable String _connectionId) throws SQLException {
         return FileManager.selectFilesByPath(driverName, List.of(path), _connectionId).get(path);
-    }
-
-    public static @NotNull @UnmodifiableView Map<@NotNull DrivePath, @NotNull FileSqlInformationWithGroups> selectFilesByPathWithGroups(final @NotNull String driverName, final @NotNull Collection<? extends @NotNull DrivePath> pathList, final @Nullable String _connectionId) throws SQLException {
-        return FileSqlHelper.getInstance(driverName).selectFilesByPathWithGroups(pathList, _connectionId);
-    }
-
-    public static @Nullable FileSqlInformationWithGroups selectFileByPathWithGroups(final @NotNull String driverName, final @NotNull DrivePath path, final @Nullable String _connectionId) throws SQLException {
-        return FileManager.selectFilesByPathWithGroups(driverName, List.of(path), _connectionId).get(path);
     }
 
     public static @NotNull @UnmodifiableView Map<@NotNull String, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> selectFilesByMd5(final @NotNull String driverName, final @NotNull Collection<@NotNull String> md5List, final @Nullable String _connectionId) throws SQLException {
@@ -104,20 +88,12 @@ public final class FileManager {
         return FileManager.selectFilesByMd5(driverName, List.of(md5), _connectionId).get(md5);
     }
 
-    public static @NotNull @UnmodifiableView Map<@NotNull String, @NotNull @UnmodifiableView List<@NotNull FileSqlInformationWithGroups>> selectFilesByMd5WithGroups(final @NotNull String driverName, final @NotNull Collection<@NotNull String> md5List, final @Nullable String _connectionId) throws SQLException {
-        return FileSqlHelper.getInstance(driverName).selectFilesByMd5WithGroups(md5List, _connectionId);
-    }
-
-    public static @NotNull @UnmodifiableView List<@NotNull FileSqlInformationWithGroups> selectFileByMd5WithGroups(final @NotNull String driverName, final @NotNull String md5, final @Nullable String _connectionId) throws SQLException {
-        return FileManager.selectFilesByMd5WithGroups(driverName, List.of(md5), _connectionId).get(md5);
-    }
-
     public static @NotNull @UnmodifiableView Map<@NotNull DrivePath, @NotNull Set<@NotNull Long>> selectFilesIdByParentPath(final @NotNull String driverName, final @NotNull Collection<? extends @NotNull DrivePath> parentPathList, final @Nullable String _connectionId) throws SQLException {
         return FileSqlHelper.getInstance(driverName).selectFilesIdByParentPath(parentPathList, _connectionId);
     }
 
     public static @NotNull Set<@NotNull Long> selectFileIdByParentPath(final @NotNull String driverName, final @NotNull DrivePath parentPath, final @Nullable String _connectionId) throws SQLException {
-        return FileSqlHelper.getInstance(driverName).selectFilesIdByParentPath(List.of(parentPath), _connectionId).get(parentPath);
+        return FileManager.selectFilesIdByParentPath(driverName, List.of(parentPath), _connectionId).get(parentPath);
     }
 
     public static @NotNull @UnmodifiableView Map<@NotNull DrivePath, @NotNull Set<@NotNull Long>> selectFilesIdByParentPathRecursively(final @NotNull String driverName, final @NotNull Collection<? extends @NotNull DrivePath> pathList, final @Nullable String _connectionId) throws SQLException {
@@ -148,13 +124,14 @@ public final class FileManager {
         return FileSqlHelper.getInstance(driverName).selectFilesByParentPathInPage(parentPath, limit, offset, direction, policy, _connectionId);
     }
 
-    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformationWithGroups>> selectFilesByParentPathInPageWithGroups(final @NotNull String driverName, final @NotNull DrivePath parentPath, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final @Nullable String _connectionId) throws SQLException {
-        return FileSqlHelper.getInstance(driverName).selectFilesByParentPathInPageWithGroups(parentPath, limit, offset, direction, policy, _connectionId);
+    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> selectFilesByParentPathInPageRequireGroup(final @NotNull String driverName, final @NotNull DrivePath parentPath, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final long groupId, final @Nullable String _connectionId) throws SQLException {
+        return FileSqlHelper.getInstance(driverName).selectFilesByParentPathInPageRequireGroup(parentPath, limit, offset, direction, policy, groupId, _connectionId);
     }
 
-    public static @NotNull @UnmodifiableView List<@Nullable FileSqlInformationWithGroups> searchFilesByNameInParentPathRecursivelyLimited(final @NotNull String driverName, final @NotNull DrivePath parentPath, final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
-        return FileSqlHelper.getInstance(driverName).searchFilesByNameInParentPathRecursivelyLimitedWithGroups(parentPath, rule, caseSensitive, limit, _connectionId);
+    public static @NotNull @UnmodifiableView List<@Nullable FileSqlInformation> searchFilesByNameInParentPathRecursivelyLimitedRequireGroup(final @NotNull String driverName, final @NotNull DrivePath parentPath, final @NotNull String rule, final boolean caseSensitive, final int limit, final long groupId, final @Nullable String _connectionId) throws SQLException {
+        return FileSqlHelper.getInstance(driverName).searchFilesByNameInParentPathRecursivelyLimitedRequireGroup(parentPath, rule, caseSensitive, limit, groupId, _connectionId);
     }
+
 
     public static void insertGroupsForEachFile(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> idList, final @NotNull Collection<@NotNull Long> groups, final @Nullable String _connectionId) throws SQLException {
         FileSqlHelper.getInstance(driverName).insertGroupsForEachFile(idList, groups, _connectionId);
