@@ -9,6 +9,8 @@ import com.xuxiaocheng.WList.Exceptions.ServerException;
 import com.xuxiaocheng.WList.Server.Databases.User.PasswordGuard;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.User.UserSqlInformation;
+import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
+import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupSqlInformation;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.Operation;
 import com.xuxiaocheng.WList.Server.Polymers.MessageProto;
@@ -16,38 +18,15 @@ import com.xuxiaocheng.WList.Server.UserTokenHelper;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.UnmodifiableView;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.EnumSet;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.SortedSet;
-import java.util.TreeSet;
 
 public final class ServerUserHandler {
-    public static final @NotNull @UnmodifiableView SortedSet<Operation.@NotNull Permission> AdminPermission =
-            Collections.unmodifiableSortedSet(new TreeSet<>(Arrays.stream(Operation.Permission.values()).filter(p -> p != Operation.Permission.Undefined).toList()));
-    public static final @NotNull @UnmodifiableView SortedSet<Operation.@NotNull Permission> DefaultPermission =
-            Collections.unmodifiableSortedSet(new TreeSet<>(List.of(Operation.Permission.FilesList)));
-
-    public static final @NotNull MessageProto UserNotFound = ServerHandler.composeMessage(Operation.State.DataError, "User");
-    public static final @NotNull MessageProto WrongPermissionsList = ServerHandler.composeMessage(Operation.State.DataError, "Permissions");
-
     private ServerUserHandler() {
         super();
-    }
-
-    static @NotNull Map<String, Object> getVisibleInfo(final @NotNull UserSqlInformation u) {
-        final Map<String, Object> map = new LinkedHashMap<>(3);
-        map.put("id", u.id());
-        map.put("name", u.username());
-        map.put("permissions", u.group());
-        return map;
     }
 
     public static final @NotNull ServerHandler doRegister = buffer -> {
@@ -55,7 +34,7 @@ public final class ServerUserHandler {
         final String password = ByteBufIOUtil.readUTF(buffer);
         final boolean success;
         try {
-            success = UserManager.insertUser(new UserSqlInformation.Inserter(username, password, UserManager.getDefaultGroupId()), Thread.currentThread().getName());
+            success = UserManager.insertUser(new UserSqlInformation.Inserter(username, password, UserManager.getDefaultGroupId()), null);
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
@@ -71,7 +50,7 @@ public final class ServerUserHandler {
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
-        if (user == null || PasswordGuard.isWrongPassword(password, user.password()))
+        if (user == null || !PasswordGuard.encryptPassword(password).equals(user.password()))
             return ServerHandler.DataError;
         final String token = UserTokenHelper.encodeToken(user.id(), user.modifyTime());
         HLog.getInstance("ServerLogger").log(HLogLevel.DEBUG, "Signed token for user: ", username, " token: ", token);
@@ -91,15 +70,41 @@ public final class ServerUserHandler {
         return UnionPair.ok(user);
     }
 
+    public static final @NotNull ServerHandler doGetPermissions = buffer -> {
+        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer);
+        if (user.isFailure())
+            return user.getE();
+        return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
+            UserGroupSqlInformation.dumpVisible(buf, user.getT().group());
+            return buf;
+        });
+    };
+
     static @NotNull UnionPair<@NotNull UserSqlInformation, @NotNull MessageProto> checkTokenAndPassword(final @NotNull ByteBuf buffer, final @NotNull Operation.Permission... permissions) throws IOException, ServerException {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, permissions);
         if (user.isFailure())
             return user;
         final String verifyingPassword = ByteBufIOUtil.readUTF(buffer);
-        if (PasswordGuard.isWrongPassword(verifyingPassword, user.getT().password()))
+        if (!PasswordGuard.encryptPassword(verifyingPassword).equals(user.getT().password()))
             return UnionPair.fail(ServerHandler.DataError);
         return user;
     }
+
+    public static final @NotNull ServerHandler doChangeUsername = buffer -> {
+        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer);
+        final String newUsername = ByteBufIOUtil.readUTF(buffer);
+        if (user.isFailure())
+            return user.getE();
+        if ("admin".equals(user.getT().username()))
+            return ServerHandler.composeMessage(Operation.State.DataError, "User");
+        try {
+            UserManager.updateUser(new UserSqlInformation.Updater(user.getT().id(), newUsername,
+                    user.getT().password(), user.getT().group().id(), user.getT().modifyTime()), null);
+        } catch (final SQLException exception) {
+            throw new ServerException(exception);
+        }
+        return ServerHandler.Success;
+    };
 
     public static final @NotNull ServerHandler doChangePassword = buffer -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkTokenAndPassword(buffer);
@@ -107,8 +112,8 @@ public final class ServerUserHandler {
         if (user.isFailure())
             return user.getE();
         try {
-            UserManager.updateUser(new UserSqlInformation(user.getT().id(), user.getT().username(),
-                    newPassword, user.getT().group(), user.getT().modifyTime()), Thread.currentThread().getName());
+            UserManager.updateUser(new UserSqlInformation.Updater(user.getT().id(), user.getT().username(),
+                    PasswordGuard.encryptPassword(newPassword), user.getT().group().id(), null), null);
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
@@ -119,31 +124,15 @@ public final class ServerUserHandler {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkTokenAndPassword(buffer);
         if (user.isFailure())
             return user.getE();
+        if ("admin".equals(user.getT().username()))
+            return ServerHandler.composeMessage(Operation.State.DataError, "User");
         try {
-            UserManager.deleteUser(user.getT().id(), Thread.currentThread().getName());
+            UserManager.deleteUser(user.getT().id(), null);
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
         return ServerHandler.Success;
     };
-
-    static @NotNull UnionPair<Pair.@NotNull ImmutablePair<@NotNull UserSqlInformation, @NotNull UserSqlInformation>, @NotNull MessageProto> checkChangerTokenAndUsername(final @NotNull ByteBuf buffer, final Operation.@NotNull Permission... permissions) throws IOException, ServerException {
-        final UnionPair<UserSqlInformation, MessageProto> changer = ServerUserHandler.checkToken(buffer, permissions);
-        if (changer.isFailure())
-            return UnionPair.fail(changer.getE());
-        final String username = ByteBufIOUtil.readUTF(buffer);
-        if (username.equals(changer.getT().username()))
-            return UnionPair.ok(Pair.ImmutablePair.makeImmutablePair(changer.getT(), changer.getT()));
-        final UserSqlInformation user;
-        try {
-            user = UserManager.selectUserByName(username, Thread.currentThread().getName());
-        } catch (final SQLException exception) {
-            throw new ServerException(exception);
-        }
-        if (user == null)
-            return UnionPair.fail(ServerUserHandler.UserNotFound);
-        return UnionPair.ok(Pair.ImmutablePair.makeImmutablePair(changer.getT(), user));
-    }
 
     public static final @NotNull ServerHandler doListUsers = buffer -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.UsersList);
@@ -156,7 +145,7 @@ public final class ServerUserHandler {
             return ServerHandler.WrongParameters;
         final Pair.ImmutablePair<Long, List<UserSqlInformation>> list;
         try {
-            list = UserManager.selectAllUsersInPage(limit, (long) page * limit, orderDirection, Thread.currentThread().getName());
+            list = UserManager.selectAllUsersInPage(limit, (long) page * limit, orderDirection, null);
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
@@ -170,11 +159,110 @@ public final class ServerUserHandler {
     };
 
     public static final @NotNull ServerHandler doDeleteUser = buffer -> {
-        final UnionPair<Pair.ImmutablePair<UserSqlInformation, UserSqlInformation>, MessageProto> userPair = ServerUserHandler.checkChangerTokenAndUsername(buffer, Operation.Permission.UsersOperate);
-        if (userPair.isFailure())
-            return userPair.getE();
+        final UnionPair<UserSqlInformation, MessageProto> changer = ServerUserHandler.checkToken(buffer, Operation.Permission.UsersOperate);
+        final String username = ByteBufIOUtil.readUTF(buffer);
+        if (changer.isFailure())
+            return changer.getE();
+        if ("admin".equals(username))
+            return ServerHandler.composeMessage(Operation.State.DataError, "User");
+        final long id;
+        if (username.equals(changer.getT().username()))
+            id = changer.getT().id();
+        else {
+            final UserSqlInformation user;
+            try {
+                user = UserManager.selectUserByName(username, null);
+            } catch (final SQLException exception1) {
+                throw new ServerException(exception1);
+            }
+            if (user == null)
+                return ServerHandler.composeMessage(Operation.State.DataError, "User");
+            id = user.id();
+        }
         try {
-            UserManager.deleteUser(userPair.getT().getSecond().id(), Thread.currentThread().getName());
+            UserManager.deleteUser(id, null);
+        } catch (final SQLException exception) {
+            throw new ServerException(exception);
+        }
+        return ServerHandler.Success;
+    };
+
+    public static final @NotNull ServerHandler doListGroups = buffer -> {
+        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.UsersList);
+        final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
+        final int page = ByteBufIOUtil.readVariableLenInt(buffer);
+        final Options.OrderDirection orderDirection = Options.valueOfOrderDirection(ByteBufIOUtil.readUTF(buffer));
+        if (user.isFailure())
+            return user.getE();
+        if (limit < 1 || limit > GlobalConfiguration.getInstance().maxLimitPerPage() || page < 0 || orderDirection == null)
+            return ServerHandler.WrongParameters;
+        final Pair.ImmutablePair<Long, List<UserGroupSqlInformation>> list;
+        try {
+            list = UserGroupManager.selectAllUserGroupsInPage(limit, (long) page * limit, orderDirection, null);
+        } catch (final SQLException exception) {
+            throw new ServerException(exception);
+        }
+        return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
+            ByteBufIOUtil.writeVariableLenLong(buf, list.getFirst().longValue());
+            ByteBufIOUtil.writeVariableLenInt(buf, list.getSecond().size());
+            for (final UserGroupSqlInformation information: list.getSecond())
+                UserGroupSqlInformation.dumpVisible(buf, information);
+            return buf;
+        });
+    };
+
+    public static final @NotNull ServerHandler doAddGroup = buffer -> {
+        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.UsersOperate);
+        final String groupName = ByteBufIOUtil.readUTF(buffer);
+        if (user.isFailure())
+            return user.getE();
+        final boolean success;
+        try {
+            success = UserGroupManager.insertGroup(new UserGroupSqlInformation.Inserter(groupName, Operation.emptyPermissions()), null);
+        } catch (final SQLException exception) {
+            throw new ServerException(exception);
+        }
+        return ServerHandler.composeMessage(success ? Operation.State.Success : Operation.State.DataError, null);
+    };
+
+    public static final @NotNull ServerHandler doDeleteGroup = buffer -> {
+        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.UsersOperate);
+        final String groupName = ByteBufIOUtil.readUTF(buffer);
+        if (user.isFailure())
+            return user.getE();
+        if ("admin".equals(groupName) || "default".equals(groupName))
+            return ServerHandler.composeMessage(Operation.State.DataError, "Group");
+        try {
+            final UserGroupSqlInformation information = UserGroupManager.selectGroupByName(groupName, null);
+            if (information == null)
+                return ServerHandler.composeMessage(Operation.State.DataError, "Group");
+            final long count = UserManager.selectUserCountByGroup(information.id(), null);
+            if (count > 0)
+                return ServerHandler.composeMessage(Operation.State.DataError, "Users");
+            UserGroupManager.deleteGroup(information.id(), null);
+        } catch (final SQLException exception) {
+            throw new ServerException(exception);
+        }
+        return ServerHandler.Success;
+    };
+
+    public static final @NotNull ServerHandler doChangeGroup = buffer -> {
+        final UnionPair<UserSqlInformation, MessageProto> changer = ServerUserHandler.checkToken(buffer, Operation.Permission.UsersOperate);
+        final String username = ByteBufIOUtil.readUTF(buffer);
+        final String groupName = ByteBufIOUtil.readUTF(buffer);
+        if (changer.isFailure())
+            return changer.getE();
+        if ("admin".equals(username))
+            return ServerHandler.composeMessage(Operation.State.DataError, "User");
+        try {
+            final UserSqlInformation user = UserManager.selectUserByName(username, null);
+            if (user == null)
+                return ServerHandler.composeMessage(Operation.State.DataError, "User");
+            final UserGroupSqlInformation group = UserGroupManager.selectGroupByName(groupName, null);
+            if (group == null)
+                return ServerHandler.composeMessage(Operation.State.DataError, "Group");
+            UserManager.updateUser(new UserSqlInformation.Updater(user.id(), user.username(),
+                    user.password(), group.id(), null), null);
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
@@ -182,19 +270,25 @@ public final class ServerUserHandler {
     };
 
     public static @NotNull MessageProto doChangePermission(final @NotNull ByteBuf buffer, final boolean add) throws IOException, ServerException {
-        final UnionPair<Pair.ImmutablePair<UserSqlInformation, UserSqlInformation>, MessageProto> userPair = ServerUserHandler.checkChangerTokenAndUsername(buffer, Operation.Permission.UsersOperate);
+        final UnionPair<UserSqlInformation, MessageProto> userPair = ServerUserHandler.checkToken(buffer, Operation.Permission.UsersOperate);
+        final String groupName = ByteBufIOUtil.readUTF(buffer);
+        final EnumSet<Operation.Permission> modified = Operation.parsePermissions(ByteBufIOUtil.readUTF(buffer));
         if (userPair.isFailure())
             return userPair.getE();
-        final EnumSet<Operation.Permission> modified = Operation.parsePermissions(ByteBufIOUtil.readUTF(buffer));
+        if ("admin".equals(groupName))
+            return ServerHandler.composeMessage(Operation.State.DataError, "Group");
         if (modified == null)
-            return ServerUserHandler.WrongPermissionsList;
-        final EnumSet<Operation.Permission> permissions = userPair.getT().getSecond().group().permissions();
-        if (add)
-            permissions.addAll(modified);
-        else
-            permissions.removeAll(modified);
+            return ServerHandler.composeMessage(Operation.State.DataError, "Permissions");
         try {
-            UserManager.updateUser(userPair.getT().getSecond(), Thread.currentThread().getName());
+            final UserGroupSqlInformation group = UserGroupManager.selectGroupByName(groupName, null);
+            if (group == null)
+                return ServerHandler.composeMessage(Operation.State.DataError, "Group");
+            final EnumSet<Operation.Permission> permissions = group.permissions();
+            if (add)
+                permissions.addAll(modified);
+            else
+                permissions.removeAll(modified);
+            UserGroupManager.updateGroup(group, null);
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }

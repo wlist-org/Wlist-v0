@@ -17,11 +17,7 @@ public final class PasswordGuard {
     private static final @NotNull String ServerPasswordSlat = "WList/PasswordSlat/AdditionalSlat: " + HExceptionWrapper.wrapSupplier(() -> ConstantManager.get("PasswordSlat",
             () -> HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 64, ConstantManager.DefaultRandomChars), "initialize")).get();
 
-    static @NotNull String encryptPassword(final @NotNull String password) {
+    public static @NotNull String encryptPassword(final @NotNull String password) {
         return MiscellaneousUtil.getMd5((password + PasswordGuard.ServerPasswordSlat).getBytes(StandardCharsets.UTF_8));
-    }
-
-    public static boolean isWrongPassword(final @NotNull String source, final @NotNull String encrypted) {
-        return !PasswordGuard.encryptPassword(source).equals(encrypted);
     }
 }

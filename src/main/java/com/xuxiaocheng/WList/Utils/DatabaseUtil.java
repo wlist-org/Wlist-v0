@@ -35,7 +35,7 @@ public class DatabaseUtil {
         if (DatabaseUtil.Instance == null)
             DatabaseUtil.Instance = new DatabaseUtil(new PooledDatabaseConfig(
                     new File(GlobalConfiguration.getInstance().databasePath()),
-                   1, 1, 1,/* 2, 3, 10, */false, false, Connection.TRANSACTION_READ_COMMITTED
+                   1, 1, 2,/* 2, 3, 10, */false, false, Connection.TRANSACTION_READ_COMMITTED
             ));
         return DatabaseUtil.Instance;
     }

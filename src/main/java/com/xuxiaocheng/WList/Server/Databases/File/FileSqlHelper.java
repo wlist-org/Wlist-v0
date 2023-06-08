@@ -94,8 +94,10 @@ final class FileSqlHelper {
                                              NOT NULL,
                         identifier   TEXT    UNIQUE
                                              NOT NULL,
-                        id           INTEGER NOT NULL,
+                        id           INTEGER NOT NULL
+                                             REFERENCES users (id),
                         group_id     INTEGER NOT NULL
+                                             REFERENCES groups (group_id)
                     );
                 """, this.tableName));
                 statement.executeUpdate(String.format("""

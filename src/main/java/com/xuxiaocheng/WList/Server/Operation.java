@@ -17,12 +17,18 @@ public final class Operation {
         SetBroadcastMode,
         Register,
         Login,
+        GetPermissions,
+        ChangeUsername,
         ChangePassword,
         Logoff,
         ListUsers,
         DeleteUser,
+        ListGroups,
+        AddGroup,
+        DeleteGroup,
+        ChangeGroup,
         AddPermission,
-        ReducePermission,
+        RemovePermission,
         ListFiles,
         MakeDirectories,
         DeleteFile,
@@ -89,7 +95,7 @@ public final class Operation {
     }
 
     public static @NotNull EnumSet<Permission> defaultPermissions() {
-        return EnumSet.of(Permission.FilesList);
+        return EnumSet.of(Permission.FilesList, Permission.FileDownload);
     }
 
     public static @NotNull EnumSet<Permission> allPermissions() {

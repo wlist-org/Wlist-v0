@@ -4,6 +4,7 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.Payload;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
@@ -45,7 +46,7 @@ public final class UserTokenHelper {
             id = Long.valueOf(payload.getAudience().get(0), Character.MAX_RADIX).longValue();
             modifyTime = LocalDateTime.ofEpochSecond(Integer.valueOf(payload.getId()).intValue(),
                             Integer.valueOf(payload.getSubject()).intValue(), ZoneOffset.UTC);
-        } catch (@SuppressWarnings("OverlyBroadCatchBlock") final RuntimeException ignore) {
+        } catch (final JWTVerificationException | NumberFormatException ignore) {
             return null;
         }
         final UserSqlInformation user = UserManager.selectUser(id, "token_decoder");

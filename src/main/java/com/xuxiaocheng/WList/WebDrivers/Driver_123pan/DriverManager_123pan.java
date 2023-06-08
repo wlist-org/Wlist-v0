@@ -258,6 +258,7 @@ public final class DriverManager_123pan {
             if (useCache) {
                 final FileSqlInformation info = FileManager.selectFileByPath(configuration.getLocalSide().getName(), path, connectionId.get());
                 if (info != null) {
+                    // TODO keep should create a new directory.
                     if (info.isDir())
                         return UnionPair.ok(info);
                     if (policy == Options.DuplicatePolicy.ERROR)

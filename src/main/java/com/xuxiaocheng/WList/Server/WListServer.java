@@ -180,12 +180,12 @@ public class WListServer {
             WListServer.logger.log(HLogLevel.VERBOSE, "Read: ", channel.id().asLongText(), " len: ", msg.readableBytes(), " cipher: ", MiscellaneousUtil.bin(msg.readByte()));
             try {
                 final Operation.Type type = Operation.valueOfType(ByteBufIOUtil.readUTF(msg));
-                WListServer.logger.log(HLogLevel.DEBUG, "Operate: ", channel.id().asLongText(), " type: ", type, " user: ", (Supplier<String>) () -> {
+                WListServer.logger.log(HLogLevel.DEBUG, "Operate: ", channel.id().asLongText(), " type: ", type, (Supplier<String>) () -> {
                     msg.markReaderIndex();
                     try {
-                        return ByteBufIOUtil.readUTF(msg);
+                        return " user: " + ByteBufIOUtil.readUTF(msg);
                     } catch (final IOException ignore) {
-                        return "error(IOException)";
+                        return "";
                     } finally {
                         msg.resetReaderIndex();
                     }
@@ -197,12 +197,18 @@ public class WListServer {
                     case CloseServer -> ServerStateHandler.doCloseServer;
                     case Register -> ServerUserHandler.doRegister;
                     case Login -> ServerUserHandler.doLogin;
+                    case GetPermissions -> ServerUserHandler.doGetPermissions;
+                    case ChangeUsername -> ServerUserHandler.doChangeUsername;
                     case ChangePassword -> ServerUserHandler.doChangePassword;
                     case Logoff -> ServerUserHandler.doLogoff;
                     case ListUsers -> ServerUserHandler.doListUsers;
                     case DeleteUser -> ServerUserHandler.doDeleteUser;
+                    case ListGroups -> ServerUserHandler.doListGroups;
+                    case AddGroup -> ServerUserHandler.doAddGroup;
+                    case DeleteGroup -> ServerUserHandler.doDeleteGroup;
+                    case ChangeGroup -> ServerUserHandler.doChangeGroup;
                     case AddPermission -> b -> ServerUserHandler.doChangePermission(b, true);
-                    case ReducePermission -> b -> ServerUserHandler.doChangePermission(b, false);
+                    case RemovePermission -> b -> ServerUserHandler.doChangePermission(b, false);
                     // TODO drivers operate. (dynamically modify config file)
                     case ListFiles -> ServerFileHandler.doListFiles;
                     case MakeDirectories -> ServerFileHandler.doMakeDirectories;

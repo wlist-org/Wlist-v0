@@ -4,12 +4,16 @@ import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupSqlInformation;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
 
 public record UserSqlInformation(long id, @NotNull String username, @NotNull String password, @NotNull UserGroupSqlInformation group, @NotNull LocalDateTime modifyTime) {
     public record Inserter(@NotNull String username, @NotNull String password, long groupId) {
+    }
+
+    public record Updater(long id, @NotNull String username, @NotNull String password, long groupId, @Nullable LocalDateTime modifyTime) {
     }
 
     @Deprecated // only for client

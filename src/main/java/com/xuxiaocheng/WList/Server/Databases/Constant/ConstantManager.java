@@ -23,7 +23,7 @@ public final class ConstantManager {
         ConstantSqlHelper.initialize(ConstantManager.getDatabaseUtil(), "initialize");
     }
 
-    // Needn't cache. (Each constant should call this method only once.)
+    // Each constant should call this method only once.
     public static @NotNull String get(final @NotNull String key, final @NotNull Supplier<@NotNull String> defaultValue, final @Nullable String _connectionId) throws SQLException {
         return ConstantSqlHelper.getInstance().get(key, defaultValue, _connectionId);
     }

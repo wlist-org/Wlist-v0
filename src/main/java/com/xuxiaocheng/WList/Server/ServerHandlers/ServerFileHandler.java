@@ -37,13 +37,13 @@ public final class ServerFileHandler {
 
     public static final @NotNull ServerHandler doListFiles = buffer -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList);
-        if (user.isFailure())
-            return user.getE();
         final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
         final int page = ByteBufIOUtil.readVariableLenInt(buffer);
         final Options.OrderPolicy orderPolicy = Options.valueOfOrderPolicy(ByteBufIOUtil.readUTF(buffer));
         final Options.OrderDirection orderDirection = Options.valueOfOrderDirection(ByteBufIOUtil.readUTF(buffer));
+        if (user.isFailure())
+            return user.getE();
         if (limit < 1 || limit > GlobalConfiguration.getInstance().maxLimitPerPage()
                 || page < 0 || orderPolicy == null || orderDirection == null)
             return ServerHandler.WrongParameters;
@@ -69,10 +69,10 @@ public final class ServerFileHandler {
 
     public static final @NotNull ServerHandler doMakeDirectories = buffer -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload);
-        if (user.isFailure())
-            return user.getE();
         final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
+        if (user.isFailure())
+            return user.getE();
         if (duplicatePolicy == null)
             return ServerHandler.WrongParameters;
         final UnionPair<FileSqlInformation, FailureReason> dir;

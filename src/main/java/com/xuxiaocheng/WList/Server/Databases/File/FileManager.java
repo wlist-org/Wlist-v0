@@ -1,25 +1,18 @@
 package com.xuxiaocheng.WList.Server.Databases.File;
 
-import com.github.benmanes.caffeine.cache.Caffeine;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Driver.Options;
-import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Utils.DatabaseUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
-import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 public final class FileManager {
     private FileManager() {
@@ -38,11 +31,6 @@ public final class FileManager {
         FileSqlHelper.uninitialize(driverName, "uninitialize");
     }
 
-    // TODO cache lock. enhance cache. ( Cache No groups)
-    private static final @NotNull com.github.benmanes.caffeine.cache.Cache<@NotNull Long, @NotNull FileSqlInformationWithGroups> Cache = Caffeine.newBuilder()
-            .maximumSize(GlobalConfiguration.getInstance().maxCacheSize())
-            .softValues().build();
-    // TODO Cache groups.
 
     public static void insertOrUpdateFiles(final @NotNull String driverName, final @NotNull Collection<@NotNull FileSqlInformation> inserters, final @Nullable String _connectionId) throws SQLException {
         FileSqlHelper.getInstance(driverName).insertOrUpdateFiles(inserters, _connectionId);
@@ -54,7 +42,6 @@ public final class FileManager {
 
     public static void deleteFilesRecursively(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
         FileSqlHelper.getInstance(driverName).deleteFilesRecursively(idList, _connectionId);
-        FileManager.Cache.invalidateAll(idList);
     }
 
     public static void deleteFileRecursively(final @NotNull String driverName, final long id, final @Nullable String _connectionId) throws SQLException {
@@ -62,16 +49,7 @@ public final class FileManager {
     }
 
     public static void deleteFilesByPathRecursively(final @NotNull String driverName, final @NotNull Collection<? extends @NotNull DrivePath> pathList, final @Nullable String _connectionId) throws SQLException {
-        if (pathList.isEmpty())
-            return;
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = FileManager.getDatabaseUtil().getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            final Map<DrivePath, Set<Long>> map = FileSqlHelper.getInstance(driverName).selectFilesIdByParentPathRecursively(pathList, connectionId.get());
-            FileSqlHelper.getInstance(driverName).deleteFilesByPathRecursively(pathList, connectionId.get());
-            connection.commit();
-            FileManager.Cache.invalidateAll(map.values().stream().flatMap(Set::stream).collect(Collectors.toSet()));
-        }
+        FileSqlHelper.getInstance(driverName).deleteFilesByPathRecursively(pathList, _connectionId);
     }
 
     public static void deleteFileByPathRecursively(final @NotNull String driverName, final @NotNull DrivePath path, final @Nullable String _connectionId) throws SQLException {
@@ -79,16 +57,7 @@ public final class FileManager {
     }
 
     public static void deleteFilesByMd5(final @NotNull String driverName, final @NotNull Collection<@NotNull String> md5List, final @Nullable String _connectionId) throws SQLException {
-        if (md5List.isEmpty())
-            return;
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = FileManager.getDatabaseUtil().getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            final Map<String, List<FileSqlInformationWithGroups>> map = FileSqlHelper.getInstance(driverName).selectFilesByMd5WithGroups(md5List, connectionId.get());
-            FileSqlHelper.getInstance(driverName).deleteFilesByMd5(md5List, connectionId.get());
-            connection.commit();
-            FileManager.Cache.invalidateAll(map.values().stream().flatMap(List::stream).map(f -> f.information().id()).collect(Collectors.toSet()));
-        }
+        FileSqlHelper.getInstance(driverName).deleteFilesByMd5(md5List, _connectionId);
     }
 
     public static void deleteFileByMd5(final @NotNull String driverName, final @NotNull String md5, final @Nullable String _connectionId) throws SQLException {
@@ -104,13 +73,7 @@ public final class FileManager {
     }
 
     public static @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull FileSqlInformationWithGroups> selectFilesWithGroups(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
-        final Map<Long, FileSqlInformationWithGroups> cached = FileManager.Cache.getAllPresent(idList);
-        final Collection<Long> rest = new HashSet<>(idList);
-        rest.removeAll(cached.keySet());
-        final Map<Long, FileSqlInformationWithGroups> required = FileSqlHelper.getInstance(driverName).selectFilesWithGroups(rest, _connectionId);
-        FileManager.Cache.putAll(required);
-        cached.putAll(required);
-        return cached;
+        return FileSqlHelper.getInstance(driverName).selectFilesWithGroups(idList, _connectionId);
     }
 
     public static @Nullable FileSqlInformationWithGroups selectFileWithGroups(final @NotNull String driverName, final long id, final @Nullable String _connectionId) throws SQLException {
@@ -126,9 +89,7 @@ public final class FileManager {
     }
 
     public static @NotNull @UnmodifiableView Map<@NotNull DrivePath, @NotNull FileSqlInformationWithGroups> selectFilesByPathWithGroups(final @NotNull String driverName, final @NotNull Collection<? extends @NotNull DrivePath> pathList, final @Nullable String _connectionId) throws SQLException {
-        final Map<DrivePath, FileSqlInformationWithGroups> map = FileSqlHelper.getInstance(driverName).selectFilesByPathWithGroups(pathList, _connectionId);
-        FileManager.Cache.putAll(map.values().stream().collect(Collectors.toMap(f -> f.information().id(), Function.identity())));
-        return map;
+        return FileSqlHelper.getInstance(driverName).selectFilesByPathWithGroups(pathList, _connectionId);
     }
 
     public static @Nullable FileSqlInformationWithGroups selectFileByPathWithGroups(final @NotNull String driverName, final @NotNull DrivePath path, final @Nullable String _connectionId) throws SQLException {
@@ -144,9 +105,7 @@ public final class FileManager {
     }
 
     public static @NotNull @UnmodifiableView Map<@NotNull String, @NotNull @UnmodifiableView List<@NotNull FileSqlInformationWithGroups>> selectFilesByMd5WithGroups(final @NotNull String driverName, final @NotNull Collection<@NotNull String> md5List, final @Nullable String _connectionId) throws SQLException {
-        final Map<String, List<FileSqlInformationWithGroups>> map = FileSqlHelper.getInstance(driverName).selectFilesByMd5WithGroups(md5List, _connectionId);
-        FileManager.Cache.putAll(map.values().stream().flatMap(List::stream).collect(Collectors.toMap(f -> f.information().id(), Function.identity())));
-        return map;
+        return FileSqlHelper.getInstance(driverName).selectFilesByMd5WithGroups(md5List, _connectionId);
     }
 
     public static @NotNull @UnmodifiableView List<@NotNull FileSqlInformationWithGroups> selectFileByMd5WithGroups(final @NotNull String driverName, final @NotNull String md5, final @Nullable String _connectionId) throws SQLException {
@@ -194,14 +153,11 @@ public final class FileManager {
     }
 
     public static @NotNull @UnmodifiableView List<@Nullable FileSqlInformationWithGroups> searchFilesByNameInParentPathRecursivelyLimited(final @NotNull String driverName, final @NotNull DrivePath parentPath, final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
-        final List<FileSqlInformationWithGroups> list = FileSqlHelper.getInstance(driverName).searchFilesByNameInParentPathRecursivelyLimitedWithGroups(parentPath, rule, caseSensitive, limit, _connectionId);
-        FileManager.Cache.putAll(list.stream().collect(Collectors.toMap(f -> f.information().id(), Function.identity())));
-        return list;
+        return FileSqlHelper.getInstance(driverName).searchFilesByNameInParentPathRecursivelyLimitedWithGroups(parentPath, rule, caseSensitive, limit, _connectionId);
     }
 
     public static void insertGroupsForEachFile(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> idList, final @NotNull Collection<@NotNull Long> groups, final @Nullable String _connectionId) throws SQLException {
         FileSqlHelper.getInstance(driverName).insertGroupsForEachFile(idList, groups, _connectionId);
-        FileManager.Cache.getAllPresent(idList).values().forEach(i -> i.availableForGroup().addAll(groups));
     }
 
     public static void insertGroupsForFile(final @NotNull String driverName, final long id, final @NotNull Collection<@NotNull Long> groups, final @Nullable String _connectionId) throws SQLException {
@@ -218,7 +174,6 @@ public final class FileManager {
 
     public static void deleteGroupsForEachFile(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> idList, final @NotNull Collection<@NotNull Long> groups, final @Nullable String _connectionId) throws SQLException {
         FileSqlHelper.getInstance(driverName).deleteGroupsForEachFile(idList, groups, _connectionId);
-        FileManager.Cache.getAllPresent(idList).values().forEach(i -> i.availableForGroup().removeAll(groups));
     }
 
     public static void deleteGroupsForFile(final @NotNull String driverName, final long id, final @NotNull Collection<@NotNull Long> groups, final @Nullable String _connectionId) throws SQLException {

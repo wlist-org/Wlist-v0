@@ -70,7 +70,8 @@ final class UserSqlHelper {
                                                NOT NULL,
                         password    TEXT       NOT NULL,
                         group_id    INTEGER    NOT NULL
-                                               DEFAULT %d,
+                                               DEFAULT %d
+                                               REFERENCES groups (group_id),
                         modify_time TEXT       NOT NULL
                     );
                 """, this.defaultId));
@@ -177,8 +178,8 @@ final class UserSqlHelper {
         }
     }
 
-    public void updateUsers(final @NotNull Collection<@NotNull UserSqlInformation> infoList, final @Nullable String _connectionId) throws SQLException {
-        if (infoList.isEmpty())
+    public void updateUsers(final @NotNull Collection<UserSqlInformation.@NotNull Updater> updaters, final @Nullable String _connectionId) throws SQLException {
+        if (updaters.isEmpty())
             return;
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
@@ -186,12 +187,12 @@ final class UserSqlHelper {
             try (final PreparedStatement statement = connection.prepareStatement("""
                     UPDATE users SET username = ?, password = ?, group_id = ?, modify_time = ? WHERE id == ?;
                 """)) {
-                for (final UserSqlInformation info: infoList) {
-                    statement.setString(1, info.username());
-                    statement.setString(2, PasswordGuard.encryptPassword(info.password()));
-                    statement.setLong(3, info.group().id());
-                    statement.setString(4, UserSqlHelper.getModifyTime());
-                    statement.setLong(5, info.id());
+                for (final UserSqlInformation.Updater updater: updaters) {
+                    statement.setString(1, updater.username());
+                    statement.setString(2, updater.password());
+                    statement.setLong(3, updater.groupId());
+                    statement.setString(4, Objects.requireNonNullElseGet(updater.modifyTime(), LocalDateTime::now).format(UserSqlHelper.DefaultFormatter));
+                    statement.setLong(5, updater.id());
                     statement.executeUpdate();
                 }
             }
@@ -295,6 +296,28 @@ final class UserSqlHelper {
                         final UserSqlInformation information = UserSqlHelper.createNextUserInfo(result);
                         if (information != null)
                             map.put(username, information);
+                    }
+                }
+            }
+            return Collections.unmodifiableMap(map);
+        }
+    }
+
+    public @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull Long> selectUsersCountByGroup(final @NotNull Collection<@NotNull Long> groupIdList, final @Nullable String _connectionId) throws SQLException {
+        if (groupIdList.isEmpty())
+            return Map.of();
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+            connection.setAutoCommit(false);
+            final Map<Long, Long> map = new HashMap<>();
+            try (final PreparedStatement statement = connection.prepareStatement("""
+                    SELECT COUNT(*) FROM users WHERE group_id == ?;
+                """)) {
+                for (final Long groupId: groupIdList) {
+                    statement.setLong(1, groupId.longValue());
+                    try (final ResultSet result = statement.executeQuery()) {
+                        result.next();
+                        map.put(groupId, result.getLong(1));
                     }
                 }
             }
