@@ -87,6 +87,7 @@ public final class MiscellaneousUtil {
     }
 
     public static int calculatePartCount(final long total, final int limit) {
+        //noinspection NumericCastThatLosesPrecision
         return (int) Math.ceil(((double) total) / limit);
     }
 

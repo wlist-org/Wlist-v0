@@ -10,7 +10,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.util.concurrent.atomic.AtomicReference;
 
 public final class Main {
     private Main() {
@@ -46,7 +45,7 @@ public final class Main {
 //        OperateServerHelper.setBroadcastMode(broadcast, true);
         Main.logger.log(HLogLevel.VERBOSE, "Initialized WList clients.");
 //        broadcast.stop();// TODO broadcast
-        final AtomicReference<String> token = new AtomicReference<>(null);
+        final ConsoleMenus.TokenPair token = new ConsoleMenus.TokenPair();
         //noinspection StatementWithEmptyBody
         while (ConsoleMenus.chooseMenu(client, token));
         Main.logger.log(HLogLevel.FINE, "Shutting down the clients...");
