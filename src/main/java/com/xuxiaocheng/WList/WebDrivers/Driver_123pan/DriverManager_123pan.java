@@ -209,8 +209,10 @@ public final class DriverManager_123pan {
                 assert list.getSecond().isEmpty();
             }
             final long directoryId = DriverManager_123pan.getFileId(configuration, directoryPath, true, useCache, connectionId.get(), _threadPool);
-            if (directoryId < 0)
+            if (directoryId < 0) {
+                connection.commit();
                 return null;
+            }
             final Pair.ImmutablePair<Long, List<FileSqlInformation>> list = DriverManager_123pan.listFilesNoCache(configuration, directoryId, directoryPath,
                     limit, page, policy, direction, connectionId.get());
             final long cached = useCache ? 0 : FileManager.selectFileCountByParentPath(configuration.getLocalSide().getName(), directoryPath, connectionId.get());
@@ -368,8 +370,10 @@ public final class DriverManager_123pan {
         try (final Connection connection = FileManager.getDatabaseUtil().getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
             final long fileId = DriverManager_123pan.getFileId(configuration, path, false, useCache, connectionId.get(), _threadPool);
-            if (fileId < 0)
+            if (fileId < 0) {
+                connection.commit();
                 return;
+            }
             final Set<Long> ids = DriverHelper_123pan.trashFiles(configuration, List.of(fileId));
             if (!ids.isEmpty()) // assert ids.size() == 1 && ids.contains(fileId);
                 FileManager.deleteFileRecursively(configuration.getLocalSide().getName(), fileId, connectionId.get());
@@ -385,12 +389,16 @@ public final class DriverManager_123pan {
         try (final Connection connection = FileManager.getDatabaseUtil().getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
             final long fileId = DriverManager_123pan.getFileId(configuration, path, false, useCache, connectionId.get(), _threadPool);
-            if (fileId < 0)
+            if (fileId < 0) {
+                connection.commit();
                 return UnionPair.fail(FailureReason.byNoSuchFile("Renaming file.", path));
+            }
             long targetId = DriverManager_123pan.getFileId(configuration, path, false, true, connectionId.get(), _threadPool);
             if (targetId > 0) {
-                if (policy == Options.DuplicatePolicy.ERROR)
+                if (policy == Options.DuplicatePolicy.ERROR) {
+                    connection.commit();
                     return UnionPair.fail(FailureReason.byDuplicateError("Renaming file.", newFilePath));
+                }
                 if (policy == Options.DuplicatePolicy.OVER)
                     DriverManager_123pan.trashFile(configuration, newFilePath, true, connectionId.get(), _threadPool);
                 if (policy == Options.DuplicatePolicy.KEEP) {
@@ -401,8 +409,10 @@ public final class DriverManager_123pan {
                 }
             }
             final UnionPair<FileSqlInformation, FailureReason> information = DriverHelper_123pan.renameFile(configuration, fileId, newFilePath);
-            if (information.isFailure())
+            if (information.isFailure()) {
+                connection.commit();
                 return information;
+            }
             FileManager.insertOrUpdateFile(configuration.getLocalSide().getName(), information.getT(), connectionId.get());
             connection.commit();
             return information;
@@ -415,10 +425,14 @@ public final class DriverManager_123pan {
             connection.setAutoCommit(false);
             final long sourceId = DriverManager_123pan.getFileId(configuration, sourceFile, false, useCache, connectionId.get(), _threadPool);
             final long targetId = DriverManager_123pan.getFileId(configuration, targetParent, true, useCache, connectionId.get(), _threadPool);
-            if (sourceId < 0)
+            if (sourceId < 0) {
+                connection.commit();
                 return UnionPair.fail(FailureReason.byNoSuchFile("Moving file. source", sourceFile));
-            if (targetId < 0)
+            }
+            if (targetId < 0) {
+                connection.commit();
                 return UnionPair.fail(FailureReason.byNoSuchFile("Moving file. target", targetParent));
+            }
             FileSqlInformation information = DriverHelper_123pan.moveFiles(configuration, List.of(sourceId), targetId, targetParent).get(sourceId);
             if (information == null)
                 throw new IllegalStateException("Failed to move file. [Unknown]. sourceFile: " + sourceFile + ", sourceId: " + sourceId + ", targetParent: " + targetParent + ", targetId: " + targetId + ", policy: " + policy);
