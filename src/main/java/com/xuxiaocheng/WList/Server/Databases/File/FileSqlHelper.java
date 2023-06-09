@@ -347,15 +347,16 @@ final class FileSqlHelper {
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
             final Map<DrivePath, Set<Long>> map = new HashMap<>(parentPathList.size());
-            for (final DrivePath parentPath: parentPathList)
-                map.put(parentPath, new HashSet<>());
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT id FROM %s WHERE parent_path == ?;
                 """, this.tableName))) {
                 for (final DrivePath parentPath: parentPathList) {
                     statement.setString(1, parentPath.getPath());
                     try (final ResultSet result = statement.executeQuery()) {
-                        map.get(parentPath).add(result.getLong("id"));
+                        final Set<Long> set = new HashSet<>();
+                        while (result.next())
+                            set.add(result.getLong("id"));
+                        map.put(parentPath, set);
                     }
                 }
             }
@@ -369,20 +370,7 @@ final class FileSqlHelper {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
-            final Map<DrivePath, Set<Long>> map = new HashMap<>(parentPathList.size());
-            for (final DrivePath parentPath: parentPathList)
-                map.put(parentPath, new HashSet<>());
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT id FROM %s WHERE parent_path == ?;
-                """, this.tableName))) {
-                for (final DrivePath parentPath: parentPathList) {
-                    statement.setString(1, parentPath.getPath());
-                    try (final ResultSet result = statement.executeQuery()) {
-                        while (result.next())
-                            map.get(parentPath).add(result.getLong("id"));
-                    }
-                }
-            }
+            final Map<DrivePath, Set<Long>> map = this.selectFilesIdByParentPath(parentPathList, _connectionId);
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT id FROM %s WHERE parent_path GLOB ?;
                 """, this.tableName))) {
@@ -394,7 +382,7 @@ final class FileSqlHelper {
                     }
                 }
             }
-            return Collections.unmodifiableMap(map);
+            return map;
         }
     }
 
@@ -466,11 +454,80 @@ final class FileSqlHelper {
         }
     }
 
+    public @NotNull @UnmodifiableView List<@Nullable FileSqlInformation> searchFilesByNameInParentPathRecursivelyLimited(final @NotNull DrivePath parentPath, final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
+        if (limit <= 0)
+            return List.of();
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+            connection.setAutoCommit(false);
+            final List<FileSqlInformation> list;
+            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+                    SELECT * FROM %s WHERE parent_path GLOB ? AND name %s ? ORDER BY abs(length(name) - ?) ASC, id DESC LIMIT ?;
+                """, this.tableName, caseSensitive ? "GLOB" : "LIKE"))) {
+                statement.setString(1, parentPath.getPath() + "/*");
+                statement.setString(2, rule);
+                statement.setInt(3, rule.length());
+                statement.setInt(4, limit);
+                try (final ResultSet result = statement.executeQuery()) {
+                    list = FileSqlHelper.createFilesInfo(result);
+                }
+            }
+            return list;
+        }
+    }
+
+    public @NotNull @UnmodifiableView Map<@NotNull DrivePath, @NotNull Long> selectFilesCountByParentPathRequireGroup(final @NotNull Collection<? extends @NotNull DrivePath> parentPathList, final long groupId, final @Nullable String _connectionId) throws SQLException {
+        if (parentPathList.isEmpty())
+            return Map.of();
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+            connection.setAutoCommit(false);
+            final Map<DrivePath, Long> map = new HashMap<>(parentPathList.size());
+            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+                    SELECT COUNT(*) FROM %s WHERE parent_path == ? AND id in (select id FROM %s_permissions WHERE group_id == ?);
+                """, this.tableName, this.tableName))) {
+                for (final DrivePath parentPath: parentPathList) {
+                    statement.setString(1, parentPath.getPath());
+                    statement.setLong(2, groupId);
+                    try (final ResultSet result = statement.executeQuery()) {
+                        result.next();
+                        map.put(parentPath, result.getLong(1));
+                    }
+                }
+            }
+            return Collections.unmodifiableMap(map);
+        }
+    }
+
+    public @NotNull @UnmodifiableView Map<@NotNull DrivePath, @NotNull Long> selectFilesCountByParentPathRecursivelyRequireGroup(final @NotNull Collection<? extends @NotNull DrivePath> parentPathList, final long groupId, final @Nullable String _connectionId) throws SQLException {
+        if (parentPathList.isEmpty())
+            return Map.of();
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+            connection.setAutoCommit(false);
+            final Map<DrivePath, Long> source = this.selectFilesCountByParentPath(parentPathList, connectionId.get());
+            final Map<DrivePath, Long> map = new HashMap<>(parentPathList.size());
+            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+                    SELECT COUNT(*) FROM %s WHERE parent_path GLOB ? AND id in (select id FROM %s_permissions WHERE group_id == ?);
+                """, this.tableName, this.tableName))) {
+                for (final DrivePath parentPath: parentPathList) {
+                    statement.setString(1, parentPath.getPath() + "/*");
+                    statement.setLong(2, groupId);
+                    try (final ResultSet result = statement.executeQuery()) {
+                        result.next();
+                        map.put(parentPath, source.get(parentPath).longValue() + result.getLong(1));
+                    }
+                }
+            }
+            return Collections.unmodifiableMap(map);
+        }
+    }
+
     public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> selectFilesByParentPathInPageRequireGroup(final @NotNull DrivePath parentPath, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final long groupId, final @Nullable String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
-            final long count = this.selectFilesCountByParentPath(List.of(parentPath), connectionId.get()).get(parentPath).longValue();
+            final long count = this.selectFilesCountByParentPathRequireGroup(List.of(parentPath), groupId, connectionId.get()).get(parentPath).longValue();
             if (offset >= count)
                 return Pair.ImmutablePair.makeImmutablePair(count, List.of());
             final List<FileSqlInformation> list;

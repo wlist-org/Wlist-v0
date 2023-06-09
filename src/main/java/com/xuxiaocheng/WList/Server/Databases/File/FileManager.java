@@ -124,6 +124,26 @@ public final class FileManager {
         return FileSqlHelper.getInstance(driverName).selectFilesByParentPathInPage(parentPath, limit, offset, direction, policy, _connectionId);
     }
 
+    public static @NotNull @UnmodifiableView List<@Nullable FileSqlInformation> searchFilesByNameInParentPathRecursivelyLimited(final @NotNull String driverName, final @NotNull DrivePath parentPath, final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
+        return FileSqlHelper.getInstance(driverName).searchFilesByNameInParentPathRecursivelyLimited(parentPath, rule, caseSensitive, limit, _connectionId);
+    }
+
+    public static @NotNull @UnmodifiableView Map<@NotNull DrivePath, @NotNull Long> selectFilesCountByParentPathRequireGroup(final @NotNull String driverName, final @NotNull Collection<? extends @NotNull DrivePath> parentPathList, final long groupId, final @Nullable String _connectionId) throws SQLException {
+        return FileSqlHelper.getInstance(driverName).selectFilesCountByParentPathRequireGroup(parentPathList, groupId, _connectionId);
+    }
+
+    public static long selectFileCountByParentPathRequireGroup(final @NotNull String driverName, final @NotNull DrivePath parentPath, final long groupId, final @Nullable String _connectionId) throws SQLException {
+        return FileManager.selectFilesCountByParentPathRequireGroup(driverName, List.of(parentPath), groupId, _connectionId).get(parentPath).longValue();
+    }
+
+    public static @NotNull @UnmodifiableView Map<@NotNull DrivePath, @NotNull Long> selectFilesCountByParentPathRecursivelyRequireGroup(final @NotNull String driverName, final @NotNull Collection<? extends @NotNull DrivePath> parentPathList, final long groupId, final @Nullable String _connectionId) throws SQLException {
+        return FileSqlHelper.getInstance(driverName).selectFilesCountByParentPathRecursivelyRequireGroup(parentPathList, groupId, _connectionId);
+    }
+
+    public static long selectFileCountByParentPathRecursivelyRequireGroup(final @NotNull String driverName, final @NotNull DrivePath parentPath, final long groupId, final @Nullable String _connectionId) throws SQLException {
+        return FileManager.selectFilesCountByParentPathRecursivelyRequireGroup(driverName, List.of(parentPath), groupId, _connectionId).get(parentPath).longValue();
+    }
+
     public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> selectFilesByParentPathInPageRequireGroup(final @NotNull String driverName, final @NotNull DrivePath parentPath, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final long groupId, final @Nullable String _connectionId) throws SQLException {
         return FileSqlHelper.getInstance(driverName).selectFilesByParentPathInPageRequireGroup(parentPath, limit, offset, direction, policy, groupId, _connectionId);
     }
@@ -131,7 +151,6 @@ public final class FileManager {
     public static @NotNull @UnmodifiableView List<@Nullable FileSqlInformation> searchFilesByNameInParentPathRecursivelyLimitedRequireGroup(final @NotNull String driverName, final @NotNull DrivePath parentPath, final @NotNull String rule, final boolean caseSensitive, final int limit, final long groupId, final @Nullable String _connectionId) throws SQLException {
         return FileSqlHelper.getInstance(driverName).searchFilesByNameInParentPathRecursivelyLimitedRequireGroup(parentPath, rule, caseSensitive, limit, groupId, _connectionId);
     }
-
 
     public static void insertGroupsForEachFile(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> idList, final @NotNull Collection<@NotNull Long> groups, final @Nullable String _connectionId) throws SQLException {
         FileSqlHelper.getInstance(driverName).insertGroupsForEachFile(idList, groups, _connectionId);
