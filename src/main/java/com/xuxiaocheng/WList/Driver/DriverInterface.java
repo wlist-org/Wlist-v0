@@ -106,8 +106,10 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     @SuppressWarnings("OverlyBroadThrowsClause")
     default @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> copy(final @NotNull DrivePath source, final @NotNull DrivePath target, final Options.@NotNull DuplicatePolicy policy) throws Exception {
         final FileSqlInformation info = this.info(source);
+        if (info == null || info.isDir())
+            return UnionPair.fail(FailureReason.byNoSuchFile("Copying.", source));
         final Pair.ImmutablePair<InputStream, Long> url = this.download(source, 0, Long.MAX_VALUE);
-        if (url == null || info == null)
+        if (url == null)
             return UnionPair.fail(FailureReason.byNoSuchFile("Copying.", source));
         Runnable finisher = null;
         try {

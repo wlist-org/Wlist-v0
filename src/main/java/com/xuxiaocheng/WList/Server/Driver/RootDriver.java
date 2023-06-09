@@ -150,12 +150,13 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
 
     @Override
     public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> copy(@NotNull final DrivePath source, @NotNull final DrivePath target, final Options.@NotNull DuplicatePolicy policy) throws Exception {
-        if (source.equals(target)) {
-            final FileSqlInformation information = this.info(source);
-            if (information == null)
-                return UnionPair.fail(FailureReason.byNoSuchFile("Copying.", source));
-            return UnionPair.ok(information);
-        }
+        final FileSqlInformation info = this.info(source);
+        if (info == null)
+            return UnionPair.fail(FailureReason.byNoSuchFile("Copying.", source));
+        if (info.isDir())
+            return UnionPair.fail(FailureReason.byNoSuchFile("Copying", source));
+        if (source.equals(target))
+            return UnionPair.ok(info);
         if (source.getRoot().equals(target.getRoot())) {
             final String root = source.getRoot();
             final DriverInterface<?> real = DriverManager.get(root);
