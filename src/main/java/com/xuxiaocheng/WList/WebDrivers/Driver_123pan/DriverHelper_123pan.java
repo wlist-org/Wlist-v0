@@ -582,15 +582,11 @@ final class DriverHelper_123pan {
      * Rename file. (Not support DuplicatePolicy. {@code ERROR})
      * @param configuration
      * <p> {@literal GET configuration.cacheSide.token: }Token. (May refresh. {@link DriverHelper_123pan#getToken(DriverConfiguration_123Pan)})
-     * @return
-     * <p> {@literal Ok: }Success.
-     * <p> {@literal Fail.NIL: }Duplicate filename. Should be handled by the caller.
-     * <p> {@literal Fail.InvalidName: }Failure. Invalid filename.
      */
-    static @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> renameFile(final @NotNull DriverConfiguration_123Pan configuration, final long id, final @NotNull DrivePath path) throws IllegalParametersException, IOException {
-        final String name = path.getName();
+    static @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> renameFile(final @NotNull DriverConfiguration_123Pan configuration, final long id, final @NotNull DrivePath newPath) throws IllegalParametersException, IOException {
+        final String name = newPath.getName();
         if (!DriverHelper_123pan.filenamePredication.test(name))
-            return UnionPair.fail(FailureReason.byInvalidName(name, path));
+            return UnionPair.fail(FailureReason.byInvalidName(name, newPath));
         final String token = DriverHelper_123pan.getToken(configuration);
         final Map<String, Object> request = new LinkedHashMap<>(4);
         request.put("DriveId", 0);
@@ -601,13 +597,11 @@ final class DriverHelper_123pan {
             data = DriverHelper_123pan.sendRequestReceiveExtractedData(DriverHelper_123pan.RenameFileURL, token, request, 0, "ok");
         } catch (final IllegalResponseCodeException exception) {
             if (exception.getCode() == DriverHelper_123pan.InvalidFilenameResponseCode)
-                return UnionPair.fail(FailureReason.byInvalidName(name, path));
-            if (exception.getCode() == DriverHelper_123pan.FileAlreadyExistResponseCode)
-                return UnionPair.fail(FailureReason.NIL); // Handling by the caller.
+                return UnionPair.fail(FailureReason.byInvalidName(name, newPath));
             throw exception;
         }
-        final FileSqlInformation information = FileInformation_123pan.create(path.parent(), data.getJSONObject("Info"));
-        path.child(name);
+        final FileSqlInformation information = FileInformation_123pan.create(newPath.parent(), data.getJSONObject("Info"));
+        newPath.child(name);
         if (information == null)
             throw new WrongResponseException("Renaming file.", data);
         return UnionPair.ok(information);

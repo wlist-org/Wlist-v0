@@ -7,16 +7,14 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Objects;
 
 public class FailureReason {
-    public static final @NotNull FailureReason NIL = new FailureReason(FailureReason.Others, "NIL.", null);
-
-    public static final @NotNull String InvalidFileName = "Invalid file name.";
+    public static final @NotNull String InvalidFilename = "Invalid filename.";
     public static final @NotNull String DuplicatePolicyError = "ERROR by duplicate policy.";
     public static final @NotNull String ExceedMaxSize = "Exceed max size per file.";
     public static final @NotNull String NoSuchFile = "No such file.";
     public static final @NotNull String Others = "Others.";
 
     public static @NotNull FailureReason byInvalidName(final @NotNull String name, final @NotNull DrivePath fullPath) {
-        return new FailureReason(FailureReason.InvalidFileName, name, fullPath);
+        return new FailureReason(FailureReason.InvalidFilename, name, fullPath);
     }
 
     public static @NotNull FailureReason byDuplicateError(final @NotNull String callingMethod, final @NotNull DrivePath path) {
@@ -62,6 +60,10 @@ public class FailureReason {
 
     public @Nullable Object extra() {
         return this.extra;
+    }
+
+    public @NotNull Throwable throwable() {
+        return this.throwable;
     }
 
     @Override

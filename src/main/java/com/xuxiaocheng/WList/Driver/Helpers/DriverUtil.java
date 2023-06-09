@@ -50,6 +50,13 @@ public final class DriverUtil {
     public static final Options.@NotNull DuplicatePolicy DefaultDuplicatePolicy = Options.DuplicatePolicy.KEEP;
 
 
+    public static @NotNull Pair.ImmutablePair<@NotNull String, @NotNull String> getRetryWrapper(final @NotNull String name) {
+        final int index = name.lastIndexOf('.');
+        final String left = (index < 0 ? name: name.substring(0, index)) + '(';
+        final String right = ')' + (index < 0 ? "" : name.substring(index));
+        return Pair.ImmutablePair.makeImmutablePair(left, right);
+    }
+
     public static @NotNull InputStream getDownloadStream(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws IOException {
         if (from >= to)
             return InputStream.nullInputStream();

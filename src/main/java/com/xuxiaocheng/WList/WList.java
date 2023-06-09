@@ -10,6 +10,7 @@ import com.xuxiaocheng.WList.Server.Driver.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Driver.DriverManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.WListServer;
+import io.netty.util.concurrent.Future;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -56,10 +57,13 @@ public final class WList {
             WListServer.getInstance().awaitStop();
         } finally {
             WList.logger.log(HLogLevel.FINE, "Shutting down the whole application...");
-            WListServer.CodecExecutors.shutdownGracefully().syncUninterruptibly();
-            WListServer.ServerExecutors.shutdownGracefully().syncUninterruptibly();
-            WListServer.IOExecutors.shutdownGracefully().syncUninterruptibly();
-            BackgroundTaskManager.BackgroundExecutors.shutdownGracefully().syncUninterruptibly();
+            final Future<?>[] futures = new Future[4];
+            futures[0] = WListServer.CodecExecutors.shutdownGracefully();
+            futures[1] = WListServer.ServerExecutors.shutdownGracefully();
+            futures[2] = WListServer.IOExecutors.shutdownGracefully();
+            futures[3] = BackgroundTaskManager.BackgroundExecutors.shutdownGracefully();
+            for (final Future<?> future: futures)
+                future.syncUninterruptibly();
             WList.logger.log(HLogLevel.MISTAKE, "Thanks to use WList.");
         }
     }

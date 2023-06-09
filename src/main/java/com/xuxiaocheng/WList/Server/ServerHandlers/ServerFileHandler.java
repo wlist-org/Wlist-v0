@@ -34,6 +34,8 @@ public final class ServerFileHandler {
     }
 
     public static final @NotNull MessageProto FileNotFound = ServerHandler.composeMessage(Operation.State.DataError, "File");
+    public static final @NotNull MessageProto InvalidFilename = ServerHandler.composeMessage(Operation.State.DataError, "Filename");
+    public static final @NotNull MessageProto DuplicateError = ServerHandler.composeMessage(Operation.State.DataError, "Duplicate");
 
     public static final @NotNull ServerHandler doListFiles = buffer -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList);
@@ -75,17 +77,22 @@ public final class ServerFileHandler {
             return user.getE();
         if (duplicatePolicy == null)
             return ServerHandler.WrongParameters;
+        if (duplicatePolicy == Options.DuplicatePolicy.OVER && !user.getT().group().permissions().contains(Operation.Permission.FileDelete))
+            return ServerHandler.composeMessage(Operation.State.NoPermission, null);
         final UnionPair<FileSqlInformation, FailureReason> dir;
         try {
-            // TODO: Over duplicate require delete permission.
             dir = RootDriver.getInstance().mkdirs(path, duplicatePolicy);
         } catch (final UnsupportedOperationException exception) {
             return ServerHandler.composeMessage(Operation.State.Unsupported, exception.getMessage());
         } catch (final Exception exception) {
             throw new ServerException(exception);
         }
-        if (dir.isFailure()) // TODO reasons.
-            return ServerFileHandler.FileNotFound;
+        if (dir.isFailure())
+            return switch (dir.getE().kind()) {
+                case FailureReason.InvalidFilename -> ServerFileHandler.InvalidFilename;
+                case FailureReason.DuplicatePolicyError -> ServerFileHandler.DuplicateError;
+                default -> {throw new ServerException("Unknown failure reason. " + dir.getE(), dir.getE().throwable());}
+            };
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
             FileSqlInformation.dumpVisible(buf, dir.getT());
             return buf;
@@ -124,8 +131,13 @@ public final class ServerFileHandler {
         } catch (final Exception exception) {
             throw new ServerException(exception);
         }
-        if (file.isFailure()) // TODO reasons.
-            return ServerFileHandler.FileNotFound;
+        if (file.isFailure())
+            return switch (file.getE().kind()) {
+                case FailureReason.InvalidFilename -> ServerFileHandler.InvalidFilename;
+                case FailureReason.DuplicatePolicyError -> ServerFileHandler.DuplicateError;
+                case FailureReason.NoSuchFile -> ServerFileHandler.FileNotFound;
+                default -> {throw new ServerException("Unknown failure reason. " + file.getE(), file.getE().throwable());}
+            };
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
             FileSqlInformation.dumpVisible(buf, file.getT());
             return buf;
@@ -288,8 +300,13 @@ public final class ServerFileHandler {
         } catch (final Exception exception) {
             throw new ServerException(exception);
         }
-        if (file.isFailure()) // TODO reasons.
-            return ServerFileHandler.FileNotFound;
+        if (file.isFailure())
+            return switch (file.getE().kind()) {
+                case FailureReason.InvalidFilename -> ServerFileHandler.InvalidFilename;
+                case FailureReason.DuplicatePolicyError -> ServerFileHandler.DuplicateError;
+                case FailureReason.NoSuchFile -> ServerFileHandler.FileNotFound;
+                default -> {throw new ServerException("Unknown failure reason. " + file.getE(), file.getE().throwable());}
+            };
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
             FileSqlInformation.dumpVisible(buf, file.getT());
             return buf;
@@ -313,8 +330,13 @@ public final class ServerFileHandler {
         } catch (final Exception exception) {
             throw new ServerException(exception);
         }
-        if (file.isFailure()) // TODO reasons.
-            return ServerFileHandler.FileNotFound;
+        if (file.isFailure())
+            return switch (file.getE().kind()) {
+                case FailureReason.InvalidFilename -> ServerFileHandler.InvalidFilename;
+                case FailureReason.DuplicatePolicyError -> ServerFileHandler.DuplicateError;
+                case FailureReason.NoSuchFile -> ServerFileHandler.FileNotFound;
+                default -> {throw new ServerException("Unknown failure reason. " + file.getE(), file.getE().throwable());}
+            };
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
             FileSqlInformation.dumpVisible(buf, file.getT());
             return buf;

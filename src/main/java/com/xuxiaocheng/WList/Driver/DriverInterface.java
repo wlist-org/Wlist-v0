@@ -131,9 +131,9 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
                 throw new IllegalStateException("Failed to copy file. [Unknown]. source: " + source + ", sourceInfo: " + info + ", target: " + target + ", policy: " + policy);
             return UnionPair.ok(information);
         } finally {
+            url.getFirst().close();
             if (finisher != null)
                 finisher.run();
-            url.getFirst().close();
         }
     }
 

@@ -50,11 +50,11 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
     @Override
     public void forceRefreshDirectory(final @NotNull DrivePath path) throws SQLException {
         final long id = DriverManager_123pan.getFileId(this.configuration, path, true, true, null, null);
-        if (id >= 0) {
-            final Iterator<FileSqlInformation> iterator = DriverManager_123pan.listAllFilesNoCache(this.configuration, id, path, null, null).getB();
-            while (iterator.hasNext())
-                iterator.next();
-        }
+        if (id < 0)
+            return;
+        final Iterator<FileSqlInformation> iterator = DriverManager_123pan.listAllFilesNoCache(this.configuration, id, path, null, null).getB();
+        while (iterator.hasNext())
+            iterator.next();
     }
 
     @Override
