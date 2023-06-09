@@ -623,7 +623,7 @@ final class DriverHelper_123pan {
             return pair;
         }).toList());
         final JSONObject data = DriverHelper_123pan.sendRequestReceiveExtractedData(DriverHelper_123pan.MoveFilesURL, token, request, 0, "ok");
-        final JSONArray infos = data.getJSONArray("InfoList");
+        final JSONArray infos = data.getJSONArray("Info");
         if (infos == null)
             return Map.of();
         final Map<Long, FileSqlInformation> map = new HashMap<>(infos.size());
