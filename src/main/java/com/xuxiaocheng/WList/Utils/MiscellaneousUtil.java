@@ -33,11 +33,15 @@ public final class MiscellaneousUtil {
         }
     }
 
+    public static @NotNull String getMd5(final @NotNull MessageDigest digester) {
+        final BigInteger i = new BigInteger(1, digester.digest());
+        return String.format("%32s", i.toString(16)).replace(' ', '0');
+    }
+
     public static @NotNull String getMd5(final byte @NotNull [] source) {
         final MessageDigest md5 = MiscellaneousUtil.getMd5Digester();
         md5.update(source);
-        final BigInteger i = new BigInteger(1, md5.digest());
-        return String.format("%32s", i.toString(16)).replace(' ', '0');
+        return MiscellaneousUtil.getMd5(md5);
     }
 
     public static void updateMessageDigest(final @NotNull MessageDigest digester, final @NotNull InputStream source) throws IOException {
@@ -87,6 +91,7 @@ public final class MiscellaneousUtil {
     }
 
     public static int calculatePartCount(final long total, final int limit) {
+        //noinspection NumericCastThatLosesPrecision
         return (int) Math.ceil(((double) total) / limit);
     }
 

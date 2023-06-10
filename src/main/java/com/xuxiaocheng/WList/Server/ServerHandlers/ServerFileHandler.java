@@ -36,6 +36,7 @@ public final class ServerFileHandler {
     public static final @NotNull MessageProto FileNotFound = ServerHandler.composeMessage(Operation.State.DataError, "File");
     public static final @NotNull MessageProto InvalidFilename = ServerHandler.composeMessage(Operation.State.DataError, "Filename");
     public static final @NotNull MessageProto DuplicateError = ServerHandler.composeMessage(Operation.State.DataError, "Duplicate");
+    public static final @NotNull MessageProto ExceedSize = ServerHandler.composeMessage(Operation.State.DataError, "Size");
 
     public static final @NotNull ServerHandler doListFiles = buffer -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList);
@@ -91,7 +92,7 @@ public final class ServerFileHandler {
             return switch (dir.getE().kind()) {
                 case FailureReason.InvalidFilename -> ServerFileHandler.InvalidFilename;
                 case FailureReason.DuplicatePolicyError -> ServerFileHandler.DuplicateError;
-                default -> {throw new ServerException("Unknown failure reason. " + dir.getE(), dir.getE().throwable());}
+                default -> throw new ServerException("Unknown failure reason. " + dir.getE(), dir.getE().throwable());
             };
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
             FileSqlInformation.dumpVisible(buf, dir.getT());
@@ -136,7 +137,7 @@ public final class ServerFileHandler {
                 case FailureReason.InvalidFilename -> ServerFileHandler.InvalidFilename;
                 case FailureReason.DuplicatePolicyError -> ServerFileHandler.DuplicateError;
                 case FailureReason.NoSuchFile -> ServerFileHandler.FileNotFound;
-                default -> {throw new ServerException("Unknown failure reason. " + file.getE(), file.getE().throwable());}
+                default -> throw new ServerException("Unknown failure reason. " + file.getE(), file.getE().throwable());
             };
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
             FileSqlInformation.dumpVisible(buf, file.getT());
@@ -222,8 +223,13 @@ public final class ServerFileHandler {
         } catch (final Exception exception) {
             throw new ServerException(exception);
         }
-        if (methods.isFailure()) // TODO reasons.
-            return ServerFileHandler.FileNotFound;
+        if (methods.isFailure())
+            return switch (methods.getE().kind()) {
+                case FailureReason.InvalidFilename -> ServerFileHandler.InvalidFilename;
+                case FailureReason.DuplicatePolicyError -> ServerFileHandler.DuplicateError;
+                case FailureReason.ExceedMaxSize -> ServerFileHandler.ExceedSize;
+                default -> throw new ServerException("Unknown failure reason. " + methods.getE(), methods.getE().throwable());
+            };
         if (methods.getT().methods().isEmpty()) { // (reuse / empty file)
             final FileSqlInformation file;
             try {
@@ -305,7 +311,7 @@ public final class ServerFileHandler {
                 case FailureReason.InvalidFilename -> ServerFileHandler.InvalidFilename;
                 case FailureReason.DuplicatePolicyError -> ServerFileHandler.DuplicateError;
                 case FailureReason.NoSuchFile -> ServerFileHandler.FileNotFound;
-                default -> {throw new ServerException("Unknown failure reason. " + file.getE(), file.getE().throwable());}
+                default -> throw new ServerException("Unknown failure reason. " + file.getE(), file.getE().throwable());
             };
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
             FileSqlInformation.dumpVisible(buf, file.getT());
@@ -335,7 +341,7 @@ public final class ServerFileHandler {
                 case FailureReason.InvalidFilename -> ServerFileHandler.InvalidFilename;
                 case FailureReason.DuplicatePolicyError -> ServerFileHandler.DuplicateError;
                 case FailureReason.NoSuchFile -> ServerFileHandler.FileNotFound;
-                default -> {throw new ServerException("Unknown failure reason. " + file.getE(), file.getE().throwable());}
+                default -> throw new ServerException("Unknown failure reason. " + file.getE(), file.getE().throwable());
             };
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
             FileSqlInformation.dumpVisible(buf, file.getT());

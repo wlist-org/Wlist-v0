@@ -333,7 +333,8 @@ public final class DriverManager_123pan {
         final List<UploadMethods.UploadPartMethod> list = new ArrayList<>(partCount);
         final AtomicInteger countDown = new AtomicInteger(urls.size());
         for (final String url: urls) {
-            final int len = Math.min(DriverHelper_123pan.UploadPartSize, (int) (size - readSize));
+            //noinspection NumericCastThatLosesPrecision
+            final int len = (int) Math.min(DriverHelper_123pan.UploadPartSize, (size - readSize));
             readSize += len;
             list.add(new UploadMethods.UploadPartMethod(len, b -> {
                 DriverNetworkHelper.callRequestWithBody(DriverHelper_123pan.httpClient, Pair.ImmutablePair.makeImmutablePair(url, "PUT"), null,

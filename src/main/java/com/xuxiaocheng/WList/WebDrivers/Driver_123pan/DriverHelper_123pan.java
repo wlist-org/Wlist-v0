@@ -472,7 +472,7 @@ final class DriverHelper_123pan {
         final Long unionFileId = data.getLong("FileId");
         if (bucket == null || key == null || node == null || uploadId == null || unionFileId == null)
             throw new WrongResponseException("PreUploading file.", data);
-        return UnionPair.ok(UnionPair.fail(new UploadIdentifier_123pan(unionFileId.longValue(), filePath, bucket, key, node, uploadId)));
+        return UnionPair.ok(UnionPair.fail(new UploadIdentifier_123pan(unionFileId.longValue(), new DrivePath(filePath), bucket, key, node, uploadId)));
     }
 
     /**
