@@ -4,19 +4,19 @@ import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
+import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
+import com.xuxiaocheng.WList.Server.Polymers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
-import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.DatabaseUtil;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
-import java.io.InputStream;
+import java.util.Iterator;
 import java.util.List;
 
 public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
@@ -83,7 +83,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @return The download stream and real available bytes. Null means not existed.
      * @throws Exception Something went wrong.
      */
-    Pair.@Nullable ImmutablePair<@NotNull InputStream, @NotNull Long> download(final @NotNull DrivePath path, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws Exception;
+    @Nullable DownloadMethods download(final @NotNull DrivePath path, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws Exception;
 
     /**
      * Create a new empty directory.
@@ -115,35 +115,39 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
         final FileSqlInformation info = this.info(source);
         if (info == null || info.isDir())
             return UnionPair.fail(FailureReason.byNoSuchFile("Copying.", source));
-        final Pair.ImmutablePair<InputStream, Long> url = this.download(source, 0, Long.MAX_VALUE);
-        if (url == null)
-            return UnionPair.fail(FailureReason.byNoSuchFile("Copying.", source));
-        Runnable finisher = null;
+        Runnable uploadFinisher = null;
+        Runnable downloadFinisher = null;
         try {
-            if (info.size() != url.getSecond().longValue())
-                return UnionPair.fail(FailureReason.byNoSuchFile("Copying.", source));
-            final UnionPair<UploadMethods, FailureReason> methods = this.upload(target, info.size(), info.md5(), policy);
-            finisher = methods.getT().finisher();
-            if (methods.isFailure())
-                return UnionPair.fail(methods.getE());
-            for (final ConsumerE<ByteBuf> method: methods.getT().methods()) {
-                final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(WListServer.FileTransferBufferSize);
-                try {
-                    // TODO download method.
-//                    buffer.writeBytes(url.getFirst(), partMethod.size());
-                    method.accept(buffer);
-                } finally {
-                    buffer.release();
-                }
+            final UnionPair<UploadMethods, FailureReason> upload = this.upload(target, info.size(), info.md5(), policy);
+            if (upload.isFailure())
+                return UnionPair.fail(upload.getE());
+            uploadFinisher = upload.getT().finisher();
+            if (upload.getT().methods().isEmpty()) {
+                final FileSqlInformation information = upload.getT().supplier().get();
+                if (information == null)
+                    return UnionPair.fail(FailureReason.others("Failed to get file information.", source));
+                return UnionPair.ok(information);
             }
-            final FileSqlInformation information = methods.getT().supplier().get();
+            final DownloadMethods download = this.download(source, 0, Long.MAX_VALUE);
+            if (download == null)
+                return UnionPair.fail(FailureReason.byNoSuchFile("Copying.", source));
+            downloadFinisher = download.finisher();
+            assert info.size() == download.total();
+            assert upload.getT().methods().size() == download.methods().size();
+            final Iterator<ConsumerE<ByteBuf>> uploadIterator = upload.getT().methods().iterator();
+            final Iterator<SupplierE<ByteBuf>> downloadIterator = download.methods().iterator();
+            while (uploadIterator.hasNext() && downloadIterator.hasNext())
+                uploadIterator.next().accept(downloadIterator.next().get());
+            assert !uploadIterator.hasNext() && !downloadIterator.hasNext();
+            final FileSqlInformation information = upload.getT().supplier().get();
             if (information == null)
                 throw new IllegalStateException("Failed to copy file. [Unknown]. source: " + source + ", sourceInfo: " + info + ", target: " + target + ", policy: " + policy);
             return UnionPair.ok(information);
         } finally {
-            url.getFirst().close();
-            if (finisher != null)
-                finisher.run();
+            if (uploadFinisher != null)
+                uploadFinisher.run();
+            if (downloadFinisher != null)
+                downloadFinisher.run();
         }
     }
 

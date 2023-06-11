@@ -3,8 +3,6 @@ package com.xuxiaocheng.WList.Server.ServerHandlers;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
-import com.xuxiaocheng.HeadLibs.Logger.HLog;
-import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
@@ -20,7 +18,6 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -64,7 +61,7 @@ public final class FileUploadIdHelper {
         private final @NotNull String username;
         private final @NotNull String id;
         private final int rest;
-        private final @NotNull Collection<@NotNull Integer> calledSet = new HashSet<>();
+        private final @NotNull Collection<@NotNull Integer> calledSet = ConcurrentHashMap.newKeySet();
         private @NotNull LocalDateTime expireTime = LocalDateTime.now();
         private final @NotNull AtomicBoolean closed = new AtomicBoolean(false);
         private final @NotNull ReadWriteLock closerLock = new ReentrantReadWriteLock();
@@ -76,18 +73,18 @@ public final class FileUploadIdHelper {
 
         private UploaderData(final @NotNull UploadMethods methods, final long size, final @NotNull String username) {
             super();
-            this.username = username;
             this.methods = methods;
+            this.count = methods.methods().size();
+            this.username = username;
             final int mod = (int) (size % WListServer.FileTransferBufferSize);
             this.rest = mod == 0 ? WListServer.FileTransferBufferSize : mod;
-            this.count = MiscellaneousUtil.calculatePartCount(size, WListServer.FileTransferBufferSize);
             this.id = MiscellaneousUtil.randomKeyAndPut(FileUploadIdHelper.buffers,
                     () -> HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, ConstantManager.DefaultRandomChars), this);
             this.appendExpireTime();
         }
 
         @Override
-        public void close() throws IOException {
+        public void close() {
             this.closerLock.writeLock().lock();
             try {
                 if (!this.closed.compareAndSet(false, true))
@@ -165,8 +162,6 @@ public final class FileUploadIdHelper {
                     check.getSecond().close();
             } catch (final InterruptedException ignore) {
                 break;
-            } catch (final IOException exception) {
-                HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, exception);
             }
         }
     }, "UploadData Cleaner");

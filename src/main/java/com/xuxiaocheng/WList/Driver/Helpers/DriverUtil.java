@@ -6,8 +6,10 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.FunctionE;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
+import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
+import com.xuxiaocheng.WList.Server.Polymers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
@@ -20,12 +22,10 @@ import okhttp3.RequestBody;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CancellationException;
@@ -52,7 +52,6 @@ public final class DriverUtil {
 
     public static final Options.@NotNull OrderPolicy DefaultOrderPolicy = Options.OrderPolicy.FileName;
     public static final Options.@NotNull OrderDirection DefaultOrderDirection = Options.OrderDirection.ASCEND;
-    public static final Options.@NotNull DuplicatePolicy DefaultDuplicatePolicy = Options.DuplicatePolicy.KEEP;
 
 
     public static @NotNull Pair.ImmutablePair<@NotNull String, @NotNull String> getRetryWrapper(final @NotNull String name) {
@@ -125,63 +124,39 @@ public final class DriverUtil {
         });
     }
 
-    public static @NotNull InputStream getDownloadStream(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws IOException {
-        if (from >= to)
-            return InputStream.nullInputStream();
-        final InputStream link = DriverNetworkHelper.extraResponse(DriverNetworkHelper.sendRequestJson(client, url, headers, body)).byteStream();
-        final long skip = link.skip(from);
-        assert skip == from;
-        return new InputStream() {
-            private long pos = skip;
-
-            @Override
-            public int read() throws IOException {
-                if (this.pos + 1 > to) {
-                    link.close();
-                    return -1;
-                }
-                ++this.pos;
-                return link.read();
-            }
-
-            @Override
-            public int read(final byte @NotNull [] b, final int off, final int len) throws IOException {
-                Objects.checkFromIndexSize(off, len, b.length);
-                if (len == 0)
-                    return 0;
-                if (this.pos + 1 > to) {
-                    link.close();
-                    return -1;
-                }
-                final int r = link.read(b, off, (int) Math.min(len, to - this.pos));
-                this.pos += r;
-                if (this.pos + 1 > to)
-                    link.close();
-                return r;
-            }
-
-            @Override
-            public int available() {
-                return (int) Math.min(to - this.pos, Integer.MAX_VALUE);
-            }
-
-            @Override
-            public void close() throws IOException {
-                link.close();
-            }
-        };
-    }
-
-    public static Pair.@NotNull ImmutablePair<@NotNull InputStream, @NotNull Long> getDownloadStreamByRangeHeader(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull Long> url, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final Headers.@Nullable Builder builder) throws IOException {
-        final long size = url.getSecond().longValue();
+    public static @NotNull DownloadMethods getDownloadMethodsByUrlWithRangeHeader(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final long size, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final Headers.@Nullable Builder builder) {
         final long end = Math.min(to, size);
-        final long len = end - from;
-        if (from >= size || len < 0)
-            return Pair.ImmutablePair.makeImmutablePair(InputStream.nullInputStream(), 0L);
-        return Pair.ImmutablePair.makeImmutablePair(DriverUtil.getDownloadStream(client,
-                Pair.ImmutablePair.makeImmutablePair(url.getFirst(), "GET"),
-                Objects.requireNonNullElseGet(builder, Headers.Builder::new).set("Range", String.format("bytes=%d-%d", from, end - 1)).build(),
-                null, 0, len), len);
+        final long total = end - from;
+        if (from >= size || total < 0)
+            return new DownloadMethods(0, List.of(), RunnableE.EmptyRunnable);
+        final int count = MiscellaneousUtil.calculatePartCount(total, WListServer.FileTransferBufferSize);
+        final List<SupplierE<ByteBuf>> list = new ArrayList<>(count);
+//        final ByteBuf[] cacher = new ByteBuf[count]; TODO cache
+        for (long i = from; i < end; i += WListServer.FileTransferBufferSize) {
+            final long b = i;
+            final long e = Math.min(end, i + WListServer.FileTransferBufferSize);
+            list.add(() -> {
+                //noinspection NumericCastThatLosesPrecision
+                final int length = (int) (e - b);
+                try (final InputStream stream = DriverNetworkHelper.extraResponse(DriverNetworkHelper.sendRequestJson(client, url,
+                        Objects.requireNonNullElseGet(builder, Headers.Builder::new).set("Range", String.format("bytes=%d-%d", b, e - 1)).build(), null)).byteStream()) {
+                    final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(length, length);
+                    try {
+                        int read = 0;
+                        while (read < length) {
+                            final int current = buffer.writeBytes(stream, length - read);
+                            if (current < 0)
+                                break;
+                            read += current;
+                        }
+                        return buffer.retain();
+                    } finally {
+                        buffer.release();
+                    }
+                }
+            });
+        }
+        return new DownloadMethods(total, list, RunnableE.EmptyRunnable);
     }
 
     public abstract static class OctetStreamRequestBody extends RequestBody {
@@ -211,8 +186,9 @@ public final class DriverUtil {
         }
     }
 
+    // WARNING: assert requireSize % WListServer.FileTransferBufferSize == 0; (expected last chunk)
     public static @NotNull List<@NotNull ConsumerE<@NotNull ByteBuf>> splitUploadMethod(final @NotNull ConsumerE<? super @NotNull ByteBuf> sourceMethod, final int requireSize) {
-        assert requireSize > 0; // WARNING: assert mod == 0; (expected last chunk)
+        assert requireSize > 0;
         final int mod = requireSize % WListServer.FileTransferBufferSize;
         final int count = requireSize / WListServer.FileTransferBufferSize - (mod == 0 ? 1 : 0);
         final int rest = mod == 0 ? WListServer.FileTransferBufferSize : mod;

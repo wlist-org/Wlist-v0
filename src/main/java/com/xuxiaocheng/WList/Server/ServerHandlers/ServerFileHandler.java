@@ -11,6 +11,7 @@ import com.xuxiaocheng.WList.Server.Databases.User.UserSqlInformation;
 import com.xuxiaocheng.WList.Server.Driver.RootDriver;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.Operation;
+import com.xuxiaocheng.WList.Server.Polymers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.Polymers.MessageProto;
 import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
 import com.xuxiaocheng.WList.Server.ServerCodecs.MessageCiphers;
@@ -19,13 +20,9 @@ import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.CompositeByteBuf;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 public final class ServerFileHandler {
     private ServerFileHandler() {
@@ -153,13 +150,12 @@ public final class ServerFileHandler {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDownload);
         final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         final long from = ByteBufIOUtil.readVariableLenLong(buffer);
-        final long to = ByteBufIOUtil.readVariableLenLong(buffer);
+        final long to = ByteBufIOUtil.readVariable2LenLong(buffer);
         if (user.isFailure())
             return user.getE();
         if (from < 0 || from >= to)
             return ServerHandler.WrongParameters;
-        // TODO: download methods.
-        final Pair.ImmutablePair<InputStream, Long> url;
+        final DownloadMethods url;
         try {
             url = RootDriver.getInstance().download(path, from, to);
         } catch (final UnsupportedOperationException exception) {
@@ -169,10 +165,9 @@ public final class ServerFileHandler {
         }
         if (url == null)
             return ServerFileHandler.FileNotFound;
-        final String id = FileDownloadIdHelper.generateId(url.getFirst(), user.getT().username());
+        final String id = FileDownloadIdHelper.generateId(url, user.getT().username());
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
-            ByteBufIOUtil.writeVariableLenLong(buf, url.getSecond().longValue());
-            ByteBufIOUtil.writeVariableLenInt(buf, MiscellaneousUtil.calculatePartCount(url.getSecond().longValue(), WListServer.FileTransferBufferSize));
+            ByteBufIOUtil.writeVariableLenLong(buf, url.total());
             ByteBufIOUtil.writeUTF(buf, id);
             return buf;
         });
@@ -181,22 +176,21 @@ public final class ServerFileHandler {
     public static final @NotNull ServerHandler doDownloadFile = buffer -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FileDownload);
         final String id = ByteBufIOUtil.readUTF(buffer);
+        final int chunk = ByteBufIOUtil.readVariableLenInt(buffer);
         if (user.isFailure())
             return user.getE();
-        final Pair.ImmutablePair<Integer, ByteBuf> file;
+        final ByteBuf file;
         try {
-            file = FileDownloadIdHelper.download(id, user.getT().username());
-        } catch (final InterruptedException | IOException | ExecutionException exception) {
+            file = FileDownloadIdHelper.download(id, user.getT().username(), chunk);
+        } catch (final ServerException exception) {
+            throw exception;
+        } catch (final Exception exception) {
             throw new ServerException(exception);
         }
         if (file == null)
-            return ServerHandler.DataError;
-        return new MessageProto(MessageCiphers.defaultDoGZip, Operation.State.Success, (buf) -> {
-            ByteBufIOUtil.writeVariableLenInt(buf, file.getFirst().intValue());
-            final CompositeByteBuf composite = ByteBufAllocator.DEFAULT.compositeBuffer(2);
-            composite.addComponents(true, buf, file.getSecond());
-            return composite;
-        });
+            return ServerFileHandler.InvalidId;
+        return new MessageProto(MessageCiphers.defaultDoGZip, Operation.State.Success, buf ->
+                ByteBufAllocator.DEFAULT.compositeBuffer(2).addComponents(true, buf, file));
     };
 
     public static final @NotNull ServerHandler doCancelDownloadFile = buffer -> {
@@ -251,6 +245,7 @@ public final class ServerFileHandler {
                 return buf;
             });
         }
+        assert methods.getT().methods().size() == MiscellaneousUtil.calculatePartCount(size, WListServer.FileTransferBufferSize);
         final String id = FileUploadIdHelper.generateId(methods.getT(), size, user.getT().username());
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
             ByteBufIOUtil.writeBoolean(buf, false);

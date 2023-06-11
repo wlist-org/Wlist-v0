@@ -8,13 +8,13 @@ import com.xuxiaocheng.WList.Driver.FailureReason;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
+import com.xuxiaocheng.WList.Server.Polymers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
 import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
-import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -91,7 +91,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
     }
 
     @Override
-    public Pair.@Nullable ImmutablePair<@NotNull InputStream, @NotNull Long> download(@NotNull final DrivePath path, final long from, final long to) throws Exception {
+    public @Nullable DownloadMethods download(@NotNull final DrivePath path, final long from, final long to) throws Exception {
         final String root = path.getRoot();
         final DriverInterface<?> real = DriverManager.get(root);
         if (real == null)

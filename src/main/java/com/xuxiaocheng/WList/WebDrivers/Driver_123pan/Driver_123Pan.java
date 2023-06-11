@@ -11,6 +11,7 @@ import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
+import com.xuxiaocheng.WList.Server.Polymers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
 import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
@@ -18,7 +19,6 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.sql.SQLException;
 import java.util.Iterator;
 import java.util.List;
@@ -68,10 +68,11 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
     }
 
     @Override
-    public Pair.@Nullable ImmutablePair<@NotNull InputStream, @NotNull Long> download(final @NotNull DrivePath path, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws IllegalParametersException, IOException, SQLException {
+    public @Nullable DownloadMethods download(final @NotNull DrivePath path, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws IllegalParametersException, IOException, SQLException {
         final Pair.ImmutablePair<String, Long> url = DriverManager_123pan.getDownloadUrl(this.configuration, path, true, null, null);
         if (url == null) return null;
-        return DriverUtil.getDownloadStreamByRangeHeader(DriverHelper_123pan.httpClient, url, from, to, null);
+        return DriverUtil.getDownloadMethodsByUrlWithRangeHeader(DriverHelper_123pan.httpClient,
+                Pair.ImmutablePair.makeImmutablePair(url.getFirst(), "GET"), url.getSecond().longValue(), from, to, null);
     }
 
     @Override

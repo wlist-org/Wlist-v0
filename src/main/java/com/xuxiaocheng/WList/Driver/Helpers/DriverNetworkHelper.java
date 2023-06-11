@@ -49,7 +49,7 @@ public final class DriverNetworkHelper {
                 final Request request = chain.request();
                 if (WList.DebugMode)
                     HLog.DefaultLogger.log(HLogLevel.NETWORK, "Sending: ", request.method(), ' ', request.url(),
-                        request.header("Range") == null ? "" : ("Range: " + request.header("Range")));
+                        request.header("Range") == null ? "" : (" (Range: " + request.header("Range") + ')'));
                 final long time1 = System.currentTimeMillis();
                 final Response response;
                 try {

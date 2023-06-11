@@ -99,8 +99,6 @@ public class DrivePath implements Iterable<String> {
     }
 
     public @NotNull DrivePath addedRoot(final @NotNull CharSequence root) {
-        if (this.path.size() < 1)
-            return this;
         this.path.addAll(0, DrivePath.split(root));
         this.pathCache = null;
         this.parentPathCache = null;
