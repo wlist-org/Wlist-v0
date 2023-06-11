@@ -46,6 +46,7 @@ public final class ServerFileHandler {
         final int page = ByteBufIOUtil.readVariableLenInt(buffer);
         final Options.OrderPolicy orderPolicy = Options.valueOfOrderPolicy(ByteBufIOUtil.readUTF(buffer));
         final Options.OrderDirection orderDirection = Options.valueOfOrderDirection(ByteBufIOUtil.readUTF(buffer));
+        final boolean refresh = ByteBufIOUtil.readBoolean(buffer);
         if (user.isFailure())
             return user.getE();
         if (limit < 1 || limit > GlobalConfiguration.getInstance().maxLimitPerPage()
@@ -53,6 +54,8 @@ public final class ServerFileHandler {
             return ServerHandler.WrongParameters;
         final Pair.ImmutablePair<Long, List<FileSqlInformation>> list;
         try {
+            if (refresh)
+                RootDriver.getInstance().forceRefreshDirectory(path);
             // TODO with groups
             list = RootDriver.getInstance().list(path, limit, page, orderPolicy, orderDirection);
         } catch (final UnsupportedOperationException exception) {

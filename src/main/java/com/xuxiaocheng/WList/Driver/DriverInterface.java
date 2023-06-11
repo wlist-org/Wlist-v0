@@ -47,8 +47,13 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      */
     void buildIndex() throws Exception;
 
+    /**
+     * Force refresh cache to synchronize with web.
+     * @param path The directory path to get.
+     * @throws Exception Something went wrong.
+     * @see FileManager
+     */
     default void forceRefreshDirectory(final @NotNull DrivePath path) throws Exception {
-        this.buildIndex();
     }
 
     /**

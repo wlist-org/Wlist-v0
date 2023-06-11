@@ -62,6 +62,19 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
     }
 
     @Override
+    public void forceRefreshDirectory(final @NotNull DrivePath path) throws Exception {
+        final String root = path.getRoot();
+        final DriverInterface<?> real = DriverManager.get(root);
+        if (real == null)
+            return;
+        try {
+            real.forceRefreshDirectory(path.removedRoot());
+        } finally {
+            path.addedRoot(root);
+        }
+    }
+
+    @Override
     public @Nullable FileSqlInformation info(@NotNull final DrivePath path) throws Exception {
         final String root = path.getRoot();
         final DriverInterface<?> real = DriverManager.get(root);

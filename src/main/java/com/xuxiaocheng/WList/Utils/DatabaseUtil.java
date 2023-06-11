@@ -62,6 +62,8 @@ public class DatabaseUtil {
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate("PRAGMA journal_mode = WAL;");
             }
+            if (!connection.getAutoCommit())
+                connection.commit();
             this.freeConnections.add(connection);
         }
         for (int i = config.walMode ? 1 : 0; i < this.config.initSize; ++i)
@@ -77,6 +79,7 @@ public class DatabaseUtil {
                 this.createdSize.getAndDecrement();
                 throw new SQLException("Failed to get connection with sqlite database source.");
             }
+            this.resetConnection(rawConnection);
             return (ReferencedConnection) Proxy.newProxyInstance(rawConnection.getClass().getClassLoader(),
                     PooledConnectionProxy.ConnectionProxy, new PooledConnectionProxy(rawConnection, this));
         }

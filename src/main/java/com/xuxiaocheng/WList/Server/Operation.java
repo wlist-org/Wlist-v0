@@ -49,6 +49,7 @@ public final class Operation {
         Broadcast,
         UsersList,
         UsersOperate,
+        DriverOperate,
         FilesList,
         FileDownload,
         FileUpload,
