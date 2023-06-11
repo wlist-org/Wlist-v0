@@ -49,6 +49,7 @@ public final class Operation {
         Broadcast,
         UsersList,
         UsersOperate,
+        DriverOperate,
         FilesList,
         FileDownload,
         FileUpload,
@@ -121,7 +122,7 @@ public final class Operation {
                 permissionsSet.add(Permission.values()[Long.numberOfTrailingZeros(current)]);
             }
             return permissionsSet;
-        } catch (final NumberFormatException exception) {
+        } catch (final NumberFormatException | IndexOutOfBoundsException exception) {
             return null;
         }
     }

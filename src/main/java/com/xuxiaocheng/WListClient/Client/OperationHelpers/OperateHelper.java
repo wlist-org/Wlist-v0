@@ -19,10 +19,12 @@ public final class OperateHelper {
         final Operation.State state = Operation.valueOfState(ByteBufIOUtil.readUTF(receive));
         if (state == Operation.State.Undefined)
             throw new UnsupportedOperationException(ByteBufIOUtil.readUTF(receive));
-        if (state == Operation.State.NoPermission || state == Operation.State.Broadcast)
-            throw new WrongStateException(state, receive.toString());
-        if (state == Operation.State.ServerError || state == Operation.State.Unsupported)
-            throw new WrongStateException(state, ByteBufIOUtil.readUTF(receive));
+        if (state == Operation.State.Broadcast)
+            throw new WrongStateException(Operation.State.Broadcast, receive.toString());
+        if (state == Operation.State.ServerError || state == Operation.State.NoPermission)
+            throw new WrongStateException(state);
+        if (state == Operation.State.Unsupported)
+            throw new WrongStateException(Operation.State.Unsupported, ByteBufIOUtil.readUTF(receive));
         return state == Operation.State.Success;
     }
 
