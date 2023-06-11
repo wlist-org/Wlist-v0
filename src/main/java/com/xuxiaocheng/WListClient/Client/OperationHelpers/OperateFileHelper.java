@@ -1,7 +1,6 @@
 package com.xuxiaocheng.WListClient.Client.OperationHelpers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.WListClient.Client.WListClient;
 import com.xuxiaocheng.WListClient.Server.DrivePath;
@@ -104,16 +103,15 @@ public final class OperateFileHelper {
         }
     }
 
-    public static Triad.@Nullable ImmutableTriad<@NotNull Long, @NotNull Integer, @NotNull String> requestDownloadFile(final @NotNull WListClient client, final @NotNull String token, final @NotNull DrivePath path, final long from, final long to) throws IOException, InterruptedException, WrongStateException {
+    public static Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull String> requestDownloadFile(final @NotNull WListClient client, final @NotNull String token, final @NotNull DrivePath path, final long from, final long to) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.RequestDownloadFile, token);
         ByteBufIOUtil.writeUTF(send, path.getPath());
         ByteBufIOUtil.writeVariableLenLong(send, from);
-        ByteBufIOUtil.writeVariableLenLong(send, to);
+        ByteBufIOUtil.writeVariable2LenLong(send, to);
         final ByteBuf receive = client.send(send);
         try {
             if (OperateHelper.handleState(receive))
-                return Triad.ImmutableTriad.makeImmutableTriad(ByteBufIOUtil.readVariableLenLong(receive),
-                        ByteBufIOUtil.readVariableLenInt(receive), ByteBufIOUtil.readUTF(receive));
+                return Pair.ImmutablePair.makeImmutablePair(ByteBufIOUtil.readVariableLenLong(receive), ByteBufIOUtil.readUTF(receive));
             final String reason = ByteBufIOUtil.readUTF(receive);
             if ("Parameters".equals(reason))
                 throw new IllegalArgumentException();
@@ -124,13 +122,15 @@ public final class OperateFileHelper {
         }
     }
 
-    public static Pair.@Nullable ImmutablePair<@NotNull Integer, @NotNull ByteBuf> downloadFile(final @NotNull WListClient client, final @NotNull String token, final @NotNull String id) throws IOException, InterruptedException, WrongStateException {
+    public static @Nullable ByteBuf downloadFile(final @NotNull WListClient client, final @NotNull String token, final @NotNull String id, final int chunk) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.DownloadFile, token);
         ByteBufIOUtil.writeUTF(send, id);
+        ByteBufIOUtil.writeVariableLenInt(send, chunk);
         final ByteBuf receive = client.send(send);
         try {
             if (OperateHelper.handleState(receive))
-                return Pair.ImmutablePair.makeImmutablePair(ByteBufIOUtil.readVariableLenInt(receive), receive.retain());
+                return receive.retain();
+            assert "Id".equals(ByteBufIOUtil.readUTF(receive));
             return null;
         } finally {
             receive.release();

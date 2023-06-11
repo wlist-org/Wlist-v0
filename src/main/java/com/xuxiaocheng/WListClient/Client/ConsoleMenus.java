@@ -1,7 +1,6 @@
 package com.xuxiaocheng.WListClient.Client;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -559,40 +558,39 @@ public final class ConsoleMenus {
             return false;
         System.out.print("Please enter web file path: ");
         final DrivePath path = new DrivePath(ConsoleMenus.Scanner.nextLine());
-        System.out.print("Please enter local file path: ");
-        final File file = new File(ConsoleMenus.Scanner.nextLine());
+        System.out.print("Please enter local file path (or drag in): ");
+        final String filePath = ConsoleMenus.Scanner.nextLine();
+        final File file = new File(!filePath.isEmpty() && filePath.charAt(0) == '\"' && filePath.charAt(filePath.length() - 1) == '\"' ? filePath.substring(1, filePath.length() - 1) : filePath);
         if (!HFileHelper.ensureFileExist(file) || !file.canWrite()) {
-            System.out.print("Failure, cannot to create writable local file.");
+            System.out.println("Failure, cannot to create writable local file.");
             return false;
         }
-        final Triad.ImmutableTriad<Long, Integer, String> id = OperateFileHelper.requestDownloadFile(client, token.token, path, 0, Long.MAX_VALUE);
+        final Pair.ImmutablePair<Long, String> id = OperateFileHelper.requestDownloadFile(client, token.token, path, 0, Long.MAX_VALUE);
         if (id == null) {
-            System.out.print("No such file.");
+            System.out.println("No such file.");
             return false;
         }
-        // TODO
         long size = 0;
+        final int count = MiscellaneousUtil.calculatePartCount(id.getFirst().longValue(), WListClient.FileTransferBufferSize);
         try (final FileChannel channel = FileChannel.open(file.toPath(), StandardOpenOption.WRITE)) {
-            for (int i = 0; i < id.getB().intValue(); ++i) {
-                final Pair.ImmutablePair<Integer, ByteBuf> chunk = OperateFileHelper.downloadFile(client, token.token, id.getC());
-                if (chunk == null) {
-                    System.out.printf("Invalid download id. Unknown reason. chunk id: %d %n", i);
-                    return false;
-                }
-                try {
-                    if (i != chunk.getFirst().intValue()) {
-                        System.out.printf("Invalid chunk id. May cause by multi-client. require: %d, received: %d %n", i, chunk.getFirst().intValue());
+            try (final FileLock ignored = channel.lock(0L, Long.MAX_VALUE, false)) {
+                channel.truncate(id.getFirst().longValue());
+                for (int i = 0; i < count; ++i) {
+                    final ByteBuf chunk = OperateFileHelper.downloadFile(client, token.token, id.getSecond(), i);
+                    if (chunk == null) {
+                        System.out.printf("Invalid download id. Unknown reason. chunk id: %d %n", i);
                         return false;
                     }
-                    // TODO verify md5.
-                    size += chunk.getSecond().readBytes(channel, size, chunk.getSecond().readableBytes());
-                } finally {
-                    chunk.getSecond().release();
+                    try {
+                        size += chunk.readBytes(channel, (long) i * WListClient.FileTransferBufferSize, chunk.readableBytes());
+                    } finally {
+                        chunk.release();
+                    }
                 }
             }
         }
-        if (size != id.getA().longValue())
-            System.out.printf("Invalid size. Unknown reason. require: %d %n", id.getA());
+        if (size != id.getFirst().longValue())
+            System.out.printf("Invalid size. Unknown reason. real: %d, require: %d %n", size, id.getFirst());
         return false;
     };
     private static final @NotNull MenuHandler uploadFileDirectly = (client, token) -> {
@@ -600,12 +598,13 @@ public final class ConsoleMenus {
         if (ConsoleMenus.checkToken(token))
             return false;
         System.out.print("Please enter local file path (or drag in): ");
-        final File file = new File(ConsoleMenus.Scanner.nextLine());
+        final String filePath = ConsoleMenus.Scanner.nextLine();
+        final File file = new File(!filePath.isEmpty() && filePath.charAt(0) == '\"' && filePath.charAt(filePath.length() - 1) == '\"' ? filePath.substring(1, filePath.length() - 1) : filePath);
         System.out.print("Please enter web file path: ");
         final DrivePath path = new DrivePath(ConsoleMenus.Scanner.nextLine());
         final Options.DuplicatePolicy policy = ConsoleMenus.getDuplicatePolicy();
         if (!file.isFile() || !file.canRead()) {
-            System.out.print("Failure, no such local file.");
+            System.out.println("Failure, no such local file.");
             return false;
         }
         try (final FileChannel channel = FileChannel.open(file.toPath(), StandardOpenOption.READ)) {
