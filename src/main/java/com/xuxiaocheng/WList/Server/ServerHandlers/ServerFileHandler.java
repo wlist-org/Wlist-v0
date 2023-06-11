@@ -2,7 +2,6 @@ package com.xuxiaocheng.WList.Server.ServerHandlers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
-import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.WList.Driver.FailureReason;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Driver.Options;
@@ -37,6 +36,8 @@ public final class ServerFileHandler {
     public static final @NotNull MessageProto InvalidFilename = ServerHandler.composeMessage(Operation.State.DataError, "Filename");
     public static final @NotNull MessageProto DuplicateError = ServerHandler.composeMessage(Operation.State.DataError, "Duplicate");
     public static final @NotNull MessageProto ExceedSize = ServerHandler.composeMessage(Operation.State.DataError, "Size");
+    public static final @NotNull MessageProto InvalidId = ServerHandler.composeMessage(Operation.State.DataError, "Id");
+    public static final @NotNull MessageProto InvalidFile = ServerHandler.composeMessage(Operation.State.DataError, "Content");
 
     public static final @NotNull ServerHandler doListFiles = buffer -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList);
@@ -102,9 +103,9 @@ public final class ServerFileHandler {
 
     public static final @NotNull ServerHandler doDeleteFile = buffer -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDelete);
+        final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         if (user.isFailure())
             return user.getE();
-        final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         try {
             RootDriver.getInstance().delete(path);
         } catch (final UnsupportedOperationException exception) {
@@ -117,11 +118,11 @@ public final class ServerFileHandler {
 
     public static final @NotNull ServerHandler doRenameFile = buffer -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDownload, Operation.Permission.FileUpload, Operation.Permission.FileDelete);
-        if (user.isFailure())
-            return user.getE();
         final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         final String name = ByteBufIOUtil.readUTF(buffer);
         final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
+        if (user.isFailure())
+            return user.getE();
         if (duplicatePolicy == null)
             return ServerHandler.WrongParameters;
         final UnionPair<FileSqlInformation, FailureReason> file;
@@ -147,11 +148,11 @@ public final class ServerFileHandler {
 
     public static final @NotNull ServerHandler doRequestDownloadFile = buffer -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDownload);
-        if (user.isFailure())
-            return user.getE();
         final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         final long from = ByteBufIOUtil.readVariableLenLong(buffer);
         final long to = ByteBufIOUtil.readVariableLenLong(buffer);
+        if (user.isFailure())
+            return user.getE();
         if (from < 0 || from >= to)
             return ServerHandler.WrongParameters;
         // TODO: download methods.
@@ -168,7 +169,7 @@ public final class ServerFileHandler {
         final String id = FileDownloadIdHelper.generateId(url.getFirst(), user.getT().username());
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
             ByteBufIOUtil.writeVariableLenLong(buf, url.getSecond().longValue());
-            ByteBufIOUtil.writeVariableLenInt(buf, (int) Math.ceil((double) url.getSecond().longValue() / WListServer.FileTransferBufferSize));
+            ByteBufIOUtil.writeVariableLenInt(buf, MiscellaneousUtil.calculatePartCount(url.getSecond().longValue(), WListServer.FileTransferBufferSize));
             ByteBufIOUtil.writeUTF(buf, id);
             return buf;
         });
@@ -176,9 +177,9 @@ public final class ServerFileHandler {
 
     public static final @NotNull ServerHandler doDownloadFile = buffer -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FileDownload);
+        final String id = ByteBufIOUtil.readUTF(buffer);
         if (user.isFailure())
             return user.getE();
-        final String id = ByteBufIOUtil.readUTF(buffer);
         final Pair.ImmutablePair<Integer, ByteBuf> file;
         try {
             file = FileDownloadIdHelper.download(id, user.getT().username());
@@ -197,24 +198,24 @@ public final class ServerFileHandler {
 
     public static final @NotNull ServerHandler doCancelDownloadFile = buffer -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FileDownload);
+        final String id = ByteBufIOUtil.readUTF(buffer);
         if (user.isFailure())
             return user.getE();
-        final String id = ByteBufIOUtil.readUTF(buffer);
         return FileDownloadIdHelper.cancel(id, user.getT().username()) ? ServerHandler.Success : ServerHandler.DataError;
     };
 
     public static final @NotNull ServerHandler doRequestUploadFile = buffer -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload);
-        if (user.isFailure())
-            return user.getE();
         final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         final long size = ByteBufIOUtil.readVariableLenLong(buffer);
         final String md5 = ByteBufIOUtil.readUTF(buffer);
-        if (size < 0 || !MiscellaneousUtil.md5Pattern.matcher(md5).matches())
-            return ServerHandler.WrongParameters;
         final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
-        if (duplicatePolicy == null)
+        if (user.isFailure())
+            return user.getE();
+        if (size < 0 || !MiscellaneousUtil.md5Pattern.matcher(md5).matches() || duplicatePolicy == null)
             return ServerHandler.WrongParameters;
+        if (duplicatePolicy == Options.DuplicatePolicy.OVER && !user.getT().group().permissions().contains(Operation.Permission.FileDelete))
+            return ServerHandler.composeMessage(Operation.State.NoPermission, null);
         final UnionPair<UploadMethods, FailureReason> methods;
         try {
             methods = RootDriver.getInstance().upload(path, size, md5, duplicatePolicy);
@@ -247,7 +248,7 @@ public final class ServerFileHandler {
                 return buf;
             });
         }
-        final String id = FileUploadIdHelper.generateId(methods.getT(), md5, user.getT().username());
+        final String id = FileUploadIdHelper.generateId(methods.getT(), size, md5, user.getT().username());
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
             ByteBufIOUtil.writeBoolean(buf, false);
             ByteBufIOUtil.writeUTF(buf, id);
@@ -257,17 +258,18 @@ public final class ServerFileHandler {
 
     public static final @NotNull ServerHandler doUploadFile = buffer -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FileUpload);
-        if (user.isFailure())
-            return user.getE();
         final String id = ByteBufIOUtil.readUTF(buffer);
         final int chunk = ByteBufIOUtil.readVariableLenInt(buffer);
+        if (user.isFailure())
+            return user.getE();
         try {
-            final SupplierE<FileSqlInformation> supplier = FileUploadIdHelper.upload(id, user.getT().username(), buffer, chunk);
-            if (supplier == null)
-                return ServerHandler.DataError;
-            buffer.retain();
+            final UnionPair<FileSqlInformation, Boolean> information = FileUploadIdHelper.upload(id, user.getT().username(), buffer.duplicate(), chunk);
             buffer.readerIndex(buffer.writerIndex());
-            final FileSqlInformation file = supplier.get();
+            if (information == null)
+                return ServerFileHandler.InvalidId;
+            if (information.isFailure() && information.getE().booleanValue())
+                return ServerFileHandler.InvalidFile;
+            final FileSqlInformation file = information.isSuccess() ? information.getT() : null;
             return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
                 ByteBufIOUtil.writeBoolean(buf, file == null);
                 if (file != null)
@@ -283,21 +285,23 @@ public final class ServerFileHandler {
 
     public static final @NotNull ServerHandler doCancelUploadFile = buffer -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FileUpload);
+        final String id = ByteBufIOUtil.readUTF(buffer);
         if (user.isFailure())
             return user.getE();
-        final String id = ByteBufIOUtil.readUTF(buffer);
         return FileUploadIdHelper.cancel(id, user.getT().username()) ? ServerHandler.Success : ServerHandler.DataError;
     };
 
     public static final @NotNull ServerHandler doCopyFile = buffer -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload, Operation.Permission.FileDownload);
-        if (user.isFailure())
-            return user.getE();
         final DrivePath source = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         final DrivePath target = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
+        if (user.isFailure())
+            return user.getE();
         if (duplicatePolicy == null)
             return ServerHandler.WrongParameters;
+        if (duplicatePolicy == Options.DuplicatePolicy.OVER && !user.getT().group().permissions().contains(Operation.Permission.FileDelete))
+            return ServerHandler.composeMessage(Operation.State.NoPermission, null);
         final UnionPair<FileSqlInformation, FailureReason> file;
         try {
             file = RootDriver.getInstance().copy(source, target, duplicatePolicy);
@@ -321,11 +325,11 @@ public final class ServerFileHandler {
 
     public static final @NotNull ServerHandler doMoveFile = buffer -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload, Operation.Permission.FileDownload, Operation.Permission.FileDelete);
-        if (user.isFailure())
-            return user.getE();
         final DrivePath sourceFile = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         final DrivePath targetDirectory = new DrivePath(ByteBufIOUtil.readUTF(buffer));
         final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
+        if (user.isFailure())
+            return user.getE();
         if (duplicatePolicy == null)
             return ServerHandler.WrongParameters;
         final UnionPair<FileSqlInformation, FailureReason> file;

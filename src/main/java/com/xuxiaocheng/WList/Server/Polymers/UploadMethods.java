@@ -10,13 +10,12 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 
 /**
- * The server will first call back the methods in {@code methods} in order based on their size,
+ * The server will first call back the methods in {@code methods} (may not in order)
+ *   (Ensure that all lengths of {@code ByteBuf} are {@link com.xuxiaocheng.WList.Server.WListServer#FileTransferBufferSize}, except for the last one less than or equal to),
  * and then call {@code supplier} to complete the upload task after all are completed.
  * Finally, whether the upload is cancelled or completed, {@code finisher} will be called.
  */
-public record UploadMethods(@NotNull List<UploadPartMethod> methods,
+public record UploadMethods(@NotNull List<@NotNull ConsumerE<@NotNull ByteBuf>> methods,
                             @NotNull SupplierE<@Nullable FileSqlInformation> supplier,
                             @NotNull Runnable finisher) {
-    public record UploadPartMethod(int size, @NotNull ConsumerE<@NotNull ByteBuf> consumer) {
-    }
 }

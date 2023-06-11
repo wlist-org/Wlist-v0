@@ -3,6 +3,7 @@ package com.xuxiaocheng.WList.WebDrivers.Driver_123pan;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.WList.Driver.FailureReason;
@@ -11,12 +12,12 @@ import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
-import com.xuxiaocheng.WList.Exceptions.IllegalResponseCodeException;
 import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Server.Driver.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
+import io.netty.buffer.ByteBuf;
 import okio.BufferedSink;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -310,14 +311,7 @@ public final class DriverManager_123pan {
         final UnionPair<FileSqlInformation, FailureReason> parentDirectory = DriverManager_123pan.createDirectoriesRecursively(configuration, parentPath, policy, useCache, _connectionId, _threadPool);
         if (parentDirectory.isFailure())
             return UnionPair.fail(parentDirectory.getE());
-        final UnionPair<UnionPair<FileSqlInformation, DriverHelper_123pan.UploadIdentifier_123pan>, FailureReason> requestUploadData;
-        try {
-            requestUploadData = DriverHelper_123pan.uploadRequest(configuration, parentDirectory.getT().id(), path, size, md5, policy);
-        } catch (final IllegalResponseCodeException exception) {
-            if (exception.getCode() == DriverHelper_123pan.FileAlreadyExistResponseCode && policy == Options.DuplicatePolicy.ERROR)
-                return UnionPair.fail(FailureReason.byDuplicateError("Uploading.", path));
-            throw exception;
-        }
+        final UnionPair<UnionPair<FileSqlInformation, DriverHelper_123pan.UploadIdentifier_123pan>, FailureReason> requestUploadData = DriverHelper_123pan.uploadRequest(configuration, parentDirectory.getT().id(), path, size, md5, policy);
         if (requestUploadData.isFailure())
             return UnionPair.fail(requestUploadData.getE());
         if (requestUploadData.getT().isSuccess()) {
@@ -330,13 +324,13 @@ public final class DriverManager_123pan {
         final int partCount = MiscellaneousUtil.calculatePartCount(size, DriverHelper_123pan.UploadPartSize);
         final List<String> urls = DriverHelper_123pan.uploadPare(configuration, requestUploadData.getT().getE(), partCount);
         long readSize = 0;
-        final List<UploadMethods.UploadPartMethod> list = new ArrayList<>(partCount);
+        final List<ConsumerE<ByteBuf>> list = new ArrayList<>(partCount);
         final AtomicInteger countDown = new AtomicInteger(urls.size());
         for (final String url: urls) {
             //noinspection NumericCastThatLosesPrecision
             final int len = (int) Math.min(DriverHelper_123pan.UploadPartSize, (size - readSize));
             readSize += len;
-            list.add(new UploadMethods.UploadPartMethod(len, b -> {
+            list.addAll(DriverUtil.splitUploadMethod(b -> {
                 DriverNetworkHelper.callRequestWithBody(DriverHelper_123pan.httpClient, Pair.ImmutablePair.makeImmutablePair(url, "PUT"), null,
                         new DriverUtil.OctetStreamRequestBody(len) {
                             @Override
@@ -352,7 +346,7 @@ public final class DriverManager_123pan {
                         }
                 ).execute().close();
                 countDown.getAndDecrement();
-            }));
+            }, len));
         }
         return UnionPair.ok(new UploadMethods(list, () -> {
             if (countDown.get() > 0)

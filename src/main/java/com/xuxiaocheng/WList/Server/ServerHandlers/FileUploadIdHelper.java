@@ -1,7 +1,8 @@
 package com.xuxiaocheng.WList.Server.ServerHandlers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
+import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
@@ -9,7 +10,7 @@ import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
-import com.xuxiaocheng.WList.Utils.DelayQueueInByteBufOutByteBuf;
+import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
@@ -19,28 +20,30 @@ import org.jetbrains.annotations.Nullable;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
-import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-final class FileUploadIdHelper {
+public final class FileUploadIdHelper {
     private FileUploadIdHelper() {
         super();
     }
 
     private static final @NotNull Map<@NotNull String, @NotNull UploaderData> buffers = new ConcurrentHashMap<>();
 
-    public static @NotNull String generateId(final @NotNull UploadMethods methods, final @NotNull String tag, final @NotNull String username) {
+    public static @NotNull String generateId(final @NotNull UploadMethods methods, final long size, final @NotNull String md5, final @NotNull String username) {
         //noinspection IOResourceOpenedButNotSafelyClosed , resource // In cleaner.
-        return new UploaderData(methods, tag, username).id;
+        return new UploaderData(methods, size, md5, username).id;
     }
 
     public static boolean cancel(final @NotNull String id, final @NotNull String username) throws IOException {
@@ -51,129 +54,129 @@ final class FileUploadIdHelper {
         return true;
     }
 
-    // TODO check chunk.
-    public static @Nullable SupplierE<@Nullable FileSqlInformation> upload(final @NotNull String id, final @NotNull String username, final @NotNull ByteBuf buf, final int chunk) throws Exception {
+    public static @Nullable UnionPair<@NotNull FileSqlInformation, @NotNull Boolean> upload(final @NotNull String id, final @NotNull String username, final @NotNull ByteBuf buf, final int chunk) throws Exception {
         final UploaderData data = FileUploadIdHelper.buffers.get(id);
         if (data == null || !data.username.equals(username))
             return null;
-        return data.put(buf, chunk) ? data::tryGet : null;
+        return data.put(buf, chunk) ? data.tryGet() : null;
     }
 
     @SuppressWarnings("OverlyBroadThrowsClause")
     private static class UploaderData implements Closeable {
-        private final @NotNull String username;
         private final @NotNull UploadMethods methods;
-        private final @NotNull AtomicInteger indexer = new AtomicInteger(0);
-        private final @NotNull DelayQueueInByteBufOutByteBuf bufferQueue = new DelayQueueInByteBufOutByteBuf();
+        private final long count;
+        private final @NotNull String md5;
+        private final @NotNull String username;
         private final @NotNull String id;
-        private final @NotNull String tag;
+        private final @NotNull MessageDigest digest = MiscellaneousUtil.getMd5Digester();
         private @NotNull LocalDateTime expireTime = LocalDateTime.now();
         private final @NotNull AtomicBoolean closed = new AtomicBoolean(false);
-        private final @NotNull AtomicBoolean finished = new AtomicBoolean(false);
-        private final @NotNull MessageDigest md5;
-        private final @NotNull AtomicInteger getLock = new AtomicInteger(0);
+        private final @NotNull ReadWriteLock closerLock = new ReentrantReadWriteLock();
+        private final @NotNull AtomicInteger indexer = new AtomicInteger(0);
+        private final @NotNull Map<@NotNull Integer, @NotNull ByteBuf> cacheTree = new ConcurrentSkipListMap<>();
 
         private void appendExpireTime() {
             this.expireTime = LocalDateTime.now().plusSeconds(GlobalConfiguration.getInstance().idIdleExpireTime());
             FileUploadIdHelper.checkTime.add(Pair.ImmutablePair.makeImmutablePair(this.expireTime, this));
         }
 
-        private UploaderData(final @NotNull UploadMethods methods, final @NotNull String tag, final @NotNull String username) {
+        private UploaderData(final @NotNull UploadMethods methods, final long size, final @NotNull String md5, final @NotNull String username) {
             super();
             this.username = username;
             this.methods = methods;
-            this.tag = tag;
+            this.count = MiscellaneousUtil.calculatePartCount(size, WListServer.FileTransferBufferSize);
+            this.md5 = md5;
             this.id = MiscellaneousUtil.randomKeyAndPut(FileUploadIdHelper.buffers,
                     () -> HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, ConstantManager.DefaultRandomChars), this);
-            this.md5 = MiscellaneousUtil.getMd5Digester();
             this.appendExpireTime();
         }
 
         @Override
         public void close() throws IOException {
-            if (this.closed.get())
-                return;
-            this.closed.set(true);
-            FileUploadIdHelper.buffers.remove(this.id, this);
+            this.closerLock.writeLock().lock();
             try {
+                if (!this.closed.compareAndSet(false, true))
+                    return;
+                FileUploadIdHelper.buffers.remove(this.id, this);
                 this.methods.finisher().run();
             } finally {
-                this.expireTime = LocalDateTime.now();
-                this.bufferQueue.close();
+                this.closerLock.writeLock().unlock();
             }
         }
 
         public boolean put(final @NotNull ByteBuf buf, final int chunk) throws Exception {
-            if (this.closed.get())
-                return false;
-            this.appendExpireTime();
-            return this.bufferQueue.put(buf, chunk);
-        }
-
-        public @Nullable FileSqlInformation tryGet() throws Exception {
-            if (this.finished.get())
-                return null;
-            this.getLock.getAndIncrement();
+            this.closerLock.readLock().lock();
             try {
-                final Pair.ImmutablePair<Integer, ByteBuf> pair;
-                synchronized (this.indexer) {
-                    if (this.indexer.get() > this.methods.methods().size() - 1)
-                        return null;
-                    final int length = this.methods.methods().get(this.indexer.get()).size();
-                    if (this.bufferQueue.readableBytes() < length)
-                        return null;
-                    pair = this.bufferQueue.get(length);
-                    if (pair == null)
-                        return null;
-                    assert pair.getFirst().intValue() == this.indexer.get();
-                    this.indexer.getAndIncrement();
-                    try (final InputStream inputStream = new ByteBufInputStream(pair.getSecond().markReaderIndex())) {
-                        MiscellaneousUtil.updateMessageDigest(this.md5, inputStream);
-                    }
-                    pair.getSecond().resetReaderIndex();
+                if (this.closed.get() || chunk < this.indexer.get() || this.count <= chunk)
+                    return false;
+                this.appendExpireTime();
+                if (this.cacheTree.putIfAbsent(chunk, buf) != null)
+                    return false;
+                buf.retain();
+                final boolean[] flag = {false};
+                try {
+                    do {
+                        flag[0] = false;
+                        this.cacheTree.computeIfPresent(this.indexer.get(), HExceptionWrapper.wrapBiFunction((k, o) -> {
+                            if (!this.indexer.compareAndSet(k.intValue(), k.intValue() + 1))
+                                //noinspection ConstantConditions,ReturnOfNull
+                                return null;
+                            // TODO check chunk size.
+                            try (final InputStream inputStream = new ByteBufInputStream(o.markReaderIndex())) {
+                                MiscellaneousUtil.updateMessageDigest(this.digest, inputStream);
+                            }
+                            o.resetReaderIndex();
+                            try {
+                                this.methods.methods().get(k.intValue()).accept(o);
+                            } finally {
+                                o.release();
+                            }
+                            flag[0] = true;
+                            //noinspection ConstantConditions,ReturnOfNull
+                            return null;
+                        }));
+                    } while (flag[0]);
+                } catch (final RuntimeException exception) {
+                    throw HExceptionWrapper.unwrapException(exception, Exception.class);
                 }
-                this.methods.methods().get(pair.getFirst().intValue()).consumer().accept(pair.getSecond());
-                pair.getSecond().release();
-                this.bufferQueue.discardSomeReadBytes();
-                if (this.indexer.get() < this.methods.methods().size() - 1)
-                    return null;
-                this.finished.set(true);
-                synchronized (this.getLock) {
-                    while (this.getLock.get() > 1)
-                        this.getLock.wait();
-                }
-                return this.finish();
+                return true;
             } finally {
-                synchronized (this.getLock) {
-                    this.getLock.getAndDecrement();
-                    this.getLock.notify();
-                }
+                this.closerLock.readLock().unlock();
             }
         }
 
-        public @Nullable FileSqlInformation finish() throws Exception {
+        public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull Boolean> tryGet() throws Exception {
+            this.closerLock.readLock().lock();
             try {
-                final BigInteger i = new BigInteger(1, this.md5.digest());
-                if (!this.tag.equals(String.format("%32s", i.toString(16)).replace(' ', '0')))
-                    return null;
-                return this.methods.supplier().get();
+                if (this.closed.get() || !this.cacheTree.isEmpty() || this.indexer.get() < this.count)
+                    return UnionPair.fail(false);
+                try {
+                    if (!this.md5.equals(MiscellaneousUtil.getMd5(this.digest)))
+                        return UnionPair.fail(true);
+                    final FileSqlInformation information = this.methods.supplier().get();
+                    return information == null ? UnionPair.fail(true) : UnionPair.ok(information);
+                } finally {
+                    this.close();
+                }
             } finally {
-                this.close();
+                this.closerLock.readLock().unlock();
             }
         }
 
         @Override
         public @NotNull String toString() {
             return "UploaderData{" +
-                    "username='" + this.username + '\'' +
-                    ", methods=" + this.methods +
-                    ", indexer=" + this.indexer +
-                    ", bufferQueue=" + this.bufferQueue +
+                    "methods=" + this.methods +
+                    ", count=" + this.count +
+                    ", md5='" + this.md5 + '\'' +
+                    ", username='" + this.username + '\'' +
                     ", id='" + this.id + '\'' +
-                    ", md5='" + this.tag + '\'' +
+                    ", digest=" + this.digest +
                     ", expireTime=" + this.expireTime +
                     ", closed=" + this.closed +
-                    ", md5=" + this.md5 +
+                    ", closerLock=" + this.closerLock +
+                    ", indexer=" + this.indexer +
+                    ", cacheTree=" + this.cacheTree +
                     '}';
         }
     }

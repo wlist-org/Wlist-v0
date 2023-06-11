@@ -3,10 +3,12 @@ package com.xuxiaocheng.WList.Driver;
 import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
+import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.DatabaseUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -119,11 +121,12 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
             finisher = methods.getT().finisher();
             if (methods.isFailure())
                 return UnionPair.fail(methods.getE());
-            for (final UploadMethods.UploadPartMethod partMethod: methods.getT().methods()) {
-                final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(partMethod.size(), partMethod.size());
+            for (final ConsumerE<ByteBuf> method: methods.getT().methods()) {
+                final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(WListServer.FileTransferBufferSize);
                 try {
-                    buffer.writeBytes(url.getFirst(), partMethod.size());
-                    partMethod.consumer().accept(buffer);
+                    // TODO download method.
+//                    buffer.writeBytes(url.getFirst(), partMethod.size());
+                    method.accept(buffer);
                 } finally {
                     buffer.release();
                 }

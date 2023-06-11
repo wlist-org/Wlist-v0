@@ -113,7 +113,7 @@ final class DriverHelper_123pan {
         return true;
     };
     static final long MaxSizePerFile = 107374182400L;
-    static final int UploadPartSize = 16 << 20;
+    static final int UploadPartSize = 16 << 20; // const
 
     private static @NotNull JSONObject sendRequestReceiveExtractedData(final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable String token, final @Nullable Map<@NotNull String, @NotNull Object> body, final int successCode, final @NotNull String successMessage) throws IOException {
         final Headers.Builder builder = new Headers.Builder();

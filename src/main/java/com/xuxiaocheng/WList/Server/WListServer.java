@@ -52,7 +52,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 public class WListServer {
-    public static final int FileTransferBufferSize = 4 << 20;
+    public static final int FileTransferBufferSize = 4;// << 20; // const
     public static final int MaxSizePerPacket = (64 << 10) + WListServer.FileTransferBufferSize;
     public static final @NotNull EventExecutorGroup CodecExecutors =
             new DefaultEventExecutorGroup(Math.max(1, Runtime.getRuntime().availableProcessors() >>> 1), new DefaultThreadFactory("CodecExecutors"));
