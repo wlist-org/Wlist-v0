@@ -51,10 +51,17 @@ public final class DriverNetworkHelper {
                     HLog.DefaultLogger.log(HLogLevel.NETWORK, "Sending: ", request.method(), ' ', request.url(),
                         request.header("Range") == null ? "" : ("Range: " + request.header("Range")));
                 final long time1 = System.currentTimeMillis();
-                final Response response = chain.proceed(request);
-                final long time2 = System.currentTimeMillis();
-                if (WList.DebugMode)
-                    HLog.DefaultLogger.log(HLogLevel.NETWORK, "Received. Cost time: ", time2 - time1, "ms.");
+                final Response response;
+                try {
+                    response = chain.proceed(request);
+                } catch (final RuntimeException exception) {
+                    Thread.getDefaultUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), exception);
+                    throw exception;
+                } finally {
+                    final long time2 = System.currentTimeMillis();
+                    if (WList.DebugMode)
+                        HLog.DefaultLogger.log(HLogLevel.NETWORK, "Received. Totally cost time: ", time2 - time1, "ms.");
+                }
                 return response;
             });
 
@@ -103,23 +110,27 @@ public final class DriverNetworkHelper {
                     }
                 this.frequencyControlMinute.getAndIncrement();
             }
-            final Response response = chain.proceed(chain.request());
-            FrequencyControlInterceptor.threadPoolSecond.execute(() -> {
-                synchronized (this.frequencyControlSecond) {
-                    if (this.frequencyControlSecond.getAndDecrement() > 1)
-                        this.frequencyControlSecond.notify();
-                    else
-                        this.frequencyControlSecond.notifyAll();
-                }
-            });
-            FrequencyControlInterceptor.threadPoolMinute.execute(() -> {
-                synchronized (this.frequencyControlMinute) {
-                    if (this.frequencyControlMinute.getAndDecrement() > 1)
-                        this.frequencyControlMinute.notify();
-                    else
-                        this.frequencyControlMinute.notifyAll();
-                }
-            });
+            final Response response;
+            try {
+                response = chain.proceed(chain.request());
+            } finally {
+                FrequencyControlInterceptor.threadPoolSecond.execute(() -> {
+                    synchronized (this.frequencyControlSecond) {
+                        if (this.frequencyControlSecond.getAndDecrement() > 1)
+                            this.frequencyControlSecond.notify();
+                        else
+                            this.frequencyControlSecond.notifyAll();
+                    }
+                });
+                FrequencyControlInterceptor.threadPoolMinute.execute(() -> {
+                    synchronized (this.frequencyControlMinute) {
+                        if (this.frequencyControlMinute.getAndDecrement() > 1)
+                            this.frequencyControlMinute.notify();
+                        else
+                            this.frequencyControlMinute.notifyAll();
+                    }
+                });
+            }
             return response;
         }
 

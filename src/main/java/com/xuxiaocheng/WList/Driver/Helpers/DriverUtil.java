@@ -30,7 +30,6 @@ import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -213,7 +212,7 @@ public final class DriverUtil {
     }
 
     public static @NotNull List<@NotNull ConsumerE<@NotNull ByteBuf>> splitUploadMethod(final @NotNull ConsumerE<? super @NotNull ByteBuf> sourceMethod, final int requireSize) {
-        assert requireSize > 0;
+        assert requireSize > 0; // WARNING: assert mod == 0; (expected last chunk)
         final int mod = requireSize % WListServer.FileTransferBufferSize;
         final int count = requireSize / WListServer.FileTransferBufferSize - (mod == 0 ? 1 : 0);
         final int rest = mod == 0 ? WListServer.FileTransferBufferSize : mod;

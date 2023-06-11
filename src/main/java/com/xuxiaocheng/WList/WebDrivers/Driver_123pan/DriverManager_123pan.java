@@ -36,6 +36,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -326,32 +327,42 @@ public final class DriverManager_123pan {
         long readSize = 0;
         final List<ConsumerE<ByteBuf>> list = new ArrayList<>(partCount);
         final AtomicInteger countDown = new AtomicInteger(urls.size());
+        final CountDownLatch latch = new CountDownLatch(urls.size());
         for (final String url: urls) {
             //noinspection NumericCastThatLosesPrecision
             final int len = (int) Math.min(DriverHelper_123pan.UploadPartSize, (size - readSize));
             readSize += len;
             list.addAll(DriverUtil.splitUploadMethod(b -> {
-                DriverNetworkHelper.callRequestWithBody(DriverHelper_123pan.httpClient, Pair.ImmutablePair.makeImmutablePair(url, "PUT"), null,
-                        new DriverUtil.OctetStreamRequestBody(len) {
-                            @Override
-                            public void writeTo(final @NotNull BufferedSink bufferedSink) throws IOException {
-                                assert b.readableBytes() == len;
-                                final int bufferSize = Math.min(len, 2 << 20);
-                                for (final byte[] buffer = new byte[bufferSize]; b.readableBytes() > 0; ) {
-                                    final int len = Math.min(bufferSize, b.readableBytes());
-                                    b.readBytes(buffer, 0, len);
-                                    bufferedSink.write(buffer, 0, len);
-                                }
-                            }
-                        }
-                ).execute().close();
                 countDown.getAndDecrement();
+                b.retain();
+//                WListServer.IOExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
+                    try {
+                        DriverNetworkHelper.callRequestWithBody(DriverHelper_123pan.httpClient, Pair.ImmutablePair.makeImmutablePair(url, "PUT"), null,
+                                new DriverUtil.OctetStreamRequestBody(len) {
+                                    @Override
+                                    public void writeTo(final @NotNull BufferedSink bufferedSink) throws IOException {
+                                        assert b.readableBytes() == len;
+                                        final int bufferSize = Math.min(len, 2 << 20);
+                                        for (final byte[] buffer = new byte[bufferSize]; b.readableBytes() > 0; ) {
+                                            final int len = Math.min(bufferSize, b.readableBytes());
+                                            b.readBytes(buffer, 0, len);
+                                            bufferedSink.write(buffer, 0, len);
+                                        }
+                                    }
+                                }
+                        ).execute().close();
+                    } finally {
+                        latch.countDown();
+                        b.release();
+                    }
+//                }));
             }, len));
         }
         return UnionPair.ok(new UploadMethods(list, () -> {
             if (countDown.get() > 0)
                 return null;
-            final FileSqlInformation information = DriverHelper_123pan.uploadComplete(configuration, requestUploadData.getT().getE(), partCount, size);
+            latch.await();
+            final FileSqlInformation information = DriverHelper_123pan.uploadComplete(configuration, requestUploadData.getT().getE(), partCount);
             if (information != null)
                 FileManager.insertOrUpdateFile(configuration.getLocalSide().getName(), information, _connectionId);
             return information;

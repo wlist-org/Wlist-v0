@@ -2,7 +2,6 @@ package com.xuxiaocheng.WList.Server.ServerHandlers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
-import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
@@ -13,24 +12,21 @@ import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufInputStream;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.InputStream;
-import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -41,9 +37,9 @@ public final class FileUploadIdHelper {
 
     private static final @NotNull Map<@NotNull String, @NotNull UploaderData> buffers = new ConcurrentHashMap<>();
 
-    public static @NotNull String generateId(final @NotNull UploadMethods methods, final long size, final @NotNull String md5, final @NotNull String username) {
+    public static @NotNull String generateId(final @NotNull UploadMethods methods, final long size, final @NotNull String username) {
         //noinspection IOResourceOpenedButNotSafelyClosed , resource // In cleaner.
-        return new UploaderData(methods, size, md5, username).id;
+        return new UploaderData(methods, size, username).id;
     }
 
     public static boolean cancel(final @NotNull String id, final @NotNull String username) throws IOException {
@@ -64,28 +60,27 @@ public final class FileUploadIdHelper {
     @SuppressWarnings("OverlyBroadThrowsClause")
     private static class UploaderData implements Closeable {
         private final @NotNull UploadMethods methods;
-        private final long count;
-        private final @NotNull String md5;
+        private final int count;
         private final @NotNull String username;
         private final @NotNull String id;
-        private final @NotNull MessageDigest digest = MiscellaneousUtil.getMd5Digester();
+        private final int rest;
+        private final @NotNull Collection<@NotNull Integer> calledSet = new HashSet<>();
         private @NotNull LocalDateTime expireTime = LocalDateTime.now();
         private final @NotNull AtomicBoolean closed = new AtomicBoolean(false);
         private final @NotNull ReadWriteLock closerLock = new ReentrantReadWriteLock();
-        private final @NotNull AtomicInteger indexer = new AtomicInteger(0);
-        private final @NotNull Map<@NotNull Integer, @NotNull ByteBuf> cacheTree = new ConcurrentSkipListMap<>();
 
         private void appendExpireTime() {
             this.expireTime = LocalDateTime.now().plusSeconds(GlobalConfiguration.getInstance().idIdleExpireTime());
             FileUploadIdHelper.checkTime.add(Pair.ImmutablePair.makeImmutablePair(this.expireTime, this));
         }
 
-        private UploaderData(final @NotNull UploadMethods methods, final long size, final @NotNull String md5, final @NotNull String username) {
+        private UploaderData(final @NotNull UploadMethods methods, final long size, final @NotNull String username) {
             super();
             this.username = username;
             this.methods = methods;
+            final int mod = (int) (size % WListServer.FileTransferBufferSize);
+            this.rest = mod == 0 ? WListServer.FileTransferBufferSize : mod;
             this.count = MiscellaneousUtil.calculatePartCount(size, WListServer.FileTransferBufferSize);
-            this.md5 = md5;
             this.id = MiscellaneousUtil.randomKeyAndPut(FileUploadIdHelper.buffers,
                     () -> HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, ConstantManager.DefaultRandomChars), this);
             this.appendExpireTime();
@@ -107,38 +102,17 @@ public final class FileUploadIdHelper {
         public boolean put(final @NotNull ByteBuf buf, final int chunk) throws Exception {
             this.closerLock.readLock().lock();
             try {
-                if (this.closed.get() || chunk < this.indexer.get() || this.count <= chunk)
+                if (this.closed.get() || chunk >= this.count || chunk < 0)
                     return false;
                 this.appendExpireTime();
-                if (this.cacheTree.putIfAbsent(chunk, buf) != null)
+                if (buf.readableBytes() != (chunk + 1 == this.count ? this.rest : WListServer.FileTransferBufferSize))
                     return false;
-                buf.retain();
-                final boolean[] flag = {false};
-                try {
-                    do {
-                        flag[0] = false;
-                        this.cacheTree.computeIfPresent(this.indexer.get(), HExceptionWrapper.wrapBiFunction((k, o) -> {
-                            if (!this.indexer.compareAndSet(k.intValue(), k.intValue() + 1))
-                                //noinspection ConstantConditions,ReturnOfNull
-                                return null;
-                            // TODO check chunk size.
-                            try (final InputStream inputStream = new ByteBufInputStream(o.markReaderIndex())) {
-                                MiscellaneousUtil.updateMessageDigest(this.digest, inputStream);
-                            }
-                            o.resetReaderIndex();
-                            try {
-                                this.methods.methods().get(k.intValue()).accept(o);
-                            } finally {
-                                o.release();
-                            }
-                            flag[0] = true;
-                            //noinspection ConstantConditions,ReturnOfNull
-                            return null;
-                        }));
-                    } while (flag[0]);
-                } catch (final RuntimeException exception) {
-                    throw HExceptionWrapper.unwrapException(exception, Exception.class);
+                synchronized (this.calledSet) {
+                    if (this.calledSet.contains(chunk))
+                        return false;
+                    this.calledSet.add(chunk);
                 }
+                this.methods.methods().get(chunk).accept(buf.retain());
                 return true;
             } finally {
                 this.closerLock.readLock().unlock();
@@ -146,37 +120,31 @@ public final class FileUploadIdHelper {
         }
 
         public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull Boolean> tryGet() throws Exception {
+            boolean flag = false;
             this.closerLock.readLock().lock();
             try {
-                if (this.closed.get() || !this.cacheTree.isEmpty() || this.indexer.get() < this.count)
+                if (this.closed.get() || this.calledSet.size() < this.count)
                     return UnionPair.fail(false);
-                try {
-                    if (!this.md5.equals(MiscellaneousUtil.getMd5(this.digest)))
-                        return UnionPair.fail(true);
-                    final FileSqlInformation information = this.methods.supplier().get();
-                    return information == null ? UnionPair.fail(true) : UnionPair.ok(information);
-                } finally {
-                    this.close();
-                }
+                flag = true;
+                final FileSqlInformation information = this.methods.supplier().get();
+                return information == null ? UnionPair.fail(true) : UnionPair.ok(information);
             } finally {
                 this.closerLock.readLock().unlock();
+                if (flag)
+                    this.close();
             }
         }
 
         @Override
         public @NotNull String toString() {
             return "UploaderData{" +
-                    "methods=" + this.methods +
-                    ", count=" + this.count +
-                    ", md5='" + this.md5 + '\'' +
+                    "count=" + this.count +
                     ", username='" + this.username + '\'' +
                     ", id='" + this.id + '\'' +
-                    ", digest=" + this.digest +
+                    ", rest=" + this.rest +
+                    ", calledSet=" + this.calledSet +
                     ", expireTime=" + this.expireTime +
                     ", closed=" + this.closed +
-                    ", closerLock=" + this.closerLock +
-                    ", indexer=" + this.indexer +
-                    ", cacheTree=" + this.cacheTree +
                     '}';
         }
     }

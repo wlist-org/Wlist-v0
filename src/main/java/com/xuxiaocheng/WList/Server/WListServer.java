@@ -45,6 +45,7 @@ import org.jetbrains.annotations.Nullable;
 import javax.crypto.NoSuchPaddingException;
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
@@ -52,7 +53,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 public class WListServer {
-    public static final int FileTransferBufferSize = 4;// << 20; // const
+    public static final int FileTransferBufferSize = 4 << 20; // const
     public static final int MaxSizePerPacket = (64 << 10) + WListServer.FileTransferBufferSize;
     public static final @NotNull EventExecutorGroup CodecExecutors =
             new DefaultEventExecutorGroup(Math.max(1, Runtime.getRuntime().availableProcessors() >>> 1), new DefaultThreadFactory("CodecExecutors"));
@@ -241,7 +242,10 @@ public class WListServer {
                 ServerChannelHandler.directlyWriteMessage(ctx.channel(), Operation.State.FormatError, "Codec");
                 return;
             }
-            WListServer.logger.log(HLogLevel.WARN, "Exception at ", ctx.channel().id().asLongText(), ": ", cause);
+            if (cause instanceof SocketException)
+                WListServer.logger.log(HLogLevel.WARN, "Exception at ", ctx.channel().id().asLongText(), ": ", cause.getMessage());
+            else
+                WListServer.logger.log(HLogLevel.WARN, "Exception at ", ctx.channel().id().asLongText(), ": ", cause);
             ServerChannelHandler.directlyWriteMessage(ctx.channel(), Operation.State.ServerError, null);
         }
 

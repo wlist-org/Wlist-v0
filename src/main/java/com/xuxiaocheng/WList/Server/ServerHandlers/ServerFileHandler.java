@@ -248,7 +248,7 @@ public final class ServerFileHandler {
                 return buf;
             });
         }
-        final String id = FileUploadIdHelper.generateId(methods.getT(), size, md5, user.getT().username());
+        final String id = FileUploadIdHelper.generateId(methods.getT(), size, user.getT().username());
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
             ByteBufIOUtil.writeBoolean(buf, false);
             ByteBufIOUtil.writeUTF(buf, id);

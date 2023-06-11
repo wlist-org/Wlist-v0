@@ -519,22 +519,19 @@ final class DriverHelper_123pan {
      * <p> {@literal Null: }Failure. Possible error during upload process.
      * <p> {@literal NotNull: }Success.
      */
-    static @Nullable FileSqlInformation uploadComplete(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull UploadIdentifier_123pan uploadIdentifier, final int partCount, final long size) throws IllegalParametersException, IOException {
+    static @Nullable FileSqlInformation uploadComplete(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull UploadIdentifier_123pan uploadIdentifier, final int partCount) throws IllegalParametersException, IOException {
         final String token = DriverHelper_123pan.getToken(configuration);
-        final Map<String, Object> request = new LinkedHashMap<>(7);
+        final Map<String, Object> request = new LinkedHashMap<>(partCount == 1 ? 2 : 3);
         request.put("FileId", uploadIdentifier.unionId);
         request.put("UploadId", uploadIdentifier.uploadId);
-//        request.put("bucket", uploadIdentifier.bucket);
-//        request.put("StorageNode", uploadIdentifier.node);
-//        request.put("key", uploadIdentifier.key);
-//        request.put("isMultipart", partCount != 1);
-//        request.put("fileSize", size);
+        if (partCount > 1)
+            request.put("isMultipart", true);
         final String name = uploadIdentifier.path.getName();
         final JSONObject data;
         try {
             data = DriverHelper_123pan.sendRequestReceiveExtractedData(DriverHelper_123pan.UploadCompleteURL, token, request, 0, "ok");
         } catch (final IllegalResponseCodeException exception) {
-            if (exception.getCode() == 500) // \u4e0a\u4f20\u6587\u4ef6\u5927\u5c0f\u65e0\u6548
+            if (exception.getCode() == 500) // \u4e0a\u4f20\u6587\u4ef6\u5927\u5c0f\u65e0\u6548 or \u6ca1\u6709\u627e\u5230\u4e0a\u4f20\u7684\u6587\u4ef6
                 return null;
             throw exception;
         }
