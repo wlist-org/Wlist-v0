@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.WebDrivers.Driver_123pan;
 
+import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
@@ -15,6 +16,7 @@ import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Server.Driver.BackgroundTaskManager;
+import com.xuxiaocheng.WList.Server.Polymers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
@@ -243,14 +245,15 @@ public final class DriverManager_123pan {
 
     // File Manager.
 
-    static Pair.@Nullable ImmutablePair<@NotNull String, @NotNull Long> getDownloadUrl(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean useCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
+    static @Nullable DownloadMethods getDownloadMethods(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final boolean useCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
         final FileSqlInformation info = DriverManager_123pan.getFileInformation(configuration, path, useCache, _connectionId, _threadPool);
         if (info == null || info.isDir())
             return null;
         final String url = DriverHelper_123pan.getFileDownloadUrl(configuration, info);
         if (url == null)
             return null;
-        return Pair.ImmutablePair.makeImmutablePair(url, info.size());
+        return DriverUtil.toCachedDownloadMethods(DriverUtil.getDownloadMethodsByUrlWithRangeHeader(DriverHelper_123pan.fileClient,
+                Pair.ImmutablePair.makeImmutablePair(url, "GET"), info.size(), from, to, null));
     }
 
     static @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> createDirectoriesRecursively(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final Options.@NotNull DuplicatePolicy policy, final boolean useCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
@@ -331,7 +334,7 @@ public final class DriverManager_123pan {
             final int len = (int) Math.min(DriverHelper_123pan.UploadPartSize, (size - readSize));
             readSize += len;
             list.addAll(DriverUtil.splitUploadMethod(b -> {
-                DriverNetworkHelper.callRequestWithBody(DriverHelper_123pan.httpClient, Pair.ImmutablePair.makeImmutablePair(url, "PUT"), null,
+                DriverNetworkHelper.callRequestWithBody(DriverHelper_123pan.fileClient, Pair.ImmutablePair.makeImmutablePair(url, "PUT"), null,
                         new DriverUtil.OctetStreamRequestBody(len) {
                             @Override
                             public void writeTo(final @NotNull BufferedSink bufferedSink) throws IOException {

@@ -35,21 +35,23 @@ public final class WList {
             true,  WList.InIdeaMode ? null : HMergedStream.getFileOutputStreamNoException(""));
 
     public static void main(final String @NotNull [] args) throws IOException, SQLException, InterruptedException {
+        Thread.setDefaultUncaughtExceptionHandler((t, e) -> WList.logger.log(HLogLevel.FAULT, "Uncaught exception. thread: ", t.getName(), e));
+        if (WList.DebugMode)
+            System.setProperty("io.netty.leakDetectionLevel", "ADVANCED");
+        WList.logger.log(HLogLevel.FINE, "Hello WList! Loading...");
+        final File configuration = new File(args.length > 0 ? args[0] : "server.yaml");
+        WList.logger.log(HLogLevel.LESS, "Initializing global configuration. file: ", configuration.getAbsolutePath());
+        GlobalConfiguration.initialize(configuration);
+        ConstantManager.initialize();
+        WList.logger.log(HLogLevel.VERBOSE, "Initialized global configuration.");
+        WList.logger.log(HLogLevel.LESS, "Initializing user database.");
+        UserGroupManager.initialize();
+        UserManager.initialize();
+        WList.logger.log(HLogLevel.VERBOSE, "Initialized user database.");
+        WList.logger.log(HLogLevel.LESS, "Initializing driver manager.");
+        DriverManager.initialize();
+        WList.logger.log(HLogLevel.VERBOSE, "Initialized driver manager.");
         try {
-            Thread.setDefaultUncaughtExceptionHandler((t, e) -> WList.logger.log(HLogLevel.FAULT, "Uncaught exception. thread: ", t.getName(), e));
-            WList.logger.log(HLogLevel.FINE, "Hello WList! Loading...");
-            final File configuration = new File(args.length > 0 ? args[0] : "server.yaml");
-            WList.logger.log(HLogLevel.LESS, "Initializing global configuration. file: ", configuration.getAbsolutePath());
-            GlobalConfiguration.initialize(configuration);
-            ConstantManager.initialize();
-            WList.logger.log(HLogLevel.VERBOSE, "Initialized global configuration.");
-            WList.logger.log(HLogLevel.LESS, "Initializing user database.");
-            UserGroupManager.initialize();
-            UserManager.initialize();
-            WList.logger.log(HLogLevel.VERBOSE, "Initialized user database.");
-            WList.logger.log(HLogLevel.LESS, "Initializing driver manager.");
-            DriverManager.init();
-            WList.logger.log(HLogLevel.VERBOSE, "Initialized driver manager.");
             WList.logger.log(HLogLevel.VERBOSE, "Initializing WList server.");
             WListServer.init(new InetSocketAddress(GlobalConfiguration.getInstance().port()));
             WList.logger.log(HLogLevel.VERBOSE, "Initialized WList server.");

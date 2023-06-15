@@ -39,7 +39,7 @@ public final class DriverNetworkHelper {
 
     @SuppressWarnings("SpellCheckingInspection")
     public static final @NotNull String defaultWebAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.37";
-    public static final @NotNull String defaultAgent = "WList/0.2.0";
+    public static final @NotNull String defaultAgent = "WList/0.2.1";
     public static final OkHttpClient.@NotNull Builder httpClientBuilder = new OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
@@ -65,14 +65,15 @@ public final class DriverNetworkHelper {
                 return response;
             });
 
+    public static final @NotNull Executor threadPoolSecond = CompletableFuture.delayedExecutor(1, TimeUnit.SECONDS);
+    public static final @NotNull Executor threadPoolMinute = CompletableFuture.delayedExecutor(1, TimeUnit.MINUTES);
+
     public static class FrequencyControlInterceptor implements Interceptor {
         protected final int perSecond;
         protected final @NotNull AtomicInteger frequencyControlSecond = new AtomicInteger(0);
-        protected static final Executor threadPoolSecond = CompletableFuture.delayedExecutor(1, TimeUnit.SECONDS);
 
         protected final int perMinute;
         protected final @NotNull AtomicInteger frequencyControlMinute = new AtomicInteger(0);
-        protected static final Executor threadPoolMinute = CompletableFuture.delayedExecutor(1, TimeUnit.MINUTES);
 
         public FrequencyControlInterceptor(final int perSecond, final int perMinute) {
             super();
@@ -114,7 +115,7 @@ public final class DriverNetworkHelper {
             try {
                 response = chain.proceed(chain.request());
             } finally {
-                FrequencyControlInterceptor.threadPoolSecond.execute(() -> {
+                DriverNetworkHelper.threadPoolSecond.execute(() -> {
                     synchronized (this.frequencyControlSecond) {
                         if (this.frequencyControlSecond.getAndDecrement() > 1)
                             this.frequencyControlSecond.notify();
@@ -122,7 +123,7 @@ public final class DriverNetworkHelper {
                             this.frequencyControlSecond.notifyAll();
                     }
                 });
-                FrequencyControlInterceptor.threadPoolMinute.execute(() -> {
+                DriverNetworkHelper.threadPoolMinute.execute(() -> {
                     synchronized (this.frequencyControlMinute) {
                         if (this.frequencyControlMinute.getAndDecrement() > 1)
                             this.frequencyControlMinute.notify();

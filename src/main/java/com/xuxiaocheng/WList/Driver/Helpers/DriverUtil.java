@@ -131,7 +131,6 @@ public final class DriverUtil {
             return new DownloadMethods(0, List.of(), RunnableE.EmptyRunnable);
         final int count = MiscellaneousUtil.calculatePartCount(total, WListServer.FileTransferBufferSize);
         final List<SupplierE<ByteBuf>> list = new ArrayList<>(count);
-//        final ByteBuf[] cacher = new ByteBuf[count]; TODO cache
         for (long i = from; i < end; i += WListServer.FileTransferBufferSize) {
             final long b = i;
             final long e = Math.min(end, i + WListServer.FileTransferBufferSize);
@@ -157,6 +156,37 @@ public final class DriverUtil {
             });
         }
         return new DownloadMethods(total, list, RunnableE.EmptyRunnable);
+    }
+
+    public static @NotNull DownloadMethods toCachedDownloadMethods(final @NotNull DownloadMethods source) {
+        // TODO
+        return source;
+//        final int count = source.methods().size();
+//        final List<SupplierE<ByteBuf>> list = new ArrayList<>(count);
+//        final AtomicBoolean closeFlag = new AtomicBoolean(false);
+//        final Map<Integer, CompletableFuture<ByteBuf>> cacher = new ConcurrentHashMap<>(3);
+//        for (int i = 0; i < count; ++i) {
+//            final int c = i;
+//            list.add(() -> {
+//                if (closeFlag.get())
+//                    throw new IllegalStateException("Closed download methods.");
+//                for (int n = c; n < Math.min(c + 3, count); ++n)
+//                    cacher.computeIfAbsent(n, k -> CompletableFuture.supplyAsync(
+//                            HExceptionWrapper.wrapSupplier(source.methods().get(k.intValue())), WListServer.IOExecutors));
+//                final ByteBuf buffer = cacher.get(c).get();
+//                if (closeFlag.get())
+//                    buffer.release(); // Needn't any ref of buffer.
+//                return buffer;
+//            });
+//        }
+//        if (count > 0) {
+//            final Future<ByteBuf> future= WListServer.IOExecutors.submit(list.get(0)::get);
+//            list.set(0, future::get);
+//        }
+//        return new DownloadMethods(source.total(), list, () -> {
+//            closeFlag.set(true);
+//            source.finisher().run();
+//        });
     }
 
     public abstract static class OctetStreamRequestBody extends RequestBody {

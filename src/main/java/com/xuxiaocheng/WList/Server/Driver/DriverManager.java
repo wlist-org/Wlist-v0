@@ -109,7 +109,7 @@ public final class DriverManager {
         });
     }
 
-    public static void init() {
+    public static void initialize() {
         DriverManager.drivers.clear();
         final Collection<CompletableFuture<?>> futures = new ArrayList<>(GlobalConfiguration.getInstance().drivers().size());
         for (final Map.Entry<String, WebDriversType> entry: GlobalConfiguration.getInstance().drivers().entrySet())

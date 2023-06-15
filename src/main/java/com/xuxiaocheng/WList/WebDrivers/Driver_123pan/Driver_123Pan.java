@@ -6,7 +6,6 @@ import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.FailureReason;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
-import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
@@ -69,10 +68,7 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
 
     @Override
     public @Nullable DownloadMethods download(final @NotNull DrivePath path, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws IllegalParametersException, IOException, SQLException {
-        final Pair.ImmutablePair<String, Long> url = DriverManager_123pan.getDownloadUrl(this.configuration, path, true, null, null);
-        if (url == null) return null;
-        return DriverUtil.getDownloadMethodsByUrlWithRangeHeader(DriverHelper_123pan.httpClient,
-                Pair.ImmutablePair.makeImmutablePair(url.getFirst(), "GET"), url.getSecond().longValue(), from, to, null);
+        return DriverManager_123pan.getDownloadMethods(this.configuration, path, from, to, true, null, null);
     }
 
     @Override
