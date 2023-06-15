@@ -32,7 +32,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 
-@SuppressWarnings("ClassHasNoToStringMethod")
 final class FileSqlHelper {
     private static final @NotNull ConcurrentMap<@NotNull String, @NotNull FileSqlHelper> instances = new ConcurrentHashMap<>();
 
@@ -140,14 +139,21 @@ final class FileSqlHelper {
         }
     }
 
+    @Override
+    public @NotNull String toString() {
+        return "FileSqlHelper{" +
+                "tableName='" + this.tableName + '\'' +
+                ", database=" + this.database +
+                '}';
+    }
 
-    private static final @NotNull DateTimeFormatter DefaultFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+    static final @NotNull DateTimeFormatter DefaultFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
-    private static @NotNull String getTableName(final @NotNull String name) {
+    static @NotNull String getTableName(final @NotNull String name) {
         return "driver_" + Base64.getEncoder().encodeToString(name.getBytes(StandardCharsets.UTF_8)).replace('=', '_');
     }
 
-    private static @NotNull String serializeTime(final @Nullable LocalDateTime time) {
+    static @NotNull String serializeTime(final @Nullable LocalDateTime time) {
         return Objects.requireNonNullElseGet(time, LocalDateTime::now).withNano(0).format(FileSqlHelper.DefaultFormatter);
     }
 
@@ -171,7 +177,7 @@ final class FileSqlHelper {
         return Collections.unmodifiableList(list);
     }
 
-    @Contract(pure = true) private static @NotNull String getOrderPolicy(final Options.@NotNull OrderPolicy policy) {
+    @Contract(pure = true) static @NotNull String getOrderPolicy(final Options.@NotNull OrderPolicy policy) {
         return switch (policy) {
             case FileName -> "name";
             case Size -> "size";
@@ -179,7 +185,7 @@ final class FileSqlHelper {
             case UpdateTime -> "update_time";
         };
     }
-    @Contract(pure = true) private static @NotNull String getOrderDirection(final Options.@NotNull OrderDirection policy) {
+    @Contract(pure = true) static @NotNull String getOrderDirection(final Options.@NotNull OrderDirection policy) {
         return switch (policy) {
             case ASCEND -> "ASC";
             case DESCEND -> "DESC";
@@ -244,7 +250,7 @@ final class FileSqlHelper {
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    DELETE FROM %s WHERE parent_path == ? AND NAME == ?;
+                    DELETE FROM %s WHERE parent_path == ? AND name == ?;
                 """, this.tableName))) {
                 for (final DrivePath path: pathList) {
                     statement.setString(1, path.getParentPath());
@@ -454,6 +460,28 @@ final class FileSqlHelper {
         }
     }
 
+    public @NotNull @UnmodifiableView List<@Nullable FileSqlInformation> searchFilesByNameInParentPathLimited(final @NotNull DrivePath parentPath, final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
+        if (limit <= 0)
+            return List.of();
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+            connection.setAutoCommit(false);
+            final List<FileSqlInformation> list;
+            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+                    SELECT * FROM %s WHERE parent_path == ? AND name %s ? ORDER BY abs(length(name) - ?) ASC, id DESC LIMIT ?;
+                """, this.tableName, caseSensitive ? "GLOB" : "LIKE"))) {
+                statement.setString(1, parentPath.getPath());
+                statement.setString(2, rule);
+                statement.setInt(3, rule.length());
+                statement.setInt(4, limit);
+                try (final ResultSet result = statement.executeQuery()) {
+                    list = FileSqlHelper.createFilesInfo(result);
+                }
+            }
+            return list;
+        }
+    }
+
     public @NotNull @UnmodifiableView List<@Nullable FileSqlInformation> searchFilesByNameInParentPathRecursivelyLimited(final @NotNull DrivePath parentPath, final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
         if (limit <= 0)
             return List.of();
@@ -475,6 +503,7 @@ final class FileSqlHelper {
             return list;
         }
     }
+
 
     public @NotNull @UnmodifiableView Map<@NotNull DrivePath, @NotNull Long> selectFilesCountByParentPathRequireGroup(final @NotNull Collection<? extends @NotNull DrivePath> parentPathList, final long groupId, final @Nullable String _connectionId) throws SQLException {
         if (parentPathList.isEmpty())
