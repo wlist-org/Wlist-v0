@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxConnection,
                                   @NotNull String databasePath,
                                   long tokenExpireTime, long idIdleExpireTime,
-                                  int maxLimitPerPage,
+                                  int maxLimitPerPage, int forwardDownloadCacheCount,
                                   @NotNull Map<@NotNull String, @NotNull WebDriversType> drivers,
                                   boolean deleteDriver, long maxCacheSize) {
     private static @Nullable GlobalConfiguration instance;
@@ -46,35 +46,37 @@ public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxCo
         try {
             GlobalConfiguration.instance = new GlobalConfiguration(
                 YamlHelper.getConfig(config, "dump_configuration", "true",
-                        o -> YamlHelper.transferBooleanFromStr(o, errors, "dump_configuration")).booleanValue(),
+                    o -> YamlHelper.transferBooleanFromStr(o, errors, "dump_configuration")).booleanValue(),
                 YamlHelper.getConfig(config, "port", "5212",
-                        o -> YamlHelper.transferIntegerFromStr(o, errors, "port", BigInteger.ONE, BigInteger.valueOf(65535))).intValue(),
+                    o -> YamlHelper.transferIntegerFromStr(o, errors, "port", BigInteger.ONE, BigInteger.valueOf(65535))).intValue(),
                 YamlHelper.getConfig(config, "max_connection", "128",
-                        o -> YamlHelper.transferIntegerFromStr(o, errors, "max_connection", BigInteger.ONE, BigInteger.valueOf(Integer.MAX_VALUE) /*100*/)).intValue(),
+                    o -> YamlHelper.transferIntegerFromStr(o, errors, "max_connection", BigInteger.ONE, BigInteger.valueOf(Integer.MAX_VALUE) /*100*/)).intValue(),
                 YamlHelper.getConfig(config, "database_path", "data.db",
-                        o -> YamlHelper.transferString(o, errors, "database_path")),
+                    o -> YamlHelper.transferString(o, errors, "database_path")),
                 YamlHelper.getConfig(config, "token_expire_time", "259200",
-                        o -> YamlHelper.transferIntegerFromStr(o, errors, "token_expire_time", BigInteger.ONE, BigInteger.valueOf(Long.MAX_VALUE))).longValue(),
+                    o -> YamlHelper.transferIntegerFromStr(o, errors, "token_expire_time", BigInteger.ONE, BigInteger.valueOf(Long.MAX_VALUE))).longValue(),
                 YamlHelper.getConfig(config, "id_idle_expire_time", "1800",
-                        o -> YamlHelper.transferIntegerFromStr(o, errors, "id_idle_expire_time", BigInteger.ONE, BigInteger.valueOf(Long.MAX_VALUE))).longValue(),
+                    o -> YamlHelper.transferIntegerFromStr(o, errors, "id_idle_expire_time", BigInteger.ONE, BigInteger.valueOf(Long.MAX_VALUE))).longValue(),
                 YamlHelper.getConfig(config, "max_limit_per_page", "500",
-                        o -> YamlHelper.transferIntegerFromStr(o, errors, "max_limit_per_page", BigInteger.ONE, BigInteger.valueOf(Integer.MAX_VALUE))).intValue(),
+                    o -> YamlHelper.transferIntegerFromStr(o, errors, "max_limit_per_page", BigInteger.ONE, BigInteger.valueOf(Integer.MAX_VALUE))).intValue(),
+                YamlHelper.getConfig(config, "forward_download_cache_count", "3",
+                    o -> YamlHelper.transferIntegerFromStr(o, errors, "forward_download_cache_count", BigInteger.ZERO, BigInteger.valueOf(Integer.MAX_VALUE))).intValue(),
                 YamlHelper.getConfig(config, "drivers", new LinkedHashMap<>(),
-                        o -> { final Map<String, Object> map = YamlHelper.transferMapNode(o, errors, "drivers");
-                            if (map == null) return Map.of();
-                            return map.entrySet().stream().map(e -> {
-                                final WebDriversType type = WebDriversType.get(
-                                        YamlHelper.transferString(e.getValue(), errors, "driver(" + e.getKey() + ')'));
-                                if (type == null) //noinspection ReturnOfNull
-                                    return null;
-                                return Pair.ImmutablePair.makeImmutablePair(e.getKey(), type);
-                            }).filter(Objects::nonNull)
-                                    .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond));
-                        }),
+                    o -> { final Map<String, Object> map = YamlHelper.transferMapNode(o, errors, "drivers");
+                        if (map == null) return Map.of();
+                        return map.entrySet().stream().map(e -> {
+                            final WebDriversType type = WebDriversType.get(
+                                    YamlHelper.transferString(e.getValue(), errors, "driver(" + e.getKey() + ')'));
+                            if (type == null) //noinspection ReturnOfNull
+                                return null;
+                            return Pair.ImmutablePair.makeImmutablePair(e.getKey(), type);
+                        }).filter(Objects::nonNull)
+                                .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond));
+                    }),
                 YamlHelper.getConfig(config, "delete_driver", "false",
-                        o -> YamlHelper.transferBooleanFromStr(o, errors, "delete_driver")).booleanValue(),
+                    o -> YamlHelper.transferBooleanFromStr(o, errors, "delete_driver")).booleanValue(),
                 YamlHelper.getConfig(config, "max_cache_size", "1000",
-                        o -> YamlHelper.transferIntegerFromStr(o, errors, "max_cache_size", BigInteger.ONE, BigInteger.valueOf(Long.MAX_VALUE))).longValue()
+                    o -> YamlHelper.transferIntegerFromStr(o, errors, "max_cache_size", BigInteger.ONE, BigInteger.valueOf(Long.MAX_VALUE))).longValue()
             );
         } catch (final RuntimeException exception) {
             throw new IOException(exception);
@@ -88,6 +90,7 @@ public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxCo
             config.put("token_expire_time", GlobalConfiguration.instance.tokenExpireTime);
             config.put("id_idle_expire_time", GlobalConfiguration.instance.idIdleExpireTime);
             config.put("max_limit_per_page", GlobalConfiguration.instance.maxLimitPerPage);
+            config.put("forward_download_cache_count", GlobalConfiguration.instance.forwardDownloadCacheCount);
             config.put("drivers", GlobalConfiguration.instance.drivers.entrySet().stream()
                     .map(e -> Pair.ImmutablePair.makeImmutablePair(e.getKey(), e.getValue().name()))
                     .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond)));

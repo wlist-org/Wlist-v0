@@ -95,6 +95,7 @@ final class FileDownloadIdHelper {
         }
 
         public @Nullable ByteBuf get(final int chunk) throws Exception {
+            boolean last = false;
             this.closerLock.readLock().lock();
             try {
                 if (this.closed.get() || chunk >= this.count || chunk < 0)
@@ -104,18 +105,21 @@ final class FileDownloadIdHelper {
                     if (this.calledSet.contains(chunk))
                         return null;
                     this.calledSet.add(chunk);
+                    if (this.calledSet.size() == this.count)
+                        last = true;
                 }
                 final ByteBuf buffer = this.methods.methods().get(chunk).get();
-                if (buffer.readableBytes() != (chunk + 1 == this.count ? this.rest : WListServer.FileTransferBufferSize))
-                    try {
-                        throw new IllegalStateException("Invalid buffer size. readableBytes: " + buffer.readableBytes() +
-                                ", require: " + (chunk + 1 == this.count ? this.rest : WListServer.FileTransferBufferSize));
-                    } finally {
-                        buffer.release();
-                    }
+                final int readableBytes = buffer.readableBytes();
+                if (readableBytes != (chunk + 1 == this.count ? this.rest : WListServer.FileTransferBufferSize)) {
+                    buffer.release();
+                    throw new IllegalStateException("Invalid buffer size. readableBytes: " + readableBytes +
+                            ", require: " + (chunk + 1 == this.count ? this.rest : WListServer.FileTransferBufferSize));
+                }
                 return buffer;
             } finally {
                 this.closerLock.readLock().unlock();
+                if (last)
+                    this.close();
             }
         }
 

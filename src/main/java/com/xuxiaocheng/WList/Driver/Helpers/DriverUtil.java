@@ -5,10 +5,12 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.FunctionE;
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
+import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.Polymers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
@@ -26,10 +28,13 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -159,34 +164,43 @@ public final class DriverUtil {
     }
 
     public static @NotNull DownloadMethods toCachedDownloadMethods(final @NotNull DownloadMethods source) {
-        // TODO
-        return source;
-//        final int count = source.methods().size();
-//        final List<SupplierE<ByteBuf>> list = new ArrayList<>(count);
-//        final AtomicBoolean closeFlag = new AtomicBoolean(false);
-//        final Map<Integer, CompletableFuture<ByteBuf>> cacher = new ConcurrentHashMap<>(3);
-//        for (int i = 0; i < count; ++i) {
-//            final int c = i;
-//            list.add(() -> {
-//                if (closeFlag.get())
-//                    throw new IllegalStateException("Closed download methods.");
-//                for (int n = c; n < Math.min(c + 3, count); ++n)
-//                    cacher.computeIfAbsent(n, k -> CompletableFuture.supplyAsync(
-//                            HExceptionWrapper.wrapSupplier(source.methods().get(k.intValue())), WListServer.IOExecutors));
-//                final ByteBuf buffer = cacher.get(c).get();
-//                if (closeFlag.get())
-//                    buffer.release(); // Needn't any ref of buffer.
-//                return buffer;
-//            });
-//        }
-//        if (count > 0) {
-//            final Future<ByteBuf> future= WListServer.IOExecutors.submit(list.get(0)::get);
-//            list.set(0, future::get);
-//        }
-//        return new DownloadMethods(source.total(), list, () -> {
-//            closeFlag.set(true);
-//            source.finisher().run();
-//        });
+        final int count = source.methods().size();
+        if (count < 1 || GlobalConfiguration.getInstance().forwardDownloadCacheCount() == 0)
+            return source;
+        final List<SupplierE<ByteBuf>> list = new ArrayList<>(count);
+        final AtomicBoolean closeFlag = new AtomicBoolean(false);
+        final Map<Integer, CompletableFuture<ByteBuf>> cacher = new ConcurrentHashMap<>(3);
+        for (int i = 0; i < count; ++i) {
+            final int c = i;
+            list.add(() -> {
+                if (closeFlag.get())
+                    throw new IllegalStateException("Closed download methods.");
+                for (int n = c; n < Math.min(c + GlobalConfiguration.getInstance().forwardDownloadCacheCount(), count - 1); ++n)
+                    cacher.computeIfAbsent(n + 1, k -> CompletableFuture.supplyAsync(
+                            HExceptionWrapper.wrapSupplier(source.methods().get(k.intValue())), WListServer.IOExecutors));
+                final ByteBuf buffer;
+                if (cacher.putIfAbsent(c, CompletableFuture.completedFuture(null)) == null)
+                    buffer = source.methods().get(c).get();
+                else
+                    buffer = cacher.get(c).get();
+                cacher.remove(c);
+                return buffer;
+            });
+        }
+        final Future<ByteBuf> first = WListServer.IOExecutors.submit(list.get(0)::get);
+        list.set(0, first::get);
+        return new DownloadMethods(source.total(), list, () -> {
+            closeFlag.set(true);
+            for (final CompletableFuture<?> future: cacher.values())
+                future.cancel(true);
+            source.finisher().run();
+            for (final CompletableFuture<ByteBuf> future: cacher.values())
+                if (future.isDone() && !future.isCancelled() && !future.isCompletedExceptionally())
+                    try {
+                        future.get().release();
+                    } catch (final InterruptedException | ExecutionException ignore) {
+                    }
+        });
     }
 
     public abstract static class OctetStreamRequestBody extends RequestBody {
