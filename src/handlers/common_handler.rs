@@ -39,12 +39,12 @@ pub fn handle_broadcast_state(receiver: &mut impl Read) -> Result<Result<(), Wro
 pub fn operate(operation: &Type) -> Result<Vec<u8>, io::Error> {
     let mut sender = Vec::new();
     write_u8(&mut sender, DEFAULT_CIPHER)?;
-    write_string(&mut sender, &operation.to_string())?;
+    write_string(&mut sender, &String::from(operation))?;
     Ok(sender)
 }
 
 pub fn operate_with_token(operation: &Type, token: &String) -> Result<Vec<u8>, io::Error> {
     let mut sender = operate(operation)?;
-    write_string(&mut sender, &token.to_string())?;
+    write_string(&mut sender, token)?;
     Ok(sender)
 }

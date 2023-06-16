@@ -9,6 +9,38 @@ pub fn check_index(len: usize, offset: usize, require: usize) -> Result<(), io::
     }
 }
 
+
+pub fn read_u8(source: &mut impl Read) -> Result<u8, io::Error> {
+    let mut bytes = [0; 1];
+    source.read_exact(&mut bytes)?;
+    Ok(bytes[0])
+}
+pub fn write_u8(target: &mut impl Write, message: u8) -> Result<usize, io::Error> {
+    target.write(&[message])
+}
+pub fn read_u8_buf(buffer: &[u8], offset: &mut usize) -> Result<u8, io::Error> {
+    check_index(buffer.len(), *offset, 1)?;
+    let byte = buffer[*offset];
+    *offset += 1;
+    Ok(byte)
+}
+pub fn write_u8_buf(message: u8) -> Vec<u8> {
+    Vec::from([message])
+}
+
+pub fn read_bool(source: &mut impl Read) -> Result<bool, io::Error> {
+    Ok(read_u8(source)? != 0)
+}
+pub fn write_bool(target: &mut impl Write, message: bool) -> Result<usize, io::Error> {
+    write_u8(target, if message { 1 } else { 0 })
+}
+pub fn read_bool_buf(buffer: &[u8], offset: &mut usize) -> Result<bool, io::Error> {
+    Ok(read_u8_buf(buffer, offset)? != 0)
+}
+pub fn write_bool_buf(message: bool) -> Vec<u8> {
+    if message { vec![1] } else { vec![0] }
+}
+
 macro_rules! primitive_util {
     ($primitive: ident, $length: literal, $read: ident, $read_be: ident, $write: ident, $write_be: ident,
             $read_buf: ident, $read_be_buf: ident, $write_buf: ident, $write_be_buf: ident) => {
@@ -55,7 +87,6 @@ macro_rules! primitive_util {
         }
     };
 }
-primitive_util!(u8, 1, read_u8, read_u8_be, write_u8, write_u8_be, read_u8_buf, read_u8_be_buf, write_u8_buf, write_u8_be_buf);
 primitive_util!(i8, 1, read_i8, read_i8_be, write_i8, write_i8_be, read_i8_buf, read_i8_be_buf, write_i8_buf, write_i8_be_buf);
 primitive_util!(u16, 2, read_u16, read_u16_be, write_u16, write_u16_be, read_u16_buf, read_u16_be_buf, write_u16_buf, write_u16_be_buf);
 primitive_util!(i16, 2, read_i16, read_i16_be, write_i16, write_i16_be, read_i16_buf, read_i16_be_buf, write_i16_buf, write_i16_be_buf);
@@ -65,32 +96,6 @@ primitive_util!(u64, 8, read_u64, read_u64_be, write_u64, write_u64_be, read_u64
 primitive_util!(i64, 8, read_i64, read_i64_be, write_i64, write_i64_be, read_i64_buf, read_i64_be_buf, write_i64_buf, write_i64_be_buf);
 primitive_util!(u128, 16, read_u128, read_u128_be, write_u128, write_u128_be, read_u128_buf, read_u128_be_buf, write_u128_buf, write_u128_be_buf);
 primitive_util!(i128, 16, read_i128, read_i128_be, write_i128, write_i128_be, read_i128_buf, read_i128_be_buf, write_i128_buf, write_i128_be_buf);
-
-pub fn read_bool(source: &mut impl Read) -> Result<bool, io::Error> {
-    Ok(read_u8(source)? != 0)
-}
-pub fn read_bool_be(source: &mut impl Read) -> Result<bool, io::Error> {
-    Ok(read_u8_be(source)? != 0)
-}
-pub fn write_bool(target: &mut impl Write, message: bool) -> Result<usize, io::Error> {
-    write_u8(target, if message { 1 } else { 0 })
-}
-pub fn write_bool_be(target: &mut impl Write, message: bool) -> Result<usize, io::Error> {
-    write_u8_be(target, if message { 1 } else { 0 })
-}
-
-pub fn read_bool_buf(buffer: &[u8], offset: &mut usize) -> Result<bool, io::Error> {
-    Ok(read_u8_buf(buffer, offset)? != 0)
-}
-pub fn read_bool_be_buf(buffer: &[u8], offset: &mut usize) -> Result<bool, io::Error> {
-    Ok(read_u8_be_buf(buffer, offset)? != 0)
-}
-pub fn write_bool_buf(message: bool) -> Vec<u8> {
-    if message { vec![1] } else { vec![0] }
-}
-pub fn write_bool_be_buf(message: bool) -> Vec<u8> {
-    if message { vec![1] } else { vec![0] }
-}
 
 
 macro_rules! variable_len_util {
