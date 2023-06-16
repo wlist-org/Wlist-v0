@@ -18,9 +18,11 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -248,20 +250,20 @@ public class TrashedSqlHelper {
         }
     }
 
-    public @NotNull @UnmodifiableView Map<@NotNull String, @NotNull TrashedSqlInformation> selectFilesByName(final @NotNull Collection<@NotNull String> nameList, final @Nullable String _connectionId) throws SQLException {
+    public @NotNull @UnmodifiableView Map<@NotNull String, @NotNull List<@NotNull TrashedSqlInformation>> selectFilesByName(final @NotNull Collection<@NotNull String> nameList, final @Nullable String _connectionId) throws SQLException {
         if (nameList.isEmpty())
             return Map.of();
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
-            final Map<String, TrashedSqlInformation> map = new HashMap<>();
+            final Map<String, List<TrashedSqlInformation>> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM %s WHERE name == ? LIMIT 1;
+                    SELECT * FROM %s WHERE name == ?;
                 """, this.tableName))) {
                 for (final String name: nameList) {
                     statement.setString(1, name);
                     try (final ResultSet result = statement.executeQuery()) {
-                        map.put(name, TrashedSqlHelper.createNextFileInfo(result));
+                        map.put(name, TrashedSqlHelper.createFilesInfo(result));
                     }
                 }
             }
@@ -287,6 +289,23 @@ public class TrashedSqlHelper {
                 }
             }
             return Collections.unmodifiableMap(map);
+        }
+    }
+
+    public @NotNull @UnmodifiableView Set<@NotNull Long> selectFilesId(final @Nullable String _connectionId) throws SQLException {
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+            connection.setAutoCommit(false);
+            final Set<Long> set = new HashSet<>();
+            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+                    SELECT id FROM %s;
+                """, this.tableName))) {
+                try (final ResultSet result = statement.executeQuery()) {
+                    while (result.next())
+                        set.add(result.getLong("id"));
+                }
+            }
+            return Collections.unmodifiableSet(set);
         }
     }
 

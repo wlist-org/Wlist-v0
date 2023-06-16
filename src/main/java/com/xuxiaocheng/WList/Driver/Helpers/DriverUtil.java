@@ -9,7 +9,6 @@ import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.WList.Driver.Options;
-import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.Polymers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.WListServer;
@@ -29,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CancellationException;
@@ -41,6 +41,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
@@ -66,8 +67,8 @@ public final class DriverUtil {
         return Pair.ImmutablePair.makeImmutablePair(left, right);
     }
 
-    public static Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Iterator<@NotNull FileSqlInformation>, @NotNull Runnable> wrapAllFilesListerInPages(final @NotNull FunctionE<? super @NotNull Integer, ? extends Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull List<@NotNull FileSqlInformation>>> fileSupplierInPage, final int defaultLimit, final @NotNull Consumer<? super @Nullable Exception> finisher, final @Nullable ExecutorService _threadPool) {
-        final Pair.ImmutablePair<Long, List<FileSqlInformation>> firstPage;
+    public static <I> Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Iterator<@NotNull I>, @NotNull Runnable> wrapAllFilesListerInPages(final @NotNull FunctionE<? super @NotNull Integer, ? extends Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull List<@NotNull I>>> fileSupplierInPage, final int defaultLimit, final @NotNull Consumer<? super @Nullable Exception> finisher, final @Nullable ExecutorService _threadPool) {
+        final Pair.ImmutablePair<Long, List<I>> firstPage;
         try {
             firstPage = fileSupplierInPage.apply(0);
         } catch (final Exception exception) {
@@ -86,7 +87,7 @@ public final class DriverUtil {
             return Triad.ImmutableTriad.makeImmutableTriad(fileCount, firstPage.getSecond().iterator(), RunnableE.EmptyRunnable);
         }
         final ExecutorService threadPool = Objects.requireNonNullElse(_threadPool, WListServer.IOExecutors);
-        final BlockingQueue<FileSqlInformation> allFiles = new LinkedBlockingQueue<>(Math.max((int) fileCount, firstPage.getSecond().size() << 1));
+        final BlockingQueue<I> allFiles = new LinkedBlockingQueue<>(Math.max((int) fileCount, firstPage.getSecond().size() << 1));
         allFiles.addAll(firstPage.getSecond());
         final AtomicInteger countDown = new AtomicInteger(pageCount);
         final AtomicBoolean calledFinisher = new AtomicBoolean(false);
@@ -100,7 +101,7 @@ public final class DriverUtil {
             final int current = page;
             threads[current - 1] = threadPool.submit(() -> {
                 try {
-                    final Pair.ImmutablePair<Long, List<FileSqlInformation>> infos = fileSupplierInPage.apply(current);
+                    final Pair.ImmutablePair<Long, List<I>> infos = fileSupplierInPage.apply(current);
                     assert infos.getFirst().longValue() == fileCount;
                     assert current == pageCount - 1 ? infos.getSecond().size() <= defaultLimit : infos.getSecond().size() == defaultLimit;
                     allFiles.addAll(infos.getSecond());
@@ -116,8 +117,36 @@ public final class DriverUtil {
                 }
             }, threadPool);
         }
-        return Triad.ImmutableTriad.makeImmutableTriad(fileCount, MiscellaneousUtil.wrapCountedBlockingQueueCancellable(allFiles, fileCount,
-                cancelFlag, TimeUnit.SECONDS.toMillis(10)), () -> {
+        final AtomicLong spareElement = new AtomicLong(fileCount);
+        final AtomicInteger takingElement = new AtomicInteger(0);
+        return Triad.ImmutableTriad.makeImmutableTriad(fileCount, new Iterator<>() {
+            @Override
+            public boolean hasNext() {
+                return spareElement.get() > takingElement.get() && !cancelFlag.get();
+            }
+
+            @Override
+            public @NotNull I next() {
+                if (!this.hasNext())
+                    throw new NoSuchElementException();
+                takingElement.getAndIncrement();
+                try {
+                    I t = null;
+                    while (t == null) {
+                        // TODO optimise.
+                        t = allFiles.poll(10, TimeUnit.SECONDS);
+                        if (t == null && cancelFlag.get())
+                            throw new InterruptedException();
+                    }
+                    spareElement.getAndDecrement();
+                    return t;
+                } catch (final InterruptedException exception) {
+                    throw new NoSuchElementException(exception);
+                } finally {
+                    takingElement.getAndDecrement();
+                }
+            }
+        }, () -> {
             cancelFlag.set(true);
             future.cancel(true);
             for (final CompletableFuture<?> f: futures)

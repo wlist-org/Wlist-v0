@@ -20,15 +20,17 @@ public interface DriverTrashInterface<D extends DriverInterface<?>> {
 
     void buildIndex() throws Exception;
 
-    Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull TrashedSqlInformation>> list(final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws Exception;
+    Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull TrashedSqlInformation>> list(final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws Exception;
 
-    @Nullable TrashedSqlInformation info(final @NotNull String name) throws Exception;
+    @NotNull List<@NotNull TrashedSqlInformation> info(final @NotNull String name) throws Exception;
 
-    @Nullable DownloadMethods download(final @NotNull String name, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws Exception;
+    @Nullable DownloadMethods download(final long id, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws Exception;
 
-    @Nullable FileSqlInformation restore(final @NotNull String name, final @NotNull DrivePath path, final Options.@NotNull DuplicatePolicy policy) throws Exception;
+    @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> restore(final long id, final @NotNull DrivePath path, final Options.@NotNull DuplicatePolicy policy) throws Exception;
 
-    void delete(final @NotNull String name) throws Exception;
+    void delete(final long id) throws Exception;
 
-    @NotNull UnionPair<@NotNull TrashedSqlInformation, @NotNull FailureReason> rename(final @NotNull String source, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception;
+    void deleteAll() throws Exception;
+
+    @NotNull UnionPair<@NotNull TrashedSqlInformation, @NotNull FailureReason> rename(final long id, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception;
 }

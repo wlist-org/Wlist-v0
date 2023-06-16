@@ -11,6 +11,7 @@ import java.sql.SQLException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class TrashedFileManager {
     private TrashedFileManager() {
@@ -70,11 +71,11 @@ public final class TrashedFileManager {
         return TrashedFileManager.selectFiles(driverName, List.of(id), _connectionId).get(id);
     }
 
-    public static @NotNull @UnmodifiableView Map<@NotNull String, @NotNull TrashedSqlInformation> selectFilesByName(final @NotNull String driverName, final @NotNull Collection<@NotNull String> nameList, final @Nullable String _connectionId) throws SQLException {
+    public static @NotNull @UnmodifiableView Map<@NotNull String, @NotNull List<@NotNull TrashedSqlInformation>> selectFilesByName(final @NotNull String driverName, final @NotNull Collection<@NotNull String> nameList, final @Nullable String _connectionId) throws SQLException {
         return TrashedSqlHelper.getInstance(driverName).selectFilesByName(nameList, _connectionId);
     }
 
-    public static @Nullable TrashedSqlInformation selectFileByName(final @NotNull String driverName, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
+    public static @NotNull List<@NotNull TrashedSqlInformation> selectFileByName(final @NotNull String driverName, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
         return TrashedFileManager.selectFilesByName(driverName, List.of(name), _connectionId).get(name);
     }
 
@@ -84,6 +85,10 @@ public final class TrashedFileManager {
 
     public static @NotNull @UnmodifiableView List<@NotNull TrashedSqlInformation> selectFilesByMd5(final @NotNull String driverName, final @NotNull String md5, final @Nullable String _connectionId) throws SQLException {
         return TrashedFileManager.selectFilesByMd5(driverName, List.of(md5), _connectionId).get(md5);
+    }
+
+    public static @NotNull @UnmodifiableView Set<@NotNull Long> selectFilesId(final @NotNull String driverName, final @Nullable String _connectionId) throws SQLException {
+        return TrashedSqlHelper.getInstance(driverName).selectFilesId(_connectionId);
     }
 
     public static long selectFileCount(final @NotNull String driverName, final @Nullable String _connectionId) throws SQLException {

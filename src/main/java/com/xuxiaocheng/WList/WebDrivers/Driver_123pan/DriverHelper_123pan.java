@@ -557,10 +557,10 @@ final class DriverHelper_123pan {
      * <p> Other ids are more likely to no longer exist, so this method return value can be ignored.
      */
     @SuppressWarnings("UnusedReturnValue")
-    static @NotNull @UnmodifiableView Set<@NotNull Long> trashFiles(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull Collection<@NotNull Long> idList) throws IllegalParametersException, IOException {
+    static @NotNull @UnmodifiableView Set<@NotNull Long> trashFiles(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull Collection<@NotNull Long> idList, final boolean operate) throws IllegalParametersException, IOException {
         DriverHelper_123pan.ensureToken(configuration);
         final Map<String, Object> request = new LinkedHashMap<>(3);
-        request.put("Operation", true);
+        request.put("Operation", operate);
         request.put("DriveId", 0);
         request.put("FileTrashInfoList", idList.stream().map(id -> {
             final JSONObject pair = new JSONObject(1);

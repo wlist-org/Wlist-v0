@@ -5,6 +5,7 @@ import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
+import com.xuxiaocheng.WList.Server.Databases.File.TrashedSqlInformation;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -68,6 +69,34 @@ public final class FileInformation_123pan {
                     LocalDateTime.parse(update, DateTimeFormatter.ISO_ZONED_DATE_TIME),
                     etag, FileInformation_123pan.serializeOther(new FileInfoExtra_123pan(
                             type.intValue(), flag)));
+        } catch (final DateTimeParseException ignore) {
+            return null;
+        }
+    }
+
+    static @Nullable TrashedSqlInformation createTrashed(final @Nullable JSONObject info) {
+        if (info == null)
+            return null;
+        final Long id = info.getLong("FileId");
+        final String name = info.getString("FileName");
+        final Integer type = info.getInteger("Type");
+        final Long size = info.getLong("Size");
+        final String create = info.getString("CreateAt");
+        final String trashed = info.getString("TrashedAt");
+        final String expire = info.getString("ExpireTime");
+        final String flag = info.getString("S3KeyFlag");
+        final String etag = info.getString("Etag");
+        if (id == null || name == null || type == null || size == null || size.longValue() < 0
+                || create == null || trashed == null || expire == null || flag == null
+                || etag == null || (!etag.isEmpty() && !MiscellaneousUtil.md5Pattern.matcher(etag).matches()))
+            return null;
+        try {
+            return new TrashedSqlInformation(id.longValue(), name, type.intValue() == 1, size.longValue(),
+                    LocalDateTime.parse(create, DateTimeFormatter.ISO_ZONED_DATE_TIME),
+                    LocalDateTime.parse(trashed, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
+                    LocalDateTime.parse(expire, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
+                    etag, FileInformation_123pan.serializeOther(new FileInfoExtra_123pan(
+                    type.intValue(), flag)));
         } catch (final DateTimeParseException ignore) {
             return null;
         }
