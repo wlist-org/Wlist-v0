@@ -39,7 +39,7 @@ impl WListClient {
         };
         assert_eq!(receiver.readable_bytes(), 0);
         let mut sender = Vec::new();
-        let mut aes_key = [0; 48];
+        let mut aes_key = [0; 117];
         OsRng.try_fill_bytes(&mut aes_key)?;
         let rsa_encrypted = match rsa_pub_key.encrypt(&mut OsRng::default(), Pkcs1v15Encrypt/*NoPadding*/, &aes_key) {
             Ok(v) => v,
@@ -47,8 +47,8 @@ impl WListClient {
         };
         assert_eq!(rsa_encrypted.len(), 128);
         write_u8_array(&mut sender, &rsa_encrypted)?;
-        let key = Key::<Encryptor<Aes256>>::from_slice(&aes_key[0..32]);
-        let vector = Iv::<Encryptor<Aes256>>::from_slice(&aes_key[32..48]);
+        let key = Key::<Encryptor<Aes256>>::from_slice(&aes_key[50..82]);
+        let vector = Iv::<Encryptor<Aes256>>::from_slice(&aes_key[82..98]);
         let encipher = Encryptor::<Aes256>::new(key, vector);
         let mut buffer = Vec::new();
         buffer.extend_from_slice(DEFAULT_TAILOR.as_bytes());

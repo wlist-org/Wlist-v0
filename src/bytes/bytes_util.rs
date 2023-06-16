@@ -194,3 +194,14 @@ pub fn read_string(source: &mut impl Read) -> Result<String, io::Error> {
 pub fn write_string(target: &mut impl Write, message: &String) -> Result<usize, io::Error> {
     write_u8_array(target, message.as_bytes())
 }
+
+pub fn read_string_nullable(source: &mut impl Read) -> Result<Option<String>, io::Error> {
+    Ok(if read_bool(source)? { None } else { Some(read_string(source)?) })
+}
+
+pub fn write_string_nullable(target: &mut impl Write, message: &Option<String>) -> Result<usize, io::Error> {
+    Ok(match message {
+        Some(s) => write_bool(target, true)? + write_string(target, s)?,
+        None => write_bool(target, false)?,
+    })
+}

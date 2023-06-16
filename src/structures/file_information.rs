@@ -8,8 +8,8 @@ pub struct FileInformation {
     path: String,
     is_dir: bool,
     size: u64,
-    create_time: String,
-    update_time: String,
+    create_time: Option<String>,
+    update_time: Option<String>,
     md5: String,
 }
 
@@ -26,11 +26,11 @@ impl FileInformation {
         self.size
     }
 
-    pub fn create_time(&self) -> &String {
+    pub fn create_time(&self) -> &Option<String> {
         &self.create_time
     }
 
-    pub fn update_time(&self) -> &String {
+    pub fn update_time(&self) -> &Option<String> {
         &self.update_time
     }
 
@@ -42,8 +42,8 @@ impl FileInformation {
         let path = bytes_util::read_string(source)?;
         let is_dir = bytes_util::read_bool_be(source)?;
         let size = bytes_util::read_variable_u64(source)?;
-        let create_time = bytes_util::read_string(source)?;
-        let update_time = bytes_util::read_string(source)?;
+        let create_time = bytes_util::read_string_nullable(source)?;
+        let update_time = bytes_util::read_string_nullable(source)?;
         let md5 = bytes_util::read_string(source)?;
         Ok(FileInformation{ path, is_dir, size, create_time, update_time, md5 })
     }
@@ -52,8 +52,8 @@ impl FileInformation {
         bytes_util::write_string(target, &self.path)?;
         bytes_util::write_bool_be(target, self.is_dir)?;
         bytes_util::write_variable_u64(target, self.size)?;
-        bytes_util::write_string(target, &self.create_time)?;
-        bytes_util::write_string(target, &self.update_time)?;
+        bytes_util::write_string_nullable(target, &self.create_time)?;
+        bytes_util::write_string_nullable(target, &self.update_time)?;
         bytes_util::write_string(target, &self.md5)?;
         Ok(())
     }
@@ -62,6 +62,7 @@ impl FileInformation {
 impl Display for FileInformation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "FileInformation(path=\'{}\', is_dir={}, size={}, create_time={}, update_time={}, md5={})",
-            self.path, self.is_dir, self.size, self.create_time, self.update_time, self.md5)
+            self.path, self.is_dir, self.size, match &self.create_time { Some(s) => s, None => "None",},
+               match &self.update_time { Some(s) => s, None => "None",}, self.md5)
     }
 }
