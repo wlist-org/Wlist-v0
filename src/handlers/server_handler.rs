@@ -1,5 +1,4 @@
 use std::io;
-
 use crate::bytes::bytes_util::{read_string, write_bool_be};
 use crate::bytes::vec_u8_reader::VecU8Reader;
 use crate::handlers::common_handler::{handle_broadcast_state, handle_state, operate, operate_with_token};
@@ -15,7 +14,6 @@ pub fn close_server(client: &mut WListClient, token: &String) -> Result<Result<b
 }
 
 pub fn wait_broadcast(client: &mut WListClient) -> Result<Result<(String, VecU8Reader), WrongStateError>, io::Error> {
-    // TODO: (String, Vec<u8>)
     let mut receiver = VecU8Reader::new(client.no_send()?);
     Ok(match handle_broadcast_state(&mut receiver)? {
         Ok(()) => Ok((read_string(&mut receiver)?, receiver)),

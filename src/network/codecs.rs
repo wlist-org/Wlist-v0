@@ -8,7 +8,6 @@ use aes::cipher::generic_array::GenericArray;
 use cbc::{Decryptor, Encryptor};
 use flate2::Compression;
 use flate2::write::{GzDecoder, GzEncoder};
-
 use crate::bytes::bytes_util;
 use crate::network::{DO_AES, DO_GZIP, MAX_SIZE_PER_PACKET};
 

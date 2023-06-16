@@ -1,6 +1,5 @@
 use std::io;
 use std::io::{ErrorKind, Read};
-
 use crate::bytes::bytes_util::{read_string, read_u8, write_string, write_u8};
 use crate::network::DEFAULT_CIPHER;
 use crate::operations::states::State;

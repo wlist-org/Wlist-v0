@@ -1,7 +1,6 @@
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Read, Write};
-
 use crate::bytes::bytes_util;
 
 pub struct FileInformation {
@@ -62,7 +61,9 @@ impl FileInformation {
 impl Display for FileInformation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "FileInformation(path=\'{}\', is_dir={}, size={}, create_time={}, update_time={}, md5={})",
-            self.path, self.is_dir, self.size, match &self.create_time { Some(s) => s, None => "None",},
-               match &self.update_time { Some(s) => s, None => "None",}, self.md5)
+            self.path, self.is_dir, self.size,
+               match &self.create_time { Some(s) => s, None => "None",},
+               match &self.update_time { Some(s) => s, None => "None",},
+               self.md5)
     }
 }
