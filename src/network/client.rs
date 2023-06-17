@@ -1,4 +1,4 @@
-use std::io;
+use std::{io, thread};
 use std::io::{BufReader, ErrorKind};
 use std::net::TcpStream;
 use aes::Aes256;
@@ -7,6 +7,8 @@ use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::consts::{U16, U32};
 use aes::cipher::generic_array::GenericArray;
 use cbc::{Encryptor};
+use chrono::Local;
+use log::debug;
 use rsa::{BigUint, Pkcs1v15Encrypt, RsaPublicKey};
 use rsa::rand_core::{OsRng, RngCore};
 use crate::bytes::bytes_util::{read_string, read_u8_vec, write_u8_array};
@@ -63,10 +65,19 @@ impl WListClient {
     
     pub fn no_send(&mut self) -> Result<Vec<u8>, io::Error> {
         let receiver = length_based_decode(self.stream.get_mut())?;
-        cipher_decode(&receiver, self.key, self.vector)
+        let message = cipher_decode(&receiver, self.key, self.vector)?;
+        debug!("[{}][ClientLogger]{}: [NETWORK]Read len: {}",
+            Local::now().format("%Y-%m-%D %H:%M:%S%.7f"),
+            thread::current().name().unwrap_or("Unknown"),
+            message.len());
+        Ok(message)
     }
 
     pub fn send(&mut self, message: &Vec<u8>) -> Result<Vec<u8>, io::Error> {
+        debug!("[{}][ClientLogger]{}: [NETWORK]Write len: {}",
+            Local::now().format("%Y-%m-%D %H:%M:%S%.7f"),
+            thread::current().name().unwrap_or("Unknown"),
+            message.len());
         let sender = cipher_encode(message, self.key, self.vector)?;
         length_based_encode(self.stream.get_mut(), &sender)?;
         self.no_send()
