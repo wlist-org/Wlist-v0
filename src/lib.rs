@@ -5,4 +5,4 @@ pub mod options;
 pub mod structures;
 pub mod handlers;
 
-extern crate chrono;
+pub extern crate chrono;

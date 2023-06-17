@@ -8,7 +8,8 @@ use aes::cipher::consts::{U16, U32};
 use aes::cipher::generic_array::GenericArray;
 use cbc::{Encryptor};
 use chrono::Local;
-use log::debug;
+use log::{debug, log_enabled};
+use log::Level::Debug;
 use rsa::{BigUint, Pkcs1v15Encrypt, RsaPublicKey};
 use rsa::rand_core::{OsRng, RngCore};
 use crate::bytes::bytes_util::{read_string, read_u8_vec, write_u8_array};
@@ -66,18 +67,20 @@ impl WListClient {
     pub fn no_send(&mut self) -> Result<Vec<u8>, io::Error> {
         let receiver = length_based_decode(self.stream.get_mut())?;
         let message = cipher_decode(&receiver, self.key, self.vector)?;
-        println!("[{}][ClientLogger]{}: [NETWORK]Read len: {}",
-            Local::now().format("%Y-%m-%D %H:%M:%S%.7f"),
-            thread::current().name().unwrap_or("Unknown"),
-            message.len());
+        debug!("{}: ({})Write: {} len: {} cipher: {:?}",
+                thread::current().name().unwrap_or("Unknown"),
+                Local::now().format("%.9f"),
+                self.stream.get_ref().peer_addr()?,
+                message.len(), message[0]);
         Ok(message)
     }
 
     pub fn send(&mut self, message: &Vec<u8>) -> Result<Vec<u8>, io::Error> {
-        println!("[{}][ClientLogger]{}: [NETWORK]Write len: {}",
-            Local::now().format("%Y-%m-%D %H:%M:%S%.7f"),
-            thread::current().name().unwrap_or("Unknown"),
-            message.len());
+        debug!("{}: ({})Write: {} len: {} cipher: {:?}",
+                thread::current().name().unwrap_or("Unknown"),
+                Local::now().format("%.9f"),
+                self.stream.get_ref().peer_addr()?,
+                message.len(), message[0]);
         let sender = cipher_encode(message, self.key, self.vector)?;
         length_based_encode(self.stream.get_mut(), &sender)?;
         self.no_send()
