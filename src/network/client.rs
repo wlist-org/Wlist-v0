@@ -66,7 +66,7 @@ impl WListClient {
     pub fn no_send(&mut self) -> Result<Vec<u8>, io::Error> {
         let receiver = length_based_decode(self.stream.get_mut())?;
         let message = cipher_decode(&receiver, self.key, self.vector)?;
-        debug!("[{}][ClientLogger]{}: [NETWORK]Read len: {}",
+        println!("[{}][ClientLogger]{}: [NETWORK]Read len: {}",
             Local::now().format("%Y-%m-%D %H:%M:%S%.7f"),
             thread::current().name().unwrap_or("Unknown"),
             message.len());
@@ -74,7 +74,7 @@ impl WListClient {
     }
 
     pub fn send(&mut self, message: &Vec<u8>) -> Result<Vec<u8>, io::Error> {
-        debug!("[{}][ClientLogger]{}: [NETWORK]Write len: {}",
+        println!("[{}][ClientLogger]{}: [NETWORK]Write len: {}",
             Local::now().format("%Y-%m-%D %H:%M:%S%.7f"),
             thread::current().name().unwrap_or("Unknown"),
             message.len());
