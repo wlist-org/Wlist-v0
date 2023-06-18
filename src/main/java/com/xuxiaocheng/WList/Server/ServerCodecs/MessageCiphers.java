@@ -79,8 +79,7 @@ public abstract class MessageCiphers extends MessageToMessageCodec<ByteBuf, Byte
         final boolean aes = (flags & MessageCiphers.doAes) > 0;
         final boolean gzip = (flags & MessageCiphers.doGZip) > 0;
         if (!aes && !gzip) {
-            final ByteBuf prefix = ByteBufAllocator.DEFAULT.buffer();
-            ByteBufIOUtil.writeByte(prefix, flags);
+            final ByteBuf prefix = ByteBufAllocator.DEFAULT.buffer(1).writeByte(flags);
             out.add(ByteBufAllocator.DEFAULT.compositeBuffer(2).addComponents(true, prefix, msg.retain()));
             return;
         }

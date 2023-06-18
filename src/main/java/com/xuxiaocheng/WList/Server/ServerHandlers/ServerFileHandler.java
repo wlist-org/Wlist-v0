@@ -167,7 +167,7 @@ public final class ServerFileHandler {
             return ServerFileHandler.FileNotFound;
         final String id = FileDownloadIdHelper.generateId(url, user.getT().username());
         return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
-            ByteBufIOUtil.writeVariableLenLong(buf, url.total());
+            ByteBufIOUtil.writeVariable2LenLong(buf, url.total());
             ByteBufIOUtil.writeUTF(buf, id);
             return buf;
         });
@@ -204,7 +204,7 @@ public final class ServerFileHandler {
     public static final @NotNull ServerHandler doRequestUploadFile = buffer -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload);
         final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
-        final long size = ByteBufIOUtil.readVariableLenLong(buffer);
+        final long size = ByteBufIOUtil.readVariable2LenLong(buffer);
         final String md5 = ByteBufIOUtil.readUTF(buffer);
         final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
         if (user.isFailure())

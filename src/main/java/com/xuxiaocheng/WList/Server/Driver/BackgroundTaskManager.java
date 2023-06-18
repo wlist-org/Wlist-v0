@@ -10,6 +10,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 // TODO link to user interface.
@@ -56,15 +57,28 @@ public final class BackgroundTaskManager {
             });
         });
         if (flag[0]) {
-            HExceptionWrapper.wrapRunnable(finisher).run();
             if (removeLock)
                 BackgroundTaskManager.removeLock(type, name);
+            HExceptionWrapper.wrapRunnable(finisher).run();
             throw new IllegalStateException("Conflict background task: Task already exists! type: " + type + ", name: '" + name + '\'');
         }
     }
 
     public static void cancel(final @NotNull String type, final @NotNull String name) {
         final Future<?> future = BackgroundTaskManager.TaskMap.remove(type + ": " + name);
-        future.cancel(true);
+        if (future != null)
+            future.cancel(true);
+    }
+
+
+    public static <T> void backgroundOptionally(final @NotNull String type, final @NotNull String name, final @NotNull Supplier<? extends @NotNull T> defaultLockSupplier, final @NotNull Class<T> lockClass, final @NotNull Predicate<? super @NotNull T> runningPredicate, final @NotNull Runnable header, final @NotNull RunnableE runnable, final @NotNull RunnableE finisher) {
+        final T lock = BackgroundTaskManager.getLock(type, name, defaultLockSupplier, lockClass);
+        synchronized (lock) {
+            if (runningPredicate.test(lock)) {
+                header.run();
+                BackgroundTaskManager.cancel(type, name);
+                BackgroundTaskManager.background(type, name, runnable, true, finisher);
+            }
+        }
     }
 }

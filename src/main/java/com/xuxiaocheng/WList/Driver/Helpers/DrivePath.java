@@ -109,6 +109,17 @@ public class DrivePath implements Iterable<String> {
         return new DrivePath(this.path).addedRoot(root);
     }
 
+    public @NotNull DrivePath addedRoot(final @NotNull DrivePath root) {
+        this.path.addAll(0, root.path);
+        this.pathCache = null;
+        this.parentPathCache = null;
+        return this;
+    }
+
+    public @NotNull DrivePath getAddedRoot(final @NotNull DrivePath root) {
+        return new DrivePath(this.path).addedRoot(root);
+    }
+
     public @NotNull String getPath() {
         if (this.pathCache != null)
             return this.pathCache;

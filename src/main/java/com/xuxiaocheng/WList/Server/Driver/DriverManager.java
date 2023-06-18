@@ -76,6 +76,8 @@ public final class DriverManager {
         final Collection<Pair.ImmutablePair<String, String>> errors = new LinkedList<>();
         configuration.load(config, errors);
         YamlHelper.throwErrors(errors);
+        if (!name.equals(configuration.getLocalSide().getName()))
+            HLog.getInstance("DefaultLogger").log(HLogLevel.WARN, "Mismatched filename (", name, ") and drive name (", configuration.getLocalSide().getName(), "). Using drive name.");
         try {
             driver.initialize(configuration);
         } catch (final Exception exception) {
