@@ -9,7 +9,7 @@ use crate::operations::wrong_state_error::WrongStateError;
 
 pub fn close_server(client: &mut WListClient, token: &String) -> Result<Result<bool, WrongStateError>, io::Error> {
     let sender = operate_with_token(&Type::CloseServer, token)?;
-    let mut receiver = VecU8Reader::new(client.send(&sender)?);
+    let mut receiver = client.send_vec(sender)?;
     handle_state(&mut receiver)
 }
 
@@ -24,14 +24,14 @@ pub fn wait_broadcast(client: &mut WListClient) -> Result<Result<(String, VecU8R
 pub fn broadcast(client: &mut WListClient, token: &String, message: &[u8]) -> Result<Result<bool, WrongStateError>, io::Error> {
     let mut sender = operate_with_token(&Type::Broadcast, token)?;
     sender.extend_from_slice(message);
-    let mut receiver = VecU8Reader::new(client.send(&sender)?);
+    let mut receiver = client.send_vec(sender)?;
     handle_state(&mut receiver)
 }
 
 pub fn set_broadcast_mode(client: &mut WListClient, allow: bool) -> Result<Result<(), WrongStateError>, io::Error> {
     let mut sender = operate(&Type::Broadcast)?;
     bytes_util::write_bool(&mut sender, allow)?;
-    let mut receiver = VecU8Reader::new(client.send(&sender)?);
+    let mut receiver = client.send_vec(sender)?;
     Ok(match handle_state(&mut receiver)? {
         Ok(true) => Ok(()),
         Ok(false) => Err(WrongStateError::new(State::DataError, "Illegal argument.".to_string())),

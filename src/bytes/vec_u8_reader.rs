@@ -1,5 +1,7 @@
+use std::cmp::min;
 use std::io;
-use std::io::{ErrorKind, Read, Write};
+use std::io::{Read, Write};
+use crate::bytes::index_reader::IndexReader;
 
 pub struct VecU8Reader {
     bytes: Vec<u8>,
@@ -14,21 +16,30 @@ impl VecU8Reader {
     pub fn index(&self) -> usize {
         self.index
     }
-
-    pub fn readable_bytes(&self) -> usize {
-        self.bytes.len() - self.index
-    }
 }
 
 impl Read for VecU8Reader {
-    fn read(&mut self, mut buf: &mut [u8]) -> io::Result<usize> {
-        let len = buf.len();
-        if self.bytes.len() < self.index + len {
-            return Err(io::Error::new(ErrorKind::UnexpectedEof,
-                                      format!("Out of index. Total: {}, Index: {}, Require: {}",
-                                              self.bytes.len(), self.index, buf.len())));
-        }
+    fn read(&mut self, mut buf: &mut [u8]) -> Result<usize, io::Error> {
+        let len = min(buf.len(), self.readable());
+        let len = buf.write(&self.bytes[self.index..self.index+len])?;
         self.index += len;
-        buf.write(&self.bytes[self.index - len..self.index])
+        Ok(len)
+    }
+}
+
+impl IndexReader for VecU8Reader {
+    fn readable(&self) -> usize {
+        self.bytes.len() - self.index
+    }
+
+    fn length(&self) -> usize {
+        self.bytes.len()
+    }
+
+    fn get(&self, index: usize) -> Result<u8, ()> {
+        if index >= self.bytes.len() {
+            return Err(());
+        }
+        Ok(self.bytes[index])
     }
 }

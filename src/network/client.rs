@@ -8,13 +8,13 @@ use aes::cipher::consts::{U16, U32};
 use aes::cipher::generic_array::GenericArray;
 use cbc::{Encryptor};
 use chrono::Local;
-use log::{debug, log_enabled};
-use log::Level::Debug;
+use log::debug;
 use rsa::{BigUint, Pkcs1v15Encrypt, RsaPublicKey};
 use rsa::rand_core::{OsRng, RngCore};
 use crate::bytes::bytes_util::{read_string, read_u8_vec, write_u8_array};
+use crate::bytes::index_reader::IndexReader;
 use crate::bytes::vec_u8_reader::VecU8Reader;
-use crate::network::codecs::{cipher_decode, cipher_encode, length_based_decode, length_based_encode};
+use crate::network::codecs::{cipher_decode, cipher_encode, length_based_receiver, length_based_sender};
 
 pub struct WListClient {
     stream: BufReader<TcpStream>,
@@ -28,7 +28,7 @@ static DEFAULT_TAILOR: &str = "Checking";
 impl WListClient {
     pub fn new(address: &String) -> Result<WListClient, io::Error> {
         let mut client = BufReader::new(TcpStream::connect(address)?);
-        let mut receiver = VecU8Reader::new(length_based_decode(&mut client)?);
+        let mut receiver = VecU8Reader::new(length_based_receiver(&mut client)?);
         let header = read_string(&mut receiver)?;
         if header != DEFAULT_HEADER {
             return Err(io::Error::new(ErrorKind::InvalidData, format!("Invalid header: {}", header)));
@@ -39,7 +39,7 @@ impl WListClient {
             Ok(k) => k,
             Err(e) => return Err(io::Error::new(ErrorKind::InvalidData, format!("Invalid rsa public key. {}", e))),
         };
-        assert_eq!(receiver.readable_bytes(), 0);
+        assert_eq!(receiver.readable(), 0);
         let mut sender = Vec::new();
         let mut aes_key = [0; 117];
         OsRng.try_fill_bytes(&mut aes_key)?;
@@ -60,29 +60,33 @@ impl WListClient {
             Err(e) => return Err(io::Error::new(ErrorKind::InvalidData, format!("Failed to encrypt tailor. {}", e))),
         };
         write_u8_array(&mut sender, aes_encrypted)?;
-        length_based_encode(client.get_mut(), &sender)?;
+        length_based_sender(client.get_mut(), &mut VecU8Reader::new(sender))?;
         Ok(WListClient { stream: client, key: GenericArray::clone_from_slice(key), vector: GenericArray::clone_from_slice(vector) })
     }
     
     pub fn no_send(&mut self) -> Result<Vec<u8>, io::Error> {
-        let receiver = length_based_decode(self.stream.get_mut())?;
+        let receiver = length_based_receiver(self.stream.get_mut())?;
         let message = cipher_decode(&receiver, self.key, self.vector)?;
-        debug!("{}: ({})Write: {} len: {} cipher: {:?}",
-                thread::current().name().unwrap_or("Unknown"),
+        debug!("{} {}: Write: {} len: {} cipher: {:?}",
                 Local::now().format("%.9f"),
+                thread::current().name().unwrap_or("Unknown"),
                 self.stream.get_ref().peer_addr()?,
                 message.len(), message[0]);
         Ok(message)
     }
 
-    pub fn send(&mut self, message: &Vec<u8>) -> Result<Vec<u8>, io::Error> {
-        debug!("{}: ({})Write: {} len: {} cipher: {:?}",
-                thread::current().name().unwrap_or("Unknown"),
+    pub fn send(&mut self, message: Box<dyn IndexReader>) -> Result<Vec<u8>, io::Error> {
+        debug!("{} {}: Write: {} len: {} cipher: {:?}",
                 Local::now().format("%.9f"),
+                thread::current().name().unwrap_or("Unknown"),
                 self.stream.get_ref().peer_addr()?,
-                message.len(), message[0]);
-        let sender = cipher_encode(message, self.key, self.vector)?;
-        length_based_encode(self.stream.get_mut(), &sender)?;
+                message.readable(), message.get(0));
+        let mut sender = cipher_encode(message, self.key, self.vector)?;
+        length_based_sender(self.stream.get_mut(), sender.as_mut())?;
         self.no_send()
+    }
+
+    pub fn send_vec(&mut self, message: Vec<u8>) -> Result<Box<dyn IndexReader>, io::Error> {
+        Ok(Box::new(VecU8Reader::new(self.send(Box::new(VecU8Reader::new(message)))?)))
     }
 }

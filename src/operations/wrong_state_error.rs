@@ -4,7 +4,7 @@ use std::io::ErrorKind;
 use crate::operations::states::State;
 
 pub struct WrongStateError {
-    state: State,
+    pub state: State,
     message: String,
 }
 
