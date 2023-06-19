@@ -2,12 +2,12 @@ use std::io;
 use crate::bytes::bytes_util;
 use crate::handlers::common_handler::{handle_state, operate, operate_with_token};
 use crate::network::client::WListClient;
-use crate::operations::permissions::Permission;
+use crate::operations::permissions::{dump_permissions, Permission};
 use crate::operations::states::State;
 use crate::operations::types::Type;
 use crate::operations::wrong_state_error::WrongStateError;
 use crate::options::order_directions::OrderDirection;
-use crate::structures::user_group_information::{dump_permissions, UserGroupInformation};
+use crate::structures::user_group_information::UserGroupInformation;
 use crate::structures::user_information::UserInformation;
 
 pub fn register(client: &mut WListClient, username: &String, password: &String) -> Result<Result<bool, WrongStateError>, io::Error> {
