@@ -8,15 +8,16 @@ use std::io;
 use std::io::{stdin, stdout, Write};
 use std::path::Path;
 
-use log::{debug, info, trace, warn};
+use log::{debug, info, trace};
 use wlist_client_library::handlers::server_handler;
 use wlist_client_library::handlers::user_handler;
 use wlist_client_library::network::client::WListClient;
 use wlist_client_library::operations::permissions::Permission;
 use wlist_client_library::operations::states::State;
 use wlist_client_library::operations::wrong_state_error::WrongStateError;
+use wlist_client_library::options::order_directions::OrderDirection;
 use crate::global_configuration::GlobalConfiguration;
-use crate::print_table::PrintTable;
+use crate::print_table::{PrintTable, PrintTableCached};
 
 fn read_line() -> Result<String, io::Error> {
     let mut str = String::new();
@@ -29,11 +30,9 @@ fn read_line() -> Result<String, io::Error> {
     }
     Ok(str)
 }
-fn enter_to_confirm() -> Result<bool, io::Error> {
-    print!("Enter to confirm: "); stdout().flush()?;
-    let mut str = String::new();
-    stdin().read_line(&mut str)?;
-    Ok(!str.trim().is_empty())
+fn enter_to_continue() -> Result<bool, io::Error> {
+    print!("Enter to continue, or other key to cancel: "); stdout().flush()?;
+    Ok(!read_line()?.trim().is_empty())
 }
 
 fn main() -> Result<(), io::Error> {
@@ -62,7 +61,7 @@ fn main() -> Result<(), io::Error> {
         .addBodyFromSlice(vec!["22", "List groups", "admin", "Get user groups list."])
         .addBodyFromSlice(vec!["23", "Add group", "admin", "Add a new empty user group."])
         .addBodyFromSlice(vec!["24", "Delete group", "admin", "Delete a user group without users in it."])
-        .addBodyFromSlice(vec!["25", "Change group", "admin", "Move the user to the specified user group."])
+        .addBodyFromSlice(vec!["25", "Change group", "admin", "Change user into explicit user group."])
         .addBodyFromSlice(vec!["26", "Add permissions", "admin", "Add permissions to user group."])
         .addBodyFromSlice(vec!["27", "Remove permissions", "admin", "Remove permissions from user group."])
         .addBodyFromSlice(vec!["40", "List files", "user", "Get files list in explicit directory."])
@@ -74,6 +73,22 @@ fn main() -> Result<(), io::Error> {
         .addBodyFromSlice(vec!["46", "Download file", "user", "Download file to the local path."])
         .addBodyFromSlice(vec!["47", "Upload file", "user", "Upload local file to the path."])
         .finish();
+    let permissions_table: PrintTableCached = PrintTable::createFromSlice(vec!["id", "policy", "detail"])
+        .addBodyFromSlice(vec!["1", "ServerOperate", "Operate server state. DANGEROUS!"])
+        .addBodyFromSlice(vec!["2", "Broadcast", "Send broadcast to other connections."])
+        .addBodyFromSlice(vec!["3", "UsersList", "Get users and user groups list."])
+        .addBodyFromSlice(vec!["4", "UsersOperate", "Modify users and user groups. DANGEROUS!"])
+        .addBodyFromSlice(vec!["5", "DriverOperate", "Operate web drivers. DANGEROUS!"])
+        .addBodyFromSlice(vec!["6", "FilesList", "Get files list."])
+        .addBodyFromSlice(vec!["7", "FileDownload", "Download explicit file."])
+        .addBodyFromSlice(vec!["8", "FileUpload", "Upload file to explicit path."])
+        .addBodyFromSlice(vec!["9", "FileDelete", "Delete explicit file."])
+        .finish();
+    let duplicate_policy_table: PrintTableCached = PrintTable::createFromSlice(vec!["id", "policy", "detail"])
+        .addBodyFromSlice(vec!["1", "ERROR", "Only attempt to response the same file."])
+        .addBodyFromSlice(vec!["2", "OVER", "Force replace existing file."])
+        .addBodyFromSlice(vec!["3", "KEEP", "Automatically rename and retry."])
+        .finish();
     let mut token: Option<(String, String)> = None;
     loop {
         println!("Current login status: {}", match &token {
@@ -81,14 +96,13 @@ fn main() -> Result<(), io::Error> {
             None => String::from("false"),
         });
         menu.print();
-        print!("Please enter operation id: ");
-        stdout().flush()?;
+        print!("Please enter operation id: "); stdout().flush()?;
         match match match read_line()?.parse::<u32>() {
             Ok(i) => i,
             Err(e) => {
                 println!("Invalid number format. {} \nEnter to continue...", e);
                 read_line()?;
-                continue;
+                continue
             }
         } {
             0 => console_exit()?,
@@ -99,6 +113,15 @@ fn main() -> Result<(), io::Error> {
             13 => console_change_username(&mut client[0], &mut token)?,
             14 => console_change_password(&mut client[0], &mut token)?,
             15 => console_logoff(&mut client[0], &mut token)?,
+            20 => console_list_users(&mut client[0], &token)?,
+            21 => console_delete_user(&mut client[0], &mut token)?,
+            22 => console_list_groups(&mut client[0], &token)?,
+            23 => console_add_group(&mut client[0], &token)?,
+            24 => console_delete_group(&mut client[0], &token)?,
+            25 => console_change_group(&mut client[0], &token)?,
+            26 => console_add_permissions(&mut client[0], &token, &permissions_table)?,
+            27 => console_remove_permissions(&mut client[0], &token, &permissions_table)?,
+
 
             _ => Ok(3),
         } {
@@ -115,19 +138,19 @@ fn main() -> Result<(), io::Error> {
         println!("Enter to continue...");
         read_line()?;
     }
-    warn!("Thanks to use WList Client (Console Version).");
+    info!("Thanks to use WList Client (Console Version).");
     Ok(())
 }
 
 fn console_exit() -> Result<Result<u8, WrongStateError>, io::Error> {
-    println!("Exiting client... WARNING!");
-    Ok(if enter_to_confirm()? { Ok(0) } else { Ok(2) })
+    println!("Exiting client... (log out) WARNING!");
+    Ok(if enter_to_continue()? { Ok(0) } else { Ok(2) })
 }
 fn console_close_server(client: &mut WListClient, t: &Option<(String, String)>) -> Result<Result<u8, WrongStateError>, io::Error> {
     println!("Closing server... WARNING!");
     let token = match t { Some(p) => &p.0, None => return Ok(Ok(1)) };
-    if enter_to_confirm()? { return Ok(Ok(0)); }
-    if match server_handler::close_server(client, token)? { Ok(s) => s, Err(e) => return Ok(Err(e)) } {
+    if enter_to_continue()? { return Ok(Ok(0)); }
+    if match server_handler::close_server(client, token)? { Ok(t) => t, Err(e) => return Ok(Err(e)) } {
         println!("Success!");
         return Ok(Ok(2));
     }
@@ -141,7 +164,7 @@ fn console_register(client: &mut WListClient) -> Result<Result<u8, WrongStateErr
     let username = read_line()?;
     print!("Please enter password: "); stdout().flush()?;
     let password = read_line()?;
-    if match user_handler::register(client, &username, &password)? { Ok(s) => s, Err(e) => return Ok(Err(e)) } {
+    if match user_handler::register(client, &username, &password)? { Ok(t) => t, Err(e) => return Ok(Err(e)) } {
         println!("Success, then login again!");
     } else {
         println!("Username already exists.");
@@ -203,7 +226,7 @@ fn console_change_username(client: &mut WListClient, t: &mut Option<(String, Str
         println!("Success!");
         *t = Some((t.as_ref().unwrap().0.clone(), new_username));
     } else {
-        println!("Expired token or denied operation.");
+        println!("Denied operation.");
     }
     Ok(Ok(0))
 }
@@ -214,6 +237,7 @@ fn console_change_password(client: &mut WListClient, t: &mut Option<(String, Str
     let old_password = read_line()?;
     print!("Please enter new password: "); stdout().flush()?;
     let new_password = read_line()?;
+    if enter_to_continue()? { return Ok(Ok(0)); }
     if match user_handler::change_password(client, token, &old_password, &new_password)? { Ok(t) => t, Err(e) => return Ok(Err(e)) } {
         println!("Success, then login again!");
         *t = None;
@@ -227,11 +251,183 @@ fn console_logoff(client: &mut WListClient, t: &mut Option<(String, String)>) ->
     let token = match t { Some(p) => &p.0, None => return Ok(Ok(1)) };
     print!("Please confirm password: "); stdout().flush()?;
     let password = read_line()?;
+    if enter_to_continue()? { return Ok(Ok(0)); }
     if match user_handler::logoff(client, token, &password)? { Ok(t) => t, Err(e) => return Ok(Err(e)) } {
         println!("Success!");
         *t = None;
     } else {
-        println!("Expired token.");
+        println!("Denied operation.");
     }
     Ok(Ok(0))
+}
+
+fn console_list_users(client: &mut WListClient, t: &Option<(String, String)>) -> Result<Result<u8, WrongStateError>, io::Error> {
+    println!("Listing users...");
+    let token = match t { Some(p) => &p.0, None => return Ok(Ok(1)) };
+    let limit = GlobalConfiguration::get().limit;
+    print!("Please enter page number, or enter to the first page (limit: {}): ", limit); stdout().flush()?;
+    let chose = read_line()?;
+    let mut page_count = chose.trim().parse().unwrap_or(1) - 1;
+    loop {
+        let page = match user_handler::list_users(client, token, limit, page_count, &OrderDirection::ASCEND)? {
+            Ok(p) => p, Err(e) => return Ok(Err(e)),
+        };
+        if page.1.is_empty() && page_count > 0 {
+            break
+        }
+        println!("Total: {}, Page: {}", page.0, page_count);
+        let mut table = PrintTable::createFromSlice(vec!["id", "username", "group"]);
+        for user in page.1 {
+            table = table.addBodyFromSlice(vec![&user.id().to_string(), user.username(), user.group()]);
+        }
+        table.print();
+        if (page_count + 1) as u64 * limit as u64 >= page.0 {
+            break
+        }
+        if enter_to_continue()? {
+            break
+        }
+        page_count += 1;
+    }
+    Ok(Ok(0))
+}
+fn console_delete_user(client: &mut WListClient, t: &mut Option<(String, String)>) -> Result<Result<u8, WrongStateError>, io::Error> {
+    println!("Deleting user...");
+    let token = match t { Some(p) => (&p.0, &p.1), None => return Ok(Ok(1)) };
+    print!("Please enter username to delete: "); stdout().flush()?;
+    let username = read_line()?;
+    let logoff = &username == token.1;
+    if logoff {
+        println!("WARNING! Deleting yourself. (LOGOFF)");
+        if enter_to_continue()? {
+            return Ok(Ok(0));
+        }
+    }
+    if match user_handler::delete_user(client, token.0, &username)? { Ok(t) => t, Err(e) => return Ok(Err(e)) } {
+        println!("Success!");
+        if logoff {
+            *t = None;
+        }
+    } else {
+        println!("No such user or denied operation.");
+    }
+    Ok(Ok(0))
+}
+fn console_list_groups(client: &mut WListClient, t: &Option<(String, String)>) -> Result<Result<u8, WrongStateError>, io::Error> {
+    println!("Listing groups...");
+    let token = match t { Some(p) => &p.0, None => return Ok(Ok(1)) };
+    let limit = GlobalConfiguration::get().limit;
+    print!("Please enter page number, or enter to the first page (limit: {}): ", limit); stdout().flush()?;
+    let chose = read_line()?;
+    let mut page_count = chose.trim().parse().unwrap_or(1) - 1;
+    loop {
+        let page = match user_handler::list_groups(client, token, limit, page_count, &OrderDirection::ASCEND)? {
+            Ok(p) => p, Err(e) => return Ok(Err(e)),
+        };
+        if page.1.is_empty() && page_count > 0 {
+            break
+        }
+        println!("Total: {}, Page: {}", page.0, page_count);
+        let mut table = PrintTable::createFromSlice(vec!["id", "name", "permissions"]);
+        for user in page.1 {
+            table = table.addBodyFromSlice(vec![&user.id().to_string(), user.name(), &format!("{:?}", user.permissions())]);
+        }
+        table.print();
+        if (page_count + 1) as u64 * limit as u64 >= page.0 {
+            break
+        }
+        if enter_to_continue()? {
+            break
+        }
+        page_count += 1;
+    }
+    Ok(Ok(0))
+}
+fn console_add_group(client: &mut WListClient, t: &Option<(String, String)>) -> Result<Result<u8, WrongStateError>, io::Error> {
+    println!("Adding user group...");
+    let token = match t { Some(p) => &p.0, None => return Ok(Ok(1)) };
+    print!("Please enter new group name: "); stdout().flush()?;
+    let group_name = read_line()?;
+    if match user_handler::add_group(client, token, &group_name)? { Ok(t) => t, Err(e) => return Ok(Err(e)) } {
+        println!("Success!");
+    } else {
+        println!("Group name already exists.");
+    }
+    Ok(Ok(0))
+}
+fn console_delete_group(client: &mut WListClient, t: &Option<(String, String)>) -> Result<Result<u8, WrongStateError>, io::Error> {
+    println!("Deleting user group...");
+    let token = match t { Some(p) => &p.0, None => return Ok(Ok(1)) };
+    print!("Please enter group name to delete: "); stdout().flush()?;
+    let group_name = read_line()?;
+    match match user_handler::delete_group(client, token, &group_name)? { Ok(t) => t, Err(e) => return Ok(Err(e)) } {
+        Some(true) => println!("Success!"),
+        Some(false) => println!("Some users are still in this group."),
+        None => println!("No such group or denied operation."),
+    }
+    Ok(Ok(0))
+}
+fn console_change_group(client: &mut WListClient, t: &Option<(String, String)>) -> Result<Result<u8, WrongStateError>, io::Error> {
+    println!("Changing user group...");
+    let token = match t { Some(p) => &p.0, None => return Ok(Ok(1)) };
+    print!("Please enter username: "); stdout().flush()?;
+    let username = read_line()?;
+    print!("Please enter group name: "); stdout().flush()?;
+    let group_name = read_line()?;
+    match match user_handler::change_group(client, token, &username, &group_name)? { Ok(t) => t, Err(e) => return Ok(Err(e)) } {
+        Some(true) => println!("Success!"),
+        Some(false) => println!("No such user or denied operation."),
+        None => println!("No such group."),
+    }
+    Ok(Ok(0))
+}
+fn console_add_permissions(client: &mut WListClient, t: &Option<(String, String)>, permissions_table: &PrintTableCached) -> Result<Result<u8, WrongStateError>, io::Error> {
+    println!("Adding permissions for user group...");
+    let token = match t { Some(p) => &p.0, None => return Ok(Ok(1)) };
+    print!("Please enter group name: "); stdout().flush()?;
+    let group_name = read_line()?;
+    let permissions = read_permissions(permissions_table)?;
+    if match user_handler::change_permission(client, token, &group_name, true, &permissions)? { Ok(t) => t, Err(e) => return Ok(Err(e)) } {
+        println!("Success!");
+    } else {
+        println!("No such group.");
+    }
+    Ok(Ok(0))
+}
+fn console_remove_permissions(client: &mut WListClient, t: &Option<(String, String)>, permissions_table: &PrintTableCached) -> Result<Result<u8, WrongStateError>, io::Error> {
+    println!("Removing permissions for user group...");
+    let token = match t { Some(p) => &p.0, None => return Ok(Ok(1)) };
+    print!("Please enter group name: "); stdout().flush()?;
+    let group_name = read_line()?;
+    let permissions = read_permissions(permissions_table)?;
+    if match user_handler::change_permission(client, token, &group_name, false, &permissions)? { Ok(t) => t, Err(e) => return Ok(Err(e)) } {
+        println!("Success!");
+    } else {
+        println!("No such group or denied operation.");
+    }
+    Ok(Ok(0))
+}
+
+
+fn read_permissions(permissions_table: &PrintTableCached) -> Result<Vec<Permission>, io::Error> {
+    permissions_table.print();
+    print!("Please enter the selected permission ids (separate with spaces): "); stdout().flush()?;
+    loop {
+        let mut permissions = Vec::new();
+        let mut flag = false;
+        for chose in read_line()?.split_whitespace() {
+            let id: u8 = chose.parse().unwrap_or(0);
+            let permission = Permission::from(1 << id);
+            if &permission.to_string() == "Undefined" {
+                print!("Invalid id ({}). Please enter valid permission id again: ", chose);
+                flag = true;
+            } else {
+                permissions.push(permission);
+            }
+        }
+        if flag {
+            continue
+        }
+        return Ok(permissions);
+    }
 }
