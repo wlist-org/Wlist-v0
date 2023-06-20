@@ -1,17 +1,26 @@
 #![allow(non_snake_case)]
 
 pub mod print_table;
+pub mod file_lock;
 mod global_configuration;
 
+pub extern crate serde_yaml;
+pub extern crate threadpool;
+pub extern crate fs2;
+pub extern crate memmap;
+
 use std::env::set_var;
+use std::fs::OpenOptions;
 use std::io;
-use std::io::{stdin, stdout, Write};
+use std::io::{Read, stdin, stdout, Write};
 use std::path::Path;
 
 use log::{debug, info, trace};
-use wlist_client_library::handlers::{file_handler, server_handler};
-use wlist_client_library::handlers::user_handler;
+use memmap::MmapOptions;
+use wlist_client_library::handlers::{file_handler, server_handler, user_handler};
+use wlist_client_library::handlers::failure_reason::FailureReason;
 use wlist_client_library::network::client::WListClient;
+use wlist_client_library::network::FILE_TRANSFER_BUFFER_SIZE;
 use wlist_client_library::operations::permissions::Permission;
 use wlist_client_library::operations::states::State;
 use wlist_client_library::operations::wrong_state_error::WrongStateError;
@@ -19,6 +28,7 @@ use wlist_client_library::options::duplicate_policies::DuplicatePolicy;
 use wlist_client_library::options::order_directions::OrderDirection;
 use wlist_client_library::options::order_policies::OrderPolicy;
 use wlist_client_library::structures::file_information::FileInformation;
+use crate::file_lock::FileLock;
 use crate::global_configuration::GlobalConfiguration;
 use crate::print_table::{from_slice, PrintTable, PrintTableCached};
 
@@ -125,8 +135,13 @@ fn main() -> Result<(), io::Error> {
             26 => console_add_permissions(&mut client[0], &token, &permissions_table)?,
             27 => console_remove_permissions(&mut client[0], &token, &permissions_table)?,
             40 => console_list_files(&mut client[0], &token)?,
-
-
+            41 => console_make_directories(&mut client[0], &token, &duplicate_policy_table)?,
+            42 => console_delete_file(&mut client[0], &token)?,
+            43 => console_rename_file(&mut client[0], &token, &duplicate_policy_table)?,
+            44 => console_copy_file(&mut client[0], &token, &duplicate_policy_table)?,
+            45 => console_move_file(&mut client[0], &token, &duplicate_policy_table)?,
+            46 => console_download_directly(&mut client[0], &token)?,
+            47 => console_upload_directly(&mut client[0], &token)?,
             _ => Ok(3),
         } {
             Ok(0) => (),
@@ -440,7 +455,7 @@ fn console_list_files(client: &mut WListClient, t: &Option<(String, String)>) ->
             break
         }
         println!("Total: {}, Page: {}", page.0, page_count);
-        let mut table = PrintTable::create(from_slice(&vec!["name", "dir", "size", "create_time", "update_time", "md5"]));
+        let mut table = write_file_print_table();
         for file in &page.1 {
             table = write_file_information(table, file);
         }
@@ -455,6 +470,69 @@ fn console_list_files(client: &mut WListClient, t: &Option<(String, String)>) ->
     }
     Ok(Ok(0))
 }
+fn console_make_directories(client: &mut WListClient, t: &Option<(String, String)>, duplicate_policy_table: &PrintTableCached) -> Result<Result<u8, WrongStateError>, io::Error> {
+    println!("Making directory...");
+    let token = match t { Some(p) => &p.0, None => return Ok(Ok(1)) };
+    print!("Please enter directory path: "); stdout().flush()?;
+    let filepath = read_line()?;
+    println!("It will try to response the original one.");
+    let duplicate_policy = read_duplicate_policy(duplicate_policy_table)?;
+    handle_file_reason(&match file_handler::make_directories(client, token, &filepath, &duplicate_policy)? {
+        Ok(t) => t, Err(e) => return Ok(Err(e)),
+    });
+    Ok(Ok(0))
+}
+fn console_delete_file(client: &mut WListClient, t: &Option<(String, String)>) -> Result<Result<u8, WrongStateError>, io::Error> {
+    println!("Deleting file...");
+    let token = match t { Some(p) => &p.0, None => return Ok(Ok(1)) };
+    print!("Please enter file path: "); stdout().flush()?;
+    let filepath = read_line()?;
+    if match file_handler::delete_file(client, token, &filepath)? { Ok(t) => t, Err(e) => return Ok(Err(e)) } {
+        println!("Success!");
+    } else {
+        println!("Failure, unknown reason.");
+    }
+    Ok(Ok(0))
+}
+fn console_rename_file(client: &mut WListClient, t: &Option<(String, String)>, duplicate_policy_table: &PrintTableCached) -> Result<Result<u8, WrongStateError>, io::Error> {
+    println!("Renaming file...");
+    let token = match t { Some(p) => &p.0, None => return Ok(Ok(1)) };
+    print!("Please enter file path: "); stdout().flush()?;
+    let filepath = read_line()?;
+    print!("Please enter new filename: "); stdout().flush()?;
+    let filename = read_line()?;
+    let duplicate_policy = read_duplicate_policy(duplicate_policy_table)?;
+    handle_file_reason(&match file_handler::rename_file(client, token, &filepath, &filename, &duplicate_policy)? {
+        Ok(t) => t, Err(e) => return Ok(Err(e)),
+    });
+    Ok(Ok(0))
+}
+fn console_copy_file(client: &mut WListClient, t: &Option<(String, String)>, duplicate_policy_table: &PrintTableCached) -> Result<Result<u8, WrongStateError>, io::Error> {
+    println!("Copying file...");
+    let token = match t { Some(p) => &p.0, None => return Ok(Ok(1)) };
+    print!("Please enter source file path: "); stdout().flush()?;
+    let source = read_line()?;
+    print!("Please enter target file path: "); stdout().flush()?;
+    let target = read_line()?;
+    let duplicate_policy = read_duplicate_policy(duplicate_policy_table)?;
+    handle_file_reason(&match file_handler::copy_file(client, token, &source, &target, &duplicate_policy)? {
+        Ok(t) => t, Err(e) => return Ok(Err(e)),
+    });
+    Ok(Ok(0))
+}
+fn console_move_file(client: &mut WListClient, t: &Option<(String, String)>, duplicate_policy_table: &PrintTableCached) -> Result<Result<u8, WrongStateError>, io::Error> {
+    println!("Moving file...");
+    let token = match t { Some(p) => &p.0, None => return Ok(Ok(1)) };
+    print!("Please enter source file path: "); stdout().flush()?;
+    let source = read_line()?;
+    print!("Please enter target directory path: "); stdout().flush()?;
+    let target = read_line()?;
+    let duplicate_policy = read_duplicate_policy(duplicate_policy_table)?;
+    handle_file_reason(&match file_handler::move_file(client, token, &source, &target, &duplicate_policy)? {
+        Ok(t) => t, Err(e) => return Ok(Err(e))
+    });
+    Ok(Ok(0))
+}
 
 fn read_permissions(permissions_table: &PrintTableCached) -> Result<Vec<Permission>, io::Error> {
     permissions_table.print();
@@ -466,7 +544,7 @@ fn read_permissions(permissions_table: &PrintTableCached) -> Result<Vec<Permissi
             let id: u8 = chose.parse().unwrap_or(0);
             let permission = Permission::from(1 << id);
             if &permission.to_string() == "Undefined" {
-                print!("Invalid id ({}). Please enter valid permission id again: ", chose);
+                print!("Invalid id ({}). Please enter valid permission id again: ", chose); stdout().flush()?;
                 flag = true;
             } else {
                 permissions.push(permission);
@@ -475,17 +553,113 @@ fn read_permissions(permissions_table: &PrintTableCached) -> Result<Vec<Permissi
         if flag {
             continue
         }
-        return Ok(permissions);
+        return Ok(permissions)
     }
 }
-// fn read_duplicate_policy(duplicate_policy_table: &PrintTableCached) -> Result<DuplicatePolicy, io::Error> {
-//     duplicate_policy_table.print();
-//
-// }
+fn read_duplicate_policy(duplicate_policy_table: &PrintTableCached) -> Result<DuplicatePolicy, io::Error> {
+    duplicate_policy_table.print();
+    print!("Please enter duplicate policy id: "); stdout().flush()?;
+    loop {
+        let id: u8 = read_line()?.trim().parse().unwrap_or(0);
+        return Ok(match id {
+            1 => DuplicatePolicy::ERROR,
+            2 => DuplicatePolicy::OVER,
+            3 => DuplicatePolicy::KEEP,
+            _ => {
+                print!("Invalid id. Please enter valid duplicate policy id again: "); stdout().flush()?;
+                continue
+            }
+        })
+    }
+
+}
+fn write_file_print_table() -> PrintTable {
+    PrintTable::create(from_slice(&vec!["name", "dir", "size", "create_time", "update_time", "md5"]))
+}
 fn write_file_information(table: PrintTable, information: &FileInformation) -> PrintTable {
-    let index = information.path().rfind('/').unwrap();
+    let index = information.path().rfind('/').unwrap() + 1;
     table.add_body(from_slice(&vec![&information.path()[index..], &information.is_dir().to_string(), &information.size().to_string(),
                                 match information.create_time() { Some(t) => t, None => "Unknown"},
                                 match information.update_time() { Some(t) => t, None => "Unknown"},
                                 information.md5()]))
+}
+fn handle_file_reason(result: &Result<FileInformation, FailureReason>) {
+    match result {
+        Ok(information) => {
+            println!("Success!");
+            write_file_information(write_file_print_table(), information).print();
+        }
+        Err(reason) => {
+            println!("{}", reason);
+        }
+    }
+}
+
+fn read_local_file_path<'a>(line: &'a String) -> &'a str {
+    if line.len() > 2 && line.as_bytes()[0] == b'"' && line.as_bytes()[line.len() - 1] == b'"' { &line[1..line.len() - 1] } else { &line }
+}
+
+fn console_download_directly(client: &mut WListClient, t: &Option<(String, String)>) -> Result<Result<u8, WrongStateError>, io::Error> {
+    println!("Downloading file...");
+    let token = match t { Some(p) => &p.0, None => return Ok(Ok(1)) };
+    print!("Please enter web file path: "); stdout().flush()?;
+    let web = read_line()?;
+    print!("Please enter local file path (or drag in): "); stdout().flush()?;
+    let local = read_line()?;
+    let local = match OpenOptions::new().read(true).write(true).create_new(true).open(read_local_file_path(&local)) {
+        Ok(f) => f, Err(e) => { println!("Failed to create writable local file. {}", e); return Ok(Ok(0)) }
+    };
+    let id = match match file_handler::request_download_file(client, token, &web, 0, i64::max_value() as u64)? {
+        Ok(t) => t, Err(e) => return Ok(Err(e))
+    } {
+        Some(i) => i, None => { println!("No such file."); return Ok(Ok(0)) }
+    };
+    let count = (id.0 as f32 / FILE_TRANSFER_BUFFER_SIZE as f32).ceil() as u32;
+    let _guard = FileLock::lock_exclusive(&local)?;
+    local.set_len(id.0)?;
+    for i in 0..count {
+        let mut reader = match match file_handler::download_file(client, token, &id.1, i)? {
+            Ok(t) => t, Err(e) => return Ok(Err(e))
+        } {
+            Some(r) => r, None => { println!("Invalid download id. Unknown reason. chunk id: {}", i); return Ok(Ok(0)) }
+        };
+        // TODO: zero copy.
+        let mut buffer = vec![0; reader.readable()];
+        reader.read_exact(&mut buffer)?;
+        let mut mmap = unsafe { MmapOptions::new().offset(i as u64 * FILE_TRANSFER_BUFFER_SIZE as u64).len(buffer.len()).map_mut(&local)? };
+        mmap.copy_from_slice(&buffer);
+    }
+    Ok(Ok(0))
+}
+
+fn console_upload_directly(client: &mut WListClient, t: &Option<(String, String)>) -> Result<Result<u8, WrongStateError>, io::Error> {
+    println!("Uploading file...");
+    let token = match t { Some(p) => &p.0, None => return Ok(Ok(1)) };
+    print!("Please enter local file path (or drag in): "); stdout().flush()?;
+    let local = read_line()?;
+    let local = match OpenOptions::new().read(true).write(false).open(read_local_file_path(&local)) {
+        Ok(f) => f, Err(e) => { println!("No such local file. {}", e); return Ok(Ok(0)) }
+    };
+    print!("Please enter web file path: "); stdout().flush()?;
+    let web = read_line()?;
+    let _guard = FileLock::lock_shared(&local)?;
+    // let id = match match file_handler::request_upload_file(client, token, &web, 0, i64::max_value() as u64)? {
+    //     Ok(t) => t, Err(e) => return Ok(Err(e))
+    // } {
+    //     Some(i) => i, None => { println!("No such file."); return Ok(Ok(0)) }
+    // };
+    // let count = (id.0 as f32 / FILE_TRANSFER_BUFFER_SIZE as f32).ceil() as u32;
+    // for i in 0..count {
+    //     let mut reader = match match file_handler::download_file(client, token, &id.1, i)? {
+    //         Ok(t) => t, Err(e) => return Ok(Err(e))
+    //     } {
+    //         Some(r) => r, None => { println!("Invalid download id. Unknown reason. chunk id: {}", i); return Ok(Ok(0)) }
+    //     };
+    //     // TODO: zero copy.
+    //     let mut buffer = vec![0; reader.readable()];
+    //     reader.read_exact(&mut buffer)?;
+    //     let mut mmap = unsafe { MmapOptions::new().offset(i as u64 * FILE_TRANSFER_BUFFER_SIZE as u64).len(buffer.len()).map_mut(&local)? };
+    //     mmap.copy_from_slice(&buffer);
+    // }
+    Ok(Ok(0))
 }
