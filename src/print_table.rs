@@ -1,6 +1,6 @@
 pub struct PrintTable {
-    headers: Vec<String>,
-    body: Vec<Vec<String>>,
+    headers: Vec<(String, usize)>,
+    body: Vec<Vec<(String, usize)>>,
     char: Vec<usize>,
     cache: Option<Vec<String>>,
 }
@@ -9,56 +9,48 @@ pub struct PrintTableCached {
     cache: Vec<String>,
 }
 
-impl PrintTable {
-    pub fn createFromSlice(headers: Vec<&str>) -> PrintTable {
-        let mut s = Vec::new();
-        for h in headers {
-            s.push(String::from(h));
-        }
-        PrintTable::create(s)
+pub fn from_slice(vec: &Vec<&str>) -> Vec<String> {
+    let mut s = Vec::new();
+    for v in vec {
+        s.push(String::from(*v));
     }
+    s
+}
 
+impl PrintTable {
     pub fn create(headers: Vec<String>) -> PrintTable {
         let mut char = vec![0; headers.len()];
-        PrintTable::fill_columns(&mut char, &headers);
+        let headers = PrintTable::fill_columns(&mut char, headers);
         PrintTable { headers, body: Vec::new(), char, cache: None }
     }
 
-    pub fn addBodyFromSlice(self, body: Vec<&str>) -> Self {
-        let mut s = Vec::new();
-        for b in body {
-            s.push(String::from(b));
-        }
-        self.addBody(s)
-    }
-
-    pub fn addBody(mut self, body: Vec<String>) -> Self {
+    pub fn add_body(mut self, body: Vec<String>) -> Self {
         let len = self.headers.len();
         if len != body.len() {
             panic!("Invalid body length. header: {}, body: {}", len, body.len());
         }
-        PrintTable::fill_columns(&mut self.char, &body);
+        let body = PrintTable::fill_columns(&mut self.char, body);
         self.body.push(body);
         self.cache = None;
         self
     }
 
-    fn fill_columns(char: &mut [usize], values: &Vec<String>) {
-        let mut i = 0;
-        while i < values.len() {
-            let count = PrintTable::count(&values[i]);
-            let len = (values[i].len() - count) / 2 + count;
-            if len > char[i] {
-                char[i] = len;
+    fn fill_columns(char: &mut [usize], row: Vec<String>) -> Vec<(String, usize)> {
+        let mut res = Vec::new();
+        for (i, value) in row.into_iter().enumerate() {
+            let count = PrintTable::count_non_sbc(&value);
+            let width = ((value.chars().count() - count) << 1) + count;
+            if width > char[i] {
+                char[i] = width;
             }
-            i += 1;
+            res.push((value, width));
         }
+        res
     }
 
-    fn count(str: &String) -> usize {
+    fn count_non_sbc(str: &str) -> usize {
         let mut count = 0;
-        let s = str.as_bytes();
-        for u in s {
+        for u in str.as_bytes() {
             if *u < 127 {
                 count += 1;
             }
@@ -68,33 +60,27 @@ impl PrintTable {
 
     fn build_border(&self) -> String {
         let mut builder = Vec::new();
-        builder.push(b'+');
+        builder.push('+');
         for i in &self.char {
-            builder.extend_from_slice(format!("{}+", "-".repeat(*i + 2)).as_bytes());
+            builder.extend(format!("{}+", "-".repeat(i + 2)).chars());
         }
-        String::from_utf8(builder).unwrap()
+        builder.iter().collect::<String>()
     }
 
-    fn build_row(&self, row: &Vec<String>) -> String {
+    fn build_row(&self, row: &Vec<(String, usize)>) -> String {
         let mut builder = Vec::new();
-        builder.push(b'|');
+        builder.push('|');
         let mut i = 0;
         while i < row.len() {
-            builder.extend_from_slice(format!(" {} ", row[i]).as_bytes());
-            let count = PrintTable::count(&row[i]);
-            let len = self.char[i] - ((row[i].len() - count) / 2 + count);
-            if len > 0 {
-                builder.extend_from_slice(format!("{}|", " ".repeat(len)).as_bytes());
-            } else {
-                builder.push(b'|');
-            }
+            builder.extend(format!(" {} ", row[i].0).chars());
+            builder.extend(format!("{}|", " ".repeat(self.char[i] - row[i].1)).chars());
             i += 1;
         }
-        String::from_utf8(builder).unwrap()
+        builder.iter().collect::<String>()
     }
     
     fn build_cache(&mut self) {
-        if let Some(_) = &self.cache {
+        if self.cache.is_some() {
             return;
         }
         let mut cache = Vec::new();
