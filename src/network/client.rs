@@ -67,7 +67,7 @@ impl WListClient {
     pub fn no_send(&mut self) -> Result<Vec<u8>, io::Error> {
         let receiver = length_based_receiver(self.stream.get_mut())?;
         let message = cipher_decode(&receiver, self.key, self.vector)?;
-        debug!("{} {}: Write: {} len: {} cipher: {}",
+        debug!("{} {}: Read: {} len: {} cipher: {}",
                 Local::now().format("%.9f"),
                 thread::current().name().unwrap_or("Unknown"),
                 self.stream.get_ref().peer_addr()?,
