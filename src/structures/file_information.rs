@@ -40,7 +40,7 @@ impl FileInformation {
     pub fn parse(source: &mut impl Read) -> Result<FileInformation, io::Error> {
         let path = bytes_util::read_string(source)?;
         let is_dir = bytes_util::read_bool(source)?;
-        let size = bytes_util::read_variable_u64(source)?;
+        let size = bytes_util::read_variable2_u64_be(source)?;
         let create_time = bytes_util::read_string_nullable(source)?;
         let update_time = bytes_util::read_string_nullable(source)?;
         let md5 = bytes_util::read_string(source)?;

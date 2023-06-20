@@ -93,10 +93,10 @@ pub fn request_download_file(client: &mut WListClient, token: &String, path: &St
     let mut sender = operate_with_token(&Type::RequestDownloadFile, token)?;
     bytes_util::write_string(&mut sender, path)?;
     bytes_util::write_variable_u64(&mut sender, from)?;
-    bytes_util::write_variable2_u64(&mut sender, to)?;
+    bytes_util::write_variable2_u64_be(&mut sender, to)?;
     let mut receiver = client.send_vec(sender)?;
     Ok(match handle_state(&mut receiver)? {
-        Ok(true) => Ok(Some((bytes_util::read_variable2_u64(&mut receiver)?, bytes_util::read_string(&mut receiver)?))),
+        Ok(true) => Ok(Some((bytes_util::read_variable2_u64_be(&mut receiver)?, bytes_util::read_string(&mut receiver)?))),
         Ok(false) => if bytes_util::read_string(&mut receiver)? == "File" { Ok(None) } else {
             Err(WrongStateError::new(State::DataError, "Illegal argument.".to_string())) },
         Err(e) => Err(e),
@@ -125,7 +125,7 @@ pub fn cancel_download_file(client: &mut WListClient, token: &String, id: &Strin
 pub fn request_upload_file(client: &mut WListClient, token: &String, path: &String, size: u64, md5: &String, policy: &DuplicatePolicy) -> Result<Result<Result<Result<FileInformation, String>, FailureReason>, WrongStateError>, Error> {
     let mut sender = operate_with_token(&Type::RequestUploadFile, token)?;
     bytes_util::write_string(&mut sender, path)?;
-    bytes_util::write_variable2_u64(&mut sender, size)?;
+    bytes_util::write_variable2_u64_be(&mut sender, size)?;
     bytes_util::write_string(&mut sender, md5)?;
     bytes_util::write_string(&mut sender, &String::from(policy))?;
     let mut receiver = client.send_vec(sender)?;

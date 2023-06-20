@@ -161,16 +161,24 @@ variable_len_util!(u32, 32, read_variable_u32, write_variable_u32,read_variable_
     read_u8, write_u8, read_u8_buf, write_u8_buf, u8, 0x7f, 0x80, 7);
 variable_len_util!(u32, 32, read_variable2_u32, write_variable2_u32, read_variable2_u32_buf, write_variable2_u32_buf, "2 u32",
     read_u16, write_u16, read_u16_buf, write_u16_buf, u16, 0x7fff, 0x8000, 15);
+variable_len_util!(u32, 32, read_variable2_u32_be, write_variable2_u32_be, read_variable2_u32_be_buf, write_variable2_u32_be_buf, "2 u32",
+    read_u16_be, write_u16_be, read_u16_be_buf, write_u16_be_buf, u16, 0x7fff, 0x8000, 15);
 variable_len_util!(u64, 64, read_variable_u64, write_variable_u64, read_variable_u64_buf, write_variable_u64_buf, "u64",
     read_u8, write_u8, read_u8_buf, write_u8_buf, u8, 0x7f, 0x80, 7);
 variable_len_util!(u64, 64, read_variable2_u64, write_variable2_u64, read_variable2_u64_buf, write_variable2_u64_buf, "2 u64",
     read_u16, write_u16, read_u16_buf, write_u16_buf, u16, 0x7fff, 0x8000, 15);
+variable_len_util!(u64, 64, read_variable2_u64_be, write_variable2_u64_be, read_variable2_u64_be_buf, write_variable2_u64_be_buf, "2 u64",
+    read_u16_be, write_u16_be, read_u16_be_buf, write_u16_be_buf, u16, 0x7fff, 0x8000, 15);
 variable_len_util!(u128, 128, read_variable_u128, write_variable_u128, read_variable_u128_buf, write_variable_u128_buf, "u128",
     read_u8, write_u8, read_u8_buf, write_u8_buf, u8, 0x7f, 0x80, 7);
 variable_len_util!(u128, 128, read_variable2_u128, write_variable2_u128, read_variable2_u128_buf, write_variable2_u128_buf, "2 u128",
     read_u16, write_u16, read_u16_buf, write_u16_buf, u16, 0x7fff, 0x8000, 15);
+variable_len_util!(u128, 128, read_variable2_u128_be, write_variable2_u128_be, read_variable2_u128_be_buf, write_variable2_u128_be_buf, "2 u128",
+    read_u16_be, write_u16_be, read_u16_be_buf, write_u16_be_buf, u16, 0x7fff, 0x8000, 15);
 variable_len_util!(u128, 128, read_variable4_u128, write_variable4_u128, read_variable4_u128_buf, write_variable4_u128_buf, "4 u128",
     read_u32, write_u32, read_u32_buf, write_u32_buf, u32, 0x7fffffff, 0x80000000, 31);
+variable_len_util!(u128, 128, read_variable4_u128_be, write_variable4_u128_be, read_variable4_u128_be_buf, write_variable4_u128_be_buf, "4 u128",
+    read_u32_be, write_u32_be, read_u32_be_buf, write_u32_be_buf, u32, 0x7fffffff, 0x80000000, 31);
 
 
 pub fn read_u8_vec(source: &mut impl Read) -> Result<Vec<u8>, io::Error> {
