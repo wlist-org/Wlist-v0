@@ -1,5 +1,5 @@
 use std::{io, vec};
-use std::io::{ErrorKind, Read, Write};
+use std::io::{copy, ErrorKind, Read, Write};
 use aes::Aes256;
 use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use aes::cipher::block_padding::Pkcs7;
@@ -19,9 +19,7 @@ pub fn length_based_sender(target: &mut impl Write, message: &mut dyn IndexReade
         return Err(io::Error::new(ErrorKind::InvalidInput, "Message is too long when encoding."));
     }
     let mut size = bytes_util::write_u32_be(target, message.readable() as u32)?;
-    let mut buffer = vec![0; message.readable()];
-    message.read_exact(&mut buffer)?;
-    size += target.write(&buffer)?;
+    size += copy(message, target)? as usize;
     Ok(size)
 }
 
