@@ -9,14 +9,17 @@ pub extern crate threadpool;
 pub extern crate fs2;
 pub extern crate memmap;
 
+use std::cmp::min;
 use std::env::set_var;
 use std::fs::OpenOptions;
 use std::io;
-use std::io::{Read, stdin, stdout, Write};
+use std::io::{copy, Read, Seek, stdin, stdout, Write};
 use std::path::Path;
 
-use log::{debug, info, trace};
+use log::{debug, error, info, trace};
+use md5::Context;
 use memmap::MmapOptions;
+use wlist_client_library::bytes::vec_u8_reader::VecU8Reader;
 use wlist_client_library::handlers::{file_handler, server_handler, user_handler};
 use wlist_client_library::handlers::failure_reason::FailureReason;
 use wlist_client_library::network::client::WListClient;
@@ -141,7 +144,7 @@ fn main() -> Result<(), io::Error> {
             44 => console_copy_file(&mut client[0], &token, &duplicate_policy_table)?,
             45 => console_move_file(&mut client[0], &token, &duplicate_policy_table)?,
             46 => console_download_directly(&mut client[0], &token)?,
-            47 => console_upload_directly(&mut client[0], &token)?,
+            47 => console_upload_directly(&mut client[0], &token, &duplicate_policy_table)?,
             _ => Ok(3),
         } {
             Ok(0) => (),
@@ -595,8 +598,8 @@ fn handle_file_reason(result: &Result<FileInformation, FailureReason>) {
     }
 }
 
-fn read_local_file_path<'a>(line: &'a String) -> &'a str {
-    if line.len() > 2 && line.as_bytes()[0] == b'"' && line.as_bytes()[line.len() - 1] == b'"' { &line[1..line.len() - 1] } else { &line }
+fn read_local_file_path(line: &String) -> &str {
+    if line.len() > 2 && line.as_bytes()[0] == b'"' && line.as_bytes()[line.len() - 1] == b'"' { &line[1..line.len() - 1] } else { line }
 }
 
 fn console_download_directly(client: &mut WListClient, t: &Option<(String, String)>) -> Result<Result<u8, WrongStateError>, io::Error> {
@@ -606,60 +609,102 @@ fn console_download_directly(client: &mut WListClient, t: &Option<(String, Strin
     let web = read_line()?;
     print!("Please enter local file path (or drag in): "); stdout().flush()?;
     let local = read_line()?;
-    let local = match OpenOptions::new().read(true).write(true).create_new(true).open(read_local_file_path(&local)) {
+    let local = match OpenOptions::new().read(true).write(true).create(true).open(read_local_file_path(&local)) {
         Ok(f) => f, Err(e) => { println!("Failed to create writable local file. {}", e); return Ok(Ok(0)) }
     };
     let id = match match file_handler::request_download_file(client, token, &web, 0, i64::max_value() as u64)? {
-        Ok(t) => t, Err(e) => return Ok(Err(e))
+        Ok(t) => t, Err(e) => return Ok(Err(e)),
     } {
         Some(i) => i, None => { println!("No such file."); return Ok(Ok(0)) }
     };
     let count = (id.0 as f32 / FILE_TRANSFER_BUFFER_SIZE as f32).ceil() as u32;
     let _guard = FileLock::lock_exclusive(&local)?;
     local.set_len(id.0)?;
+    let mut remaining = id.0;
     for i in 0..count {
         let mut reader = match match file_handler::download_file(client, token, &id.1, i)? {
             Ok(t) => t, Err(e) => return Ok(Err(e))
         } {
             Some(r) => r, None => { println!("Invalid download id. Unknown reason. chunk id: {}", i); return Ok(Ok(0)) }
         };
-        // TODO: zero copy.
-        let mut buffer = vec![0; reader.readable()];
-        reader.read_exact(&mut buffer)?;
-        let mut mmap = unsafe { MmapOptions::new().offset(i as u64 * FILE_TRANSFER_BUFFER_SIZE as u64).len(buffer.len()).map_mut(&local)? };
-        mmap.copy_from_slice(&buffer);
+        let len = min(FILE_TRANSFER_BUFFER_SIZE as u64, remaining) as usize;
+        assert_eq!(reader.readable(), len);
+        let mut mmap = unsafe { MmapOptions::new()
+            .offset(i as u64 * FILE_TRANSFER_BUFFER_SIZE as u64).len(len)
+            .map_mut(&local)? };
+        reader.read_exact(mmap.as_mut())?;
+        remaining -= len as u64;
+    }
+    if remaining != 0 {
+        error!("Downloading file ({:?} from '{}'). Unexpected remaining {}. Unknown reason.", local, web, remaining);
     }
     Ok(Ok(0))
 }
 
-fn console_upload_directly(client: &mut WListClient, t: &Option<(String, String)>) -> Result<Result<u8, WrongStateError>, io::Error> {
+fn console_upload_directly(client: &mut WListClient, t: &Option<(String, String)>, duplicate_policy_table: &PrintTableCached) -> Result<Result<u8, WrongStateError>, io::Error> {
     println!("Uploading file...");
     let token = match t { Some(p) => &p.0, None => return Ok(Ok(1)) };
     print!("Please enter local file path (or drag in): "); stdout().flush()?;
     let local = read_line()?;
-    let local = match OpenOptions::new().read(true).write(false).open(read_local_file_path(&local)) {
+    let mut local = match OpenOptions::new().read(true).write(false).open(read_local_file_path(&local)) {
         Ok(f) => f, Err(e) => { println!("No such local file. {}", e); return Ok(Ok(0)) }
     };
     print!("Please enter web file path: "); stdout().flush()?;
     let web = read_line()?;
-    let _guard = FileLock::lock_shared(&local)?;
-    // let id = match match file_handler::request_upload_file(client, token, &web, 0, i64::max_value() as u64)? {
-    //     Ok(t) => t, Err(e) => return Ok(Err(e))
-    // } {
-    //     Some(i) => i, None => { println!("No such file."); return Ok(Ok(0)) }
-    // };
-    // let count = (id.0 as f32 / FILE_TRANSFER_BUFFER_SIZE as f32).ceil() as u32;
-    // for i in 0..count {
-    //     let mut reader = match match file_handler::download_file(client, token, &id.1, i)? {
-    //         Ok(t) => t, Err(e) => return Ok(Err(e))
-    //     } {
-    //         Some(r) => r, None => { println!("Invalid download id. Unknown reason. chunk id: {}", i); return Ok(Ok(0)) }
-    //     };
-    //     // TODO: zero copy.
-    //     let mut buffer = vec![0; reader.readable()];
-    //     reader.read_exact(&mut buffer)?;
-    //     let mut mmap = unsafe { MmapOptions::new().offset(i as u64 * FILE_TRANSFER_BUFFER_SIZE as u64).len(buffer.len()).map_mut(&local)? };
-    //     mmap.copy_from_slice(&buffer);
-    // }
+    let duplicate_policy = read_duplicate_policy(duplicate_policy_table)?;
+    let _guard = local.try_clone()?;
+    let _guard = FileLock::lock_shared(&_guard)?;
+    let mut md5 = Context::new();
+    copy(&mut local, &mut md5)?;
+    let size = local.stream_position()?;
+    let md5 = format!("{:x}", md5.compute());
+    println!("File size: {}, md5: {}", size, md5);
+    let id = match match match file_handler::request_upload_file(client, token, &web, size, &md5, &duplicate_policy)? {
+        Ok(t) => t, Err(e) => return Ok(Err(e)),
+    } {
+        Ok(t) => t, Err(e) => { println!("{}", e); return Ok(Ok(0)) },
+    } {
+        Ok(information) => {
+            println!("Success! (reuse)");
+            write_file_information(write_file_print_table(), &information).print();
+            return Ok(Ok(0))
+        }, Err(i) => i,
+    };
+    let mut flag = true;
+    let count = (size as f32 / FILE_TRANSFER_BUFFER_SIZE as f32).ceil() as u32;
+    let mut remaining = size;
+    for i in 0..count {
+        assert!(flag);
+        let len = min(FILE_TRANSFER_BUFFER_SIZE as u64, remaining) as usize;
+        let mut buffer = Vec::new();
+        let mmap = unsafe { MmapOptions::new()
+            .offset(i as u64 * FILE_TRANSFER_BUFFER_SIZE as u64).len(len)
+            .map(&local)? };
+        buffer.extend_from_slice(&mmap);
+        let info = match match file_handler::upload_file(client, token, &id, i, Box::new(VecU8Reader::new(buffer)))? {
+            Ok(t) => t, Err(e) => return Ok(Err(e))
+        } {
+            Some(r) => r, None => { println!("Invalid upload id. Unknown reason. chunk id: {}", i); return Ok(Ok(0)) }
+        };
+        remaining -= len as u64;
+        match info {
+            Ok(information) => {
+                println!("Success!");
+                write_file_information(write_file_print_table(), &information).print();
+                flag = false;
+            }
+            Err(true) => (),
+            Err(false) => {
+                println!("Mismatching file content. Unknown reason.");
+                return Ok(Ok(0))
+            },
+        };
+    }
+    if remaining != 0 {
+        error!("Uploading file ({:?} to '{}'). Unexpected remaining {}. Unknown reason.", local, web, remaining);
+    }
+    if flag {
+        println!("No file information received. Unknown reason.");
+    }
     Ok(Ok(0))
 }
