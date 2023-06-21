@@ -1,21 +1,23 @@
 #![allow(non_snake_case)]
 
+mod global_configuration;
 pub mod print_table;
 pub mod file_lock;
-mod global_configuration;
 
 pub extern crate serde_yaml;
-pub extern crate threadpool;
 pub extern crate fs2;
 pub extern crate memmap;
+pub extern crate md5;
 
 use std::cmp::min;
-use std::env::set_var;
+use std::env::{set_var, var};
 use std::fs::OpenOptions;
-use std::io;
+use std::{io, thread};
 use std::io::{copy, Read, Seek, stdin, stdout, Write};
 use std::path::Path;
-
+use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
+use std::sync::mpsc::sync_channel;
 use log::{debug, error, info, trace};
 use md5::Context;
 use memmap::MmapOptions;
@@ -52,20 +54,14 @@ fn enter_to_continue() -> Result<bool, io::Error> {
 }
 
 fn main() -> Result<(), io::Error> {
-    set_var("RUST_LOG", "debug, wlist_client_library=debug");
+    if let Err(_) = var("RUST_LOG") {
+        set_var("RUST_LOG", "debug, wlist_client_library=debug");
+    }
     env_logger::init();
     info!("Hello WList Client (Console Version)! Initializing...");
-    let configuration = Path::new("client.yaml");
-    debug!("Initializing global configuration. file: {:?}", configuration);
-    GlobalConfiguration::init(configuration)?;
-    trace!("Initialized global configuration.");
-    let address = String::from(&GlobalConfiguration::get().host) + ":" + &GlobalConfiguration::get().port.to_string();
-    debug!("Connecting to WList Server (address: {}) ...", address);
-    let mut client = vec![WListClient::new(&address)?];
-    trace!("Initialized WList clients.");
     let menu = PrintTable::create(from_slice(&vec!["ID", "Operation", "Permission", "Detail"]))
-        .add_body(from_slice(&vec!["0", "Exit", "any", "Exit client directly."]))
-        .add_body(from_slice(&vec!["1", "Close server", "admin", "Try close server, and then exit client."]))
+        .add_body(from_slice(&vec!["0", "Exit", "any", "Logoff and shutdown client."]))
+        .add_body(from_slice(&vec!["1", "Close server", "admin", "Try close server, and then shutdown client."]))
         .add_body(from_slice(&vec!["10", "Register", "any", "Register a new user."]))
         .add_body(from_slice(&vec!["11", "Login", "any", "Login with username and password."]))
         .add_body(from_slice(&vec!["12", "Get permissions", "user", "Display the current user group."]))
@@ -106,6 +102,14 @@ fn main() -> Result<(), io::Error> {
         .add_body(from_slice(&vec!["3", "KEEP", "Automatically rename and retry."]))
         .finish();
     let mut token: Option<(String, String)> = None;
+    let configuration = Path::new("client.yaml");
+    debug!("Initializing global configuration. file: {:?}", configuration);
+    GlobalConfiguration::init(configuration)?;
+    trace!("Initialized global configuration.");
+    let address = String::from(&GlobalConfiguration::get().host) + ":" + &GlobalConfiguration::get().port.to_string();
+    debug!("Connecting to WList Server (address: {}) ...", address);
+    let mut client = WListClient::new(&address)?;
+    trace!("Initialized WList clients.");
     loop {
         println!("Current login status: {}", match &token {
             Some(t) => String::from("true") + "  username: '" + t.1.as_str() + "'",
@@ -122,29 +126,29 @@ fn main() -> Result<(), io::Error> {
             }
         } {
             0 => console_exit(&token)?,
-            1 => console_close_server(&mut client[0], &token)?,
-            10 => console_register(&mut client[0])?,
-            11 => console_login(&mut client[0], &mut token)?,
-            12 => console_get_permissions(&mut client[0], &token)?,
-            13 => console_change_username(&mut client[0], &mut token)?,
-            14 => console_change_password(&mut client[0], &mut token)?,
-            15 => console_logoff(&mut client[0], &mut token)?,
-            20 => console_list_users(&mut client[0], &token)?,
-            21 => console_delete_user(&mut client[0], &mut token)?,
-            22 => console_list_groups(&mut client[0], &token)?,
-            23 => console_add_group(&mut client[0], &token)?,
-            24 => console_delete_group(&mut client[0], &token)?,
-            25 => console_change_group(&mut client[0], &token)?,
-            26 => console_add_permissions(&mut client[0], &token, &permissions_table)?,
-            27 => console_remove_permissions(&mut client[0], &token, &permissions_table)?,
-            40 => console_list_files(&mut client[0], &token)?,
-            41 => console_make_directories(&mut client[0], &token, &duplicate_policy_table)?,
-            42 => console_delete_file(&mut client[0], &token)?,
-            43 => console_rename_file(&mut client[0], &token, &duplicate_policy_table)?,
-            44 => console_copy_file(&mut client[0], &token, &duplicate_policy_table)?,
-            45 => console_move_file(&mut client[0], &token, &duplicate_policy_table)?,
-            46 => console_download_directly(&mut client[0], &token)?,
-            47 => console_upload_directly(&mut client[0], &token, &duplicate_policy_table)?,
+            1 => console_close_server(&mut client, &token)?,
+            10 => console_register(&mut client)?,
+            11 => console_login(&mut client, &mut token)?,
+            12 => console_get_permissions(&mut client, &token)?,
+            13 => console_change_username(&mut client, &mut token)?,
+            14 => console_change_password(&mut client, &mut token)?,
+            15 => console_logoff(&mut client, &mut token)?,
+            20 => console_list_users(&mut client, &token)?,
+            21 => console_delete_user(&mut client, &mut token)?,
+            22 => console_list_groups(&mut client, &token)?,
+            23 => console_add_group(&mut client, &token)?,
+            24 => console_delete_group(&mut client, &token)?,
+            25 => console_change_group(&mut client, &token)?,
+            26 => console_add_permissions(&mut client, &token, &permissions_table)?,
+            27 => console_remove_permissions(&mut client, &token, &permissions_table)?,
+            40 => console_list_files(&mut client, &token)?,
+            41 => console_make_directories(&mut client, &token, &duplicate_policy_table)?,
+            42 => console_delete_file(&mut client, &token)?,
+            43 => console_rename_file(&mut client, &token, &duplicate_policy_table)?,
+            44 => console_copy_file(&mut client, &token, &duplicate_policy_table)?,
+            45 => console_move_file(&mut client, &token, &duplicate_policy_table)?,
+            46 => console_download_directly(&mut client, &token, &address)?,
+            47 => console_upload_directly(&mut client, &token, &duplicate_policy_table, &address)?,
             _ => Ok(3),
         } {
             Ok(0) => (),
@@ -601,8 +605,16 @@ fn handle_file_reason(result: &Result<FileInformation, FailureReason>) {
 fn read_local_file_path(line: &String) -> &str {
     if line.len() > 2 && line.as_bytes()[0] == b'"' && line.as_bytes()[line.len() - 1] == b'"' { &line[1..line.len() - 1] } else { line }
 }
+fn get_chunk_len(i: u32, count: u32, size: u64) -> usize {
+    if i == count - 1 {
+        let m = (size % FILE_TRANSFER_BUFFER_SIZE as u64) as usize;
+        if m == 0 { FILE_TRANSFER_BUFFER_SIZE } else { m }
+    } else {
+        FILE_TRANSFER_BUFFER_SIZE
+    }
+}
 
-fn console_download_directly(client: &mut WListClient, t: &Option<(String, String)>) -> Result<Result<u8, WrongStateError>, io::Error> {
+fn console_download_directly(client: &mut WListClient, t: &Option<(String, String)>, address: &str) -> Result<Result<u8, WrongStateError>, io::Error> {
     println!("Downloading file...");
     let token = match t { Some(p) => &p.0, None => return Ok(Ok(1)) };
     print!("Please enter web file path: "); stdout().flush()?;
@@ -612,36 +624,90 @@ fn console_download_directly(client: &mut WListClient, t: &Option<(String, Strin
     let local = match OpenOptions::new().read(true).write(true).create(true).open(read_local_file_path(&local)) {
         Ok(f) => f, Err(e) => { println!("Failed to create writable local file. {}", e); return Ok(Ok(0)) }
     };
-    let id = match match file_handler::request_download_file(client, token, &web, 0, i64::max_value() as u64)? {
+    let (size, id) = match match file_handler::request_download_file(client, token, &web, 0, i64::max_value() as u64)? {
         Ok(t) => t, Err(e) => return Ok(Err(e)),
     } {
         Some(i) => i, None => { println!("No such file."); return Ok(Ok(0)) }
     };
-    let count = (id.0 as f32 / FILE_TRANSFER_BUFFER_SIZE as f32).ceil() as u32;
-    let _guard = FileLock::lock_exclusive(&local)?;
-    local.set_len(id.0)?;
-    let mut remaining = id.0;
-    for i in 0..count {
-        let mut reader = match match file_handler::download_file(client, token, &id.1, i)? {
-            Ok(t) => t, Err(e) => return Ok(Err(e))
-        } {
-            Some(r) => r, None => { println!("Invalid download id. Unknown reason. chunk id: {}", i); return Ok(Ok(0)) }
-        };
-        let len = min(FILE_TRANSFER_BUFFER_SIZE as u64, remaining) as usize;
-        assert_eq!(reader.readable(), len);
-        let mut mmap = unsafe { MmapOptions::new()
-            .offset(i as u64 * FILE_TRANSFER_BUFFER_SIZE as u64).len(len)
-            .map_mut(&local)? };
-        reader.read_exact(mmap.as_mut())?;
-        remaining -= len as u64;
+    let count = (size as f32 / FILE_TRANSFER_BUFFER_SIZE as f32).ceil() as u32;
+    let _guard = local.try_clone()?;
+    let _guard = FileLock::lock_exclusive(&_guard)?;
+    local.set_len(size)?;
+    let address = Arc::new(address.to_string());
+    let token = Arc::new(token.clone());
+    let id = Arc::new(id);
+    let local = Arc::new(local);
+    let web = Arc::new(web);
+    let index = Arc::new(Mutex::new(AtomicU32::new(0)));
+    let remaining = Arc::new(Mutex::new(AtomicU64::new(size)));
+    let (sender, receiver) = sync_channel(count as usize);
+    let mut futures = Vec::new();
+    for c in 0..min(count as usize, GlobalConfiguration::get().thread_count) {
+        let address = address.clone();
+        let token = token.clone();
+        let id = id.clone();
+        let local = local.clone();
+        let web = web.clone();
+        let index = index.clone();
+        let remaining = remaining.clone();
+        let sender = sender.clone();
+        futures.push(thread::Builder::new().name("DownloadClients-".to_string() + &c.to_string()).spawn(move || {
+            let mut client = WListClient::new(&address).unwrap();
+            loop {
+                let i = index.lock().unwrap().fetch_add(1, Ordering::AcqRel);
+                if i >= count {
+                    break
+                }
+                let mut times = 0;
+                while times < 3 {
+                    times += 1;
+                    let mut reader = match match match file_handler::download_file(&mut client, &token, &id, i) {
+                        Ok(t) => t,
+                        Err(e) => {
+                            error!("Downloading file. ({:?} from '{}'). retry time: {}. Network error. {}", local, web, times, e);
+                            continue
+                        }
+                    } {
+                        Ok(t) => t,
+                        Err(e) => {
+                            sender.send(e).unwrap();
+                            break
+                        }
+                    } {
+                        Some(r) => r,
+                        None => {
+                            error!("Invalid download id. Unknown reason. chunk id: {}", i);
+                            break
+                        }
+                    };
+                    let len = get_chunk_len(i, count, size);
+                    assert_eq!(reader.readable(), len);
+                    let mut mmap = unsafe {
+                        MmapOptions::new()
+                            .offset(i as u64 * FILE_TRANSFER_BUFFER_SIZE as u64).len(len)
+                            .map_mut(&local).unwrap()
+                    };
+                    reader.read_exact(mmap.as_mut()).unwrap();
+                    remaining.lock().unwrap().fetch_sub(len as u64, Ordering::AcqRel);
+                    break
+                }
+            }
+        })?);
     }
+    for future in futures {
+        future.join().unwrap();
+    }
+    let remaining = remaining.lock().unwrap().load(Ordering::Acquire);
     if remaining != 0 {
-        error!("Downloading file ({:?} from '{}'). Unexpected remaining {}. Unknown reason.", local, web, remaining);
+        error!("Downloading file ({:?} from '{}'). Unexpected remaining: {}. Unknown reason.", local, web, remaining);
     }
+    if let Ok(e) = receiver.try_recv() {
+        return Ok(Err(e));
+    }
+    println!("Success!");
     Ok(Ok(0))
 }
-
-fn console_upload_directly(client: &mut WListClient, t: &Option<(String, String)>, duplicate_policy_table: &PrintTableCached) -> Result<Result<u8, WrongStateError>, io::Error> {
+fn console_upload_directly(client: &mut WListClient, t: &Option<(String, String)>, duplicate_policy_table: &PrintTableCached, address: &str) -> Result<Result<u8, WrongStateError>, io::Error> {
     println!("Uploading file...");
     let token = match t { Some(p) => &p.0, None => return Ok(Ok(1)) };
     print!("Please enter local file path (or drag in): "); stdout().flush()?;
@@ -654,6 +720,7 @@ fn console_upload_directly(client: &mut WListClient, t: &Option<(String, String)
     let duplicate_policy = read_duplicate_policy(duplicate_policy_table)?;
     let _guard = local.try_clone()?;
     let _guard = FileLock::lock_shared(&_guard)?;
+    println!("Calculating file md5...");
     let mut md5 = Context::new();
     copy(&mut local, &mut md5)?;
     let size = local.stream_position()?;
@@ -670,41 +737,86 @@ fn console_upload_directly(client: &mut WListClient, t: &Option<(String, String)
             return Ok(Ok(0))
         }, Err(i) => i,
     };
-    let mut flag = true;
     let count = (size as f32 / FILE_TRANSFER_BUFFER_SIZE as f32).ceil() as u32;
-    let mut remaining = size;
-    for i in 0..count {
-        assert!(flag);
-        let len = min(FILE_TRANSFER_BUFFER_SIZE as u64, remaining) as usize;
-        let mut buffer = Vec::new();
-        let mmap = unsafe { MmapOptions::new()
-            .offset(i as u64 * FILE_TRANSFER_BUFFER_SIZE as u64).len(len)
-            .map(&local)? };
-        buffer.extend_from_slice(&mmap);
-        let info = match match file_handler::upload_file(client, token, &id, i, Box::new(VecU8Reader::new(buffer)))? {
-            Ok(t) => t, Err(e) => return Ok(Err(e))
-        } {
-            Some(r) => r, None => { println!("Invalid upload id. Unknown reason. chunk id: {}", i); return Ok(Ok(0)) }
-        };
-        remaining -= len as u64;
-        match info {
-            Ok(information) => {
-                println!("Success!");
-                write_file_information(write_file_print_table(), &information).print();
-                flag = false;
+    let address = Arc::new(address.to_string());
+    let token = Arc::new(token.clone());
+    let id = Arc::new(id);
+    let local = Arc::new(local);
+    let web = Arc::new(web);
+    let index = Arc::new(Mutex::new(AtomicU32::new(0)));
+    let remaining = Arc::new(Mutex::new(AtomicU64::new(size)));
+    let (sender, receiver) = sync_channel(count as usize);
+    let mut futures = Vec::new();
+    for c in 0..min(count as usize, GlobalConfiguration::get().thread_count) {
+        let address = address.clone();
+        let token = token.clone();
+        let id = id.clone();
+        let local = local.clone();
+        let web = web.clone();
+        let index = index.clone();
+        let remaining = remaining.clone();
+        let sender = sender.clone();
+        futures.push(thread::Builder::new().name("UploadClients-".to_string() + &c.to_string()).spawn(move || {
+            let mut client = WListClient::new(&address).unwrap();
+            loop {
+                let i = index.lock().unwrap().fetch_add(1, Ordering::AcqRel);
+                if i >= count {
+                    break
+                }
+                let mut times = 0;
+                while times < 3 {
+                    times += 1;
+                    let len = get_chunk_len(i, count, size);
+                    let mut buffer = Vec::new();
+                    let mmap = unsafe {
+                        MmapOptions::new()
+                            .offset(i as u64 * FILE_TRANSFER_BUFFER_SIZE as u64).len(len)
+                            .map(&local).unwrap()
+                    };
+                    buffer.extend_from_slice(&mmap);
+                    let info = match match match file_handler::upload_file(&mut client, &token, &id, i, Box::new(VecU8Reader::new(buffer))) {
+                        Ok(t) => t,
+                        Err(e) => {
+                            error!("Uploading file. ({:?} to '{}'). retry time: {}. Network error. {}", local, web, times, e);
+                            continue
+                        }
+                    } {
+                        Ok(t) => t,
+                        Err(e) => {
+                            sender.send(e).unwrap();
+                            break
+                        }
+                    } {
+                        Some(r) => r,
+                        None => {
+                            println!("Invalid upload id. Unknown reason. chunk id: {}", i);
+                            break
+                        }
+                    };
+                    remaining.lock().unwrap().fetch_sub(len as u64, Ordering::AcqRel);
+                    match info {
+                        Ok(information) => {
+                            println!("Success!");
+                            write_file_information(write_file_print_table(), &information).print();
+                        }
+                        Err(s) => {
+                            if !s { println!("Mismatching file content. Unknown reason."); }
+                            break
+                        },
+                    };
+                }
             }
-            Err(true) => (),
-            Err(false) => {
-                println!("Mismatching file content. Unknown reason.");
-                return Ok(Ok(0))
-            },
-        };
+        })?);
     }
+    for future in futures {
+        future.join().unwrap();
+    }
+    let remaining = remaining.lock().unwrap().load(Ordering::Acquire);
     if remaining != 0 {
         error!("Uploading file ({:?} to '{}'). Unexpected remaining {}. Unknown reason.", local, web, remaining);
     }
-    if flag {
-        println!("No file information received. Unknown reason.");
+    if let Ok(e) = receiver.try_recv() {
+        return Ok(Err(e));
     }
     Ok(Ok(0))
 }

@@ -12,12 +12,13 @@ pub struct GlobalConfiguration {
     pub host: String,
     pub port: u32,
     pub limit: u32,
+    pub thread_count: usize,
 }
 
 impl Display for GlobalConfiguration {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "GlobalConfiguration(host='{}', port={}, limit={})",
-               self.host, self.port, self.limit)
+        write!(f, "GlobalConfiguration(host='{}', port={}, limit={}, thread_count={})",
+               self.host, self.port, self.limit, self.thread_count)
     }
 }
 
@@ -36,6 +37,7 @@ impl GlobalConfiguration {
             host: String::from("localhost"),
             port: 5212,
             limit: 20,
+            thread_count: 4,
         };
         if file.is_file() {
             let map: BTreeMap<String, String> = match serde_yaml::from_reader(File::open(file)?) {
@@ -51,7 +53,7 @@ impl GlobalConfiguration {
                     Ok(v) if v < 1 => return Err(io::Error::new(ErrorKind::InvalidData, format!("Getting 'port'. Exceed minimum limit. {} < {}", v, 1))),
                     Ok(v) if v > 65535 => return Err(io::Error::new(ErrorKind::InvalidData, format!("Getting 'port'. Exceed maximum limit. {} > {}", v, 65535))),
                     Ok(v) => v,
-                    Err(e) => return Err(io::Error::new(ErrorKind::InvalidData, format!("Getting 'port'. {}", e)))
+                    Err(e) => return Err(io::Error::new(ErrorKind::InvalidData, format!("Getting 'port'. {}", e))),
                 },
                 None => configuration.port,
             };
@@ -60,15 +62,23 @@ impl GlobalConfiguration {
                     Ok(v) if v < 1 => return Err(io::Error::new(ErrorKind::InvalidData, format!("Getting 'limit'. Exceed minimum limit. {} < {}", v, 1))),
                     Ok(v) if v > 200 => return Err(io::Error::new(ErrorKind::InvalidData, format!("Getting 'limit'. Exceed maximum limit. {} > {}", v, 200))),
                     Ok(v) => v,
-                    Err(e) => return Err(io::Error::new(ErrorKind::InvalidData, format!("Getting 'limit'. {}", e)))
+                    Err(e) => return Err(io::Error::new(ErrorKind::InvalidData, format!("Getting 'limit'. {}", e))),
                 },
                 None => configuration.limit,
+            };
+            configuration.thread_count = match map.get("thread_count") {
+                Some(v) => match usize::from_str(v) {
+                    Ok(v) => v,
+                    Err(e) => return Err(io::Error::new(ErrorKind::InvalidData, format!("Getting 'thread_count'. {}", e))),
+                },
+                None => configuration.thread_count,
             };
         } else {
             let mut map: BTreeMap<String, String> = BTreeMap::new();
             map.insert(String::from("host"), configuration.host.to_string());
             map.insert(String::from("port"), configuration.port.to_string());
             map.insert(String::from("limit"), configuration.limit.to_string());
+            map.insert(String::from("thread_count"), configuration.thread_count.to_string());
             match serde_yaml::to_writer(File::create(file)?, &map) {
                 Ok(_) => (),
                 Err(e) => return Err(io::Error::new(ErrorKind::InvalidData, e.to_string())),
