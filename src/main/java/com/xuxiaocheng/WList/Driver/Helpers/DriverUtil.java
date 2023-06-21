@@ -198,7 +198,7 @@ public final class DriverUtil {
             return source;
         final List<SupplierE<ByteBuf>> list = new ArrayList<>(count);
         final AtomicBoolean closeFlag = new AtomicBoolean(false);
-        final Map<Integer, CompletableFuture<ByteBuf>> cacher = new ConcurrentHashMap<>(3);
+        final Map<Integer, CompletableFuture<ByteBuf>> cacher = new ConcurrentHashMap<>(GlobalConfiguration.getInstance().forwardDownloadCacheCount() + 1);
         for (int i = 0; i < count; ++i) {
             final int c = i;
             list.add(() -> {
@@ -216,8 +216,8 @@ public final class DriverUtil {
                 return buffer;
             });
         }
-        final Future<ByteBuf> first = WListServer.IOExecutors.submit(list.get(0)::get);
-        list.set(0, first::get);
+        cacher.computeIfAbsent(0, k -> CompletableFuture.supplyAsync(
+                HExceptionWrapper.wrapSupplier(source.methods().get(k.intValue())), WListServer.IOExecutors));
         return new DownloadMethods(source.total(), list, () -> {
             closeFlag.set(true);
             for (final CompletableFuture<?> future: cacher.values())
