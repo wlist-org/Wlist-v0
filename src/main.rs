@@ -22,6 +22,7 @@ use log::{debug, error, info, trace};
 use md5::Context;
 use memmap::MmapOptions;
 use wlist_client_library::bytes::vec_u8_reader::VecU8Reader;
+use wlist_client_library::chrono::Local;
 use wlist_client_library::handlers::{file_handler, server_handler, user_handler};
 use wlist_client_library::handlers::failure_reason::FailureReason;
 use wlist_client_library::network::client::WListClient;
@@ -651,7 +652,7 @@ fn console_download_directly(client: &mut WListClient, t: &Option<(String, Strin
         let index = index.clone();
         let remaining = remaining.clone();
         let sender = sender.clone();
-        futures.push(thread::Builder::new().name("DownloadClients-".to_string() + &c.to_string()).spawn(move || {
+        futures.push(thread::Builder::new().name("Downloader-".to_string() + &c.to_string()).spawn(move || {
             let mut client = WListClient::new(&address).unwrap();
             loop {
                 let i = index.lock().unwrap().fetch_add(1, Ordering::AcqRel);
@@ -756,7 +757,7 @@ fn console_upload_directly(client: &mut WListClient, t: &Option<(String, String)
         let index = index.clone();
         let remaining = remaining.clone();
         let sender = sender.clone();
-        futures.push(thread::Builder::new().name("UploadClients-".to_string() + &c.to_string()).spawn(move || {
+        futures.push(thread::Builder::new().name("Uploader-".to_string() + &c.to_string()).spawn(move || {
             let mut client = WListClient::new(&address).unwrap();
             loop {
                 let i = index.lock().unwrap().fetch_add(1, Ordering::AcqRel);
@@ -766,6 +767,10 @@ fn console_upload_directly(client: &mut WListClient, t: &Option<(String, String)
                 let mut times = 0;
                 while times < 3 {
                     times += 1;
+                    debug!("{} {}: Uploading chunk {}. ",
+                        Local::now().format("%.9f"),
+                        thread::current().name().unwrap_or("Unknown"),
+                        i);
                     let len = get_chunk_len(i, count, size);
                     let mut buffer = Vec::new();
                     let mmap = unsafe {
@@ -789,7 +794,7 @@ fn console_upload_directly(client: &mut WListClient, t: &Option<(String, String)
                     } {
                         Some(r) => r,
                         None => {
-                            println!("Invalid upload id. Unknown reason. chunk id: {}", i);
+                            error!("Invalid upload id. Unknown reason. chunk id: {}", i);
                             break
                         }
                     };
@@ -799,11 +804,12 @@ fn console_upload_directly(client: &mut WListClient, t: &Option<(String, String)
                             println!("Success!");
                             write_file_information(write_file_print_table(), &information).print();
                         }
-                        Err(s) => {
-                            if !s { println!("Mismatching file content. Unknown reason."); }
-                            break
+                        Err(true) => (),
+                        Err(false) => {
+                            error!("Mismatching file content. Unknown reason.");
                         },
                     };
+                    break
                 }
             }
         })?);
