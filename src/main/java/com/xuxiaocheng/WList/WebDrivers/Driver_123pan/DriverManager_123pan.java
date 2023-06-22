@@ -296,13 +296,14 @@ public final class DriverManager_123pan {
         final int partCount = MiscellaneousUtil.calculatePartCount(size, DriverHelper_123pan.UploadPartSize);
         final List<String> urls = DriverHelper_123pan.uploadPare(configuration, requestUploadData.getT().getE(), partCount);
         long readSize = 0;
-        final List<ConsumerE<ByteBuf>> list = new ArrayList<>(partCount);
+        final List<ConsumerE<ByteBuf>> consumers = new ArrayList<>(partCount);
+        final Collection<Runnable> finishers = new ArrayList<>(partCount);
         final AtomicInteger countDown = new AtomicInteger(urls.size());
         for (final String url: urls) {
             //noinspection NumericCastThatLosesPrecision
             final int len = (int) Math.min(DriverHelper_123pan.UploadPartSize, (size - readSize));
             readSize += len;
-            list.addAll(DriverUtil.splitUploadMethod(b -> {
+            final Pair.ImmutablePair<List<ConsumerE<ByteBuf>>, Runnable> split = DriverUtil.splitUploadMethod(b -> {
                 DriverNetworkHelper.callRequestWithBody(DriverHelper_123pan.fileClient, Pair.ImmutablePair.makeImmutablePair(url, "PUT"), null,
                         new DriverUtil.OctetStreamRequestBody(len) {
                             @Override
@@ -318,16 +319,18 @@ public final class DriverManager_123pan {
                         }
                 ).execute().close();
                 countDown.getAndDecrement();
-            }, len));
+            }, len);
+            consumers.addAll(split.getFirst());
+            finishers.add(split.getSecond());
         }
-        return UnionPair.ok(new UploadMethods(list, () -> {
+        return UnionPair.ok(new UploadMethods(consumers, () -> {
             if (countDown.get() > 0)
                 return null;
             final FileSqlInformation information = DriverHelper_123pan.uploadComplete(configuration, requestUploadData.getT().getE(), partCount);
             if (information != null)
                 FileManager.insertOrUpdateFile(configuration.getLocalSide().getName(), information, _connectionId);
             return information;
-        }, RunnableE.EmptyRunnable));
+        }, () -> finishers.forEach(Runnable::run)));
     }
 
     static void trashFile(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean useCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {

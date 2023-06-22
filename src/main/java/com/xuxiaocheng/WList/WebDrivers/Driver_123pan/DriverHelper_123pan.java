@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
@@ -54,9 +55,10 @@ final class DriverHelper_123pan {
             WList.InIdeaMode ? Integer.MIN_VALUE : HLogLevel.LESS.getLevel(),
             true,  WList.InIdeaMode ? null : HMergedStream.getFileOutputStreamNoException(""));
 
-    static final @NotNull OkHttpClient httpClient = DriverNetworkHelper.httpClientBuilder
+    static final @NotNull OkHttpClient httpClient = DriverNetworkHelper.newHttpClientBuilder()
             .addNetworkInterceptor(new DriverNetworkHelper.FrequencyControlInterceptor(5, 100)).build();
-    static final @NotNull OkHttpClient fileClient = DriverNetworkHelper.httpClientBuilder.build();
+    static final @NotNull OkHttpClient fileClient = DriverNetworkHelper.newHttpClientBuilder()
+            .writeTimeout(2, TimeUnit.MINUTES).build();
     static final @NotNull String agent = DriverNetworkHelper.defaultWebAgent + " " + DriverNetworkHelper.defaultAgent;
 
     static final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> LoginURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/user/sign_in", "POST");

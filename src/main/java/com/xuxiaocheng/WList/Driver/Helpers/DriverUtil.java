@@ -260,32 +260,37 @@ public final class DriverUtil {
     }
 
     // WARNING: assert requireSize % WListServer.FileTransferBufferSize == 0; (expected last chunk)
-    public static @NotNull List<@NotNull ConsumerE<@NotNull ByteBuf>> splitUploadMethod(final @NotNull ConsumerE<? super @NotNull ByteBuf> sourceMethod, final int requireSize) {
+    public static Pair.@NotNull ImmutablePair<@NotNull List<@NotNull ConsumerE<@NotNull ByteBuf>>, @NotNull Runnable> splitUploadMethod(final @NotNull ConsumerE<? super @NotNull ByteBuf> sourceMethod, final int requireSize) {
         assert requireSize > 0;
         final int mod = requireSize % WListServer.FileTransferBufferSize;
         final int count = requireSize / WListServer.FileTransferBufferSize - (mod == 0 ? 1 : 0);
         final int rest = mod == 0 ? WListServer.FileTransferBufferSize : mod;
         final List<ConsumerE<ByteBuf>> list = new ArrayList<>(count + 1);
+        final AtomicBoolean leaked = new AtomicBoolean(true);
         final ByteBuf[] cacher = new ByteBuf[count + 1];
         final AtomicInteger countDown = new AtomicInteger(count);
         for (int i = 0; i < count + 1; ++i) {
             final int c = i;
             list.add(b -> {
-                if (c == count)
-                    assert b.readableBytes() == rest;
-                else
-                    assert b.readableBytes() == WListServer.FileTransferBufferSize;
+                assert b.readableBytes() == (c == count ? rest : WListServer.FileTransferBufferSize);
                 cacher[c] = b;
                 if (countDown.getAndDecrement() == 0) {
+                    leaked.set(false);
                     final CompositeByteBuf buf = ByteBufAllocator.DEFAULT.compositeBuffer(count + 1).addComponents(true, cacher);
                     try {
                         sourceMethod.accept(buf);
                     } finally {
-                        buf.release();
+                        if (buf.refCnt() > 0)
+                            buf.release();
                     }
                 }
             });
         }
-        return list;
+        return Pair.ImmutablePair.makeImmutablePair(list, () -> {
+            if (leaked.get())
+                for (final ByteBuf buffer: cacher)
+                    if (buffer != null)
+                        buffer.release();
+        });
     }
 }

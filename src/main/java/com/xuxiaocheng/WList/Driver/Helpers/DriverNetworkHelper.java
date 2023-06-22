@@ -40,30 +40,33 @@ public final class DriverNetworkHelper {
     @SuppressWarnings("SpellCheckingInspection")
     public static final @NotNull String defaultWebAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.37";
     public static final @NotNull String defaultAgent = "WList/0.2.1";
-    public static final OkHttpClient.@NotNull Builder httpClientBuilder = new OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .dispatcher(new Dispatcher(WListServer.IOExecutors))
-            .addInterceptor(chain -> {
-                final Request request = chain.request();
-                if (WList.DebugMode)
-                    HLog.DefaultLogger.log(HLogLevel.NETWORK, "Sending: ", request.method(), ' ', request.url(),
-                        request.header("Range") == null ? "" : (" (Range: " + request.header("Range") + ')'));
-                final long time1 = System.currentTimeMillis();
-                final Response response;
-                try {
-                    response = chain.proceed(request);
-                } catch (final RuntimeException exception) {
-                    Thread.getDefaultUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), exception);
-                    throw exception;
-                } finally {
-                    final long time2 = System.currentTimeMillis();
+    private static final @NotNull Dispatcher dispatcher = new Dispatcher(WListServer.IOExecutors);
+    public static OkHttpClient.@NotNull Builder newHttpClientBuilder(){
+        return new OkHttpClient.Builder()
+                .connectTimeout(15, TimeUnit.SECONDS)
+                .writeTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .dispatcher(DriverNetworkHelper.dispatcher)
+                .addInterceptor(chain -> {
+                    final Request request = chain.request();
                     if (WList.DebugMode)
-                        HLog.DefaultLogger.log(HLogLevel.NETWORK, "Received. Totally cost time: ", time2 - time1, "ms.");
-                }
-                return response;
-            });
+                        HLog.DefaultLogger.log(HLogLevel.NETWORK, "Sending: ", request.method(), ' ', request.url(),
+                                request.header("Range") == null ? "" : (" (Range: " + request.header("Range") + ')'));
+                    final long time1 = System.currentTimeMillis();
+                    final Response response;
+                    try {
+                        response = chain.proceed(request);
+                    } catch (final RuntimeException exception) {
+                        Thread.getDefaultUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), exception);
+                        throw exception;
+                    } finally {
+                        final long time2 = System.currentTimeMillis();
+                        if (WList.DebugMode)
+                            HLog.DefaultLogger.log(HLogLevel.NETWORK, "Received. Totally cost time: ", time2 - time1, "ms.");
+                    }
+                    return response;
+                });
+    }
 
     public static final @NotNull Executor threadPoolSecond = CompletableFuture.delayedExecutor(1, TimeUnit.SECONDS);
     public static final @NotNull Executor threadPoolMinute = CompletableFuture.delayedExecutor(1, TimeUnit.MINUTES);

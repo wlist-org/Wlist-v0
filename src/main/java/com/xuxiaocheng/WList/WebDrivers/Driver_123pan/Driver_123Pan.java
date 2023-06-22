@@ -25,7 +25,7 @@ import java.util.List;
 public final class Driver_123Pan implements DriverInterface<DriverConfiguration_123Pan> {
     private @NotNull DriverConfiguration_123Pan configuration = new DriverConfiguration_123Pan();
 
-    @NotNull DriverConfiguration_123Pan getConfiguration() {
+    public @NotNull DriverConfiguration_123Pan getConfiguration() {
         return this.configuration;
     }
 

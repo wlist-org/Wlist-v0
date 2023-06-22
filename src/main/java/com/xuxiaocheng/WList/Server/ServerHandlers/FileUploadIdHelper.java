@@ -14,7 +14,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.Closeable;
-import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -39,7 +38,7 @@ public final class FileUploadIdHelper {
         return new UploaderData(methods, size, username).id;
     }
 
-    public static boolean cancel(final @NotNull String id, final @NotNull String username) throws IOException {
+    public static boolean cancel(final @NotNull String id, final @NotNull String username) {
         final UploaderData data = FileUploadIdHelper.buffers.get(id);
         if (data == null || !data.username.equals(username))
             return false;
@@ -54,7 +53,6 @@ public final class FileUploadIdHelper {
         return data.put(buf, chunk) ? data.tryGet() : null;
     }
 
-    @SuppressWarnings("OverlyBroadThrowsClause")
     private static class UploaderData implements Closeable {
         private final @NotNull UploadMethods methods;
         private final int count;
@@ -116,20 +114,28 @@ public final class FileUploadIdHelper {
             }
         }
 
+        public @Nullable FileSqlInformation finish() throws Exception {
+            this.closerLock.writeLock().lock();
+            try {
+                if (!this.closed.compareAndSet(false, true))
+                    return null;
+                return this.methods.supplier().get();
+            } finally {
+                this.closerLock.writeLock().unlock();
+                this.close();
+            }
+        }
+
         public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull Boolean> tryGet() throws Exception {
-            boolean flag = false;
             this.closerLock.readLock().lock();
             try {
                 if (this.closed.get() || this.calledSet.size() < this.count)
                     return UnionPair.fail(false);
-                flag = true;
-                final FileSqlInformation information = this.methods.supplier().get();
-                return information == null ? UnionPair.fail(true) : UnionPair.ok(information);
             } finally {
                 this.closerLock.readLock().unlock();
-                if (flag)
-                    this.close();
             }
+            final FileSqlInformation information = this.finish();
+            return information == null ? UnionPair.fail(true) : UnionPair.ok(information);
         }
 
         @Override
