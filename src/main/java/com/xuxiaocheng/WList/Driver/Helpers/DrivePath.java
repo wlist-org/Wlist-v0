@@ -120,6 +120,18 @@ public class DrivePath implements Iterable<String> {
         return new DrivePath(this.path).addedRoot(root);
     }
 
+    public @NotNull DrivePath replace(final int index, final @NotNull CharSequence part) {
+        this.path.remove(index);
+        this.path.addAll(index, DrivePath.split(part));
+        this.pathCache = null;
+        this.parentPathCache = null;
+        return this;
+    }
+
+    public @NotNull DrivePath getReplace(final int index, final @NotNull CharSequence part) {
+        return new DrivePath(this.path).replace(index, part);
+    }
+
     public @NotNull String getPath() {
         if (this.pathCache != null)
             return this.pathCache;
@@ -145,6 +157,8 @@ public class DrivePath implements Iterable<String> {
         for (int i = 0; i < this.path.size() - 1; ++i)
             builder.append('/').append(this.path.get(i));
         this.parentPathCache = builder.toString();
+        if (this.pathCache == null)
+            this.pathCache = builder.append('/').append(this.path.get(this.path.size() - 1)).toString();
         return builder.toString();
     }
 

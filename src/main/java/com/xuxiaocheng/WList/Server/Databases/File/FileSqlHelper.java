@@ -31,6 +31,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 
 final class FileSqlHelper {
     private static final @NotNull ConcurrentMap<@NotNull String, @NotNull FileSqlHelper> instances = new ConcurrentHashMap<>();
@@ -435,6 +436,42 @@ final class FileSqlHelper {
                 }
             }
             return Collections.unmodifiableMap(map);
+        }
+    }
+
+    public void updateForEach(final @NotNull Collection<@NotNull Long> idList, final @NotNull Function<@NotNull FileSqlInformation, @Nullable FileSqlInformation> mapper, final @Nullable String _connectionId) throws SQLException {
+        if (idList.isEmpty())
+            return;
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+            connection.setAutoCommit(false);
+            final Collection<FileSqlInformation> updates = new LinkedList<>();
+            final Collection<Long> deletes = new LinkedList<>();
+            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+                    SELECT * FROM %s WHERE id == ? LIMIT 1;
+                """, this.tableName))) {
+                for (final Long id: idList) {
+                    statement.setLong(1, id.longValue());
+                    final FileSqlInformation raw;
+                    try (final ResultSet result = statement.executeQuery()) {
+                        raw = FileSqlHelper.createNextFileInfo(result);
+                    }
+                    if (raw == null)
+                        continue;
+                    final FileSqlInformation information = mapper.apply(raw);
+                    if (information != null) {
+                        updates.add(information);
+                        if (updates.size() > 128) {
+                            this.insertOrUpdateFiles(updates, connectionId.get());
+                            updates.clear();
+                        }
+                    } else
+                        deletes.add(id);
+                }
+            }
+            this.insertOrUpdateFiles(updates, connectionId.get());
+            this.deleteFilesRecursively(deletes, connectionId.get());
+            connection.commit();
         }
     }
 

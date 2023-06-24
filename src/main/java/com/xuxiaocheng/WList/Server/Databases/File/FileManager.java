@@ -13,6 +13,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 public final class FileManager {
     private FileManager() {
@@ -114,6 +115,10 @@ public final class FileManager {
 
     public static @NotNull @UnmodifiableView Map<@NotNull DrivePath, @NotNull Long> selectFilesCountByParentPathRecursively(final @NotNull String driverName, final @NotNull Collection<? extends @NotNull DrivePath> parentPathList, final @Nullable String _connectionId) throws SQLException {
         return FileSqlHelper.getInstance(driverName).selectFilesCountByParentPathRecursively(parentPathList, _connectionId);
+    }
+
+    public static void updateForEach(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> idList, final @NotNull Function<@NotNull FileSqlInformation, @Nullable FileSqlInformation> mapper, final @Nullable String _connectionId) throws SQLException {
+        FileSqlHelper.getInstance(driverName).updateForEach(idList, mapper /*Cache sync.*/, _connectionId);
     }
 
     public static long selectFileCountByParentPathRecursively(final @NotNull String driverName, final @NotNull DrivePath parentPath, final @Nullable String _connectionId) throws SQLException {
