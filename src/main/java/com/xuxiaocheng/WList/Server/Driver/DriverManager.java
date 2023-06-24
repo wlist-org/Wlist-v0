@@ -49,7 +49,7 @@ public final class DriverManager {
             throw new IllegalParametersException("Conflict driver name.");
         final DriverInterface<C> driver;
         try {
-            driver = (DriverInterface<C>) type.getSupplier().get();
+            driver = (DriverInterface<C>) type.getDriver().get();
         } catch (final RuntimeException exception) {
             throw new IllegalParametersException("Failed to get driver.", Map.of("name", name, "type", type), exception);
         }

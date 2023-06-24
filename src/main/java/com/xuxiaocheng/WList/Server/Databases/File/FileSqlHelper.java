@@ -103,7 +103,7 @@ final class FileSqlHelper {
                     CREATE TRIGGER IF NOT EXISTS %s_deleter AFTER delete ON %s FOR EACH ROW
                     BEGIN
                         DELETE FROM %s_permissions WHERE id == old.id;
-                        DELETE FROM %s WHERE parent_path GLOB CASE WHEN old.parent_path == '/' THEN '/' ELSE old.parent_path || '/' END || old.name || '/*';
+                        DELETE FROM %s WHERE parent_path == CASE WHEN old.parent_path == '/' THEN '/' ELSE old.parent_path || '/' END || old.name;
                     END;
                 """, this.tableName, this.tableName, this.tableName, this.tableName));
                 statement.executeUpdate(String.format("""

@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server;
+package com.xuxiaocheng.WList.Server.ServerHandlers;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTCreator;
@@ -11,6 +11,7 @@ import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.User.UserSqlInformation;
+import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

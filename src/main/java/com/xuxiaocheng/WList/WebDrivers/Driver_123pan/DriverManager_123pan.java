@@ -44,6 +44,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+// TODO trace every DrivePath and ensure not change.
+// TODO check useCache when use twice.
 @SuppressWarnings("SameParameterValue")
 public final class DriverManager_123pan {
     private DriverManager_123pan() {
@@ -93,7 +95,7 @@ public final class DriverManager_123pan {
                 }), _threadPool);
     }
 
-    static @Nullable FileSqlInformation getFileInformation(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean requireDirectory, final boolean useCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws SQLException {
+    static @Nullable FileSqlInformation getFileInformation(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean requireDirectory, final boolean useCache, final boolean forceCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws SQLException {
         if (path.getDepth() == 0)
             return DriverManager_123pan.getRootInformation(configuration.getWebSide().getRootDirectoryId());
         final AtomicReference<String> connectionId = new AtomicReference<>();
@@ -104,9 +106,11 @@ public final class DriverManager_123pan {
                 if (information != null)
                     return requireDirectory && !information.isDir() ? null : information;
             }
+            if (forceCache)
+                return null;
             final String name = path.getName();
             final DrivePath parentPath = path.getParent();
-            final FileSqlInformation parentInformation = DriverManager_123pan.getFileInformation(configuration, parentPath, true, useCache, connectionId.get(), _threadPool);
+            final FileSqlInformation parentInformation = DriverManager_123pan.getFileInformation(configuration, parentPath, true, useCache, false, connectionId.get(), _threadPool);
             if (parentInformation == null) {
                 connection.commit();
                 return null;
@@ -184,7 +188,7 @@ public final class DriverManager_123pan {
                     return list;
                 assert list.getSecond().isEmpty();
             }
-            final FileSqlInformation directoryInformation = DriverManager_123pan.getFileInformation(configuration, directoryPath, true, useCache, connectionId.get(), _threadPool);
+            final FileSqlInformation directoryInformation = DriverManager_123pan.getFileInformation(configuration, directoryPath, true, useCache, false, connectionId.get(), _threadPool);
             if (directoryInformation == null) {
                 connection.commit();
                 return null;
@@ -213,7 +217,7 @@ public final class DriverManager_123pan {
     // File Manager
 
     static @Nullable DownloadMethods getDownloadMethods(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final boolean useCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
-        final FileSqlInformation info = DriverManager_123pan.getFileInformation(configuration, path, false, useCache, _connectionId, _threadPool);
+        final FileSqlInformation info = DriverManager_123pan.getFileInformation(configuration, path, false, useCache, false, _connectionId, _threadPool);
         if (info == null || info.isDir())
             return null;
         final String url = DriverHelper_123pan.getFileDownloadUrl(configuration, info);
@@ -223,33 +227,73 @@ public final class DriverManager_123pan {
                 Pair.ImmutablePair.makeImmutablePair(url, "GET"), info.size(), from, to, null));
     }
 
+    static void trashFile(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean useCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
+        if (path.getDepth() == 0)
+            throw new IllegalStateException("Cannot trash root.");
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = FileManager.getDatabaseUtil().getConnection(_connectionId, connectionId)) {
+            connection.setAutoCommit(false);
+            final FileSqlInformation information = DriverManager_123pan.getFileInformation(configuration, path, false, useCache, false, connectionId.get(), _threadPool);
+            if (information == null) {
+                connection.commit();
+                return;
+            }
+            final Set<Long> ids = DriverHelper_123pan.trashFiles(configuration, List.of(information.id()), true);
+            if (!ids.isEmpty()) // assert ids.size() == 1 && ids.contains(fileId);
+                FileManager.deleteFileRecursively(configuration.getLocalSide().getName(), information.id(), connectionId.get());
+            connection.commit();
+        }
+    }
+
+    static @NotNull UnionPair<@NotNull UnionPair<@NotNull FileSqlInformation, @NotNull String>, @NotNull FailureReason> getDuplicatePolicyName(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final Options.@NotNull DuplicatePolicy policy, final boolean requireDirectory, final @NotNull String duplicateErrorMethod, final boolean useCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = FileManager.getDatabaseUtil().getConnection(_connectionId, connectionId)) {
+            connection.setAutoCommit(false);
+            FileSqlInformation info = DriverManager_123pan.getFileInformation(configuration, path, requireDirectory, useCache, true, connectionId.get(), _threadPool);
+            if (info == null) {
+                connection.commit();
+                return UnionPair.ok(UnionPair.fail(path.getName()));
+            }
+            if (requireDirectory && info.isDir()) {
+                connection.commit();
+                return UnionPair.ok(UnionPair.ok(info));
+            }
+            if (policy == Options.DuplicatePolicy.ERROR) {
+                connection.commit();
+                return UnionPair.fail(FailureReason.byDuplicateError(duplicateErrorMethod, path));
+            }
+            if (policy == Options.DuplicatePolicy.OVER)
+                DriverManager_123pan.trashFile(configuration, path, useCache, connectionId.get(), _threadPool);
+            assert policy == Options.DuplicatePolicy.KEEP;
+            final String name = path.getName();
+            int retry = 0;
+            final Pair.ImmutablePair<String, String> wrapper = DriverUtil.getRetryWrapper(path.getName());
+            while (info != null && !(requireDirectory && info.isDir()))
+                info = DriverManager_123pan.getFileInformation(configuration, path.parent().child(wrapper.getFirst() + (++retry) + wrapper.getSecond()), false, true, true, connectionId.get(), _threadPool);
+            final String duplicated = path.getName();
+            path.parent().child(name);
+            connection.commit();
+            return UnionPair.ok(UnionPair.fail(duplicated));
+        }
+    }
+
     static @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> createDirectoriesRecursively(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final Options.@NotNull DuplicatePolicy policy, final boolean useCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
         if (path.getDepth() == 0)
             return UnionPair.ok(DriverManager_123pan.getRootInformation(configuration.getWebSide().getRootDirectoryId()));
-        String name = path.getName();
+        final String name = path.getName();
         if (!DriverHelper_123pan.filenamePredication.test(name))
             return UnionPair.fail(FailureReason.byInvalidName(name, path));
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = FileManager.getDatabaseUtil().getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
-            // TODO Unified process
-            FileSqlInformation info = DriverManager_123pan.getFileInformation(configuration, path, false, useCache, connectionId.get(), _threadPool);
-            if (info != null) {
-                if (info.isDir())
-                    return UnionPair.ok(info);
-                if (policy == Options.DuplicatePolicy.ERROR)
-                    return UnionPair.fail(FailureReason.byDuplicateError("Creating directories recursively.", path));
-                if (policy == Options.DuplicatePolicy.OVER)
-                    DriverManager_123pan.trashFile(configuration, path, useCache, connectionId.get(), _threadPool);
-                if (policy == Options.DuplicatePolicy.KEEP) {
-                    int retry = 0;
-                    final Pair.ImmutablePair<String, String> wrapper = DriverUtil.getRetryWrapper(name);
-                    while (info != null && !info.isDir())
-                        info = FileManager.selectFileByPath(configuration.getLocalSide().getName(), path.parent().child(wrapper.getFirst() + (++retry) + wrapper.getSecond()), connectionId.get());
-                    if (info != null)
-                        return UnionPair.ok(info);
-                    name = wrapper.getFirst() + retry + wrapper.getSecond();
-                }
+            final UnionPair<UnionPair<FileSqlInformation, String>, FailureReason> duplicate = DriverManager_123pan.getDuplicatePolicyName(configuration, path, policy, true, "Creating directories recursively. path=" + path, useCache, connectionId.get(), _threadPool);
+            if (duplicate.isFailure()) {
+                connection.commit();
+                return UnionPair.fail(duplicate.getE());
+            }
+            if (duplicate.getT().isSuccess()) {
+                connection.commit();
+                return UnionPair.ok(duplicate.getT().getT());
             }
             final UnionPair<FileSqlInformation, FailureReason> parentInformation;
             try {
@@ -258,15 +302,22 @@ public final class DriverManager_123pan {
                 path.child(name);
             }
             if (parentInformation.isFailure()) {
-                if (FailureReason.InvalidFilename.equals(parentInformation.getE().kind())) {
-                    final Object extra = parentInformation.getE().extra();
-                    if (extra instanceof DrivePath p)
-                        p.child(name);
-                }
+                if (parentInformation.getE().extra() instanceof DrivePath p)
+                    p.child(name);
+                connection.commit();
                 return parentInformation;
             }
-            final UnionPair<FileSqlInformation, FailureReason> information = DriverHelper_123pan.createDirectory(configuration, parentInformation.getT().id(), path, policy);
-            FileManager.insertOrUpdateFile(configuration.getLocalSide().getName(), information.getT(), connectionId.get());
+            final UnionPair<FileSqlInformation, FailureReason> information;
+            try {
+                information = DriverHelper_123pan.createDirectory(configuration, parentInformation.getT().id(), path.parent().child(duplicate.getT().getE()), policy);
+                if (information.isFailure()) {
+                    connection.commit();
+                    return information;
+                }
+                FileManager.insertOrUpdateFile(configuration.getLocalSide().getName(), information.getT(), connectionId.get());
+            } finally {
+                path.child(name);
+            }
             connection.commit();
             return information;
         }
@@ -282,8 +333,12 @@ public final class DriverManager_123pan {
         final UnionPair<FileSqlInformation, FailureReason> parentDirectory = DriverManager_123pan.createDirectoriesRecursively(configuration, parentPath, policy, useCache, _connectionId, _threadPool);
         if (parentDirectory.isFailure())
             return UnionPair.fail(parentDirectory.getE());
-        // TODO policy sync
-        final UnionPair<UnionPair<FileSqlInformation, DriverHelper_123pan.UploadIdentifier_123pan>, FailureReason> requestUploadData = DriverHelper_123pan.uploadRequest(configuration, parentDirectory.getT().id(), path, size, md5, policy);
+        final DrivePath realPath = parentDirectory.getT().path().getChild(newFileName);
+        final UnionPair<UnionPair<FileSqlInformation, String>, FailureReason> duplicate = DriverManager_123pan.getDuplicatePolicyName(configuration, realPath, policy, false, "Uploading file. path=" + realPath.getPath(), useCache, _connectionId, _threadPool);
+        if (duplicate.isFailure())
+            return UnionPair.fail(duplicate.getE());
+        realPath.parent().child(duplicate.getT().getE());
+        final UnionPair<UnionPair<FileSqlInformation, DriverHelper_123pan.UploadIdentifier_123pan>, FailureReason> requestUploadData = DriverHelper_123pan.uploadRequest(configuration, parentDirectory.getT().id(), realPath, size, md5, policy);
         if (requestUploadData.isFailure())
             return UnionPair.fail(requestUploadData.getE());
         if (requestUploadData.getT().isSuccess()) {
@@ -333,24 +388,6 @@ public final class DriverManager_123pan {
         }, () -> finishers.forEach(Runnable::run)));
     }
 
-    static void trashFile(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final boolean useCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
-        if (path.getDepth() == 0)
-            throw new IllegalStateException("Cannot trash root.");
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = FileManager.getDatabaseUtil().getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            final FileSqlInformation information = DriverManager_123pan.getFileInformation(configuration, path, false, useCache, connectionId.get(), _threadPool);
-            if (information == null) {
-                connection.commit();
-                return;
-            }
-            final Set<Long> ids = DriverHelper_123pan.trashFiles(configuration, List.of(information.id()), true);
-            if (!ids.isEmpty()) // assert ids.size() == 1 && ids.contains(fileId);
-                FileManager.deleteFileRecursively(configuration.getLocalSide().getName(), information.id(), connectionId.get());
-            connection.commit();
-        }
-    }
-
     static @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> renameFile(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull DrivePath path, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final boolean useCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
         if (!DriverHelper_123pan.filenamePredication.test(name))
             return UnionPair.fail(FailureReason.byInvalidName(name, path.getParent().child(name)));
@@ -358,26 +395,17 @@ public final class DriverManager_123pan {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = FileManager.getDatabaseUtil().getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
-            final FileSqlInformation source = DriverManager_123pan.getFileInformation(configuration, path, false, useCache, connectionId.get(), _threadPool);
+            final FileSqlInformation source = DriverManager_123pan.getFileInformation(configuration, path, false, useCache, false, connectionId.get(), _threadPool);
             if (source == null) {
                 connection.commit();
                 return UnionPair.fail(FailureReason.byNoSuchFile("Renaming file.", path));
             }
-            FileSqlInformation target = DriverManager_123pan.getFileInformation(configuration, path, false, true, connectionId.get(), _threadPool);
-            if (target != null) {
-                if (policy == Options.DuplicatePolicy.ERROR) {
-                    connection.commit();
-                    return UnionPair.fail(FailureReason.byDuplicateError("Renaming file.", newFilePath));
-                }
-                if (policy == Options.DuplicatePolicy.OVER)
-                    DriverManager_123pan.trashFile(configuration, newFilePath, true, connectionId.get(), _threadPool);
-                if (policy == Options.DuplicatePolicy.KEEP) {
-                    int retry = 0;
-                    final Pair.ImmutablePair<String, String> wrapper = DriverUtil.getRetryWrapper(name);
-                    while (target != null)
-                        target = DriverManager_123pan.getFileInformation(configuration, newFilePath.parent().child(wrapper.getFirst() + (++retry) + wrapper.getSecond()), false, true, connectionId.get(), _threadPool);
-                }
+            final UnionPair<UnionPair<FileSqlInformation, String>, FailureReason> duplicate = DriverManager_123pan.getDuplicatePolicyName(configuration, newFilePath, policy, false, "Renaming file.", useCache, connectionId.get(), _threadPool);
+            if (duplicate.isFailure()) {
+                connection.commit();
+                return UnionPair.fail(duplicate.getE());
             }
+            newFilePath.parent().child(duplicate.getT().getE());
             final UnionPair<FileSqlInformation, FailureReason> information = DriverHelper_123pan.renameFile(configuration, source.id(), newFilePath);
             if (information.isFailure()) {
                 connection.commit();
@@ -393,35 +421,25 @@ public final class DriverManager_123pan {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = FileManager.getDatabaseUtil().getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
-            final FileSqlInformation sourceId = DriverManager_123pan.getFileInformation(configuration, sourceFile, false, useCache, connectionId.get(), _threadPool);
-            final FileSqlInformation targetId = DriverManager_123pan.getFileInformation(configuration, targetParent, true, useCache, connectionId.get(), _threadPool);
+            final FileSqlInformation sourceId = DriverManager_123pan.getFileInformation(configuration, sourceFile, false, useCache, false, connectionId.get(), _threadPool);
             if (sourceId == null) {
                 connection.commit();
                 return UnionPair.fail(FailureReason.byNoSuchFile("Moving file. source", sourceFile));
             }
-            if (targetId == null) {
+            final UnionPair<FileSqlInformation, FailureReason> targetId = DriverManager_123pan.createDirectoriesRecursively(configuration, targetParent, Options.DuplicatePolicy.ERROR, true, connectionId.get(), _threadPool);
+            if (targetId.isFailure()) {
                 connection.commit();
-                return UnionPair.fail(FailureReason.byNoSuchFile("Moving file. target", targetParent));
+                return targetId;
             }
-            FileSqlInformation information = DriverHelper_123pan.moveFiles(configuration, List.of(sourceId.id()), targetId.id(), targetParent).get(sourceId.id());
+            final DrivePath realPath = targetId.getT().path();
+            final UnionPair<UnionPair<FileSqlInformation, String>, FailureReason> duplicate = DriverManager_123pan.getDuplicatePolicyName(configuration, realPath, policy, true, "Moving file. target" , useCache, connectionId.get(), _threadPool);
+            if (duplicate.isFailure()) {
+                connection.commit();
+                return UnionPair.fail(duplicate.getE());
+            }
+            final FileSqlInformation information = DriverHelper_123pan.moveFiles(configuration, List.of(sourceId.id()), targetId.getT().id(), targetParent).get(sourceId.id());
             if (information == null)
                 throw new IllegalStateException("Failed to move file. [Unknown]. sourceFile: " + sourceFile + ", sourceId: " + sourceId + ", targetParent: " + targetParent + ", targetId: " + targetId + ", policy: " + policy);
-            if (!information.path().getName().equals(sourceFile.getName())) {
-                if (policy == Options.DuplicatePolicy.ERROR) {
-                    DriverManager_123pan.trashFile(configuration, information.path(), useCache, connectionId.get(), _threadPool);
-                    return UnionPair.fail(FailureReason.byDuplicateError("Moving file.", information.path()));
-                }
-                if (policy == Options.DuplicatePolicy.OVER) {
-                    DriverManager_123pan.trashFile(configuration, information.path(), useCache, connectionId.get(), _threadPool);
-                    DriverManager_123pan.trashFile(configuration, targetParent.child(sourceFile.getName()), useCache, connectionId.get(), _threadPool);
-                    targetParent.parent();
-                    information = DriverHelper_123pan.moveFiles(configuration, List.of(sourceId.id()), targetId.id(), targetParent).get(sourceId.id());
-                    if (information == null)
-                        throw new IllegalStateException("Failed to move file. [Unknown]. sourceFile: " + sourceFile + ", sourceId: " + sourceId + ", targetParent: " + targetParent + ", targetId: " + targetId + ", policy: " + Options.DuplicatePolicy.OVER);
-                    if (!information.path().getName().equals(sourceFile.getName()))
-                        throw new IllegalStateException("Failed to move file. [Unreachable]. sourceFile: " + sourceFile + ", sourceId: " + sourceId + ", targetParent: " + targetParent + ", targetId: " + targetId + ", policy: " + Options.DuplicatePolicy.OVER);
-                }
-            }
             FileManager.insertOrUpdateFile(configuration.getLocalSide().getName(), information, connectionId.get());
             connection.commit();
             return UnionPair.ok(information);

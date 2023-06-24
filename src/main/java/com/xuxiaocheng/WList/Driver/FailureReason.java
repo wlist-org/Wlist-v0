@@ -17,8 +17,8 @@ public class FailureReason {
         return new FailureReason(FailureReason.InvalidFilename, name, fullPath);
     }
 
-    public static @NotNull FailureReason byDuplicateError(final @NotNull String callingMethod, final @NotNull DrivePath path) {
-        return new FailureReason(FailureReason.DuplicatePolicyError, callingMethod, path);
+    public static @NotNull FailureReason byDuplicateError(final @NotNull String callingMethodMessage, final @NotNull DrivePath path) {
+        return new FailureReason(FailureReason.DuplicatePolicyError, callingMethodMessage, path);
     }
 
     public static @NotNull FailureReason byExceedMaxSize(final long current, final long max, final @NotNull DrivePath path) {
@@ -29,8 +29,8 @@ public class FailureReason {
         return new FailureReason(FailureReason.ExceedMaxSize, "Current: " + current + ", " + message, path);
     }
 
-    public static @NotNull FailureReason byNoSuchFile(final @NotNull String callingMethod, final @NotNull DrivePath path) {
-        return new FailureReason(FailureReason.NoSuchFile, callingMethod, path);
+    public static @NotNull FailureReason byNoSuchFile(final @NotNull String callingMethodMessage, final @NotNull DrivePath path) {
+        return new FailureReason(FailureReason.NoSuchFile, callingMethodMessage, path);
     }
 
     public static @NotNull FailureReason others(final @NotNull String message, final @Nullable Object extra) {

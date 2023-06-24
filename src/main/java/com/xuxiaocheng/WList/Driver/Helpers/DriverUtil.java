@@ -60,6 +60,16 @@ public final class DriverUtil {
     public static final Options.@NotNull OrderDirection DefaultOrderDirection = Options.OrderDirection.ASCEND;
 
 
+    /**
+     * Example: <pre>{@code
+     *     int retry = 0;
+     *     final Pair.ImmutablePair<String, String> wrapper = DriverUtil.getRetryWrapper(path.getName());
+     *     while (...) {
+     *         final String name = wrapper.getFirst() + (++retry) + wrapper.getSecond();
+     *         ...
+     *     }
+     * }</pre>
+     */
     public static @NotNull Pair.ImmutablePair<@NotNull String, @NotNull String> getRetryWrapper(final @NotNull String name) {
         final int index = name.lastIndexOf('.');
         final String left = (index < 0 ? name: name.substring(0, index)) + '(';

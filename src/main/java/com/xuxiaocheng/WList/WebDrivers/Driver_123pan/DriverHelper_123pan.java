@@ -58,7 +58,7 @@ final class DriverHelper_123pan {
     static final @NotNull OkHttpClient httpClient = DriverNetworkHelper.newHttpClientBuilder()
             .addNetworkInterceptor(new DriverNetworkHelper.FrequencyControlInterceptor(5, 100)).build();
     static final @NotNull OkHttpClient fileClient = DriverNetworkHelper.newHttpClientBuilder()
-            .writeTimeout(2, TimeUnit.MINUTES).build();
+            .writeTimeout(3, TimeUnit.MINUTES).build();
     static final @NotNull String agent = DriverNetworkHelper.defaultWebAgent + " " + DriverNetworkHelper.defaultAgent;
 
     static final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> LoginURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/user/sign_in", "POST");

@@ -25,7 +25,7 @@ import java.util.List;
 public final class Driver_123Pan implements DriverInterface<DriverConfiguration_123Pan> {
     private @NotNull DriverConfiguration_123Pan configuration = new DriverConfiguration_123Pan();
 
-    public @NotNull DriverConfiguration_123Pan getConfiguration() {
+    @NotNull DriverConfiguration_123Pan getConfiguration() {
         return this.configuration;
     }
 
@@ -52,7 +52,7 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
 
     @Override
     public void forceRefreshDirectory(final @NotNull DrivePath path) throws SQLException {
-        final FileSqlInformation information = DriverManager_123pan.getFileInformation(this.configuration, path, true, true, null, null);
+        final FileSqlInformation information = DriverManager_123pan.getFileInformation(this.configuration, path, true, true, false, null, null);
         if (information == null)
             return;
         final Iterator<FileSqlInformation> iterator = DriverManager_123pan.listAllFilesNoCache(this.configuration, information.id(), path, null, null).getB();
@@ -67,7 +67,7 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
 
     @Override
     public @Nullable FileSqlInformation info(final @NotNull DrivePath path) throws IllegalParametersException, IOException, SQLException {
-        return DriverManager_123pan.getFileInformation(this.configuration, path, false, true, null, null);
+        return DriverManager_123pan.getFileInformation(this.configuration, path, false, true, false, null, null);
     }
 
     @Override
