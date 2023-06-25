@@ -21,6 +21,12 @@ import java.util.List;
 
 public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     /**
+     * Get default configuration instance to initialize.
+     * Also be used to serialize.
+     */
+    @NotNull C getConfiguration();
+
+    /**
      * Init the web driver. (bind to the configuration.)
      * When user modify the configuration, this method will be call automatically.
      * @param configuration The modified configuration.

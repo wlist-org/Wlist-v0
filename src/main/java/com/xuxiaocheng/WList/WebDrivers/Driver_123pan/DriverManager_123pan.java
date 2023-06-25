@@ -439,7 +439,7 @@ public final class DriverManager_123pan {
                 connection.commit();
                 return UnionPair.fail(FailureReason.byNoSuchFile("Moving file. source", sourceFile));
             }
-            final UnionPair<FileSqlInformation, FailureReason> targetId = DriverManager_123pan.createDirectoriesRecursively(configuration, targetParent, Options.DuplicatePolicy.ERROR, true, connectionId.get(), _threadPool);
+            final UnionPair<FileSqlInformation, FailureReason> targetId = DriverManager_123pan.createDirectoriesRecursively(configuration, targetParent, Options.DuplicatePolicy.ERROR, useCache, connectionId.get(), _threadPool);
             if (targetId.isFailure()) {
                 connection.commit();
                 return targetId;

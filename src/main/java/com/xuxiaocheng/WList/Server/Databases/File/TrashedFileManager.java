@@ -63,6 +63,10 @@ public final class TrashedFileManager {
         TrashedFileManager.deleteFilesByMd5(driverName, List.of(md5), _connectionId);
     }
 
+    public static void clear(final @NotNull String driverName, final @Nullable String _connectionId) throws SQLException {
+        TrashedSqlHelper.getInstance(driverName).clear(_connectionId);
+    }
+
     public static @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull TrashedSqlInformation> selectFiles(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
         return TrashedSqlHelper.getInstance(driverName).selectFiles(idList, _connectionId);
     }

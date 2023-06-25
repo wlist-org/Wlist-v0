@@ -24,16 +24,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
@@ -53,28 +49,16 @@ public final class DriverManager {
         final DriverInterface<C> driver;
         final DriverTrashInterface<DriverInterface<C>> trash;
         try {
-            driver = (DriverInterface<C>) type.getDriver().get();
             final Supplier<DriverTrashInterface<?>> supplier = type.getTrash();
             trash = supplier == null ? null: (DriverTrashInterface<DriverInterface<C>>) supplier.get();
+            driver = trash == null ? (DriverInterface<C>) type.getDriver().get() : trash.getDriver();
         } catch (final RuntimeException exception) {
             throw new IllegalParametersException("Failed to get driver.", Map.of("name", name, "type", type), exception);
         }
         final File path = new File("configs", name + ".yaml");
         if (!HFileHelper.ensureFileExist(path))
             throw new IOException("Failed to create driver configuration file. path: " + path.getAbsolutePath());
-        final C configuration;
-        try {
-            ParameterizedType configType = null;
-            for (final Type t: driver.getClass().getGenericInterfaces())
-                if (t instanceof ParameterizedType p && DriverInterface.class.equals(p.getRawType())) {
-                    configType = p;
-                    break;
-                }
-            configuration = ((Class<C>) Objects.requireNonNull(configType).getActualTypeArguments()[0]).getConstructor().newInstance();
-        } catch (final IllegalArgumentException | SecurityException | ClassCastException | NullPointerException
-                       | InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException exception) {
-            throw new IllegalParametersException("Failed to get driver configuration.", Map.of("name", name, "type", type), exception);
-        }
+        final C configuration = driver.getConfiguration();
         final Map<String, Object> config = new LinkedHashMap<>();
         try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(path))) {
             config.putAll(YamlHelper.loadYaml(inputStream));

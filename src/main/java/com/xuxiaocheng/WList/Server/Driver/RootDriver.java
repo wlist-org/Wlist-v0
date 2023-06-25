@@ -25,10 +25,18 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
         return RootDriver.instance;
     }
 
+    private @NotNull RootDriverConfiguration configuration = new RootDriverConfiguration();
+
     @Override
-    public void initialize(final @Nullable RootDriverConfiguration configuration) {
+    public @NotNull RootDriverConfiguration getConfiguration() {
+        return this.configuration;
+    }
+
+    @Override
+    public void initialize(final @NotNull RootDriverConfiguration configuration) {
 //        DriverManager.init();
         // TODO get root user config.
+        this.configuration = configuration;
     }
 
     @Override
@@ -259,5 +267,12 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
         public static class LocalSide extends LocalSideDriverConfiguration {}
         public static class WebSide extends WebSideDriverConfiguration {}
         public static class CacheSide extends CacheSideDriverConfiguration {}
+    }
+
+    @Override
+    public @NotNull  String toString() {
+        return "RootDriver{" +
+                "configuration=" + this.configuration +
+                '}';
     }
 }

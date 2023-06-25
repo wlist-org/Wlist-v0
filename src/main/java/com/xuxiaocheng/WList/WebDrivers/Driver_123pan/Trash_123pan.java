@@ -24,6 +24,11 @@ public class Trash_123pan implements DriverTrashInterface<Driver_123Pan> {
     private @NotNull Driver_123Pan driver = new Driver_123Pan();
 
     @Override
+    public @NotNull Driver_123Pan getDriver() {
+        return this.driver;
+    }
+
+    @Override
     public void initialize(final @NotNull Driver_123Pan driver) throws SQLException {
         TrashedFileManager.initialize(driver.getConfiguration().getLocalSide().getName());
         this.driver = driver;
@@ -53,13 +58,8 @@ public class Trash_123pan implements DriverTrashInterface<Driver_123Pan> {
     }
 
     @Override
-    public @NotNull List<@NotNull TrashedSqlInformation> info(final @NotNull String name) throws SQLException {
-        return TrashManager_123pan.getFileInformation(this.driver.getConfiguration(), name, true, null, null);
-    }
-
-    @Override
-    public @Nullable DownloadMethods download(final long id, final long from, final long to) throws IllegalParametersException, IOException, SQLException {
-        return TrashManager_123pan.getDownloadMethods(this.driver.getConfiguration(), id, from, to, true, null);
+    public @Nullable TrashedSqlInformation info(final long id) throws IllegalParametersException, IOException, SQLException {
+        return TrashManager_123pan.getFileInformation(this.driver.getConfiguration(), id, true, null);
     }
 
     @Override
@@ -68,13 +68,18 @@ public class Trash_123pan implements DriverTrashInterface<Driver_123Pan> {
     }
 
     @Override
-    public void delete(final long id) throws Exception {
-
+    public void delete(final long id) throws IllegalParametersException, IOException, SQLException {
+        TrashManager_123pan.deleteFile(this.driver.getConfiguration(), id, true, null);
     }
 
     @Override
-    public void deleteAll() throws Exception {
+    public void deleteAll() throws IllegalParametersException, IOException, SQLException {
+        TrashManager_123pan.deleteAllFiles(this.driver.getConfiguration(), null);
+    }
 
+    @Override
+    public @Nullable DownloadMethods download(final long id, final long from, final long to) throws IllegalParametersException, IOException, SQLException {
+        return TrashManager_123pan.getDownloadMethods(this.driver.getConfiguration(), id, from, to, true, null);
     }
 
     @Override
@@ -82,4 +87,10 @@ public class Trash_123pan implements DriverTrashInterface<Driver_123Pan> {
         return null;
     }
 
+    @Override
+    public @NotNull String toString() {
+        return "Trash_123pan{" +
+                "driver=" + this.driver +
+                '}';
+    }
 }

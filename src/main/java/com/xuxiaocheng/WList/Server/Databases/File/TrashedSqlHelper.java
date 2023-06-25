@@ -229,6 +229,19 @@ public class TrashedSqlHelper {
         }
     }
 
+    public void clear(final @Nullable String _connectionId) throws SQLException {
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+            connection.setAutoCommit(false);
+            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+                    DELETE FROM %s;
+                """, this.tableName))) {
+                statement.executeUpdate();
+            }
+            connection.commit();
+        }
+    }
+
     public @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull TrashedSqlInformation> selectFiles(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
         if (idList.isEmpty())
             return Map.of();
