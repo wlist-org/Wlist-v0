@@ -85,7 +85,6 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
                     ", password='" + this.password + '\'' +
                     ", loginType=" + this.loginType +
                     ", rootDirectoryId=" + this.rootDirectoryId +
-                    ", defaultLimitPerPage=" + this.defaultLimitPerPage +
                     '}';
         }
     }

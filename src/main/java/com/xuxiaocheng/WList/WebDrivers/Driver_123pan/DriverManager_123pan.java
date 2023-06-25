@@ -81,10 +81,10 @@ public final class DriverManager_123pan {
         }
         return DriverUtil.wrapAllFilesListerInPages(page -> {
                     final Pair.ImmutablePair<@NotNull Long, @NotNull List<FileSqlInformation>> list = DriverManager_123pan.listFilesNoCache(configuration, directoryId, directoryPath,
-                            configuration.getWebSide().getDefaultLimitPerPage(), page.intValue(), DriverUtil.DefaultOrderPolicy, DriverUtil.DefaultOrderDirection, connectionId.get());
+                            DriverUtil.DefaultLimitPerRequestPage, page.intValue(), DriverUtil.DefaultOrderPolicy, DriverUtil.DefaultOrderDirection, connectionId.get());
                     allIds.removeAll(list.getSecond().stream().map(FileSqlInformation::id).collect(Collectors.toSet()));
                     return list;
-                }, configuration.getWebSide().getDefaultLimitPerPage(), HExceptionWrapper.wrapConsumer(e -> {
+                }, DriverUtil.DefaultLimitPerRequestPage, HExceptionWrapper.wrapConsumer(e -> {
                     try (connection) {
                         if (e != null) throw e;
                         FileManager.deleteFilesRecursively(configuration.getLocalSide().getName(), allIds, connectionId.get());

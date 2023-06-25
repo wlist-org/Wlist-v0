@@ -1,7 +1,6 @@
 package com.xuxiaocheng.WList.Driver;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Utils.YamlHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -114,35 +113,23 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
     }
 
     public static class WebSideDriverConfiguration {
-        protected int defaultLimitPerPage = 50;
-
         protected void load(final @NotNull Map<? super @NotNull String, @NotNull Object> web, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
-            this.defaultLimitPerPage = YamlHelper.getConfig(web, "default_limit_per_page", () -> Integer.toString(this.defaultLimitPerPage),
-                    o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "default_limit_per_page", BigInteger.ONE, BigInteger.valueOf(GlobalConfiguration.getInstance().maxLimitPerPage()))).intValue();
         }
 
         protected @NotNull Map<@NotNull String, @NotNull Object> dump() {
-            final Map<String, Object> web = new LinkedHashMap<>();
-            web.put("default_limit_per_page", this.defaultLimitPerPage);
-            return web;
-        }
-
-        public int getDefaultLimitPerPage() {
-            return this.defaultLimitPerPage;
+            return new LinkedHashMap<>();
         }
 
         @Override
         public @NotNull String toString() {
-            return "WebSideDriverConfiguration{" +
-                    "defaultLimitPerPage=" + this.defaultLimitPerPage +
-                    "}";
+            return "WebSideDriverConfiguration{}";
         }
     }
 
     public abstract static class CacheSideDriverConfiguration {
         protected @NotNull String nickname = "";
         protected @Nullable String imageLink = null;
-        protected boolean vip = false;
+        protected boolean vip = false; // TODO vipLevel
         protected long spaceAll = 0;
         protected long spaceUsed = -1;
         protected long fileCount = -1;
