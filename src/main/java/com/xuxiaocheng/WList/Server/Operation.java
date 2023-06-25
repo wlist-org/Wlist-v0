@@ -50,6 +50,7 @@ public final class Operation {
         UsersList,
         UsersOperate,
         DriverOperate,
+//      TODO  FilesBuildIndex, // build index and force refresh.
         FilesList,
         FileDownload,
         FileUpload,

@@ -68,6 +68,7 @@ final class FileSqlHelper {
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
             try (final Statement statement = connection.createStatement()) {
+                // TODO path hash and index.
                 statement.executeUpdate(String.format("""
                     CREATE TABLE IF NOT EXISTS %s (
                         id           INTEGER PRIMARY KEY AUTOINCREMENT
@@ -87,39 +88,51 @@ final class FileSqlHelper {
                         others       TEXT
                     );
                 """, this.tableName));
-                statement.executeUpdate(String.format("""
-                    CREATE TABLE IF NOT EXISTS %s_permissions (
-                        rule_id      INTEGER PRIMARY KEY AUTOINCREMENT
-                                             UNIQUE
-                                             NOT NULL,
-                        identifier   TEXT    UNIQUE
-                                             NOT NULL,
-                        id           INTEGER NOT NULL
-                                             REFERENCES %s (id),
-                        group_id     INTEGER NOT NULL
-                                             REFERENCES groups (group_id)
-                    );
-                """, this.tableName, this.tableName));
-                statement.executeUpdate(String.format("""
+//                statement.executeUpdate(String.format("""
+//                    CREATE TABLE IF NOT EXISTS %s_permissions (
+//                        rule_id      INTEGER PRIMARY KEY AUTOINCREMENT
+//                                             UNIQUE
+//                                             NOT NULL,
+//                        identifier   TEXT    UNIQUE
+//                                             NOT NULL,
+//                        id           INTEGER NOT NULL
+//                                             REFERENCES %s (id),
+//                        group_id     INTEGER NOT NULL
+//                                             REFERENCES groups (group_id)
+//                    );
+//                """, this.tableName, this.tableName));
+                statement.executeUpdate(String.format(
+//                        DELETE FROM %s_permissions WHERE id == old.id;
+                    """
                     CREATE TRIGGER IF NOT EXISTS %s_deleter AFTER delete ON %s FOR EACH ROW
                     BEGIN
-                        DELETE FROM %s_permissions WHERE id == old.id;
                         DELETE FROM %s WHERE parent_path == CASE WHEN old.parent_path == '/' THEN '/' ELSE old.parent_path || '/' END || old.name;
                         DELETE FROM %s WHERE parent_path GLOB CASE WHEN old.parent_path == '/' THEN '/' ELSE old.parent_path || '/' END || old.name || '/*';
                     END;
-                """, this.tableName, this.tableName, this.tableName, this.tableName, this.tableName));
+                """, this.tableName, this.tableName, this.tableName, this.tableName));
                 statement.executeUpdate(String.format("""
-                    CREATE TRIGGER IF NOT EXISTS %s_updater AFTER update OF is_directory ON %s FOR EACH ROW
+                    CREATE TRIGGER IF NOT EXISTS %s_updater AFTER update OF is_directory ON %s FOR EACH ROW WHEN new.is_directory == 0 AND old.is_directory == 1
                     BEGIN
-                        DELETE FROM %s WHERE new.is_directory == 0 AND parent_path == old.parent_path || '/' || old.name;
+                        DELETE FROM %s WHERE parent_path == CASE WHEN old.parent_path == '/' THEN '/' ELSE old.parent_path || '/' END || old.name;
+                        DELETE FROM %s WHERE parent_path GLOB CASE WHEN old.parent_path == '/' THEN '/' ELSE old.parent_path || '/' END || old.name || '/*';
                     END;
-                """, this.tableName, this.tableName, this.tableName));
+                """, this.tableName, this.tableName, this.tableName, this.tableName));
                 statement.executeUpdate(String.format("""
-                    CREATE TRIGGER IF NOT EXISTS %s_group_deleter AFTER delete ON groups FOR EACH ROW
+                    CREATE TRIGGER IF NOT EXISTS %s_renamer AFTER update OF parent_path, name ON %s FOR EACH ROW
                     BEGIN
-                        DELETE FROM %s_permissions WHERE group_id == old.group_id;
+                        UPDATE %s SET parent_path = CASE WHEN new.parent_path == '/' THEN '/' ELSE new.parent_path || '/' END || new.name
+                                  WHERE parent_path == CASE WHEN new.parent_path == '/' THEN '/' ELSE new.parent_path || '/' END || old.name;
+                        UPDATE %s SET parent_path = CASE WHEN new.parent_path == '/' THEN '/' ELSE new.parent_path || '/' END || new.name
+                                                    || substr(parent_path, length(new.parent_path) + 1 + length(old.name), length(parent_path))
+                                  WHERE parent_path GLOB CASE WHEN new.parent_path == '/' THEN '/' ELSE new.parent_path || '/' END || old.name || '/*';
                     END;
-                """, this.tableName, this.tableName));
+                """, this.tableName, this.tableName, this.tableName, this.tableName));
+//                statement.executeUpdate(String.format("""
+//                    CREATE TRIGGER IF NOT EXISTS %s_group_deleter AFTER delete ON groups FOR EACH ROW
+//                    BEGIN
+//                        DELETE FROM %s_permissions WHERE group_id == old.group_id;
+//                    END;
+//                """, this.tableName, this.tableName));
             }
             connection.commit();
         }
@@ -131,11 +144,12 @@ final class FileSqlHelper {
         try (final Connection connection = helper.database.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
             try (final Statement statement = connection.createStatement()) {
-                statement.executeUpdate(String.format("DROP TABLE %s;", helper.tableName));
-                statement.executeUpdate(String.format("DROP TABLE %s_permissions;", helper.tableName));
-                statement.executeUpdate(String.format("DROP TRIGGER %s_deleter;", helper.tableName));
-                statement.executeUpdate(String.format("DROP TRIGGER %s_updater;", helper.tableName));
-                statement.executeUpdate(String.format("DROP TRIGGER %s_group_deleter;", helper.tableName));
+                statement.executeUpdate(String.format("DROP TRIGGER IF EXISTS %s_deleter;", helper.tableName));
+                statement.executeUpdate(String.format("DROP TRIGGER IF EXISTS %s_updater;", helper.tableName));
+                statement.executeUpdate(String.format("DROP TRIGGER IF EXISTS %s_renamer;", helper.tableName));
+//                statement.executeUpdate(String.format("DROP TRIGGER IF EXISTS %s_group_deleter;", helper.tableName));
+                statement.executeUpdate(String.format("DROP TABLE IF EXISTS %s;", helper.tableName));
+//                statement.executeUpdate(String.format("DROP TABLE IF EXISTS %s_permissions;", helper.tableName));
             }
             connection.commit();
         }
@@ -439,7 +453,7 @@ final class FileSqlHelper {
         }
     }
 
-    public void updateForEach(final @NotNull Collection<@NotNull Long> idList, final @NotNull Function<@NotNull FileSqlInformation, @Nullable FileSqlInformation> mapper, final @Nullable String _connectionId) throws SQLException {
+    public void updateForEach(final @NotNull Collection<@NotNull Long> idList, final @NotNull Function<? super @NotNull FileSqlInformation, @Nullable FileSqlInformation> mapper, final @Nullable String _connectionId) throws SQLException {
         if (idList.isEmpty())
             return;
         final AtomicReference<String> connectionId = new AtomicReference<>();
