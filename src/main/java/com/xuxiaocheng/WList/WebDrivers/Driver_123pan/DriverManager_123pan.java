@@ -44,7 +44,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-// TODO check useCache when use twice.
 @SuppressWarnings("SameParameterValue")
 public final class DriverManager_123pan {
     private DriverManager_123pan() {
@@ -265,8 +264,11 @@ public final class DriverManager_123pan {
                 connection.commit();
                 return UnionPair.fail(FailureReason.byDuplicateError(duplicateErrorMethod, path));
             }
-            if (policy == Options.DuplicatePolicy.OVER)
-                DriverManager_123pan.trashFile(configuration, path, useCache, connectionId.get(), _threadPool);
+            if (policy == Options.DuplicatePolicy.OVER) {
+                DriverManager_123pan.trashFile(configuration, path, true, connectionId.get(), _threadPool);
+                connection.commit();
+                return UnionPair.ok(UnionPair.fail(path.getName()));
+            }
             assert policy == Options.DuplicatePolicy.KEEP;
             final String name = path.getName();
             int retry = 0;
@@ -310,17 +312,13 @@ public final class DriverManager_123pan {
                 connection.commit();
                 return parentInformation;
             }
-            final UnionPair<FileSqlInformation, FailureReason> information;
-            try {
-                information = DriverHelper_123pan.createDirectory(configuration, parentInformation.getT().id(), path.parent().child(duplicate.getT().getE()), policy);
-                if (information.isFailure()) {
-                    connection.commit();
-                    return information;
-                }
-                FileManager.insertOrUpdateFile(configuration.getLocalSide().getName(), information.getT(), connectionId.get());
-            } finally {
-                path.parent().child(name);
+            final DrivePath newFilePath = path.getParent().child(duplicate.getT().getE());
+            final UnionPair<FileSqlInformation, FailureReason> information = DriverHelper_123pan.createDirectory(configuration, parentInformation.getT().id(), newFilePath, policy);
+            if (information.isFailure()) {
+                connection.commit();
+                return information;
             }
+            FileManager.insertOrUpdateFile(configuration.getLocalSide().getName(), information.getT(), connectionId.get());
             connection.commit();
             return information;
         }
@@ -403,7 +401,7 @@ public final class DriverManager_123pan {
                 return UnionPair.fail(FailureReason.byNoSuchFile("Renaming file.", path));
             }
             final DrivePath newFilePath = path.getParent().child(name);
-            final UnionPair<UnionPair<FileSqlInformation, String>, FailureReason> duplicate = DriverManager_123pan.getDuplicatePolicyName(configuration, newFilePath, policy, false, "Renaming file.", useCache, connectionId.get(), _threadPool);
+            final UnionPair<UnionPair<FileSqlInformation, String>, FailureReason> duplicate = DriverManager_123pan.getDuplicatePolicyName(configuration, newFilePath, policy, false, "Renaming file.", true, connectionId.get(), _threadPool);
             if (duplicate.isFailure()) {
                 connection.commit();
                 return UnionPair.fail(duplicate.getE());

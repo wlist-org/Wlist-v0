@@ -88,7 +88,7 @@ final class FileSqlHelper {
                     );
                 """, this.tableName));
                 statement.executeUpdate(String.format("""
-                    CREATE INDEX IF NOT EXISTS %s_index ON %s (name, parent_path);
+                    CREATE INDEX IF NOT EXISTS %s_path ON %s (name, parent_path);
                 """, this.tableName, this.tableName));
                 statement.executeUpdate(String.format("""
                     CREATE TRIGGER IF NOT EXISTS %s_deleter AFTER delete ON %s FOR EACH ROW
