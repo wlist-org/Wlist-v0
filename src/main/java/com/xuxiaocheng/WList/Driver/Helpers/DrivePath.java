@@ -70,11 +70,11 @@ public class DrivePath implements Iterable<String> {
     public @NotNull DrivePath child(final @NotNull CharSequence child) {
         final List<String> children = DrivePath.split(child);
         this.path.addAll(children);
-        if (child.length() == 1) {
+        if (children.size() == 1) {
             this.parentPathCache = this.pathCache;
             if (this.pathCache != null)
                 this.pathCache += '/' + children.get(0);
-        } else if (!child.isEmpty()) {
+        } else if (!children.isEmpty()) {
             this.pathCache = null;
             this.parentPathCache = null;
         }
@@ -86,7 +86,7 @@ public class DrivePath implements Iterable<String> {
     }
 
     public @NotNull DrivePath removedRoot() {
-        if (this.path.size() < 1)
+        if (this.path.isEmpty())
             return this;
         this.path.remove(0);
         this.pathCache = null;
@@ -136,7 +136,8 @@ public class DrivePath implements Iterable<String> {
         if (this.pathCache != null)
             return this.pathCache;
         if (this.path.isEmpty()) {
-            this.pathCache = "/";
+            this.pathCache = "";
+            this.parentPathCache = "";
             return this.pathCache;
         }
         final StringBuilder builder = new StringBuilder();
@@ -150,7 +151,7 @@ public class DrivePath implements Iterable<String> {
         if (this.parentPathCache != null)
             return this.parentPathCache;
         if (this.path.size() < 2) {
-            this.parentPathCache = "/";
+            this.parentPathCache = "";
             return this.parentPathCache;
         }
         final StringBuilder builder = new StringBuilder();
@@ -159,7 +160,7 @@ public class DrivePath implements Iterable<String> {
         this.parentPathCache = builder.toString();
         if (this.pathCache == null)
             this.pathCache = builder.append('/').append(this.path.get(this.path.size() - 1)).toString();
-        return builder.toString();
+        return this.parentPathCache;
     }
 
     public @NotNull String getChildPath(final @NotNull CharSequence child) {
@@ -170,7 +171,7 @@ public class DrivePath implements Iterable<String> {
     }
 
     public @NotNull String getRoot() {
-        if (this.path.size() < 1)
+        if (this.path.isEmpty())
             return "";
         return this.path.get(0);
     }

@@ -416,13 +416,6 @@ public final class DriverManager_123pan {
                 return information;
             }
             FileManager.insertOrUpdateFile(configuration.getLocalSide().getName(), information.getT(), connectionId.get());
-//            final int index = source.path().getDepth() - 1;
-//            FileManager.updateForEach(configuration.getLocalSide().getName(),
-//                    FileManager.selectFileIdByParentPathRecursively(configuration.getLocalSide().getName(), path, connectionId.get()),
-//                    t -> {
-//                        t.path().replace(index, newName);
-//                        return t;
-//                    }, connectionId.get());
             connection.commit();
             return information;
         }
