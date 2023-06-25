@@ -319,7 +319,7 @@ public final class DriverManager_123pan {
                 }
                 FileManager.insertOrUpdateFile(configuration.getLocalSide().getName(), information.getT(), connectionId.get());
             } finally {
-                path.child(name);
+                path.parent().child(name);
             }
             connection.commit();
             return information;

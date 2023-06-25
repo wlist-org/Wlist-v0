@@ -88,6 +88,9 @@ final class FileSqlHelper {
                     );
                 """, this.tableName));
                 statement.executeUpdate(String.format("""
+                    CREATE INDEX IF NOT EXISTS %s_index ON %s (name, parent_path);
+                """, this.tableName, this.tableName));
+                statement.executeUpdate(String.format("""
                     CREATE TRIGGER IF NOT EXISTS %s_deleter AFTER delete ON %s FOR EACH ROW
                     BEGIN
                         DELETE FROM %s WHERE parent_path == old.parent_path || '/' || old.name;
@@ -106,7 +109,7 @@ final class FileSqlHelper {
                     BEGIN
                         UPDATE %s SET parent_path = new.parent_path || '/' || new.name
                                   WHERE parent_path == old.parent_path || '/' || old.name;
-                        UPDATE %s SET parent_path = new.parent_path || '/' || new.name || substr(parent_path, length(new.parent_path) + 1 + length(old.name), length(parent_path))
+                        UPDATE %s SET parent_path = new.parent_path || '/' || new.name || substr(parent_path, length(new.parent_path) + length(old.name) + 2, length(parent_path))
                                   WHERE parent_path GLOB old.parent_path || '/' || old.name || '/*';
                     END;
                 """, this.tableName, this.tableName, this.tableName, this.tableName));
