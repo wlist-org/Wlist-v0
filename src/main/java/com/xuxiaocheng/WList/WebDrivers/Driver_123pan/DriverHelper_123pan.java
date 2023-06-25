@@ -558,7 +558,7 @@ final class DriverHelper_123pan {
      * @return Successful ids.
      * <p> Other ids are more likely to no longer exist, so this method return value can be ignored.
      */
-    @SuppressWarnings("UnusedReturnValue")
+    @SuppressWarnings({"UnusedReturnValue", "DuplicatedCode"})
     static @NotNull @UnmodifiableView Set<@NotNull Long> trashFiles(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull Collection<@NotNull Long> idList, final boolean operate) throws IllegalParametersException, IOException {
         DriverHelper_123pan.ensureToken(configuration);
         final Map<String, Object> request = new LinkedHashMap<>(3);

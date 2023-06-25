@@ -33,6 +33,10 @@ public class FailureReason {
         return new FailureReason(FailureReason.NoSuchFile, callingMethodMessage, path);
     }
 
+    public static @NotNull FailureReason byNoSuchFile(final @NotNull String callingMethodMessage, final long trashId) {
+        return new FailureReason(FailureReason.NoSuchFile, callingMethodMessage, trashId);
+    }
+
     public static @NotNull FailureReason others(final @NotNull String message, final @Nullable Object extra) {
         return new FailureReason(FailureReason.Others, message, extra);
     }

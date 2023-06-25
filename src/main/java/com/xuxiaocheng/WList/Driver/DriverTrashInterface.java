@@ -18,6 +18,8 @@ public interface DriverTrashInterface<D extends DriverInterface<?>> {
 
     void uninitialize() throws Exception;
 
+    void buildCache() throws Exception;
+
     void buildIndex() throws Exception;
 
     Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull TrashedSqlInformation>> list(final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws Exception;

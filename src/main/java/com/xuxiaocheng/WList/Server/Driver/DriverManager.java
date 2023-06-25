@@ -6,6 +6,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Driver.DriverConfiguration;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
+import com.xuxiaocheng.WList.Driver.DriverTrashInterface;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.WListServer;
@@ -35,6 +36,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 public final class DriverManager {
     private DriverManager() {
@@ -42,14 +44,18 @@ public final class DriverManager {
     }
 
     private static final @NotNull Map<@NotNull String, Pair.@NotNull ImmutablePair<@NotNull WebDriversType, @NotNull DriverInterface<?>>> drivers = new ConcurrentHashMap<>();
+    private static final @NotNull Map<@NotNull String, Pair.@NotNull ImmutablePair<@NotNull WebDriversType, @NotNull DriverTrashInterface<?>>> trashes = new ConcurrentHashMap<>();
 
     @SuppressWarnings("unchecked")
     private static <C extends DriverConfiguration<?, ?, ?>> void add0(final @NotNull String name, final @NotNull WebDriversType type) throws IOException, IllegalParametersException {
         if (DriverManager.drivers.containsKey(name))
             throw new IllegalParametersException("Conflict driver name.");
         final DriverInterface<C> driver;
+        final DriverTrashInterface<DriverInterface<C>> trash;
         try {
             driver = (DriverInterface<C>) type.getDriver().get();
+            final Supplier<DriverTrashInterface<?>> supplier = type.getTrash();
+            trash = supplier == null ? null: (DriverTrashInterface<DriverInterface<C>>) supplier.get();
         } catch (final RuntimeException exception) {
             throw new IllegalParametersException("Failed to get driver.", Map.of("name", name, "type", type), exception);
         }
@@ -80,6 +86,8 @@ public final class DriverManager {
             HLog.getInstance("DefaultLogger").log(HLogLevel.WARN, "Mismatched filename (", name, ") and drive name (", configuration.getLocalSide().getName(), "). Using drive name.");
         try {
             driver.initialize(configuration);
+            if (trash != null)
+                trash.initialize(driver);
         } catch (final Exception exception) {
             if (GlobalConfiguration.getInstance().deleteDriver())
                 try {
@@ -91,6 +99,8 @@ public final class DriverManager {
         }
         try {
             driver.buildCache();
+            if (trash != null)
+                trash.buildCache();
         } catch (final Exception exception) {
             throw new IllegalParametersException("Failed to build cache.", Map.of("name", name, "type", type, "configuration", configuration), exception);
         } finally {
@@ -109,6 +119,17 @@ public final class DriverManager {
                 }
             return o;
         });
+        if (trash != null)
+            DriverManager.trashes.merge(name, Pair.ImmutablePair.makeImmutablePair(type, trash), (o, n) -> {
+                HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, "Conflict trash. Abort newer. name: ", name, " configuration: ", configuration);
+                if (GlobalConfiguration.getInstance().deleteDriver())
+                    try {
+                        n.getSecond().uninitialize();
+                    } catch (final Exception exception) {
+                        HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, "Failed to uninitialize when aborting. name: ", name, " configuration: ", configuration, exception);
+                    }
+                return o;
+            });
     }
 
     public static void initialize() {

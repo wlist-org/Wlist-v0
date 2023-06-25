@@ -15,6 +15,8 @@ import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
+import com.xuxiaocheng.WList.Server.Databases.File.TrashedFileManager;
+import com.xuxiaocheng.WList.Server.Databases.File.TrashedSqlInformation;
 import com.xuxiaocheng.WList.Server.Driver.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Polymers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.Polymers.UploadMethods;
@@ -191,10 +193,11 @@ public final class DriverManager_123pan {
                 connection.commit();
                 return null;
             }
+            // TODO delete duplicate code.
             final Pair.ImmutablePair<Long, List<FileSqlInformation>> list = DriverManager_123pan.listFilesNoCache(configuration, directoryInformation.id(), directoryPath,
                     limit, page, policy, direction, connectionId.get());
             final long cached = useCache ? 0 : FileManager.selectFileCountByParentPath(configuration.getLocalSide().getName(), directoryPath, connectionId.get());
-            if (cached != list.getFirst().longValue()) {
+            if (cached != list.getFirst().longValue())
                 if (list.getFirst().longValue() == list.getSecond().size())
                     FileManager.insertOrUpdateFiles(configuration.getLocalSide().getName(), list.getSecond(), connectionId.get());
                 else {
@@ -210,7 +213,6 @@ public final class DriverManager_123pan {
                                 connection.commit();
                             }, connection::close);
                 }
-            }
             connection.commit();
             return list;
         }
@@ -240,9 +242,18 @@ public final class DriverManager_123pan {
                 connection.commit();
                 return;
             }
-            final Set<Long> ids = DriverHelper_123pan.trashFiles(configuration, List.of(information.id()), true);
-            if (!ids.isEmpty()) // assert ids.size() == 1 && ids.contains(fileId);
-                FileManager.deleteFileRecursively(configuration.getLocalSide().getName(), information.id(), connectionId.get());
+            final long id = information.id();
+            final Set<Long> ids = DriverHelper_123pan.trashFiles(configuration, List.of(id), true);
+            if (!ids.isEmpty()) // assert ids.size() == 1 && ids.contains(id);
+                FileManager.deleteFileRecursively(configuration.getLocalSide().getName(), id, connectionId.get());
+            final TrashedSqlInformation trashed = TrashHelper_123pan.getFilesInformation(configuration, ids).get(id);
+            if (trashed == null)
+                throw new IllegalStateException("Failed to get trashed file information. [Unreachable]. id: " + id);
+            try (final Connection trashedConnection = TrashedFileManager.getDatabaseUtil().getConnection(FileManager.getDatabaseUtil() == TrashedFileManager.getDatabaseUtil() ? _connectionId : null, connectionId)) {
+                trashedConnection.setAutoCommit(false);
+                TrashedFileManager.insertOrUpdateFile(configuration.getLocalSide().getName(), trashed, connectionId.get());
+                trashedConnection.commit();
+            }
             connection.commit();
         }
     }
