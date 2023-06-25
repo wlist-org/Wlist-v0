@@ -11,6 +11,7 @@ import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Server.Databases.File.TrashedFileManager;
 import com.xuxiaocheng.WList.Server.Databases.File.TrashedSqlInformation;
 import com.xuxiaocheng.WList.Server.Polymers.DownloadMethods;
+import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -47,24 +48,24 @@ public class Trash_123pan implements DriverTrashInterface<Driver_123Pan> {
 
     @Override
     public void buildIndex() throws SQLException {
-        final Iterator<TrashedSqlInformation> iterator = TrashManager_123pan.listAllFilesNoCache(this.driver.getConfiguration(), null, null).getB();
+        final Iterator<TrashedSqlInformation> iterator = TrashManager_123pan.listAllFilesNoCache(this.driver.getConfiguration(), null, WListServer.IOExecutors).getB();
         while (iterator.hasNext())
             iterator.next();
     }
 
     @Override
     public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull TrashedSqlInformation>> list(final int limit, final int page, final @NotNull Options.OrderPolicy policy, final @NotNull Options.OrderDirection direction) throws Exception {
-        return TrashManager_123pan.listFiles(this.driver.getConfiguration(), limit, page, policy, direction, true, null, null);
+        return TrashManager_123pan.listFiles(this.driver.getConfiguration(), limit, page, policy, direction, true, null, WListServer.IOExecutors);
     }
 
     @Override
     public @Nullable TrashedSqlInformation info(final long id) throws IllegalParametersException, IOException, SQLException {
-        return TrashManager_123pan.getFileInformation(this.driver.getConfiguration(), id, true, null);
+        return TrashManager_123pan.getFileInformation(this.driver.getConfiguration(), id, true, null, WListServer.IOExecutors);
     }
 
     @Override
     public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> restore(final long id, final @NotNull DrivePath path, final Options.@NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException, SQLException {
-        return TrashManager_123pan.restoreFile(this.driver.getConfiguration(), id, path, policy, true, null, null);
+        return TrashManager_123pan.restoreFile(this.driver.getConfiguration(), id, path, policy, true, null, WListServer.IOExecutors);
     }
 
     @Override
@@ -79,12 +80,12 @@ public class Trash_123pan implements DriverTrashInterface<Driver_123Pan> {
 
     @Override
     public @Nullable DownloadMethods download(final long id, final long from, final long to) throws IllegalParametersException, IOException, SQLException {
-        return TrashManager_123pan.getDownloadMethods(this.driver.getConfiguration(), id, from, to, true, null);
+        return TrashManager_123pan.getDownloadMethods(this.driver.getConfiguration(), id, from, to, true, null, WListServer.IOExecutors);
     }
 
     @Override
-    public @NotNull UnionPair<@NotNull TrashedSqlInformation, @NotNull FailureReason> rename(final long id, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) {
-        return null;
+    public @NotNull UnionPair<@NotNull TrashedSqlInformation, @NotNull FailureReason> rename(final long id, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException, SQLException {
+        return TrashManager_123pan.renameFile(this.driver.getConfiguration(), id, name, policy, true, null, WListServer.IOExecutors);
     }
 
     @Override

@@ -3,9 +3,12 @@ package com.xuxiaocheng.WList.WebDrivers.Driver_123pan;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.WList.Driver.FailureReason;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
+import com.xuxiaocheng.WList.Exceptions.IllegalResponseCodeException;
 import com.xuxiaocheng.WList.Exceptions.WrongResponseException;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Server.Databases.File.TrashedSqlInformation;
@@ -129,5 +132,27 @@ public final class TrashHelper_123pan {
     static void deleteAllFiles(final @NotNull DriverConfiguration_123Pan configuration) throws IllegalParametersException, IOException {
         DriverHelper_123pan.ensureToken(configuration);
         DriverHelper_123pan.sendRequestReceiveExtractedData(TrashHelper_123pan.DeleteAllFilesURL, configuration, new LinkedHashMap<>(1), false);
+    }
+
+    static @NotNull UnionPair<@NotNull TrashedSqlInformation, @NotNull FailureReason> renameFile(final @NotNull DriverConfiguration_123Pan configuration, final long id, final @NotNull String name) throws IllegalParametersException, IOException {
+        if (!DriverHelper_123pan.filenamePredication.test(name))
+            return UnionPair.fail(FailureReason.byInvalidName(name, new DrivePath(name)));
+        DriverHelper_123pan.ensureToken(configuration);
+        final Map<String, Object> request = new LinkedHashMap<>(4);
+        request.put("DriveId", 0);
+        request.put("FileId", id);
+        request.put("FileName", name);
+        final JSONObject data;
+        try {
+            data = DriverHelper_123pan.sendRequestReceiveExtractedData(DriverHelper_123pan.RenameFileURL, configuration, request, false);
+        } catch (final IllegalResponseCodeException exception) {
+            if (exception.getCode() == DriverHelper_123pan.InvalidFilenameResponseCode)
+                return UnionPair.fail(FailureReason.byInvalidName(name, new DrivePath(name)));
+            throw exception;
+        }
+        final TrashedSqlInformation information = FileInformation_123pan.createTrashed(data.getJSONObject("Info"));
+        if (information == null)
+            throw new WrongResponseException("Renaming file.", data);
+        return UnionPair.ok(information);
     }
 }

@@ -4,6 +4,7 @@ import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
 import java.util.Objects;
 
 public class FailureReason {
@@ -33,12 +34,25 @@ public class FailureReason {
         return new FailureReason(FailureReason.NoSuchFile, callingMethodMessage, path);
     }
 
-    public static @NotNull FailureReason byNoSuchFile(final @NotNull String callingMethodMessage, final long trashId) {
-        return new FailureReason(FailureReason.NoSuchFile, callingMethodMessage, trashId);
-    }
-
     public static @NotNull FailureReason others(final @NotNull String message, final @Nullable Object extra) {
         return new FailureReason(FailureReason.Others, message, extra);
+    }
+
+    public static class DriveIdPath extends DrivePath {
+        protected final long id;
+
+        public DriveIdPath(final long id) {
+            super(List.of("{DriveIdPath:id=" + id + "}"));
+            this.id = id;
+        }
+
+        @Override
+        public @NotNull String toString() {
+            return "DriveIdPath{" +
+                    "id=" + this.id +
+                    ", super="  + super.toString() +
+                    '}';
+        }
     }
 
     protected final @NotNull String kind;

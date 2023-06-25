@@ -193,7 +193,6 @@ public final class DriverManager_123pan {
                 connection.commit();
                 return null;
             }
-            // TODO delete duplicate code.
             final Pair.ImmutablePair<Long, List<FileSqlInformation>> list = DriverManager_123pan.listFilesNoCache(configuration, directoryInformation.id(), directoryPath,
                     limit, page, policy, direction, connectionId.get());
             final long cached = useCache ? 0 : FileManager.selectFileCountByParentPath(configuration.getLocalSide().getName(), directoryPath, connectionId.get());
