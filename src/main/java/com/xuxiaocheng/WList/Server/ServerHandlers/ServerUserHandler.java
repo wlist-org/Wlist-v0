@@ -14,6 +14,7 @@ import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupSqlInformation;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.Operation;
 import com.xuxiaocheng.WList.Server.Polymers.MessageProto;
+import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.UserTokenHelper;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
@@ -27,6 +28,11 @@ public final class ServerUserHandler {
     private ServerUserHandler() {
         super();
     }
+
+    public static final @NotNull MessageProto UserDataError = ServerHandler.composeMessage(Operation.State.DataError, "User");
+    public static final @NotNull MessageProto UsersDataError = ServerHandler.composeMessage(Operation.State.DataError, "Users");
+    public static final @NotNull MessageProto GroupDataError = ServerHandler.composeMessage(Operation.State.DataError, "Group");
+    public static final @NotNull MessageProto PermissionsDataError = ServerHandler.composeMessage(Operation.State.DataError, "Permissions");
 
     public static final @NotNull ServerHandler doRegister = buffer -> {
         final String username = ByteBufIOUtil.readUTF(buffer);
@@ -65,7 +71,7 @@ public final class ServerUserHandler {
             throw new ServerException(exception);
         }
         if (user == null || (permissions.length > 0 && !user.group().permissions().containsAll(List.of(permissions))))
-            return UnionPair.fail(ServerHandler.composeMessage(Operation.State.NoPermission, null));
+            return UnionPair.fail(ServerHandler.NoPermission);
         return UnionPair.ok(user);
     }
 
@@ -73,7 +79,7 @@ public final class ServerUserHandler {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer);
         if (user.isFailure())
             return user.getE();
-        return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
+        return ServerHandler.successMessage(buf -> {
             UserGroupSqlInformation.dumpVisible(buf, user.getT().group());
             return buf;
         });
@@ -95,7 +101,7 @@ public final class ServerUserHandler {
         if (user.isFailure())
             return user.getE();
         if ("admin".equals(user.getT().username()))
-            return ServerHandler.composeMessage(Operation.State.DataError, "User");
+            return ServerUserHandler.UserDataError;
         try {
             UserManager.updateUser(new UserSqlInformation.Updater(user.getT().id(), newUsername,
                     user.getT().password(), user.getT().group().id(), user.getT().modifyTime()), null);
@@ -124,7 +130,7 @@ public final class ServerUserHandler {
         if (user.isFailure())
             return user.getE();
         if ("admin".equals(user.getT().username()))
-            return ServerHandler.composeMessage(Operation.State.DataError, "User");
+            return ServerUserHandler.UserDataError;
         try {
             UserManager.deleteUser(user.getT().id(), null);
         } catch (final SQLException exception) {
@@ -148,7 +154,7 @@ public final class ServerUserHandler {
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
-        return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
+        return ServerHandler.successMessage(buf -> {
             ByteBufIOUtil.writeVariableLenLong(buf, list.getFirst().longValue());
             ByteBufIOUtil.writeVariableLenInt(buf, list.getSecond().size());
             for (final UserSqlInformation information: list.getSecond())
@@ -163,7 +169,7 @@ public final class ServerUserHandler {
         if (changer.isFailure())
             return changer.getE();
         if ("admin".equals(username))
-            return ServerHandler.composeMessage(Operation.State.DataError, "User");
+            return ServerUserHandler.UserDataError;
         final long id;
         if (username.equals(changer.getT().username()))
             id = changer.getT().id();
@@ -175,7 +181,7 @@ public final class ServerUserHandler {
                 throw new ServerException(exception1);
             }
             if (user == null)
-                return ServerHandler.composeMessage(Operation.State.DataError, "User");
+                return ServerUserHandler.UserDataError;
             id = user.id();
         }
         try {
@@ -201,7 +207,7 @@ public final class ServerUserHandler {
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
-        return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, buf -> {
+        return ServerHandler.successMessage(buf -> {
             ByteBufIOUtil.writeVariableLenLong(buf, list.getFirst().longValue());
             ByteBufIOUtil.writeVariableLenInt(buf, list.getSecond().size());
             for (final UserGroupSqlInformation information: list.getSecond())
@@ -230,14 +236,14 @@ public final class ServerUserHandler {
         if (user.isFailure())
             return user.getE();
         if ("admin".equals(groupName) || "default".equals(groupName))
-            return ServerHandler.composeMessage(Operation.State.DataError, "Group");
+            return ServerUserHandler.GroupDataError;
         try {
             final UserGroupSqlInformation information = UserGroupManager.selectGroupByName(groupName, null);
             if (information == null)
-                return ServerHandler.composeMessage(Operation.State.DataError, "Group");
+                return ServerUserHandler.GroupDataError;
             final long count = UserManager.selectUserCountByGroup(information.id(), null);
             if (count > 0)
-                return ServerHandler.composeMessage(Operation.State.DataError, "Users");
+                return ServerUserHandler.UsersDataError;
             UserGroupManager.deleteGroup(information.id(), null);
         } catch (final SQLException exception) {
             throw new ServerException(exception);
@@ -252,14 +258,14 @@ public final class ServerUserHandler {
         if (changer.isFailure())
             return changer.getE();
         if ("admin".equals(username))
-            return ServerHandler.composeMessage(Operation.State.DataError, "User");
+            return ServerUserHandler.UserDataError;
         try {
             final UserSqlInformation user = UserManager.selectUserByName(username, null);
             if (user == null)
-                return ServerHandler.composeMessage(Operation.State.DataError, "User");
+                return ServerUserHandler.UserDataError;
             final UserGroupSqlInformation group = UserGroupManager.selectGroupByName(groupName, null);
             if (group == null)
-                return ServerHandler.composeMessage(Operation.State.DataError, "Group");
+                return ServerUserHandler.GroupDataError;
             UserManager.updateUser(new UserSqlInformation.Updater(user.id(), user.username(),
                     user.password(), group.id(), null), null);
         } catch (final SQLException exception) {
@@ -275,13 +281,13 @@ public final class ServerUserHandler {
         if (userPair.isFailure())
             return userPair.getE();
         if ("admin".equals(groupName))
-            return ServerHandler.composeMessage(Operation.State.DataError, "Group");
+            return ServerUserHandler.GroupDataError;
         if (modified == null)
-            return ServerHandler.composeMessage(Operation.State.DataError, "Permissions");
+            return ServerUserHandler.PermissionsDataError;
         try {
             final UserGroupSqlInformation group = UserGroupManager.selectGroupByName(groupName, null);
             if (group == null)
-                return ServerHandler.composeMessage(Operation.State.DataError, "Group");
+                return ServerUserHandler.GroupDataError;
             final EnumSet<Operation.Permission> permissions = group.permissions();
             if (add)
                 permissions.addAll(modified);

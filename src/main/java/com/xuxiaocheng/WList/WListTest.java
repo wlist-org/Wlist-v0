@@ -3,6 +3,7 @@ package com.xuxiaocheng.WList;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
@@ -13,6 +14,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.util.Objects;
 
 public final class WListTest {
     private WListTest() {
@@ -20,8 +22,10 @@ public final class WListTest {
     }
 
     public static void main(final String @NotNull [] args) throws Exception {
+//        if (true) return;
         WListTest.wrapServerInitialize(() -> {
-//            final DriverConfiguration_123Pan configuration = ((Driver_123Pan) DriverManager.get("123pan")).getConfiguration();
+            final DriverInterface<?> driver = Objects.requireNonNull(DriverManager.get("123pan"));
+
 //            TrashedFileManager.initialize(configuration.getLocalSide().getName());
 //            return TrashManager_123pan.restoreFile(configuration, 2293734, true, null, null);
             return null;

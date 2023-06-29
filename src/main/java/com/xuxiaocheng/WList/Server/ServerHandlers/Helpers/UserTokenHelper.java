@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server.ServerHandlers;
+package com.xuxiaocheng.WList.Server.ServerHandlers.Helpers;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTCreator;

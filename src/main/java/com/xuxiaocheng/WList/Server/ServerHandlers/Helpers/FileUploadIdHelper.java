@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server.ServerHandlers;
+package com.xuxiaocheng.WList.Server.ServerHandlers.Helpers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;

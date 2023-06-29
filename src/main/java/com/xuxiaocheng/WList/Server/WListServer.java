@@ -1,6 +1,5 @@
 package com.xuxiaocheng.WList.Server;
 
-import com.alibaba.fastjson2.JSONException;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
@@ -47,7 +46,6 @@ import java.io.IOException;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.security.NoSuchAlgorithmException;
-import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
@@ -176,7 +174,7 @@ public class WListServer {
         }
 
         @Override
-        protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) {
+        protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) throws ServerException {
             final Channel channel = ctx.channel();
             WListServer.logger.log(HLogLevel.VERBOSE, "Read: ", channel.id().asLongText(), " len: ", msg.readableBytes(), " cipher: ", MiscellaneousUtil.bin(msg.readByte()));
             try {
@@ -192,7 +190,7 @@ public class WListServer {
                     }
                 });
                 final ServerHandler handler = switch (type) {
-                    case Undefined -> b -> ServerHandler.Undefined;
+                    case Undefined -> b -> ServerHandler.composeMessage(Operation.State.Unsupported, "Undefined operation!");
                     case Broadcast -> ServerStateHandler.doBroadcast;
                     case SetBroadcastMode -> b -> ServerStateHandler.doSetBroadcastMode(b, WListServer.getInstance().channelGroup, channel);
                     case CloseServer -> ServerStateHandler.doCloseServer;
@@ -230,8 +228,6 @@ public class WListServer {
                 ServerChannelHandler.write(channel, res);
             } catch (final IOException exception) {
                 ServerChannelHandler.directlyWriteMessage(channel, Operation.State.FormatError, exception.getMessage());
-            } catch (final ServerException | JSONException exception) {
-                this.exceptionCaught(ctx, exception);
             }
         }
 
@@ -242,16 +238,18 @@ public class WListServer {
                 ServerChannelHandler.directlyWriteMessage(ctx.channel(), Operation.State.FormatError, "Codec");
                 return;
             }
-            if (cause instanceof SocketException)
-                WListServer.logger.log(HLogLevel.WARN, "Exception at ", ctx.channel().id().asLongText(), ": ", cause.getMessage());
-            else
-                WListServer.logger.log(HLogLevel.WARN, "Exception at ", ctx.channel().id().asLongText(), ": ", cause);
+            if (cause instanceof SocketException) {
+                WListServer.logger.log(HLogLevel.WARN, "Socket Exception at ", ctx.channel().id().asLongText(), ": ", cause.getMessage());
+                ctx.close();
+                return;
+            }
+            WListServer.logger.log(HLogLevel.WARN, "Exception at ", ctx.channel().id().asLongText(), ": ", cause);
             ServerChannelHandler.directlyWriteMessage(ctx.channel(), Operation.State.ServerError, null);
         }
 
         protected static void directlyWriteMessage(final @NotNull Channel channel, final @NotNull Operation.State state, final @Nullable String message) {
             try {
-                final MessageProto composition = ServerHandler.composeMessage(state, Objects.requireNonNullElse(message, ""));
+                final MessageProto composition = ServerHandler.composeMessage(state, message);
                 ServerChannelHandler.write(channel, composition);
             } catch (final IOException exception) {
                 HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, exception);

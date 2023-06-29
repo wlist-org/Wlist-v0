@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server.ServerHandlers;
+package com.xuxiaocheng.WList.Server.ServerHandlers.Helpers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-final class FileDownloadIdHelper {
+public final class FileDownloadIdHelper {
     private FileDownloadIdHelper() {
         super();
     }
