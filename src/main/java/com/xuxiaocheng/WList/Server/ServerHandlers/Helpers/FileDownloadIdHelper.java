@@ -2,9 +2,8 @@ package com.xuxiaocheng.WList.Server.ServerHandlers.Helpers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
-import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
+import com.xuxiaocheng.WList.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
-import com.xuxiaocheng.WList.Server.Polymers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;

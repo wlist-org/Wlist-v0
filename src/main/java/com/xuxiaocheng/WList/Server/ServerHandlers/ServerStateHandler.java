@@ -1,9 +1,9 @@
 package com.xuxiaocheng.WList.Server.ServerHandlers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
-import com.xuxiaocheng.WList.Server.Databases.User.UserSqlInformation;
+import com.xuxiaocheng.WList.Databases.User.UserSqlInformation;
 import com.xuxiaocheng.WList.Server.Operation;
-import com.xuxiaocheng.WList.Server.Polymers.MessageProto;
+import com.xuxiaocheng.WList.Server.MessageProto;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;

@@ -1,12 +1,12 @@
-package com.xuxiaocheng.WList.Server.Databases.User;
+package com.xuxiaocheng.WList.Databases.User;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupManager;
+import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupSqlInformation;
 import com.xuxiaocheng.WList.Driver.Options;
-import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
-import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupSqlInformation;
 import com.xuxiaocheng.WList.Server.Operation;
 import com.xuxiaocheng.WList.Utils.DatabaseUtil;
 import org.jetbrains.annotations.NotNull;

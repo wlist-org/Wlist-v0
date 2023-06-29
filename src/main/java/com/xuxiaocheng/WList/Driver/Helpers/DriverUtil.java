@@ -10,7 +10,7 @@ import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
-import com.xuxiaocheng.WList.Server.Polymers.DownloadMethods;
+import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;

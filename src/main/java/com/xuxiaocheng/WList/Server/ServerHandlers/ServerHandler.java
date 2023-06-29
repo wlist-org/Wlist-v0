@@ -2,7 +2,7 @@ package com.xuxiaocheng.WList.Server.ServerHandlers;
 
 import com.xuxiaocheng.WList.Exceptions.ServerException;
 import com.xuxiaocheng.WList.Server.Operation;
-import com.xuxiaocheng.WList.Server.Polymers.MessageProto;
+import com.xuxiaocheng.WList.Server.MessageProto;
 import com.xuxiaocheng.WList.Server.ServerCodecs.MessageCiphers;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;

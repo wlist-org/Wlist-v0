@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server.Databases.UserGroup;
+package com.xuxiaocheng.WList.Databases.UserGroup;
 
 import com.xuxiaocheng.WList.Server.Operation;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;

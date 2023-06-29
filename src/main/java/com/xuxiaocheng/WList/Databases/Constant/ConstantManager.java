@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server.Databases.Constant;
+package com.xuxiaocheng.WList.Databases.Constant;
 
 import com.xuxiaocheng.WList.Utils.DatabaseUtil;
 import org.jetbrains.annotations.NotNull;

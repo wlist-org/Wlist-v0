@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server.Databases.User;
+package com.xuxiaocheng.WList.Databases.User;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Driver.Options;

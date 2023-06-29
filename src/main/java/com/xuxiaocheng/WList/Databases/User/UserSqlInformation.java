@@ -1,6 +1,6 @@
-package com.xuxiaocheng.WList.Server.Databases.User;
+package com.xuxiaocheng.WList.Databases.User;
 
-import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupSqlInformation;
+import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupSqlInformation;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;

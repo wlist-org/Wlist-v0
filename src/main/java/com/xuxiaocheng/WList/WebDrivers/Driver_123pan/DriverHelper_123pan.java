@@ -16,7 +16,7 @@ import com.xuxiaocheng.WList.Exceptions.DriverTokenExpiredException;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Exceptions.IllegalResponseCodeException;
 import com.xuxiaocheng.WList.Exceptions.WrongResponseException;
-import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
+import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.WList;
 import okhttp3.Headers;
