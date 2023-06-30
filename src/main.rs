@@ -77,6 +77,7 @@ fn main() -> Result<(), io::Error> {
         .add_body(from_slice(&vec!["25", "Change group", "admin", "Change user into explicit user group."]))
         .add_body(from_slice(&vec!["26", "Add permissions", "admin", "Add permissions to user group."]))
         .add_body(from_slice(&vec!["27", "Remove permissions", "admin", "Remove permissions from user group."]))
+        .add_body(from_slice(&vec!["30", "Build index", "admin", "Build file index for explicit driver in background."]))
         .add_body(from_slice(&vec!["40", "List files", "user", "Get files list in explicit directory."]))
         .add_body(from_slice(&vec!["41", "Make directory", "user", "Making new directories recursively."]))
         .add_body(from_slice(&vec!["42", "Delete file", "user", "Delete a file or directory recursively."]))
@@ -142,6 +143,7 @@ fn main() -> Result<(), io::Error> {
             25 => console_change_group(&mut client, &token)?,
             26 => console_add_permissions(&mut client, &token, &permissions_table)?,
             27 => console_remove_permissions(&mut client, &token, &permissions_table)?,
+            30 => console_build_index(&mut client, &token)?,
             40 => console_list_files(&mut client, &token)?,
             41 => console_make_directories(&mut client, &token, &duplicate_policy_table)?,
             42 => console_delete_file(&mut client, &token)?,
@@ -434,6 +436,21 @@ fn console_remove_permissions(client: &mut WListClient, t: &Option<(String, Stri
         println!("Success!");
     } else {
         println!("No such group or denied operation.");
+    }
+    Ok(Ok(0))
+}
+
+fn console_build_index(client: &mut WListClient, t: &Option<(String, String)>) -> Result<Result<u8, WrongStateError>, io::Error> {
+    println!("Building index...");
+    let token = match t { Some(p) => &p.0, None => return Ok(Ok(1)) };
+    print!("Please enter driver name: "); stdout().flush()?;
+    let driver = read_line()?;
+    if match file_handler::build_index(client, token, &driver)? {
+        Ok(t) => t, Err(e) => return Ok(Err(e)),
+    } {
+        println!("Success, task is running in background!");
+    } else {
+        println!("No such driver.");
     }
     Ok(Ok(0))
 }
