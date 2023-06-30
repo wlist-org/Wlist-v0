@@ -6,7 +6,7 @@ use aes::cipher::{BlockEncryptMut, Iv, Key, KeyIvInit};
 use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::consts::{U16, U32};
 use aes::cipher::generic_array::GenericArray;
-use cbc::{Encryptor};
+use cbc::Encryptor;
 use chrono::Local;
 use log::debug;
 use rsa::{BigUint, Pkcs1v15Encrypt, RsaPublicKey};
@@ -22,8 +22,8 @@ pub struct WListClient {
     vector: GenericArray<u8, U16>,
 }
 
-static DEFAULT_HEADER: &str = "WList/Ciphers/Initializing";
-static DEFAULT_TAILOR: &str = "Checking";
+static DEFAULT_HEADER: &str = "WList.Ciphers v0.2.0";
+static DEFAULT_TAILOR: &str = "Verification";
 
 impl WListClient {
     pub fn new(address: &String) -> Result<WListClient, io::Error> {

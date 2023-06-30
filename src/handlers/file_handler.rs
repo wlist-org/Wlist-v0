@@ -40,6 +40,13 @@ fn handle_state_information(receiver: &mut impl Read) -> Result<Result<Result<Fi
     })
 }
 
+pub fn build_index(client: &mut WListClient, token: &String, driver: &String) -> Result<Result<bool, WrongStateError>, Error> {
+    let mut sender = operate_with_token(&Type::BuildIndex, token)?;
+    bytes_util::write_string(&mut sender, driver)?;
+    let mut receiver = client.send_vec(sender)?;
+    handle_state(&mut receiver)
+}
+
 pub fn list_files(client: &mut WListClient, token: &String, path: &String, limit: u32, page: u32, policy: &OrderPolicy, direction: &OrderDirection, refresh: bool) -> Result<Result<Option<(u64, Vec<FileInformation>)>, WrongStateError>, Error> {
     let mut sender = operate_with_token(&Type::ListFiles, token)?;
     bytes_util::write_string(&mut sender, path)?;
