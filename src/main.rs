@@ -55,11 +55,11 @@ fn enter_to_continue() -> Result<bool, io::Error> {
 }
 
 fn main() -> Result<(), io::Error> {
-    if let Err(_) = var("RUST_LOG") {
+    if var("RUST_LOG").is_err() {
         set_var("RUST_LOG", "debug, wlist_client_library=debug");
     }
     env_logger::init();
-    info!("Hello WList Client (Console Version)! Initializing...");
+    info!("Hello WList Client (Console Version) v0.1.2! Initializing...");
     let menu = PrintTable::create(from_slice(&vec!["ID", "Operation", "Permission", "Detail"]))
         .add_body(from_slice(&vec!["0", "Exit", "any", "Logoff and shutdown client."]))
         .add_body(from_slice(&vec!["1", "Close server", "admin", "Try close server, and then shutdown client."]))
