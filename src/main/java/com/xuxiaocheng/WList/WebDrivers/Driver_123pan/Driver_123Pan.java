@@ -19,6 +19,7 @@ import org.jetbrains.annotations.UnmodifiableView;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.List;
 
@@ -48,6 +49,8 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
 
     @Override
     public void buildIndex() throws SQLException {
+        this.configuration.getCacheSide().setLastTrashIndexBuildTime(LocalDateTime.now());
+        this.configuration.getCacheSide().setModified(true);
         DriverManager_123pan.refreshDirectoryRecursively(this.configuration, this.configuration.getWebSide().getRootDirectoryId(), new DrivePath("/"), null, WListServer.IOExecutors);
     }
 

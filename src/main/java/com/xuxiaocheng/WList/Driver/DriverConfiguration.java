@@ -128,13 +128,23 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
     }
 
     public abstract static class CacheSideDriverConfiguration {
+        protected boolean modified = false;
         protected @NotNull String nickname = "";
         protected @Nullable String imageLink = null;
         protected boolean vip = false; // TODO vipLevel
         protected long spaceAll = 0;
         protected long spaceUsed = -1;
         protected long fileCount = -1;
-        protected @Nullable LocalDateTime lastIndexBuildTime = null;
+        protected @Nullable LocalDateTime lastFileIndexBuildTime = null;
+        protected @Nullable LocalDateTime lastTrashIndexBuildTime = null;
+
+        public boolean isModified() {
+            return this.modified;
+        }
+
+        public void setModified(final boolean modified) {
+            this.modified = modified;
+        }
 
         protected void load(final @NotNull Map<? super @NotNull String, @NotNull Object> cache, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
             this.nickname = YamlHelper.getConfig(cache, "nickname", this.nickname,
@@ -149,8 +159,10 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "space_used", BigInteger.valueOf(-1), BigInteger.valueOf(Long.MAX_VALUE))).longValue();
             this.fileCount = YamlHelper.getConfig(cache, "file_count", () -> Long.toString(this.fileCount),
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "file_count", BigInteger.valueOf(-1), BigInteger.valueOf(Long.MAX_VALUE))).longValue();
-            this.lastIndexBuildTime = YamlHelper.getConfigNullable(cache, "last_index_build_time",
-                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "last_index_build_time", DriverConfiguration.TimeFormatter));
+            this.lastFileIndexBuildTime = YamlHelper.getConfigNullable(cache, "last_file_index_build_time",
+                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "last_file_index_build_time", DriverConfiguration.TimeFormatter));
+            this.lastTrashIndexBuildTime = YamlHelper.getConfigNullable(cache, "last_trash_index_build_time",
+                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "last_trash_index_build_time", DriverConfiguration.TimeFormatter));
         }
 
         protected @NotNull Map<@NotNull String, @NotNull Object> dump() {
@@ -161,7 +173,8 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
             cache.put("space_all", this.spaceAll);
             cache.put("space_used", this.spaceUsed);
             cache.put("file_count", this.fileCount);
-            cache.put("last_index_build_time", this.lastIndexBuildTime == null ? null : this.lastIndexBuildTime.format(DriverConfiguration.TimeFormatter));
+            cache.put("last_file_index_build_time", this.lastFileIndexBuildTime == null ? null : this.lastFileIndexBuildTime.format(DriverConfiguration.TimeFormatter));
+            cache.put("last_trash_index_build_time", this.lastTrashIndexBuildTime == null ? null : this.lastTrashIndexBuildTime.format(DriverConfiguration.TimeFormatter));
             return cache;
         }
 
@@ -213,6 +226,22 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
             this.fileCount = fileCount;
         }
 
+        public @Nullable LocalDateTime getLastFileIndexBuildTime() {
+            return this.lastFileIndexBuildTime;
+        }
+
+        public void setLastFileIndexBuildTime(final @Nullable LocalDateTime lastFileIndexBuildTime) {
+            this.lastFileIndexBuildTime = lastFileIndexBuildTime;
+        }
+
+        public @Nullable LocalDateTime getLastTrashIndexBuildTime() {
+            return this.lastTrashIndexBuildTime;
+        }
+
+        public void setLastTrashIndexBuildTime(final @Nullable LocalDateTime lastTrashIndexBuildTime) {
+            this.lastTrashIndexBuildTime = lastTrashIndexBuildTime;
+        }
+
         @Override
         public @NotNull String toString() {
             return "CacheSideDriverConfiguration{" +
@@ -222,6 +251,8 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
                     ", spaceAll=" + this.spaceAll + " Byte" +
                     ", spaceUsed=" + this.spaceUsed + " Byte" +
                     ", fileCount=" + this.fileCount +
+                    ", lastFileIndexBuildTime=" + this.lastFileIndexBuildTime +
+                    ", lastTrashIndexBuildTime=" + this.lastTrashIndexBuildTime +
                     '}';
         }
     }

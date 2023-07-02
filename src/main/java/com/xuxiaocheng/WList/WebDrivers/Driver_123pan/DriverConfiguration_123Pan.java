@@ -27,8 +27,7 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
         @Override
         public @NotNull String toString() {
             return "DriverConfiguration_123Pan$LocalSide{" +
-                    "name='" + this.name + '\'' +
-                    ", priority=" + this.priority +
+                    "super=" + super.toString() +
                     '}';
         }
     }
@@ -85,6 +84,7 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
                     ", password='" + this.password + '\'' +
                     ", loginType=" + this.loginType +
                     ", rootDirectoryId=" + this.rootDirectoryId +
+                    ", super=" + super.toString() +
                     '}';
         }
     }
@@ -144,12 +144,7 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
                     "token='" + this.token + '\'' +
                     ", tokenExpire=" + this.tokenExpire +
                     ", refreshExpire=" + this.refreshExpire +
-                    ", nickname='" + this.nickname + '\'' +
-                    ", imageLink='" + this.imageLink + '\'' +
-                    ", vip=" + this.vip +
-                    ", spaceAll=" + this.spaceAll +
-                    ", spaceUsed=" + this.spaceUsed +
-                    ", fileCount=" + this.fileCount +
+                    ", super=" + super.toString() +
                     '}';
         }
     }

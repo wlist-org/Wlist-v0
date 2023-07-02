@@ -156,6 +156,7 @@ final class DriverHelper_123pan {
         if (refresh == null)
             throw new WrongResponseException("No refresh time in response.");
         configurationCache.setRefreshExpire(LocalDateTime.ofEpochSecond(refresh.longValue(), 0, ZoneOffset.ofHours(8)));
+        configurationCache.setModified(true);
     }
 
     /**
@@ -263,6 +264,7 @@ final class DriverHelper_123pan {
         configuration.getCacheSide().setSpaceAll(data.getLongValue("SpacePermanent", 0) + data.getLongValue("SpaceTemp", 0));
         configuration.getCacheSide().setSpaceUsed(data.getLongValue("SpaceUsed", -1));
         configuration.getCacheSide().setFileCount(data.getLongValue("FileCount", -1));
+        configuration.getCacheSide().setModified(true);
     }
 
     // File

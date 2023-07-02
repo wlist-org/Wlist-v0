@@ -18,6 +18,7 @@ import org.jetbrains.annotations.UnmodifiableView;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.List;
 
@@ -42,12 +43,14 @@ public class Trash_123pan implements DriverTrashInterface<Driver_123Pan> {
 
     @Override
     public void buildCache() throws SQLException {
-        // TODO build time interval.
-        this.buildIndex();
+        if (this.driver.getConfiguration().getCacheSide().getLastTrashIndexBuildTime() == null)
+            this.buildIndex();
     }
 
     @Override
     public void buildIndex() throws SQLException {
+        this.driver.getConfiguration().getCacheSide().setLastTrashIndexBuildTime(LocalDateTime.now());
+        this.driver.getConfiguration().getCacheSide().setModified(true);
         final Iterator<TrashedSqlInformation> iterator = TrashManager_123pan.listAllFilesNoCache(this.driver.getConfiguration(), null, WListServer.IOExecutors).getB();
         while (iterator.hasNext())
             iterator.next();

@@ -63,6 +63,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
         final DriverInterface<?> driver = DriverManager.get(name);
         if (driver != null) {
             // TODO Background task.
+            // TODO build time interval and force control.
             driver.buildIndex();
             final DriverTrashInterface<?> trash = DriverManager.getTrash(name);
             if (trash != null)
@@ -276,7 +277,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
     }
 
     public static class RootDriverConfiguration extends DriverConfiguration<RootDriverConfiguration.LocalSide, RootDriverConfiguration.WebSide, RootDriverConfiguration.CacheSide> {
-        protected RootDriverConfiguration() {
+        public RootDriverConfiguration() {
             super(LocalSide::new, WebSide::new, CacheSide::new);
         }
         public static class LocalSide extends LocalSideDriverConfiguration {}
