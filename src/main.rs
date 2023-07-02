@@ -228,8 +228,8 @@ fn console_get_permissions(client: &mut WListClient, t: &Option<(String, String)
             println!("Group name: {}", info.name());
             let mut name = Vec::new();
             let mut value = Vec::new();
-            for i in 1..10 {
-                let p = Permission::from(1 << i);
+            for i in 0..10 {
+                let p = Permission::from(2 << i);
                 name.push(String::from(&p));
                 value.push("false");
             }
