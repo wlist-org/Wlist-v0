@@ -9,6 +9,7 @@ import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Server.Driver.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Driver.DriverManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
+import com.xuxiaocheng.WList.Server.ServerHandlers.ServerHandlerManager;
 import com.xuxiaocheng.WList.Server.WListServer;
 import io.netty.util.concurrent.Future;
 import org.jetbrains.annotations.NotNull;
@@ -32,7 +33,7 @@ public final class WList {
 
     private static final HLog logger = HLog.createInstance("DefaultLogger",
             WList.InIdeaMode ? Integer.MIN_VALUE : WList.DebugMode ? HLogLevel.LESS.getLevel() : HLogLevel.FINE.getLevel(),
-            true,  WList.InIdeaMode ? null : HMergedStream.getFileOutputStreamNoException(""));
+            true,  WList.InIdeaMode ? null : HMergedStream.getFileOutputStreamNoException(null));
 
     public static void main(final String @NotNull [] args) throws IOException, SQLException, InterruptedException {
         Thread.setDefaultUncaughtExceptionHandler((t, e) -> WList.logger.log(HLogLevel.FAULT, "Uncaught exception. thread: ", t.getName(), e));
@@ -53,6 +54,7 @@ public final class WList {
         WList.logger.log(HLogLevel.VERBOSE, "Initialized driver manager.");
         try {
             WList.logger.log(HLogLevel.VERBOSE, "Initializing WList server.");
+            ServerHandlerManager.initialize();
             WListServer.init(new InetSocketAddress(GlobalConfiguration.getInstance().port()));
             WList.logger.log(HLogLevel.VERBOSE, "Initialized WList server.");
             WListServer.getInstance().start();

@@ -47,18 +47,23 @@ public interface ServerHandler {
     @NotNull Function<@NotNull UnsupportedOperationException, @NotNull MessageProto> Unsupported = e ->
             ServerHandler.composeMessage(Operation.State.Unsupported, e.getMessage());
 
-    static void logOperation(final @NotNull ChannelId channelId, final Operation.@NotNull Type operation, final @Nullable UnionPair<@NotNull UserSqlInformation, @NotNull MessageProto> user, final @Nullable Supplier<@NotNull ParametersMap<@NotNull String, @Nullable Object>> parameters) {
+    static void logOperation(final @NotNull ChannelId channelId, final Operation.@NotNull Type operation, final @Nullable UnionPair<@NotNull UserSqlInformation, @NotNull MessageProto> user, final @Nullable Supplier<? extends @NotNull ParametersMap<@NotNull String, @Nullable Object>> parameters) {
         HLog.getInstance("ServerLogger").log(HLogLevel.DEBUG, "Operate: ", channelId.asLongText(), ", type: ", operation,
                 (Supplier<String>) () -> user == null ? "." :
-                        user.isSuccess() ? " user: (" + user.getT().id() + ")'" + user.getT().username() + "'." : ". Refused because " + user.getE().state() + '.',
+                        user.isSuccess() ? " user: (id:" + user.getT().id() + ") '" + user.getT().username() + "'." : ". Refused because " + user.getE().state() + '.',
                 (Supplier<String>) () -> {
                     if (parameters == null) return "";
                     final ParametersMap<String, Object> p = parameters.get();
                     if (p.isEmpty()) return "";
                     final StringBuilder builder = new StringBuilder(" (");
-                    for (final Map.Entry<String, Object> entry: p.entrySet())
-                        builder.append(entry.getKey()).append('=').append(HLog.expandString(entry.getValue())).append(", ");
-                    return builder.delete(builder.length() - 2, builder.length()).append(')').toString();
+                    for (final Map.Entry<String, Object> entry: p.entrySet()) {
+                        builder.append(entry.getKey()).append('=');
+                        if (entry.getValue() instanceof String)
+                            builder.append('\'').append(entry.getValue()).append("', ");
+                        else
+                            builder.append(HLog.expandString(entry.getValue())).append(", ");
+                    }
+                    return builder.replace(builder.length() - 2, builder.length(), ")").toString();
                 });
     }
 }

@@ -53,7 +53,7 @@ final class DriverHelper_123pan {
 
     private static final @NotNull HLog logger = HLog.createInstance("DriverLogger/123pan",
             WList.InIdeaMode ? Integer.MIN_VALUE : HLogLevel.LESS.getLevel(),
-            true,  WList.InIdeaMode ? null : HMergedStream.getFileOutputStreamNoException(""));
+            true,  WList.InIdeaMode ? null : HMergedStream.getFileOutputStreamNoException(null));
 
     static final @NotNull OkHttpClient httpClient = DriverNetworkHelper.newHttpClientBuilder()
             .addNetworkInterceptor(new DriverNetworkHelper.FrequencyControlInterceptor(5, 100)).build();

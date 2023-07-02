@@ -40,7 +40,7 @@ public final class DriverNetworkHelper {
 
     private static final @NotNull HLog logger = HLog.createInstance("NetworkLogger",
             WList.DebugMode ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1,
-            true, WList.InIdeaMode ? null : HMergedStream.getFileOutputStreamNoException(""));
+            true, WList.InIdeaMode ? null : HMergedStream.getFileOutputStreamNoException(null));
 
     @SuppressWarnings("SpellCheckingInspection")
     public static final @NotNull String defaultWebAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.37";

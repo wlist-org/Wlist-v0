@@ -53,7 +53,7 @@ public class WListServer {
 
     private static final @NotNull HLog logger = HLog.createInstance("ServerLogger",
             WList.DebugMode ? Integer.MIN_VALUE : HLogLevel.FINE.getLevel(),
-            true, WList.InIdeaMode ? null : HMergedStream.getFileOutputStreamNoException(""));
+            true, WList.InIdeaMode ? null : HMergedStream.getFileOutputStreamNoException(null));
 
     protected static @Nullable WListServer instance;
     public static synchronized void init(final @NotNull SocketAddress address) {

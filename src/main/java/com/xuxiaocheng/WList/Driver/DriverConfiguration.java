@@ -6,6 +6,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.math.BigInteger;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -13,7 +14,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSideDriverConfiguration, W extends DriverConfiguration.WebSideDriverConfiguration, C extends DriverConfiguration.CacheSideDriverConfiguration> {
-    public static final @NotNull DateTimeFormatter TokenExpireTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+    public static final @NotNull DateTimeFormatter TimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     protected final @NotNull L localSide;
     protected final @NotNull W webSide;
@@ -133,6 +134,7 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
         protected long spaceAll = 0;
         protected long spaceUsed = -1;
         protected long fileCount = -1;
+        protected @Nullable LocalDateTime lastIndexBuildTime = null;
 
         protected void load(final @NotNull Map<? super @NotNull String, @NotNull Object> cache, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
             this.nickname = YamlHelper.getConfig(cache, "nickname", this.nickname,
@@ -147,6 +149,8 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "space_used", BigInteger.valueOf(-1), BigInteger.valueOf(Long.MAX_VALUE))).longValue();
             this.fileCount = YamlHelper.getConfig(cache, "file_count", () -> Long.toString(this.fileCount),
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "file_count", BigInteger.valueOf(-1), BigInteger.valueOf(Long.MAX_VALUE))).longValue();
+            this.lastIndexBuildTime = YamlHelper.getConfigNullable(cache, "last_index_build_time",
+                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "last_index_build_time", DriverConfiguration.TimeFormatter));
         }
 
         protected @NotNull Map<@NotNull String, @NotNull Object> dump() {
@@ -157,6 +161,7 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
             cache.put("space_all", this.spaceAll);
             cache.put("space_used", this.spaceUsed);
             cache.put("file_count", this.fileCount);
+            cache.put("last_index_build_time", this.lastIndexBuildTime == null ? null : this.lastIndexBuildTime.format(DriverConfiguration.TimeFormatter));
             return cache;
         }
 

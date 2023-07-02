@@ -3,7 +3,6 @@ package com.xuxiaocheng.WList.Utils;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.annotations.UnmodifiableView;
 import org.snakeyaml.engine.v2.api.Dump;
 import org.snakeyaml.engine.v2.api.DumpSettings;
 import org.snakeyaml.engine.v2.api.Load;
@@ -27,7 +26,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 /**
  * @see com.xuxiaocheng.WList.Server.GlobalConfiguration#initialize(java.io.File) for example.
@@ -37,27 +35,24 @@ public final class YamlHelper {
         super();
     }
 
-    public static @NotNull @UnmodifiableView Map<@NotNull String, @NotNull Object> normalizeMapNode(final @Nullable Map<?, ?> config) {
+    public static @NotNull Map<@NotNull String, @NotNull Object> normalizeMapNode(final @Nullable Map<?, ?> config) {
         if (config == null)
             return Map.of();
-        return config.entrySet().stream().filter(e -> e.getKey() != null && e.getValue() != null)
-                .map(e -> Pair.ImmutablePair.makeImmutablePair(e.getKey().toString(), e.getValue()))
-                .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond));
+        final Map<String, Object> map = new LinkedHashMap<>(config.size());
+        for (final Map.Entry<?, ?> entry: config.entrySet())
+            if (entry.getKey() != null && entry.getValue() != null)
+                map.put(entry.getKey().toString(), entry.getValue());
+        return map;
     }
 
-    public static @NotNull @UnmodifiableView Map<@NotNull String, @NotNull Object> loadYaml(final @NotNull InputStream stream) throws IOException {
-        final Object yaml;
-        try {
-            yaml = new Load(LoadSettings.builder().setParseComments(true).setSchema(new FailsafeSchema())
-                    .setTagConstructors(Map.of(Tag.NULL, new ConstructYamlNull())).build())
-                    .loadFromInputStream(stream);
-        } catch (final RuntimeException exception) {
-            throw new IOException(exception);
-        }
+    public static @NotNull Map<@NotNull String, @NotNull Object> loadYaml(final @NotNull InputStream stream) throws IOException {
+        final Object yaml = new Load(LoadSettings.builder().setParseComments(true).setSchema(new FailsafeSchema())
+                .setTagConstructors(Map.of(Tag.NULL, new ConstructYamlNull())).build())
+                .loadFromInputStream(stream);
         if (yaml == null)
-            return Map.of();
+            return new LinkedHashMap<>();
         if (!(yaml instanceof LinkedHashMap<?, ?> map))
-            throw new IOException("Invalid yaml config format.");
+            throw new IOException("Invalid yaml config format. class: " + yaml.getClass().getName());
         return YamlHelper.normalizeMapNode(map);
     }
 
@@ -158,7 +153,7 @@ public final class YamlHelper {
         }
     }
 
-    public static @Nullable @UnmodifiableView Map<@NotNull String, @NotNull Object> transferMapNode(final @Nullable Object obj, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String slot) {
+    public static @Nullable Map<@NotNull String, @NotNull Object> transferMapNode(final @Nullable Object obj, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String slot) {
         if (obj == null)
             return null;
         if (!(obj instanceof Map<?, ?> map)) {

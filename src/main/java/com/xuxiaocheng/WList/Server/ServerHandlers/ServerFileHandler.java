@@ -199,7 +199,7 @@ public final class ServerFileHandler {
         if (url == null)
             return ServerFileHandler.FileNotFound;
         final String id = FileDownloadIdHelper.generateId(url, user.getT().username());
-        HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Signed download id for user: ", user.getT().username(), " file: '", path, "' (", from, '-', to, ") id: ", id);
+        HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Signed download id for user: '", user.getT().username(), "' file: '", path, "' (", from, '-', to, ") id: ", id);
         return ServerHandler.successMessage(buf -> {
             ByteBufIOUtil.writeVariable2LenLong(buf, url.total());
             ByteBufIOUtil.writeUTF(buf, id);
@@ -288,7 +288,7 @@ public final class ServerFileHandler {
         }
         assert methods.getT().methods().size() == MiscellaneousUtil.calculatePartCount(size, WListServer.FileTransferBufferSize);
         final String id = FileUploadIdHelper.generateId(methods.getT(), size, user.getT().username());
-        HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Signed upload id for user: ", user.getT().username(), " file: '", path, "' (", size, "B) id: ", id);
+        HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Signed upload id for user: '", user.getT().username(), "' file: '", path, "' (", size, "B) id: ", id);
         return ServerHandler.successMessage(buf -> {
             ByteBufIOUtil.writeBoolean(buf, false);
             ByteBufIOUtil.writeUTF(buf, id);

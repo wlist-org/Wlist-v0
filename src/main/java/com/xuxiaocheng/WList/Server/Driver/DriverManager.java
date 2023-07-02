@@ -125,7 +125,7 @@ public final class DriverManager {
                     HLog.getInstance("DefaultLogger").log(HLogLevel.INFO, "Driver: ", entry.getKey(), " type: ", entry.getValue().name());
                     DriverManager.add0(entry.getKey(), entry.getValue());
                 } catch (final IllegalParametersException | IOException exception) {
-                    HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, "Driver: ", entry.getKey(), " type: ", entry.getValue().name(), exception);
+                    HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, "Failed to initialize driver: ", entry.getKey(), exception);
                 }
             }, WListServer.ServerExecutors));
         for (final CompletableFuture<?> future: futures)

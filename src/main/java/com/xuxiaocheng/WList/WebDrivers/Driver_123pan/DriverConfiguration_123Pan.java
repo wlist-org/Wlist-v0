@@ -100,17 +100,17 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
             this.token = YamlHelper.getConfigNullable(cache, "token",
                     o -> YamlHelper.transferString(o, errors, prefix + "token"));
             this.tokenExpire = YamlHelper.getConfigNullable(cache, "token_expire",
-                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "token_expire", DriverConfiguration.TokenExpireTimeFormatter));
+                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "token_expire", DriverConfiguration.TimeFormatter));
             this.refreshExpire = YamlHelper.getConfigNullable(cache, "refresh_expire",
-                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "refresh_expire", DriverConfiguration.TokenExpireTimeFormatter));
+                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "refresh_expire", DriverConfiguration.TimeFormatter));
         }
 
         @Override
         protected @NotNull Map<@NotNull String, @NotNull Object> dump() {
             final Map<String, Object> cache = super.dump();
             cache.put("token", this.token);
-            cache.put("token_expire", this.tokenExpire == null ? null : DriverConfiguration.TokenExpireTimeFormatter.format(this.tokenExpire));
-            cache.put("refresh_expire", this.refreshExpire == null ? null : DriverConfiguration.TokenExpireTimeFormatter.format(this.refreshExpire));
+            cache.put("token_expire", this.tokenExpire == null ? null : DriverConfiguration.TimeFormatter.format(this.tokenExpire));
+            cache.put("refresh_expire", this.refreshExpire == null ? null : DriverConfiguration.TimeFormatter.format(this.refreshExpire));
             return cache;
         }
 

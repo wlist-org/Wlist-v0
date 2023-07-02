@@ -107,7 +107,7 @@ public final class ServerUserHandler {
         if (user == null || !PasswordGuard.encryptPassword(password).equals(user.password()))
             return ServerHandler.DataError;
         final String token = UserTokenHelper.encodeToken(user.id(), user.modifyTime());
-        HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Signed token for user: ", username, " token: ", token);
+        HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Signed token for user: '", username, "' token: ", token);
         return ServerHandler.composeMessage(Operation.State.Success, token);
     };
 
