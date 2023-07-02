@@ -35,7 +35,7 @@ public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxCo
 
     public static synchronized void initialize(final @Nullable File path) throws IOException {
         if (GlobalConfiguration.instance != null)
-            throw new IllegalStateException("Global configuration is initialized. instance: " + GlobalConfiguration.instance + " path: " + (path == null ? "null" : path.getAbsolutePath()));
+            throw new IllegalStateException("Global configuration is initialized. instance: " + GlobalConfiguration.instance + (path == null ? "" : " path: " + path.getAbsolutePath()));
         final Map<String, Object> config;
         if (path != null) {
             if (!HFileHelper.ensureFileExist(path))

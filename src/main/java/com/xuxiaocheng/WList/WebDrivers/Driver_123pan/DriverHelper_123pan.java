@@ -190,7 +190,7 @@ final class DriverHelper_123pan {
                 throw new DriverTokenExpiredException(exception.getMeaning());
             throw exception;
         }
-        DriverHelper_123pan.logger.log(HLogLevel.LESS, "Logged in. drive: ", configuration.getLocalSide().getName() + ", passport: " + configuration.getWebSide().getPassport());
+        DriverHelper_123pan.logger.log(HLogLevel.LESS, "Logged in. drive: ", configuration.getName() + ", passport: " + configuration.getWebSide().getPassport());
         DriverHelper_123pan.handleLoginData(configuration.getCacheSide(), data);
     }
 
@@ -216,7 +216,7 @@ final class DriverHelper_123pan {
                 return true;
             throw exception;
         }
-        DriverHelper_123pan.logger.log(HLogLevel.LESS, "Refreshed token for: ", configuration.getLocalSide().getName() + ", passport: " + configuration.getWebSide().getPassport());
+        DriverHelper_123pan.logger.log(HLogLevel.LESS, "Refreshed token for: ", configuration.getName() + ", passport: " + configuration.getWebSide().getPassport());
         DriverHelper_123pan.handleLoginData(configuration.getCacheSide(), data);
         return false;
     }

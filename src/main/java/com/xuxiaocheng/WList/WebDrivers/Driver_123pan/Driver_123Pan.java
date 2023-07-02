@@ -33,13 +33,13 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
 
     @Override
     public void initialize(final @NotNull DriverConfiguration_123Pan configuration) throws SQLException {
-        FileManager.initialize(configuration.getLocalSide().getName());
+        FileManager.initialize(configuration.getName());
         this.configuration = configuration;
     }
 
     @Override
     public void uninitialize() throws SQLException {
-        FileManager.uninitialize(this.configuration.getLocalSide().getName());
+        FileManager.uninitialize(this.configuration.getName());
     }
 
     @Override

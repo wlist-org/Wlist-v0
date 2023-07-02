@@ -24,6 +24,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -42,6 +44,19 @@ public final class DriverManager {
     private static final @NotNull Map<@NotNull String, Pair.@NotNull ImmutablePair<@NotNull WebDriversType, @NotNull DriverInterface<?>>> drivers = new ConcurrentHashMap<>();
     private static final @NotNull Map<@NotNull String, Pair.@NotNull ImmutablePair<@NotNull WebDriversType, @NotNull DriverTrashInterface<?>>> trashes = new ConcurrentHashMap<>();
 
+    public static @NotNull File getConfigurationFile(final @NotNull String name) {
+        if (name.contains("\\") || name.contains("/"))
+            throw new InvalidPathException(name, "Driver name cannot contain separator (\\/).");
+        return Path.of("configs", name + ".yaml").toFile();
+    }
+
+    public static void dumpConfiguration(final DriverConfiguration<?, ?, ?> configuration) throws IOException {
+        if (GlobalConfiguration.getInstance().dumpConfiguration())
+            try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(DriverManager.getConfigurationFile(configuration.getName())))) {
+                YamlHelper.dumpYaml(configuration.dump(), outputStream);
+            }
+    }
+
     @SuppressWarnings("unchecked")
     private static <C extends DriverConfiguration<?, ?, ?>> void add0(final @NotNull String name, final @NotNull WebDriversType type) throws IOException, IllegalParametersException {
         if (DriverManager.drivers.containsKey(name))
@@ -50,12 +65,12 @@ public final class DriverManager {
         final DriverTrashInterface<DriverInterface<C>> trash;
         try {
             final Supplier<DriverTrashInterface<?>> supplier = type.getTrash();
-            trash = supplier == null ? null: (DriverTrashInterface<DriverInterface<C>>) supplier.get();
+            trash = supplier == null ? null : (DriverTrashInterface<DriverInterface<C>>) supplier.get();
             driver = trash == null ? (DriverInterface<C>) type.getDriver().get() : trash.getDriver();
         } catch (final RuntimeException exception) {
             throw new IllegalParametersException("Failed to get driver.", Map.of("name", name, "type", type), exception);
         }
-        final File path = new File("configs", name + ".yaml");
+        final File path = DriverManager.getConfigurationFile(name);
         if (!HFileHelper.ensureFileExist(path))
             throw new IOException("Failed to create driver configuration file. path: " + path.getAbsolutePath());
         final C configuration = driver.getConfiguration();
@@ -66,8 +81,7 @@ public final class DriverManager {
         final Collection<Pair.ImmutablePair<String, String>> errors = new LinkedList<>();
         configuration.load(config, errors);
         YamlHelper.throwErrors(errors);
-        if (!name.equals(configuration.getLocalSide().getName()))
-            HLog.getInstance("DefaultLogger").log(HLogLevel.WARN, "Mismatched filename (", name, ") and drive name (", configuration.getLocalSide().getName(), "). Using drive name.");
+        configuration.setName(name);
         try {
             driver.initialize(configuration);
             if (trash != null)
@@ -88,10 +102,7 @@ public final class DriverManager {
         } catch (final Exception exception) {
             throw new IllegalParametersException("Failed to build cache.", Map.of("name", name, "type", type, "configuration", configuration), exception);
         } finally {
-            if (GlobalConfiguration.getInstance().dumpConfiguration())
-                try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(path))) {
-                    YamlHelper.dumpYaml(configuration.dump(), outputStream);
-                }
+            DriverManager.dumpConfiguration(configuration);
         }
         DriverManager.drivers.merge(name, Pair.ImmutablePair.makeImmutablePair(type, driver), (o, n) -> {
             HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, "Conflict driver. Abort newer. name: ", name, " configuration: ", configuration);

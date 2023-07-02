@@ -40,7 +40,7 @@ public final class TrashManager_123pan {
 
     static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull List<@NotNull TrashedSqlInformation>> listFilesNoCache(final @NotNull DriverConfiguration_123Pan configuration, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction, final @Nullable String _connectionId) throws IllegalParametersException, IOException, SQLException {
         final Pair.ImmutablePair<Long, List<TrashedSqlInformation>> data = TrashHelper_123pan.listFiles(configuration, limit, page, policy, direction);
-        TrashedFileManager.insertOrUpdateFiles(configuration.getLocalSide().getName(), data.getSecond(), _connectionId);
+        TrashedFileManager.insertOrUpdateFiles(configuration.getName(), data.getSecond(), _connectionId);
         return data;
     }
 
@@ -49,7 +49,7 @@ public final class TrashManager_123pan {
         final Connection connection = TrashedFileManager.getDatabaseUtil().getConnection(_connectionId, connectionId);
         final Set<Long> allIds = ConcurrentHashMap.newKeySet();
         try {
-            allIds.addAll(TrashedFileManager.selectFilesId(configuration.getLocalSide().getName(), connectionId.get()));
+            allIds.addAll(TrashedFileManager.selectFilesId(configuration.getName(), connectionId.get()));
         } catch (final SQLException | RuntimeException exception) {
             connection.close();
             throw exception;
@@ -62,7 +62,7 @@ public final class TrashManager_123pan {
                 }, DriverUtil.DefaultLimitPerRequestPage, HExceptionWrapper.wrapConsumer(e -> {
                     try (connection) {
                         if (e != null) throw e;
-                        TrashedFileManager.deleteFiles(configuration.getLocalSide().getName(), allIds, connectionId.get());
+                        TrashedFileManager.deleteFiles(configuration.getName(), allIds, connectionId.get());
                         connection.commit();
                     }
                 }), _threadPool);
@@ -73,14 +73,14 @@ public final class TrashManager_123pan {
         try (final Connection connection = TrashedFileManager.getDatabaseUtil().getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
             if (useCache) {
-                final TrashedSqlInformation information = TrashedFileManager.selectFile(configuration.getLocalSide().getName(), id, connectionId.get());
+                final TrashedSqlInformation information = TrashedFileManager.selectFile(configuration.getName(), id, connectionId.get());
                 if (information != null)
                     return information;
             }
             // TODO list-all
             final TrashedSqlInformation information = TrashHelper_123pan.getFilesInformation(configuration, List.of(id)).get(id);
             if (information != null)
-                TrashedFileManager.insertOrUpdateFile(configuration.getLocalSide().getName(), information, connectionId.get());
+                TrashedFileManager.insertOrUpdateFile(configuration.getName(), information, connectionId.get());
             connection.commit();
             return information;
         }
@@ -91,19 +91,19 @@ public final class TrashManager_123pan {
         try (final Connection connection = TrashedFileManager.getDatabaseUtil().getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
             if (useCache) {
-                final Pair.ImmutablePair<Long, List<TrashedSqlInformation>> list = TrashedFileManager.selectFilesInPage(configuration.getLocalSide().getName(),
+                final Pair.ImmutablePair<Long, List<TrashedSqlInformation>> list = TrashedFileManager.selectFilesInPage(configuration.getName(),
                         limit, (long) page * limit, direction, policy, connectionId.get());
                 if (list.getFirst().longValue() > 0)
                     return list;
                 assert list.getSecond().isEmpty();
             }
             final Pair.ImmutablePair<Long, List<TrashedSqlInformation>> list = TrashManager_123pan.listFilesNoCache(configuration, limit, page, policy, direction, connectionId.get());
-            final long cached = useCache ? 0 : TrashedFileManager.selectFileCount(configuration.getLocalSide().getName(), connectionId.get());
+            final long cached = useCache ? 0 : TrashedFileManager.selectFileCount(configuration.getName(), connectionId.get());
             if (cached != list.getFirst().longValue())
                 if (list.getFirst().longValue() == list.getSecond().size())
-                    TrashedFileManager.insertOrUpdateFiles(configuration.getLocalSide().getName(), list.getSecond(), connectionId.get());
+                    TrashedFileManager.insertOrUpdateFiles(configuration.getName(), list.getSecond(), connectionId.get());
                 else
-                    BackgroundTaskManager.backgroundOptionally("Driver_123pan: " + configuration.getLocalSide().getName(), "Sync trash",
+                    BackgroundTaskManager.backgroundOptionally("Driver_123pan: " + configuration.getName(), "Sync trash",
                             () -> new AtomicLong(0), AtomicLong.class,
                             lock -> lock.get() != list.getFirst().longValue(), HExceptionWrapper.wrapRunnable(() -> {
                                 FileManager.getDatabaseUtil().getExplicitConnection(connectionId.get()); // retain
@@ -126,7 +126,7 @@ public final class TrashManager_123pan {
         try (final Connection connection = FileManager.getDatabaseUtil().getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
             if (useCache) {
-                final FileSqlInformation information = FileManager.selectFile(configuration.getLocalSide().getName(), id, connectionId.get());
+                final FileSqlInformation information = FileManager.selectFile(configuration.getName(), id, connectionId.get());
                 if (information != null)
                     return information.path();
             }
@@ -147,7 +147,7 @@ public final class TrashManager_123pan {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = TrashedFileManager.getDatabaseUtil().getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
-            TrashedFileManager.deleteFile(configuration.getLocalSide().getName(), id, connectionId.get());
+            TrashedFileManager.deleteFile(configuration.getName(), id, connectionId.get());
             final Pair.ImmutablePair<Long, FileSqlInformation> parentId = TrashHelper_123pan.getInformationParentIds(configuration, ids).get(id);
             final DrivePath parentPath = TrashManager_123pan.buildPath(configuration, parentId.getFirst().longValue(), useCache, connectionId.get());
             if (parentPath == null)
@@ -156,8 +156,8 @@ public final class TrashManager_123pan {
             information.path().addedRoot(parentPath); // sourcePath.child(parentId.getSecond().path().getName()); information.path = sourcePath;
             try (final Connection fileConnection = FileManager.getDatabaseUtil().getConnection(TrashedFileManager.getDatabaseUtil() == FileManager.getDatabaseUtil() ? _connectionId : null, connectionId)) {
                 fileConnection.setAutoCommit(false);
-                if (FileManager.selectFileCountByParentPath(configuration.getLocalSide().getName(), parentPath, connectionId.get()) > 0)
-                    FileManager.insertOrUpdateFile(configuration.getLocalSide().getName(), information, connectionId.get());
+                if (FileManager.selectFileCountByParentPath(configuration.getName(), parentPath, connectionId.get()) > 0)
+                    FileManager.insertOrUpdateFile(configuration.getName(), information, connectionId.get());
                 DriverManager_123pan.moveFile(configuration, information.path(), path, policy, true, connectionId.get(), _threadPool);
                 fileConnection.commit();
             }
@@ -171,13 +171,13 @@ public final class TrashManager_123pan {
         if (ids.isEmpty())
             return;
 //        assert ids.size() == 1 && ids.contains(id);
-        TrashedFileManager.deleteFile(configuration.getLocalSide().getName(), id, _connectionId);
+        TrashedFileManager.deleteFile(configuration.getName(), id, _connectionId);
         DriverManager_123pan.resetUserInformation(configuration);
     }
 
     static void deleteAllFiles(final @NotNull DriverConfiguration_123Pan configuration, final @Nullable String _connectionId) throws IllegalParametersException, IOException, SQLException {
         TrashHelper_123pan.deleteAllFiles(configuration);
-        TrashedFileManager.clear(configuration.getLocalSide().getName(), _connectionId);
+        TrashedFileManager.clear(configuration.getName(), _connectionId);
         DriverManager_123pan.resetUserInformation(configuration);
     }
 
@@ -208,7 +208,7 @@ public final class TrashManager_123pan {
                 connection.commit();
                 return information;
             }
-            TrashedFileManager.insertOrUpdateFile(configuration.getLocalSide().getName(), information.getT(), connectionId.get());
+            TrashedFileManager.insertOrUpdateFile(configuration.getName(), information.getT(), connectionId.get());
             connection.commit();
             return information;
         }

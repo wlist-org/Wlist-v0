@@ -16,14 +16,10 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
         DriverConfiguration_123Pan.WebSide,
         DriverConfiguration_123Pan.CacheSide> {
     public DriverConfiguration_123Pan() {
-        super(LocalSide::new, WebSide::new, CacheSide::new);
+        super("123pan", LocalSide::new, WebSide::new, CacheSide::new);
     }
 
     public static final class LocalSide extends LocalSideDriverConfiguration {
-        public LocalSide() {
-            super("123pan");
-        }
-
         @Override
         public @NotNull String toString() {
             return "DriverConfiguration_123Pan$LocalSide{" +

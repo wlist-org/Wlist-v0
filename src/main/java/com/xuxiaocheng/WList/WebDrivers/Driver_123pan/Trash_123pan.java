@@ -32,13 +32,13 @@ public class Trash_123pan implements DriverTrashInterface<Driver_123Pan> {
 
     @Override
     public void initialize(final @NotNull Driver_123Pan driver) throws SQLException {
-        TrashedFileManager.initialize(driver.getConfiguration().getLocalSide().getName());
+        TrashedFileManager.initialize(driver.getConfiguration().getName());
         this.driver = driver;
     }
 
     @Override
     public void uninitialize() throws SQLException {
-        TrashedFileManager.uninitialize(this.driver.getConfiguration().getLocalSide().getName());
+        TrashedFileManager.uninitialize(this.driver.getConfiguration().getName());
     }
 
     @Override

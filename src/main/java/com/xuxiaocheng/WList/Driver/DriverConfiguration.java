@@ -16,15 +16,25 @@ import java.util.function.Supplier;
 public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSideDriverConfiguration, W extends DriverConfiguration.WebSideDriverConfiguration, C extends DriverConfiguration.CacheSideDriverConfiguration> {
     public static final @NotNull DateTimeFormatter TimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
+    protected @NotNull String name;
     protected final @NotNull L localSide;
     protected final @NotNull W webSide;
     protected final @NotNull C cacheSide;
 
-    protected DriverConfiguration(@NotNull final Supplier<? extends L> local, final @NotNull Supplier<? extends W> web, final @NotNull Supplier<? extends C> cache) {
+    protected DriverConfiguration(final @NotNull String name, final @NotNull Supplier<? extends L> local, final @NotNull Supplier<? extends W> web, final @NotNull Supplier<? extends C> cache) {
         super();
+        this.name = name;
         this.localSide = local.get();
         this.webSide = web.get();
         this.cacheSide = cache.get();
+    }
+
+    public @NotNull String getName() {
+        return this.name;
+    }
+
+    public void setName(final @NotNull String name) {
+        this.name = name;
     }
 
     public @NotNull L getLocalSide() {
@@ -40,6 +50,8 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
     }
 
     public void load(final @NotNull Map<? super @NotNull String, @NotNull Object> config, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors) {
+        this.name = YamlHelper.getConfig(config, "name", "Driver",
+                o -> YamlHelper.transferString(o, errors, "nickname"));
         final Map<String, Object> local = YamlHelper.getConfig(config, "local", Map::of,
                 o -> YamlHelper.transferMapNode(o, errors, "local"));
         this.localSide.load(local, errors, "local$");
@@ -53,6 +65,7 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
 
     public @NotNull Map<@NotNull String, @NotNull Object> dump() {
         final Map<String, Object> config = new LinkedHashMap<>();
+        config.put("name", this.name);
         config.put("local", this.localSide.dump());
         config.put("web", this.webSide.dump());
         config.put("cache", this.cacheSide.dump());
@@ -62,42 +75,25 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
     @Override
     public @NotNull String toString() {
         return "DriverConfiguration{" +
-                "localSide=" + this.localSide +
+                "name='" + this.name + '\'' +
+                ", localSide=" + this.localSide +
                 ", webSide=" + this.webSide +
                 ", cacheSide=" + this.cacheSide +
                 '}';
     }
 
     public abstract static class LocalSideDriverConfiguration {
-        protected @NotNull String name;
         protected @NotNull BigInteger priority = BigInteger.ZERO;
 
-        protected LocalSideDriverConfiguration() {
-            super();
-            this.name = "Driver";
-        }
-
-        protected LocalSideDriverConfiguration(final @NotNull String defaultName) {
-            super();
-            this.name = defaultName;
-        }
-
         protected void load(final @NotNull Map<? super @NotNull String, @NotNull Object> local, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
-            this.name = YamlHelper.getConfig(local, "name", this.name,
-                    o -> YamlHelper.transferString(o, errors, prefix + "name"));
             this.priority = YamlHelper.getConfig(local, "priority", this.priority::toString,
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "priority", null, null));
         }
 
         protected @NotNull Map<@NotNull String, @NotNull Object> dump() {
             final Map<String, Object> local = new LinkedHashMap<>();
-            local.put("name", this.name);
             local.put("priority", this.priority);
             return local;
-        }
-
-        public @NotNull String getName() {
-            return this.name;
         }
 
         public @NotNull BigInteger getPriority() {
@@ -107,8 +103,7 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
         @Override
         public @NotNull String toString() {
             return "LocalSideDriverConfiguration{" +
-                    "name='" + this.name + '\'' +
-                    ", priority=" + this.priority +
+                    "priority=" + this.priority +
                     '}';
         }
     }

@@ -278,7 +278,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
 
     public static class RootDriverConfiguration extends DriverConfiguration<RootDriverConfiguration.LocalSide, RootDriverConfiguration.WebSide, RootDriverConfiguration.CacheSide> {
         public RootDriverConfiguration() {
-            super(LocalSide::new, WebSide::new, CacheSide::new);
+            super("RootDriver", LocalSide::new, WebSide::new, CacheSide::new);
         }
         public static class LocalSide extends LocalSideDriverConfiguration {}
         public static class WebSide extends WebSideDriverConfiguration {}

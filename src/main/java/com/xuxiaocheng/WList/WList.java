@@ -1,16 +1,20 @@
 package com.xuxiaocheng.WList;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
 import com.xuxiaocheng.WList.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupManager;
+import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Server.Driver.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Driver.DriverManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.ServerHandlers.ServerHandlerManager;
 import com.xuxiaocheng.WList.Server.WListServer;
+import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
 import io.netty.util.concurrent.Future;
 import org.jetbrains.annotations.NotNull;
 
@@ -60,6 +64,11 @@ public final class WList {
             WListServer.getInstance().start();
             WListServer.getInstance().awaitStop();
         } finally {
+            if (GlobalConfiguration.getInstance().dumpConfiguration()) {
+                WList.logger.log(HLogLevel.INFO, "Saving driver configurations in multithreading...");
+                for (final Pair.ImmutablePair<WebDriversType, DriverInterface<?>> driver: DriverManager.getAll().values())
+                    WListServer.ServerExecutors.submit(HExceptionWrapper.wrapRunnable(() -> DriverManager.dumpConfiguration(driver.getSecond().getConfiguration())));
+            }
             WList.logger.log(HLogLevel.FINE, "Shutting down the whole application...");
             final Future<?>[] futures = new Future[4];
             futures[0] = WListServer.CodecExecutors.shutdownGracefully();

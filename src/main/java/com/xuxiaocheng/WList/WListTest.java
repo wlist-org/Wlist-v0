@@ -26,7 +26,7 @@ public final class WListTest {
         WListTest.wrapServerInitialize(() -> {
             final DriverInterface<?> driver = Objects.requireNonNull(DriverManager.get("123pan"));
 
-//            TrashedFileManager.initialize(configuration.getLocalSide().getName());
+//            TrashedFileManager.initialize(configuration.getName());
 //            return TrashManager_123pan.restoreFile(configuration, 2293734, true, null, null);
             return null;
         });

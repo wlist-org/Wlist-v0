@@ -78,7 +78,7 @@ public final class YamlHelper {
 
     public static <T> @Nullable T getConfigNullable(final @NotNull Map<? super @NotNull String, @NotNull Object> config, final @NotNull String key,final @NotNull Function<@NotNull Object, @Nullable T> transfer) {
         final Object value = config.get(key);
-        if (value == null)
+        if (value == null || "null".equals(value))
             return null;
         return transfer.apply(value);
     }
