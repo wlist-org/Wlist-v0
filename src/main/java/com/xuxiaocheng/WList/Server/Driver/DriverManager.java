@@ -139,8 +139,19 @@ public final class DriverManager {
         return driver.getSecond();
     }
 
+    public static @Nullable DriverTrashInterface<?> getTrash(final @NotNull String name) {
+        final Pair.ImmutablePair<WebDriversType, DriverTrashInterface<?>> trash = DriverManager.trashes.get(name);
+        if (trash == null)
+            return null;
+        return trash.getSecond();
+    }
+
     public static @NotNull @UnmodifiableView Map<@NotNull String, Pair.@NotNull ImmutablePair<@NotNull WebDriversType, @NotNull DriverInterface<?>>> getAll() {
         return Collections.unmodifiableMap(DriverManager.drivers);
+    }
+
+    public static @NotNull @UnmodifiableView Map<@NotNull String, Pair.@NotNull ImmutablePair<@NotNull WebDriversType, @NotNull DriverTrashInterface<?>>> getAllTrashes() {
+        return Collections.unmodifiableMap(DriverManager.trashes);
     }
 
     public static void add(final @NotNull String name, final @NotNull WebDriversType type) throws IOException, IllegalParametersException {

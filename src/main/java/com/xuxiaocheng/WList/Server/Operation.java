@@ -29,6 +29,7 @@ public final class Operation {
         ChangeGroup,
         AddPermission,
         RemovePermission,
+        BuildIndex,
         ListFiles,
         MakeDirectories,
         DeleteFile,
@@ -50,7 +51,7 @@ public final class Operation {
         UsersList,
         UsersOperate,
         DriverOperate,
-        FilesBuildIndex, // build index and force refresh.
+        FilesBuildIndex,
         FilesList,
         FileDownload,
         FileUpload,

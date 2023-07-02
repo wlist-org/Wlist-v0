@@ -4,6 +4,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.WList.Driver.DriverConfiguration;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
+import com.xuxiaocheng.WList.Driver.DriverTrashInterface;
 import com.xuxiaocheng.WList.Driver.FailureReason;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Driver.Options;
@@ -42,6 +43,32 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
     @Override
     public void uninitialize() {
         throw new UnsupportedOperationException("Root Driver is the core driver of WList. Cannot be deleted.");
+    }
+
+    @Deprecated
+    @Override
+    public void buildCache() throws Exception {
+        for (final Pair.ImmutablePair<WebDriversType, DriverInterface<?>> driver: DriverManager.getAll().values())
+            driver.getSecond().buildCache();
+    }
+
+    @Deprecated
+    @Override
+    public void buildIndex() throws Exception {
+        for (final Pair.ImmutablePair<WebDriversType, DriverInterface<?>> driver: DriverManager.getAll().values())
+            driver.getSecond().buildIndex();
+    }
+
+    public boolean buildIndex(final @NotNull String name) throws Exception {
+        final DriverInterface<?> driver = DriverManager.get(name);
+        if (driver != null) {
+            // TODO Background task.
+            driver.buildIndex();
+            final DriverTrashInterface<?> trash = DriverManager.getTrash(name);
+            if (trash != null)
+                trash.buildIndex();
+        }
+        return driver == null;
     }
 
     @Override
@@ -246,18 +273,6 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
         } finally {
             source.addedRoot(root);
         }
-    }
-
-    @Override
-    public void buildCache() throws Exception {
-        for (final Pair.ImmutablePair<WebDriversType, DriverInterface<?>> driver: DriverManager.getAll().values())
-            driver.getSecond().buildCache();
-    }
-
-    @Override
-    public void buildIndex() throws Exception {
-        for (final Pair.ImmutablePair<WebDriversType, DriverInterface<?>> driver: DriverManager.getAll().values())
-            driver.getSecond().buildIndex();
     }
 
     public static class RootDriverConfiguration extends DriverConfiguration<RootDriverConfiguration.LocalSide, RootDriverConfiguration.WebSide, RootDriverConfiguration.CacheSide> {

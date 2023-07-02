@@ -37,6 +37,22 @@ public final class ServerFileHandler {
     public static final @NotNull MessageProto InvalidId = ServerHandler.composeMessage(Operation.State.DataError, "Id");
     public static final @NotNull MessageProto InvalidFile = ServerHandler.composeMessage(Operation.State.DataError, "Content");
 
+    public static final @NotNull ServerHandler doBuildIndex = buffer -> {
+        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FilesBuildIndex);
+        final String driver = ByteBufIOUtil.readUTF(buffer);
+        if (user.isFailure())
+            return user.getE();
+        final boolean flag;
+        try {
+            flag = RootDriver.getInstance().buildIndex(driver);
+        } catch (final UnsupportedOperationException exception) {
+            return ServerHandler.Unsupported.apply(exception);
+        } catch (final Exception exception) {
+            throw new ServerException(exception);
+        }
+        return flag ? ServerHandler.DataError : ServerHandler.Success;
+    };
+
     public static final @NotNull ServerHandler doListFiles = buffer -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList);
         final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
@@ -47,11 +63,11 @@ public final class ServerFileHandler {
         final boolean refresh = ByteBufIOUtil.readBoolean(buffer);
         if (user.isFailure())
             return user.getE();
-        if (refresh && !user.getT().group().permissions().contains(Operation.Permission.FilesBuildIndex))
-            return ServerHandler.NoPermission;
         if (limit < 1 || limit > GlobalConfiguration.getInstance().maxLimitPerPage()
                 || page < 0 || orderPolicy == null || orderDirection == null)
             return ServerHandler.WrongParameters;
+        if (refresh && !user.getT().group().permissions().contains(Operation.Permission.FilesBuildIndex))
+            return ServerHandler.NoPermission;
         final Pair.ImmutablePair<Long, List<FileSqlInformation>> list;
         try {
             if (refresh)

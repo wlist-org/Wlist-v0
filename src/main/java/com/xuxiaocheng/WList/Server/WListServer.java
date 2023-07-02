@@ -25,7 +25,6 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.ChannelGroupFuture;
-import io.netty.channel.group.ChannelMatcher;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -135,12 +134,8 @@ public class WListServer {
         this.latch.countDown();
     }
 
-    public @NotNull ChannelGroupFuture writeChannels(final @NotNull ByteBuf msg) {
+    public @NotNull ChannelGroupFuture broadcast(final @NotNull ByteBuf msg) {
         return this.channelGroup.writeAndFlush(msg);
-    }
-
-    public @NotNull ChannelGroupFuture writeChannels(final @NotNull ByteBuf msg, final @NotNull ChannelMatcher matcher) {
-        return this.channelGroup.writeAndFlush(msg, matcher);
     }
 
     @Override
@@ -178,6 +173,7 @@ public class WListServer {
             WListServer.logger.log(HLogLevel.VERBOSE, "Read: ", channel.id().asLongText(), " len: ", msg.readableBytes(), " cipher: ", MiscellaneousUtil.bin(msg.readByte()));
             try {
                 final Operation.Type type = Operation.valueOfType(ByteBufIOUtil.readUTF(msg));
+                // TODO Better debugger.
                 WListServer.logger.log(HLogLevel.DEBUG, "Operate: ", channel.id().asLongText(), " type: ", type, (Supplier<String>) () -> {
                     msg.markReaderIndex();
                     try {
@@ -208,6 +204,7 @@ public class WListServer {
                     case AddPermission -> b -> ServerUserHandler.doChangePermission(b, true);
                     case RemovePermission -> b -> ServerUserHandler.doChangePermission(b, false);
                     // TODO drivers operate. (dynamically modify config file)
+                    case BuildIndex -> ServerFileHandler.doBuildIndex;
                     case ListFiles -> ServerFileHandler.doListFiles;
                     case MakeDirectories -> ServerFileHandler.doMakeDirectories;
                     case DeleteFile -> ServerFileHandler.doDeleteFile;
