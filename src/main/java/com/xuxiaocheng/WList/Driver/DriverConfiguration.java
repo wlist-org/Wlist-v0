@@ -11,6 +11,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSideDriverConfiguration, W extends DriverConfiguration.WebSideDriverConfiguration, C extends DriverConfiguration.CacheSideDriverConfiguration> {
@@ -123,7 +124,7 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
     }
 
     public abstract static class CacheSideDriverConfiguration {
-        protected boolean modified = false;
+        protected AtomicBoolean modified = new AtomicBoolean(false);
         protected @NotNull String nickname = "";
         protected @Nullable String imageLink = null;
         protected boolean vip = false; // TODO vipLevel
@@ -133,12 +134,12 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
         protected @Nullable LocalDateTime lastFileIndexBuildTime = null;
         protected @Nullable LocalDateTime lastTrashIndexBuildTime = null;
 
-        public boolean isModified() {
-            return this.modified;
+        public boolean resetModified() {
+            return this.modified.compareAndSet(true, false);
         }
 
         public void setModified(final boolean modified) {
-            this.modified = modified;
+            this.modified.set(modified);
         }
 
         protected void load(final @NotNull Map<? super @NotNull String, @NotNull Object> cache, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {

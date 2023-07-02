@@ -64,12 +64,12 @@ public final class WList {
             WListServer.getInstance().start();
             WListServer.getInstance().awaitStop();
         } finally {
+            WList.logger.log(HLogLevel.FINE, "Shutting down the whole application...");
             if (GlobalConfiguration.getInstance().dumpConfiguration()) {
                 WList.logger.log(HLogLevel.INFO, "Saving driver configurations in multithreading...");
                 for (final Pair.ImmutablePair<WebDriversType, DriverInterface<?>> driver: DriverManager.getAll().values())
                     WListServer.ServerExecutors.submit(HExceptionWrapper.wrapRunnable(() -> DriverManager.dumpConfiguration(driver.getSecond().getConfiguration())));
             }
-            WList.logger.log(HLogLevel.FINE, "Shutting down the whole application...");
             final Future<?>[] futures = new Future[4];
             futures[0] = WListServer.CodecExecutors.shutdownGracefully();
             futures[1] = WListServer.ServerExecutors.shutdownGracefully();

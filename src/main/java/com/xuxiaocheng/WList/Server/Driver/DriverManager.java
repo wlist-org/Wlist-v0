@@ -24,6 +24,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Serial;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -35,6 +36,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 public final class DriverManager {
     private DriverManager() {
@@ -51,28 +53,27 @@ public final class DriverManager {
     }
 
     public static void dumpConfiguration(final DriverConfiguration<?, ?, ?> configuration) throws IOException {
-        if (GlobalConfiguration.getInstance().dumpConfiguration())
+        if (GlobalConfiguration.getInstance().dumpConfiguration() && configuration.getCacheSide().resetModified())
             try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(DriverManager.getConfigurationFile(configuration.getName())))) {
                 YamlHelper.dumpYaml(configuration.dump(), outputStream);
             }
     }
 
+    private static final @NotNull Pair.ImmutablePair<@NotNull WebDriversType, @NotNull DriverInterface<?>> NULL = new Pair.ImmutablePair<>() {
+        @Serial
+        private static final long serialVersionUID = -2237568953583714961L;
+    };
+
     @SuppressWarnings("unchecked")
     private static <C extends DriverConfiguration<?, ?, ?>> void add0(final @NotNull String name, final @NotNull WebDriversType type) throws IOException, IllegalParametersException {
-        if (DriverManager.drivers.containsKey(name))
-            throw new IllegalParametersException("Conflict driver name.");
-        final DriverInterface<C> driver;
-        final DriverTrashInterface<DriverInterface<C>> trash;
-        try {
-            final Supplier<DriverTrashInterface<?>> supplier = type.getTrash();
-            trash = supplier == null ? null : (DriverTrashInterface<DriverInterface<C>>) supplier.get();
-            driver = trash == null ? (DriverInterface<C>) type.getDriver().get() : trash.getDriver();
-        } catch (final RuntimeException exception) {
-            throw new IllegalParametersException("Failed to get driver.", Map.of("name", name, "type", type), exception);
-        }
+        if (DriverManager.drivers.putIfAbsent(name, DriverManager.NULL) != null)
+            throw new IllegalParametersException("Conflict driver name.", name);
         final File path = DriverManager.getConfigurationFile(name);
         if (!HFileHelper.ensureFileExist(path))
             throw new IOException("Failed to create driver configuration file. path: " + path.getAbsolutePath());
+        final Supplier<DriverTrashInterface<?>> supplier = type.getTrash();
+        final DriverTrashInterface<DriverInterface<C>> trash = supplier == null ? null : (DriverTrashInterface<DriverInterface<C>>) supplier.get();
+        final DriverInterface<C> driver = trash == null ? (DriverInterface<C>) type.getDriver().get() : trash.getDriver();
         final C configuration = driver.getConfiguration();
         final Map<String, Object> config = new LinkedHashMap<>();
         try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(path))) {
@@ -90,8 +91,10 @@ public final class DriverManager {
             if (GlobalConfiguration.getInstance().deleteDriver())
                 try {
                     driver.uninitialize();
+                    if (trash != null)
+                        trash.uninitialize();
                 } catch (final Exception e) {
-                    throw new IllegalParametersException("Failed to uninitialize after initialized.", Map.of("name", name, "type", type, "configuration", configuration, "exception", exception), e);
+                    throw new IllegalParametersException("Failed to uninitialize after a failed initialization.", Map.of("name", name, "type", type, "configuration", configuration, "exception", exception), e);
                 }
             throw new IllegalParametersException("Failed to initialize.", Map.of("name", name, "type", type, "configuration", configuration), exception);
         }
@@ -101,30 +104,11 @@ public final class DriverManager {
                 trash.buildCache();
         } catch (final Exception exception) {
             throw new IllegalParametersException("Failed to build cache.", Map.of("name", name, "type", type, "configuration", configuration), exception);
-        } finally {
-            DriverManager.dumpConfiguration(configuration);
         }
-        DriverManager.drivers.merge(name, Pair.ImmutablePair.makeImmutablePair(type, driver), (o, n) -> {
-            HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, "Conflict driver. Abort newer. name: ", name, " configuration: ", configuration);
-            if (GlobalConfiguration.getInstance().deleteDriver())
-                try {
-                    n.getSecond().uninitialize();
-                } catch (final Exception exception) {
-                    HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, "Failed to uninitialize when aborting. name: ", name, " configuration: ", configuration, exception);
-                }
-            return o;
-        });
+        DriverManager.dumpConfiguration(configuration);
+        DriverManager.drivers.put(name, Pair.ImmutablePair.makeImmutablePair(type, driver));
         if (trash != null)
-            DriverManager.trashes.merge(name, Pair.ImmutablePair.makeImmutablePair(type, trash), (o, n) -> {
-                HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, "Conflict trash. Abort newer. name: ", name, " configuration: ", configuration);
-                if (GlobalConfiguration.getInstance().deleteDriver())
-                    try {
-                        n.getSecond().uninitialize();
-                    } catch (final Exception exception) {
-                        HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, "Failed to uninitialize when aborting. name: ", name, " configuration: ", configuration, exception);
-                    }
-                return o;
-            });
+            DriverManager.trashes.put(name, Pair.ImmutablePair.makeImmutablePair(type, trash));
     }
 
     public static void initialize() {
@@ -145,7 +129,7 @@ public final class DriverManager {
 
     public static @Nullable DriverInterface<?> get(final @NotNull String name) {
         final Pair.ImmutablePair<WebDriversType, DriverInterface<?>> driver = DriverManager.drivers.get(name);
-        if (driver == null)
+        if (driver == null || driver == DriverManager.NULL)
             return null;
         return driver.getSecond();
     }
@@ -158,7 +142,7 @@ public final class DriverManager {
     }
 
     public static @NotNull @UnmodifiableView Map<@NotNull String, Pair.@NotNull ImmutablePair<@NotNull WebDriversType, @NotNull DriverInterface<?>>> getAll() {
-        return Collections.unmodifiableMap(DriverManager.drivers);
+        return DriverManager.drivers.entrySet().stream().filter(t -> t.getValue() != DriverManager.NULL).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
     public static @NotNull @UnmodifiableView Map<@NotNull String, Pair.@NotNull ImmutablePair<@NotNull WebDriversType, @NotNull DriverTrashInterface<?>>> getAllTrashes() {
