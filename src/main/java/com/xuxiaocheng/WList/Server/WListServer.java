@@ -80,7 +80,6 @@ public class WListServer {
     protected final @NotNull EventExecutorGroup bossGroup = new NioEventLoopGroup(Math.max(2, Runtime.getRuntime().availableProcessors() >>> 1));
     protected final @NotNull EventLoopGroup workerGroup = new NioEventLoopGroup(Runtime.getRuntime().availableProcessors() << 1);
     protected final @NotNull ChannelGroup channelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
-    private Channel channel;
     protected final @NotNull CountDownLatch latch = new CountDownLatch(1);
 
     protected WListServer(final @NotNull SocketAddress address) {
@@ -118,15 +117,14 @@ public class WListServer {
                 pipeline.addLast(WListServer.ServerExecutors, "ServerHandler", WListServer.handlerInstance);
             }
         });
-        this.channel = serverBootstrap.bind(this.address).sync().channel();
+        serverBootstrap.bind(this.address).sync();
         WListServer.logger.log(HLogLevel.ENHANCED, "Listening on: ", this.address);
     }
 
     public synchronized void stop() {
-        if (this.channel == null)
+        if (this.latch.getCount() == 0)
             return;
         WListServer.logger.log(HLogLevel.ENHANCED, "WListServer is stopping...");
-        this.channel.close().syncUninterruptibly();
         this.channelGroup.close().syncUninterruptibly();
         this.bossGroup.shutdownGracefully().syncUninterruptibly();
         this.workerGroup.shutdownGracefully().syncUninterruptibly();

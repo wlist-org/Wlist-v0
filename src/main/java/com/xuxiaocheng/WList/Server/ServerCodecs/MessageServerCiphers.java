@@ -62,6 +62,12 @@ public class MessageServerCiphers extends MessageCiphers {
     }
 
     @Override
+    public void channelInactive(final @NotNull ChannelHandlerContext ctx) {
+        if (this.initializingStage.get() == null)
+            ctx.fireChannelInactive();
+    }
+
+    @Override
     protected void decode(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg, final @NotNull List<Object> out) throws IOException {
         final Cipher rsaDecryptCipher = this.initializingStage.get();
         if (rsaDecryptCipher != null) {

@@ -5,6 +5,7 @@ import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
 import com.xuxiaocheng.WList.Exceptions.NetworkException;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.WList;
@@ -37,35 +38,40 @@ public final class DriverNetworkHelper {
         super();
     }
 
+    private static final @NotNull HLog logger = HLog.createInstance("NetworkLogger",
+            WList.DebugMode ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1,
+            true, WList.InIdeaMode ? null : HMergedStream.getFileOutputStreamNoException(""));
+
     @SuppressWarnings("SpellCheckingInspection")
     public static final @NotNull String defaultWebAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.37";
     public static final @NotNull String defaultAgent = "WList/0.2.1";
     private static final @NotNull Dispatcher dispatcher = new Dispatcher(WListServer.IOExecutors);
+    private static final @NotNull Interceptor NetworkLoggerInterceptor = chain -> {
+        final Request request = chain.request();
+        if (WList.DebugMode)
+            DriverNetworkHelper.logger.log(HLogLevel.NETWORK, "Sending: ", request.method(), ' ', request.url(),
+                    request.header("Range") == null ? "" : (" (Range: " + request.header("Range") + ')'));
+        final long time1 = System.currentTimeMillis();
+        final Response response;
+        try {
+            response = chain.proceed(request);
+        } catch (final RuntimeException exception) {
+            Thread.getDefaultUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), exception);
+            throw exception;
+        } finally {
+            final long time2 = System.currentTimeMillis();
+            if (WList.DebugMode)
+                DriverNetworkHelper.logger.log(HLogLevel.NETWORK, "Received. Totally cost time: ", time2 - time1, "ms.");
+        }
+        return response;
+    };
     public static OkHttpClient.@NotNull Builder newHttpClientBuilder(){
         return new OkHttpClient.Builder()
                 .connectTimeout(15, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .dispatcher(DriverNetworkHelper.dispatcher)
-                .addInterceptor(chain -> {
-                    final Request request = chain.request();
-                    if (WList.DebugMode)
-                        HLog.DefaultLogger.log(HLogLevel.NETWORK, "Sending: ", request.method(), ' ', request.url(),
-                                request.header("Range") == null ? "" : (" (Range: " + request.header("Range") + ')'));
-                    final long time1 = System.currentTimeMillis();
-                    final Response response;
-                    try {
-                        response = chain.proceed(request);
-                    } catch (final RuntimeException exception) {
-                        Thread.getDefaultUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), exception);
-                        throw exception;
-                    } finally {
-                        final long time2 = System.currentTimeMillis();
-                        if (WList.DebugMode)
-                            HLog.DefaultLogger.log(HLogLevel.NETWORK, "Received. Totally cost time: ", time2 - time1, "ms.");
-                    }
-                    return response;
-                });
+                .addInterceptor(DriverNetworkHelper.NetworkLoggerInterceptor);
     }
 
     public static final @NotNull Executor threadPoolSecond = CompletableFuture.delayedExecutor(1, TimeUnit.SECONDS);
