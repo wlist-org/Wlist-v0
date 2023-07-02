@@ -54,7 +54,7 @@ public class Trash_123pan implements DriverTrashInterface<Driver_123Pan> {
     }
 
     @Override
-    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull TrashedSqlInformation>> list(final int limit, final int page, final @NotNull Options.OrderPolicy policy, final @NotNull Options.OrderDirection direction) throws Exception {
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull TrashedSqlInformation>> list(final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws Exception {
         return TrashManager_123pan.listFiles(this.driver.getConfiguration(), limit, page, policy, direction, true, null, WListServer.IOExecutors);
     }
 

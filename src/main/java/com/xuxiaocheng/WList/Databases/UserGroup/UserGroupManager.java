@@ -21,6 +21,9 @@ public final class UserGroupManager {
         return DatabaseUtil.getInstance();
     }
 
+    public static final @NotNull String ADMIN = "admin";
+    public static final @NotNull String DEFAULT = "default";
+
     public static void initialize() throws SQLException {
         UserGroupSqlHelper.initialize(UserGroupManager.getDatabaseUtil(), "initialize");
     }

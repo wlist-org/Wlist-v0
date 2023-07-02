@@ -21,6 +21,9 @@ public final class UserManager {
         return DatabaseUtil.getInstance();
     }
 
+    public static final @NotNull String ADMIN = "admin";
+    public static final @NotNull String DEFAULT = "default";
+
     public static void initialize() throws SQLException {
         UserSqlHelper.initialize(UserManager.getDatabaseUtil(), "initialize");
     }
@@ -46,13 +49,12 @@ public final class UserManager {
         UserSqlHelper.getInstance().updateUsers(updaters, _connectionId);
     }
 
-    public static void updateUser(final @NotNull UserSqlInformation.Updater updater, final @Nullable String _connectionId) throws SQLException {
+    public static void updateUser(final UserSqlInformation.@NotNull Updater updater, final @Nullable String _connectionId) throws SQLException {
         UserManager.updateUsers(List.of(updater), _connectionId);
     }
 
     public static void updateUsersByName(final @NotNull Collection<UserSqlInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException {
         UserSqlHelper.getInstance().updateUsersByName(inserters, _connectionId);
-
     }
 
     public static void updateUserByName(final UserSqlInformation.@NotNull Inserter inserter, final @Nullable String _connectionId) throws SQLException {

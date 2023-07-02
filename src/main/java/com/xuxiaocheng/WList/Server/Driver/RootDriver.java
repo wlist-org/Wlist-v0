@@ -68,7 +68,7 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
             if (trash != null)
                 trash.buildIndex();
         }
-        return driver == null;
+        return driver != null;
     }
 
     @Override

@@ -55,11 +55,11 @@ final class UserSqlHelper {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
-            final Map<String, UserGroupSqlInformation> map = UserGroupManager.selectGroupsByName(List.of("admin", "default"), connectionId.get());
-            if (!map.containsKey("admin") || !map.containsKey("default"))
+            final Map<String, UserGroupSqlInformation> map = UserGroupManager.selectGroupsByName(List.of(UserManager.ADMIN, UserManager.DEFAULT), connectionId.get());
+            if (!map.containsKey(UserManager.ADMIN) || !map.containsKey(UserManager.DEFAULT))
                 throw new SQLException("Missing 'admin' or 'default' user group.");
-            this.adminId = map.get("admin").id();
-            this.defaultId = map.get("default").id();
+            this.adminId = map.get(UserManager.ADMIN).id();
+            this.defaultId = map.get(UserManager.DEFAULT).id();
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate(String.format("""
                     CREATE TABLE IF NOT EXISTS users (
@@ -94,7 +94,7 @@ final class UserSqlHelper {
                             id = excluded.id, password = excluded.password,
                             group_id = excluded.group_id, modify_time = excluded.modify_time;
                         """)) {
-                    statement.setString(1, "admin");
+                    statement.setString(1, UserManager.ADMIN);
                     statement.setString(2, PasswordGuard.encryptPassword(password));
                     statement.setLong(3, this.adminId);
                     statement.setString(4, UserSqlHelper.getModifyTime());
@@ -189,7 +189,7 @@ final class UserSqlHelper {
                 """)) {
                 for (final UserSqlInformation.Updater updater: updaters) {
                     statement.setString(1, updater.username());
-                    statement.setString(2, updater.password());
+                    statement.setString(2, updater.encryptedPassword());
                     statement.setLong(3, updater.groupId());
                     statement.setString(4, Objects.requireNonNullElseGet(updater.modifyTime(), LocalDateTime::now).format(UserSqlHelper.DefaultFormatter));
                     statement.setLong(5, updater.id());

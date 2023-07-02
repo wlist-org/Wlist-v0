@@ -13,7 +13,7 @@ public record UserSqlInformation(long id, @NotNull String username, @NotNull Str
     public record Inserter(@NotNull String username, @NotNull String password, long groupId) {
     }
 
-    public record Updater(long id, @NotNull String username, @NotNull String password, long groupId, @Nullable LocalDateTime modifyTime) {
+    public record Updater(long id, @NotNull String username, @NotNull String encryptedPassword, long groupId, @Nullable LocalDateTime modifyTime) {
     }
 
     @Deprecated // only for client

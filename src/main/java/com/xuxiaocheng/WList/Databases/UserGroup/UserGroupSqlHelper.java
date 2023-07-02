@@ -66,12 +66,12 @@ final class UserGroupSqlHelper {
             try (final PreparedStatement statement = connection.prepareStatement("""
                         SELECT 1 FROM groups WHERE name == ? AND permissions == ? LIMIT 1;
                 """)) {
-                statement.setString(1, "admin");
+                statement.setString(1, UserGroupManager.ADMIN);
                 statement.setString(2, adminPermissions);
                 try (final ResultSet admins = statement.executeQuery()) {
                     noAdmin = !admins.next();
                 }
-                statement.setString(1, "default");
+                statement.setString(1, UserGroupManager.DEFAULT);
                 statement.setString(2, defaultPermissions);
                 try (final ResultSet defaults = statement.executeQuery()) {
                     noDefault = !defaults.next();
@@ -85,12 +85,12 @@ final class UserGroupSqlHelper {
                             group_id = excluded.group_id, permissions = excluded.permissions;
                     """)) {
                     if (noAdmin) {
-                        statement.setString(1, "admin");
+                        statement.setString(1, UserGroupManager.ADMIN);
                         statement.setString(2, adminPermissions);
                         statement.executeUpdate();
                     }
                     if (noDefault) {
-                        statement.setString(1, "default");
+                        statement.setString(1, UserGroupManager.DEFAULT);
                         statement.setString(2, defaultPermissions);
                         statement.executeUpdate();
                     }

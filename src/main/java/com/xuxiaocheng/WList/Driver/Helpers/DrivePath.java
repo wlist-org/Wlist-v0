@@ -16,10 +16,10 @@ import java.util.stream.Stream;
 
 public class DrivePath implements Iterable<String> {
     protected static final Pattern Separator = Pattern.compile("[\\\\/]");
-    protected static @NotNull @UnmodifiableView List<@NotNull String> split(final @Nullable CharSequence path) {
+    protected static @NotNull @UnmodifiableView List<@NotNull String> split(final @Nullable String path) {
         if (path == null)
             return List.of();
-        return Stream.of(DrivePath.Separator.split(path))
+        return Stream.of(DrivePath.Separator.split(path.replace('\n', '\t')))
                 .filter(Predicate.not(String::isEmpty))
                 .collect(Collectors.toList());
     }
@@ -28,7 +28,7 @@ public class DrivePath implements Iterable<String> {
     protected @Nullable String pathCache;
     protected @Nullable String parentPathCache;
 
-    public DrivePath(final @Nullable CharSequence path) {
+    public DrivePath(final @Nullable String path) {
         this(DrivePath.split(path));
     }
 
@@ -38,12 +38,12 @@ public class DrivePath implements Iterable<String> {
         this.parentPathCache = path.parentPathCache;
     }
 
-    public DrivePath(final @Nullable CharSequence path, final @NotNull DrivePath child) {
+    public DrivePath(final @Nullable String path, final @NotNull DrivePath child) {
         this(DrivePath.split(path));
         this.path.addAll(child.path);
     }
 
-    public DrivePath(final @NotNull DrivePath root, final @Nullable CharSequence path) {
+    public DrivePath(final @NotNull DrivePath root, final @Nullable String path) {
         this(DrivePath.split(path));
         this.path.addAll(0, root.path);
     }
@@ -67,7 +67,7 @@ public class DrivePath implements Iterable<String> {
         return parent;
     }
 
-    public @NotNull DrivePath child(final @NotNull CharSequence child) {
+    public @NotNull DrivePath child(final @NotNull String child) {
         final List<String> children = DrivePath.split(child);
         this.path.addAll(children);
         if (children.size() == 1) {
@@ -81,7 +81,7 @@ public class DrivePath implements Iterable<String> {
         return this;
     }
 
-    public @NotNull DrivePath getChild(final @NotNull CharSequence child) {
+    public @NotNull DrivePath getChild(final @NotNull String child) {
         return new DrivePath(this.path).child(child);
     }
 
@@ -98,14 +98,14 @@ public class DrivePath implements Iterable<String> {
         return new DrivePath(this.path).removedRoot();
     }
 
-    public @NotNull DrivePath addedRoot(final @NotNull CharSequence root) {
+    public @NotNull DrivePath addedRoot(final @NotNull String root) {
         this.path.addAll(0, DrivePath.split(root));
         this.pathCache = null;
         this.parentPathCache = null;
         return this;
     }
 
-    public @NotNull DrivePath getAddedRoot(final @NotNull CharSequence root) {
+    public @NotNull DrivePath getAddedRoot(final @NotNull String root) {
         return new DrivePath(this.path).addedRoot(root);
     }
 
@@ -120,7 +120,7 @@ public class DrivePath implements Iterable<String> {
         return new DrivePath(this.path).addedRoot(root);
     }
 
-    public @NotNull DrivePath replace(final int index, final @NotNull CharSequence part) {
+    public @NotNull DrivePath replace(final int index, final @NotNull String part) {
         this.path.remove(index);
         this.path.addAll(index, DrivePath.split(part));
         this.pathCache = null;
@@ -128,7 +128,7 @@ public class DrivePath implements Iterable<String> {
         return this;
     }
 
-    public @NotNull DrivePath getReplace(final int index, final @NotNull CharSequence part) {
+    public @NotNull DrivePath getReplace(final int index, final @NotNull String part) {
         return new DrivePath(this.path).replace(index, part);
     }
 
@@ -163,7 +163,7 @@ public class DrivePath implements Iterable<String> {
         return this.parentPathCache;
     }
 
-    public @NotNull String getChildPath(final @NotNull CharSequence child) {
+    public @NotNull String getChildPath(final @NotNull String child) {
         final StringBuilder builder = new StringBuilder(this.getParentPath());
         for (final String p: DrivePath.split(child))
             builder.append('/').append(p);

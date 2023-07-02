@@ -201,9 +201,13 @@ public class DatabaseUtil {
         return connection;
     }
 
+    public @NotNull Connection getNewConnection(final @NotNull AtomicReference<? super String> connectionId) throws SQLException {
+        return this.getNewConnection(connectionId::set);
+    }
+
     public @NotNull Connection getConnection(final @Nullable String id, final @NotNull AtomicReference<? super String> connectionId) throws SQLException {
         if (id == null)
-            return this.getNewConnection(connectionId::set);
+            return this.getNewConnection(connectionId);
         connectionId.set(id);
         return this.getExplicitConnection(id);
     }
