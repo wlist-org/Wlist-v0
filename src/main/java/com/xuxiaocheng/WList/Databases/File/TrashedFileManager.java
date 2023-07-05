@@ -39,34 +39,6 @@ public final class TrashedFileManager {
         TrashedFileManager.insertOrUpdateFiles(driverName, List.of(inserter), _connectionId);
     }
 
-    public static void deleteFiles(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
-        TrashedSqlHelper.getInstance(driverName).deleteFiles(idList, _connectionId);
-    }
-
-    public static void deleteFile(final @NotNull String driverName, final long id, final @Nullable String _connectionId) throws SQLException {
-        TrashedFileManager.deleteFiles(driverName, List.of(id),_connectionId);
-    }
-
-    public static void deleteFilesByName(final @NotNull String driverName, final @NotNull Collection<@NotNull String> nameList, final @Nullable String _connectionId) throws SQLException {
-        TrashedSqlHelper.getInstance(driverName).deleteFilesByName(nameList, _connectionId);
-    }
-
-    public static void deleteFileByName(final @NotNull String driverName, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
-        TrashedFileManager.deleteFilesByName(driverName, List.of(name), _connectionId);
-    }
-
-    public static void deleteFilesByMd5(final @NotNull String driverName, final @NotNull Collection<@NotNull String> md5List, final @Nullable String _connectionId) throws SQLException {
-        TrashedSqlHelper.getInstance(driverName).deleteFilesByMd5(md5List, _connectionId);
-    }
-
-    public static void deleteFileByMd5(final @NotNull String driverName, final @NotNull String md5, final @Nullable String _connectionId) throws SQLException {
-        TrashedFileManager.deleteFilesByMd5(driverName, List.of(md5), _connectionId);
-    }
-
-    public static void clear(final @NotNull String driverName, final @Nullable String _connectionId) throws SQLException {
-        TrashedSqlHelper.getInstance(driverName).clear(_connectionId);
-    }
-
     public static @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull TrashedSqlInformation> selectFiles(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
         return TrashedSqlHelper.getInstance(driverName).selectFiles(idList, _connectionId);
     }
@@ -103,8 +75,35 @@ public final class TrashedFileManager {
         return TrashedSqlHelper.getInstance(driverName).selectFilesInPage(limit, offset, direction, policy, _connectionId);
     }
 
+    public static void deleteFiles(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
+        TrashedSqlHelper.getInstance(driverName).deleteFiles(idList, _connectionId);
+    }
+
+    public static void deleteFile(final @NotNull String driverName, final long id, final @Nullable String _connectionId) throws SQLException {
+        TrashedFileManager.deleteFiles(driverName, List.of(id),_connectionId);
+    }
+
+    public static void deleteFilesByName(final @NotNull String driverName, final @NotNull Collection<@NotNull String> nameList, final @Nullable String _connectionId) throws SQLException {
+        TrashedSqlHelper.getInstance(driverName).deleteFilesByName(nameList, _connectionId);
+    }
+
+    public static void deleteFileByName(final @NotNull String driverName, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
+        TrashedFileManager.deleteFilesByName(driverName, List.of(name), _connectionId);
+    }
+
+    public static void deleteFilesByMd5(final @NotNull String driverName, final @NotNull Collection<@NotNull String> md5List, final @Nullable String _connectionId) throws SQLException {
+        TrashedSqlHelper.getInstance(driverName).deleteFilesByMd5(md5List, _connectionId);
+    }
+
+    public static void deleteFileByMd5(final @NotNull String driverName, final @NotNull String md5, final @Nullable String _connectionId) throws SQLException {
+        TrashedFileManager.deleteFilesByMd5(driverName, List.of(md5), _connectionId);
+    }
+
+    public static void clear(final @NotNull String driverName, final @Nullable String _connectionId) throws SQLException {
+        TrashedSqlHelper.getInstance(driverName).clear(_connectionId);
+    }
+
     public static @NotNull @UnmodifiableView List<@Nullable TrashedSqlInformation> searchFilesByNameLimited(final @NotNull String driverName, final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
         return TrashedSqlHelper.getInstance(driverName).searchFilesByNameLimited(rule, caseSensitive, limit, _connectionId);
     }
-
 }

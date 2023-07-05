@@ -1,6 +1,5 @@
 package com.xuxiaocheng.WList.Databases.File;
 
-import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
@@ -11,8 +10,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
- * @param id File id. Primary key.
- * @param path Full path. Union.
+ * @param location File location. {@link FileLocation}
+ * @param parentId Parent file id.
  * @param isDir If true this is a directory else is a regular file.
  * @param size File size. 0 means a directory, -1 means unknown.
  * @param createTime File first create time. Null means unknown.
@@ -20,17 +19,23 @@ import java.time.format.DateTimeFormatter;
  * @param md5 File md5.
  * @param others Something extra for driver.
  */
-public record FileSqlInformation(long id, @NotNull DrivePath path, boolean isDir, long size,
+public record FileSqlInformation(@NotNull FileLocation location, long parentId, @NotNull String name, boolean isDir, long size,
                                  @Nullable LocalDateTime createTime, @Nullable LocalDateTime updateTime,
                                  @NotNull String md5, @Nullable String others) {
+    public long id() {
+        return this.location.id();
+    }
+
     @Deprecated // only for client
-    public record VisibleFileInformation(@NotNull DrivePath path, boolean isDir, long size,
+    public record VisibleFileInformation(@NotNull FileLocation location, long parentId, @NotNull String name, boolean isDir, long size,
                                          @Nullable LocalDateTime createTime, @Nullable LocalDateTime updateTime,
                                          @NotNull String md5) {
     }
 
     public static void dumpVisible(final @NotNull ByteBuf buffer, final @NotNull FileSqlInformation information) throws IOException {
-        ByteBufIOUtil.writeUTF(buffer, information.path.getPath());
+        FileLocation.dump(buffer, information.location);
+        ByteBufIOUtil.writeVariableLenLong(buffer, information.parentId);
+        ByteBufIOUtil.writeUTF(buffer, information.name);
         ByteBufIOUtil.writeBoolean(buffer, information.isDir);
         ByteBufIOUtil.writeVariable2LenLong(buffer, information.size);
         ByteBufIOUtil.writeObjectNullable(buffer, information.createTime, (b, t) ->
@@ -42,7 +47,9 @@ public record FileSqlInformation(long id, @NotNull DrivePath path, boolean isDir
 
     @Deprecated // only for client
     public static @NotNull VisibleFileInformation parseVisible(final @NotNull ByteBuf buffer) throws IOException {
-        final DrivePath path = new DrivePath(ByteBufIOUtil.readUTF(buffer));
+        final FileLocation location = FileLocation.parse(buffer);
+        final long parentId = ByteBufIOUtil.readVariableLenLong(buffer);
+        final String name = ByteBufIOUtil.readUTF(buffer);
         final boolean isDir = ByteBufIOUtil.readBoolean(buffer);
         final long size = ByteBufIOUtil.readVariable2LenLong(buffer);
         final LocalDateTime createTime = ByteBufIOUtil.readObjectNullable(buffer, b ->
@@ -50,6 +57,6 @@ public record FileSqlInformation(long id, @NotNull DrivePath path, boolean isDir
         final LocalDateTime updateTime = ByteBufIOUtil.readObjectNullable(buffer, b ->
                 LocalDateTime.parse(ByteBufIOUtil.readUTF(b), DateTimeFormatter.ISO_DATE_TIME));
         final String md5 = ByteBufIOUtil.readUTF(buffer);
-        return new VisibleFileInformation(path, isDir, size, createTime, updateTime, md5);
+        return new VisibleFileInformation(location, parentId, name, isDir, size, createTime, updateTime, md5);
     }
 }

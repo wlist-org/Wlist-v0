@@ -18,6 +18,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -99,7 +100,7 @@ public class DatabaseUtil {
     }
 
     protected interface ReferencedConnection extends Connection {
-        void retain();
+        void retain(); // void close() throws SQLException;
         @NotNull String id();
         void setId(final @NotNull String id);
         @NotNull Connection inside();
@@ -112,6 +113,7 @@ public class DatabaseUtil {
         private final @NotNull DatabaseUtil util;
         private int referenceCounter = 0;
         private @NotNull String id = "";
+        private @Nullable String allow = null;
 
         private PooledConnectionProxy(final @NotNull Connection connection, final @NotNull DatabaseUtil util) {
             super();
@@ -120,7 +122,7 @@ public class DatabaseUtil {
         }
 
         @Override
-        public synchronized @Nullable Object invoke(final @NotNull Object proxy, final @NotNull Method method, final Object @Nullable [] args) throws IllegalAccessException, InvocationTargetException, SQLException {
+        public synchronized @Nullable Object invoke(final @NotNull Object proxy, final @NotNull Method method, final Object @Nullable [] args) throws SQLException {
             if (this.referenceCounter < 0)
                 throw new IllegalReferenceCountException(this.referenceCounter);
             switch (method.getName()) {
@@ -143,8 +145,10 @@ public class DatabaseUtil {
                 case "close": {
                     if (this.referenceCounter < 1)
                         throw new IllegalReferenceCountException(0);
-                    if (--this.referenceCounter < 1)
+                    if (--this.referenceCounter < 1) {
+                        this.allow = null;
                         this.util.recycleConnection(this.id);
+                    }
                     return null;
                 }
                 case "inside": return this.connection;
@@ -153,9 +157,19 @@ public class DatabaseUtil {
                         return null;
                 }
             }
-            // TODO A SQLException occurred that caused the transaction to rollback,
-            //  requiring rejection of commit method from other threads.
-            return method.invoke(this.connection, args);
+            if (this.allow != null)
+                throw new SQLWarning("Something went wrong on this connection (" + this.id + "). Usually caused in other threads", this.allow);
+            try {
+                return method.invoke(this.connection, args);
+            } catch (final IllegalAccessException exception) {
+                throw new RuntimeException(exception);
+            } catch (final InvocationTargetException exception) {
+                if (exception.getTargetException() instanceof SQLException sqlException) {
+                    this.allow = sqlException.getMessage();
+                    throw sqlException;
+                }
+                throw new RuntimeException(exception);
+            }
         }
 
         @Override

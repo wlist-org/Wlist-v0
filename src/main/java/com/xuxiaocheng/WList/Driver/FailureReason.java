@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Driver;
 
+import com.xuxiaocheng.WList.Databases.File.FileLocation;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -30,8 +31,8 @@ public class FailureReason {
         return new FailureReason(FailureReason.ExceedMaxSize, "Current: " + current + ", " + message, path);
     }
 
-    public static @NotNull FailureReason byNoSuchFile(final @NotNull String callingMethodMessage, final @NotNull DrivePath path) {
-        return new FailureReason(FailureReason.NoSuchFile, callingMethodMessage, path);
+    public static @NotNull FailureReason byNoSuchFile(final @NotNull String callingMethodMessage, final @NotNull FileLocation location) {
+        return new FailureReason(FailureReason.NoSuchFile, callingMethodMessage, location);
     }
 
     public static @NotNull FailureReason others(final @NotNull String message, final @Nullable Object extra) {

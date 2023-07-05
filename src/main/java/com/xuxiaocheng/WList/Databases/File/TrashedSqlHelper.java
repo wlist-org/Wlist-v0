@@ -173,75 +173,6 @@ public class TrashedSqlHelper {
         }
     }
 
-    public void deleteFiles(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
-        if (idList.isEmpty())
-            return;
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    DELETE FROM %s WHERE id == ?;
-                """, this.tableName))) {
-                for (final Long id: idList) {
-                    statement.setLong(1, id.longValue());
-                    statement.executeUpdate();
-                }
-            }
-            connection.commit();
-        }
-    }
-
-    public void deleteFilesByName(final @NotNull Collection<@NotNull String> nameList, final @Nullable String _connectionId) throws SQLException {
-        if (nameList.isEmpty())
-            return;
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    DELETE FROM %s WHERE name == ?;
-                """, this.tableName))) {
-                for (final String name: nameList) {
-                    statement.setString(1, name);
-                    statement.executeUpdate();
-                }
-            }
-            connection.commit();
-        }
-    }
-
-    public void deleteFilesByMd5(final @NotNull Collection<@NotNull String> md5List, final @Nullable String _connectionId) throws SQLException {
-        if (md5List.isEmpty())
-            return;
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    DELETE FROM %s WHERE md5 == ?;
-                """, this.tableName))) {
-                for (final String md5: md5List) {
-                    if (md5.isEmpty())
-                        continue;
-                    statement.setString(1, md5);
-                    statement.executeUpdate();
-                }
-            }
-            connection.commit();
-        }
-    }
-
-    public void clear(final @Nullable String _connectionId) throws SQLException {
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    DELETE FROM %s;
-                """, this.tableName))) {
-                statement.executeUpdate();
-            }
-            connection.commit();
-        }
-    }
-
     public @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull TrashedSqlInformation> selectFiles(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
         if (idList.isEmpty())
             return Map.of();
@@ -356,6 +287,75 @@ public class TrashedSqlHelper {
                 }
             }
             return Pair.ImmutablePair.makeImmutablePair(count, list);
+        }
+    }
+
+    public void deleteFiles(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
+        if (idList.isEmpty())
+            return;
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+            connection.setAutoCommit(false);
+            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+                    DELETE FROM %s WHERE id == ?;
+                """, this.tableName))) {
+                for (final Long id: idList) {
+                    statement.setLong(1, id.longValue());
+                    statement.executeUpdate();
+                }
+            }
+            connection.commit();
+        }
+    }
+
+    public void deleteFilesByName(final @NotNull Collection<@NotNull String> nameList, final @Nullable String _connectionId) throws SQLException {
+        if (nameList.isEmpty())
+            return;
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+            connection.setAutoCommit(false);
+            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+                    DELETE FROM %s WHERE name == ?;
+                """, this.tableName))) {
+                for (final String name: nameList) {
+                    statement.setString(1, name);
+                    statement.executeUpdate();
+                }
+            }
+            connection.commit();
+        }
+    }
+
+    public void deleteFilesByMd5(final @NotNull Collection<@NotNull String> md5List, final @Nullable String _connectionId) throws SQLException {
+        if (md5List.isEmpty())
+            return;
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+            connection.setAutoCommit(false);
+            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+                    DELETE FROM %s WHERE md5 == ?;
+                """, this.tableName))) {
+                for (final String md5: md5List) {
+                    if (md5.isEmpty())
+                        continue;
+                    statement.setString(1, md5);
+                    statement.executeUpdate();
+                }
+            }
+            connection.commit();
+        }
+    }
+
+    public void clear(final @Nullable String _connectionId) throws SQLException {
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+            connection.setAutoCommit(false);
+            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+                    DELETE FROM %s;
+                """, this.tableName))) {
+                statement.executeUpdate();
+            }
+            connection.commit();
         }
     }
 

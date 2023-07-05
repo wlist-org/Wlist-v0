@@ -1,6 +1,7 @@
 package com.xuxiaocheng.WList.Server.Driver;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
@@ -94,16 +95,16 @@ public final class DriverManager {
                     if (trash != null)
                         trash.uninitialize();
                 } catch (final Exception e) {
-                    throw new IllegalParametersException("Failed to uninitialize after a failed initialization.", Map.of("name", name, "type", type, "configuration", configuration, "exception", exception), e);
+                    throw new IllegalParametersException("Failed to uninitialize after a failed initialization.", ParametersMap.<String, Object>create().add("name", name).add("type", type).add("configuration", configuration).add("exception", exception), e);
                 }
-            throw new IllegalParametersException("Failed to initialize.", Map.of("name", name, "type", type, "configuration", configuration), exception);
+            throw new IllegalParametersException("Failed to initialize.", ParametersMap.<String, Object>create().add("name", name).add("type", type).add("configuration", configuration), exception);
         }
         try {
             driver.buildCache();
             if (trash != null)
                 trash.buildCache();
         } catch (final Exception exception) {
-            throw new IllegalParametersException("Failed to build cache.", Map.of("name", name, "type", type, "configuration", configuration), exception);
+            throw new IllegalParametersException("Failed to build cache.", ParametersMap.<String, Object>create().add("name", name).add("type", type).add("configuration", configuration), exception);
         }
         DriverManager.dumpConfiguration(configuration);
         DriverManager.drivers.put(name, Pair.ImmutablePair.makeImmutablePair(type, driver));
@@ -147,6 +148,10 @@ public final class DriverManager {
 
     public static @NotNull @UnmodifiableView Map<@NotNull String, Pair.@NotNull ImmutablePair<@NotNull WebDriversType, @NotNull DriverTrashInterface<?>>> getAllTrashes() {
         return Collections.unmodifiableMap(DriverManager.trashes);
+    }
+
+    public static Pair.@NotNull ImmutablePair<@NotNull WebDriversType, @NotNull DriverInterface<?>> getById(final long id) {
+        // TODO
     }
 
     public static void add(final @NotNull String name, final @NotNull WebDriversType type) throws IOException, IllegalParametersException {

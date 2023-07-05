@@ -1,14 +1,15 @@
 package com.xuxiaocheng.WList.Server.Driver;
 
+import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.WList.Databases.File.FileLocation;
+import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Driver.DriverConfiguration;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.DriverTrashInterface;
 import com.xuxiaocheng.WList.Driver.FailureReason;
-import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Driver.Options;
-import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.UploadMethods;
 import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
@@ -18,12 +19,17 @@ import org.jetbrains.annotations.UnmodifiableView;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
-public class RootDriver implements DriverInterface<RootDriver.RootDriverConfiguration> {
-    protected static final RootDriver instance = new RootDriver();
+public final class RootDriver implements DriverInterface<RootDriver.RootDriverConfiguration> {
+    private static final RootDriver instance = new RootDriver();
     public static RootDriver getInstance() {
         return RootDriver.instance;
+    }
+
+    private static @NotNull FileSqlInformation getDriverInformation(final @NotNull DriverConfiguration<?, ?, ?> configuration) {
+        // TODO create and modified time.
+        return new FileSqlInformation(new FileLocation(FileLocation.SpecialDriverName.RootDriver.getIdentify(), configuration.getName().hashCode()),
+                0, configuration.getName(), true, 0, null, null, "", null);
     }
 
     private @NotNull RootDriverConfiguration configuration = new RootDriverConfiguration();
@@ -35,14 +41,13 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
 
     @Override
     public void initialize(final @NotNull RootDriverConfiguration configuration) {
-//        DriverManager.init();
         // TODO get root user config.
         this.configuration = configuration;
     }
 
     @Override
     public void uninitialize() {
-        throw new UnsupportedOperationException("Root Driver is the core driver of WList. Cannot be deleted.");
+        throw new UnsupportedOperationException("Root Driver is the core driver of WList. Cannot be uninitialized.");
     }
 
     @Deprecated
@@ -73,207 +78,74 @@ public class RootDriver implements DriverInterface<RootDriver.RootDriverConfigur
     }
 
     @Override
-    public Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(@NotNull final DrivePath path, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws Exception {
-        if (path.getDepth() == 0) {
-            // TODO list root drivers.
+    public void forceRefreshDirectory(final @NotNull FileLocation location) throws Exception {
+        final DriverInterface<?> driver = DriverManager.get(location.driver());
+        if (driver != null)
+            driver.forceRefreshDirectory(location);
+    }
+
+    @Override
+    public Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(final @NotNull FileLocation location, final @LongRange(minimum = 0) int limit, final @LongRange(minimum = 0) int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws Exception {
+        if (FileLocation.SpecialDriverName.RootDriver.getIdentify().equals(location.driver())) {
+            // TODO list root drivers in page.
             final Map<String, Pair.ImmutablePair<WebDriversType, DriverInterface<?>>> map = DriverManager.getAll();
-            return Pair.ImmutablePair.makeImmutablePair((long) map.size(), map.keySet().stream()
-                    .map(k -> new FileSqlInformation(k.hashCode(), new DrivePath(k), true, 0, null, null, "", null))
-                    .collect(Collectors.toList()));
+            return Pair.ImmutablePair.makeImmutablePair((long) map.size(), map.values().stream()
+                    .map(k -> RootDriver.getDriverInformation(k.getSecond().getConfiguration())).toList());
         }
-        final String root = path.getRoot();
-        final DriverInterface<?> real = DriverManager.get(root);
+        final DriverInterface<?> real = DriverManager.get(location.driver());
         if (real == null)
             return null;
-        try {
-            path.removedRoot();
-            final Pair.ImmutablePair<Long, List<FileSqlInformation>> list = real.list(path, limit, page, policy, direction);
-            if (list == null)
-                return null;
-            list.getSecond().forEach(f -> f.path().addedRoot(root));
-            return list;
-        } finally {
-            path.addedRoot(root);
-        }
+        return real.list(location, limit, page, policy, direction);
     }
 
     @Override
-    public void forceRefreshDirectory(final @NotNull DrivePath path) throws Exception {
-        final String root = path.getRoot();
-        final DriverInterface<?> real = DriverManager.get(root);
-        if (real == null)
-            return;
-        try {
-            real.forceRefreshDirectory(path.removedRoot());
-        } finally {
-            path.addedRoot(root);
-        }
-    }
-
-    @Override
-    public @Nullable FileSqlInformation info(@NotNull final DrivePath path) throws Exception {
-        final String root = path.getRoot();
-        final DriverInterface<?> real = DriverManager.get(root);
+    public @Nullable FileSqlInformation info(final @NotNull FileLocation location) throws Exception {
+        if (FileLocation.SpecialDriverName.RootDriver.getIdentify().equals(location.driver()))
+            return RootDriver.getDriverInformation(DriverManager.getById(location.id()).getSecond().getConfiguration());
+        final DriverInterface<?> real = DriverManager.get(location.driver());
         if (real == null)
             return null;
-        try {
-            final FileSqlInformation information = real.info(path.removedRoot());
-            if (information != null)
-                information.path().addedRoot(root);
-            return information;
-        } finally {
-            path.addedRoot(root);
-        }
+        return real.info(location);
     }
 
     @Override
-    public @Nullable DownloadMethods download(@NotNull final DrivePath path, final long from, final long to) throws Exception {
-        final String root = path.getRoot();
-        final DriverInterface<?> real = DriverManager.get(root);
+    public @NotNull UnionPair<@NotNull DownloadMethods, @NotNull FailureReason> download(final @NotNull FileLocation location, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws Exception {
+        if (FileLocation.SpecialDriverName.RootDriver.getIdentify().equals(location.driver()))
+            return UnionPair.fail(FailureReason.byNoSuchFile("Downloading.", location));
+        final DriverInterface<?> real = DriverManager.get(location.driver());
         if (real == null)
-            return null;
-        try {
-            return real.download(path.removedRoot(), from, to);
-        } finally {
-            path.addedRoot(root);
-        }
+            return UnionPair.fail(FailureReason.byNoSuchFile("Downloading.", location));
+        return real.download(location, from, to);
     }
 
     @Override
-    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> mkdirs(@NotNull final DrivePath path, final Options.@NotNull DuplicatePolicy policy) throws Exception {
-        final String root = path.getRoot();
-        final DriverInterface<?> real = DriverManager.get(root);
+    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> mkdir(final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+        final DriverInterface<?> real = DriverManager.get(parentLocation.driver());
         if (real == null)
-            return UnionPair.fail(FailureReason.byNoSuchFile("Creating directories.", path));
-        try {
-            final UnionPair<FileSqlInformation, FailureReason> dir = real.mkdirs(path.removedRoot(), policy);
-            if (dir.isSuccess())
-                dir.getT().path().addedRoot(root);
-            return dir;
-        } finally {
-            path.addedRoot(root);
-        }
+            return UnionPair.fail(FailureReason.byNoSuchFile("Creating directories.", parentLocation));
+        return real.mkdir(parentLocation, directoryName, policy);
     }
 
     @Override
-    public @NotNull UnionPair<@NotNull UploadMethods, @NotNull FailureReason> upload(final @NotNull DrivePath path, final long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws Exception {
-        final String root = path.getRoot();
-        final DriverInterface<?> real = DriverManager.get(root);
+    public @NotNull UnionPair<@NotNull UploadMethods, @NotNull FailureReason> upload(final @NotNull FileLocation parentLocation, final @NotNull String filename, final @LongRange(minimum = 0) long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+        final DriverInterface<?> real = DriverManager.get(parentLocation.driver());
         if (real == null)
-            return UnionPair.fail(FailureReason.byNoSuchFile("Uploading.", path));
-        try {
-            final UnionPair<UploadMethods, FailureReason> methods = real.upload(path.removedRoot(), size, md5, policy);
-            if (methods.isFailure())
-                return methods;
-            return UnionPair.ok(new UploadMethods(methods.getT().methods(), methods.getT().supplier().transfer(f -> {
-                if (f != null)
-                    f.path().addedRoot(root);
-                return f;
-            }), methods.getT().finisher()));
-        } finally {
-            path.addedRoot(root);
-        }
+            return UnionPair.fail(FailureReason.byNoSuchFile("Uploading.", parentLocation));
+//      TODO  HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Uploaded a file. information: ", f);
+        return real.upload(parentLocation, filename, size, md5, policy);
     }
 
     @SuppressWarnings("OverlyBroadThrowsClause")
     @Override
-    public void delete(@NotNull final DrivePath path) throws Exception {
-        if (path.getDepth() < 1) {
-            this.uninitialize();
+    public void delete(final @NotNull FileLocation location) throws Exception {
+        if (FileLocation.SpecialDriverName.RootDriver.getIdentify().equals(location.driver())) {
+            DriverManager.del(location.driver());
             return;
         }
-        final String root = path.getRoot();
-        if (path.getDepth() == 1) {
-            DriverManager.del(root);
-            return;
-        }
-        final DriverInterface<?> real = DriverManager.get(root);
+        final DriverInterface<?> real = DriverManager.get(location.driver());
         if (real == null)
             return;
-        try {
-            real.delete(path.removedRoot());
-        } finally {
-            path.addedRoot(root);
-        }
-    }
-
-    @Override
-    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> copy(@NotNull final DrivePath source, @NotNull final DrivePath target, final Options.@NotNull DuplicatePolicy policy) throws Exception {
-        final FileSqlInformation info = this.info(source);
-        if (info == null)
-            return UnionPair.fail(FailureReason.byNoSuchFile("Copying.", source));
-        if (info.isDir())
-            return UnionPair.fail(FailureReason.byNoSuchFile("Copying", source));
-        if (source.equals(target))
-            return UnionPair.ok(info);
-        if (source.getRoot().equals(target.getRoot())) {
-            final String root = source.getRoot();
-            final DriverInterface<?> real = DriverManager.get(root);
-            if (real == null)
-                return UnionPair.fail(FailureReason.byNoSuchFile("Copying.", source));
-            try {
-                final UnionPair<FileSqlInformation, FailureReason> information = real.copy(source.removedRoot(), target.removedRoot(), policy);
-                if (information.isSuccess())
-                    information.getT().path().addedRoot(root);
-                return information;
-            } finally {
-                source.addedRoot(root);
-                target.addedRoot(root);
-            }
-        }
-        return DriverInterface.super.copy(source, target, policy);
-    }
-
-    @Override
-    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> move(@NotNull final DrivePath sourceFile, @NotNull final DrivePath targetDirectory, final Options.@NotNull DuplicatePolicy policy) throws Exception {
-        try {
-            if (sourceFile.equals(targetDirectory.child(sourceFile.getName()))) {
-                final FileSqlInformation information = this.info(sourceFile);
-                if (information == null)
-                    return UnionPair.fail(FailureReason.byNoSuchFile("Moving.", sourceFile));
-                return UnionPair.ok(information);
-            }
-        } finally {
-            targetDirectory.parent();
-        }
-        if (sourceFile.getRoot().equals(targetDirectory.getRoot())) {
-            final String root = sourceFile.getRoot();
-            final DriverInterface<?> real = DriverManager.get(root);
-            if (real == null)
-                return UnionPair.fail(FailureReason.byNoSuchFile("Moving.", sourceFile));
-            try {
-                final UnionPair<FileSqlInformation, FailureReason> information = real.move(sourceFile.removedRoot(), targetDirectory.removedRoot(), policy);
-                if (information.isSuccess())
-                    information.getT().path().addedRoot(root);
-                return information;
-            } finally {
-                sourceFile.addedRoot(root);
-                targetDirectory.addedRoot(root);
-            }
-        }
-        return DriverInterface.super.move(sourceFile, targetDirectory, policy);
-    }
-
-    @Override
-    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> rename(@NotNull final DrivePath source, @NotNull final String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
-        if (name.equals(source.getName())) {
-            final FileSqlInformation information = this.info(source);
-            if (information == null)
-                return UnionPair.fail(FailureReason.byNoSuchFile("Renaming.", source));
-            return UnionPair.ok(information);
-        }
-        final String root = source.getRoot();
-        final DriverInterface<?> real = DriverManager.get(root);
-        if (real == null)
-            return UnionPair.fail(FailureReason.byNoSuchFile("Renaming.", source));
-        try {
-            final UnionPair<FileSqlInformation, FailureReason> information = real.rename(source.removedRoot(), name, policy);
-            if (information.isSuccess())
-                information.getT().path().addedRoot(root);
-            return information;
-        } finally {
-            source.addedRoot(root);
-        }
+        real.delete(location);
     }
 
     public static class RootDriverConfiguration extends DriverConfiguration<RootDriverConfiguration.LocalSide, RootDriverConfiguration.WebSide, RootDriverConfiguration.CacheSide> {

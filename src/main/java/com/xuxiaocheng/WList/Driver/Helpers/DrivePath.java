@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class DrivePath implements Iterable<String> {
@@ -20,8 +19,7 @@ public class DrivePath implements Iterable<String> {
         if (path == null)
             return List.of();
         return Stream.of(DrivePath.Separator.split(path.replace('\n', '\t')))
-                .filter(Predicate.not(String::isEmpty))
-                .collect(Collectors.toList());
+                .filter(Predicate.not(String::isEmpty)).toList();
     }
 
     protected final @NotNull List<String> path;

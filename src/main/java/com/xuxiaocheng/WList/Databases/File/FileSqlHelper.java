@@ -31,17 +31,17 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
+import java.util.stream.Collectors;
 
 final class FileSqlHelper {
     private static final @NotNull ConcurrentMap<@NotNull String, @NotNull FileSqlHelper> instances = new ConcurrentHashMap<>();
 
-    public static void initialize(final @NotNull String driverName, final @NotNull DatabaseUtil database, final @Nullable String _connectionId) throws SQLException {
+    public static void initialize(final @NotNull String driverName, final long rootId, final @NotNull DatabaseUtil database, final @Nullable String _connectionId) throws SQLException {
         final boolean[] flag = {true};
         try {
             FileSqlHelper.instances.computeIfAbsent(driverName, HExceptionWrapper.wrapFunction(k -> {
                 flag[0] = false;
-                return new FileSqlHelper(driverName, database, _connectionId);
+                return new FileSqlHelper(driverName, rootId, database, _connectionId);
             }));
         } catch (final RuntimeException exception) {
             throw HExceptionWrapper.unwrapException(exception, SQLException.class);
@@ -58,11 +58,13 @@ final class FileSqlHelper {
     }
 
     private final @NotNull String tableName;
+    private final long rootId;
     private final @NotNull DatabaseUtil database;
 
-    private FileSqlHelper(final @NotNull String driverName, final @NotNull DatabaseUtil database, final @Nullable String _connectionId) throws SQLException {
+    private FileSqlHelper(final @NotNull String driverName, final long rootId, final @NotNull DatabaseUtil database, final @Nullable String _connectionId) throws SQLException {
         super();
         this.tableName = FileSqlHelper.getTableName(driverName);
+        this.rootId = rootId;
         this.database = database;
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
@@ -73,7 +75,7 @@ final class FileSqlHelper {
                         id           INTEGER PRIMARY KEY AUTOINCREMENT
                                              UNIQUE
                                              NOT NULL,
-                        parent_path  TEXT    NOT NULL,
+                        parent_id    INTEGER ,
                         name         TEXT    NOT NULL,
                         is_directory INTEGER NOT NULL
                                              DEFAULT (0)
@@ -83,36 +85,14 @@ final class FileSqlHelper {
                                              CHECK (size >= -1),
                         create_time  TEXT    NOT NULL,
                         update_time  TEXT    NOT NULL,
-                        md5          TEXT    NOT NULL,
+                        md5          TEXT    NOT NULL
+                                             CHECK (len(md5) == 32),
                         others       TEXT
                     );
                 """, this.tableName));
                 statement.executeUpdate(String.format("""
-                    CREATE INDEX IF NOT EXISTS %s_path ON %s (name, parent_path);
+                    CREATE INDEX IF NOT EXISTS %s_location ON %s (name, parent_id);
                 """, this.tableName, this.tableName));
-                statement.executeUpdate(String.format("""
-                    CREATE TRIGGER IF NOT EXISTS %s_deleter AFTER delete ON %s FOR EACH ROW
-                    BEGIN
-                        DELETE FROM %s WHERE parent_path == old.parent_path || '/' || old.name;
-                        DELETE FROM %s WHERE parent_path GLOB old.parent_path || '/' || old.name || '/*';
-                    END;
-                """, this.tableName, this.tableName, this.tableName, this.tableName));
-                statement.executeUpdate(String.format("""
-                    CREATE TRIGGER IF NOT EXISTS %s_updater AFTER update OF is_directory ON %s FOR EACH ROW WHEN new.is_directory == 0 AND old.is_directory == 1
-                    BEGIN
-                        DELETE FROM %s WHERE parent_path == old.parent_path || '/' || old.name;
-                        DELETE FROM %s WHERE parent_path GLOB old.parent_path || '/' || old.name || '/*';
-                    END;
-                """, this.tableName, this.tableName, this.tableName, this.tableName));
-                statement.executeUpdate(String.format("""
-                    CREATE TRIGGER IF NOT EXISTS %s_renamer AFTER update OF parent_path, name ON %s FOR EACH ROW
-                    BEGIN
-                        UPDATE %s SET parent_path = new.parent_path || '/' || new.name
-                                  WHERE parent_path == old.parent_path || '/' || old.name;
-                        UPDATE %s SET parent_path = new.parent_path || '/' || new.name || substr(parent_path, length(new.parent_path) + length(old.name) + 2, length(parent_path))
-                                  WHERE parent_path GLOB old.parent_path || '/' || old.name || '/*';
-                    END;
-                """, this.tableName, this.tableName, this.tableName, this.tableName));
             }
             connection.commit();
         }
@@ -124,9 +104,6 @@ final class FileSqlHelper {
         try (final Connection connection = helper.database.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
             try (final Statement statement = connection.createStatement()) {
-                statement.executeUpdate(String.format("DROP TRIGGER IF EXISTS %s_deleter;", helper.tableName));
-                statement.executeUpdate(String.format("DROP TRIGGER IF EXISTS %s_updater;", helper.tableName));
-                statement.executeUpdate(String.format("DROP TRIGGER IF EXISTS %s_renamer;", helper.tableName));
                 statement.executeUpdate(String.format("DROP TABLE IF EXISTS %s;", helper.tableName));
             }
             connection.commit();
@@ -153,14 +130,25 @@ final class FileSqlHelper {
 
     private static @Nullable FileSqlInformation createNextFileInfo(final @NotNull ResultSet result) throws SQLException {
         return result.next() ? new FileSqlInformation(result.getLong("id"),
-                new DrivePath(result.getString("parent_path")).child(result.getString("name")),
+                result.getLong("parent_id"), result.getString("name"),
                 result.getBoolean("is_directory"), result.getLong("size"),
                 LocalDateTime.parse(result.getString("create_time"), FileSqlHelper.DefaultFormatter),
                 LocalDateTime.parse(result.getString("update_time"), FileSqlHelper.DefaultFormatter),
                 result.getString("md5"), result.getString("others")) : null;
     }
 
-    private static @NotNull @UnmodifiableView List<@NotNull FileSqlInformation> createFilesInfo(final @NotNull ResultSet result) throws SQLException {
+    private static @NotNull @UnmodifiableView Set<@NotNull FileSqlInformation> createFilesInfo(final @NotNull ResultSet result) throws SQLException {
+        final Set<FileSqlInformation> set = new HashSet<>();
+        while (true) {
+            final FileSqlInformation info = FileSqlHelper.createNextFileInfo(result);
+            if (info == null)
+                break;
+            set.add(info);
+        }
+        return Collections.unmodifiableSet(set);
+    }
+
+    private static @NotNull @UnmodifiableView List<@NotNull FileSqlInformation> createFilesInfoInOrder(final @NotNull ResultSet result) throws SQLException {
         final List<FileSqlInformation> list = new LinkedList<>();
         while (true) {
             final FileSqlInformation info = FileSqlHelper.createNextFileInfo(result);
@@ -194,81 +182,24 @@ final class FileSqlHelper {
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    INSERT INTO %s (id, parent_path, name, is_directory, size, create_time, update_time, md5, others)
+                    INSERT INTO %s (id, parent_id, name, is_directory, size, create_time, update_time, md5, others)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT (id) DO UPDATE SET
-                        parent_path = excluded.parent_path, name = excluded.name,
+                        parent_id = excluded.parent_id, name = excluded.name,
                         is_directory = excluded.is_directory, size = excluded.size,
                         create_time = excluded.create_time, update_time = excluded.update_time,
                         md5 = excluded.md5, others = excluded.others;
                 """, this.tableName))) {
                 for (final FileSqlInformation inserter: inserters) {
                     statement.setLong(1, inserter.id());
-                    statement.setString(2, inserter.path().getParentPath());
-                    statement.setString(3, inserter.path().getName());
+                    statement.setLong(2, inserter.parentId());
+                    statement.setString(3, inserter.name());
                     statement.setBoolean(4, inserter.isDir());
                     statement.setLong(5, inserter.size());
                     statement.setString(6, FileSqlHelper.serializeTime(inserter.createTime()));
                     statement.setString(7, FileSqlHelper.serializeTime(inserter.updateTime()));
                     statement.setString(8, inserter.md5());
                     statement.setString(9, inserter.others());
-                    statement.executeUpdate();
-                }
-            }
-            connection.commit();
-        }
-    }
-
-    public void deleteFilesRecursively(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
-        if (idList.isEmpty())
-            return;
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    DELETE FROM %s WHERE id == ?;
-                """, this.tableName))) {
-                for (final Long id: idList) {
-                    statement.setLong(1, id.longValue());
-                    statement.executeUpdate();
-                }
-            }
-            connection.commit();
-        }
-    }
-
-    public void deleteFilesByPathRecursively(final @NotNull Collection<? extends @NotNull DrivePath> pathList, final @Nullable String _connectionId) throws SQLException {
-        if (pathList.isEmpty())
-            return;
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    DELETE FROM %s WHERE parent_path == ? AND name == ?;
-                """, this.tableName))) {
-                for (final DrivePath path: pathList) {
-                    statement.setString(1, path.getParentPath());
-                    statement.setString(2, path.getName());
-                    statement.executeUpdate();
-                }
-            }
-            connection.commit();
-        }
-    }
-
-    public void deleteFilesByMd5(final @NotNull Collection<@NotNull String> md5List, final @Nullable String _connectionId) throws SQLException {
-        if (md5List.isEmpty())
-            return;
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    DELETE FROM %s WHERE md5 == ?;
-                """, this.tableName))) {
-                for (final String md5: md5List) {
-                    if (md5.isEmpty())
-                        continue;
-                    statement.setString(1, md5);
                     statement.executeUpdate();
                 }
             }
@@ -297,35 +228,56 @@ final class FileSqlHelper {
         }
     }
 
-    public @NotNull @UnmodifiableView Map<@NotNull DrivePath, @NotNull FileSqlInformation> selectFilesByPath(final @NotNull Collection<? extends @NotNull DrivePath> pathList, final @Nullable String _connectionId) throws SQLException {
-        if (pathList.isEmpty())
-            return Map.of();
+    @Deprecated
+    public @Nullable FileSqlInformation selectFileByPath(final @NotNull DrivePath path, final @Nullable String _connectionId) throws SQLException {
+        FileSqlInformation information = this.selectFiles(List.of(this.rootId), _connectionId).get(this.rootId);
+        if (path.getDepth() == 0 || information == null)
+            return information;
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
-            final Map<DrivePath, FileSqlInformation> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM %s WHERE parent_path == ? AND name == ? LIMIT 1;
+                    SELECT * FROM %s WHERE parent_id == ? AND name == ? LIMIT 1;
                 """, this.tableName))) {
-                for (final DrivePath path: pathList) {
-                    statement.setString(1, path.getParentPath());
-                    statement.setString(2, path.getName());
+                for (final String name: path) {
+                    statement.setLong(1, information.id());
+                    statement.setString(2, name);
                     try (final ResultSet result = statement.executeQuery()) {
-                        map.put(path, FileSqlHelper.createNextFileInfo(result));
+                        information = FileSqlHelper.createNextFileInfo(result);
+                        if (information == null)
+                            return null;
                     }
                 }
             }
-            return Collections.unmodifiableMap(map);
+            return information;
         }
     }
 
-    public @NotNull @UnmodifiableView Map<@NotNull String, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> selectFilesByMd5(final @NotNull Collection<@NotNull String> md5List, final @Nullable String _connectionId) throws SQLException {
+    public @Nullable FileSqlInformation selectFileInDirectory(final long parentId, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+            connection.setAutoCommit(false);
+            final FileSqlInformation information;
+            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+                    SELECT * FROM %s WHERE parent_id == ? AND name == ? LIMIT 1;
+                """, this.tableName))) {
+                statement.setLong(1, parentId);
+                statement.setString(2, name);
+                try (final ResultSet result = statement.executeQuery()) {
+                    information = FileSqlHelper.createNextFileInfo(result);
+                }
+            }
+            return information;
+        }
+    }
+
+    public @NotNull @UnmodifiableView Map<@NotNull String, @Nullable @UnmodifiableView Set<@NotNull FileSqlInformation>> selectFilesByMd5(final @NotNull Collection<@NotNull String> md5List, final @Nullable String _connectionId) throws SQLException {
         if (md5List.isEmpty())
             return Map.of();
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
-            final Map<String, List<FileSqlInformation>> map = new HashMap<>();
+            final Map<String, Set<FileSqlInformation>> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT * FROM %s WHERE md5 == ? LIMIT 1;
                 """, this.tableName))) {
@@ -340,23 +292,23 @@ final class FileSqlHelper {
         }
     }
 
-    public @NotNull @UnmodifiableView Map<@NotNull DrivePath, @NotNull Set<@NotNull Long>> selectFilesIdByParentPath(final @NotNull Collection<? extends @NotNull DrivePath> parentPathList, final @Nullable String _connectionId) throws SQLException {
-        if (parentPathList.isEmpty())
+    public @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull @UnmodifiableView Set<@NotNull Long>> selectFilesIdByParentId(final @NotNull Collection<@NotNull Long> parentIdList, final @Nullable String _connectionId) throws SQLException {
+        if (parentIdList.isEmpty())
             return Map.of();
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
-            final Map<DrivePath, Set<Long>> map = new HashMap<>(parentPathList.size());
+            final Map<Long, Set<Long>> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT id FROM %s WHERE parent_path == ?;
+                    SELECT id FROM %s WHERE parent_id == ?;
                 """, this.tableName))) {
-                for (final DrivePath parentPath: parentPathList) {
-                    statement.setString(1, parentPath.getPath());
+                for (final Long parentId: parentIdList) {
+                    statement.setLong(1, parentId.longValue());
                     try (final ResultSet result = statement.executeQuery()) {
                         final Set<Long> set = new HashSet<>();
                         while (result.next())
                             set.add(result.getLong("id"));
-                        map.put(parentPath, set);
+                        map.put(parentId, set);
                     }
                 }
             }
@@ -364,43 +316,21 @@ final class FileSqlHelper {
         }
     }
 
-    public @NotNull @UnmodifiableView Map<@NotNull DrivePath, @NotNull Set<@NotNull Long>> selectFilesIdByParentPathRecursively(final @NotNull Collection<? extends @NotNull DrivePath> parentPathList, final @Nullable String _connectionId) throws SQLException {
-        if (parentPathList.isEmpty())
+    public @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull Long> selectFilesCountByParentId(final @NotNull Collection<@NotNull Long> parentIdList, final @Nullable String _connectionId) throws SQLException {
+        if (parentIdList.isEmpty())
             return Map.of();
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
-            final Map<DrivePath, Set<Long>> map = this.selectFilesIdByParentPath(parentPathList, _connectionId);
+            final Map<Long, Long> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT id FROM %s WHERE parent_path GLOB ?;
+                    SELECT COUNT(*) FROM %s WHERE parent_id == ?;
                 """, this.tableName))) {
-                for (final DrivePath parentPath: parentPathList) {
-                    statement.setString(1, parentPath.getPath() + "/*");
-                    try (final ResultSet result = statement.executeQuery()) {
-                        while (result.next())
-                            map.get(parentPath).add(result.getLong("id"));
-                    }
-                }
-            }
-            return map;
-        }
-    }
-
-    public @NotNull @UnmodifiableView Map<@NotNull DrivePath, @NotNull Long> selectFilesCountByParentPath(final @NotNull Collection<? extends @NotNull DrivePath> parentPathList, final @Nullable String _connectionId) throws SQLException {
-        if (parentPathList.isEmpty())
-            return Map.of();
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            final Map<DrivePath, Long> map = new HashMap<>(parentPathList.size());
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT COUNT(*) FROM %s WHERE parent_path == ?;
-                """, this.tableName))) {
-                for (final DrivePath parentPath: parentPathList) {
-                    statement.setString(1, parentPath.getPath());
+                for (final Long parentId: parentIdList) {
+                    statement.setLong(1, parentId.longValue());
                     try (final ResultSet result = statement.executeQuery()) {
                         result.next();
-                        map.put(parentPath, result.getLong(1));
+                        map.put(parentId, result.getLong(1));
                     }
                 }
             }
@@ -408,87 +338,71 @@ final class FileSqlHelper {
         }
     }
 
-    public @NotNull @UnmodifiableView Map<@NotNull DrivePath, @NotNull Long> selectFilesCountByParentPathRecursively(final @NotNull Collection<? extends @NotNull DrivePath> parentPathList, final @Nullable String _connectionId) throws SQLException {
-        if (parentPathList.isEmpty())
-            return Map.of();
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> selectFilesByParentIdInPage(final long parentId, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final @Nullable String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
-            final Map<DrivePath, Long> source = this.selectFilesCountByParentPath(parentPathList, connectionId.get());
-            final Map<DrivePath, Long> map = new HashMap<>(parentPathList.size());
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT COUNT(*) FROM %s WHERE parent_path GLOB ?;
-                """, this.tableName))) {
-                for (final DrivePath parentPath: parentPathList) {
-                    statement.setString(1, parentPath.getPath() + "/*");
-                    try (final ResultSet result = statement.executeQuery()) {
-                        result.next();
-                        map.put(parentPath, source.get(parentPath).longValue() + result.getLong(1));
-                    }
-                }
-            }
-            return Collections.unmodifiableMap(map);
-        }
-    }
-
-    public void updateForEach(final @NotNull Collection<@NotNull Long> idList, final @NotNull Function<? super @NotNull FileSqlInformation, @Nullable FileSqlInformation> mapper, final @Nullable String _connectionId) throws SQLException {
-        if (idList.isEmpty())
-            return;
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            final Collection<FileSqlInformation> updates = new LinkedList<>();
-            final Collection<Long> deletes = new LinkedList<>();
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM %s WHERE id == ? LIMIT 1;
-                """, this.tableName))) {
-                for (final Long id: idList) {
-                    statement.setLong(1, id.longValue());
-                    final FileSqlInformation raw;
-                    try (final ResultSet result = statement.executeQuery()) {
-                        raw = FileSqlHelper.createNextFileInfo(result);
-                    }
-                    if (raw == null)
-                        continue;
-                    final FileSqlInformation information = mapper.apply(raw);
-                    if (information != null) {
-                        updates.add(information);
-                        if (updates.size() > 128) {
-                            this.insertOrUpdateFiles(updates, connectionId.get());
-                            updates.clear();
-                        }
-                    } else
-                        deletes.add(id);
-                }
-            }
-            this.insertOrUpdateFiles(updates, connectionId.get());
-            this.deleteFilesRecursively(deletes, connectionId.get());
-            connection.commit();
-        }
-    }
-
-    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> selectFilesByParentPathInPage(final @NotNull DrivePath parentPath, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final @Nullable String _connectionId) throws SQLException {
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            final long count = this.selectFilesCountByParentPath(List.of(parentPath), connectionId.get()).get(parentPath).longValue();
+            final long count = this.selectFilesCountByParentId(List.of(parentId), connectionId.get()).get(parentId).longValue();
             if (offset >= count)
                 return Pair.ImmutablePair.makeImmutablePair(count, List.of());
             final List<FileSqlInformation> list;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM %s WHERE parent_path == ? ORDER BY ? %s LIMIT ? OFFSET ?;
-                """, this.tableName, FileSqlHelper.getOrderDirection(direction)))) {
-                statement.setString(1, parentPath.getPath());
+                    SELECT * FROM %s WHERE parent_id == ? ORDER BY ? ? LIMIT ? OFFSET ?;
+                """, this.tableName))) {
+                statement.setLong(1, parentId);
                 statement.setString(2, FileSqlHelper.getOrderPolicy(policy));
-                statement.setInt(3, limit);
-                statement.setLong(4, offset);
+                statement.setString(3, FileSqlHelper.getOrderDirection(direction));
+                statement.setInt(4, limit);
+                statement.setLong(5, offset);
                 try (final ResultSet result = statement.executeQuery()) {
-                    list = FileSqlHelper.createFilesInfo(result);
+                    list = FileSqlHelper.createFilesInfoInOrder(result);
                 }
             }
             return Pair.ImmutablePair.makeImmutablePair(count, list);
         }
     }
+
+    public void deleteFilesRecursively(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
+        if (idList.isEmpty())
+            return;
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+            connection.setAutoCommit(false);
+            final Collection<Long> leave = new HashSet<>();
+            final Collection<Long> set = new HashSet<>(idList);
+            while (!set.isEmpty()) {
+                final Map<Long, Set<Long>> maps = this.selectFilesIdByParentId(set, connectionId.get());
+                set.clear();
+                maps.forEach((key, value) -> {
+                    leave.add(key);
+                    set.addAll(value);
+                });
+            }
+            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+                    DELETE FROM %s WHERE id == ?;
+                """, this.tableName))) {
+                for (final Long id: leave) {
+                    statement.setLong(1, id.longValue());
+                    statement.executeUpdate();
+                }
+            }
+            connection.commit();
+        }
+    }
+
+    public void deleteFilesByMd5Recursively(final @NotNull Collection<@NotNull String> md5List, final @Nullable String _connectionId) throws SQLException {
+        if (md5List.isEmpty())
+            return;
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+            connection.setAutoCommit(false);
+            this.deleteFilesRecursively(this.selectFilesByMd5(md5List, connectionId.get()).values().stream().filter(Objects::nonNull)
+                    .flatMap(Set::stream).map(FileSqlInformation::id).toList(), connectionId.get());
+            connection.commit();
+        }
+    }
+
+    // TODO Better Search
 
     public @NotNull @UnmodifiableView List<@Nullable FileSqlInformation> searchFilesByNameInParentPathLimited(final @NotNull DrivePath parentPath, final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
         if (limit <= 0)
@@ -496,7 +410,7 @@ final class FileSqlHelper {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
-            final List<FileSqlInformation> list;
+            final List<FileSqlInformation> set;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT * FROM %s WHERE parent_path == ? AND name %s ? ORDER BY abs(length(name) - ?) ASC, id DESC LIMIT ?;
                 """, this.tableName, caseSensitive ? "GLOB" : "LIKE"))) {
@@ -505,10 +419,10 @@ final class FileSqlHelper {
                 statement.setInt(3, rule.length());
                 statement.setInt(4, limit);
                 try (final ResultSet result = statement.executeQuery()) {
-                    list = FileSqlHelper.createFilesInfo(result);
+                    set = FileSqlHelper.createFilesInfoInOrder(result);
                 }
             }
-            return list;
+            return set;
         }
     }
 
@@ -527,174 +441,10 @@ final class FileSqlHelper {
                 statement.setInt(3, rule.length());
                 statement.setInt(4, limit);
                 try (final ResultSet result = statement.executeQuery()) {
-                    list = FileSqlHelper.createFilesInfo(result);
+                    list = FileSqlHelper.createFilesInfoInOrder(result);
                 }
             }
             return list;
-        }
-    }
-
-
-    public @NotNull @UnmodifiableView Map<@NotNull DrivePath, @NotNull Long> selectFilesCountByParentPathRequireGroup(final @NotNull Collection<? extends @NotNull DrivePath> parentPathList, final long groupId, final @Nullable String _connectionId) throws SQLException {
-        if (parentPathList.isEmpty())
-            return Map.of();
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            final Map<DrivePath, Long> map = new HashMap<>(parentPathList.size());
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT COUNT(*) FROM %s WHERE parent_path == ? AND id in (select id FROM %s_permissions WHERE group_id == ?);
-                """, this.tableName, this.tableName))) {
-                for (final DrivePath parentPath: parentPathList) {
-                    statement.setString(1, parentPath.getPath());
-                    statement.setLong(2, groupId);
-                    try (final ResultSet result = statement.executeQuery()) {
-                        result.next();
-                        map.put(parentPath, result.getLong(1));
-                    }
-                }
-            }
-            return Collections.unmodifiableMap(map);
-        }
-    }
-
-    public @NotNull @UnmodifiableView Map<@NotNull DrivePath, @NotNull Long> selectFilesCountByParentPathRecursivelyRequireGroup(final @NotNull Collection<? extends @NotNull DrivePath> parentPathList, final long groupId, final @Nullable String _connectionId) throws SQLException {
-        if (parentPathList.isEmpty())
-            return Map.of();
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            final Map<DrivePath, Long> source = this.selectFilesCountByParentPath(parentPathList, connectionId.get());
-            final Map<DrivePath, Long> map = new HashMap<>(parentPathList.size());
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT COUNT(*) FROM %s WHERE parent_path GLOB ? AND id in (select id FROM %s_permissions WHERE group_id == ?);
-                """, this.tableName, this.tableName))) {
-                for (final DrivePath parentPath: parentPathList) {
-                    statement.setString(1, parentPath.getPath() + "/*");
-                    statement.setLong(2, groupId);
-                    try (final ResultSet result = statement.executeQuery()) {
-                        result.next();
-                        map.put(parentPath, source.get(parentPath).longValue() + result.getLong(1));
-                    }
-                }
-            }
-            return Collections.unmodifiableMap(map);
-        }
-    }
-
-    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> selectFilesByParentPathInPageRequireGroup(final @NotNull DrivePath parentPath, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final long groupId, final @Nullable String _connectionId) throws SQLException {
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            final long count = this.selectFilesCountByParentPathRequireGroup(List.of(parentPath), groupId, connectionId.get()).get(parentPath).longValue();
-            if (offset >= count)
-                return Pair.ImmutablePair.makeImmutablePair(count, List.of());
-            final List<FileSqlInformation> list;
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM %s
-                    WHERE parent_path == ? AND id in (select id FROM %s_permissions WHERE group_id == ?)
-                    ORDER BY ? %s LIMIT ? OFFSET ?;
-                """, this.tableName, this.tableName, FileSqlHelper.getOrderDirection(direction)))) {
-                statement.setString(1, parentPath.getPath());
-                statement.setLong(2, groupId);
-                statement.setString(3, FileSqlHelper.getOrderPolicy(policy));
-                statement.setInt(4, limit);
-                statement.setLong(5, offset);
-                try (final ResultSet result = statement.executeQuery()) {
-                    list = FileSqlHelper.createFilesInfo(result);
-                }
-            }
-            return Pair.ImmutablePair.makeImmutablePair(count, list);
-        }
-    }
-
-    public @NotNull @UnmodifiableView List<@Nullable FileSqlInformation> searchFilesByNameInParentPathRecursivelyLimitedRequireGroup(final @NotNull DrivePath parentPath, final @NotNull String rule, final boolean caseSensitive, final int limit, final long groupId, final @Nullable String _connectionId) throws SQLException {
-        if (limit <= 0)
-            return List.of();
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            final List<FileSqlInformation> list;
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM %s
-                    WHERE parent_path GLOB ? AND name %s ? AND id in (select id FROM %s_permissions WHERE group_id == ?)
-                    ORDER BY abs(length(name) - ?) ASC, id DESC LIMIT ?;
-                """, this.tableName, caseSensitive ? "GLOB" : "LIKE", this.tableName))) {
-                statement.setString(1, parentPath.getPath() + "/*");
-                statement.setString(2, rule);
-                statement.setLong(3, groupId);
-                statement.setInt(4, rule.length());
-                statement.setInt(5, limit);
-                try (final ResultSet result = statement.executeQuery()) {
-                    list = FileSqlHelper.createFilesInfo(result);
-                }
-            }
-            return list;
-        }
-    }
-
-
-    public void insertGroupsForEachFile(final @NotNull Collection<@NotNull Long> idList, final @NotNull Collection<@NotNull Long> groups, final @Nullable String _connectionId) throws SQLException {
-        if (idList.isEmpty() || groups.isEmpty())
-            return;
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    INSERT OR IGNORE INTO %s_permissions (identifier, id, group_id)
-                        VALUES (?, ?, ?);
-                """, this.tableName))) {
-                for (final Long id: idList)
-                    for (final Long groupId: groups) {
-                        statement.setString(1, String.format("%d %d", id.longValue(), groupId.longValue()));
-                        statement.setLong(2, id.longValue());
-                        statement.setLong(3, groupId.longValue());
-                        statement.executeUpdate();
-                    }
-            }
-        }
-    }
-
-    public void deleteGroupsForEachFile(final @NotNull Collection<@NotNull Long> idList, final @NotNull Collection<@NotNull Long> groups, final @Nullable String _connectionId) throws SQLException {
-        if (idList.isEmpty() || groups.isEmpty())
-            return;
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    DELETE FROM %s_permissions WHERE id == ? AND group_id == ?;
-                """, this.tableName))) {
-                for (final Long id: idList)
-                    for (final Long groupId: groups) {
-                        statement.setLong(1, id.longValue());
-                        statement.setLong(2, groupId.longValue());
-                        statement.executeUpdate();
-                    }
-            }
-        }
-    }
-
-    public @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull Set<@NotNull Long>> selectGroupsForEachFile(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
-        if (idList.isEmpty())
-            return Map.of();
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            final Map<Long, Set<Long>> map = new HashMap<>(idList.size());
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT group_id FROM %s_permissions WHERE id == ?;
-                """, this.tableName))) {
-                for (final Long id: idList) {
-                    statement.setLong(1, id.longValue());
-                    try (final ResultSet result = statement.executeQuery()) {
-                        final Set<Long> set = new HashSet<>();
-                        while (result.next())
-                            set.add(result.getLong("1"));
-                        map.put(id, set);
-                    }
-                }
-            }
-            return Collections.unmodifiableMap(map);
         }
     }
 }

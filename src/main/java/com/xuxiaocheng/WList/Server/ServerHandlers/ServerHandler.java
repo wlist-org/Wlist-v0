@@ -17,7 +17,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -51,19 +50,6 @@ public interface ServerHandler {
         HLog.getInstance("ServerLogger").log(HLogLevel.DEBUG, "Operate: ", channelId.asLongText(), ", type: ", operation,
                 (Supplier<String>) () -> user == null ? "." :
                         user.isSuccess() ? " user: (id:" + user.getT().id() + ") '" + user.getT().username() + "'." : ". Refused because " + user.getE().state() + '.',
-                (Supplier<String>) () -> {
-                    if (parameters == null) return "";
-                    final ParametersMap<String, Object> p = parameters.get();
-                    if (p.isEmpty()) return "";
-                    final StringBuilder builder = new StringBuilder(" (");
-                    for (final Map.Entry<String, Object> entry: p.entrySet()) {
-                        builder.append(entry.getKey()).append('=');
-                        if (entry.getValue() instanceof String)
-                            builder.append('\'').append(entry.getValue()).append("', ");
-                        else
-                            builder.append(HLog.expandString(entry.getValue())).append(", ");
-                    }
-                    return builder.replace(builder.length() - 2, builder.length(), ")").toString();
-                });
+                (Supplier<String>) () -> parameters == null ? "" : parameters.get().toString());
     }
 }
