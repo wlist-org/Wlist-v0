@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<string name="app_name">智存系统</string>
+	<string name="action_settings">设置</string>
+	<string name="tab_file">文件</string>
+	<string name="tab_user">我的</string>
+</resources>
