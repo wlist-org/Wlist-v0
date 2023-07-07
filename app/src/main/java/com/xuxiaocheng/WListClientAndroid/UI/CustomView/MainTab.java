@@ -2,23 +2,22 @@ package com.xuxiaocheng.WListClientAndroid.UI.CustomView;
 
 import android.app.Activity;
 import android.view.View;
+import android.widget.ImageView;
+import android.widget.TextView;
 import androidx.annotation.ColorInt;
 import androidx.annotation.ColorRes;
 import androidx.annotation.DrawableRes;
 import androidx.annotation.IdRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.widget.AppCompatImageButton;
-import androidx.appcompat.widget.AppCompatTextView;
-import androidx.constraintlayout.widget.ConstraintLayout;
 
 import java.util.function.Consumer;
 
 public final class MainTab {
     public static final class ButtonGroup {
-        @NonNull private final ConstraintLayout layout;
-        @NonNull private final AppCompatImageButton button;
-        @NonNull private final AppCompatTextView text;
+        @NonNull private final View layout;
+        @NonNull private final ImageView button;
+        @NonNull private final TextView text;
 
         @DrawableRes private final int image;
         @DrawableRes private final int imageChose;
