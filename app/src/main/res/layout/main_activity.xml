@@ -49,6 +49,13 @@
 		app:layout_constraintRight_toLeftOf="@id/main_tab_user"
 		app:layout_constraintTop_toBottomOf="@id/main_tab_guideline" />
 
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/main_tab_guideline_file"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		app:layout_constraintGuide_percent="0.3" />
+
 	<androidx.appcompat.widget.AppCompatImageView
 		android:id="@+id/main_tab_file_button"
 		android:layout_width="wrap_content"
@@ -58,8 +65,8 @@
 		android:scaleType="centerInside"
 		android:src="@mipmap/main_tab_file"
 		app:layout_constraintBottom_toTopOf="@id/main_tab_file_text"
-		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toRightOf="@id/main_tab_file"
+		app:layout_constraintLeft_toLeftOf="@id/main_tab_guideline_file"
+		app:layout_constraintRight_toRightOf="@id/main_tab_guideline_file"
 		app:layout_constraintTop_toBottomOf="@id/main_tab_guideline_top"
 		tools:ignore="TouchTargetSizeCheck,SpeakableTextPresentCheck" />
 
@@ -71,8 +78,8 @@
 		android:textColor="@color/black"
 		android:textSize="13sp"
 		app:layout_constraintBottom_toTopOf="@id/main_tab_guideline_bottom"
-		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toRightOf="@id/main_tab_file"
+		app:layout_constraintLeft_toLeftOf="@id/main_tab_guideline_file"
+		app:layout_constraintRight_toRightOf="@id/main_tab_guideline_file"
 		app:layout_constraintTop_toBottomOf="@id/main_tab_file_button" />
 
 	<View
@@ -85,6 +92,13 @@
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toBottomOf="@id/main_tab_guideline" />
 
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/main_tab_guideline_user"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		app:layout_constraintGuide_percent="0.7" />
+
 	<androidx.appcompat.widget.AppCompatImageView
 		android:id="@+id/main_tab_user_button"
 		android:layout_width="wrap_content"
@@ -94,8 +108,8 @@
 		android:scaleType="centerInside"
 		android:src="@mipmap/main_tab_user"
 		app:layout_constraintBottom_toTopOf="@id/main_tab_user_text"
-		app:layout_constraintLeft_toLeftOf="@id/main_tab_user"
-		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintLeft_toLeftOf="@id/main_tab_guideline_user"
+		app:layout_constraintRight_toRightOf="@id/main_tab_guideline_user"
 		app:layout_constraintTop_toBottomOf="@id/main_tab_guideline_top"
 		tools:ignore="TouchTargetSizeCheck,SpeakableTextPresentCheck" />
 
@@ -107,8 +121,8 @@
 		android:textColor="@color/black"
 		android:textSize="13sp"
 		app:layout_constraintBottom_toTopOf="@id/main_tab_guideline_bottom"
-		app:layout_constraintLeft_toLeftOf="@id/main_tab_user"
-		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintLeft_toLeftOf="@id/main_tab_guideline_user"
+		app:layout_constraintRight_toRightOf="@id/main_tab_guideline_user"
 		app:layout_constraintTop_toBottomOf="@id/main_tab_user_button" />
 
 
