@@ -3,8 +3,8 @@ package com.xuxiaocheng.WListClient.Client.OperationHelpers;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.WListClient.Client.WListClient;
-import com.xuxiaocheng.WListClient.Server.DrivePath;
 import com.xuxiaocheng.WListClient.Server.FailureReason;
+import com.xuxiaocheng.WListClient.Server.FileLocation;
 import com.xuxiaocheng.WListClient.Server.MessageCiphers;
 import com.xuxiaocheng.WListClient.Server.Operation;
 import com.xuxiaocheng.WListClient.Server.Options;
@@ -39,9 +39,9 @@ public final class OperateFileHelper {
         };
     }
 
-    public static Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull VisibleFileInformation>> listFiles(final @NotNull WListClient client, final @NotNull String token, final @NotNull DrivePath path, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction, final boolean refresh) throws IOException, InterruptedException, WrongStateException {
+    public static Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull VisibleFileInformation>> listFiles(final @NotNull WListClient client, final @NotNull String token, final @NotNull FileLocation directoryLocation, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction, final boolean refresh) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.ListFiles, token);
-        ByteBufIOUtil.writeUTF(send, path.getPath());
+        FileLocation.dump(send, directoryLocation);
         ByteBufIOUtil.writeVariableLenInt(send, limit);
         ByteBufIOUtil.writeVariableLenInt(send, page);
         ByteBufIOUtil.writeUTF(send, policy.name());
@@ -67,9 +67,10 @@ public final class OperateFileHelper {
         }
     }
 
-    public static @NotNull UnionPair<@NotNull VisibleFileInformation, @NotNull FailureReason> makeDirectories(final @NotNull WListClient client, final @NotNull String token, final @NotNull DrivePath path, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
+    public static @NotNull UnionPair<@NotNull VisibleFileInformation, @NotNull FailureReason> makeDirectory(final @NotNull WListClient client, final @NotNull String token, final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.MakeDirectories, token);
-        ByteBufIOUtil.writeUTF(send, path.getPath());
+        FileLocation.dump(send, parentLocation);
+        ByteBufIOUtil.writeUTF(send, directoryName);
         ByteBufIOUtil.writeUTF(send, policy.name());
         final ByteBuf receive = client.send(send);
         try {
@@ -79,9 +80,9 @@ public final class OperateFileHelper {
         }
     }
 
-    public static boolean deleteFile(final @NotNull WListClient client, final @NotNull String token, final @NotNull DrivePath path) throws IOException, InterruptedException, WrongStateException {
+    public static boolean deleteFile(final @NotNull WListClient client, final @NotNull String token, final @NotNull FileLocation fileLocation) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.DeleteFile, token);
-        ByteBufIOUtil.writeUTF(send, path.getPath());
+        FileLocation.dump(send, fileLocation);
         final ByteBuf receive = client.send(send);
         try {
             return OperateHelper.handleState(receive);
@@ -90,10 +91,10 @@ public final class OperateFileHelper {
         }
     }
 
-    public static @NotNull UnionPair<@NotNull VisibleFileInformation, @NotNull FailureReason> renameFile(final @NotNull WListClient client, final @NotNull String token, final @NotNull DrivePath path, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
+    public static @NotNull UnionPair<@NotNull VisibleFileInformation, @NotNull FailureReason> renameFile(final @NotNull WListClient client, final @NotNull String token, final @NotNull FileLocation fileLocation, final @NotNull String newNilename, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.RenameFile, token);
-        ByteBufIOUtil.writeUTF(send, path.getPath());
-        ByteBufIOUtil.writeUTF(send, name);
+        FileLocation.dump(send, fileLocation);
+        ByteBufIOUtil.writeUTF(send, newNilename);
         ByteBufIOUtil.writeUTF(send, policy.name());
         final ByteBuf receive = client.send(send);
         try {
@@ -103,9 +104,9 @@ public final class OperateFileHelper {
         }
     }
 
-    public static Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull String> requestDownloadFile(final @NotNull WListClient client, final @NotNull String token, final @NotNull DrivePath path, final long from, final long to) throws IOException, InterruptedException, WrongStateException {
+    public static Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull String> requestDownloadFile(final @NotNull WListClient client, final @NotNull String token, final @NotNull FileLocation fileLocation, final long from, final long to) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.RequestDownloadFile, token);
-        ByteBufIOUtil.writeUTF(send, path.getPath());
+        FileLocation.dump(send, fileLocation);
         ByteBufIOUtil.writeVariableLenLong(send, from);
         ByteBufIOUtil.writeVariable2LenLong(send, to);
         final ByteBuf receive = client.send(send);
@@ -148,10 +149,11 @@ public final class OperateFileHelper {
         }
     }
 
-    public static @NotNull UnionPair<@NotNull UnionPair<@NotNull VisibleFileInformation, @NotNull String>, @NotNull FailureReason> requestUploadFile(final @NotNull WListClient client, final @NotNull String token, final @NotNull DrivePath path, final long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
+    public static @NotNull UnionPair<@NotNull UnionPair<@NotNull VisibleFileInformation, @NotNull String>, @NotNull FailureReason> requestUploadFile(final @NotNull WListClient client, final @NotNull String token, final @NotNull FileLocation parentLocation, final @NotNull String filename, final long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.RequestUploadFile, token);
-        ByteBufIOUtil.writeUTF(send, path.getPath());
-        ByteBufIOUtil.writeVariableLenLong(send, size);
+        FileLocation.dump(send, parentLocation);
+        ByteBufIOUtil.writeUTF(send, filename);
+        ByteBufIOUtil.writeVariable2LenLong(send, size);
         ByteBufIOUtil.writeUTF(send, md5);
         ByteBufIOUtil.writeUTF(send, policy.name());
         final ByteBuf receive = client.send(send);
@@ -201,23 +203,11 @@ public final class OperateFileHelper {
         }
     }
 
-    public static @NotNull UnionPair<@NotNull VisibleFileInformation, @NotNull FailureReason> copyFile(final @NotNull WListClient client, final @NotNull String token, final @NotNull DrivePath source, final @NotNull DrivePath target, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
-        final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.CopyFile, token);
-        ByteBufIOUtil.writeUTF(send, source.getPath());
-        ByteBufIOUtil.writeUTF(send, target.getPath());
-        ByteBufIOUtil.writeUTF(send, policy.name());
-        final ByteBuf receive = client.send(send);
-        try {
-            return OperateHelper.handleState(receive) ? UnionPair.ok(VisibleFileInformation.parse(receive)) : UnionPair.fail(OperateFileHelper.handleFailureReason(receive));
-        } finally {
-            receive.release();
-        }
-    }
-
-    public static @NotNull UnionPair<@NotNull VisibleFileInformation, @NotNull FailureReason> moveFile(final @NotNull WListClient client, final @NotNull String token, final @NotNull DrivePath sourceFile, final @NotNull DrivePath targetDirectory, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
-        final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.MoveFile, token);
-        ByteBufIOUtil.writeUTF(send, sourceFile.getPath());
-        ByteBufIOUtil.writeUTF(send, targetDirectory.getPath());
+    public static @NotNull UnionPair<@NotNull VisibleFileInformation, @NotNull FailureReason> copyFile(final @NotNull WListClient client, final @NotNull String token, final @NotNull FileLocation source, final @NotNull FileLocation target, final @NotNull String newFilename, final Options.@NotNull DuplicatePolicy policy, final boolean moveMode) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(moveMode ? Operation.Type.MoveFile : Operation.Type.CopyFile, token);
+        FileLocation.dump(send, source);
+        FileLocation.dump(send, target);
+        ByteBufIOUtil.writeUTF(send, newFilename);
         ByteBufIOUtil.writeUTF(send, policy.name());
         final ByteBuf receive = client.send(send);
         try {

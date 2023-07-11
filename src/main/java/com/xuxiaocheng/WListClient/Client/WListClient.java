@@ -27,13 +27,13 @@ import java.net.SocketAddress;
 import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class WListClient {
+public class WListClient implements AutoCloseable {
     public static final int FileTransferBufferSize = 4 << 20;
     public static final int MaxSizePerPacket = (64 << 10) + WListClient.FileTransferBufferSize;
     private static final @NotNull HLog logger = HLog.createInstance("ClientLogger",
             Main.DebugMode ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1,
             true);
-    public static final @NotNull EventLoopGroup ClientEventLoop = new NioEventLoopGroup(1);
+    public static final @NotNull EventLoopGroup ClientThreadPool = new NioEventLoopGroup(1);
 
     protected final @NotNull SocketAddress address;
     private final @NotNull Channel channel;
@@ -42,7 +42,7 @@ public class WListClient {
         super();
         this.address = address;
         final Bootstrap bootstrap = new Bootstrap();
-        bootstrap.group(WListClient.ClientEventLoop);
+        bootstrap.group(WListClient.ClientThreadPool);
         bootstrap.channel(NioSocketChannel.class);
         bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
         bootstrap.option(ChannelOption.SO_REUSEADDR, true);
@@ -85,8 +85,12 @@ public class WListClient {
         }
     }
 
-    public void stop() throws InterruptedException {
-        this.channel.close().sync();
+    public void close() {
+        this.channel.close().syncUninterruptibly();
+    }
+
+    public boolean isActive() {
+        return this.channel.isActive();
     }
 
     public static class ClientChannelInboundHandler extends SimpleChannelInboundHandler<ByteBuf> {

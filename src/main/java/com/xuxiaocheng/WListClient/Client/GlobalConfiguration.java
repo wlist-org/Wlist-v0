@@ -20,7 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.Map;
 
-public record GlobalConfiguration(boolean dumpConfiguration, String host, int port, int limit) {
+public record GlobalConfiguration(boolean dumpConfiguration, String host, int port, int limit, int threadCount) {
     private static @Nullable GlobalConfiguration instance;
 
     public static synchronized void init(final @Nullable File path) throws IOException {
@@ -39,12 +39,14 @@ public record GlobalConfiguration(boolean dumpConfiguration, String host, int po
             GlobalConfiguration.instance = new GlobalConfiguration(
                     YamlHelper.getConfig(config, "dump_configuration", "true",
                             o -> YamlHelper.transferBooleanFromStr(o, errors, "dump_configuration")).booleanValue(),
-                YamlHelper.getConfig(config, "host", "localhost",
-                        o -> YamlHelper.transferString(o, errors, "host")),
-                YamlHelper.getConfig(config, "port", "5212",
-                        o -> YamlHelper.transferIntegerFromStr(o, errors, "port", BigInteger.ONE, BigInteger.valueOf(65535))).intValue(),
-                YamlHelper.getConfig(config, "limit", "20",
-                        o -> YamlHelper.transferIntegerFromStr(o, errors, "limit", BigInteger.ONE, BigInteger.valueOf(200))).intValue()
+                    YamlHelper.getConfig(config, "host", "localhost",
+                            o -> YamlHelper.transferString(o, errors, "host")),
+                    YamlHelper.getConfig(config, "port", "5212",
+                            o -> YamlHelper.transferIntegerFromStr(o, errors, "port", BigInteger.ONE, BigInteger.valueOf(65535))).intValue(),
+                    YamlHelper.getConfig(config, "limit", "20",
+                            o -> YamlHelper.transferIntegerFromStr(o, errors, "limit", BigInteger.ONE, BigInteger.valueOf(200))).intValue(),
+                    YamlHelper.getConfig(config, "thread_count", "4",
+                            o -> YamlHelper.transferIntegerFromStr(o, errors, "thread_count", BigInteger.ONE, BigInteger.valueOf(Integer.MAX_VALUE))).intValue()
             );
         } catch (final RuntimeException exception) {
             throw new IOException(exception);
@@ -55,6 +57,7 @@ public record GlobalConfiguration(boolean dumpConfiguration, String host, int po
             config.put("host", GlobalConfiguration.instance.host);
             config.put("port", GlobalConfiguration.instance.port);
             config.put("limit", GlobalConfiguration.instance.limit);
+            config.put("thread_count", GlobalConfiguration.instance.threadCount);
             try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(path))) {
                 YamlHelper.dumpYaml(config, outputStream);
             }
