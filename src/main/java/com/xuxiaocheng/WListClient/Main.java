@@ -23,6 +23,6 @@ public final class Main {
             true);
 
     public static void main(final String[] args) throws IOException, InterruptedException {
-        Main.logger.log(HLogLevel.FINE, "Hello WList Client Java Library!");
+        Main.logger.log(HLogLevel.FINE, "Hello WList Client Java Library v0.2.1!");
     }
 }
