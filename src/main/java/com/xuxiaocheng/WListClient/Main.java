@@ -4,7 +4,6 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 
 import java.io.File;
-import java.io.IOException;
 
 public final class Main {
     private Main() {
@@ -22,7 +21,7 @@ public final class Main {
             Main.DebugMode ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1,
             true);
 
-    public static void main(final String[] args) throws IOException, InterruptedException {
+    public static void main(final String[] args) {
         Main.logger.log(HLogLevel.FINE, "Hello WList Client Java Library v0.2.1!");
     }
 }

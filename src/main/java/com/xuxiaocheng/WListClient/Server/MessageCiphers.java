@@ -1,6 +1,6 @@
 package com.xuxiaocheng.WListClient.Server;
 
-import com.xuxiaocheng.WListClient.Utils.AndroidSupport;
+import com.xuxiaocheng.WListClient.AndroidSupports.AndroidSupport;
 import com.xuxiaocheng.WListClient.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
