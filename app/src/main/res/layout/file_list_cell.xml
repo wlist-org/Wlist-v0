@@ -1,17 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.appcompat.widget.LinearLayoutCompat xmlns:android="http://schemas.android.com/apk/res/android"
-                                              android:layout_width="match_parent"
-                                              android:layout_height="60dp">
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                                                   android:layout_width="match_parent"
+                                                   android:layout_height="80dp"
+                                                   xmlns:app="http://schemas.android.com/apk/res-auto">
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/file_list_guideline_icon"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		app:layout_constraintGuide_percent="0.2" />
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/file_list_guideline_option"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		app:layout_constraintGuide_percent="0.8" />
 
 	<androidx.appcompat.widget.AppCompatImageView
 		android:id="@+id/file_list_image"
 		android:layout_width="wrap_content"
-		android:layout_height="match_parent" />
+		android:layout_height="match_parent"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toLeftOf="@id/file_list_guideline_icon"
+		app:layout_constraintTop_toTopOf="parent" />
 
 	<TextView
 		android:id="@+id/file_list_name"
-		android:layout_width="match_parent"
-		android:layout_height="match_parent"
-		android:layout_gravity="left" />
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		app:layout_constraintBottom_toTopOf="@id/file_list_tip"
+		app:layout_constraintLeft_toRightOf="@id/file_list_guideline_icon"
+		app:layout_constraintRight_toLeftOf="@id/file_list_guideline_option"
+		app:layout_constraintTop_toTopOf="parent" />
 
-</androidx.appcompat.widget.LinearLayoutCompat>
+	<TextView
+		android:id="@+id/file_list_tip"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toRightOf="@id/file_list_guideline_icon"
+		app:layout_constraintRight_toLeftOf="@id/file_list_guideline_option"
+		app:layout_constraintTop_toBottomOf="@id/file_list_name" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
