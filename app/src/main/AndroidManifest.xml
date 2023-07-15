@@ -17,7 +17,7 @@
 		tools:targetApi="31">
 
 		<activity
-			android:name=".UI.MainActivity"
+			android:name=".UI.LoginActivity"
 			android:exported="true"
 			android:theme="@style/Theme.WListClientAndroid.NoActionBar">
 			<intent-filter>
@@ -25,6 +25,9 @@
 				<category android:name="android.intent.category.LAUNCHER" />
 			</intent-filter>
 		</activity>
+		<activity android:name=".UI.MainActivity" />
+
+		<service android:name=".Helpers.WListServerManager" />
 
 	</application>
 

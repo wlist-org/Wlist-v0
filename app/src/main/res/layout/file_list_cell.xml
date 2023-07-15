@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                                                   xmlns:app="http://schemas.android.com/apk/res-auto"
                                                    android:layout_width="match_parent"
-                                                   android:layout_height="80dp"
-                                                   xmlns:app="http://schemas.android.com/apk/res-auto">
+                                                   android:layout_height="60dp">
 
 	<androidx.constraintlayout.widget.Guideline
 		android:id="@+id/file_list_guideline_icon"
@@ -22,27 +22,43 @@
 		android:id="@+id/file_list_image"
 		android:layout_width="wrap_content"
 		android:layout_height="match_parent"
+		android:scaleType="centerInside"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toLeftOf="@id/file_list_guideline_icon"
 		app:layout_constraintTop_toTopOf="parent" />
 
-	<TextView
-		android:id="@+id/file_list_name"
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/file_list_guideline_name"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
-		app:layout_constraintBottom_toTopOf="@id/file_list_tip"
+		android:orientation="horizontal"
+		app:layout_constraintGuide_percent="0.65" />
+
+	<TextView
+		android:id="@+id/file_list_name"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:layout_marginTop="10dp"
+		android:autoSizeTextType="uniform"
+		android:gravity="start"
+		android:textColor="@color/black"
+		app:layout_constraintBottom_toTopOf="@id/file_list_guideline_name"
 		app:layout_constraintLeft_toRightOf="@id/file_list_guideline_icon"
 		app:layout_constraintRight_toLeftOf="@id/file_list_guideline_option"
 		app:layout_constraintTop_toTopOf="parent" />
 
 	<TextView
 		android:id="@+id/file_list_tip"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:layout_marginBottom="5dp"
+		android:autoSizeTextType="uniform"
+		android:gravity="start"
+		android:textColor="@color/black"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toRightOf="@id/file_list_guideline_icon"
 		app:layout_constraintRight_toLeftOf="@id/file_list_guideline_option"
-		app:layout_constraintTop_toBottomOf="@id/file_list_name" />
+		app:layout_constraintTop_toBottomOf="@id/file_list_guideline_name" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

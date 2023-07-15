@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListClientAndroid.Client;
+package com.xuxiaocheng.WListClientAndroid.Helpers;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -25,22 +25,22 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-public class ClientManager {
-    @NonNull public static final EventExecutorGroup ThreadPool = new DefaultEventExecutorGroup(32);
+public class WListClientManager {
+    @NonNull public static final EventExecutorGroup ThreadPool = new DefaultEventExecutorGroup(64);
 
-    @Nullable private static ClientManager Instance;
+    @Nullable private static WListClientManager Instance;
 
     public static synchronized void initialize(@NonNull final ClientManagerConfig config) throws InterruptedException, ConnectException {
-        if (ClientManager.Instance != null)
+        if (WListClientManager.Instance != null)
             throw new IllegalStateException("Client manager is initialized." + ParametersMap.create()
-                    .add("instance", ClientManager.Instance).add("config", config));
-        ClientManager.Instance = new ClientManager(config);
+                    .add("instance", WListClientManager.Instance).add("config", config));
+        WListClientManager.Instance = new WListClientManager(config);
     }
 
-    @NonNull public static synchronized ClientManager getInstance() {
-        if (ClientManager.Instance == null)
+    @NonNull public static synchronized WListClientManager getInstance() {
+        if (WListClientManager.Instance == null)
             throw new IllegalStateException("Client manager is not initialized.");
-        return ClientManager.Instance;
+        return WListClientManager.Instance;
     }
 
     @NonNull protected final ClientManagerConfig config;
@@ -49,7 +49,7 @@ public class ClientManager {
     @NonNull protected final ConcurrentMap<String, ReferencedClient> activeClients = new ConcurrentHashMap<>();
     @NonNull protected final Object needIdleClient = new Object();
 
-    protected ClientManager(@NonNull final ClientManagerConfig config) throws InterruptedException, ConnectException {
+    protected WListClientManager(@NonNull final ClientManagerConfig config) throws InterruptedException, ConnectException {
         super();
         this.config = config;
         if (this.config.initSize > this.config.maxSize)
@@ -60,7 +60,7 @@ public class ClientManager {
         assert this.createdSize.get() == this.config.initSize;
     }
 
-    protected static class ClientManagerConfig {
+    public static class ClientManagerConfig {
         @NonNull protected final SocketAddress address;
         protected final int initSize;
         protected final int averageSize;
@@ -112,11 +112,11 @@ public class ClientManager {
     }
 
     protected static final class ReferencedClient extends WListClient {
-        @NonNull private final ClientManager manager;
+        @NonNull private final WListClientManager manager;
         private int referenceCounter = 0;
         @NonNull private String id = "";
 
-        public ReferencedClient(@NonNull final SocketAddress address, @NonNull final ClientManager manager) throws InterruptedException, ConnectException {
+        public ReferencedClient(@NonNull final SocketAddress address, @NonNull final WListClientManager manager) throws InterruptedException, ConnectException {
             super(address);
             this.manager = manager;
         }
@@ -218,7 +218,7 @@ public class ClientManager {
 
     @Override
     @NonNull public String toString() {
-        return "ClientManager{" +
+        return "WListClientManager{" +
                 "config=" + this.config +
                 ", createdSize=" + this.createdSize +
                 ", freeClients=" + this.freeClients +
