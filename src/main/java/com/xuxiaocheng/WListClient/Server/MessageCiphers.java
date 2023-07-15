@@ -1,6 +1,6 @@
 package com.xuxiaocheng.WListClient.Server;
 
-import com.xuxiaocheng.WListClient.AndroidSupports.AndroidSupport;
+import com.xuxiaocheng.HeadLibs.AndroidSupport.AIOStream;
 import com.xuxiaocheng.WListClient.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -68,7 +68,7 @@ public abstract class MessageCiphers extends MessageToMessageCodec<ByteBuf, Byte
             os = new GZIPOutputStream(os);
         try (final InputStream inputStream = is; final OutputStream outputStream = os) {
             if (PlatformDependent.isAndroid())
-                AndroidSupport.transferTo(inputStream, outputStream);
+                AIOStream.transferTo(inputStream, outputStream);
             else
                 inputStream.transferTo(outputStream);
         }
@@ -99,7 +99,7 @@ public abstract class MessageCiphers extends MessageToMessageCodec<ByteBuf, Byte
             os = new CipherOutputStream(os, this.aesDecryptCipher);
         try (final InputStream inputStream = is; final OutputStream outputStream = os) {
             if (PlatformDependent.isAndroid())
-                AndroidSupport.transferTo(inputStream, outputStream);
+                AIOStream.transferTo(inputStream, outputStream);
             else
                 inputStream.transferTo(outputStream);
         }
