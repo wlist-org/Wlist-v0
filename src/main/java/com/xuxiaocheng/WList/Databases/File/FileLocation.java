@@ -11,28 +11,6 @@ import java.io.IOException;
  * @param id File id. Primary key.
  */
 public record FileLocation(@NotNull String driver, long id) {
-    public enum SpecialDriverName {
-        RootDriver("WList#RootDriver"),
-        ;
-        private final @NotNull String identifier;
-
-        SpecialDriverName(final @NotNull String identifier) {
-            this.identifier = identifier;
-        }
-
-        public @NotNull String getIdentifier() {
-            return this.identifier;
-        }
-
-        @Override
-        public @NotNull String toString() {
-            return "SpecialDriverName{" +
-                    "name='" + this.name() + '\'' +
-                    ", identify='" + this.identifier + '\'' +
-                    '}';
-        }
-    }
-
     public static void dump(final @NotNull ByteBuf buffer, final @NotNull FileLocation location) throws IOException {
         ByteBufIOUtil.writeUTF(buffer, location.driver);
         ByteBufIOUtil.writeVariableLenLong(buffer, location.id);

@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.EnumSet;
+import java.util.Objects;
 
 public final class Operation {
     private Operation() {
@@ -127,5 +128,9 @@ public final class Operation {
         } catch (final NumberFormatException exception) {
             return null;
         }
+    }
+
+    public static @NotNull EnumSet<Permission> parsePermissionsNotNull(final @NotNull String permissions) {
+        return Objects.requireNonNullElseGet(Operation.parsePermissions(permissions), Operation::emptyPermissions);
     }
 }

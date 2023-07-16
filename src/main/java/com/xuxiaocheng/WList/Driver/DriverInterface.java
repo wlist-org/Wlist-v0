@@ -9,6 +9,7 @@ import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.WList.Databases.File.FileLocation;
 import com.xuxiaocheng.WList.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
+import com.xuxiaocheng.WList.Databases.File.FileSqlInterface;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.UploadMethods;
 import com.xuxiaocheng.WList.Utils.DatabaseUtil;
@@ -33,7 +34,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * Initialize the web driver. (and bind to the configuration.) Create sql table in this method.
      * When user modify the configuration, this method will be call again automatically.
      * @param configuration The modified configuration.
-     * @see FileManager#initialize(String, long)
+     * @see FileManager#quicklyInitialize(FileSqlInterface)
      * @throws Exception Something went wrong.
      */
     void initialize(final @NotNull C configuration) throws Exception;
@@ -41,7 +42,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     /**
      * Completely uninitialize this driver. (cleaner/deleter) Delete sql table in this method.
      * Only be called when {@link com.xuxiaocheng.WList.Server.GlobalConfiguration#deleteDriver()} is true.
-     * @see FileManager#uninitialize(String)
+     * @see FileManager#quicklyUninitialize(String, String)
      * @throws Exception Something went wrong.
      */
     void uninitialize() throws Exception;

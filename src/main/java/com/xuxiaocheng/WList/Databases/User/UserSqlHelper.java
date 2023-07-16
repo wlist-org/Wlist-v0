@@ -1,16 +1,16 @@
 package com.xuxiaocheng.WList.Databases.User;
 
 import com.xuxiaocheng.HeadLibs.AndroidSupport.ARandomHelper;
-import com.xuxiaocheng.HeadLibs.DataStructures.HInitializer;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
+import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupSqlInformation;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Server.Operation;
-import com.xuxiaocheng.WList.Utils.DatabaseUtil;
+import com.xuxiaocheng.WList.Utils.DatabaseInterface;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -32,11 +32,11 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class UserSqlHelper implements UserSqlInterface {
-    private final @NotNull DatabaseUtil database;
+    private final @NotNull DatabaseInterface database;
     private final long adminId;
     private final @NotNull HInitializer<String> defaultAdminPassword = new HInitializer<>("DefaultAdminUserPassword");
 
-    public UserSqlHelper(final @NotNull DatabaseUtil database, final @Nullable String _connectionId) throws SQLException {
+    public UserSqlHelper(final @NotNull DatabaseInterface database, final @Nullable String _connectionId) throws SQLException {
         super();
         this.database = database;
         this.adminId = this.createTable(_connectionId);

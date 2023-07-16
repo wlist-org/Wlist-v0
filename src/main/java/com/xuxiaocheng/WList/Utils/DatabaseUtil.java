@@ -215,12 +215,12 @@ public class DatabaseUtil implements DatabaseInterface {
     }
 
     @Override
-    public @NotNull Connection getConnection(final @Nullable String id, final @Nullable AtomicReference<? super String> connectionId) throws SQLException {
-        if (id == null)
+    public @NotNull Connection getConnection(final @Nullable String _connectionId, final @Nullable AtomicReference<? super String> connectionId) throws SQLException {
+        if (_connectionId == null)
             return this.getNewConnection(connectionId == null ? null : connectionId::set);
         if (connectionId != null)
-            connectionId.set(id);
-        return this.getExplicitConnection(id);
+            connectionId.set(_connectionId);
+        return this.getExplicitConnection(_connectionId);
     }
 
     protected void recycleConnection(final @NotNull String id) throws SQLException {

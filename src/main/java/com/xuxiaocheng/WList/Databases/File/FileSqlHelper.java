@@ -1,10 +1,10 @@
 package com.xuxiaocheng.WList.Databases.File;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Utils.DatabaseUtil;
+import io.netty.util.internal.PlatformDependent;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -28,46 +28,54 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-final class FileSqlHelper {
-    private static final @NotNull ConcurrentMap<@NotNull String, @NotNull FileSqlHelper> instances = new ConcurrentHashMap<>();
-
-    public static void initialize(final @NotNull String driverName, final long rootId, final @NotNull DatabaseUtil database, final @Nullable String _connectionId) throws SQLException {
-        final boolean[] flag = {true};
-        try {
-            FileSqlHelper.instances.computeIfAbsent(driverName, HExceptionWrapper.wrapFunction(k -> {
-                flag[0] = false;
-                return new FileSqlHelper(driverName, rootId, database, _connectionId);
-            }));
-        } catch (final RuntimeException exception) {
-            throw HExceptionWrapper.unwrapException(exception, SQLException.class);
-        }
-        if (flag[0])
-            throw new IllegalStateException("File sql helper for (" + driverName + ") is initialized.");
+public final class FileSqlHelper implements FileSqlInterface {
+    private static @NotNull String getTableName(final @NotNull String name) {
+        return "driver_" + Base64.getEncoder().encodeToString(name.getBytes(StandardCharsets.UTF_8)).replace('=', '_');
     }
 
-    public static @NotNull FileSqlHelper getInstance(final @NotNull String driverName) {
-        final FileSqlHelper helper = FileSqlHelper.instances.get(driverName);
-        if (helper == null)
-            throw new IllegalStateException("File sql helper for (" + driverName + ") is not initialized.");
-        return helper;
+    @Contract(pure = true) private static @NotNull String getOrderPolicy(final Options.@NotNull OrderPolicy policy) {
+        return switch (policy) {
+            case FileName -> "name";
+            case Size -> "size";
+            case CreateTime -> "create_time";
+            case UpdateTime -> "update_time";
+        };
+    }
+    @Contract(pure = true) private static @NotNull String getOrderDirection(final Options.@NotNull OrderDirection policy) {
+        return switch (policy) {
+            case ASCEND -> "ASC";
+            case DESCEND -> "DESC";
+        };
     }
 
+    private static final @NotNull DateTimeFormatter DefaultFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+
+    private final @NotNull DatabaseUtil database;
+    private final @NotNull String driverName;
     private final @NotNull String tableName;
     private final long rootId;
-    private final @NotNull DatabaseUtil database;
 
-    private FileSqlHelper(final @NotNull String driverName, final long rootId, final @NotNull DatabaseUtil database, final @Nullable String _connectionId) throws SQLException {
+    public FileSqlHelper(final @NotNull DatabaseUtil database, final @NotNull String driverName, final long rootId, final @Nullable String _connectionId) throws SQLException {
         super();
+        this.database = database;
+        this.driverName = driverName;
         this.tableName = FileSqlHelper.getTableName(driverName);
         this.rootId = rootId;
-        this.database = database;
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        this.createTable(_connectionId);
+    }
+
+    @Override
+    public @NotNull Connection getConnection(@Nullable final String _connectionId, @Nullable final AtomicReference<? super String> connectionId) throws SQLException {
+        return this.database.getConnection(_connectionId, connectionId);
+    }
+
+    @Override
+    public void createTable(@Nullable final String _connectionId) throws SQLException {
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate(String.format("""
@@ -77,70 +85,70 @@ final class FileSqlHelper {
                                              NOT NULL,
                         parent_id    INTEGER ,
                         name         TEXT    NOT NULL,
-                        is_directory INTEGER NOT NULL
+                        type         INTEGER NOT NULL
                                              DEFAULT (0)
-                                             CHECK (is_directory == 1 OR is_directory == 0),
+                                             CHECK (type == 0 OR type == 1 OR type == 2),
                         size         INTEGER NOT NULL
                                              DEFAULT (0)
                                              CHECK (size >= -1),
                         create_time  TEXT    NOT NULL,
                         update_time  TEXT    NOT NULL,
                         md5          TEXT    NOT NULL
-                                             CHECK (len(md5) == 32),
+                                             CHECK (length(md5) == 32 OR md5 == ''),
                         others       TEXT
                     );
                 """, this.tableName));
                 statement.executeUpdate(String.format("""
                     CREATE INDEX IF NOT EXISTS %s_location ON %s (name, parent_id);
                 """, this.tableName, this.tableName));
-            }
-            connection.commit();
-        }
-    }
-
-    public static void uninitialize(final @NotNull String driverName, final @Nullable String _connectionId) throws SQLException {
-        final FileSqlHelper helper = FileSqlHelper.getInstance(driverName);
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = helper.database.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            try (final Statement statement = connection.createStatement()) {
-                statement.executeUpdate(String.format("DROP TABLE IF EXISTS %s;", helper.tableName));
+                statement.executeUpdate(String.format("""
+                    CREATE TRIGGER IF NOT EXISTS %s_inserter AFTER insert ON %s FOR EACH ROW
+                    BEGIN
+                        UPDATE %s SET type = %d WHERE id == new.parent_id;
+                    END;
+                """, this.tableName, this.tableName, this.tableName, FileSqlInterface.FileSqlType.Directory.ordinal()));
             }
             connection.commit();
         }
     }
 
     @Override
-    public @NotNull String toString() {
-        return "FileSqlHelper{" +
-                "tableName='" + this.tableName + '\'' +
-                ", database=" + this.database +
-                '}';
+    public void deleteTable(final @Nullable String _connectionId) throws SQLException {
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
+            connection.setAutoCommit(false);
+            try (final Statement statement = connection.createStatement()) {
+                statement.executeUpdate(String.format("DROP TABLE IF EXISTS %s;", this.tableName));
+                statement.executeUpdate(String.format("DROP TRIGGER IF EXISTS %s_inserter;", this.tableName));
+            }
+            connection.commit();
+        }
     }
 
-    static final @NotNull DateTimeFormatter DefaultFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
-
-    static @NotNull String getTableName(final @NotNull String name) {
-        return "driver_" + Base64.getEncoder().encodeToString(name.getBytes(StandardCharsets.UTF_8)).replace('=', '_');
+    @Override
+    public @NotNull String getDriverName() {
+        return this.driverName;
     }
 
-    static @NotNull String serializeTime(final @Nullable LocalDateTime time) {
-        return Objects.requireNonNullElseGet(time, LocalDateTime::now).withNano(0).format(FileSqlHelper.DefaultFormatter);
+    @Override
+    public long getRootId() {
+        return this.rootId;
     }
 
-    private static @Nullable FileSqlInformation createNextFileInfo(final @NotNull ResultSet result) throws SQLException {
-        return result.next() ? new FileSqlInformation(result.getLong("id"),
+    private static @Nullable FileSqlInformation createNextFileInfo(final @NotNull String driver, final @NotNull ResultSet result) throws SQLException {
+        final @NotNull String createTime = result.getString("create_time");
+        final @NotNull String updateTime = result.getString("update_time");
+        return result.next() ? new FileSqlInformation(new FileLocation(driver, result.getLong("id")),
                 result.getLong("parent_id"), result.getString("name"),
-                result.getBoolean("is_directory"), result.getLong("size"),
-                LocalDateTime.parse(result.getString("create_time"), FileSqlHelper.DefaultFormatter),
-                LocalDateTime.parse(result.getString("update_time"), FileSqlHelper.DefaultFormatter),
+                FileSqlInterface.FileSqlType.values()[result.getInt("type")], result.getLong("size"),
+                createTime.isEmpty() ? null : LocalDateTime.parse(createTime, FileSqlHelper.DefaultFormatter),
+                updateTime.isEmpty() ? null : LocalDateTime.parse(updateTime, FileSqlHelper.DefaultFormatter),
                 result.getString("md5"), result.getString("others")) : null;
     }
 
-    private static @NotNull @UnmodifiableView Set<@NotNull FileSqlInformation> createFilesInfo(final @NotNull ResultSet result) throws SQLException {
+    private static @NotNull @UnmodifiableView Set<@NotNull FileSqlInformation> createFilesInfo(final @NotNull String driver, final @NotNull ResultSet result) throws SQLException {
         final Set<FileSqlInformation> set = new HashSet<>();
         while (true) {
-            final FileSqlInformation info = FileSqlHelper.createNextFileInfo(result);
+            final FileSqlInformation info = FileSqlHelper.createNextFileInfo(driver, result);
             if (info == null)
                 break;
             set.add(info);
@@ -148,10 +156,10 @@ final class FileSqlHelper {
         return Collections.unmodifiableSet(set);
     }
 
-    private static @NotNull @UnmodifiableView List<@NotNull FileSqlInformation> createFilesInfoInOrder(final @NotNull ResultSet result) throws SQLException {
+    private static @NotNull @UnmodifiableView List<@NotNull FileSqlInformation> createFilesInfoInOrder(final @NotNull String driver, final @NotNull ResultSet result) throws SQLException {
         final List<FileSqlInformation> list = new LinkedList<>();
         while (true) {
-            final FileSqlInformation info = FileSqlHelper.createNextFileInfo(result);
+            final FileSqlInformation info = FileSqlHelper.createNextFileInfo(driver, result);
             if (info == null)
                 break;
             list.add(info);
@@ -159,34 +167,18 @@ final class FileSqlHelper {
         return Collections.unmodifiableList(list);
     }
 
-    @Contract(pure = true) static @NotNull String getOrderPolicy(final Options.@NotNull OrderPolicy policy) {
-        return switch (policy) {
-            case FileName -> "name";
-            case Size -> "size";
-            case CreateTime -> "create_time";
-            case UpdateTime -> "update_time";
-        };
-    }
-    @Contract(pure = true) static @NotNull String getOrderDirection(final Options.@NotNull OrderDirection policy) {
-        return switch (policy) {
-            case ASCEND -> "ASC";
-            case DESCEND -> "DESC";
-        };
-    }
-
-
+    @Override
     public void insertOrUpdateFiles(final @NotNull Collection<@NotNull FileSqlInformation> inserters, final @Nullable String _connectionId) throws SQLException {
         if (inserters.isEmpty())
             return;
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    INSERT INTO %s (id, parent_id, name, is_directory, size, create_time, update_time, md5, others)
+                    INSERT INTO %s (id, parent_id, name, type, size, create_time, update_time, md5, others)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT (id) DO UPDATE SET
                         parent_id = excluded.parent_id, name = excluded.name,
-                        is_directory = excluded.is_directory, size = excluded.size,
+                        type = excluded.type, size = excluded.size,
                         create_time = excluded.create_time, update_time = excluded.update_time,
                         md5 = excluded.md5, others = excluded.others;
                 """, this.tableName))) {
@@ -194,10 +186,10 @@ final class FileSqlHelper {
                     statement.setLong(1, inserter.id());
                     statement.setLong(2, inserter.parentId());
                     statement.setString(3, inserter.name());
-                    statement.setBoolean(4, inserter.isDir());
+                    statement.setInt(4, inserter.type().ordinal());
                     statement.setLong(5, inserter.size());
-                    statement.setString(6, FileSqlHelper.serializeTime(inserter.createTime()));
-                    statement.setString(7, FileSqlHelper.serializeTime(inserter.updateTime()));
+                    statement.setString(6, inserter.createTime() == null ? "" : inserter.createTime().format(FileSqlHelper.DefaultFormatter));
+                    statement.setString(7, inserter.updateTime() == null ? "" : inserter.updateTime().format(FileSqlHelper.DefaultFormatter));
                     statement.setString(8, inserter.md5());
                     statement.setString(9, inserter.others());
                     statement.executeUpdate();
@@ -207,11 +199,26 @@ final class FileSqlHelper {
         }
     }
 
+    @Override
+    public void updateDirectoryType(final long id, final boolean empty, final @Nullable String _connectionId) throws SQLException {
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
+            connection.setAutoCommit(false);
+            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+                    UPDATE %s SET type = ? WHERE id == ?;
+                """, this.tableName))) {
+                statement.setInt(1, (empty ? FileSqlInterface.FileSqlType.EmptyDirectory : FileSqlInterface.FileSqlType.Directory).ordinal());
+                statement.setLong(2, id);
+                statement.executeUpdate();
+            }
+            connection.commit();
+        }
+    }
+
+    @Override
     public @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull FileSqlInformation> selectFiles(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
         if (idList.isEmpty())
             return Map.of();
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             final Map<Long, FileSqlInformation> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
@@ -220,7 +227,7 @@ final class FileSqlHelper {
                 for (final Long id: idList) {
                     statement.setLong(1, id.longValue());
                     try (final ResultSet result = statement.executeQuery()) {
-                        map.put(id, FileSqlHelper.createNextFileInfo(result));
+                        map.put(id, FileSqlHelper.createNextFileInfo(this.driverName, result));
                     }
                 }
             }
@@ -228,34 +235,9 @@ final class FileSqlHelper {
         }
     }
 
-    @Deprecated
-    public @Nullable FileSqlInformation selectFileByPath(final @NotNull DrivePath path, final @Nullable String _connectionId) throws SQLException {
-        FileSqlInformation information = this.selectFiles(List.of(this.rootId), _connectionId).get(this.rootId);
-        if (path.getDepth() == 0 || information == null)
-            return information;
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM %s WHERE parent_id == ? AND name == ? LIMIT 1;
-                """, this.tableName))) {
-                for (final String name: path) {
-                    statement.setLong(1, information.id());
-                    statement.setString(2, name);
-                    try (final ResultSet result = statement.executeQuery()) {
-                        information = FileSqlHelper.createNextFileInfo(result);
-                        if (information == null)
-                            return null;
-                    }
-                }
-            }
-            return information;
-        }
-    }
-
+    @Override
     public @Nullable FileSqlInformation selectFileInDirectory(final long parentId, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             final FileSqlInformation information;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
@@ -264,18 +246,18 @@ final class FileSqlHelper {
                 statement.setLong(1, parentId);
                 statement.setString(2, name);
                 try (final ResultSet result = statement.executeQuery()) {
-                    information = FileSqlHelper.createNextFileInfo(result);
+                    information = FileSqlHelper.createNextFileInfo(this.driverName, result);
                 }
             }
             return information;
         }
     }
 
+    @Override
     public @NotNull @UnmodifiableView Map<@NotNull String, @Nullable @UnmodifiableView Set<@NotNull FileSqlInformation>> selectFilesByMd5(final @NotNull Collection<@NotNull String> md5List, final @Nullable String _connectionId) throws SQLException {
         if (md5List.isEmpty())
             return Map.of();
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             final Map<String, Set<FileSqlInformation>> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
@@ -284,7 +266,7 @@ final class FileSqlHelper {
                 for (final String md5: md5List) {
                     statement.setString(1, md5);
                     try (final ResultSet result = statement.executeQuery()) {
-                        map.put(md5, FileSqlHelper.createFilesInfo(result));
+                        map.put(md5, FileSqlHelper.createFilesInfo(this.driverName, result));
                     }
                 }
             }
@@ -292,11 +274,11 @@ final class FileSqlHelper {
         }
     }
 
+    @Override
     public @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull @UnmodifiableView Set<@NotNull Long>> selectFilesIdByParentId(final @NotNull Collection<@NotNull Long> parentIdList, final @Nullable String _connectionId) throws SQLException {
         if (parentIdList.isEmpty())
             return Map.of();
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             final Map<Long, Set<Long>> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
@@ -316,11 +298,11 @@ final class FileSqlHelper {
         }
     }
 
+    @Override
     public @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull Long> selectFilesCountByParentId(final @NotNull Collection<@NotNull Long> parentIdList, final @Nullable String _connectionId) throws SQLException {
         if (parentIdList.isEmpty())
             return Map.of();
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             final Map<Long, Long> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
@@ -338,9 +320,10 @@ final class FileSqlHelper {
         }
     }
 
+    @Override
     public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> selectFilesByParentIdInPage(final long parentId, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final @Nullable String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
             final long count = this.selectFilesCountByParentId(List.of(parentId), connectionId.get()).get(parentId).longValue();
             if (offset >= count)
@@ -355,18 +338,19 @@ final class FileSqlHelper {
                 statement.setInt(4, limit);
                 statement.setLong(5, offset);
                 try (final ResultSet result = statement.executeQuery()) {
-                    list = FileSqlHelper.createFilesInfoInOrder(result);
+                    list = FileSqlHelper.createFilesInfoInOrder(this.driverName, result);
                 }
             }
             return Pair.ImmutablePair.makeImmutablePair(count, list);
         }
     }
 
+    @Override
     public void deleteFilesRecursively(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
         if (idList.isEmpty())
             return;
         final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
             final Collection<Long> leave = new HashSet<>();
             final Collection<Long> set = new HashSet<>(idList);
@@ -390,25 +374,25 @@ final class FileSqlHelper {
         }
     }
 
+    @Override
     public void deleteFilesByMd5Recursively(final @NotNull Collection<@NotNull String> md5List, final @Nullable String _connectionId) throws SQLException {
         if (md5List.isEmpty())
             return;
         final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
-            this.deleteFilesRecursively(this.selectFilesByMd5(md5List, connectionId.get()).values().stream().filter(Objects::nonNull)
-                    .flatMap(Set::stream).map(FileSqlInformation::id).toList(), connectionId.get());
+            final Stream<Long> stream = this.selectFilesByMd5(md5List, connectionId.get()).values().stream()
+                    .filter(Objects::nonNull).flatMap(Set::stream).map(FileSqlInformation::id);
+            this.deleteFilesRecursively(PlatformDependent.isAndroid() ? stream.collect(Collectors.toList()) : stream.toList(), connectionId.get());
             connection.commit();
         }
     }
 
-    // TODO Better Search
-
+    @Override
     public @NotNull @UnmodifiableView List<@Nullable FileSqlInformation> searchFilesByNameInParentPathLimited(final @NotNull DrivePath parentPath, final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
         if (limit <= 0)
             return List.of();
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             final List<FileSqlInformation> set;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
@@ -419,18 +403,18 @@ final class FileSqlHelper {
                 statement.setInt(3, rule.length());
                 statement.setInt(4, limit);
                 try (final ResultSet result = statement.executeQuery()) {
-                    set = FileSqlHelper.createFilesInfoInOrder(result);
+                    set = FileSqlHelper.createFilesInfoInOrder(this.driverName, result);
                 }
             }
             return set;
         }
     }
 
+    @Override
     public @NotNull @UnmodifiableView List<@Nullable FileSqlInformation> searchFilesByNameInParentPathRecursivelyLimited(final @NotNull DrivePath parentPath, final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
         if (limit <= 0)
             return List.of();
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             final List<FileSqlInformation> list;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
@@ -441,10 +425,20 @@ final class FileSqlHelper {
                 statement.setInt(3, rule.length());
                 statement.setInt(4, limit);
                 try (final ResultSet result = statement.executeQuery()) {
-                    list = FileSqlHelper.createFilesInfoInOrder(result);
+                    list = FileSqlHelper.createFilesInfoInOrder(this.driverName, result);
                 }
             }
             return list;
         }
+    }
+
+    @Override
+    public @NotNull String toString() {
+        return "FileSqlHelper{" +
+                "database=" + this.database +
+                ", driverName='" + this.driverName + '\'' +
+                ", tableName='" + this.tableName + '\'' +
+                ", rootId=" + this.rootId +
+                '}';
     }
 }

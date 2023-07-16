@@ -1,6 +1,6 @@
 package com.xuxiaocheng.WList.Databases.Constant;
 
-import com.xuxiaocheng.HeadLibs.DataStructures.HInitializer;
+import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

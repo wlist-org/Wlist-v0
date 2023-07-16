@@ -5,6 +5,8 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.WList.Databases.File.FileLocation;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
+import com.xuxiaocheng.WList.Databases.File.FileSqlInterface;
+import com.xuxiaocheng.WList.Databases.File.SpecialDriverName;
 import com.xuxiaocheng.WList.Driver.DriverConfiguration;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.DriverTrashInterface;
@@ -31,8 +33,8 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
 
     public static @NotNull FileSqlInformation getDriverInformation(final @NotNull DriverConfiguration<?, ?, ?> configuration) {
         // TODO create and modified time.
-        return new FileSqlInformation(new FileLocation(FileLocation.SpecialDriverName.RootDriver.getIdentifier(), configuration.getName().hashCode()),
-                0, configuration.getName(), FileSqlInformation.FileSqlType.Directory, 0, null, null, "", null);
+        return new FileSqlInformation(new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), configuration.getName().hashCode()),
+                0, configuration.getName(), FileSqlInterface.FileSqlType.Directory, 0, null, null, "", null);
     }
 
     private @NotNull RootDriverConfiguration configuration = new RootDriverConfiguration();
@@ -89,7 +91,7 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
 
     @Override
     public Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(final @NotNull FileLocation location, final @LongRange(minimum = 0) int limit, final @LongRange(minimum = 0) int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws Exception {
-        if (FileLocation.SpecialDriverName.RootDriver.getIdentifier().equals(location.driver())) {
+        if (SpecialDriverName.RootDriver.getIdentifier().equals(location.driver())) {
             // TODO list root drivers in page.
             final Map<String, Pair.ImmutablePair<WebDriversType, DriverInterface<?>>> map = DriverManager.getAll();
             final Stream<FileSqlInformation> stream = map.values().stream()
@@ -104,7 +106,7 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
 
     @Override
     public @Nullable FileSqlInformation info(final @NotNull FileLocation location) throws Exception {
-        if (FileLocation.SpecialDriverName.RootDriver.getIdentifier().equals(location.driver()))
+        if (SpecialDriverName.RootDriver.getIdentifier().equals(location.driver()))
             return RootDriver.getDriverInformation(DriverManager.getById(location.id()).getSecond().getConfiguration());
         final DriverInterface<?> real = DriverManager.get(location.driver());
         if (real == null)
@@ -114,7 +116,7 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
 
     @Override
     public @NotNull UnionPair<@NotNull DownloadMethods, @NotNull FailureReason> download(final @NotNull FileLocation location, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws Exception {
-        if (FileLocation.SpecialDriverName.RootDriver.getIdentifier().equals(location.driver()))
+        if (SpecialDriverName.RootDriver.getIdentifier().equals(location.driver()))
             return UnionPair.fail(FailureReason.byNoSuchFile("Downloading.", location));
         final DriverInterface<?> real = DriverManager.get(location.driver());
         if (real == null)
@@ -142,7 +144,7 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
     @SuppressWarnings("OverlyBroadThrowsClause")
     @Override
     public void delete(final @NotNull FileLocation location) throws Exception {
-        if (FileLocation.SpecialDriverName.RootDriver.getIdentifier().equals(location.driver())) {
+        if (SpecialDriverName.RootDriver.getIdentifier().equals(location.driver())) {
             DriverManager.del(location.driver());
             return;
         }

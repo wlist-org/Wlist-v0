@@ -3,7 +3,7 @@ package com.xuxiaocheng.WList.Databases.UserGroup;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Server.Operation;
-import com.xuxiaocheng.WList.Utils.DatabaseUtil;
+import com.xuxiaocheng.WList.Utils.DatabaseInterface;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -22,11 +22,11 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class UserGroupSqlHelper implements UserGroupSqlInterface {
-    private final @NotNull DatabaseUtil database;
+    private final @NotNull DatabaseInterface database;
     private final long adminId;
     private final long defaultId;
 
-    public UserGroupSqlHelper(final @NotNull DatabaseUtil database, final @Nullable String _connectionId) throws SQLException {
+    public UserGroupSqlHelper(final @NotNull DatabaseInterface database, final @Nullable String _connectionId) throws SQLException {
         super();
         this.database = database;
         final Pair.ImmutablePair<Long, Long> pair = this.createTable(_connectionId);
