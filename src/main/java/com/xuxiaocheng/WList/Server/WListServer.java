@@ -186,6 +186,8 @@ public class WListServer {
             }
             WListServer.logger.log(HLogLevel.WARN, "Exception at ", ctx.channel().id().asLongText(), ": ", cause);
             ServerChannelHandler.directlyWriteMessage(ctx.channel(), Operation.State.ServerError, null);
+            if (!(cause instanceof ServerException))
+                Thread.getDefaultUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), cause);
         }
 
         protected static void directlyWriteMessage(final @NotNull Channel channel, final Operation.@NotNull State state, final @Nullable String message) {

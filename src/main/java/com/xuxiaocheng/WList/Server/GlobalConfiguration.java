@@ -1,6 +1,7 @@
 package com.xuxiaocheng.WList.Server;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
@@ -25,7 +26,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxConnection,
+public record GlobalConfiguration(int port, int maxConnection,
                                   long tokenExpireTime, long idIdleExpireTime,
                                   int maxLimitPerPage, int forwardDownloadCacheCount,
                                   boolean deleteDriver, long maxCacheSize,
@@ -46,8 +47,6 @@ public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxCo
             config = new LinkedHashMap<>();
         final Collection<Pair.ImmutablePair<String, String>> errors = new LinkedList<>();
         GlobalConfiguration.instance = new GlobalConfiguration(
-            YamlHelper.getConfig(config, "dump_configuration", "true",
-                o -> YamlHelper.transferBooleanFromStr(o, errors, "dump_configuration")).booleanValue(),
             YamlHelper.getConfig(config, "port", "5212",
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "port", BigInteger.ONE, BigInteger.valueOf(65535))).intValue(),
             YamlHelper.getConfig(config, "max_connection", "128",
@@ -68,13 +67,13 @@ public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxCo
                 o -> { final Map<String, Object> map = YamlHelper.transferMapNode(o, errors, "drivers");
                     if (map == null) return Map.of();
                     return map.entrySet().stream().map(e -> {
-                        final String name = YamlHelper.transferString(e.getValue(), errors, "driver(" + e.getKey() + ')');
-                        if (name == null)
+                        final String identifier = YamlHelper.transferString(e.getValue(), errors, "driver(" + e.getKey() + ')');
+                        if (identifier == null)
                             //noinspection ReturnOfNull
                             return null;
-                        final WebDriversType type = WebDriversType.get(name);
+                        final WebDriversType type = WebDriversType.get(identifier);
                         if (type == null) {
-                            HLog.getInstance("DefaultLogger").log(HLogLevel.WARN, "Driver type '", name, "' is not supported. Dropping it. name: ", e.getKey());
+                            HLog.getInstance("DefaultLogger").log(HLogLevel.WARN, "Unsupported driver type.", ParametersMap.create().add("name", e.getKey()).add("identifier", identifier));
                             //noinspection ReturnOfNull
                             return null;
                         }
@@ -83,8 +82,7 @@ public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxCo
                 })
         );
         YamlHelper.throwErrors(errors);
-        if (GlobalConfiguration.instance.dumpConfiguration && path != null) {
-            config.put("dumpConfiguration", true);
+        if (path != null) {
             config.put("port", GlobalConfiguration.instance.port);
             config.put("max_connection", GlobalConfiguration.instance.maxConnection);
             config.put("token_expire_time", GlobalConfiguration.instance.tokenExpireTime);
@@ -94,7 +92,7 @@ public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxCo
             config.put("delete_driver", GlobalConfiguration.instance.deleteDriver);
             config.put("max_cache_size", GlobalConfiguration.instance.maxCacheSize);
             config.put("drivers", GlobalConfiguration.instance.drivers.entrySet().stream()
-                    .collect(Collectors.toMap(Map.Entry::getKey, t -> t.getValue().name())));
+                    .collect(Collectors.toMap(Map.Entry::getKey, t -> t.getValue().getIdentifier())));
             try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(path))) {
                 YamlHelper.dumpYaml(config, outputStream);
             }

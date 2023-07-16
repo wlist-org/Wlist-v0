@@ -1,6 +1,5 @@
 package com.xuxiaocheng.WList;
 
-import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -19,7 +18,6 @@ import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.ServerHandlers.ServerHandlerManager;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.DatabaseUtil;
-import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
 import io.netty.util.concurrent.Future;
 import org.jetbrains.annotations.NotNull;
 
@@ -114,12 +112,10 @@ public final class WList {
             } finally {
                 WList.setMainStageAPI(2);
                 WList.logger.log(HLogLevel.FINE, "Shutting down the whole application...");
-                if (GlobalConfiguration.getInstance().dumpConfiguration()) {
-                    // TODO Save in time.
-                    WList.logger.log(HLogLevel.INFO, "Saving driver configurations in multithreading...");
-                    for (final Pair.ImmutablePair<WebDriversType, DriverInterface<?>> driver : DriverManager.getAll().values())
-                        WListServer.ServerExecutors.submit(HExceptionWrapper.wrapRunnable(() -> DriverManager.dumpConfiguration(driver.getSecond().getConfiguration())));
-                }
+                // TODO Save in time.
+                WList.logger.log(HLogLevel.INFO, "Saving driver configurations in multithreading...");
+                for (final DriverInterface<?> driver: DriverManager.getAllDrivers())
+                    WListServer.ServerExecutors.submit(HExceptionWrapper.wrapRunnable(() -> DriverManager.dumpConfigurationIfModified(driver.getConfiguration())));
                 final Future<?>[] futures = new Future[4];
                 futures[0] = WListServer.CodecExecutors.shutdownGracefully();
                 futures[1] = WListServer.ServerExecutors.shutdownGracefully();

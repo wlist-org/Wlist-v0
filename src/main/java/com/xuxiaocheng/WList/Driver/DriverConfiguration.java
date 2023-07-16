@@ -4,6 +4,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Utils.YamlHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.UnmodifiableView;
 
 import java.math.BigInteger;
 import java.time.LocalDateTime;
@@ -50,7 +51,7 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
         return this.cacheSide;
     }
 
-    public void load(final @NotNull Map<? super @NotNull String, @NotNull Object> config, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors) {
+    public void load(final @NotNull @UnmodifiableView Map<? super @NotNull String, @NotNull Object> config, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors) {
         this.name = YamlHelper.getConfig(config, "name", "Driver",
                 o -> YamlHelper.transferString(o, errors, "nickname"));
         final Map<String, Object> local = YamlHelper.getConfig(config, "local", Map::of,
@@ -85,7 +86,7 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
     public abstract static class LocalSideDriverConfiguration {
         protected @NotNull BigInteger priority = BigInteger.ZERO;
 
-        protected void load(final @NotNull Map<? super @NotNull String, @NotNull Object> local, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
+        protected void load(final @NotNull @UnmodifiableView Map<? super @NotNull String, @NotNull Object> local, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
             this.priority = YamlHelper.getConfig(local, "priority", this.priority::toString,
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "priority", null, null));
         }
@@ -109,7 +110,7 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
     }
 
     public static class WebSideDriverConfiguration {
-        protected void load(final @NotNull Map<? super @NotNull String, @NotNull Object> web, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
+        protected void load(final @NotNull @UnmodifiableView Map<? super @NotNull String, @NotNull Object> web, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
         }
 
         protected @NotNull Map<@NotNull String, @NotNull Object> dump() {
@@ -146,7 +147,7 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
             this.modified.set(modified);
         }
 
-        protected void load(final @NotNull Map<? super @NotNull String, @NotNull Object> cache, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
+        protected void load(final @NotNull @UnmodifiableView Map<? super @NotNull String, @NotNull Object> cache, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
             this.nickname = YamlHelper.getConfig(cache, "nickname", this.nickname,
                     o -> YamlHelper.transferString(o, errors, prefix + "nickname"));
             this.imageLink = YamlHelper.getConfigNullable(cache, "image_link",

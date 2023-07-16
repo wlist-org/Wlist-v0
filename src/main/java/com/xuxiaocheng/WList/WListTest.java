@@ -1,6 +1,5 @@
 package com.xuxiaocheng.WList;
 
-import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -17,7 +16,6 @@ import com.xuxiaocheng.WList.Server.Driver.DriverManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.DatabaseUtil;
-import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -32,7 +30,7 @@ public final class WListTest {
     public static void main(final String @NotNull [] args) throws Exception {
 //        if (true) return;
         WListTest.wrapServerInitialize(() -> {
-            final DriverInterface<?> driver = Objects.requireNonNull(DriverManager.get("123pan_136"));
+            final DriverInterface<?> driver = Objects.requireNonNull(DriverManager.getDriver("123pan_136"));
 //            HLog.DefaultLogger.log("",
 //                    DriverManager_123pan.getFileInformation((DriverConfiguration_123Pan) driver.getConfiguration(), 2345490, null, null)
 //            );
@@ -58,9 +56,8 @@ public final class WListTest {
             if (obj != null)
                 HLog.DefaultLogger.log("", obj);
         } finally {
-            if (GlobalConfiguration.getInstance().dumpConfiguration())
-                for (final Pair.ImmutablePair<WebDriversType, DriverInterface<?>> driver: DriverManager.getAll().values())
-                    WListServer.ServerExecutors.submit(HExceptionWrapper.wrapRunnable(() -> DriverManager.dumpConfiguration(driver.getSecond().getConfiguration())));
+            for (final DriverInterface<?> driver: DriverManager.getAllDrivers())
+                WListServer.ServerExecutors.submit(HExceptionWrapper.wrapRunnable(() -> DriverManager.dumpConfigurationIfModified(driver.getConfiguration())));
             WListServer.CodecExecutors.shutdownGracefully();
             WListServer.ServerExecutors.shutdownGracefully();
             WListServer.IOExecutors.shutdownGracefully();

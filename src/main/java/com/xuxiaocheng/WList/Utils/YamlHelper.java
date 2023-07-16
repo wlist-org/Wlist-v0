@@ -3,6 +3,7 @@ package com.xuxiaocheng.WList.Utils;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.UnmodifiableView;
 import org.snakeyaml.engine.v2.api.Dump;
 import org.snakeyaml.engine.v2.api.DumpSettings;
 import org.snakeyaml.engine.v2.api.Load;
@@ -50,7 +51,7 @@ public final class YamlHelper {
                 .setTagConstructors(Map.of(Tag.NULL, new ConstructYamlNull())).build())
                 .loadFromInputStream(stream);
         if (yaml == null)
-            return new LinkedHashMap<>();
+            return Map.of();
         if (!(yaml instanceof LinkedHashMap<?, ?> map))
             throw new IOException("Invalid yaml config format. class: " + yaml.getClass().getName());
         return YamlHelper.normalizeMapNode(map);
@@ -71,7 +72,7 @@ public final class YamlHelper {
         }
     }
 
-    public static <T> @NotNull T getConfig(final @NotNull Map<? super @NotNull String, @NotNull Object> config, final @NotNull String key, final @NotNull Object defaultValue, final @NotNull Function<@NotNull Object, @Nullable T> transfer) {
+    public static <T> @NotNull T getConfig(final @NotNull @UnmodifiableView Map<? super @NotNull String, @NotNull Object> config, final @NotNull String key, final @NotNull Object defaultValue, final @NotNull Function<@NotNull Object, @Nullable T> transfer) {
         final Object value = Objects.requireNonNullElse(config.get(key), defaultValue);
         return Objects.requireNonNullElseGet(transfer.apply(value), () -> transfer.apply(defaultValue));
     }
