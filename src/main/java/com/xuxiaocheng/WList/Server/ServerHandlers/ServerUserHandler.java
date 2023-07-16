@@ -82,11 +82,11 @@ public final class ServerUserHandler {
     private static final @NotNull ServerHandler doRegister = (channel, buffer) -> {
         final String username = ByteBufIOUtil.readUTF(buffer);
         final String password = ByteBufIOUtil.readUTF(buffer);
-        ServerHandler.logOperation(channel.id(), Operation.Type.Register, null, () -> ParametersMap.<String, Object>create()
+        ServerHandler.logOperation(channel.id(), Operation.Type.Register, null, () -> ParametersMap.create()
                 .add("username", username).add("password", password));
         final boolean success;
         try {
-            success = UserManager.insertUser(new UserSqlInformation.Inserter(username, password, UserManager.getDefaultGroupId()), null);
+            success = UserManager.insertUser(new UserSqlInformation.Inserter(username, password, UserGroupManager.getDefaultId()), null);
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
@@ -96,7 +96,7 @@ public final class ServerUserHandler {
     private static final @NotNull ServerHandler doLogin = (channel, buffer) -> {
         final String username = ByteBufIOUtil.readUTF(buffer);
         final String password = ByteBufIOUtil.readUTF(buffer);
-        ServerHandler.logOperation(channel.id(), Operation.Type.Login, null, () -> ParametersMap.<String, Object>create()
+        ServerHandler.logOperation(channel.id(), Operation.Type.Login, null, () -> ParametersMap.create()
                 .add("username", username).add("password", password));
         final UserSqlInformation user;
         try {
@@ -125,8 +125,8 @@ public final class ServerUserHandler {
     private static final @NotNull ServerHandler doChangeUsername = (channel, buffer) -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer);
         final String newUsername = ByteBufIOUtil.readUTF(buffer);
-        ServerHandler.logOperation(channel.id(), Operation.Type.ChangeUsername, user, () -> ParametersMap.<String, Object>create()
-                .add("newUsername", newUsername).optionallyAddSupplier(user.isSuccess(), () -> "denied", () -> UserManager.ADMIN.equals(user.getT().username())));
+        ServerHandler.logOperation(channel.id(), Operation.Type.ChangeUsername, user, () -> ParametersMap.create()
+                .add("newUsername", newUsername).optionallyAddSupplier(user.isSuccess(), "denied", () -> UserManager.ADMIN.equals(user.getT().username())));
         if (user.isFailure())
             return user.getE();
         if (UserManager.ADMIN.equals(user.getT().username()))
@@ -143,7 +143,7 @@ public final class ServerUserHandler {
     private static final @NotNull ServerHandler doChangePassword = (channel, buffer) -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkTokenAndPassword(buffer);
         final String newPassword = ByteBufIOUtil.readUTF(buffer);
-        ServerHandler.logOperation(channel.id(), Operation.Type.ChangePassword, user, () -> ParametersMap.<String, Object>create()
+        ServerHandler.logOperation(channel.id(), Operation.Type.ChangePassword, user, () -> ParametersMap.create()
                 .add("newPassword", newPassword));
         if (user.isFailure())
             return user.getE();
@@ -158,8 +158,8 @@ public final class ServerUserHandler {
 
     private static final @NotNull ServerHandler doLogoff = (channel, buffer) -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkTokenAndPassword(buffer);
-        ServerHandler.logOperation(channel.id(), Operation.Type.Logoff, user, () -> ParametersMap.<String, Object>create()
-                .optionallyAddSupplier(user.isSuccess(), () -> "denied", () -> UserManager.ADMIN.equals(user.getT().username())));
+        ServerHandler.logOperation(channel.id(), Operation.Type.Logoff, user, () -> ParametersMap.create()
+                .optionallyAddSupplier(user.isSuccess(), "denied", () -> UserManager.ADMIN.equals(user.getT().username())));
         if (user.isFailure())
             return user.getE();
         if (UserManager.ADMIN.equals(user.getT().username()))
@@ -177,7 +177,7 @@ public final class ServerUserHandler {
         final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
         final int page = ByteBufIOUtil.readVariableLenInt(buffer);
         final Options.OrderDirection orderDirection = Options.valueOfOrderDirection(ByteBufIOUtil.readUTF(buffer));
-        ServerHandler.logOperation(channel.id(), Operation.Type.ListUsers, user, () -> ParametersMap.<String, Object>create()
+        ServerHandler.logOperation(channel.id(), Operation.Type.ListUsers, user, () -> ParametersMap.create()
                 .add("limit", limit).add("page", page).add("orderDirection", orderDirection));
         if (user.isFailure())
             return user.getE();
@@ -201,7 +201,7 @@ public final class ServerUserHandler {
     private static final @NotNull ServerHandler doDeleteUser = (channel, buffer) -> {
         final UnionPair<UserSqlInformation, MessageProto> changer = ServerUserHandler.checkToken(buffer, Operation.Permission.UsersOperate);
         final String username = ByteBufIOUtil.readUTF(buffer);
-        ServerHandler.logOperation(channel.id(), Operation.Type.DeleteUser, changer, () -> ParametersMap.<String, Object>create()
+        ServerHandler.logOperation(channel.id(), Operation.Type.DeleteUser, changer, () -> ParametersMap.create()
                 .add("username", username).add("denied", UserManager.ADMIN.equals(username)));
         if (changer.isFailure())
             return changer.getE();
@@ -232,7 +232,7 @@ public final class ServerUserHandler {
         final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
         final int page = ByteBufIOUtil.readVariableLenInt(buffer);
         final Options.OrderDirection orderDirection = Options.valueOfOrderDirection(ByteBufIOUtil.readUTF(buffer));
-        ServerHandler.logOperation(channel.id(), Operation.Type.ListGroups, user, () -> ParametersMap.<String, Object>create()
+        ServerHandler.logOperation(channel.id(), Operation.Type.ListGroups, user, () -> ParametersMap.create()
                 .add("limit", limit).add("page", page).add("orderDirection", orderDirection));
         if (user.isFailure())
             return user.getE();
@@ -256,7 +256,7 @@ public final class ServerUserHandler {
     private static final @NotNull ServerHandler doAddGroup = (channel, buffer) -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.UsersOperate);
         final String groupName = ByteBufIOUtil.readUTF(buffer);
-        ServerHandler.logOperation(channel.id(), Operation.Type.AddGroup, user, () -> ParametersMap.<String, Object>create()
+        ServerHandler.logOperation(channel.id(), Operation.Type.AddGroup, user, () -> ParametersMap.create()
                 .add("groupName", groupName));
         if (user.isFailure())
             return user.getE();
@@ -272,7 +272,7 @@ public final class ServerUserHandler {
     private static final @NotNull ServerHandler doDeleteGroup = (channel, buffer) -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.UsersOperate);
         final String groupName = ByteBufIOUtil.readUTF(buffer);
-        ServerHandler.logOperation(channel.id(), Operation.Type.DeleteGroup, user, () -> ParametersMap.<String, Object>create()
+        ServerHandler.logOperation(channel.id(), Operation.Type.DeleteGroup, user, () -> ParametersMap.create()
                 .add("groupName", groupName).add("denied", UserGroupManager.ADMIN.equals(groupName) || UserGroupManager.DEFAULT.equals(groupName)));
         if (user.isFailure())
             return user.getE();
@@ -299,7 +299,7 @@ public final class ServerUserHandler {
         final UnionPair<UserSqlInformation, MessageProto> changer = ServerUserHandler.checkToken(buffer, Operation.Permission.UsersOperate);
         final String username = ByteBufIOUtil.readUTF(buffer);
         final String groupName = ByteBufIOUtil.readUTF(buffer);
-        ServerHandler.logOperation(channel.id(), Operation.Type.ChangeGroup, changer, () -> ParametersMap.<String, Object>create()
+        ServerHandler.logOperation(channel.id(), Operation.Type.ChangeGroup, changer, () -> ParametersMap.create()
                 .add("username", username).add("groupName", groupName).add("denied", UserManager.ADMIN.equals(username)));
         if (changer.isFailure())
             return changer.getE();
@@ -327,7 +327,7 @@ public final class ServerUserHandler {
         final UnionPair<UserSqlInformation, MessageProto> changer = ServerUserHandler.checkToken(buffer, Operation.Permission.UsersOperate);
         final String groupName = ByteBufIOUtil.readUTF(buffer);
         final EnumSet<Operation.Permission> permissions = Operation.parsePermissions(ByteBufIOUtil.readUTF(buffer));
-        ServerHandler.logOperation(channel.id(), add ? Operation.Type.AddPermission : Operation.Type.RemovePermission, changer, () -> ParametersMap.<String, Object>create()
+        ServerHandler.logOperation(channel.id(), add ? Operation.Type.AddPermission : Operation.Type.RemovePermission, changer, () -> ParametersMap.create()
                 .add("groupName", groupName).add("permissions", permissions).add("denied", UserGroupManager.ADMIN.equals(groupName)));
         if (changer.isFailure())
             return changer.getE();

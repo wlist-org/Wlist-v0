@@ -13,12 +13,15 @@ import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.UploadMethods;
 import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
+import io.netty.util.internal.PlatformDependent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public final class RootDriver implements DriverInterface<RootDriver.RootDriverConfiguration> {
     private static final RootDriver instance = new RootDriver();
@@ -26,10 +29,10 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
         return RootDriver.instance;
     }
 
-    private static @NotNull FileSqlInformation getDriverInformation(final @NotNull DriverConfiguration<?, ?, ?> configuration) {
+    public static @NotNull FileSqlInformation getDriverInformation(final @NotNull DriverConfiguration<?, ?, ?> configuration) {
         // TODO create and modified time.
-        return new FileSqlInformation(new FileLocation(FileLocation.SpecialDriverName.RootDriver.getIdentify(), configuration.getName().hashCode()),
-                0, configuration.getName(), true, 0, null, null, "", null);
+        return new FileSqlInformation(new FileLocation(FileLocation.SpecialDriverName.RootDriver.getIdentifier(), configuration.getName().hashCode()),
+                0, configuration.getName(), FileSqlInformation.FileSqlType.Directory, 0, null, null, "", null);
     }
 
     private @NotNull RootDriverConfiguration configuration = new RootDriverConfiguration();
@@ -86,11 +89,12 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
 
     @Override
     public Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(final @NotNull FileLocation location, final @LongRange(minimum = 0) int limit, final @LongRange(minimum = 0) int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws Exception {
-        if (FileLocation.SpecialDriverName.RootDriver.getIdentify().equals(location.driver())) {
+        if (FileLocation.SpecialDriverName.RootDriver.getIdentifier().equals(location.driver())) {
             // TODO list root drivers in page.
             final Map<String, Pair.ImmutablePair<WebDriversType, DriverInterface<?>>> map = DriverManager.getAll();
-            return Pair.ImmutablePair.makeImmutablePair((long) map.size(), map.values().stream()
-                    .map(k -> RootDriver.getDriverInformation(k.getSecond().getConfiguration())).toList());
+            final Stream<FileSqlInformation> stream = map.values().stream()
+                    .map(k -> RootDriver.getDriverInformation(k.getSecond().getConfiguration()));
+            return Pair.ImmutablePair.makeImmutablePair((long) map.size(), PlatformDependent.isAndroid() ? stream.collect(Collectors.toList()) : stream.toList());
         }
         final DriverInterface<?> real = DriverManager.get(location.driver());
         if (real == null)
@@ -100,7 +104,7 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
 
     @Override
     public @Nullable FileSqlInformation info(final @NotNull FileLocation location) throws Exception {
-        if (FileLocation.SpecialDriverName.RootDriver.getIdentify().equals(location.driver()))
+        if (FileLocation.SpecialDriverName.RootDriver.getIdentifier().equals(location.driver()))
             return RootDriver.getDriverInformation(DriverManager.getById(location.id()).getSecond().getConfiguration());
         final DriverInterface<?> real = DriverManager.get(location.driver());
         if (real == null)
@@ -110,7 +114,7 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
 
     @Override
     public @NotNull UnionPair<@NotNull DownloadMethods, @NotNull FailureReason> download(final @NotNull FileLocation location, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws Exception {
-        if (FileLocation.SpecialDriverName.RootDriver.getIdentify().equals(location.driver()))
+        if (FileLocation.SpecialDriverName.RootDriver.getIdentifier().equals(location.driver()))
             return UnionPair.fail(FailureReason.byNoSuchFile("Downloading.", location));
         final DriverInterface<?> real = DriverManager.get(location.driver());
         if (real == null)
@@ -138,7 +142,7 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
     @SuppressWarnings("OverlyBroadThrowsClause")
     @Override
     public void delete(final @NotNull FileLocation location) throws Exception {
-        if (FileLocation.SpecialDriverName.RootDriver.getIdentify().equals(location.driver())) {
+        if (FileLocation.SpecialDriverName.RootDriver.getIdentifier().equals(location.driver())) {
             DriverManager.del(location.driver());
             return;
         }

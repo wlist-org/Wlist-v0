@@ -1,6 +1,6 @@
 package com.xuxiaocheng.WList.Databases.Constant;
 
-import com.xuxiaocheng.WList.Utils.DatabaseUtil;
+import com.xuxiaocheng.HeadLibs.DataStructures.HInitializer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -12,19 +12,13 @@ public final class ConstantManager {
         super();
     }
 
+    public static final @NotNull HInitializer<ConstantSqlInterface> sqlInstance = new HInitializer<>("ConstantSqlInstance");
+
     @SuppressWarnings("SpellCheckingInspection")
     public static final @NotNull String DefaultRandomChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890`~!@#$%^&*()-_=+[]{}\\|;:,.<>/? ";
 
-    public static @NotNull DatabaseUtil getDatabaseUtil() throws SQLException {
-        return DatabaseUtil.getInstance();
-    }
-
-    public static void initialize() throws SQLException {
-        ConstantSqlHelper.initialize(ConstantManager.getDatabaseUtil(), "initialize");
-    }
-
-    // Each constant should call this method only once.
+    // Each constant should call this method only once and then save the value in static fields.
     public static @NotNull String get(final @NotNull String key, final @NotNull Supplier<@NotNull String> defaultValue, final @Nullable String _connectionId) throws SQLException {
-        return ConstantSqlHelper.getInstance().get(key, defaultValue, _connectionId);
+        return ConstantManager.sqlInstance.getInstance().get(key, defaultValue, _connectionId);
     }
 }

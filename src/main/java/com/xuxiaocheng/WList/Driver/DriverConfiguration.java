@@ -66,7 +66,6 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
 
     public @NotNull Map<@NotNull String, @NotNull Object> dump() {
         final Map<String, Object> config = new LinkedHashMap<>();
-        config.put("name", this.name);
         config.put("local", this.localSide.dump());
         config.put("web", this.webSide.dump());
         config.put("cache", this.cacheSide.dump());
@@ -130,12 +129,17 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
         protected boolean vip = false; // TODO vipLevel
         protected long spaceAll = 0;
         protected long spaceUsed = -1;
+        protected long maxSizePerFile = -1;
         protected long fileCount = -1;
         protected @Nullable LocalDateTime lastFileIndexBuildTime = null;
         protected @Nullable LocalDateTime lastTrashIndexBuildTime = null;
 
         public boolean resetModified() {
             return this.modified.compareAndSet(true, false);
+        }
+
+        public boolean isModified() {
+            return this.modified.get();
         }
 
         public void setModified(final boolean modified) {
@@ -153,6 +157,8 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "space_all", BigInteger.ZERO, BigInteger.valueOf(Long.MAX_VALUE))).longValue();
             this.spaceUsed = YamlHelper.getConfig(cache, "space_used", () -> Long.toString(this.spaceUsed),
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "space_used", BigInteger.valueOf(-1), BigInteger.valueOf(Long.MAX_VALUE))).longValue();
+            this.maxSizePerFile = YamlHelper.getConfig(cache, "max_size_per_file", () -> Long.toString(this.maxSizePerFile),
+                    o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "max_size_per_file", BigInteger.valueOf(-1), BigInteger.valueOf(Long.MAX_VALUE))).longValue();
             this.fileCount = YamlHelper.getConfig(cache, "file_count", () -> Long.toString(this.fileCount),
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "file_count", BigInteger.valueOf(-1), BigInteger.valueOf(Long.MAX_VALUE))).longValue();
             this.lastFileIndexBuildTime = YamlHelper.getConfigNullable(cache, "last_file_index_build_time",
@@ -168,6 +174,7 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
             cache.put("vip", this.vip);
             cache.put("space_all", this.spaceAll);
             cache.put("space_used", this.spaceUsed);
+            cache.put("max_size_per_file", this.maxSizePerFile);
             cache.put("file_count", this.fileCount);
             cache.put("last_file_index_build_time", this.lastFileIndexBuildTime == null ? null : this.lastFileIndexBuildTime.format(DriverConfiguration.TimeFormatter));
             cache.put("last_trash_index_build_time", this.lastTrashIndexBuildTime == null ? null : this.lastTrashIndexBuildTime.format(DriverConfiguration.TimeFormatter));
@@ -214,6 +221,14 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
             this.spaceUsed = spaceUsed;
         }
 
+        public long getMaxSizePerFile() {
+            return this.maxSizePerFile;
+        }
+
+        public void setMaxSizePerFile(final long maxSizePerFile) {
+            this.maxSizePerFile = maxSizePerFile;
+        }
+
         public long getFileCount() {
             return this.fileCount;
         }
@@ -246,6 +261,7 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
                     ", vip=" + this.vip +
                     ", spaceAll=" + this.spaceAll + " Byte" +
                     ", spaceUsed=" + this.spaceUsed + " Byte" +
+                    ", maxSizePerFile=" + this.maxSizePerFile + " Byte" +
                     ", fileCount=" + this.fileCount +
                     ", lastFileIndexBuildTime=" + this.lastFileIndexBuildTime +
                     ", lastTrashIndexBuildTime=" + this.lastTrashIndexBuildTime +

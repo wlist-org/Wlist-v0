@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Exceptions;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -14,14 +15,8 @@ public class IllegalResponseCodeException extends WrongResponseException {
     protected final int code;
     protected final @NotNull String meaning;
 
-    public IllegalResponseCodeException(final int code) {
-        super(code, null);
-        this.code = code;
-        this.meaning = "";
-    }
-
-    public IllegalResponseCodeException(final int code, final @Nullable String message) {
-        super(code, message);
+    public IllegalResponseCodeException(final int code, final @Nullable String message, final @Nullable ParametersMap parameters) {
+        super(code, message, parameters);
         this.code = code;
         this.meaning = Objects.requireNonNullElse(message, "");
     }

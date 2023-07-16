@@ -1,8 +1,8 @@
 package com.xuxiaocheng.WList.Databases.UserGroup;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.HInitializer;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Driver.Options;
-import com.xuxiaocheng.WList.Utils.DatabaseUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -17,19 +17,21 @@ public final class UserGroupManager {
         super();
     }
 
-    public static @NotNull DatabaseUtil getDatabaseUtil() throws SQLException {
-        return DatabaseUtil.getInstance();
-    }
+    public static final @NotNull HInitializer<UserGroupSqlInterface> sqlInstance = new HInitializer<>("UserGroupSqlInstance");
 
     public static final @NotNull String ADMIN = "admin";
     public static final @NotNull String DEFAULT = "default";
 
-    public static void initialize() throws SQLException {
-        UserGroupSqlHelper.initialize(UserGroupManager.getDatabaseUtil(), "initialize");
+    public static long getAdminId() {
+        return UserGroupManager.sqlInstance.getInstance().getAdminId();
+    }
+
+    public static long getDefaultId() {
+        return UserGroupManager.sqlInstance.getInstance().getDefaultId();
     }
 
     public static @NotNull @UnmodifiableView Map<UserGroupSqlInformation.@NotNull Inserter, @NotNull Boolean> insertGroups(final @NotNull Collection<UserGroupSqlInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException {
-        return UserGroupSqlHelper.getInstance().insertGroups(inserters, _connectionId);
+        return UserGroupManager.sqlInstance.getInstance().insertGroups(inserters, _connectionId);
     }
 
     public static boolean insertGroup(final UserGroupSqlInformation.@NotNull Inserter inserter, final @Nullable String _connectionId) throws SQLException {
@@ -37,7 +39,7 @@ public final class UserGroupManager {
     }
 
     public static void updateGroups(final @NotNull Collection<@NotNull UserGroupSqlInformation> infoList, final @Nullable String _connectionId) throws SQLException {
-        UserGroupSqlHelper.getInstance().updateGroups(infoList, _connectionId);
+        UserGroupManager.sqlInstance.getInstance().updateGroups(infoList, _connectionId);
     }
 
     public static void updateGroup(final @NotNull UserGroupSqlInformation info, final @Nullable String _connectionId) throws SQLException {
@@ -45,7 +47,7 @@ public final class UserGroupManager {
     }
 
     public static void updateGroupsByName(final @NotNull Collection<UserGroupSqlInformation.@NotNull Inserter> infoList, final @Nullable String _connectionId) throws SQLException {
-        UserGroupSqlHelper.getInstance().updateGroupsByName(infoList, _connectionId);
+        UserGroupManager.sqlInstance.getInstance().updateGroupsByName(infoList, _connectionId);
     }
 
     public static void updateGroupByName(final UserGroupSqlInformation.@NotNull Inserter info, final @Nullable String _connectionId) throws SQLException {
@@ -53,7 +55,7 @@ public final class UserGroupManager {
     }
 
     public static void deleteGroups(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
-        UserGroupSqlHelper.getInstance().deleteGroups(idList, _connectionId);
+        UserGroupManager.sqlInstance.getInstance().deleteGroups(idList, _connectionId);
     }
 
     public static void deleteGroup(final long id, final @Nullable String _connectionId) throws SQLException {
@@ -61,16 +63,15 @@ public final class UserGroupManager {
     }
 
     public static void deleteGroupsByName(final @NotNull Collection<@NotNull String> nameList, final @Nullable String _connectionId) throws SQLException {
-        UserGroupSqlHelper.getInstance().deleteGroupsByName(nameList, _connectionId);
+        UserGroupManager.sqlInstance.getInstance().deleteGroupsByName(nameList, _connectionId);
     }
-
 
     public static void deleteGroupByName(final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
         UserGroupManager.deleteGroupsByName(List.of(name), _connectionId);
     }
 
     public static @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull UserGroupSqlInformation> selectGroups(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
-        return UserGroupSqlHelper.getInstance().selectGroups(idList, _connectionId);
+        return UserGroupManager.sqlInstance.getInstance().selectGroups(idList, _connectionId);
     }
 
     public static @Nullable UserGroupSqlInformation selectGroup(final long id, final @Nullable String _connectionId) throws SQLException {
@@ -78,7 +79,7 @@ public final class UserGroupManager {
     }
 
     public static @NotNull @UnmodifiableView Map<@NotNull String, @NotNull UserGroupSqlInformation> selectGroupsByName(final @NotNull Collection<@NotNull String> nameList, final @Nullable String _connectionId) throws SQLException {
-        return UserGroupSqlHelper.getInstance().selectGroupsByName(nameList, _connectionId);
+        return UserGroupManager.sqlInstance.getInstance().selectGroupsByName(nameList, _connectionId);
     }
 
     public static @Nullable UserGroupSqlInformation selectGroupByName(final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
@@ -86,10 +87,10 @@ public final class UserGroupManager {
     }
 
     public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull UserGroupSqlInformation>> selectAllUserGroupsInPage(final int limit, final long offset, final Options.@NotNull OrderDirection direction, final @Nullable String _connectionId) throws SQLException {
-        return UserGroupSqlHelper.getInstance().selectAllUserGroupsInPage(limit, offset, direction, _connectionId);
+        return UserGroupManager.sqlInstance.getInstance().selectAllUserGroupsInPage(limit, offset, direction, _connectionId);
     }
 
     public static @NotNull @UnmodifiableView List<@Nullable UserGroupSqlInformation> searchUserGroupsByNameLimited(final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
-        return UserGroupSqlHelper.getInstance().searchUserGroupsByNameLimited(rule, caseSensitive, limit, _connectionId);
+        return UserGroupManager.sqlInstance.getInstance().searchUserGroupsByNameLimited(rule, caseSensitive, limit, _connectionId);
     }
 }

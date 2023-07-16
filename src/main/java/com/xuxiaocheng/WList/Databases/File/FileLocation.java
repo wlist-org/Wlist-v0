@@ -14,21 +14,21 @@ public record FileLocation(@NotNull String driver, long id) {
     public enum SpecialDriverName {
         RootDriver("WList#RootDriver"),
         ;
-        private final @NotNull String identify;
+        private final @NotNull String identifier;
 
-        SpecialDriverName(final @NotNull String identify) {
-            this.identify = identify;
+        SpecialDriverName(final @NotNull String identifier) {
+            this.identifier = identifier;
         }
 
-        public @NotNull String getIdentify() {
-            return this.identify;
+        public @NotNull String getIdentifier() {
+            return this.identifier;
         }
 
         @Override
         public @NotNull String toString() {
             return "SpecialDriverName{" +
                     "name='" + this.name() + '\'' +
-                    ", identify='" + this.identify + '\'' +
+                    ", identify='" + this.identifier + '\'' +
                     '}';
         }
     }
@@ -38,7 +38,6 @@ public record FileLocation(@NotNull String driver, long id) {
         ByteBufIOUtil.writeVariableLenLong(buffer, location.id);
     }
 
-    @Deprecated // only for client
     public static @NotNull FileLocation parse(final @NotNull ByteBuf buffer) throws IOException {
         final String driver = ByteBufIOUtil.readUTF(buffer);
         final long id = ByteBufIOUtil.readVariableLenLong(buffer);

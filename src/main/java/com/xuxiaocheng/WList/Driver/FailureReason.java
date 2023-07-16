@@ -1,13 +1,12 @@
 package com.xuxiaocheng.WList.Driver;
 
 import com.xuxiaocheng.WList.Databases.File.FileLocation;
-import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
 import java.util.Objects;
 
+// TODO enhance.
 public class FailureReason {
     public static final @NotNull String InvalidFilename = "Invalid filename.";
     public static final @NotNull String DuplicatePolicyError = "ERROR by duplicate policy.";
@@ -15,45 +14,29 @@ public class FailureReason {
     public static final @NotNull String NoSuchFile = "No such file.";
     public static final @NotNull String Others = "Others.";
 
-    public static @NotNull FailureReason byInvalidName(final @NotNull String name, final @NotNull DrivePath fullPath) {
-        return new FailureReason(FailureReason.InvalidFilename, name, fullPath);
+    public static @NotNull FailureReason byInvalidName(final @NotNull String callingMethodMessage, final @NotNull FileLocation location, final @NotNull String name) {
+        return new FailureReason(FailureReason.InvalidFilename, name, location);
     }
 
-    public static @NotNull FailureReason byDuplicateError(final @NotNull String callingMethodMessage, final @NotNull DrivePath path) {
-        return new FailureReason(FailureReason.DuplicatePolicyError, callingMethodMessage, path);
+    public static @NotNull FailureReason byDuplicateError(final @NotNull String callingMethodMessage, final @NotNull FileLocation location, final @NotNull String name) {
+        return new FailureReason(FailureReason.DuplicatePolicyError, callingMethodMessage, location);
     }
 
-    public static @NotNull FailureReason byExceedMaxSize(final long current, final long max, final @NotNull DrivePath path) {
-        return new FailureReason(FailureReason.ExceedMaxSize, String.format("current (%d) > max (%d).", current, max), path);
+    public static @NotNull FailureReason byExceedMaxSize(final @NotNull String callingMethodMessage, final long current, final long max, final @NotNull FileLocation location, final @NotNull String name) {
+        return new FailureReason(FailureReason.ExceedMaxSize, String.format("current (%d) > max (%d).", current, max), location);
     }
 
-    public static @NotNull FailureReason byExceedMaxSize(final long current, final @NotNull String message, final @NotNull DrivePath path) {
-        return new FailureReason(FailureReason.ExceedMaxSize, "Current: " + current + ", " + message, path);
+    public static @NotNull FailureReason byExceedMaxSize(final @NotNull String callingMethodMessage, final long current, final @NotNull String message, final @NotNull FileLocation location, final @NotNull String name) {
+        return new FailureReason(FailureReason.ExceedMaxSize, "Current: " + current + ", " + message, location);
     }
 
     public static @NotNull FailureReason byNoSuchFile(final @NotNull String callingMethodMessage, final @NotNull FileLocation location) {
         return new FailureReason(FailureReason.NoSuchFile, callingMethodMessage, location);
     }
 
+    @Deprecated
     public static @NotNull FailureReason others(final @NotNull String message, final @Nullable Object extra) {
         return new FailureReason(FailureReason.Others, message, extra);
-    }
-
-    public static class DriveIdPath extends DrivePath {
-        protected final long id;
-
-        public DriveIdPath(final long id) {
-            super(List.of("{DriveIdPath:id=" + id + "}"));
-            this.id = id;
-        }
-
-        @Override
-        public @NotNull String toString() {
-            return "DriveIdPath{" +
-                    "id=" + this.id +
-                    ", super="  + super.toString() +
-                    '}';
-        }
     }
 
     protected final @NotNull String kind;

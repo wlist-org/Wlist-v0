@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Server.Driver;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.HInitializer;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
@@ -27,7 +28,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serial;
 import java.nio.file.InvalidPathException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -44,13 +44,15 @@ public final class DriverManager {
         super();
     }
 
+    private static final @NotNull HInitializer<File> configurationsPath = new HInitializer<>("DriverConfigurationsDirectory");
+
     private static final @NotNull Map<@NotNull String, Pair.@NotNull ImmutablePair<@NotNull WebDriversType, @NotNull DriverInterface<?>>> drivers = new ConcurrentHashMap<>();
     private static final @NotNull Map<@NotNull String, Pair.@NotNull ImmutablePair<@NotNull WebDriversType, @NotNull DriverTrashInterface<?>>> trashes = new ConcurrentHashMap<>();
 
     public static @NotNull File getConfigurationFile(final @NotNull String name) {
         if (name.contains("\\") || name.contains("/"))
             throw new InvalidPathException(name, "Driver name cannot contain separator (\\/).");
-        return Path.of("configs", name + ".yaml").toFile();
+        return new File(DriverManager.configurationsPath.getInstance(), name + ".yaml");
     }
 
     public static void dumpConfiguration(final DriverConfiguration<?, ?, ?> configuration) throws IOException {
@@ -95,16 +97,18 @@ public final class DriverManager {
                     if (trash != null)
                         trash.uninitialize();
                 } catch (final Exception e) {
-                    throw new IllegalParametersException("Failed to uninitialize after a failed initialization.", ParametersMap.<String, Object>create().add("name", name).add("type", type).add("configuration", configuration).add("exception", exception), e);
+                    exception.addSuppressed(e);
+                    // TODO.
+                    throw new IllegalParametersException("Failed to uninitialize after a failed initialization.", ParametersMap.create().add("name", name).add("type", type).add("configuration", configuration).add("exception", exception), e);
                 }
-            throw new IllegalParametersException("Failed to initialize.", ParametersMap.<String, Object>create().add("name", name).add("type", type).add("configuration", configuration), exception);
+            throw new IllegalParametersException("Failed to initialize.", ParametersMap.create().add("name", name).add("type", type).add("configuration", configuration), exception);
         }
         try {
             driver.buildCache();
             if (trash != null)
                 trash.buildCache();
         } catch (final Exception exception) {
-            throw new IllegalParametersException("Failed to build cache.", ParametersMap.<String, Object>create().add("name", name).add("type", type).add("configuration", configuration), exception);
+            throw new IllegalParametersException("Failed to build cache.", ParametersMap.create().add("name", name).add("type", type).add("configuration", configuration), exception);
         }
         DriverManager.dumpConfiguration(configuration);
         DriverManager.drivers.put(name, Pair.ImmutablePair.makeImmutablePair(type, driver));
@@ -112,7 +116,8 @@ public final class DriverManager {
             DriverManager.trashes.put(name, Pair.ImmutablePair.makeImmutablePair(type, trash));
     }
 
-    public static void initialize() {
+    public static void initialize(final @NotNull File configurationsPath) {
+        DriverManager.configurationsPath.initialize(configurationsPath);
         DriverManager.drivers.clear();
         final Collection<CompletableFuture<?>> futures = new ArrayList<>(GlobalConfiguration.getInstance().drivers().size());
         for (final Map.Entry<String, WebDriversType> entry: GlobalConfiguration.getInstance().drivers().entrySet())
@@ -152,6 +157,7 @@ public final class DriverManager {
 
     public static Pair.@NotNull ImmutablePair<@NotNull WebDriversType, @NotNull DriverInterface<?>> getById(final long id) {
         // TODO
+        throw new RuntimeException("Stub");
     }
 
     public static void add(final @NotNull String name, final @NotNull WebDriversType type) throws IOException, IllegalParametersException {
@@ -171,5 +177,14 @@ public final class DriverManager {
             } catch (final Exception exception) {
                 throw new IOException(exception);
             }
+    }
+
+    public static void remove(final @NotNull DriverInterface<?> driver) {
+        // TODO
+        try {
+            driver.uninitialize();
+        } catch (final Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }

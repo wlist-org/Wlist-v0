@@ -25,7 +25,7 @@ public interface ServerHandler {
     @NotNull MessageProto handle(final @NotNull Channel channel, final @NotNull ByteBuf buffer) throws IOException, ServerException;
 
     byte defaultCipher = MessageCiphers.doAes | MessageCiphers.doGZip;
-    byte defaultFileCipher = MessageCiphers.defaultDoGZip;
+    byte defaultFileCipher = MessageCiphers.doGZip;
 
     static @NotNull MessageProto composeMessage(final Operation.@NotNull State state, final @Nullable String message) {
         return new MessageProto(ServerHandler.defaultCipher, state, buf -> {
@@ -46,7 +46,7 @@ public interface ServerHandler {
     @NotNull Function<@NotNull UnsupportedOperationException, @NotNull MessageProto> Unsupported = e ->
             ServerHandler.composeMessage(Operation.State.Unsupported, e.getMessage());
 
-    static void logOperation(final @NotNull ChannelId channelId, final Operation.@NotNull Type operation, final @Nullable UnionPair<@NotNull UserSqlInformation, @NotNull MessageProto> user, final @Nullable Supplier<? extends @NotNull ParametersMap<@NotNull String, @Nullable Object>> parameters) {
+    static void logOperation(final @NotNull ChannelId channelId, final Operation.@NotNull Type operation, final @Nullable UnionPair<@NotNull UserSqlInformation, @NotNull MessageProto> user, final @Nullable Supplier<? extends @NotNull ParametersMap> parameters) {
         HLog.getInstance("ServerLogger").log(HLogLevel.DEBUG, "Operate: ", channelId.asLongText(), ", type: ", operation,
                 (Supplier<String>) () -> user == null ? "." :
                         user.isSuccess() ? " user: (id:" + user.getT().id() + ") '" + user.getT().username() + "'." : ". Refused because " + user.getE().state() + '.',

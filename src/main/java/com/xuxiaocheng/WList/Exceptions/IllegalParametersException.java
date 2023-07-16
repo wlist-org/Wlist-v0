@@ -34,11 +34,11 @@ public class IllegalParametersException extends Exception {
         super(message + " Parameter: " + parameter, cause);
     }
 
-    public IllegalParametersException(final @NotNull String message, final @Nullable ParametersMap<String, Object> parameters) {
+    public IllegalParametersException(final @NotNull String message, final @Nullable ParametersMap parameters) {
         super(message + " Parameters:" + parameters);
     }
 
-    public IllegalParametersException(final @NotNull String message, final @Nullable ParametersMap<String, Object> parameters, final @NotNull Throwable cause) {
+    public IllegalParametersException(final @NotNull String message, final @Nullable ParametersMap parameters, final @NotNull Throwable cause) {
         super(message + " Parameters:" + parameters, cause);
     }
 }

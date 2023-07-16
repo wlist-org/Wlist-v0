@@ -145,7 +145,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     @SuppressWarnings("OverlyBroadThrowsClause")
     default @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> copy(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final @NotNull String targetFilename, final Options.@NotNull DuplicatePolicy policy) throws Exception {
         final FileSqlInformation source = this.info(sourceLocation);
-        if (source == null || source.isDir())
+        if (source == null || source.isDirectory())
             return UnionPair.fail(FailureReason.byNoSuchFile("Copying.", sourceLocation));
         Runnable uploadFinisher = null;
         Runnable downloadFinisher = null;
@@ -170,7 +170,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
             }
             information = upload.getT().supplier().get();
             if (information == null)
-                throw new IllegalStateException("Failed to copy file. Failed to get target file information." + ParametersMap.<String, Object>create()
+                throw new IllegalStateException("Failed to copy file. Failed to get target file information." + ParametersMap.create()
                         .add("sourceLocation", sourceLocation).add("sourceInfo", source).add("targetParentLocation", targetParentLocation).add(targetFilename, "targetFilename").add("policy", policy));
             return UnionPair.ok(information);
         } finally {
@@ -194,7 +194,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
         final FileSqlInformation source = this.info(sourceLocation);
         if (source == null)
             return UnionPair.fail(FailureReason.byNoSuchFile("Moving.", sourceLocation));
-        if (source.isDir())
+        if (source.isDirectory())
             throw new UnsupportedOperationException("Moving directory by default algorithm.");
         if (source.location().equals(targetLocation))
             return UnionPair.ok(source);
@@ -228,7 +228,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
         final FileSqlInformation source = this.info(sourceLocation);
         if (source == null)
             return UnionPair.fail(FailureReason.byNoSuchFile("Renaming.", sourceLocation));
-        if (source.isDir())
+        if (source.isDirectory())
             throw new UnsupportedOperationException("Renaming directory by default algorithm.");
         if (source.name().equals(name))
             return UnionPair.ok(source);

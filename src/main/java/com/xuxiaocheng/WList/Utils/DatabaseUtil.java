@@ -1,13 +1,15 @@
 package com.xuxiaocheng.WList.Utils;
 
+import com.xuxiaocheng.HeadLibs.AndroidSupport.ARandomHelper;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
-import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import io.netty.util.IllegalReferenceCountException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.sqlite.JDBC;
+import org.sqlite.SQLiteConfig;
 import org.sqlite.SQLiteDataSource;
 
 import javax.sql.DataSource;
@@ -19,7 +21,6 @@ import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
-import java.sql.Statement;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -29,16 +30,22 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 // TODO SQLCipher
-public class DatabaseUtil {
-    private static @Nullable DatabaseUtil Instance;
+// TODO Optimise
+public class DatabaseUtil implements DatabaseInterface {
+    private static @Nullable DatabaseUtil instance;
 
-    public static synchronized @NotNull DatabaseUtil getInstance() throws SQLException {
-        if (DatabaseUtil.Instance == null)
-            DatabaseUtil.Instance = new DatabaseUtil(new PooledDatabaseConfig(
-                    new File(GlobalConfiguration.getInstance().databasePath()),
-                   1, 1, 2,/* 2, 3, 10, */false, false, Connection.TRANSACTION_READ_COMMITTED
-            ));
-        return DatabaseUtil.Instance;
+    public static synchronized void initialize(final @NotNull File database) throws SQLException {
+        if (DatabaseUtil.instance != null)
+            throw new IllegalStateException("Database util is initialized." + ParametersMap.create().add("instance", DatabaseUtil.instance));
+        DatabaseUtil.instance = new DatabaseUtil(new PooledDatabaseConfig(database,
+                1, 1, 2,/* 2, 3, 10, */false, false, Connection.TRANSACTION_READ_COMMITTED
+        ));
+    }
+
+    public static synchronized @NotNull DatabaseUtil getInstance() {
+        if (DatabaseUtil.instance == null)
+            throw new IllegalStateException("Database util is not initialized.");
+        return DatabaseUtil.instance;
     }
 
     protected final @NotNull DataSource dataSource;
@@ -52,22 +59,14 @@ public class DatabaseUtil {
         super();
         this.config = config;
         if (config.initSize > config.maxSize)
-            throw new IllegalStateException("Init connection count > max count. config: " + config);
-        final File path = this.config.path.getAbsoluteFile();
-        if (!HFileHelper.ensureFileExist(path))
-            throw new SQLException("Cannot create database file.");
-        this.dataSource = new SQLiteDataSource();
-        ((SQLiteDataSource) this.dataSource).setUrl(JDBC.PREFIX + path.getPath());
-        if (config.walMode) {
-            final ReferencedConnection connection = this.createNewConnection();
-            try (final Statement statement = connection.createStatement()) {
-                statement.executeUpdate("PRAGMA journal_mode = WAL;");
-            }
-            if (!connection.getAutoCommit())
-                connection.commit();
-            this.freeConnections.add(connection);
-        }
-        for (int i = config.walMode ? 1 : 0; i < this.config.initSize; ++i)
+            throw new IllegalStateException("Init connection count > max count." + ParametersMap.create().add("config", config));
+        if (!HFileHelper.ensureFileExist(config.source))
+            throw new SQLException("Cannot create database file." + ParametersMap.create().add("path", config.source));
+        final SQLiteDataSource database = new SQLiteDataSource();
+        database.setUrl(JDBC.PREFIX + config.source.getPath());
+        database.setJournalMode(SQLiteConfig.JournalMode.WAL.getValue());
+        this.dataSource = database;
+        for (int i = 0; i < this.config.initSize; ++i)
             this.freeConnections.add(this.createNewConnection());
         assert this.freeConnections.size() == this.config.initSize;
         assert this.createdSize.get() == this.config.initSize;
@@ -78,7 +77,7 @@ public class DatabaseUtil {
             final Connection rawConnection = this.dataSource.getConnection();
             if (rawConnection == null) {
                 this.createdSize.getAndDecrement();
-                throw new SQLException("Failed to get connection with sqlite database source.");
+                throw new SQLException("Failed to get connection with sqlite database source." + ParametersMap.create().add("config", this.config));
             }
             this.resetConnection(rawConnection);
             return (ReferencedConnection) Proxy.newProxyInstance(rawConnection.getClass().getClassLoader(),
@@ -193,11 +192,11 @@ public class DatabaseUtil {
                 newConnection.setId(id);
                 return newConnection;
             }));
-            assert id.equals(connection.id());
         } catch (final RuntimeException exception) {
             throw HExceptionWrapper.unwrapException(exception, SQLException.class);
         }
         connection.retain();
+        assert id.equals(connection.id());
         return connection;
     }
 
@@ -206,7 +205,7 @@ public class DatabaseUtil {
         if (connection == null)
             connection = this.createNewConnection();
         final String id = MiscellaneousUtil.randomKeyAndPut(this.activeConnections,
-                () -> HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, HRandomHelper.DefaultWords),
+                () -> ARandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, HRandomHelper.DefaultWords),
                 connection);
         connection.setId(id);
         if (idSaver != null)
@@ -215,14 +214,12 @@ public class DatabaseUtil {
         return connection;
     }
 
-    public @NotNull Connection getNewConnection(final @NotNull AtomicReference<? super String> connectionId) throws SQLException {
-        return this.getNewConnection(connectionId::set);
-    }
-
-    public @NotNull Connection getConnection(final @Nullable String id, final @NotNull AtomicReference<? super String> connectionId) throws SQLException {
+    @Override
+    public @NotNull Connection getConnection(final @Nullable String id, final @Nullable AtomicReference<? super String> connectionId) throws SQLException {
         if (id == null)
-            return this.getNewConnection(connectionId);
-        connectionId.set(id);
+            return this.getNewConnection(connectionId == null ? null : connectionId::set);
+        if (connectionId != null)
+            connectionId.set(id);
         return this.getExplicitConnection(id);
     }
 
@@ -262,6 +259,6 @@ public class DatabaseUtil {
                 '}';
     }
 
-    protected record PooledDatabaseConfig(@NotNull File path, int initSize, int averageSize, int maxSize, boolean walMode, boolean autoCommit, int transactionIsolationLevel) {
+    protected record PooledDatabaseConfig(@NotNull File source, int initSize, int averageSize, int maxSize, boolean walMode, boolean autoCommit, int transactionIsolationLevel) {
     }
 }

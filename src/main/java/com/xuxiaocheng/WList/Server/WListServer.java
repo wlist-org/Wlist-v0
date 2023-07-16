@@ -30,6 +30,7 @@ import io.netty.handler.codec.LengthFieldPrepender;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.EventExecutorGroup;
+import io.netty.util.concurrent.Future;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -51,12 +52,10 @@ public class WListServer {
     public static final @NotNull EventExecutorGroup IOExecutors =
             new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 3, new DefaultThreadFactory("IOExecutors"));
 
-    private static final @NotNull HLog logger = HLog.createInstance("ServerLogger",
-            WList.DebugMode ? Integer.MIN_VALUE : HLogLevel.FINE.getLevel(),
-            true, WList.InIdeaMode ? null : HMergedStream.getFileOutputStreamNoException(null));
+    private static final @NotNull HLog logger = HLog.createInstance("ServerLogger", WList.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, true, HMergedStream.getFileOutputStreamNoException(null));
 
     protected static @Nullable WListServer instance;
-    public static synchronized void init(final @NotNull SocketAddress address) {
+    public static synchronized void initialize(final @NotNull SocketAddress address) {
         if (WListServer.instance != null)
             throw new IllegalStateException("WList server is initialized. instance: " + WListServer.instance + " address: " + address);
         WListServer.instance = new WListServer(address);
@@ -117,8 +116,11 @@ public class WListServer {
         if (this.latch.getCount() == 0)
             return;
         WListServer.logger.log(HLogLevel.ENHANCED, "WListServer is stopping...");
-        this.bossGroup.shutdownGracefully().syncUninterruptibly();
-        this.workerGroup.shutdownGracefully().syncUninterruptibly();
+        final Future<?>[] futures = new Future<?>[2];
+        futures[0] = this.bossGroup.shutdownGracefully();
+        futures[1] = this.workerGroup.shutdownGracefully();
+        for (final Future<?> future: futures)
+            future.syncUninterruptibly();
         WListServer.logger.log(HLogLevel.INFO, "WListServer stopped gracefully.");
         this.latch.countDown();
     }
@@ -132,7 +134,6 @@ public class WListServer {
 
     @ChannelHandler.Sharable
     public static class ServerChannelHandler extends SimpleChannelInboundHandler<ByteBuf> {
-
         @Override
         public void channelActive(final @NotNull ChannelHandlerContext ctx) {
             WListServer.logger.log(HLogLevel.DEBUG, "Active: ", ctx.channel().id().asLongText(), " (", ctx.channel().remoteAddress(), ')');

@@ -35,7 +35,6 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -78,7 +77,7 @@ public final class DriverUtil {
         return Pair.ImmutablePair.makeImmutablePair(left, right);
     }
 
-    public static <I> Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Iterator<@NotNull I>, @NotNull Runnable> wrapAllFilesListerInPages(final @NotNull FunctionE<? super @NotNull Integer, ? extends Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull List<@NotNull I>>> fileSupplierInPage, final int defaultLimit, final @NotNull Consumer<? super @Nullable Exception> finisher, final @Nullable ExecutorService _threadPool) {
+    public static <I> Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Iterator<@NotNull I>, @NotNull Runnable> wrapAllFilesListerInPages(final @NotNull FunctionE<? super @NotNull Integer, ? extends Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull List<@NotNull I>>> fileSupplierInPage, final int defaultLimit, final @NotNull Consumer<? super @Nullable Exception> finisher) {
         final Pair.ImmutablePair<Long, List<I>> firstPage;
         try {
             firstPage = fileSupplierInPage.apply(0);
@@ -97,7 +96,6 @@ public final class DriverUtil {
             finisher.accept(null);
             return Triad.ImmutableTriad.makeImmutableTriad(fileCount, firstPage.getSecond().iterator(), RunnableE.EmptyRunnable);
         }
-        final ExecutorService threadPool = Objects.requireNonNullElse(_threadPool, WListServer.IOExecutors);
         final BlockingQueue<I> allFiles = new LinkedBlockingQueue<>(Math.max((int) fileCount, firstPage.getSecond().size() << 1));
         allFiles.addAll(firstPage.getSecond());
         final AtomicInteger countDown = new AtomicInteger(pageCount);
@@ -110,7 +108,7 @@ public final class DriverUtil {
         final Future<?>[] threads = new Future[pageCount - 1];
         for (int page = 1; page < pageCount; ++page) {
             final int current = page;
-            threads[current - 1] = threadPool.submit(() -> {
+            threads[current - 1] = WListServer.IOExecutors.submit(() -> {
                 try {
                     final Pair.ImmutablePair<Long, List<I>> infos = fileSupplierInPage.apply(current);
                     assert infos.getFirst().longValue() == fileCount;
@@ -126,7 +124,7 @@ public final class DriverUtil {
                     if (calledFinisher.compareAndSet(false, true))
                         finisher.accept(exception);
                 }
-            }, threadPool);
+            });
         }
         final AtomicLong spareElement = new AtomicLong(fileCount);
         final AtomicInteger takingElement = new AtomicInteger(0);

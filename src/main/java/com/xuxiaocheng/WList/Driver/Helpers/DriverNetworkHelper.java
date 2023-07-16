@@ -38,9 +38,7 @@ public final class DriverNetworkHelper {
         super();
     }
 
-    private static final @NotNull HLog logger = HLog.createInstance("NetworkLogger",
-            WList.DebugMode ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1,
-            true, WList.InIdeaMode ? null : HMergedStream.getFileOutputStreamNoException(null));
+    private static final @NotNull HLog logger = HLog.createInstance("NetworkLogger", WList.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, true, HMergedStream.getFileOutputStreamNoException(null));
 
     @SuppressWarnings("SpellCheckingInspection")
     public static final @NotNull String defaultWebAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.37";
@@ -48,9 +46,8 @@ public final class DriverNetworkHelper {
     private static final @NotNull Dispatcher dispatcher = new Dispatcher(WListServer.IOExecutors);
     private static final @NotNull Interceptor NetworkLoggerInterceptor = chain -> {
         final Request request = chain.request();
-        if (WList.DebugMode)
-            DriverNetworkHelper.logger.log(HLogLevel.NETWORK, "Sending: ", request.method(), ' ', request.url(),
-                    request.header("Range") == null ? "" : (" (Range: " + request.header("Range") + ')'));
+        DriverNetworkHelper.logger.log(HLogLevel.NETWORK, "Sending: ", request.method(), ' ', request.url(),
+                request.header("Range") == null ? "" : (" (Range: " + request.header("Range") + ')'));
         final long time1 = System.currentTimeMillis();
         final Response response;
         try {
@@ -60,8 +57,7 @@ public final class DriverNetworkHelper {
             throw exception;
         } finally {
             final long time2 = System.currentTimeMillis();
-            if (WList.DebugMode)
-                DriverNetworkHelper.logger.log(HLogLevel.NETWORK, "Received. Totally cost time: ", time2 - time1, "ms.");
+            DriverNetworkHelper.logger.log(HLogLevel.NETWORK, "Received. Totally cost time: ", time2 - time1, "ms.");
         }
         return response;
     };

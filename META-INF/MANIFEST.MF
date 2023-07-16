@@ -1,0 +1,28 @@
+Manifest-Version: 1.0
+Main-Class: com.xuxiaocheng.WList.WList
+Class-Path: netty-resolver-dns-native-macos-4.1.90.Final-osx-x86_64.jar 
+ kotlin-stdlib-common-1.6.20.jar netty-codec-http2-4.1.90.Final.jar Head
+ Libs.main.jar annotations-24.0.1.jar fastjson2-2.0.25.jar netty-transpo
+ rt-native-epoll-4.1.90.Final-linux-x86_64.jar netty-codec-mqtt-4.1.90.F
+ inal.jar netty-transport-native-kqueue-4.1.90.Final-osx-aarch_64.jar ne
+ tty-handler-proxy-4.1.90.Final.jar kotlin-stdlib-jdk8-1.5.31.jar netty-
+ transport-udt-4.1.90.Final.jar okio-jvm-3.0.0.jar netty-codec-haproxy-4
+ .1.90.Final.jar snakeyaml-engine-2.6.jar java-jwt-4.3.0.jar netty-commo
+ n-4.1.90.Final.jar jackson-annotations-2.13.4.jar netty-codec-smtp-4.1.
+ 90.Final.jar netty-codec-stomp-4.1.90.Final.jar netty-handler-ssl-ocsp-
+ 4.1.90.Final.jar netty-transport-native-kqueue-4.1.90.Final-osx-x86_64.
+ jar netty-all-4.1.90.Final.jar netty-resolver-dns-classes-macos-4.1.90.
+ Final.jar kotlin-stdlib-1.6.20.jar netty-codec-memcache-4.1.90.Final.ja
+ r netty-transport-native-epoll-4.1.90.Final-linux-aarch_64.jar okhttp-4
+ .10.0.jar netty-transport-4.1.90.Final.jar netty-codec-http-4.1.90.Fina
+ l.jar netty-transport-classes-epoll-4.1.90.Final.jar netty-resolver-4.1
+ .90.Final.jar netty-codec-dns-4.1.90.Final.jar netty-buffer-4.1.90.Fina
+ l.jar netty-codec-socks-4.1.90.Final.jar kotlin-stdlib-jdk7-1.5.31.jar 
+ netty-handler-4.1.90.Final.jar netty-resolver-dns-4.1.90.Final.jar jack
+ son-core-2.13.4.jar netty-transport-rxtx-4.1.90.Final.jar netty-resolve
+ r-dns-native-macos-4.1.90.Final-osx-aarch_64.jar netty-codec-4.1.90.Fin
+ al.jar netty-transport-sctp-4.1.90.Final.jar netty-transport-native-uni
+ x-common-4.1.90.Final.jar jackson-databind-2.13.4.2.jar sqlite-jdbc-3.4
+ 1.0.0.jar netty-codec-xml-4.1.90.Final.jar netty-codec-redis-4.1.90.Fin
+ al.jar netty-transport-classes-kqueue-4.1.90.Final.jar
+

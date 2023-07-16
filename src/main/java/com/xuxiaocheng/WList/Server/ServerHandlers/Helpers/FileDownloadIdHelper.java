@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Server.ServerHandlers.Helpers;
 
+import com.xuxiaocheng.HeadLibs.AndroidSupport.ARandomHelper;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.WList.Databases.Constant.ConstantManager;
@@ -76,7 +77,7 @@ public final class FileDownloadIdHelper {
             final int mod = (int) (methods.total() % WListServer.FileTransferBufferSize);
             this.rest = mod == 0 ? WListServer.FileTransferBufferSize : mod;
             this.id = MiscellaneousUtil.randomKeyAndPut(FileDownloadIdHelper.buffers,
-                    () -> HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, ConstantManager.DefaultRandomChars), this);
+                    () -> ARandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, ConstantManager.DefaultRandomChars), this);
             this.appendExpireTime();
         }
 

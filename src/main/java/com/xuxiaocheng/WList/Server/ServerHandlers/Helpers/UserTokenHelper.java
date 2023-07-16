@@ -6,6 +6,7 @@ import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.Payload;
+import com.xuxiaocheng.HeadLibs.AndroidSupport.ARandomHelper;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.WList.Databases.Constant.ConstantManager;
@@ -25,7 +26,7 @@ public final class UserTokenHelper {
     }
 
     private static final @NotNull Algorithm sign = Algorithm.HMAC512(HExceptionWrapper.wrapSupplier(() -> ConstantManager.get("TokenHMAC",
-            () -> HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 128, ConstantManager.DefaultRandomChars), "initialize")).get());
+            () -> ARandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 128, ConstantManager.DefaultRandomChars), "initialize")).get());
     private static final JWTCreator.Builder builder = JWT.create().withIssuer("WList");
     private static final JWTVerifier verifier = JWT.require(UserTokenHelper.sign).withIssuer("WList").build();
 

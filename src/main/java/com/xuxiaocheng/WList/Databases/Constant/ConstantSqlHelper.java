@@ -9,32 +9,20 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
-@SuppressWarnings("ClassHasNoToStringMethod")
-final class ConstantSqlHelper {
-    private static @Nullable ConstantSqlHelper instance;
-
-    public static synchronized void initialize(final @NotNull DatabaseUtil database, final @Nullable String _connectionId) throws SQLException {
-        if (ConstantSqlHelper.instance != null)
-            throw new IllegalStateException("Constant sql helper is initialized. instance: " + ConstantSqlHelper.instance);
-        ConstantSqlHelper.instance = new ConstantSqlHelper(database ,_connectionId);
-    }
-
-    public static synchronized @NotNull ConstantSqlHelper getInstance() {
-        if (ConstantSqlHelper.instance == null)
-            throw new IllegalStateException("Constant sql helper is not initialized.");
-        return ConstantSqlHelper.instance;
-    }
-
+public final class ConstantSqlHelper implements ConstantSqlInterface {
     private final @NotNull DatabaseUtil database;
 
-    private ConstantSqlHelper(final @NotNull DatabaseUtil database, final @Nullable String _connectionId) throws SQLException {
+    public ConstantSqlHelper(final @NotNull DatabaseUtil database, final @Nullable String _connectionId) throws SQLException {
         super();
         this.database = database;
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        this.createTable(_connectionId);
+    }
+
+    @Override
+    public void createTable(final @Nullable String _connectionId) throws SQLException {
+        try (final Connection connection = this.database.getExplicitConnection("initialize")) {
             connection.setAutoCommit(false);
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate("""
@@ -50,9 +38,9 @@ final class ConstantSqlHelper {
         }
     }
 
+    @Override
     public @NotNull String get(final @NotNull String key, final @NotNull Supplier<@NotNull String> defaultValue, final @Nullable String _connectionId) throws SQLException {
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        try (final Connection connection = this.database.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement("""
                     SELECT value FROM constants WHERE key == ? LIMIT 1;
@@ -74,5 +62,12 @@ final class ConstantSqlHelper {
             connection.commit();
             return value;
         }
+    }
+
+    @Override
+    public @NotNull String toString() {
+        return "ConstantSqlHelper{" +
+                "database=" + this.database +
+                '}';
     }
 }

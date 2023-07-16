@@ -26,7 +26,6 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxConnection,
-                                  @NotNull String databasePath,
                                   long tokenExpireTime, long idIdleExpireTime,
                                   int maxLimitPerPage, int forwardDownloadCacheCount,
                                   boolean deleteDriver, long maxCacheSize,
@@ -53,8 +52,6 @@ public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxCo
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "port", BigInteger.ONE, BigInteger.valueOf(65535))).intValue(),
             YamlHelper.getConfig(config, "max_connection", "128",
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "max_connection", BigInteger.ONE, BigInteger.valueOf(Integer.MAX_VALUE) /*100*/)).intValue(),
-            YamlHelper.getConfig(config, "database_path", "data.db",
-                o -> YamlHelper.transferString(o, errors, "database_path")),
             YamlHelper.getConfig(config, "token_expire_time", "259200",
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "token_expire_time", BigInteger.ONE, BigInteger.valueOf(Long.MAX_VALUE))).longValue(),
             YamlHelper.getConfig(config, "id_idle_expire_time", "1800",
@@ -90,7 +87,6 @@ public record GlobalConfiguration(boolean dumpConfiguration, int port, int maxCo
             config.put("dumpConfiguration", true);
             config.put("port", GlobalConfiguration.instance.port);
             config.put("max_connection", GlobalConfiguration.instance.maxConnection);
-            config.put("database_path", GlobalConfiguration.instance.databasePath);
             config.put("token_expire_time", GlobalConfiguration.instance.tokenExpireTime);
             config.put("id_idle_expire_time", GlobalConfiguration.instance.idIdleExpireTime);
             config.put("max_limit_per_page", GlobalConfiguration.instance.maxLimitPerPage);

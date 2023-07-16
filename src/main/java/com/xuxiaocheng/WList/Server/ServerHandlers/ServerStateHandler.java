@@ -34,7 +34,7 @@ public final class ServerStateHandler {
     }
 
     private static final @NotNull ServerHandler doUndefined = (channel, buffer) -> {
-        ServerHandler.logOperation(channel.id(), Operation.Type.Undefined, null, HExceptionWrapper.wrapSupplier(() -> ParametersMap.<String, Object>create()
+        ServerHandler.logOperation(channel.id(), Operation.Type.Undefined, null, HExceptionWrapper.wrapSupplier(() -> ParametersMap.create()
                 .add("type", ByteBufIOUtil.readUTF(buffer.resetReaderIndex()))));
         return ServerHandler.composeMessage(Operation.State.Unsupported, "Undefined operation!");
     };
@@ -50,7 +50,7 @@ public final class ServerStateHandler {
 
     private static final @NotNull ServerHandler doBroadcast = (channel, buffer) -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.Broadcast);
-        ServerHandler.logOperation(channel.id(), Operation.Type.Broadcast, user, () -> ParametersMap.<String, Object>create()
+        ServerHandler.logOperation(channel.id(), Operation.Type.Broadcast, user, () -> ParametersMap.create()
                 .add("len", buffer.readableBytes()));
         if (user.isFailure())
             return user.getE();

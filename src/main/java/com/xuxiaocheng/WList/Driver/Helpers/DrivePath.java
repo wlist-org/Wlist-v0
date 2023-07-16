@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Driver.Helpers;
 
+import io.netty.util.internal.PlatformDependent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -11,6 +12,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class DrivePath implements Iterable<String> {
@@ -18,8 +20,9 @@ public class DrivePath implements Iterable<String> {
     protected static @NotNull @UnmodifiableView List<@NotNull String> split(final @Nullable String path) {
         if (path == null)
             return List.of();
-        return Stream.of(DrivePath.Separator.split(path.replace('\n', '\t')))
-                .filter(Predicate.not(String::isEmpty)).toList();
+        final Stream<String> stream = Stream.of(DrivePath.Separator.split(path.replace('\n', '\t')))
+                .filter(Predicate.not(String::isEmpty));
+        return PlatformDependent.isAndroid() ? stream.collect(Collectors.toList()) : stream.toList();
     }
 
     protected final @NotNull List<String> path;

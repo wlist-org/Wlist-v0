@@ -12,16 +12,16 @@ import org.jetbrains.annotations.Nullable;
 import java.util.function.Supplier;
 
 public enum WebDriversType {
-    _123Pan("123pan", Driver_123Pan::new, Trash_123pan::new, DriverConfiguration_123Pan.class),
+    Driver_123Pan("123pan", Driver_123Pan::new, Trash_123pan::new, DriverConfiguration_123Pan.class),
     ;
     // TODO
-    private final @NotNull String identify;
+    private final @NotNull String identifier;
     private final @NotNull Supplier<@NotNull DriverInterface<?>> driver;
     private final @Nullable Supplier<@NotNull DriverTrashInterface<?>> trash;
     private final @NotNull Class<? extends DriverConfiguration<?, ?, ?>> configurationClass;
 
-    WebDriversType(final @NotNull String identify, final @NotNull Supplier<@NotNull DriverInterface<?>> driver, final @Nullable Supplier<@NotNull DriverTrashInterface<?>> trash, final @NotNull Class<? extends DriverConfiguration<?, ?, ?>> configurationClass) {
-        this.identify = identify;
+    WebDriversType(final @NotNull String identifier, final @NotNull Supplier<@NotNull DriverInterface<?>> driver, final @Nullable Supplier<@NotNull DriverTrashInterface<?>> trash, final @NotNull Class<? extends DriverConfiguration<?, ?, ?>> configurationClass) {
+        this.identifier = identifier;
         this.driver = driver;
         this.trash = trash;
         this.configurationClass = configurationClass;

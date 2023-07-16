@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Server.ServerCodecs;
 
+import com.xuxiaocheng.HeadLibs.AndroidSupport.AIOStream;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -7,6 +8,7 @@ import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageCodec;
+import io.netty.util.internal.PlatformDependent;
 import org.jetbrains.annotations.NotNull;
 
 import javax.crypto.Cipher;
@@ -65,7 +67,10 @@ public abstract class MessageCiphers extends MessageToMessageCodec<ByteBuf, Byte
         if (gzip)
             os = new GZIPOutputStream(os);
         try (final InputStream inputStream = is; final OutputStream outputStream = os) {
-            inputStream.transferTo(outputStream);
+            if (PlatformDependent.isAndroid())
+                AIOStream.transferTo(inputStream, outputStream);
+            else
+                inputStream.transferTo(outputStream);
         }
         out.add(buf);
     }
@@ -93,7 +98,10 @@ public abstract class MessageCiphers extends MessageToMessageCodec<ByteBuf, Byte
         if (aes)
             os = new CipherOutputStream(os, this.aesDecryptCipher);
         try (final InputStream inputStream = is; final OutputStream outputStream = os) {
-            inputStream.transferTo(outputStream);
+            if (PlatformDependent.isAndroid())
+                AIOStream.transferTo(inputStream, outputStream);
+            else
+                inputStream.transferTo(outputStream);
         }
         out.add(buf);
     }

@@ -7,7 +7,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.EnumSet;
-import java.util.Objects;
 
 public record UserGroupSqlInformation(long id, @NotNull String name, @NotNull EnumSet<Operation.Permission> permissions) {
     public record Inserter(@NotNull String name, @NotNull EnumSet<Operation.Permission> permissions) {
@@ -27,8 +26,7 @@ public record UserGroupSqlInformation(long id, @NotNull String name, @NotNull En
     public static @NotNull VisibleUserGroupInformation parseVisible(final @NotNull ByteBuf buffer) throws IOException {
         final long id = ByteBufIOUtil.readVariableLenLong(buffer);
         final String name = ByteBufIOUtil.readUTF(buffer);
-        final EnumSet<Operation.Permission> permissions = Objects.requireNonNullElseGet(
-                Operation.parsePermissions(ByteBufIOUtil.readUTF(buffer)), Operation::emptyPermissions);
+        final EnumSet<Operation.Permission> permissions = Operation.parsePermissionsNotNull(ByteBufIOUtil.readUTF(buffer));
         return new VisibleUserGroupInformation(id, name, permissions);
     }
 }

@@ -1,5 +1,7 @@
 package com.xuxiaocheng.WList.Databases.User;
 
+import com.xuxiaocheng.HeadLibs.AndroidSupport.ARandomHelper;
+import com.xuxiaocheng.HeadLibs.DataStructures.HInitializer;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -29,37 +31,27 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
-@SuppressWarnings("ClassHasNoToStringMethod")
-final class UserSqlHelper {
-    private static @Nullable UserSqlHelper instance;
-
-    public static synchronized void initialize(final @NotNull DatabaseUtil database, final @Nullable String _connectionId) throws SQLException {
-        if (UserSqlHelper.instance != null)
-            throw new IllegalStateException("User sql helper is initialized. instance: " + UserSqlHelper.instance);
-        UserSqlHelper.instance = new UserSqlHelper(database, _connectionId);
-    }
-
-    public static synchronized @NotNull UserSqlHelper getInstance() {
-        if (UserSqlHelper.instance == null)
-            throw new IllegalStateException("User sql helper is not initialized.");
-        return UserSqlHelper.instance;
-    }
-
+public final class UserSqlHelper implements UserSqlInterface {
     private final @NotNull DatabaseUtil database;
     private final long adminId;
-    private final long defaultId;
+    private final @NotNull HInitializer<String> defaultAdminPassword = new HInitializer<>("DefaultAdminUserPassword");
 
-    private UserSqlHelper(final @NotNull DatabaseUtil database, final @Nullable String _connectionId) throws SQLException {
+    public UserSqlHelper(final @NotNull DatabaseUtil database, final @Nullable String _connectionId) throws SQLException {
         super();
         this.database = database;
+        this.adminId = this.createTable(_connectionId);
+    }
+
+    @Override
+    public @NotNull Connection getConnection(@Nullable final String _connectionId, final @Nullable AtomicReference<? super String> connectionId) throws SQLException {
+        return this.database.getConnection(_connectionId, connectionId);
+    }
+
+    @Override
+    public long createTable(@Nullable final String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
-            final Map<String, UserGroupSqlInformation> map = UserGroupManager.selectGroupsByName(List.of(UserManager.ADMIN, UserManager.DEFAULT), connectionId.get());
-            if (!map.containsKey(UserManager.ADMIN) || !map.containsKey(UserManager.DEFAULT))
-                throw new SQLException("Missing 'admin' or 'default' user group.");
-            this.adminId = map.get(UserManager.ADMIN).id();
-            this.defaultId = map.get(UserManager.DEFAULT).id();
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate(String.format("""
                     CREATE TABLE IF NOT EXISTS users (
@@ -74,63 +66,70 @@ final class UserSqlHelper {
                                                REFERENCES groups (group_id),
                         modify_time TEXT       NOT NULL
                     );
-                """, this.defaultId));
+                """, UserGroupManager.getDefaultId()));
             }
-            final boolean noAdmin;
+            Long adminId;
             try (final PreparedStatement statement = connection.prepareStatement("""
-                        SELECT 1 FROM users WHERE group_id == ? LIMIT 1;
+                        SELECT id FROM users WHERE group_id == ? LIMIT 1;
                 """)) {
-                statement.setLong(1, this.adminId);
+                statement.setLong(1, UserGroupManager.getAdminId());
                 try (final ResultSet admins = statement.executeQuery()) {
-                    noAdmin = !admins.next();
+                    adminId = admins.next() ? admins.getLong("id") : null;
                 }
-            }
-            if (noAdmin) {
-                final String password = UserSqlHelper.generateRandomPassword();
-                try (final PreparedStatement statement = connection.prepareStatement("""
+                if (adminId == null) {
+                    final String password = UserSqlHelper.generateRandomPassword();
+                    try (final PreparedStatement insertStatement = connection.prepareStatement("""
                         INSERT INTO users (username, password, group_id, modify_time)
                             VALUES (?, ?, ?, ?)
                         ON CONFLICT (username) DO UPDATE SET
                             id = excluded.id, password = excluded.password,
                             group_id = excluded.group_id, modify_time = excluded.modify_time;
                         """)) {
-                    statement.setString(1, UserManager.ADMIN);
-                    statement.setString(2, PasswordGuard.encryptPassword(password));
-                    statement.setLong(3, this.adminId);
-                    statement.setString(4, UserSqlHelper.getModifyTime());
-                    statement.executeUpdate();
+                        insertStatement.setString(1, UserManager.ADMIN);
+                        insertStatement.setString(2, PasswordGuard.encryptPassword(password));
+                        insertStatement.setLong(3, UserGroupManager.getAdminId());
+                        insertStatement.setString(4, LocalDateTime.now().format(UserSqlHelper.DefaultFormatter));
+                        insertStatement.executeUpdate();
+                        statement.setLong(1, UserGroupManager.getAdminId());
+                        try (final ResultSet admins = statement.executeQuery()) {
+                            admins.next();
+                            adminId = admins.getLong("group_id");
+                        }
+                    }
+                    HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Reset admin user. password: ", password);
+                    this.defaultAdminPassword.initialize(password);
                 }
-                HLog.getInstance("DefaultLogger").log(HLogLevel.WARN, "Reset admin user. password: ", password);
-                // Force log. Ensure password is recorded in the log file.
-                HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Reset admin password: ", password);
             }
             connection.commit();
+            return adminId.longValue();
         }
     }
 
+    @Override
+    public long getAdminId() {
+        return this.adminId;
+    }
+
+    @Override
+    public @NotNull HInitializer<String> getDefaultAdminPassword() {
+        return this.defaultAdminPassword;
+    }
 
     private static final @NotNull DateTimeFormatter DefaultFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     private static @NotNull String generateRandomPassword() {
         //noinspection SpellCheckingInspection
-        return HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 8, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_");
-    }
-
-    private static @NotNull String getModifyTime() {
-        return LocalDateTime.now().format(UserSqlHelper.DefaultFormatter);
+        return ARandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 8, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_");
     }
 
     private static @NotNull UserGroupSqlInformation getUserGroupInformation(final @NotNull ResultSet result) throws SQLException {
-        return new UserGroupSqlInformation(result.getLong("group_id"),
-                result.getString("name"),
-                Objects.requireNonNullElseGet(Operation.parsePermissions(result.getString("permissions")),
-                        Operation::emptyPermissions));
+        return new UserGroupSqlInformation(result.getLong("group_id"), result.getString("name"),
+                Operation.parsePermissionsNotNull(result.getString("permissions")));
     }
 
     private static @Nullable UserSqlInformation createNextUserInfo(final @NotNull ResultSet result) throws SQLException {
-        return result.next() ? new UserSqlInformation(result.getLong("id"),
-                result.getString("username"), result.getString("password"),
-                UserSqlHelper.getUserGroupInformation(result),
+        return result.next() ? new UserSqlInformation(result.getLong("id"), result.getString("username"),
+                result.getString("password"), UserSqlHelper.getUserGroupInformation(result),
                 LocalDateTime.parse(result.getString("modify_time"), UserSqlHelper.DefaultFormatter)) : null;
     }
 
@@ -145,20 +144,11 @@ final class UserSqlHelper {
         return Collections.unmodifiableList(list);
     }
 
-    long getAdminId() {
-        return this.adminId;
-    }
-
-    long getDefaultId() {
-        return this.defaultId;
-    }
-
-
+    @Override
     public @NotNull @UnmodifiableView Map<UserSqlInformation.@NotNull Inserter, @NotNull Boolean> insertUsers(final @NotNull Collection<UserSqlInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException {
         if (inserters.isEmpty())
             return Map.of();
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             final Map<UserSqlInformation.Inserter, Boolean> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement("""
@@ -169,7 +159,7 @@ final class UserSqlHelper {
                     statement.setString(1, inserter.username());
                     statement.setString(2, PasswordGuard.encryptPassword(inserter.password()));
                     statement.setLong(3, inserter.groupId());
-                    statement.setString(4, UserSqlHelper.getModifyTime());
+                    statement.setString(4, LocalDateTime.now().format(UserSqlHelper.DefaultFormatter));
                     map.put(inserter, statement.executeUpdate() > 0);
                 }
             }
@@ -178,11 +168,11 @@ final class UserSqlHelper {
         }
     }
 
+    @Override
     public void updateUsers(final @NotNull Collection<UserSqlInformation.@NotNull Updater> updaters, final @Nullable String _connectionId) throws SQLException {
         if (updaters.isEmpty())
             return;
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement("""
                     UPDATE users SET username = ?, password = ?, group_id = ?, modify_time = ? WHERE id == ?;
@@ -200,11 +190,11 @@ final class UserSqlHelper {
         }
     }
 
+    @Override
     public void updateUsersByName(final @NotNull Collection<UserSqlInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException {
         if (inserters.isEmpty())
             return;
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement("""
                     UPDATE users SET password = ?, group_id = ?, modify_time = ? WHERE username == ?;
@@ -212,7 +202,7 @@ final class UserSqlHelper {
                 for (final UserSqlInformation.Inserter inserter: inserters) {
                     statement.setString(1, PasswordGuard.encryptPassword(inserter.password()));
                     statement.setLong(2, inserter.groupId());
-                    statement.setString(3, UserSqlHelper.getModifyTime());
+                    statement.setString(3, LocalDateTime.now().format(UserSqlHelper.DefaultFormatter));
                     statement.setString(4, inserter.username());
                     statement.executeUpdate();
                 }
@@ -221,11 +211,11 @@ final class UserSqlHelper {
         }
     }
 
+    @Override
     public void deleteUsers(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
         if (idList.isEmpty())
             return;
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement("""
                     DELETE FROM users WHERE id == ?;
@@ -239,11 +229,11 @@ final class UserSqlHelper {
         }
     }
 
+    @Override
     public void deleteUsersByName(final @NotNull Collection<@NotNull String> usernameList, final @Nullable String _connectionId) throws SQLException {
         if (usernameList.isEmpty())
             return;
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement("""
                     DELETE FROM users WHERE username == ?;
@@ -257,11 +247,11 @@ final class UserSqlHelper {
         }
     }
 
+    @Override
     public @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull UserSqlInformation> selectUsers(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
         if (idList.isEmpty())
             return Map.of();
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             final Map<Long, UserSqlInformation> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement("""
@@ -280,11 +270,11 @@ final class UserSqlHelper {
         }
     }
 
+    @Override
     public @NotNull @UnmodifiableView Map<@NotNull String, @NotNull UserSqlInformation> selectUsersByName(final @NotNull Collection<@NotNull String> usernameList, final @Nullable String _connectionId) throws SQLException {
         if (usernameList.isEmpty())
             return Map.of();
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             final Map<String, UserSqlInformation> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement("""
@@ -303,11 +293,11 @@ final class UserSqlHelper {
         }
     }
 
+    @Override
     public @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull Long> selectUsersCountByGroup(final @NotNull Collection<@NotNull Long> groupIdList, final @Nullable String _connectionId) throws SQLException {
         if (groupIdList.isEmpty())
             return Map.of();
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             final Map<Long, Long> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement("""
@@ -325,9 +315,9 @@ final class UserSqlHelper {
         }
     }
 
+    @Override
     public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull UserSqlInformation>> selectAllUsersInPage(final int limit, final long offset, final Options.@NotNull OrderDirection direction, final @Nullable String _connectionId) throws SQLException {
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             final long count;
             try (final Statement statement = connection.createStatement()) {
@@ -352,11 +342,11 @@ final class UserSqlHelper {
         }
     }
 
+    @Override
     public @NotNull @UnmodifiableView List<@Nullable UserSqlInformation> searchUsersByNameLimited(final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
         if (limit <= 0)
             return List.of();
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             final List<UserSqlInformation> list;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
@@ -372,5 +362,14 @@ final class UserSqlHelper {
             }
             return list;
         }
+    }
+
+    @Override
+    public @NotNull String toString() {
+        return "UserSqlHelper{" +
+                "database=" + this.database +
+                ", adminId=" + this.adminId +
+                ", defaultAdminPassword=" + this.defaultAdminPassword +
+                '}';
     }
 }
