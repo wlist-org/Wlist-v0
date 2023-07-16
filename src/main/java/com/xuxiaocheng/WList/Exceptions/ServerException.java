@@ -8,6 +8,7 @@ public class ServerException extends Exception {
     @Serial
     private static final long serialVersionUID = -3159589575455894339L;
 
+    @Deprecated
     public ServerException() {
         super();
     }

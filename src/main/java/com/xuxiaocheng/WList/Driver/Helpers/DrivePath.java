@@ -15,6 +15,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+@Deprecated
 public class DrivePath implements Iterable<String> {
     protected static final Pattern Separator = Pattern.compile("[\\\\/]");
     protected static @NotNull @UnmodifiableView List<@NotNull String> split(final @Nullable String path) {

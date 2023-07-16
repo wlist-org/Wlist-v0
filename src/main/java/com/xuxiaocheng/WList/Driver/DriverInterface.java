@@ -6,7 +6,6 @@ import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
-import com.xuxiaocheng.WList.Databases.File.FileLocation;
 import com.xuxiaocheng.WList.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInterface;

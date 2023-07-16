@@ -1,6 +1,7 @@
-package com.xuxiaocheng.WList.Databases.File;
+package com.xuxiaocheng.WList.Databases.TrashedFile;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Utils.DatabaseUtil;
 import org.jetbrains.annotations.Contract;

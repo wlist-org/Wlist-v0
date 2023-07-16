@@ -3,7 +3,6 @@ package com.xuxiaocheng.WList.Databases.File;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializer.HMultiInitializers;
-import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Driver.Options;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -114,15 +113,5 @@ public final class FileManager {
 
     public static void deleteFileByMd5Recursively(final @NotNull String driverName, final @NotNull String md5, final @Nullable String _connectionId) throws SQLException {
         FileManager.deleteFilesByMd5Recursively(driverName, List.of(md5), _connectionId);
-    }
-
-    @Deprecated
-    public static @NotNull @UnmodifiableView List<@Nullable FileSqlInformation> searchFilesByNameInParentPathLimited(final @NotNull String driverName, final @NotNull DrivePath parentPath, final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
-        return FileManager.sqlInstances.getInstance(driverName).searchFilesByNameInParentPathLimited(parentPath, rule, caseSensitive, limit, _connectionId);
-    }
-
-    @Deprecated
-    public static @NotNull @UnmodifiableView List<@Nullable FileSqlInformation> searchFilesByNameInParentPathRecursivelyLimited(final @NotNull String driverName, final @NotNull DrivePath parentPath, final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
-        return FileManager.sqlInstances.getInstance(driverName).searchFilesByNameInParentPathRecursivelyLimited(parentPath, rule, caseSensitive, limit, _connectionId);
     }
 }

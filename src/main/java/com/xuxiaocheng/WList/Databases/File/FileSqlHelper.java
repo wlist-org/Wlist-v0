@@ -1,7 +1,7 @@
 package com.xuxiaocheng.WList.Databases.File;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
+import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Utils.DatabaseUtil;
 import io.netty.util.internal.PlatformDependent;
@@ -385,50 +385,6 @@ public final class FileSqlHelper implements FileSqlInterface {
                     .filter(Objects::nonNull).flatMap(Set::stream).map(FileSqlInformation::id);
             this.deleteFilesRecursively(PlatformDependent.isAndroid() ? stream.collect(Collectors.toList()) : stream.toList(), connectionId.get());
             connection.commit();
-        }
-    }
-
-    @Override
-    public @NotNull @UnmodifiableView List<@Nullable FileSqlInformation> searchFilesByNameInParentPathLimited(final @NotNull DrivePath parentPath, final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
-        if (limit <= 0)
-            return List.of();
-        try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
-            final List<FileSqlInformation> set;
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM %s WHERE parent_path == ? AND name %s ? ORDER BY abs(length(name) - ?) ASC, id DESC LIMIT ?;
-                """, this.tableName, caseSensitive ? "GLOB" : "LIKE"))) {
-                statement.setString(1, parentPath.getPath());
-                statement.setString(2, rule);
-                statement.setInt(3, rule.length());
-                statement.setInt(4, limit);
-                try (final ResultSet result = statement.executeQuery()) {
-                    set = FileSqlHelper.createFilesInfoInOrder(this.driverName, result);
-                }
-            }
-            return set;
-        }
-    }
-
-    @Override
-    public @NotNull @UnmodifiableView List<@Nullable FileSqlInformation> searchFilesByNameInParentPathRecursivelyLimited(final @NotNull DrivePath parentPath, final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
-        if (limit <= 0)
-            return List.of();
-        try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
-            final List<FileSqlInformation> list;
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM %s WHERE parent_path GLOB ? AND name %s ? ORDER BY abs(length(name) - ?) ASC, id DESC LIMIT ?;
-                """, this.tableName, caseSensitive ? "GLOB" : "LIKE"))) {
-                statement.setString(1, parentPath.getPath() + "/*");
-                statement.setString(2, rule);
-                statement.setInt(3, rule.length());
-                statement.setInt(4, limit);
-                try (final ResultSet result = statement.executeQuery()) {
-                    list = FileSqlHelper.createFilesInfoInOrder(this.driverName, result);
-                }
-            }
-            return list;
         }
     }
 

@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Databases.File;
+package com.xuxiaocheng.WList.Databases.TrashedFile;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Initializer.HMultiInitializers;

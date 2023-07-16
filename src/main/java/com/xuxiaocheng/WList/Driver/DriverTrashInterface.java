@@ -4,7 +4,7 @@ import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
-import com.xuxiaocheng.WList.Databases.File.TrashedSqlInformation;
+import com.xuxiaocheng.WList.Databases.TrashedFile.TrashedSqlInformation;
 import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;

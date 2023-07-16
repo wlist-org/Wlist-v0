@@ -9,6 +9,7 @@ public class DriverTokenExpiredException extends IOException {
     @Serial
     private static final long serialVersionUID = 6342302125979689210L;
 
+    @Deprecated
     public DriverTokenExpiredException() {
         super();
     }
@@ -17,6 +18,7 @@ public class DriverTokenExpiredException extends IOException {
         super(message);
     }
 
+    @Deprecated
     public DriverTokenExpiredException(final @NotNull Throwable cause) {
         super(cause);
     }

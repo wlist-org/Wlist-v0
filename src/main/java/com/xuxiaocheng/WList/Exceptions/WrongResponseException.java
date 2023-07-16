@@ -15,22 +15,22 @@ public class WrongResponseException extends NetworkException {
     private final @NotNull LocalDateTime time = LocalDateTime.now();
 
     public WrongResponseException(final int code, final @Nullable String message, final @Nullable ParametersMap parameters) {
-        super("Code: " + code + " Message: " + message);
+        super("[" + code + "] " + message + parameters);
         this.parameters = parameters == null ? "" : parameters.toString();
     }
 
     public WrongResponseException(final @NotNull String message, final @Nullable Object response, final @Nullable ParametersMap parameters) {
-        super(message + " Response: " + response);
+        super(message + parameters + " Response: " + response);
         this.parameters = parameters == null ? "" : parameters.toString();
     }
 
     public WrongResponseException(final @NotNull String message, final @Nullable ParametersMap parameters, final @NotNull Throwable cause) {
-        super(message, cause);
+        super(message + parameters, cause);
         this.parameters = parameters == null ? "" : parameters.toString();
     }
 
     public WrongResponseException(final @NotNull String message, final @Nullable Object response, final @Nullable ParametersMap parameters, final @NotNull Throwable cause) {
-        super(message + " Response: " + response, cause);
+        super(message + parameters + " Response: " + response, cause);
         this.parameters = parameters == null ? "" : parameters.toString();
     }
 
