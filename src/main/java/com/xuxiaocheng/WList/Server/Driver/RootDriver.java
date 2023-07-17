@@ -20,6 +20,7 @@ import org.jetbrains.annotations.UnmodifiableView;
 
 import java.util.List;
 
+@SuppressWarnings("OverlyBroadThrowsClause")
 public final class RootDriver implements DriverInterface<RootDriver.RootDriverConfiguration> {
     private static final RootDriver instance = new RootDriver();
     public static RootDriver getInstance() {
@@ -28,7 +29,7 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
 
     public static @NotNull FileSqlInformation getDriverInformation(final @NotNull DriverConfiguration<?, ?, ?> configuration) {
         // TODO create and modified time.
-        return new FileSqlInformation(new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), configuration.getName().hashCode()),
+        return new FileSqlInformation(new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), 0),
                 0, configuration.getName(), FileSqlInterface.FileSqlType.Directory, 0, null, null, "", null);
     }
 
@@ -41,7 +42,6 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
 
     @Override
     public void initialize(final @NotNull RootDriverConfiguration configuration) {
-        // TODO get root user config.
         this.configuration = configuration;
     }
 
@@ -80,8 +80,10 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
     @Override
     public void forceRefreshDirectory(final @NotNull FileLocation location) throws Exception {
         final DriverInterface<?> driver = DriverManager.getDriver(location.driver());
-        if (driver != null)
+        if (driver != null) {
             driver.forceRefreshDirectory(location);
+            DriverManager.dumpConfigurationIfModified(driver.getConfiguration());
+        }
     }
 
     @Override
@@ -95,65 +97,63 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
             return null;
         }
         final DriverInterface<?> real = DriverManager.getDriver(location.driver());
-        if (real == null)
-            return null;
-        return real.list(location, limit, page, policy, direction);
+        if (real == null) return null;
+        final Pair.ImmutablePair<Long, List<FileSqlInformation>> list = real.list(location, limit, page, policy, direction);
+        DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+        return list;
     }
 
     @Override
     public @Nullable FileSqlInformation info(final @NotNull FileLocation location) throws Exception {
-        if (SpecialDriverName.RootDriver.getIdentifier().equals(location.driver())) {
-            throw new UnsupportedOperationException("Invalid request information. Should use FileLocation(DriverName, 0L)");
-//            final String driverName = DriverManager.getNameById(location.id());
-//            if (driverName == null) return null;
-//            final DriverInterface<?> driver = DriverManager.getDriver(driverName);
-//            if (driver == null) return null;
-//            return RootDriver.getDriverInformation(driver.getConfiguration());
-        }
+        if (SpecialDriverName.RootDriver.getIdentifier().equals(location.driver()))
+            throw new UnsupportedOperationException("Cannot get root info.");
         final DriverInterface<?> real = DriverManager.getDriver(location.driver());
-        if (real == null)
-            return null;
-        return real.info(location);
+        if (real == null) return null;
+        final FileSqlInformation info = real.info(location);
+        DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+        return info;
     }
 
     @Override
     public @NotNull UnionPair<@NotNull DownloadMethods, @NotNull FailureReason> download(final @NotNull FileLocation location, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws Exception {
-        if (SpecialDriverName.RootDriver.getIdentifier().equals(location.driver()))
-            return UnionPair.fail(FailureReason.byNoSuchFile("Downloading.", location));
         final DriverInterface<?> real = DriverManager.getDriver(location.driver());
-        if (real == null)
-            return UnionPair.fail(FailureReason.byNoSuchFile("Downloading.", location));
-        return real.download(location, from, to);
+        if (real == null) return UnionPair.fail(FailureReason.byNoSuchFile("Downloading.", location));
+        final UnionPair<DownloadMethods, FailureReason> methods = real.download(location, from, to);
+        DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+        return methods;
     }
 
     @Override
-    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> mkdir(final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> createDirectory(final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+        if (SpecialDriverName.RootDriver.getIdentifier().equals(parentLocation.driver()))
+            throw new UnsupportedOperationException("Cannot create root directory.");
         final DriverInterface<?> real = DriverManager.getDriver(parentLocation.driver());
-        if (real == null)
-            return UnionPair.fail(FailureReason.byNoSuchFile("Creating directories.", parentLocation));
-        return real.mkdir(parentLocation, directoryName, policy);
+        if (real == null) return UnionPair.fail(FailureReason.byNoSuchFile("Creating directories.", parentLocation));
+        final UnionPair<FileSqlInformation, FailureReason> directory = real.createDirectory(parentLocation, directoryName, policy);
+        DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+        return directory;
     }
 
     @Override
     public @NotNull UnionPair<@NotNull UploadMethods, @NotNull FailureReason> upload(final @NotNull FileLocation parentLocation, final @NotNull String filename, final @LongRange(minimum = 0) long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+        if (SpecialDriverName.RootDriver.getIdentifier().equals(parentLocation.driver()))
+            throw new UnsupportedOperationException("Cannot create root file.");
         final DriverInterface<?> real = DriverManager.getDriver(parentLocation.driver());
-        if (real == null)
-            return UnionPair.fail(FailureReason.byNoSuchFile("Uploading.", parentLocation));
-//      TODO  HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Uploaded a file. information: ", f);
-        return real.upload(parentLocation, filename, size, md5, policy);
+        if (real == null) return UnionPair.fail(FailureReason.byNoSuchFile("Uploading.", parentLocation));
+        final UnionPair<UploadMethods, FailureReason> methods = real.upload(parentLocation, filename, size, md5, policy);
+        DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+        return methods;
     }
 
     @SuppressWarnings("OverlyBroadThrowsClause")
     @Override
     public void delete(final @NotNull FileLocation location) throws Exception {
-        if (SpecialDriverName.RootDriver.getIdentifier().equals(location.driver())) {
-            DriverManager.removeDriver(location.driver());
-            return;
-        }
+        if (SpecialDriverName.RootDriver.getIdentifier().equals(location.driver()))
+            throw new UnsupportedOperationException("Cannot delete root driver.");
         final DriverInterface<?> real = DriverManager.getDriver(location.driver());
-        if (real == null)
-            return;
+        if (real == null) return;
         real.delete(location);
+        DriverManager.dumpConfigurationIfModified(real.getConfiguration());
     }
 
     public static class RootDriverConfiguration extends DriverConfiguration<RootDriverConfiguration.LocalSide, RootDriverConfiguration.WebSide, RootDriverConfiguration.CacheSide> {
@@ -166,7 +166,7 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
     }
 
     @Override
-    public @NotNull  String toString() {
+    public @NotNull String toString() {
         return "RootDriver{" +
                 "configuration=" + this.configuration +
                 '}';

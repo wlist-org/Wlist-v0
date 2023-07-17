@@ -3,8 +3,8 @@ package com.xuxiaocheng.WList.Databases.File;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Driver.Options;
+import com.xuxiaocheng.WList.Utils.AndroidSupport;
 import com.xuxiaocheng.WList.Utils.DatabaseUtil;
-import io.netty.util.internal.PlatformDependent;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -29,8 +29,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public final class FileSqlHelper implements FileSqlInterface {
     @Contract(pure = true) private static @NotNull String getTableName(final @NotNull String name) {
@@ -380,9 +378,8 @@ public final class FileSqlHelper implements FileSqlInterface {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
-            final Stream<Long> stream = this.selectFilesByMd5(md5List, connectionId.get()).values().stream()
-                    .filter(Objects::nonNull).flatMap(Set::stream).map(FileSqlInformation::id);
-            this.deleteFilesRecursively(PlatformDependent.isAndroid() ? stream.collect(Collectors.toList()) : stream.toList(), connectionId.get());
+            this.deleteFilesRecursively(AndroidSupport.streamToList(this.selectFilesByMd5(md5List, connectionId.get()).values().stream()
+                    .filter(Objects::nonNull).flatMap(Set::stream).map(FileSqlInformation::id)), connectionId.get());
             connection.commit();
         }
     }

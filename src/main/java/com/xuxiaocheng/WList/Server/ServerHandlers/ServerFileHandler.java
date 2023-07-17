@@ -111,7 +111,7 @@ public final class ServerFileHandler {
             return ServerHandler.NoPermission;
         final UnionPair<FileSqlInformation, FailureReason> dir;
         try {
-            dir = RootDriver.getInstance().mkdir(parentLocation, directoryName, duplicatePolicy);
+            dir = RootDriver.getInstance().createDirectory(parentLocation, directoryName, duplicatePolicy);
         } catch (final UnsupportedOperationException exception) {
             return ServerHandler.Unsupported.apply(exception);
         } catch (final Exception exception) {

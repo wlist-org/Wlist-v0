@@ -111,7 +111,6 @@ public final class WList {
                 WListServer.getInstance().awaitStop();
             } finally {
                 WList.setMainStageAPI(2);
-                // TODO Save in time.
                 logger.log(HLogLevel.INFO, "Saving driver configurations in multithreading...");
                 for (final DriverInterface<?> driver: DriverManager.getAllDrivers())
                     WListServer.ServerExecutors.submit(HExceptionWrapper.wrapRunnable(() -> DriverManager.dumpConfigurationIfModified(driver.getConfiguration())));

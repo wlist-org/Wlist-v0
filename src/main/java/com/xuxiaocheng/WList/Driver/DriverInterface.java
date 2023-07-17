@@ -109,7 +109,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @see com.xuxiaocheng.WList.Driver.Helpers.DriverUtil#getRetryWrapper(String)
      * @throws Exception Something went wrong.
      */
-    @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> mkdir(final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws Exception;
+    @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> createDirectory(final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws Exception;
 
     /**
      * Upload file.

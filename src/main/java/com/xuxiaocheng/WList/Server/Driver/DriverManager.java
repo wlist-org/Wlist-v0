@@ -10,6 +10,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Driver.DriverConfiguration;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.DriverTrashInterface;
+import com.xuxiaocheng.WList.Driver.SpecialDriverName;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.WListServer;
@@ -92,6 +93,9 @@ public final class DriverManager {
 
     @SuppressWarnings("unchecked")
     private static <C extends DriverConfiguration<?, ?, ?>> void initializeDriver0(final @NotNull String name, final @NotNull WebDriversType type) throws IOException, IllegalParametersException {
+        for (final SpecialDriverName specialDriverName: SpecialDriverName.values())
+            if (specialDriverName.getIdentifier().equals(name))
+                throw new IllegalParametersException("Invalid name.", ParametersMap.create().add("name", name).add("type", type).add("specialDriverName", specialDriverName));
         final Pair<WebDriversType, Pair.ImmutablePair<DriverInterface<?>, DriverTrashInterface<?>>> driverTriad = Pair.makePair(type, DriverManager.DriverPlaceholder);
         if (DriverManager.drivers.putIfAbsent(name, driverTriad) != null)
             throw new IllegalParametersException("Conflict driver name.", ParametersMap.create().add("name", name).add("type", type));
