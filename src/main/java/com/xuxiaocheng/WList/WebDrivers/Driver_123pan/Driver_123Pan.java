@@ -2,17 +2,20 @@ package com.xuxiaocheng.WList.WebDrivers.Driver_123pan;
 
 import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.WList.Driver.FileLocation;
+import com.xuxiaocheng.WList.Databases.File.FileManager;
+import com.xuxiaocheng.WList.Databases.File.FileSqlHelper;
+import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.FailureReason;
-import com.xuxiaocheng.WList.Driver.Helpers.DrivePath;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
-import com.xuxiaocheng.WList.Databases.File.FileManager;
-import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
+import com.xuxiaocheng.WList.Server.Driver.DriverManager;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.UploadMethods;
-import com.xuxiaocheng.WList.Server.WListServer;
+import com.xuxiaocheng.WList.Utils.DatabaseUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -33,13 +36,13 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
 
     @Override
     public void initialize(final @NotNull DriverConfiguration_123Pan configuration) throws SQLException {
-        FileManager.initialize(configuration.getName());
+        FileManager.quicklyInitialize(new FileSqlHelper(DatabaseUtil.getInstance(), configuration.getName(), configuration.getWebSide().getRootDirectoryId()), null);
         this.configuration = configuration;
     }
 
     @Override
     public void uninitialize() throws SQLException {
-        FileManager.uninitialize(this.configuration.getName());
+        FileManager.quicklyUninitialize(this.configuration.getName(), null);
     }
 
     @Override
@@ -50,68 +53,70 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
     @Override
     public void buildIndex() throws SQLException {
         this.configuration.getCacheSide().setLastTrashIndexBuildTime(LocalDateTime.now());
+        DriverManager_123pan.refreshDirectoryRecursively(this.configuration, this.configuration.getWebSide().getRootDirectoryId(), null);
         this.configuration.getCacheSide().setModified(true);
-        DriverManager_123pan.refreshDirectoryRecursively(this.configuration, this.configuration.getWebSide().getRootDirectoryId(), new DrivePath("/"), null, WListServer.IOExecutors);
+    }
+
+    private long toRootId(final long id) {
+        return id == 0 ? this.configuration.getWebSide().getRootDirectoryId() : id;
     }
 
     @Override
-    public void forceRefreshDirectory(final @NotNull DrivePath path) throws SQLException {
-        final FileSqlInformation information = DriverManager_123pan.getFileInformation(this.configuration, path, true, true, false, null, WListServer.IOExecutors);
-        if (information == null)
-            return;
-        final Iterator<FileSqlInformation> iterator = DriverManager_123pan.listAllFilesNoCache(this.configuration, information.id(), path, null, WListServer.IOExecutors).getB();
-        while (iterator.hasNext())
-            iterator.next();
+    public void forceRefreshDirectory(final @NotNull FileLocation location) throws IllegalParametersException, IOException, SQLException {
+        final FileSqlInformation information = DriverManager_123pan.getFileInformation(this.configuration, this.toRootId(location.id()), null);
+        if (information == null) return;
+        final Iterator<FileSqlInformation> lister = DriverManager_123pan.listAllFilesNoCache(this.configuration, information.id(), null).getB();
+        while (lister.hasNext()) lister.next();
     }
 
     @Override
-    public Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(final @NotNull DrivePath path, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws IllegalParametersException, IOException, SQLException {
-        return DriverManager_123pan.listFiles(this.configuration, path, limit, page, policy, direction, true, null, WListServer.IOExecutors);
+    public Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(final @NotNull FileLocation location, final @LongRange(minimum = 0) int limit, final @LongRange(minimum = 0) int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws IllegalParametersException, IOException, SQLException {
+        return DriverManager_123pan.listFiles(this.configuration, this.toRootId(location.id()), limit, page, policy, direction, null);
     }
 
     @Override
-    public @Nullable FileSqlInformation info(final @NotNull DrivePath path) throws IllegalParametersException, IOException, SQLException {
-        return DriverManager_123pan.getFileInformation(this.configuration, path, false, true, false, null, WListServer.IOExecutors);
+    public @Nullable FileSqlInformation info(final @NotNull FileLocation location) throws IllegalParametersException, IOException, SQLException {
+        return DriverManager_123pan.getFileInformation(this.configuration, this.toRootId(location.id()), null);
     }
 
     @Override
-    public @Nullable DownloadMethods download(final @NotNull DrivePath path, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws IllegalParametersException, IOException, SQLException {
-        return DriverManager_123pan.getDownloadMethods(this.configuration, path, from, to, true, null, WListServer.IOExecutors);
+    public @NotNull UnionPair<@NotNull DownloadMethods, @NotNull FailureReason> download(final @NotNull FileLocation location, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws IllegalParametersException, IOException, SQLException {
+        return DriverManager_123pan.getDownloadMethods(this.configuration, location.id(), from, to, null);
     }
 
     @Override
-    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> mkdirs(final @NotNull DrivePath path, final Options.@NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException, SQLException {
-        return DriverManager_123pan.createDirectoriesRecursively(this.configuration, path, policy, true, null, WListServer.IOExecutors);
+    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> createDirectory(final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException, SQLException {
+        return DriverManager_123pan.createDirectory(this.configuration, this.toRootId(parentLocation.id()), directoryName, policy, null);
     }
 
     @Override
-    public @NotNull UnionPair<@NotNull UploadMethods, @NotNull FailureReason> upload(final @NotNull DrivePath path, final long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException, SQLException {
-        return DriverManager_123pan.getUploadMethods(this.configuration, path, md5, size, policy, true, null, WListServer.IOExecutors);
-    }
-
-    @Override
-    public void delete(final @NotNull DrivePath path) throws IllegalParametersException, IOException, SQLException {
-        if (path.getDepth() == 0)
-            this.uninitialize();
-        else
-            DriverManager_123pan.trashFile(this.configuration, path, true, null, WListServer.IOExecutors);
+    public @NotNull UnionPair<@NotNull UploadMethods, @NotNull FailureReason> upload(final @NotNull FileLocation parentLocation, final @NotNull String filename, final long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException, SQLException {
+        return DriverManager_123pan.getUploadMethods(this.configuration, this.toRootId(parentLocation.id()), filename, md5, size, policy, null);
     }
 
     @SuppressWarnings("OverlyBroadThrowsClause")
     @Override
-    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> copy(final @NotNull DrivePath source, final @NotNull DrivePath target, final Options.@NotNull DuplicatePolicy policy) throws Exception {
-        final FileSqlInformation info = this.info(source);
-        if (info == null)
-            return UnionPair.fail(FailureReason.byNoSuchFile("Copying.", source));
-        final UnionPair<UploadMethods, FailureReason> methods = this.upload(target, info.size(), info.md5(), policy);
+    public void delete(final @NotNull FileLocation location) throws Exception {
+        if (location.id() == 0 || location.id() == this.configuration.getWebSide().getRootDirectoryId()) {
+            DriverManager.removeDriver(this.configuration.getName());
+            return;
+        }
+        DriverManager_123pan.trashFile(this.configuration, location.id(), null);
+    }
+
+    @SuppressWarnings("OverlyBroadThrowsClause")
+    @Override
+    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> copy(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final @NotNull String targetFilename, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+        final FileSqlInformation source = this.info(sourceLocation);
+        if (source == null)
+            return UnionPair.fail(FailureReason.byNoSuchFile("Copying.", sourceLocation));
+        final UnionPair<UploadMethods, FailureReason> methods = this.upload(targetParentLocation, source.name(), source.size(), source.md5(), policy);
         if (methods.isFailure())
             return UnionPair.fail(methods.getE());
         try {
-            if (!methods.getT().methods().isEmpty())
-                throw new IllegalStateException("Failed to copy file. [Unreachable]. source: " + source + ", sourceInfo: " + info + ", target: " + target + ", policy: " + policy);
             final FileSqlInformation information = methods.getT().supplier().get();
             if (information == null)
-                throw new IllegalStateException("Failed to copy file. [Unknown]. source: " + source + ", sourceInfo: " + info + ", target: " + target + ", policy: " + policy);
+                throw new IllegalStateException("Failed to copy file. [Unknown]." + ParametersMap.create().add("configuration", this.configuration).add("sourceLocation", sourceLocation).add("targetParentLocation", targetParentLocation).add("targetFilename", targetFilename).add("policy", policy).add("source", source));
             return UnionPair.ok(information);
         } finally {
             methods.getT().finisher().run();
@@ -119,25 +124,13 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
     }
 
     @Override
-    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> move(final @NotNull DrivePath sourceFile, final @NotNull DrivePath targetDirectory, final Options.@NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException, SQLException {
-        if (targetDirectory.equals(sourceFile.getParent())) {
-            final FileSqlInformation information = this.info(sourceFile);
-            if (information == null)
-                return UnionPair.fail(FailureReason.byNoSuchFile("Moving.", sourceFile));
-            return UnionPair.ok(information);
-        }
-        return DriverManager_123pan.moveFile(this.configuration, sourceFile, targetDirectory, policy, true, null, WListServer.IOExecutors);
+    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> move(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetLocation, final Options.@NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException, SQLException {
+        return DriverManager_123pan.moveFile(this.configuration, sourceLocation.id(), this.toRootId(targetLocation.id()), policy, null);
     }
 
     @Override
-    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> rename(@NotNull final DrivePath source, @NotNull final String name, final Options.@NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException, SQLException {
-        if (source.getName().equals(name)) {
-            final FileSqlInformation information = this.info(source);
-            if (information == null)
-                return UnionPair.fail(FailureReason.byNoSuchFile("Renaming.", source));
-            return UnionPair.ok(information);
-        }
-        return DriverManager_123pan.renameFile(this.configuration, source, name, policy, true, null, WListServer.IOExecutors);
+    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> rename(final @NotNull FileLocation sourceLocation, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException, SQLException {
+        return DriverManager_123pan.renameFile(this.configuration, sourceLocation.id(), name, policy, null);
     }
 
     @Override

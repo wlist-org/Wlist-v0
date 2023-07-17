@@ -6,8 +6,10 @@ import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.EventExecutorGroup;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.function.Predicate;
@@ -36,13 +38,13 @@ public final class BackgroundTaskManager {
         BackgroundTaskManager.LockMap.remove(type + ": " + name);
     }
 
-    private static final @NotNull Map<@NotNull String, @NotNull Future<?>> TaskMap = new ConcurrentHashMap<>();
+    private static final @NotNull Map<@NotNull String, @NotNull CompletableFuture<?>> TaskMap = new ConcurrentHashMap<>();
 
     public static void background(final @NotNull String type, final @NotNull String name, final @NotNull RunnableE runnable, final boolean removeLock, final @NotNull RunnableE finisher) {
         final boolean[] flag = {true};
         BackgroundTaskManager.TaskMap.computeIfAbsent(type + ": " + name, k -> {
             flag[0] = false;
-            return BackgroundTaskManager.BackgroundExecutors.submit(() -> {
+            return CompletableFuture.runAsync(() -> {
                 try {
                     try {
                         HExceptionWrapper.wrapRunnable(runnable).run();
@@ -54,7 +56,7 @@ public final class BackgroundTaskManager {
                         BackgroundTaskManager.removeLock(type, name);
                     BackgroundTaskManager.TaskMap.remove(type + ": " + name);
                 }
-            });
+            }, BackgroundTaskManager.BackgroundExecutors);
         });
         if (flag[0]) {
             if (removeLock)
@@ -64,18 +66,26 @@ public final class BackgroundTaskManager {
         }
     }
 
+    public static @Nullable CompletableFuture<?> get(final @NotNull String type, final @NotNull String name) {
+        return BackgroundTaskManager.TaskMap.get(type + ": " + name);
+    }
+
+    public static void wait(final @NotNull String type, final @NotNull String name) {
+        final CompletableFuture<?> future = BackgroundTaskManager.TaskMap.get(type + ": " + name);
+        if (future != null)
+            future.join();
+    }
+
     public static void cancel(final @NotNull String type, final @NotNull String name) {
         final Future<?> future = BackgroundTaskManager.TaskMap.remove(type + ": " + name);
         if (future != null)
             future.cancel(true);
     }
 
-
-    public static <T> void backgroundOptionally(final @NotNull String type, final @NotNull String name, final @NotNull Supplier<? extends @NotNull T> defaultLockSupplier, final @NotNull Class<T> lockClass, final @NotNull Predicate<? super @NotNull T> runningPredicate, final @NotNull Runnable header, final @NotNull RunnableE runnable, final @NotNull RunnableE finisher) {
+    public static <T> void backgroundOptionally(final @NotNull String type, final @NotNull String name, final @NotNull Supplier<? extends @NotNull T> defaultLockSupplier, final @NotNull Class<T> lockClass, final @NotNull Predicate<? super @NotNull T> runningPredicate, final @NotNull RunnableE runnable, final @NotNull RunnableE finisher) {
         final T lock = BackgroundTaskManager.getLock(type, name, defaultLockSupplier, lockClass);
         synchronized (lock) {
             if (runningPredicate.test(lock)) {
-                header.run();
                 BackgroundTaskManager.cancel(type, name);
                 BackgroundTaskManager.background(type, name, runnable, true, finisher);
             }

@@ -6,6 +6,7 @@ import com.xuxiaocheng.WList.Utils.AndroidSupport;
 import com.xuxiaocheng.WList.Utils.YamlHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.UnmodifiableView;
 
 import java.math.BigInteger;
 import java.time.LocalDateTime;
@@ -21,6 +22,10 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
     }
 
     public static final class LocalSide extends LocalSideDriverConfiguration {
+        public LocalSide() {
+            super("123pan");
+        }
+
         @Override
         public @NotNull String toString() {
             return "DriverConfiguration_123Pan$LocalSide{" +
@@ -36,7 +41,7 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
         private long rootDirectoryId = 0;
 
         @Override
-        protected void load(@NotNull final Map<? super @NotNull String, @NotNull Object> web, @NotNull final Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
+        protected void load(final @NotNull @UnmodifiableView Map<? super @NotNull String, @NotNull Object> web, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
             super.load(web, errors, prefix);
             this.passport = YamlHelper.getConfig(web, "passport", this.passport,
                     o -> YamlHelper.transferString(o, errors, prefix + "passport"));
@@ -92,7 +97,7 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
         private @Nullable LocalDateTime refreshExpire;
 
         @Override
-        protected void load(@NotNull final Map<? super @NotNull String, @NotNull Object> cache, @NotNull final Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, @NotNull final String prefix) {
+        protected void load(final @NotNull @UnmodifiableView Map<? super @NotNull String, @NotNull Object> cache, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
             super.load(cache, errors, prefix + "cache$");
             this.token = YamlHelper.getConfigNullable(cache, "token",
                     o -> YamlHelper.transferString(o, errors, prefix + "token"));
