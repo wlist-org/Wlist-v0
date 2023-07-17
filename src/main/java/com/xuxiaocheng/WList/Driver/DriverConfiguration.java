@@ -84,42 +84,108 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
     }
 
     public abstract static class LocalSideDriverConfiguration {
-        protected @NotNull BigInteger priority = BigInteger.ZERO;
+        protected @NotNull String displayName;
+        protected @NotNull LocalDateTime createTime = LocalDateTime.now();
+        // TODO modify update time.
+        protected @NotNull LocalDateTime updateTime = LocalDateTime.now();
+
+        protected LocalSideDriverConfiguration(final @NotNull String displayName) {
+            super();
+            this.displayName = displayName;
+        }
 
         protected void load(final @NotNull @UnmodifiableView Map<? super @NotNull String, @NotNull Object> local, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
-            this.priority = YamlHelper.getConfig(local, "priority", this.priority::toString,
-                    o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "priority", null, null));
+            this.displayName = YamlHelper.getConfig(local, "display_name", this.displayName,
+                    o -> YamlHelper.transferString(o, errors, prefix + "priority"));
+            this.createTime = YamlHelper.getConfig(local, "create_time", this.createTime.format(DriverConfiguration.TimeFormatter),
+                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "priority", DriverConfiguration.TimeFormatter));
+            this.updateTime = YamlHelper.getConfig(local, "update_time", this.updateTime.format(DriverConfiguration.TimeFormatter),
+                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "priority", DriverConfiguration.TimeFormatter));
         }
 
         protected @NotNull Map<@NotNull String, @NotNull Object> dump() {
             final Map<String, Object> local = new LinkedHashMap<>();
-            local.put("priority", this.priority);
+            local.put("display_name", this.displayName);
+            local.put("create_time", this.createTime.format(DriverConfiguration.TimeFormatter));
+            local.put("update_time", this.updateTime.format(DriverConfiguration.TimeFormatter));
             return local;
         }
 
-        public @NotNull BigInteger getPriority() {
-            return this.priority;
+        public @NotNull String getDisplayName() {
+            return this.displayName;
+        }
+
+        public @NotNull LocalDateTime getCreateTime() {
+            return this.createTime;
+        }
+
+        public @NotNull LocalDateTime getUpdateTime() {
+            return this.updateTime;
         }
 
         @Override
         public @NotNull String toString() {
             return "LocalSideDriverConfiguration{" +
-                    "priority=" + this.priority +
+                    "displayName='" + this.displayName + '\'' +
+                    ", createTime=" + this.createTime +
+                    ", updateTime=" + this.updateTime +
                     '}';
         }
     }
 
     public static class WebSideDriverConfiguration {
+        protected long spaceAll = 0;
+        protected long spaceUsed = -1;
+        protected long maxSizePerFile = Long.MAX_VALUE;
+
         protected void load(final @NotNull @UnmodifiableView Map<? super @NotNull String, @NotNull Object> web, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
+            this.spaceAll = YamlHelper.getConfig(web, "space_all", () -> Long.toString(this.spaceAll),
+                    o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "space_all", BigInteger.ZERO, BigInteger.valueOf(Long.MAX_VALUE))).longValue();
+            this.spaceUsed = YamlHelper.getConfig(web, "space_used", () -> Long.toString(this.spaceUsed),
+                    o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "space_used", BigInteger.valueOf(-1), BigInteger.valueOf(Long.MAX_VALUE))).longValue();
+            this.maxSizePerFile = YamlHelper.getConfig(web, "max_size_per_file", () -> Long.toString(this.maxSizePerFile),
+                    o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "max_size_per_file", BigInteger.valueOf(-1), BigInteger.valueOf(Long.MAX_VALUE))).longValue();
         }
 
         protected @NotNull Map<@NotNull String, @NotNull Object> dump() {
-            return new LinkedHashMap<>();
+            final Map<String, Object> web = new LinkedHashMap<>();
+            web.put("space_all", this.spaceAll);
+            web.put("space_used", this.spaceUsed);
+            web.put("max_size_per_file", this.maxSizePerFile);
+            return web;
+        }
+
+        public long getSpaceAll() {
+            return this.spaceAll;
+        }
+
+        public void setSpaceAll(final long spaceAll) {
+            this.spaceAll = spaceAll;
+        }
+
+        public long getSpaceUsed() {
+            return this.spaceUsed;
+        }
+
+        public void setSpaceUsed(final long spaceUsed) {
+            this.spaceUsed = spaceUsed;
+        }
+
+        public long getMaxSizePerFile() {
+            return this.maxSizePerFile;
+        }
+
+        public void setMaxSizePerFile(final long maxSizePerFile) {
+            this.maxSizePerFile = maxSizePerFile;
         }
 
         @Override
         public @NotNull String toString() {
-            return "WebSideDriverConfiguration{}";
+            return "WebSideDriverConfiguration{" +
+                    "spaceAll=" + this.spaceAll + " Byte" +
+                    ", spaceUsed=" + this.spaceUsed + " Byte" +
+                    ", maxSizePerFile=" + this.maxSizePerFile + " Byte" +
+                    '}';
         }
     }
 
@@ -128,9 +194,6 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
         protected @NotNull String nickname = "";
         protected @Nullable String imageLink = null;
         protected boolean vip = false; // TODO vipLevel
-        protected long spaceAll = 0;
-        protected long spaceUsed = -1;
-        protected long maxSizePerFile = -1;
         protected long fileCount = -1;
         protected @Nullable LocalDateTime lastFileIndexBuildTime = null;
         protected @Nullable LocalDateTime lastTrashIndexBuildTime = null;
@@ -154,12 +217,6 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
                     o -> YamlHelper.transferString(o, errors, prefix + "image_link"));
             this.vip = YamlHelper.getConfig(cache, "vip", () -> Boolean.toString(this.vip),
                     o -> YamlHelper.transferBooleanFromStr(o, errors, prefix + "vip")).booleanValue();
-            this.spaceAll = YamlHelper.getConfig(cache, "space_all", () -> Long.toString(this.spaceAll),
-                    o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "space_all", BigInteger.ZERO, BigInteger.valueOf(Long.MAX_VALUE))).longValue();
-            this.spaceUsed = YamlHelper.getConfig(cache, "space_used", () -> Long.toString(this.spaceUsed),
-                    o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "space_used", BigInteger.valueOf(-1), BigInteger.valueOf(Long.MAX_VALUE))).longValue();
-            this.maxSizePerFile = YamlHelper.getConfig(cache, "max_size_per_file", () -> Long.toString(this.maxSizePerFile),
-                    o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "max_size_per_file", BigInteger.valueOf(-1), BigInteger.valueOf(Long.MAX_VALUE))).longValue();
             this.fileCount = YamlHelper.getConfig(cache, "file_count", () -> Long.toString(this.fileCount),
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "file_count", BigInteger.valueOf(-1), BigInteger.valueOf(Long.MAX_VALUE))).longValue();
             this.lastFileIndexBuildTime = YamlHelper.getConfigNullable(cache, "last_file_index_build_time",
@@ -173,9 +230,6 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
             cache.put("nickname", this.nickname);
             cache.put("image_link", this.imageLink);
             cache.put("vip", this.vip);
-            cache.put("space_all", this.spaceAll);
-            cache.put("space_used", this.spaceUsed);
-            cache.put("max_size_per_file", this.maxSizePerFile);
             cache.put("file_count", this.fileCount);
             cache.put("last_file_index_build_time", this.lastFileIndexBuildTime == null ? null : this.lastFileIndexBuildTime.format(DriverConfiguration.TimeFormatter));
             cache.put("last_trash_index_build_time", this.lastTrashIndexBuildTime == null ? null : this.lastTrashIndexBuildTime.format(DriverConfiguration.TimeFormatter));
@@ -204,30 +258,6 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
 
         public void setVip(final boolean vip) {
             this.vip = vip;
-        }
-
-        public long getSpaceAll() {
-            return this.spaceAll;
-        }
-
-        public void setSpaceAll(final long spaceAll) {
-            this.spaceAll = spaceAll;
-        }
-
-        public long getSpaceUsed() {
-            return this.spaceUsed;
-        }
-
-        public void setSpaceUsed(final long spaceUsed) {
-            this.spaceUsed = spaceUsed;
-        }
-
-        public long getMaxSizePerFile() {
-            return this.maxSizePerFile;
-        }
-
-        public void setMaxSizePerFile(final long maxSizePerFile) {
-            this.maxSizePerFile = maxSizePerFile;
         }
 
         public long getFileCount() {
@@ -260,9 +290,6 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
                     "nickname='" + this.nickname + '\'' +
                     ", imageLink='" + this.imageLink + '\'' +
                     ", vip=" + this.vip +
-                    ", spaceAll=" + this.spaceAll + " Byte" +
-                    ", spaceUsed=" + this.spaceUsed + " Byte" +
-                    ", maxSizePerFile=" + this.maxSizePerFile + " Byte" +
                     ", fileCount=" + this.fileCount +
                     ", lastFileIndexBuildTime=" + this.lastFileIndexBuildTime +
                     ", lastTrashIndexBuildTime=" + this.lastTrashIndexBuildTime +

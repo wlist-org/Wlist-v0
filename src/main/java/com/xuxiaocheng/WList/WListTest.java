@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -20,6 +21,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.util.Map;
 import java.util.Objects;
 
 public final class WListTest {
@@ -58,8 +60,8 @@ public final class WListTest {
             if (obj != null)
                 HLog.DefaultLogger.log(HLogLevel.DEBUG, obj);
         } finally {
-            for (final DriverInterface<?> driver: DriverManager.getAllDrivers())
-                WListServer.ServerExecutors.submit(HExceptionWrapper.wrapRunnable(() -> DriverManager.dumpConfigurationIfModified(driver.getConfiguration())));
+            for (final Map.Entry<String, Exception> exception: DriverManager.operateAllDrivers(d -> DriverManager.dumpConfigurationIfModified(d.getConfiguration())).entrySet())
+                HLog.DefaultLogger.log(HLogLevel.ERROR, "Failed to dump driver configuration.", ParametersMap.create().add("name", exception.getKey()), exception.getValue());
             WListServer.CodecExecutors.shutdownGracefully();
             WListServer.ServerExecutors.shutdownGracefully();
             WListServer.IOExecutors.shutdownGracefully();

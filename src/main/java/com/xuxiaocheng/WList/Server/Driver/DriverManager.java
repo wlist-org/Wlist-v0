@@ -3,6 +3,7 @@ package com.xuxiaocheng.WList.Server.Driver;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
+import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -18,7 +19,6 @@ import com.xuxiaocheng.WList.Utils.YamlHelper;
 import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.annotations.UnmodifiableView;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -33,12 +33,9 @@ import java.nio.file.AccessDeniedException;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 public final class DriverManager {
     private DriverManager() {
@@ -65,7 +62,7 @@ public final class DriverManager {
     public static void initialize(final @NotNull File configurationsPath) {
         DriverManager.configurationsPath.initialize(configurationsPath.getAbsoluteFile());
         DriverManager.drivers.clear();
-        final CompletableFuture<?>[] futures = new CompletableFuture<?>[GlobalConfiguration.getInstance().drivers().size()];
+        final CompletableFuture<?>[] futures = new CompletableFuture[GlobalConfiguration.getInstance().drivers().size()];
         int i = 0;
         for (final Map.Entry<String, WebDriversType> entry: GlobalConfiguration.getInstance().drivers().entrySet())
             futures[i++] = CompletableFuture.runAsync(() -> {
@@ -120,7 +117,7 @@ public final class DriverManager {
                     trash.initialize(driver);
             } catch (final Exception exception) {
                 try {
-                    DriverManager.uninitializeDriver0(name);
+                    DriverManager.uninitializeDriver0(name, true);
                 } catch (final IllegalParametersException e) {
                     exception.addSuppressed(e.getCause());
                     throw new IllegalParametersException("Failed to uninitialize the driver after a failed initialization.", ParametersMap.create().add("name", name).add("type", type).add("configuration", configuration), exception);
@@ -143,10 +140,10 @@ public final class DriverManager {
         }
     }
 
-    private static boolean uninitializeDriver0(final @NotNull String name) throws IllegalParametersException {
+    private static boolean uninitializeDriver0(final @NotNull String name, final boolean canDelete) throws IllegalParametersException {
         final Pair<@NotNull WebDriversType, Pair.@NotNull ImmutablePair<@NotNull DriverInterface<?>, @Nullable DriverTrashInterface<?>>> driver = DriverManager.drivers.remove(name);
         if (driver == null || driver.getSecond() == DriverManager.DriverPlaceholder) return false;
-        if (GlobalConfiguration.getInstance().deleteDriver()) {
+        if (canDelete && GlobalConfiguration.getInstance().deleteDriver()) {
             try {
                 driver.getSecond().getFirst().uninitialize();
                 if (driver.getSecond().getSecond() != null)
@@ -163,6 +160,22 @@ public final class DriverManager {
             try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(DriverManager.getConfigurationFile(configuration.getName())))) {
                 YamlHelper.dumpYaml(configuration.dump(), outputStream);
             }
+    }
+
+    public static void addDriver(final @NotNull String name, final @NotNull WebDriversType type) throws IOException, IllegalParametersException {
+        DriverManager.initializeDriver0(name, type);
+        GlobalConfiguration.addUninitializedDriver(name, type);
+    }
+
+    public static void removeDriver(final @NotNull String name) throws IOException, IllegalParametersException {
+        if (DriverManager.uninitializeDriver0(name, true))
+            GlobalConfiguration.removeUninitializedDriver(name);
+    }
+
+    public static void reAddDriver(final @NotNull String name, final @NotNull WebDriversType type) throws IOException, IllegalParametersException {
+        DriverManager.uninitializeDriver0(name, false);
+        GlobalConfiguration.getInstance().drivers().remove(name);
+        DriverManager.addDriver(name, type);
     }
 
     public static Triad.@Nullable ImmutableTriad<@NotNull WebDriversType, @NotNull DriverInterface<?>, @Nullable DriverTrashInterface<?>> get(final @NotNull String name) {
@@ -183,34 +196,39 @@ public final class DriverManager {
         return driver.getSecond().getSecond();
     }
 
-    @Deprecated
-    public static @NotNull @UnmodifiableView Set<@NotNull DriverInterface<?>> getAllDrivers() {
-        return DriverManager.drivers.values().stream().map(p -> {
-            if (p.getSecond() == DriverManager.DriverPlaceholder)
-                //noinspection ReturnOfNull
-                return null;
-            return p.getSecond().getFirst();
-        }).filter(Objects::nonNull).collect(Collectors.toSet());
+    public static @NotNull Map<@NotNull String, @NotNull Exception> operateAllDrivers(final @NotNull ConsumerE<? super @NotNull DriverInterface<?>> consumer) {
+        final Map<String, Exception> exceptions = new ConcurrentHashMap<>();
+        final Collection<CompletableFuture<?>> futures = new LinkedList<>();
+        for (final Map.Entry<String, Pair<WebDriversType, Pair.ImmutablePair<DriverInterface<?>, DriverTrashInterface<?>>>> driver: DriverManager.drivers.entrySet()) {
+            if (driver.getValue().getSecond() == DriverManager.DriverPlaceholder) continue;
+            futures.add(CompletableFuture.runAsync(() -> {
+                try {
+                    consumer.accept(driver.getValue().getSecond().getFirst());
+                } catch (final Exception exception) {
+                    exceptions.put(driver.getKey(), exception);
+                }
+            }));
+        }
+        for (final CompletableFuture<?> future: futures)
+            future.join();
+        return exceptions;
     }
 
-    @Deprecated
-    public static @NotNull @UnmodifiableView Set<@NotNull DriverTrashInterface<?>> getAllTrashes() {
-        return DriverManager.drivers.values().stream().map(p -> {
-            if (p.getSecond() == DriverManager.DriverPlaceholder)
-                //noinspection ReturnOfNull
-                return null;
-            return p.getSecond().getSecond();
-        }).filter(Objects::nonNull).collect(Collectors.toSet());
-    }
-
-
-    public static void addDriver(final @NotNull String name, final @NotNull WebDriversType type) throws IOException, IllegalParametersException {
-        DriverManager.initializeDriver0(name, type);
-        GlobalConfiguration.addUninitializedDriver(name, type);
-    }
-
-    public static void removeDriver(final @NotNull String name) throws IOException, IllegalParametersException {
-        if (DriverManager.uninitializeDriver0(name))
-            GlobalConfiguration.removeUninitializedDriver(name);
+    public static @NotNull Map<@NotNull String, @NotNull Exception> operateAllTrashes(final @NotNull ConsumerE<? super @NotNull DriverTrashInterface<?>> consumer) {
+        final Map<String, Exception> exceptions = new ConcurrentHashMap<>();
+        final Collection<CompletableFuture<?>> futures = new LinkedList<>();
+        for (final Map.Entry<String, Pair<WebDriversType, Pair.ImmutablePair<DriverInterface<?>, DriverTrashInterface<?>>>> driver: DriverManager.drivers.entrySet()) {
+            if (driver.getValue().getSecond() == DriverManager.DriverPlaceholder) continue;
+            futures.add(CompletableFuture.runAsync(() -> {
+                try {
+                    consumer.accept(driver.getValue().getSecond().getSecond());
+                } catch (final Exception exception) {
+                    exceptions.put(driver.getKey(), exception);
+                }
+            }));
+        }
+        for (final CompletableFuture<?> future: futures)
+            future.join();
+        return exceptions;
     }
 }

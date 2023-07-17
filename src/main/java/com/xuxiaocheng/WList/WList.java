@@ -11,7 +11,6 @@ import com.xuxiaocheng.WList.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Databases.User.UserSqlHelper;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupSqlHelper;
-import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Server.Driver.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Driver.DriverManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
@@ -24,6 +23,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class WList {
@@ -112,8 +112,8 @@ public final class WList {
             } finally {
                 WList.setMainStageAPI(2);
                 logger.log(HLogLevel.INFO, "Saving driver configurations in multithreading...");
-                for (final DriverInterface<?> driver: DriverManager.getAllDrivers())
-                    WListServer.ServerExecutors.submit(HExceptionWrapper.wrapRunnable(() -> DriverManager.dumpConfigurationIfModified(driver.getConfiguration())));
+                for (final Map.Entry<String, Exception> exception: DriverManager.operateAllDrivers(d -> DriverManager.dumpConfigurationIfModified(d.getConfiguration())).entrySet())
+                    logger.log(HLogLevel.ERROR, "Failed to dump driver configuration.", ParametersMap.create().add("name", exception.getKey()), exception.getValue());
                 logger.log(HLogLevel.FINE, "Shutting down the whole application...");
                 final Future<?>[] futures = new Future[4];
                 futures[0] = WListServer.CodecExecutors.shutdownGracefully();

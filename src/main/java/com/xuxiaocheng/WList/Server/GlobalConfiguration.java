@@ -106,7 +106,6 @@ public record GlobalConfiguration(int port, int maxConnection,
         }
     }
 
-    @Deprecated // TODO
     public static synchronized void reInitialize(final @NotNull GlobalConfiguration configuration) throws IOException {
         GlobalConfiguration.instance.getInstance().setFirst(configuration);
         GlobalConfiguration.dumpToFile();

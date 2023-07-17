@@ -2,6 +2,7 @@ package com.xuxiaocheng.WList.Server.Driver;
 
 import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInterface;
@@ -18,7 +19,13 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.SortedSet;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 @SuppressWarnings("OverlyBroadThrowsClause")
 public final class RootDriver implements DriverInterface<RootDriver.RootDriverConfiguration> {
@@ -28,9 +35,9 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
     }
 
     public static @NotNull FileSqlInformation getDriverInformation(final @NotNull DriverConfiguration<?, ?, ?> configuration) {
-        // TODO create and modified time.
         return new FileSqlInformation(new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), 0),
-                0, configuration.getName(), FileSqlInterface.FileSqlType.Directory, 0, null, null, "", null);
+                0, configuration.getName(), FileSqlInterface.FileSqlType.Directory, 0,
+                configuration.getLocalSide().getCreateTime(), configuration.getLocalSide().getUpdateTime(), "", null);
     }
 
     private @NotNull RootDriverConfiguration configuration = new RootDriverConfiguration();
@@ -53,15 +60,29 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
     @Deprecated
     @Override
     public void buildCache() throws Exception {
-        for (final DriverInterface<?> driver: DriverManager.getAllDrivers())
-            driver.buildCache();
+        final Map<String, Exception> exceptions = DriverManager.operateAllDrivers(d -> {
+            d.buildCache();
+            DriverManager.dumpConfigurationIfModified(d.getConfiguration());
+        });
+        if (!exceptions.isEmpty()) {
+            final Exception exception = new Exception("Failed to build cache." + ParametersMap.create().add("names", exceptions.keySet()));
+            exceptions.values().forEach(exception::addSuppressed);
+            throw exception;
+        }
     }
 
     @Deprecated
     @Override
     public void buildIndex() throws Exception {
-        for (final DriverInterface<?> driver: DriverManager.getAllDrivers())
-            driver.buildIndex();
+        final Map<String, Exception> exceptions = DriverManager.operateAllDrivers(d -> {
+            d.buildIndex();
+            DriverManager.dumpConfigurationIfModified(d.getConfiguration());
+        });
+        if (!exceptions.isEmpty()) {
+            final Exception exception = new Exception("Failed to build index." + ParametersMap.create().add("names", exceptions.keySet()));
+            exceptions.values().forEach(exception::addSuppressed);
+            throw exception;
+        }
     }
 
     public boolean buildIndex(final @NotNull String name) throws Exception {
@@ -89,12 +110,21 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
     @Override
     public Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(final @NotNull FileLocation location, final @LongRange(minimum = 0) int limit, final @LongRange(minimum = 0) int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws Exception {
         if (SpecialDriverName.RootDriver.getIdentifier().equals(location.driver())) {
-            // TODO list root drivers in page.
-//            final Map<String, Pair.ImmutablePair<WebDriversType, DriverInterface<?>>> map = DriverManager.getAllDrivers();
-//            final Stream<FileSqlInformation> stream = map.values().stream()
-//                    .map(k -> RootDriver.getDriverInformation(k.getSecond().getConfiguration()));
-//            return Pair.ImmutablePair.makeImmutablePair((long) map.size(), PlatformDependent.isAndroid() ? stream.collect(Collectors.toList()) : stream.toList());
-            return null;
+            final Comparator<DriverConfiguration<?, ?, ?>> comparator = switch (policy) {
+                case FileName -> Comparator.comparing((DriverConfiguration<?, ?, ?> a) -> a.getLocalSide().getDisplayName());
+                case Size -> Comparator.comparingLong((DriverConfiguration<?, ?, ?> a) -> a.getWebSide().getSpaceAll());
+                case CreateTime -> Comparator.comparing((DriverConfiguration<?, ?, ?> a) -> a.getLocalSide().getCreateTime());
+                case UpdateTime -> Comparator.comparing((DriverConfiguration<?, ?, ?> a) -> a.getLocalSide().getUpdateTime());
+            };
+            final SortedSet<DriverConfiguration<?, ?, ?>> all = new ConcurrentSkipListSet<>(switch (direction) {
+                case ASCEND -> comparator; case DESCEND -> comparator.reversed();
+            });
+            DriverManager.operateAllDrivers(d -> all.add(d.getConfiguration()));
+            final Iterator<DriverConfiguration<?, ?, ?>> iterator = all.stream().skip((long) limit * page).iterator();
+            final List<FileSqlInformation> list = new ArrayList<>(limit);
+            while (list.size() < limit && iterator.hasNext())
+                list.add(RootDriver.getDriverInformation(iterator.next()));
+            return Pair.ImmutablePair.makeImmutablePair((long) all.size(), list);
         }
         final DriverInterface<?> real = DriverManager.getDriver(location.driver());
         if (real == null) return null;
@@ -156,13 +186,17 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
         DriverManager.dumpConfigurationIfModified(real.getConfiguration());
     }
 
-    public static class RootDriverConfiguration extends DriverConfiguration<RootDriverConfiguration.LocalSide, RootDriverConfiguration.WebSide, RootDriverConfiguration.CacheSide> {
-        public RootDriverConfiguration() {
+    protected static class RootDriverConfiguration extends DriverConfiguration<RootDriverConfiguration.LocalSide, RootDriverConfiguration.WebSide, RootDriverConfiguration.CacheSide> {
+        private RootDriverConfiguration() {
             super("RootDriver", LocalSide::new, WebSide::new, CacheSide::new);
         }
-        public static class LocalSide extends LocalSideDriverConfiguration {}
-        public static class WebSide extends WebSideDriverConfiguration {}
-        public static class CacheSide extends CacheSideDriverConfiguration {}
+        private static class LocalSide extends LocalSideDriverConfiguration {
+            private LocalSide() {
+                super("RootDriver");
+            }
+        }
+        private static class WebSide extends WebSideDriverConfiguration {}
+        private static class CacheSide extends CacheSideDriverConfiguration {}
     }
 
     @Override
