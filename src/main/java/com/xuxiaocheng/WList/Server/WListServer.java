@@ -111,7 +111,7 @@ public class WListServer {
             future = serverBootstrap.bind(defaultPort).addListener(f -> {
                 flag[0] = !f.isSuccess();
                 if (flag[0])
-                    WListServer.logger.log(HLogLevel.ERROR, "Failed to bind default port.", ParametersMap.create().add("defaultPort", defaultPort), f.cause());
+                    WListServer.logger.log(HLogLevel.WARN, "Failed to bind default port.", ParametersMap.create().add("defaultPort", defaultPort), f.cause());
                 latch.countDown();
             }).await();
             latch.await();

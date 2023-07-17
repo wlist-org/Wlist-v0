@@ -58,6 +58,14 @@ public final class WList {
         return current != 3;
     }
 
+    static {
+        try {
+            final boolean notIde = new File(WList.class.getProtectionDomain().getCodeSource().getLocation().getPath()).isFile();
+            if (notIde && System.getProperty("com.xuxiaocheng.Logger.HLogLevel.color") == null)
+                System.setProperty("com.xuxiaocheng.Logger.HLogLevel.color", "2");
+        } catch (final RuntimeException ignore) { // for Android (NPE).
+        }
+    }
 
     public static void main(final String @NotNull ... args) throws IOException, SQLException, InterruptedException {
         if (!WList.mainStageAPI.compareAndSet(-1, 0)) return;
