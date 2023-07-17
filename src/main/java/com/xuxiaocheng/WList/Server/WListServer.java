@@ -9,7 +9,6 @@ import com.xuxiaocheng.WList.Server.ServerHandlers.ServerHandler;
 import com.xuxiaocheng.WList.Server.ServerHandlers.ServerHandlerManager;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
-import com.xuxiaocheng.WList.WList;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -52,7 +51,7 @@ public class WListServer {
     public static final @NotNull EventExecutorGroup IOExecutors =
             new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 3, new DefaultThreadFactory("IOExecutors"));
 
-    private static final @NotNull HLog logger = HLog.createInstance("ServerLogger", WList.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, true, HMergedStream.getFileOutputStreamNoException(null));
+    private static final @NotNull HLog logger = HLog.createInstance("ServerLogger", HLog.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, true, HMergedStream.getFileOutputStreamNoException(null));
 
     protected static @Nullable WListServer instance;
     public static synchronized void initialize(final @NotNull SocketAddress address) {

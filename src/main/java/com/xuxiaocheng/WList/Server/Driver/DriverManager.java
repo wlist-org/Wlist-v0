@@ -64,7 +64,7 @@ public final class DriverManager {
     public static void initialize(final @NotNull File configurationsPath) {
         DriverManager.configurationsPath.initialize(configurationsPath.getAbsoluteFile());
         DriverManager.drivers.clear();
-        final CompletableFuture<?>[] futures = new CompletableFuture<>[GlobalConfiguration.getInstance().drivers().size()];
+        final CompletableFuture<?>[] futures = new CompletableFuture<?>[GlobalConfiguration.getInstance().drivers().size()];
         int i = 0;
         for (final Map.Entry<String, WebDriversType> entry: GlobalConfiguration.getInstance().drivers().entrySet())
             futures[i++] = CompletableFuture.runAsync(() -> {
@@ -117,9 +117,9 @@ public final class DriverManager {
             } catch (final Exception exception) {
                 try {
                     DriverManager.uninitializeDriver0(name);
-                } catch (final Exception e) {
-                    exception.addSuppressed(e);
-                    throw new IllegalParametersException("Failed to uninitialize after a failed initialization.", ParametersMap.create().add("name", name).add("type", type).add("configuration", configuration), exception);
+                } catch (final IllegalParametersException e) {
+                    exception.addSuppressed(e.getCause());
+                    throw new IllegalParametersException("Failed to uninitialize the driver after a failed initialization.", ParametersMap.create().add("name", name).add("type", type).add("configuration", configuration), exception);
                 }
                 throw new IllegalParametersException("Failed to initialize.", ParametersMap.create().add("name", name).add("type", type).add("configuration", configuration), exception);
             }
@@ -139,13 +139,17 @@ public final class DriverManager {
         }
     }
 
-    private static boolean uninitializeDriver0(final @NotNull String name) throws Exception {
+    private static boolean uninitializeDriver0(final @NotNull String name) throws IllegalParametersException {
         final Pair<@NotNull WebDriversType, Pair.@NotNull ImmutablePair<@NotNull DriverInterface<?>, @Nullable DriverTrashInterface<?>>> driver = DriverManager.drivers.remove(name);
         if (driver == null || driver.getSecond() == DriverManager.DriverPlaceholder) return false;
         if (GlobalConfiguration.getInstance().deleteDriver()) {
-            driver.getSecond().getFirst().uninitialize();
-            if (driver.getSecond().getSecond() != null)
-                driver.getSecond().getSecond().uninitialize();
+            try {
+                driver.getSecond().getFirst().uninitialize();
+                if (driver.getSecond().getSecond() != null)
+                    driver.getSecond().getSecond().uninitialize();
+            } catch (final Exception exception) {
+                throw new IllegalParametersException("Failed to uninitialize driver.", ParametersMap.create().add("name", name).add("type", driver.getFirst()), exception);
+            }
         }
         return true;
     }
@@ -198,13 +202,11 @@ public final class DriverManager {
 
     public static void addDriver(final @NotNull String name, final @NotNull WebDriversType type) throws IOException, IllegalParametersException {
         DriverManager.initializeDriver0(name, type);
-        // TODO dynamically change configuration.
-//        GlobalConfiguration.addDriver(name, type);
+        GlobalConfiguration.addUninitializedDriver(name, type);
     }
 
-    public static void removeDriver(final @NotNull String name) throws Exception {
-        if (DriverManager.uninitializeDriver0(name)) {
-//            GlobalConfiguration.subDriver(name);
-        }
+    public static void removeDriver(final @NotNull String name) throws IOException, IllegalParametersException {
+        if (DriverManager.uninitializeDriver0(name))
+            GlobalConfiguration.removeUninitializedDriver(name);
     }
 }

@@ -45,7 +45,7 @@ public final class WListTest {
     private static void wrapServerInitialize(final @NotNull SupplierE<@Nullable Object> runnable) throws Exception {
         Thread.setDefaultUncaughtExceptionHandler((t, e) -> HLog.DefaultLogger.log(HLogLevel.FAULT, "Uncaught exception. thread: ", t.getName(), e));
         System.setProperty("io.netty.leakDetectionLevel", "ADVANCED");
-        GlobalConfiguration.initialize(new File("server.yaml"));
+        GlobalConfiguration.initialize(null);
         DatabaseUtil.initialize(new File("data.db"));
         ConstantManager.quicklyInitialize(new ConstantSqlHelper(DatabaseUtil.getInstance()), "initialize");
         UserGroupManager.quicklyInitialize(new UserGroupSqlHelper(DatabaseUtil.getInstance()), "initialize");
@@ -54,7 +54,7 @@ public final class WListTest {
         try {
             final Object obj = runnable.get();
             if (obj != null)
-                HLog.DefaultLogger.log("", obj);
+                HLog.DefaultLogger.log(HLogLevel.DEBUG, obj);
         } finally {
             for (final DriverInterface<?> driver: DriverManager.getAllDrivers())
                 WListServer.ServerExecutors.submit(HExceptionWrapper.wrapRunnable(() -> DriverManager.dumpConfigurationIfModified(driver.getConfiguration())));

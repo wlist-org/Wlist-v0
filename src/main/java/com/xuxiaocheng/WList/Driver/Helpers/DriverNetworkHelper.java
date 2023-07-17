@@ -8,7 +8,6 @@ import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
 import com.xuxiaocheng.WList.Exceptions.NetworkException;
 import com.xuxiaocheng.WList.Server.WListServer;
-import com.xuxiaocheng.WList.WList;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.Dispatcher;
@@ -38,7 +37,7 @@ public final class DriverNetworkHelper {
         super();
     }
 
-    private static final @NotNull HLog logger = HLog.createInstance("NetworkLogger", WList.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, true, HMergedStream.getFileOutputStreamNoException(null));
+    private static final @NotNull HLog logger = HLog.createInstance("NetworkLogger", HLog.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, true, HMergedStream.getFileOutputStreamNoException(null));
 
     @SuppressWarnings("SpellCheckingInspection")
     public static final @NotNull String defaultWebAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.37";

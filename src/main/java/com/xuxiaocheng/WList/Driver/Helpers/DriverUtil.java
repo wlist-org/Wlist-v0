@@ -203,17 +203,18 @@ public final class DriverUtil {
 
     public static @NotNull DownloadMethods toCachedDownloadMethods(final @NotNull DownloadMethods source) {
         final int count = source.methods().size();
-        if (count < 1 || GlobalConfiguration.getInstance().forwardDownloadCacheCount() == 0)
+        final int forwardDownloadCacheCount = GlobalConfiguration.getInstance().forwardDownloadCacheCount();
+        if (count < 1 || forwardDownloadCacheCount == 0)
             return source;
         final List<SupplierE<ByteBuf>> list = new ArrayList<>(count);
         final AtomicBoolean closeFlag = new AtomicBoolean(false);
-        final Map<Integer, CompletableFuture<ByteBuf>> cacher = new ConcurrentHashMap<>(GlobalConfiguration.getInstance().forwardDownloadCacheCount() + 1);
+        final Map<Integer, CompletableFuture<ByteBuf>> cacher = new ConcurrentHashMap<>(forwardDownloadCacheCount + 1);
         for (int i = 0; i < count; ++i) {
             final int c = i;
             list.add(() -> {
                 if (closeFlag.get())
                     throw new IllegalStateException("Closed download methods.");
-                for (int n = c; n < Math.min(c + GlobalConfiguration.getInstance().forwardDownloadCacheCount(), count - 1); ++n)
+                for (int n = c; n < Math.min(c + forwardDownloadCacheCount, count - 1); ++n)
                     cacher.computeIfAbsent(n + 1, k -> CompletableFuture.supplyAsync(
                             HExceptionWrapper.wrapSupplier(source.methods().get(k.intValue())), WListServer.IOExecutors));
                 final ByteBuf buffer;

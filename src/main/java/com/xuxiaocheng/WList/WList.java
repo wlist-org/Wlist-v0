@@ -32,20 +32,15 @@ public final class WList {
         super();
     }
 
-    private static boolean DebugMode = true;
-    public static boolean isDebugMode() {
-        return WList.DebugMode;
-    }
-
     private static final @NotNull AtomicInteger mainStageAPI = new AtomicInteger(-1);
-    public static int getMainStageAPI() {
-        return WList.mainStageAPI.get();
-    }
     private static void setMainStageAPI(final int stage) {
         synchronized (WList.mainStageAPI) {
             WList.mainStageAPI.set(stage);
             WList.mainStageAPI.notifyAll();
         }
+    }
+    public static int getMainStageAPI() {
+        return WList.mainStageAPI.get();
     }
     public static boolean waitMainStageAPI(final int stage) throws InterruptedException {
         int current = WList.mainStageAPI.get();
@@ -64,30 +59,29 @@ public final class WList {
         return current != 3;
     }
 
-    private static final HLog logger = HLog.createInstance("DefaultLogger", WList.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, false, true, HMergedStream.getFileOutputStreamNoException(null));
 
     public static void main(final String @NotNull ... args) throws IOException, SQLException, InterruptedException {
         if (!WList.mainStageAPI.compareAndSet(-1, 0)) return;
-        HExceptionWrapper.addUncaughtExceptionListener((t, e) -> WList.logger.log(HLogLevel.FAULT, "Uncaught exception by WList. thread: ", t.getName(), e));
+        File runtimePath = new File("/").getAbsoluteFile();
+        for (final String arg : args) {
+            if ("-Debug".equalsIgnoreCase(arg))
+                HLog.setDebugMode(true);
+            if ("-NoDebug".equalsIgnoreCase(arg))
+                HLog.setDebugMode(false);
+            if (arg.startsWith("-path:"))
+                runtimePath = new File(arg.substring("-path:".length())).getAbsoluteFile();
+        }
+        if (HLog.isDebugMode()) System.setProperty("io.netty.leakDetectionLevel", "ADVANCED");
+        final HLog logger = HLog.createInstance("DefaultLogger", HLog.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, false, true, HMergedStream.getFileOutputStreamNoException(null));
+        HExceptionWrapper.addUncaughtExceptionListener((t, e) -> logger.log(HLogLevel.FAULT, "Uncaught exception by WList. thread: ", t.getName(), e));
         try {
-            File runtimePath = new File("/").getAbsoluteFile();
-            for (final String arg : args) {
-                if ("-Debug".equalsIgnoreCase(arg))
-                    WList.DebugMode = true;
-                if ("-NoDebug".equalsIgnoreCase(arg))
-                    WList.DebugMode = false;
-                if (arg.startsWith("-path:"))
-                    runtimePath = new File(arg.substring("-path:".length())).getAbsoluteFile();
-            }
-            if (WList.DebugMode) System.setProperty("io.netty.leakDetectionLevel", "ADVANCED");
-            HLog.setDebugMode(WList.DebugMode);
-            WList.logger.log(HLogLevel.FINE, "Hello WList! Loading...");
+            logger.log(HLogLevel.FINE, "Hello WList! Loading...");
             final File configurationPath = new File(runtimePath, "server.yaml");
-            WList.logger.log(HLogLevel.LESS, "Initializing global configuration.", ParametersMap.create().add("file", configurationPath));
+            logger.log(HLogLevel.LESS, "Initializing global configuration.", ParametersMap.create().add("file", configurationPath));
             GlobalConfiguration.initialize(configurationPath);
-            WList.logger.log(HLogLevel.VERBOSE, "Initialized global configuration.");
+            logger.log(HLogLevel.VERBOSE, "Initialized global configuration.");
             final File databasePath = new File(runtimePath, "data.db");
-            WList.logger.log(HLogLevel.LESS, "Initializing databases.", ParametersMap.create().add("file", databasePath));
+            logger.log(HLogLevel.LESS, "Initializing databases.", ParametersMap.create().add("file", databasePath));
             DatabaseUtil.initialize(databasePath);
             try {
                 ConstantManager.quicklyInitialize(new ConstantSqlHelper(DatabaseUtil.getInstance()), "initialize");
@@ -96,26 +90,29 @@ public final class WList {
             } catch (final RuntimeException exception) {
                 throw HExceptionWrapper.unwrapException(exception, SQLException.class);
             }
-            WList.logger.log(HLogLevel.VERBOSE, "Initialized databases.");
+            logger.log(HLogLevel.VERBOSE, "Initialized databases.");
             final File driversPath = new File(runtimePath, "configs");
-            WList.logger.log(HLogLevel.LESS, "Initializing driver manager.", ParametersMap.create().add("directory", driversPath));
+            logger.log(HLogLevel.LESS, "Initializing driver manager.", ParametersMap.create().add("directory", driversPath));
             DriverManager.initialize(driversPath);
-            WList.logger.log(HLogLevel.VERBOSE, "Initialized driver manager.");
+            logger.log(HLogLevel.VERBOSE, "Initialized driver manager.");
             try {
-                WList.logger.log(HLogLevel.LESS, "Initializing WList server.");
+                logger.log(HLogLevel.LESS, "Initializing WList server.");
                 ServerHandlerManager.initialize();
-                WListServer.initialize(new InetSocketAddress(GlobalConfiguration.getInstance().port()));
-                WList.logger.log(HLogLevel.VERBOSE, "Initialized WList server.");
+                final InetSocketAddress address = new InetSocketAddress("localhost", GlobalConfiguration.getInstance().port());
+                if (address.isUnresolved())
+                    throw new IllegalStateException("Unresolved address." + ParametersMap.create().add("address", address));
+                WListServer.initialize(address);
+                logger.log(HLogLevel.VERBOSE, "Initialized WList server.");
                 WList.setMainStageAPI(1);
                 WListServer.getInstance().start();
                 WListServer.getInstance().awaitStop();
             } finally {
                 WList.setMainStageAPI(2);
-                WList.logger.log(HLogLevel.FINE, "Shutting down the whole application...");
                 // TODO Save in time.
-                WList.logger.log(HLogLevel.INFO, "Saving driver configurations in multithreading...");
+                logger.log(HLogLevel.INFO, "Saving driver configurations in multithreading...");
                 for (final DriverInterface<?> driver: DriverManager.getAllDrivers())
                     WListServer.ServerExecutors.submit(HExceptionWrapper.wrapRunnable(() -> DriverManager.dumpConfigurationIfModified(driver.getConfiguration())));
+                logger.log(HLogLevel.FINE, "Shutting down the whole application...");
                 final Future<?>[] futures = new Future[4];
                 futures[0] = WListServer.CodecExecutors.shutdownGracefully();
                 futures[1] = WListServer.ServerExecutors.shutdownGracefully();
@@ -123,7 +120,7 @@ public final class WList {
                 futures[3] = BackgroundTaskManager.BackgroundExecutors.shutdownGracefully();
                 for (final Future<?> future : futures)
                     future.sync();
-                WList.logger.log(HLogLevel.MISTAKE, "Thanks to use WList.");
+                logger.log(HLogLevel.MISTAKE, "Thanks to use WList.");
             }
         } finally {
             WList.setMainStageAPI(3);

@@ -3,6 +3,7 @@ package com.xuxiaocheng.WList.Server;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
+import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Utils.YamlHelper;
@@ -23,7 +24,6 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 public record GlobalConfiguration(int port, int maxConnection,
@@ -31,11 +31,9 @@ public record GlobalConfiguration(int port, int maxConnection,
                                   int maxLimitPerPage, int forwardDownloadCacheCount,
                                   boolean deleteDriver, long maxCacheSize,
                                   @NotNull Map<@NotNull String, @NotNull WebDriversType> drivers) {
-    private static @Nullable GlobalConfiguration instance;
+    private static final @NotNull HInitializer<Pair.ImmutablePair<@NotNull GlobalConfiguration, @Nullable File>> instance = new HInitializer<>("GlobalConfiguration");
 
     public static synchronized void initialize(final @Nullable File path) throws IOException {
-        if (GlobalConfiguration.instance != null)
-            throw new IllegalStateException("Global configuration is initialized. instance: " + GlobalConfiguration.instance + (path == null ? "" : " path: " + path.getAbsolutePath()));
         final Map<String, Object> config;
         if (path != null) {
             if (!HFileHelper.ensureFileExist(path))
@@ -46,7 +44,7 @@ public record GlobalConfiguration(int port, int maxConnection,
         } else
             config = Map.of();
         final Collection<Pair.ImmutablePair<String, String>> errors = new LinkedList<>();
-        GlobalConfiguration.instance = new GlobalConfiguration(
+        final GlobalConfiguration configuration = new GlobalConfiguration(
             YamlHelper.getConfig(config, "port", "5212",
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "port", BigInteger.ONE, BigInteger.valueOf(65535))).intValue(),
             YamlHelper.getConfig(config, "max_connection", "128",
@@ -65,44 +63,62 @@ public record GlobalConfiguration(int port, int maxConnection,
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "max_cache_size", BigInteger.ONE, BigInteger.valueOf(Long.MAX_VALUE))).longValue(),
             YamlHelper.getConfig(config, "drivers", new LinkedHashMap<>(),
                 o -> { final Map<String, Object> map = YamlHelper.transferMapNode(o, errors, "drivers");
-                    if (map == null) return Map.of();
-                    return map.entrySet().stream().map(e -> {
+                    if (map == null) return new LinkedHashMap<>();
+                    final Map<String, WebDriversType> drivers = new LinkedHashMap<>(map.size());
+                    for (final Map.Entry<String, Object> e: map.entrySet()) {
                         final String identifier = YamlHelper.transferString(e.getValue(), errors, "driver(" + e.getKey() + ')');
-                        if (identifier == null)
-                            //noinspection ReturnOfNull
-                            return null;
+                        if (identifier == null) continue;
                         final WebDriversType type = WebDriversType.get(identifier);
                         if (type == null) {
                             HLog.getInstance("DefaultLogger").log(HLogLevel.WARN, "Unsupported driver type.", ParametersMap.create().add("name", e.getKey()).add("identifier", identifier));
-                            //noinspection ReturnOfNull
-                            return null;
+                            continue;
                         }
-                        return Pair.ImmutablePair.makeImmutablePair(e.getKey(), type);
-                    }).filter(Objects::nonNull).collect(Collectors.toMap(Pair::getFirst, Pair::getSecond));
+                        drivers.put(e.getKey(), type);
+                    }
+                    return drivers;
                 })
         );
         YamlHelper.throwErrors(errors);
-        if (path != null) {
-            final Map<String, Object> configuration = new LinkedHashMap<>();
-            configuration.put("port", GlobalConfiguration.instance.port);
-            configuration.put("max_connection", GlobalConfiguration.instance.maxConnection);
-            configuration.put("token_expire_time", GlobalConfiguration.instance.tokenExpireTime);
-            configuration.put("id_idle_expire_time", GlobalConfiguration.instance.idIdleExpireTime);
-            configuration.put("max_limit_per_page", GlobalConfiguration.instance.maxLimitPerPage);
-            configuration.put("forward_download_cache_count", GlobalConfiguration.instance.forwardDownloadCacheCount);
-            configuration.put("delete_driver", GlobalConfiguration.instance.deleteDriver);
-            configuration.put("max_cache_size", GlobalConfiguration.instance.maxCacheSize);
-            configuration.put("drivers", GlobalConfiguration.instance.drivers.entrySet().stream()
-                    .collect(Collectors.toMap(Map.Entry::getKey, t -> t.getValue().getIdentifier())));
-            try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(path))) {
-                YamlHelper.dumpYaml(configuration, outputStream);
-            }
-        }
+        GlobalConfiguration.instance.initialize(Pair.ImmutablePair.makeImmutablePair(configuration, path));
     }
 
     public static synchronized @NotNull GlobalConfiguration getInstance() {
-        if (GlobalConfiguration.instance == null)
-            throw new IllegalStateException("Global configuration is not initialized.");
-        return GlobalConfiguration.instance;
+        return GlobalConfiguration.instance.getInstance().getFirst();
+    }
+
+    private static synchronized void dumpToFile() throws IOException {
+        final GlobalConfiguration configuration = GlobalConfiguration.instance.getInstance().getFirst();
+        final File path = GlobalConfiguration.instance.getInstance().getSecond();
+        if (path == null)
+            return;
+        final Map<String, Object> config = new LinkedHashMap<>();
+        config.put("port", configuration.port);
+        config.put("max_connection", configuration.maxConnection);
+        config.put("token_expire_time", configuration.tokenExpireTime);
+        config.put("id_idle_expire_time", configuration.idIdleExpireTime);
+        config.put("max_limit_per_page", configuration.maxLimitPerPage);
+        config.put("forward_download_cache_count", configuration.forwardDownloadCacheCount);
+        config.put("delete_driver", configuration.deleteDriver);
+        config.put("max_cache_size", configuration.maxCacheSize);
+        config.put("drivers", configuration.drivers.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, t -> t.getValue().getIdentifier())));
+        try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(path))) {
+            YamlHelper.dumpYaml(config, outputStream);
+        }
+    }
+
+    /**
+     * @see com.xuxiaocheng.WList.Server.Driver.DriverManager#addDriver(String, WebDriversType)
+     */
+    public static synchronized void addUninitializedDriver(final @NotNull String name, final @NotNull WebDriversType type) throws IOException {
+        GlobalConfiguration.getInstance().drivers.put(name, type);
+        GlobalConfiguration.dumpToFile();
+    }
+
+    /**
+     * @see com.xuxiaocheng.WList.Server.Driver.DriverManager#removeDriver(String)
+     */
+    public static synchronized void removeUninitializedDriver(final @NotNull String name) throws IOException {
+        if (GlobalConfiguration.getInstance().drivers.remove(name) != null)
+            GlobalConfiguration.dumpToFile();
     }
 }

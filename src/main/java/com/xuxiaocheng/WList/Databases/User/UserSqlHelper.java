@@ -36,7 +36,7 @@ public final class UserSqlHelper implements UserSqlInterface {
     private final @NotNull HInitializer<Long> adminId = new HInitializer<>("UserAdminId");
     private final @NotNull HInitializer<String> defaultAdminPassword = new HInitializer<>("DefaultAdminUserPassword");
 
-    public UserSqlHelper(final @NotNull DatabaseInterface database, final @Nullable String _connectionId) {
+    public UserSqlHelper(final @NotNull DatabaseInterface database) {
         super();
         this.database = database;
     }
