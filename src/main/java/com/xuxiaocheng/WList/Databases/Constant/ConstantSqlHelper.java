@@ -15,20 +15,19 @@ import java.util.function.Supplier;
 public final class ConstantSqlHelper implements ConstantSqlInterface {
     private final @NotNull DatabaseInterface database;
 
-    public ConstantSqlHelper(final @NotNull DatabaseInterface database, final @Nullable String _connectionId) throws SQLException {
+    public ConstantSqlHelper(final @NotNull DatabaseInterface database) {
         super();
         this.database = database;
-        this.createTable(_connectionId);
     }
 
     @Override
-    public @NotNull Connection getConnection(@Nullable final String _connectionId, @Nullable final AtomicReference<? super String> connectionId) throws SQLException {
+    public @NotNull Connection getConnection(final @Nullable String _connectionId, final @Nullable AtomicReference<? super String> connectionId) throws SQLException {
         return this.database.getConnection(_connectionId, connectionId);
     }
 
     @Override
     public void createTable(final @Nullable String _connectionId) throws SQLException {
-        try (final Connection connection = this.getConnection("initialize", null)) {
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate("""
@@ -38,6 +37,19 @@ public final class ConstantSqlHelper implements ConstantSqlInterface {
                                                NOT NULL,
                         value       TEXT
                     );
+                """);
+            }
+            connection.commit();
+        }
+    }
+
+    @Override
+    public void deleteTable(final @Nullable String _connectionId) throws SQLException {
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
+            connection.setAutoCommit(false);
+            try (final Statement statement = connection.createStatement()) {
+                statement.executeUpdate("""
+                    DROP TABLE IF EXISTS constants;
                 """);
             }
             connection.commit();

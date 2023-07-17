@@ -208,7 +208,7 @@ public final class ServerUserHandler {
         if (UserManager.ADMIN.equals(username))
             return ServerUserHandler.UserDataError;
         final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = UserManager.sqlInstance.getInstance().getConnection(null, connectionId)) {
+        try (final Connection connection = UserManager.getConnection(null, connectionId)) {
             connection.setAutoCommit(false);
             final long id;
             if (username.equals(changer.getT().username()))
@@ -279,7 +279,7 @@ public final class ServerUserHandler {
         if (UserGroupManager.ADMIN.equals(groupName) || UserGroupManager.DEFAULT.equals(groupName))
             return ServerUserHandler.GroupDataError;
         final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = UserManager.sqlInstance.getInstance().getConnection(null, connectionId)) {
+        try (final Connection connection = UserManager.getConnection(null, connectionId)) {
             connection.setAutoCommit(false);
             final UserGroupSqlInformation information = UserGroupManager.selectGroupByName(groupName, connectionId.get());
             if (information == null)
@@ -306,7 +306,7 @@ public final class ServerUserHandler {
         if (UserManager.ADMIN.equals(username))
             return ServerUserHandler.UserDataError;
         final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = UserManager.sqlInstance.getInstance().getConnection(null, connectionId)) {
+        try (final Connection connection = UserManager.getConnection(null, connectionId)) {
             connection.setAutoCommit(false);
             final UserSqlInformation user = UserManager.selectUserByName(username, connectionId.get());
             if (user == null)
@@ -336,7 +336,7 @@ public final class ServerUserHandler {
         if (permissions == null)
             return ServerUserHandler.PermissionsDataError;
         final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = UserManager.sqlInstance.getInstance().getConnection(null, connectionId)) {
+        try (final Connection connection = UserManager.getConnection(null, connectionId)) {
             connection.setAutoCommit(false);
             final UserGroupSqlInformation group = UserGroupManager.selectGroupByName(groupName, connectionId.get());
             if (group == null)

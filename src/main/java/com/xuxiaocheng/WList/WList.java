@@ -90,9 +90,9 @@ public final class WList {
             WList.logger.log(HLogLevel.LESS, "Initializing databases.", ParametersMap.create().add("file", databasePath));
             DatabaseUtil.initialize(databasePath);
             try {
-                ConstantManager.sqlInstance.initializeIfNot(HExceptionWrapper.wrapSupplier(() -> new ConstantSqlHelper(DatabaseUtil.getInstance(), "initialize")));
-                UserGroupManager.sqlInstance.initializeIfNot(HExceptionWrapper.wrapSupplier(() -> new UserGroupSqlHelper(DatabaseUtil.getInstance(), "initialize")));
-                UserManager.sqlInstance.initializeIfNot(HExceptionWrapper.wrapSupplier(() -> new UserSqlHelper(DatabaseUtil.getInstance(), "initialize")));
+                ConstantManager.quicklyInitialize(new ConstantSqlHelper(DatabaseUtil.getInstance()), "initialize");
+                UserGroupManager.quicklyInitialize(new UserGroupSqlHelper(DatabaseUtil.getInstance()), "initialize");
+                UserManager.quicklyInitialize(new UserSqlHelper(DatabaseUtil.getInstance()), "initialize");
             } catch (final RuntimeException exception) {
                 throw HExceptionWrapper.unwrapException(exception, SQLException.class);
             }

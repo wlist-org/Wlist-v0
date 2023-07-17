@@ -14,7 +14,8 @@ import java.util.List;
 import java.util.Map;
 
 public interface UserGroupSqlInterface extends DatabaseInterface {
-    Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull Long> createTable(final @Nullable String _connectionId) throws SQLException;
+    void createTable(final @Nullable String _connectionId) throws SQLException;
+    void deleteTable(final @Nullable String _connectionId) throws SQLException;
     @Contract(pure = true) long getAdminId();
     @Contract(pure = true) long getDefaultId();
 

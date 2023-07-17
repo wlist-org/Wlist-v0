@@ -33,22 +33,21 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public final class UserSqlHelper implements UserSqlInterface {
     private final @NotNull DatabaseInterface database;
-    private final long adminId;
+    private final @NotNull HInitializer<Long> adminId = new HInitializer<>("UserAdminId");
     private final @NotNull HInitializer<String> defaultAdminPassword = new HInitializer<>("DefaultAdminUserPassword");
 
-    public UserSqlHelper(final @NotNull DatabaseInterface database, final @Nullable String _connectionId) throws SQLException {
+    public UserSqlHelper(final @NotNull DatabaseInterface database, final @Nullable String _connectionId) {
         super();
         this.database = database;
-        this.adminId = this.createTable(_connectionId);
     }
 
     @Override
-    public @NotNull Connection getConnection(@Nullable final String _connectionId, final @Nullable AtomicReference<? super String> connectionId) throws SQLException {
+    public @NotNull Connection getConnection(final @Nullable String _connectionId, final @Nullable AtomicReference<? super String> connectionId) throws SQLException {
         return this.database.getConnection(_connectionId, connectionId);
     }
 
     @Override
-    public long createTable(@Nullable final String _connectionId) throws SQLException {
+    public void createTable(final @Nullable String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
@@ -101,13 +100,28 @@ public final class UserSqlHelper implements UserSqlInterface {
                 }
             }
             connection.commit();
-            return adminId.longValue();
+            this.adminId.initialize(adminId);
+        }
+    }
+
+    @Override
+    public void deleteTable(@Nullable final String _connectionId) throws SQLException {
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+            connection.setAutoCommit(false);
+            try (final Statement statement = connection.createStatement()) {
+                statement.executeUpdate("""
+                    DROP TABLE IF EXISTS users;
+                """);
+            }
+            connection.commit();
+            this.adminId.uninitialize();
         }
     }
 
     @Override
     public long getAdminId() {
-        return this.adminId;
+        return this.adminId.getInstance().longValue();
     }
 
     @Override

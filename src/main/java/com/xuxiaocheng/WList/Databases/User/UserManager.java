@@ -1,23 +1,51 @@
 package com.xuxiaocheng.WList.Databases.User;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
 import com.xuxiaocheng.WList.Driver.Options;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 public final class UserManager {
     private UserManager() {
         super();
     }
 
-    public static final @NotNull HInitializer<UserSqlInterface> sqlInstance = new HInitializer<>("UserSqlInstance");
+    private static final @NotNull HInitializer<UserSqlInterface> sqlInstance = new HInitializer<>("UserSqlInstance");
+
+    public static void quicklyInitialize(final @NotNull UserSqlInterface sqlInstance, final @Nullable String _connectionId) throws SQLException {
+        try {
+            UserManager.sqlInstance.initializeIfNot(HExceptionWrapper.wrapSupplier(() -> {
+                sqlInstance.createTable(_connectionId);
+                return sqlInstance;
+            }));
+        } catch (final RuntimeException exception) {
+            throw HExceptionWrapper.unwrapException(exception, SQLException.class);
+        }
+    }
+
+    public static boolean quicklyUninitialize() {
+        return UserManager.sqlInstance.uninitialize() != null;
+    }
+
+    public static boolean quicklyUninitialize(final @Nullable String _connectionId) throws SQLException {
+        final UserSqlInterface sqlInstance = UserManager.sqlInstance.uninitialize();
+        if (sqlInstance != null) sqlInstance.deleteTable(_connectionId);
+        return sqlInstance != null;
+    }
+
+    public static @NotNull Connection getConnection(final @Nullable String _connectionId, final @Nullable AtomicReference<? super String> connectionId) throws SQLException {
+        return UserManager.sqlInstance.getInstance().getConnection(_connectionId, connectionId);
+    }
 
     public static final @NotNull String ADMIN = "admin";
 

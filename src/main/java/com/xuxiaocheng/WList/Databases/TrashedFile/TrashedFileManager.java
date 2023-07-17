@@ -1,33 +1,51 @@
 package com.xuxiaocheng.WList.Databases.TrashedFile;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializer.HMultiInitializers;
 import com.xuxiaocheng.WList.Driver.Options;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 public final class TrashedFileManager {
     private TrashedFileManager() {
         super();
     }
 
-    public static final @NotNull HMultiInitializers<String, TrashedSqlInterface> sqlInstances = new HMultiInitializers<>("TrashedSqlInstances");
+    private static final @NotNull HMultiInitializers<String, TrashedSqlInterface> sqlInstances = new HMultiInitializers<>("TrashedSqlInstances");
 
-    public static void quicklyInitialize(final @NotNull TrashedSqlInterface sqlInstance) {
-        TrashedFileManager.sqlInstances.initializeIfNot(sqlInstance.getDriverName(), () -> sqlInstance);
+    public static void quicklyInitialize(final @NotNull TrashedSqlInterface sqlInstance, final @Nullable String _connectionId) throws SQLException {
+        try {
+            TrashedFileManager.sqlInstances.initializeIfNot(sqlInstance.getDriverName(), HExceptionWrapper.wrapSupplier(() -> {
+                sqlInstance.createTable(_connectionId);
+                return sqlInstance;
+            }));
+        } catch (final RuntimeException exception) {
+            throw HExceptionWrapper.unwrapException(exception, SQLException.class);
+        }
+    }
+
+    public static boolean quicklyUninitialize(final @NotNull String driverName) {
+        return TrashedFileManager.sqlInstances.uninitialize(driverName) != null;
     }
 
     public static boolean quicklyUninitialize(final @NotNull String driverName, final @Nullable String _connectionId) throws SQLException {
         final TrashedSqlInterface sqlInstance = TrashedFileManager.sqlInstances.uninitialize(driverName);
         if (sqlInstance != null) sqlInstance.deleteTable(_connectionId);
         return sqlInstance != null;
+    }
+
+    public static @NotNull Connection getConnection(final @NotNull String driverName, final @Nullable String _connectionId, final @Nullable AtomicReference<? super String> connectionId) throws SQLException {
+        return TrashedFileManager.sqlInstances.getInstance(driverName).getConnection(_connectionId, connectionId);
     }
 
     public static void insertOrUpdateFiles(final @NotNull String driverName, final @NotNull Collection<@NotNull TrashedSqlInformation> inserters, final @Nullable String _connectionId) throws SQLException {

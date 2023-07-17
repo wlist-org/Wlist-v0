@@ -47,9 +47,9 @@ public final class WListTest {
         System.setProperty("io.netty.leakDetectionLevel", "ADVANCED");
         GlobalConfiguration.initialize(new File("server.yaml"));
         DatabaseUtil.initialize(new File("data.db"));
-        ConstantManager.sqlInstance.initialize(new ConstantSqlHelper(DatabaseUtil.getInstance(), "initialize"));
-        UserGroupManager.sqlInstance.initialize(new UserGroupSqlHelper(DatabaseUtil.getInstance(), "initialize"));
-        UserManager.sqlInstance.initialize(new UserSqlHelper(DatabaseUtil.getInstance(), "initialize"));
+        ConstantManager.quicklyInitialize(new ConstantSqlHelper(DatabaseUtil.getInstance()), "initialize");
+        UserGroupManager.quicklyInitialize(new UserGroupSqlHelper(DatabaseUtil.getInstance()), "initialize");
+        UserManager.quicklyInitialize(new UserSqlHelper(DatabaseUtil.getInstance()), "initialize");
         DriverManager.initialize(new File("configs"));
         try {
             final Object obj = runnable.get();

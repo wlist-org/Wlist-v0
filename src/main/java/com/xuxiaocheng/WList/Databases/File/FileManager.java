@@ -23,16 +23,31 @@ public final class FileManager {
         super();
     }
 
-    public static final @NotNull HMultiInitializers<String, FileSqlInterface> sqlInstances = new HMultiInitializers<>("FileSqlInstances");
+    private static final @NotNull HMultiInitializers<String, FileSqlInterface> sqlInstances = new HMultiInitializers<>("FileSqlInstances");
 
-    public static void quicklyInitialize(final @NotNull FileSqlInterface sqlInstance) {
-        FileManager.sqlInstances.initializeIfNot(sqlInstance.getDriverName(), () -> sqlInstance);
+    public static void quicklyInitialize(final @NotNull FileSqlInterface sqlInstance, final @Nullable String _connectionId) throws SQLException {
+        try {
+            FileManager.sqlInstances.initializeIfNot(sqlInstance.getDriverName(), HExceptionWrapper.wrapSupplier(() -> {
+                sqlInstance.createTable(_connectionId);
+                return sqlInstance;
+            }));
+        } catch (final RuntimeException exception) {
+            throw HExceptionWrapper.unwrapException(exception, SQLException.class);
+        }
+    }
+
+    public static boolean quicklyUninitialize(final @NotNull String driverName) {
+        return FileManager.sqlInstances.uninitialize(driverName) != null;
     }
 
     public static boolean quicklyUninitialize(final @NotNull String driverName, final @Nullable String _connectionId) throws SQLException {
         final FileSqlInterface sqlInstance = FileManager.sqlInstances.uninitialize(driverName);
         if (sqlInstance != null) sqlInstance.deleteTable(_connectionId);
         return sqlInstance != null;
+    }
+
+    public static @NotNull Connection getConnection(final @NotNull String driverName, final @Nullable String _connectionId, final @Nullable AtomicReference<? super String> connectionId) throws SQLException {
+        return FileManager.sqlInstances.getInstance(driverName).getConnection(_connectionId, connectionId);
     }
 
     public static void insertOrUpdateFiles(final @NotNull String driverName, final @NotNull Collection<@NotNull FileSqlInformation> inserters, final @Nullable String _connectionId) throws SQLException {

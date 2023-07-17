@@ -175,6 +175,7 @@ public final class DriverManager {
         return driver.getSecond().getSecond();
     }
 
+    @Deprecated
     public static @NotNull @UnmodifiableView Set<@NotNull DriverInterface<?>> getAllDrivers() {
         return DriverManager.drivers.values().stream().map(p -> {
             if (p.getSecond() == DriverManager.DriverPlaceholder)
@@ -184,6 +185,7 @@ public final class DriverManager {
         }).filter(Objects::nonNull).collect(Collectors.toSet());
     }
 
+    @Deprecated
     public static @NotNull @UnmodifiableView Set<@NotNull DriverTrashInterface<?>> getAllTrashes() {
         return DriverManager.drivers.values().stream().map(p -> {
             if (p.getSecond() == DriverManager.DriverPlaceholder)

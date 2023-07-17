@@ -1,6 +1,7 @@
 package com.xuxiaocheng.WList.Databases.UserGroup;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Server.Operation;
 import com.xuxiaocheng.WList.Utils.DatabaseInterface;
@@ -23,24 +24,21 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public final class UserGroupSqlHelper implements UserGroupSqlInterface {
     private final @NotNull DatabaseInterface database;
-    private final long adminId;
-    private final long defaultId;
+    private final @NotNull HInitializer<Long> adminId = new HInitializer<>("UserGroupAdminId");
+    private final @NotNull HInitializer<Long> defaultId = new HInitializer<>("UserGroupDefaultId");
 
-    public UserGroupSqlHelper(final @NotNull DatabaseInterface database, final @Nullable String _connectionId) throws SQLException {
+    public UserGroupSqlHelper(final @NotNull DatabaseInterface database) {
         super();
         this.database = database;
-        final Pair.ImmutablePair<Long, Long> pair = this.createTable(_connectionId);
-        this.adminId = pair.getFirst().longValue();
-        this.defaultId = pair.getSecond().longValue();
     }
 
     @Override
-    public @NotNull Connection getConnection(@Nullable final String _connectionId, final @Nullable AtomicReference<? super String> connectionId) throws SQLException {
+    public @NotNull Connection getConnection(final @Nullable String _connectionId, final @Nullable AtomicReference<? super String> connectionId) throws SQLException {
         return this.database.getConnection(_connectionId, connectionId);
     }
 
     @Override
-    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull Long> createTable(@Nullable final String _connectionId) throws SQLException {
+    public void createTable(final @Nullable String _connectionId) throws SQLException {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             try (final Statement statement = connection.createStatement()) {
@@ -105,18 +103,34 @@ public final class UserGroupSqlHelper implements UserGroupSqlInterface {
                     }
             }
             connection.commit();
-            return Pair.ImmutablePair.makeImmutablePair(adminId, defaultId);
+            this.adminId.initialize(adminId);
+            this.defaultId.initialize(defaultId);
+        }
+    }
+
+    @Override
+    public void deleteTable(final @Nullable String _connectionId) throws SQLException {
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
+            connection.setAutoCommit(false);
+            try (final Statement statement = connection.createStatement()) {
+                statement.executeUpdate("""
+                        DROP TABLE IF EXISTS groups;
+                    """);
+            }
+            connection.commit();
+            this.adminId.uninitialize();
+            this.defaultId.uninitialize();
         }
     }
 
     @Override
     public long getAdminId() {
-        return this.adminId;
+        return this.adminId.getInstance().longValue();
     }
 
     @Override
     public long getDefaultId() {
-        return this.defaultId;
+        return this.defaultId.getInstance().longValue();
     }
 
     private static @Nullable UserGroupSqlInformation createNextUserGroupInfo(final @NotNull ResultSet result) throws SQLException {

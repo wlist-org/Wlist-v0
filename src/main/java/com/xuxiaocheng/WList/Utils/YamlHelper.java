@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -36,17 +37,17 @@ public final class YamlHelper {
         super();
     }
 
-    public static @NotNull Map<@NotNull String, @NotNull Object> normalizeMapNode(final @Nullable Map<?, ?> config) {
+    public static @NotNull @UnmodifiableView Map<@NotNull String, @NotNull Object> normalizeMapNode(final @Nullable Map<?, ?> config) {
         if (config == null)
             return Map.of();
         final Map<String, Object> map = new LinkedHashMap<>(config.size());
         for (final Map.Entry<?, ?> entry: config.entrySet())
             if (entry.getKey() != null && entry.getValue() != null)
                 map.put(entry.getKey().toString(), entry.getValue());
-        return map;
+        return Collections.unmodifiableMap(map);
     }
 
-    public static @NotNull Map<@NotNull String, @NotNull Object> loadYaml(final @NotNull InputStream stream) throws IOException {
+    public static @NotNull @UnmodifiableView Map<@NotNull String, @NotNull Object> loadYaml(final @NotNull InputStream stream) throws IOException {
         final Object yaml = new Load(LoadSettings.builder().setParseComments(true).setSchema(new FailsafeSchema())
                 .setTagConstructors(Map.of(Tag.NULL, new ConstructYamlNull())).build())
                 .loadFromInputStream(stream);
@@ -154,7 +155,7 @@ public final class YamlHelper {
         }
     }
 
-    public static @Nullable Map<@NotNull String, @NotNull Object> transferMapNode(final @Nullable Object obj, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String slot) {
+    public static @Nullable @UnmodifiableView Map<@NotNull String, @NotNull Object> transferMapNode(final @Nullable Object obj, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String slot) {
         if (obj == null)
             return null;
         if (!(obj instanceof Map<?, ?> map)) {

@@ -1,23 +1,51 @@
 package com.xuxiaocheng.WList.Databases.UserGroup;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
 import com.xuxiaocheng.WList.Driver.Options;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 public final class UserGroupManager {
     private UserGroupManager() {
         super();
     }
 
-    public static final @NotNull HInitializer<UserGroupSqlInterface> sqlInstance = new HInitializer<>("UserGroupSqlInstance");
+    private static final @NotNull HInitializer<UserGroupSqlInterface> sqlInstance = new HInitializer<>("UserGroupSqlInstance");
+
+    public static void quicklyInitialize(final @NotNull UserGroupSqlInterface sqlInstance, final @Nullable String _connectionId) throws SQLException {
+        try {
+            UserGroupManager.sqlInstance.initializeIfNot(HExceptionWrapper.wrapSupplier(() -> {
+                sqlInstance.createTable(_connectionId);
+                return sqlInstance;
+            }));
+        } catch (final RuntimeException exception) {
+            throw HExceptionWrapper.unwrapException(exception, SQLException.class);
+        }
+    }
+
+    public static boolean quicklyUninitialize() {
+        return UserGroupManager.sqlInstance.uninitialize() != null;
+    }
+
+    public static boolean quicklyUninitialize(final @Nullable String _connectionId) throws SQLException {
+        final UserGroupSqlInterface sqlInstance = UserGroupManager.sqlInstance.uninitialize();
+        if (sqlInstance != null) sqlInstance.deleteTable(_connectionId);
+        return sqlInstance != null;
+    }
+
+    public static @NotNull Connection getConnection(final @Nullable String _connectionId, final @Nullable AtomicReference<? super String> connectionId) throws SQLException {
+        return UserGroupManager.sqlInstance.getInstance().getConnection(_connectionId, connectionId);
+    }
 
     public static final @NotNull String ADMIN = "admin";
     public static final @NotNull String DEFAULT = "default";

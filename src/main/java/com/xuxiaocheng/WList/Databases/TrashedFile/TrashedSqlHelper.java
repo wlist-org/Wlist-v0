@@ -29,7 +29,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class TrashedSqlHelper implements TrashedSqlInterface {
-    private static @NotNull String getTableName(final @NotNull String name) {
+    @Contract(pure = true) private static @NotNull String getTableName(final @NotNull String name) {
         return "driver_" + Base64.getEncoder().encodeToString(name.getBytes(StandardCharsets.UTF_8)).replace('=', '_') + "_trash";
     }
 
@@ -54,21 +54,20 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
     private final @NotNull String driverName;
     private final @NotNull String tableName;
 
-    public TrashedSqlHelper(final @NotNull DatabaseUtil database, final @NotNull String driverName, final @Nullable String _connectionId) throws SQLException {
+    public TrashedSqlHelper(final @NotNull DatabaseUtil database, final @NotNull String driverName) {
         super();
         this.database = database;
         this.driverName = driverName;
         this.tableName = TrashedSqlHelper.getTableName(driverName);
-        this.createTable(_connectionId);
     }
 
     @Override
-    public @NotNull Connection getConnection(@Nullable final String _connectionId, @Nullable final AtomicReference<? super String> connectionId) throws SQLException {
+    public @NotNull Connection getConnection(final @Nullable String _connectionId, final @Nullable AtomicReference<? super String> connectionId) throws SQLException {
         return this.database.getConnection(_connectionId, connectionId);
     }
 
     @Override
-    public void createTable(@Nullable final String _connectionId) throws SQLException {
+    public void createTable(final @Nullable String _connectionId) throws SQLException {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             try (final Statement statement = connection.createStatement()) {
@@ -98,7 +97,7 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
     }
 
     @Override
-    public void deleteTable(@Nullable final String _connectionId) throws SQLException {
+    public void deleteTable(final @Nullable String _connectionId) throws SQLException {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             try (final Statement statement = connection.createStatement()) {

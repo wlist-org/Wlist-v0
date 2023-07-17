@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public final class FileSqlHelper implements FileSqlInterface {
-    private static @NotNull String getTableName(final @NotNull String name) {
+    @Contract(pure = true) private static @NotNull String getTableName(final @NotNull String name) {
         return "driver_" + Base64.getEncoder().encodeToString(name.getBytes(StandardCharsets.UTF_8)).replace('=', '_');
     }
 
@@ -59,22 +59,21 @@ public final class FileSqlHelper implements FileSqlInterface {
     private final @NotNull String tableName;
     private final long rootId;
 
-    public FileSqlHelper(final @NotNull DatabaseUtil database, final @NotNull String driverName, final long rootId, final @Nullable String _connectionId) throws SQLException {
+    public FileSqlHelper(final @NotNull DatabaseUtil database, final @NotNull String driverName, final long rootId) {
         super();
         this.database = database;
         this.driverName = driverName;
         this.tableName = FileSqlHelper.getTableName(driverName);
         this.rootId = rootId;
-        this.createTable(_connectionId);
     }
 
     @Override
-    public @NotNull Connection getConnection(@Nullable final String _connectionId, @Nullable final AtomicReference<? super String> connectionId) throws SQLException {
+    public @NotNull Connection getConnection(final @Nullable String _connectionId, final @Nullable AtomicReference<? super String> connectionId) throws SQLException {
         return this.database.getConnection(_connectionId, connectionId);
     }
 
     @Override
-    public void createTable(@Nullable final String _connectionId) throws SQLException {
+    public void createTable(final @Nullable String _connectionId) throws SQLException {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             try (final Statement statement = connection.createStatement()) {
