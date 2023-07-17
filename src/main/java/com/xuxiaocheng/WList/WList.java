@@ -23,7 +23,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.sql.SQLException;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -62,7 +61,7 @@ public final class WList {
 
     public static void main(final String @NotNull ... args) throws IOException, SQLException, InterruptedException {
         if (!WList.mainStageAPI.compareAndSet(-1, 0)) return;
-        File runtimePath = new File("/").getAbsoluteFile();
+        File runtimePath = new File("").getAbsoluteFile();
         for (final String arg : args) {
             if ("-Debug".equalsIgnoreCase(arg))
                 HLog.setDebugMode(true);
@@ -73,7 +72,7 @@ public final class WList {
         }
         if (HLog.isDebugMode()) System.setProperty("io.netty.leakDetectionLevel", "ADVANCED");
         final HLog logger = HLog.createInstance("DefaultLogger", HLog.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, false, true, HMergedStream.getFileOutputStreamNoException(null));
-        HExceptionWrapper.addUncaughtExceptionListener((t, e) -> logger.log(HLogLevel.FAULT, "Uncaught exception by WList. thread: ", t.getName(), e));
+        HExceptionWrapper.addUncaughtExceptionListener((t, e) -> logger.log(HLogLevel.FAULT, "Uncaught exception listened by WList. thread: ", t.getName(), e));
         try {
             logger.log(HLogLevel.FINE, "Hello WList! Loading...");
             final File configurationPath = new File(runtimePath, "server.yaml");
@@ -98,13 +97,9 @@ public final class WList {
             try {
                 logger.log(HLogLevel.LESS, "Initializing WList server.");
                 ServerHandlerManager.initialize();
-                final InetSocketAddress address = new InetSocketAddress("localhost", GlobalConfiguration.getInstance().port());
-                if (address.isUnresolved())
-                    throw new IllegalStateException("Unresolved address." + ParametersMap.create().add("address", address));
-                WListServer.initialize(address);
                 logger.log(HLogLevel.VERBOSE, "Initialized WList server.");
+                WListServer.getInstance().start(GlobalConfiguration.getInstance().port());
                 WList.setMainStageAPI(1);
-                WListServer.getInstance().start();
                 WListServer.getInstance().awaitStop();
             } finally {
                 WList.setMainStageAPI(2);

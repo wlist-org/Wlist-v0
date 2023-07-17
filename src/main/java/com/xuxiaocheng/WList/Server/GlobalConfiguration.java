@@ -31,7 +31,7 @@ public record GlobalConfiguration(int port, int maxConnection,
                                   int maxLimitPerPage, int forwardDownloadCacheCount,
                                   boolean deleteDriver, long maxCacheSize,
                                   @NotNull Map<@NotNull String, @NotNull WebDriversType> drivers) {
-    private static final @NotNull HInitializer<Pair.ImmutablePair<@NotNull GlobalConfiguration, @Nullable File>> instance = new HInitializer<>("GlobalConfiguration");
+    private static final @NotNull HInitializer<Pair<@NotNull GlobalConfiguration, @Nullable File>> instance = new HInitializer<>("GlobalConfiguration");
 
     public static synchronized void initialize(final @Nullable File path) throws IOException {
         final Map<String, Object> config;
@@ -104,6 +104,12 @@ public record GlobalConfiguration(int port, int maxConnection,
         try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(path))) {
             YamlHelper.dumpYaml(config, outputStream);
         }
+    }
+
+    @Deprecated // TODO
+    public static synchronized void reInitialize(final @NotNull GlobalConfiguration configuration) throws IOException {
+        GlobalConfiguration.instance.getInstance().setFirst(configuration);
+        GlobalConfiguration.dumpToFile();
     }
 
     /**

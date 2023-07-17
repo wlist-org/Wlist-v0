@@ -1,5 +1,8 @@
 package com.xuxiaocheng.WList.Server;
 
+import com.xuxiaocheng.HeadLibs.Annotations.Range.IntRange;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
@@ -13,6 +16,7 @@ import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
@@ -35,7 +39,7 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.crypto.NoSuchPaddingException;
 import java.io.IOException;
-import java.net.SocketAddress;
+import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.CountDownLatch;
@@ -53,31 +57,23 @@ public class WListServer {
 
     private static final @NotNull HLog logger = HLog.createInstance("ServerLogger", HLog.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, true, HMergedStream.getFileOutputStreamNoException(null));
 
-    protected static @Nullable WListServer instance;
-    public static synchronized void initialize(final @NotNull SocketAddress address) {
-        if (WListServer.instance != null)
-            throw new IllegalStateException("WList server is initialized. instance: " + WListServer.instance + " address: " + address);
-        WListServer.instance = new WListServer(address);
-    }
+    protected static @NotNull WListServer instance = new WListServer();
     public static synchronized @NotNull WListServer getInstance() {
-        if (WListServer.instance == null)
-            throw new IllegalStateException("WList server is not initialized.");
         return WListServer.instance;
     }
 
     protected static final WListServer.@NotNull ServerChannelHandler handlerInstance = new ServerChannelHandler();
 
-    protected final @NotNull SocketAddress address;
     protected final @NotNull EventExecutorGroup bossGroup = new NioEventLoopGroup(Math.max(2, Runtime.getRuntime().availableProcessors() >>> 1));
     protected final @NotNull EventLoopGroup workerGroup = new NioEventLoopGroup(Runtime.getRuntime().availableProcessors() << 1);
     protected final @NotNull CountDownLatch latch = new CountDownLatch(1);
+    protected final @NotNull HInitializer<InetSocketAddress> address = new HInitializer<>("WListServerAddress");
 
-    protected WListServer(final @NotNull SocketAddress address) {
+    protected WListServer() {
         super();
-        this.address = address;
     }
 
-    public @NotNull SocketAddress getAddress() {
+    public @NotNull HInitializer<InetSocketAddress> getAddress() {
         return this.address;
     }
 
@@ -89,7 +85,8 @@ public class WListServer {
         return this.latch.await(timeout, unit);
     }
 
-    public synchronized void start() throws InterruptedException {
+    public synchronized void start(final @IntRange(minimum = 0, maximum = 65535) int defaultPort) throws InterruptedException {
+        if (this.latch.getCount() == 0) throw new IllegalStateException("Cannot start WList server twice in same process.");
         WListServer.logger.log(HLogLevel.INFO, "WListServer is starting...");
         final ServerBootstrap serverBootstrap = new ServerBootstrap();
         serverBootstrap.group(this.workerGroup, this.workerGroup);
@@ -107,13 +104,27 @@ public class WListServer {
                 pipeline.addLast(WListServer.ServerExecutors, "ServerHandler", WListServer.handlerInstance);
             }
         });
-        serverBootstrap.bind(this.address).sync();
-        WListServer.logger.log(HLogLevel.ENHANCED, "Listening on: ", this.address);
+        final CountDownLatch latch = new CountDownLatch(1);
+        final boolean[] flag = new boolean[] {false};
+        ChannelFuture future = null;
+        if (defaultPort != 0) {
+            future = serverBootstrap.bind(defaultPort).addListener(f -> {
+                flag[0] = !f.isSuccess();
+                if (flag[0])
+                    WListServer.logger.log(HLogLevel.ERROR, "Failed to bind default port.", ParametersMap.create().add("defaultPort", defaultPort), f.cause());
+                latch.countDown();
+            }).await();
+            latch.await();
+        }
+        if (defaultPort == 0 || flag[0])
+            future = serverBootstrap.bind(0).sync();
+        final InetSocketAddress address = (InetSocketAddress) future.channel().localAddress();
+        this.address.initialize(address);
+        WListServer.logger.log(HLogLevel.ENHANCED, "Listening on: ", address);
     }
 
     public synchronized void stop() {
-        if (this.latch.getCount() == 0)
-            return;
+        if (!this.address.isInitialized()) return;
         WListServer.logger.log(HLogLevel.ENHANCED, "WListServer is stopping...");
         final Future<?>[] futures = new Future<?>[2];
         futures[0] = this.bossGroup.shutdownGracefully();
