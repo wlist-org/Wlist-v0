@@ -16,8 +16,8 @@ import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.MessageProto;
 import com.xuxiaocheng.WList.Server.Operation;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
-import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.FileDownloadIdHelper;
-import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.FileUploadIdHelper;
+import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadIdHelper;
+import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.UploadIdHelper;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.UploadMethods;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
@@ -202,7 +202,7 @@ public final class ServerFileHandler {
                 return ServerFileHandler.FileNotFound;
             throw new ServerException("Unknown failure reason. " + url.getE(), url.getE().throwable());
         }
-        final String id = FileDownloadIdHelper.generateId(url.getT(), user.getT().username());
+        final String id = DownloadIdHelper.generateId(url.getT(), user.getT().username());
         HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Signed download id for user: '", user.getT().username(), "' file: '", location, "' (", from, '-', to, ") id: ", id);
         return ServerHandler.successMessage(buf -> {
             ByteBufIOUtil.writeVariable2LenLong(buf, url.getT().total());
@@ -221,7 +221,7 @@ public final class ServerFileHandler {
             return user.getE();
         final ByteBuf file;
         try {
-            file = FileDownloadIdHelper.download(id, user.getT().username(), chunk);
+            file = DownloadIdHelper.download(id, user.getT().username(), chunk);
         } catch (final ServerException exception) {
             throw exception;
         } catch (final Exception exception) {
@@ -240,7 +240,7 @@ public final class ServerFileHandler {
                 .add("id", id));
         if (user.isFailure())
             return user.getE();
-        return FileDownloadIdHelper.cancel(id, user.getT().username()) ? ServerHandler.Success : ServerHandler.DataError;
+        return DownloadIdHelper.cancel(id, user.getT().username()) ? ServerHandler.Success : ServerHandler.DataError;
     };
 
     public static final @NotNull ServerHandler doRequestUploadFile = (channel, buffer) -> {
@@ -292,7 +292,7 @@ public final class ServerFileHandler {
             });
         }
         assert methods.getT().methods().size() == MiscellaneousUtil.calculatePartCount(size, WListServer.FileTransferBufferSize);
-        final String id = FileUploadIdHelper.generateId(methods.getT(), size, user.getT().username());
+        final String id = UploadIdHelper.generateId(methods.getT(), size, user.getT().username());
         HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Signed upload id for user: '", user.getT().username(), "' parent: ", parentLocation, ", name: '", filename, "' (", size, "B) id: ", id);
         return ServerHandler.successMessage(buf -> {
             ByteBufIOUtil.writeBoolean(buf, false);
@@ -311,7 +311,7 @@ public final class ServerFileHandler {
             return user.getE();
         final UnionPair<FileSqlInformation, Boolean> information;
         try {
-            information = FileUploadIdHelper.upload(id, user.getT().username(), buffer.duplicate(), chunk);
+            information = UploadIdHelper.upload(id, user.getT().username(), buffer.duplicate(), chunk);
         } catch (final ServerException exception) {
             throw exception;
         } catch (final Exception exception) {
@@ -338,7 +338,7 @@ public final class ServerFileHandler {
                 .add("id", id));
         if (user.isFailure())
             return user.getE();
-        return FileUploadIdHelper.cancel(id, user.getT().username()) ? ServerHandler.Success : ServerHandler.DataError;
+        return UploadIdHelper.cancel(id, user.getT().username()) ? ServerHandler.Success : ServerHandler.DataError;
     };
 
     public static final @NotNull ServerHandler doCopyFile = (channel, buffer) -> {

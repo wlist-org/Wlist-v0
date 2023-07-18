@@ -26,8 +26,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public final class FileUploadIdHelper {
-    private FileUploadIdHelper() {
+public final class UploadIdHelper {
+    private UploadIdHelper() {
         super();
     }
 
@@ -39,7 +39,7 @@ public final class FileUploadIdHelper {
     }
 
     public static boolean cancel(final @NotNull String id, final @NotNull String username) {
-        final UploaderData data = FileUploadIdHelper.buffers.get(id);
+        final UploaderData data = UploadIdHelper.buffers.get(id);
         if (data == null || !data.username.equals(username))
             return false;
         data.close();
@@ -47,7 +47,7 @@ public final class FileUploadIdHelper {
     }
 
     public static @Nullable UnionPair<@NotNull FileSqlInformation, @NotNull Boolean> upload(final @NotNull String id, final @NotNull String username, final @NotNull ByteBuf buf, final int chunk) throws Exception {
-        final UploaderData data = FileUploadIdHelper.buffers.get(id);
+        final UploaderData data = UploadIdHelper.buffers.get(id);
         if (data == null || !data.username.equals(username))
             return null;
         return data.put(buf, chunk) ? data.tryGet() : null;
@@ -66,7 +66,7 @@ public final class FileUploadIdHelper {
 
         private void appendExpireTime() {
             this.expireTime = LocalDateTime.now().plusSeconds(GlobalConfiguration.getInstance().idIdleExpireTime());
-            FileUploadIdHelper.checkTime.add(Pair.ImmutablePair.makeImmutablePair(this.expireTime, this));
+            UploadIdHelper.checkTime.add(Pair.ImmutablePair.makeImmutablePair(this.expireTime, this));
         }
 
         private UploaderData(final @NotNull UploadMethods methods, final long size, final @NotNull String username) {
@@ -76,7 +76,7 @@ public final class FileUploadIdHelper {
             this.username = username;
             final int mod = (int) (size % WListServer.FileTransferBufferSize);
             this.rest = mod == 0 ? WListServer.FileTransferBufferSize : mod;
-            this.id = MiscellaneousUtil.randomKeyAndPut(FileUploadIdHelper.buffers,
+            this.id = MiscellaneousUtil.randomKeyAndPut(UploadIdHelper.buffers,
                     () -> ARandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, ConstantManager.DefaultRandomChars), this);
             this.appendExpireTime();
         }
@@ -87,7 +87,7 @@ public final class FileUploadIdHelper {
             try {
                 if (!this.closed.compareAndSet(false, true))
                     return;
-                FileUploadIdHelper.buffers.remove(this.id, this);
+                UploadIdHelper.buffers.remove(this.id, this);
                 this.methods.finisher().run();
             } finally {
                 this.closerLock.writeLock().unlock();
@@ -156,7 +156,7 @@ public final class FileUploadIdHelper {
     public static final Thread cleaner = new Thread(() -> {
         while (true) {
             try {
-                final Pair.ImmutablePair<LocalDateTime, UploaderData> check = FileUploadIdHelper.checkTime.take();
+                final Pair.ImmutablePair<LocalDateTime, UploaderData> check = UploadIdHelper.checkTime.take();
                 if (check.getSecond().closed.get())
                     continue;
                 final LocalDateTime now = LocalDateTime.now();
@@ -172,7 +172,7 @@ public final class FileUploadIdHelper {
         }
     }, "UploadData Cleaner");
     static {
-        FileUploadIdHelper.cleaner.setDaemon(true);
-        FileUploadIdHelper.cleaner.start();
+        UploadIdHelper.cleaner.setDaemon(true);
+        UploadIdHelper.cleaner.start();
     }
 }

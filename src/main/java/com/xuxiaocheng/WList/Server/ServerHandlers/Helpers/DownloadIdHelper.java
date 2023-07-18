@@ -25,8 +25,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public final class FileDownloadIdHelper {
-    private FileDownloadIdHelper() {
+public final class DownloadIdHelper {
+    private DownloadIdHelper() {
         super();
     }
 
@@ -38,7 +38,7 @@ public final class FileDownloadIdHelper {
     }
 
     public static boolean cancel(final @NotNull String id, final @NotNull String username) {
-        final DownloaderData data = FileDownloadIdHelper.buffers.get(id);
+        final DownloaderData data = DownloadIdHelper.buffers.get(id);
         if (data == null || !data.username.equals(username))
             return false;
         data.close();
@@ -46,7 +46,7 @@ public final class FileDownloadIdHelper {
     }
 
     public static @Nullable ByteBuf download(final @NotNull String id, final @NotNull String username, final int chunk) throws Exception {
-        final DownloaderData data = FileDownloadIdHelper.buffers.get(id);
+        final DownloaderData data = DownloadIdHelper.buffers.get(id);
         if (data == null || !data.username.equals(username))
             return null;
         return data.get(chunk);
@@ -66,7 +66,7 @@ public final class FileDownloadIdHelper {
 
         private void appendExpireTime() {
             this.expireTime = LocalDateTime.now().plusSeconds(GlobalConfiguration.getInstance().idIdleExpireTime());
-            FileDownloadIdHelper.checkTime.add(Pair.ImmutablePair.makeImmutablePair(this.expireTime, this));
+            DownloadIdHelper.checkTime.add(Pair.ImmutablePair.makeImmutablePair(this.expireTime, this));
         }
 
         private DownloaderData(final @NotNull DownloadMethods methods, final @NotNull String username) {
@@ -76,7 +76,7 @@ public final class FileDownloadIdHelper {
             this.username = username;
             final int mod = (int) (methods.total() % WListServer.FileTransferBufferSize);
             this.rest = mod == 0 ? WListServer.FileTransferBufferSize : mod;
-            this.id = MiscellaneousUtil.randomKeyAndPut(FileDownloadIdHelper.buffers,
+            this.id = MiscellaneousUtil.randomKeyAndPut(DownloadIdHelper.buffers,
                     () -> ARandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, ConstantManager.DefaultRandomChars), this);
             this.appendExpireTime();
         }
@@ -87,7 +87,7 @@ public final class FileDownloadIdHelper {
             try {
                 if (!this.closed.compareAndSet(false, true))
                     return;
-                FileDownloadIdHelper.buffers.remove(this.id, this);
+                DownloadIdHelper.buffers.remove(this.id, this);
                 this.methods.finisher().run();
             } finally {
                 this.closerLock.writeLock().unlock();
@@ -141,7 +141,7 @@ public final class FileDownloadIdHelper {
     public static final Thread cleaner = new Thread(() -> {
         while (true) {
             try {
-                final Pair.ImmutablePair<LocalDateTime, DownloaderData> check = FileDownloadIdHelper.checkTime.take();
+                final Pair.ImmutablePair<LocalDateTime, DownloaderData> check = DownloadIdHelper.checkTime.take();
                 if (check.getSecond().closed.get())
                     continue;
                 final LocalDateTime now = LocalDateTime.now();
@@ -157,7 +157,7 @@ public final class FileDownloadIdHelper {
         }
     }, "DownloadData Cleaner");
     static {
-        FileDownloadIdHelper.cleaner.setDaemon(true);
-        FileDownloadIdHelper.cleaner.start();
+        DownloadIdHelper.cleaner.setDaemon(true);
+        DownloadIdHelper.cleaner.start();
     }
 }

@@ -16,7 +16,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-// TODO link to user interface.
 public final class BackgroundTaskManager {
     private BackgroundTaskManager() {
         super();
