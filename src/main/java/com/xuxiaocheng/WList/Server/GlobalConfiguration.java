@@ -112,7 +112,7 @@ public record GlobalConfiguration(int port, int maxConnection,
     }
 
     /**
-     * @see com.xuxiaocheng.WList.Server.Driver.DriverManager#addDriver(String, WebDriversType)
+     * @see DriverManager#addDriver(String, WebDriversType)
      */
     public static synchronized void addUninitializedDriver(final @NotNull String name, final @NotNull WebDriversType type) throws IOException {
         GlobalConfiguration.getInstance().drivers.put(name, type);
@@ -120,7 +120,7 @@ public record GlobalConfiguration(int port, int maxConnection,
     }
 
     /**
-     * @see com.xuxiaocheng.WList.Server.Driver.DriverManager#removeDriver(String)
+     * @see DriverManager#removeDriver(String)
      */
     public static synchronized void removeUninitializedDriver(final @NotNull String name) throws IOException {
         if (GlobalConfiguration.getInstance().drivers.remove(name) != null)

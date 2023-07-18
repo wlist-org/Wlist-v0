@@ -18,8 +18,8 @@ import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
-import com.xuxiaocheng.WList.Server.Driver.BackgroundTaskManager;
-import com.xuxiaocheng.WList.Server.Driver.RootDriver;
+import com.xuxiaocheng.WList.Server.BackgroundTaskManager;
+import com.xuxiaocheng.WList.Server.InternalDrivers.RootDriver;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.UploadMethods;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
@@ -95,7 +95,7 @@ public final class DriverManager_123pan {
             final Triad.ImmutableTriad<Long, Iterator<FileSqlInformation>, Runnable> lister = DriverManager_123pan.listAllFilesNoCache(configuration, directoryId, connectionId.get());
             FileManager.updateDirectoryType(configuration.getName(), directoryId, lister.getA().longValue() == 0, connectionId.get());
             // Hint: type and name is linking to #tryGetFileInDirectory
-            BackgroundTaskManager.backgroundOptionally("Driver_123pan: " + configuration.getName(), "Sync directory: " + directoryId,
+            BackgroundTaskManager.backgroundWithLock(new BackgroundTaskManager.BackgroundTaskIdentify("Driver_123pan: " + configuration.getName(), "Sync directory: " + directoryId),
                     () -> new AtomicLong(0), AtomicLong.class, HExceptionWrapper.wrapPredicate(lock -> {
                         if (lock.get() == lister.getA().longValue()) {lister.getC().run();return false;}
                         FileManager.getConnection(configuration.getName(), connectionId.get(), null); // retain
