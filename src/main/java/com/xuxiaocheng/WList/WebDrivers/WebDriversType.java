@@ -3,6 +3,7 @@ package com.xuxiaocheng.WList.WebDrivers;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.DriverTrashInterface;
 import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.Driver_123Pan;
+import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.Driver_123Pan_NoCache;
 import com.xuxiaocheng.WList.WebDrivers.Driver_123pan.Trash_123pan;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -13,6 +14,7 @@ import java.util.function.Supplier;
 
 public enum WebDriversType {
     Driver_123Pan("123pan", Driver_123Pan::new, Trash_123pan::new),
+    Driver_123PanNoCache("123pan_nocache", Driver_123Pan_NoCache::new, null),
     ;
     private static final @NotNull Map<@NotNull String, @NotNull WebDriversType> drivers = new HashMap<>(); static {
         for (final WebDriversType type: WebDriversType.values())

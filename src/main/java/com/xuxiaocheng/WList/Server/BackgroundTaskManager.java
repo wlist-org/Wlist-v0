@@ -11,7 +11,9 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -67,6 +69,15 @@ public final class BackgroundTaskManager {
         final CompletableFuture<?> future = BackgroundTaskManager.TaskMap.remove(identify);
         if (future != null)
             future.cancel(true);
+    }
+
+    public static void wait(final @NotNull BackgroundTaskIdentify identify) {
+        final CompletableFuture<?> future = BackgroundTaskManager.TaskMap.get(identify);
+        if (future != null)
+            try {
+                future.join();
+            } catch (final CancellationException | CompletionException ignore) {
+            }
     }
 
     public static <T> void backgroundWithLock(final @NotNull BackgroundTaskIdentify identify, final @NotNull Supplier<? extends @NotNull T> defaultLockSupplier, final @NotNull Class<T> lockClass,

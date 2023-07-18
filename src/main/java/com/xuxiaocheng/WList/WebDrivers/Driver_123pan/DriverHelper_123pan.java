@@ -276,7 +276,7 @@ final class DriverHelper_123pan {
 
     // File
 
-    static @NotNull @UnmodifiableView Map<@NotNull Long, @Nullable FileSqlInformation> transferInformationMap(final @NotNull String driver, final @Nullable JSONArray infos) {
+    private static @NotNull @UnmodifiableView Map<@NotNull Long, @Nullable FileSqlInformation> transferInformationMap(final @NotNull String driver, final @Nullable JSONArray infos) {
         if (infos == null)
             return Map.of();
         final Map<Long, FileSqlInformation> map = new HashMap<>(infos.size());

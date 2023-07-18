@@ -4,12 +4,11 @@ import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
-import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Databases.File.FileSqlHelper;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
-import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.FailureReason;
+import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.DriverManager;
@@ -26,14 +25,7 @@ import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.List;
 
-public final class Driver_123Pan implements DriverInterface<DriverConfiguration_123Pan> {
-    private @NotNull DriverConfiguration_123Pan configuration = new DriverConfiguration_123Pan();
-
-    @Override
-    public @NotNull DriverConfiguration_123Pan getConfiguration() {
-        return this.configuration;
-    }
-
+public final class Driver_123Pan extends Driver_123Pan_NoCache {
     @Override
     public void initialize(final @NotNull DriverConfiguration_123Pan configuration) throws SQLException {
         FileManager.quicklyInitialize(new FileSqlHelper(DatabaseUtil.getInstance(), configuration.getName(), configuration.getWebSide().getRootDirectoryId()), null);
@@ -46,20 +38,12 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
     }
 
     @Override
-    public void buildCache() throws IllegalParametersException, IOException {
-        DriverManager_123pan.resetUserInformation(this.configuration);
-    }
-
-    @Override
     public void buildIndex() throws SQLException {
-        this.configuration.getCacheSide().setLastTrashIndexBuildTime(LocalDateTime.now());
+        this.configuration.getCacheSide().setLastFileIndexBuildTime(LocalDateTime.now());
         DriverManager_123pan.refreshDirectoryRecursively(this.configuration, this.configuration.getWebSide().getRootDirectoryId(), null);
         this.configuration.getCacheSide().setModified(true);
     }
 
-    private long toRootId(final long id) {
-        return id == 0 ? this.configuration.getWebSide().getRootDirectoryId() : id;
-    }
 
     @Override
     public void forceRefreshDirectory(final @NotNull FileLocation location) throws IllegalParametersException, IOException, SQLException {
@@ -102,25 +86,6 @@ public final class Driver_123Pan implements DriverInterface<DriverConfiguration_
             return;
         }
         DriverManager_123pan.trashFile(this.configuration, location.id(), null);
-    }
-
-    @SuppressWarnings("OverlyBroadThrowsClause")
-    @Override
-    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> copy(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final @NotNull String targetFilename, final Options.@NotNull DuplicatePolicy policy) throws Exception {
-        final FileSqlInformation source = this.info(sourceLocation);
-        if (source == null)
-            return UnionPair.fail(FailureReason.byNoSuchFile("Copying.", sourceLocation));
-        final UnionPair<UploadMethods, FailureReason> methods = this.upload(targetParentLocation, source.name(), source.size(), source.md5(), policy);
-        if (methods.isFailure())
-            return UnionPair.fail(methods.getE());
-        try {
-            final FileSqlInformation information = methods.getT().supplier().get();
-            if (information == null)
-                throw new IllegalStateException("Failed to copy file. [Unknown]." + ParametersMap.create().add("configuration", this.configuration).add("sourceLocation", sourceLocation).add("targetParentLocation", targetParentLocation).add("targetFilename", targetFilename).add("policy", policy).add("source", source));
-            return UnionPair.ok(information);
-        } finally {
-            methods.getT().finisher().run();
-        }
     }
 
     @Override

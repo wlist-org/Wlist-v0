@@ -133,7 +133,7 @@ public final class DriverManager_123pan {
             if (parentInformation == null || parentInformation.type() != FileSqlInterface.FileSqlType.Directory) return null;
             if (FileManager.selectFileCountByParentId(configuration.getName(), parentId, connectionId.get()) == 0) {
                 DriverManager_123pan.refreshDirectoryInBackground(configuration, parentId);
-                BackgroundTaskManager.wait("Driver_123pan: " + configuration.getName(), "Sync directory: " + parentId);
+                BackgroundTaskManager.wait(new BackgroundTaskManager.BackgroundTaskIdentify("Driver_123pan: " + configuration.getName(), "Sync directory: " + parentId));
             }
             return FileManager.selectFileInDirectory(configuration.getName(), parentId, name, connectionId.get());
         }
