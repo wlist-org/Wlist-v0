@@ -205,7 +205,7 @@ public class WListServer {
                 final MessageProto composition = ServerHandler.composeMessage(state, message);
                 ServerChannelHandler.write(channel, composition);
             } catch (final IOException exception) {
-                HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, exception);
+                WListServer.logger.log(HLogLevel.ERROR, exception);
                 channel.close();
             }
         }

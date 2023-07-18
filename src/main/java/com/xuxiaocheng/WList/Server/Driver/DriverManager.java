@@ -8,6 +8,7 @@ import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
 import com.xuxiaocheng.WList.Driver.DriverConfiguration;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.DriverTrashInterface;
@@ -19,11 +20,13 @@ import com.xuxiaocheng.WList.Utils.YamlHelper;
 import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.UnmodifiableView;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -31,6 +34,7 @@ import java.io.OutputStream;
 import java.io.Serial;
 import java.nio.file.AccessDeniedException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -42,6 +46,7 @@ public final class DriverManager {
         super();
     }
 
+    private static final @NotNull HLog logger = HLog.createInstance("DriverLogger", HLog.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, false, true, HMergedStream.getFileOutputStreamNoException(null));
     private static final @NotNull HInitializer<File> configurationsPath = new HInitializer<>("DriverConfigurationsDirectory");
     private static final @NotNull Map<@NotNull String, @NotNull Pair<@NotNull WebDriversType, Pair.@NotNull ImmutablePair<@NotNull DriverInterface<?>, @Nullable DriverTrashInterface<?>>>> drivers = new ConcurrentHashMap<>();
     private static final Pair.@NotNull ImmutablePair<@NotNull DriverInterface<?>, @Nullable DriverTrashInterface<?>> DriverPlaceholder = new Pair.ImmutablePair<>() {
@@ -58,6 +63,11 @@ public final class DriverManager {
             throw new IllegalStateException("Unreachable!");
         }
     };
+    private static final @NotNull Map<@NotNull String, @NotNull Exception> failedDrivers = new ConcurrentHashMap<>();
+
+    public static @NotNull @UnmodifiableView Map<@NotNull String, @NotNull Exception> getFailedDriversAPI() {
+        return Collections.unmodifiableMap(DriverManager.failedDrivers);
+    }
 
     public static void initialize(final @NotNull File configurationsPath) {
         DriverManager.configurationsPath.initialize(configurationsPath.getAbsoluteFile());
@@ -65,18 +75,9 @@ public final class DriverManager {
         final CompletableFuture<?>[] futures = new CompletableFuture[GlobalConfiguration.getInstance().drivers().size()];
         int i = 0;
         for (final Map.Entry<String, WebDriversType> entry: GlobalConfiguration.getInstance().drivers().entrySet())
-            futures[i++] = CompletableFuture.runAsync(() -> {
-                try {
-                    HLog.getInstance("DefaultLogger").log(HLogLevel.INFO, "Driver: ", entry.getKey(), " type: ", entry.getValue().name());
-                    DriverManager.initializeDriver0(entry.getKey(), entry.getValue());
-                } catch (final IllegalParametersException | IOException exception) {
-                    HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, "Failed to initialize driver: ", entry.getKey(), exception);
-                } catch (final Throwable throwable) {
-                    Thread.getDefaultUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), throwable);
-                    // TODO record failure.
-                }
-            }, WListServer.ServerExecutors);
+            futures[i++] = CompletableFuture.runAsync(() -> DriverManager.initializeDriver0(entry.getKey(), entry.getValue()), WListServer.ServerExecutors);
         CompletableFuture.allOf(futures).join();
+        DriverManager.logger.log(HLogLevel.ENHANCED, "Loaded ", DriverManager.drivers.size(), " driver", DriverManager.drivers.size() > 1 ? "s" : "", " successfully. ", DriverManager.failedDrivers.size(), " failed.");
     }
 
     private static @NotNull File getConfigurationFile(final @NotNull String name) throws IOException {
@@ -89,70 +90,86 @@ public final class DriverManager {
     }
 
     @SuppressWarnings("unchecked")
-    private static <C extends DriverConfiguration<?, ?, ?>> void initializeDriver0(final @NotNull String name, final @NotNull WebDriversType type) throws IOException, IllegalParametersException {
-        for (final SpecialDriverName specialDriverName: SpecialDriverName.values())
-            if (specialDriverName.getIdentifier().equals(name))
-                throw new IllegalParametersException("Invalid name.", ParametersMap.create().add("name", name).add("type", type).add("specialDriverName", specialDriverName));
-        final Pair<WebDriversType, Pair.ImmutablePair<DriverInterface<?>, DriverTrashInterface<?>>> driverTriad = Pair.makePair(type, DriverManager.DriverPlaceholder);
-        if (DriverManager.drivers.putIfAbsent(name, driverTriad) != null)
-            throw new IllegalParametersException("Conflict driver name.", ParametersMap.create().add("name", name).add("type", type));
+    private static <C extends DriverConfiguration<?, ?, ?>> boolean initializeDriver0(final @NotNull String name, final @NotNull WebDriversType type) {
+        DriverManager.logger.log(HLogLevel.INFO, "Loading driver.", ParametersMap.create().add("name", name).add("type", type));
         try {
-            final File configurationPath = DriverManager.getConfigurationFile(name);
-            final Supplier<DriverTrashInterface<?>> trashSupplier = type.getTrash();
-            final DriverTrashInterface<DriverInterface<C>> trash = trashSupplier == null ? null : (DriverTrashInterface<DriverInterface<C>>) trashSupplier.get();
-            final DriverInterface<C> driver = trash == null ? (DriverInterface<C>) type.getDriver().get() : trash.getDriver();
-            final Pair.ImmutablePair<DriverInterface<?>, DriverTrashInterface<?>> driverPair = Pair.ImmutablePair.makeImmutablePair(driver, trash);
-            final C configuration = driver.getConfiguration();
-            final Map<String, Object> config;
-            try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(configurationPath))) {
-                config = YamlHelper.loadYaml(inputStream);
-            }
-            final Collection<Pair.ImmutablePair<String, String>> errors = new LinkedList<>();
-            configuration.load(config, errors);
-            YamlHelper.throwErrors(errors);
-            configuration.setName(name);
+            for (final SpecialDriverName specialDriverName: SpecialDriverName.values())
+                if (specialDriverName.getIdentifier().equals(name))
+                    throw new IllegalParametersException("Invalid name.", ParametersMap.create().add("name", name).add("type", type).add("specialDriverName", specialDriverName));
+            final Pair<WebDriversType, Pair.ImmutablePair<DriverInterface<?>, DriverTrashInterface<?>>> driverTriad = Pair.makePair(type, DriverManager.DriverPlaceholder);
+            if (DriverManager.drivers.putIfAbsent(name, driverTriad) != null)
+                throw new IllegalParametersException("Conflict driver name.", ParametersMap.create().add("name", name).add("type", type));
             try {
-                driver.initialize(configuration);
-                if (trash != null)
-                    trash.initialize(driver);
-            } catch (final Exception exception) {
-                try {
-                    DriverManager.uninitializeDriver0(name, true);
-                } catch (final IllegalParametersException e) {
-                    exception.addSuppressed(e.getCause());
-                    throw new IllegalParametersException("Failed to uninitialize the driver after a failed initialization.", ParametersMap.create().add("name", name).add("type", type).add("configuration", configuration), exception);
+                final File configurationPath = DriverManager.getConfigurationFile(name);
+                final Supplier<DriverTrashInterface<?>> trashSupplier = type.getTrash();
+                final DriverTrashInterface<DriverInterface<C>> trash = trashSupplier == null ? null : (DriverTrashInterface<DriverInterface<C>>) trashSupplier.get();
+                final DriverInterface<C> driver = trash == null ? (DriverInterface<C>) type.getDriver().get() : trash.getDriver();
+                final Pair.ImmutablePair<DriverInterface<?>, DriverTrashInterface<?>> driverPair = Pair.ImmutablePair.makeImmutablePair(driver, trash);
+                final C configuration = driver.getConfiguration();
+                final Map<String, Object> config;
+                try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(configurationPath))) {
+                    config = YamlHelper.loadYaml(inputStream);
+                } catch (final FileNotFoundException exception) {
+                    throw new RuntimeException("Unreachable!", exception);
                 }
-                throw new IllegalParametersException("Failed to initialize.", ParametersMap.create().add("name", name).add("type", type).add("configuration", configuration), exception);
-            }
-            try {
-                driver.buildCache();
-                if (trash != null)
-                    trash.buildCache();
-            } catch (final Exception exception) {
-                throw new IllegalParametersException("Failed to build cache.", ParametersMap.create().add("name", name).add("type", type).add("configuration", configuration), exception);
+                final Collection<Pair.ImmutablePair<String, String>> errors = new LinkedList<>();
+                configuration.load(config, errors);
+                YamlHelper.throwErrors(errors);
+                configuration.setName(name);
+                try {
+                    driver.initialize(configuration);
+                    if (trash != null)
+                        trash.initialize(driver);
+                } catch (final Exception exception) {
+                    DriverManager.uninitializeDriver0(name, true);
+                    throw new IllegalParametersException("Failed to initialize.", ParametersMap.create().add("name", name).add("type", type).add("configuration", configuration), exception);
+                }
+                try {
+                    driver.buildCache();
+                    if (trash != null)
+                        trash.buildCache();
+                } catch (final Exception exception) {
+                    throw new IllegalParametersException("Failed to build cache.", ParametersMap.create().add("name", name).add("type", type).add("configuration", configuration), exception);
+                } finally {
+                    DriverManager.dumpConfigurationIfModified(configuration);
+                }
+                driverTriad.setSecond(driverPair);
             } finally {
-                DriverManager.dumpConfigurationIfModified(configuration);
+                if (driverTriad.getSecond() == DriverManager.DriverPlaceholder)
+                    DriverManager.drivers.remove(name);
             }
-            driverTriad.setSecond(driverPair);
-        } finally {
-            if (driverTriad.getSecond() == DriverManager.DriverPlaceholder)
-                DriverManager.drivers.remove(name);
+            DriverManager.logger.log(HLogLevel.VERBOSE, "Load driver successfully.", ParametersMap.create().add("name", name));
+            return true;
+        } catch (final IllegalParametersException | IOException | RuntimeException exception) {
+            DriverManager.logger.log(HLogLevel.ERROR, "Failed to load driver.", ParametersMap.create().add("name", name), exception);
+            DriverManager.failedDrivers.put(name, exception);
+        } catch (final Throwable throwable) {
+            Thread.getDefaultUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), throwable);
         }
+        return false;
     }
 
-    private static boolean uninitializeDriver0(final @NotNull String name, final boolean canDelete) throws IllegalParametersException {
-        final Pair<@NotNull WebDriversType, Pair.@NotNull ImmutablePair<@NotNull DriverInterface<?>, @Nullable DriverTrashInterface<?>>> driver = DriverManager.drivers.remove(name);
-        if (driver == null || driver.getSecond() == DriverManager.DriverPlaceholder) return false;
-        if (canDelete && GlobalConfiguration.getInstance().deleteDriver()) {
-            try {
-                driver.getSecond().getFirst().uninitialize();
-                if (driver.getSecond().getSecond() != null)
-                    driver.getSecond().getSecond().uninitialize();
-            } catch (final Exception exception) {
-                throw new IllegalParametersException("Failed to uninitialize driver.", ParametersMap.create().add("name", name).add("type", driver.getFirst()), exception);
-            }
+    private static boolean uninitializeDriver0(final @NotNull String name, final boolean canDelete) {
+        DriverManager.logger.log(HLogLevel.INFO, "Unloading driver.", ParametersMap.create().add("name", name));
+        try {
+            DriverManager.failedDrivers.remove(name);
+            final Pair<@NotNull WebDriversType, Pair.@NotNull ImmutablePair<@NotNull DriverInterface<?>, @Nullable DriverTrashInterface<?>>> driver = DriverManager.drivers.remove(name);
+            if (driver == null || driver.getSecond() == DriverManager.DriverPlaceholder) return false;
+            if (canDelete && GlobalConfiguration.getInstance().deleteDriver())
+                try {
+                    driver.getSecond().getFirst().uninitialize();
+                    if (driver.getSecond().getSecond() != null)
+                        driver.getSecond().getSecond().uninitialize();
+                } catch (final Exception exception) {
+                    throw new IllegalParametersException("Failed to uninitialize driver.", ParametersMap.create().add("name", name).add("type", driver.getFirst()), exception);
+                }
+            return true;
+        } catch (final IllegalParametersException | RuntimeException exception) {
+            DriverManager.logger.log(HLogLevel.ERROR, "Failed to unload driver.", ParametersMap.create().add("name", name), exception);
+        } catch (final Throwable throwable) {
+            Thread.getDefaultUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), throwable);
         }
-        return true;
+        return false;
     }
 
     public static void dumpConfigurationIfModified(final @NotNull DriverConfiguration<?, ?, ?> configuration) throws IOException {
@@ -162,20 +179,24 @@ public final class DriverManager {
             }
     }
 
-    public static void addDriver(final @NotNull String name, final @NotNull WebDriversType type) throws IOException, IllegalParametersException {
-        DriverManager.initializeDriver0(name, type);
-        GlobalConfiguration.addUninitializedDriver(name, type);
+    public static boolean addDriver(final @NotNull String name, final @NotNull WebDriversType type) throws IOException {
+        if (DriverManager.initializeDriver0(name, type)) {
+            DriverManager.failedDrivers.remove(name);
+            GlobalConfiguration.addUninitializedDriver(name, type);
+            return true;
+        }
+        return false;
     }
 
-    public static void removeDriver(final @NotNull String name) throws IOException, IllegalParametersException {
+    public static void removeDriver(final @NotNull String name) throws IOException {
         if (DriverManager.uninitializeDriver0(name, true))
             GlobalConfiguration.removeUninitializedDriver(name);
     }
 
-    public static void reAddDriver(final @NotNull String name, final @NotNull WebDriversType type) throws IOException, IllegalParametersException {
+    public static boolean reAddDriver(final @NotNull String name, final @NotNull WebDriversType type) throws IOException {
         DriverManager.uninitializeDriver0(name, false);
         GlobalConfiguration.getInstance().drivers().remove(name);
-        DriverManager.addDriver(name, type);
+        return DriverManager.addDriver(name, type);
     }
 
     public static Triad.@Nullable ImmutableTriad<@NotNull WebDriversType, @NotNull DriverInterface<?>, @Nullable DriverTrashInterface<?>> get(final @NotNull String name) {
