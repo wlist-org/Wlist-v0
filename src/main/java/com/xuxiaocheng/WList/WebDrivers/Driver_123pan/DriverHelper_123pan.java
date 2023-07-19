@@ -172,7 +172,7 @@ final class DriverHelper_123pan {
         final int loginType = configuration.getWebSide().getLoginType();
         final boolean isPhone = switch (loginType) {
             case 1 -> true; case 2 -> false;
-            default -> throw new IllegalParametersException("Unsupported login type.", loginType);
+            default -> throw new IllegalParametersException("Unsupported login type.", ParametersMap.create().add("type", loginType));
         };
         if (!(isPhone ? DriverHelper_123pan.PhoneNumberPattern : DriverHelper_123pan.MailAddressPattern).matcher(configuration.getWebSide().getPassport()).matches())
             throw new DriverTokenExpiredException(isPhone ? DriverUtil.InvalidPhoneNumber : DriverUtil.InvalidMailAddress);

@@ -29,7 +29,9 @@ public final class WListTest {
         super();
     }
 
+    @SuppressWarnings("OverlyBroadThrowsClause")
     public static void main(final String @NotNull [] args) throws Exception {
+
         if (true) return;
         WListTest.wrapServerInitialize(() -> {
             final DriverInterface<?> driver = Objects.requireNonNull(DriverManager.getDriver("123pan_136"));

@@ -31,7 +31,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public sealed class Driver_123Pan_NoCache implements DriverInterface<DriverConfiguration_123Pan> permits Driver_123Pan {
+public class Driver_123Pan_NoCache implements DriverInterface<DriverConfiguration_123Pan> {
     protected @NotNull DriverConfiguration_123Pan configuration = new DriverConfiguration_123Pan();
 
     @Override
@@ -113,12 +113,15 @@ public sealed class Driver_123Pan_NoCache implements DriverInterface<DriverConfi
                             @Override
                             public void writeTo(final @NotNull BufferedSink bufferedSink) throws IOException {
                                 assert b.readableBytes() == len;
-                                // TODO optimise.
-                                final int bufferSize = Math.min(len, 2 << 20);
-                                for (final byte[] buffer = new byte[bufferSize]; b.readableBytes() > 0; ) {
-                                    final int len = Math.min(bufferSize, b.readableBytes());
-                                    b.readBytes(buffer, 0, len);
-                                    bufferedSink.write(buffer, 0, len);
+                                try {
+                                    bufferedSink.write(b.nioBuffer());
+                                } catch (final UnsupportedOperationException ignore) {
+                                    final int bufferSize = Math.min(len, 2 << 20);
+                                    for (final byte[] buffer = new byte[bufferSize]; b.readableBytes() > 0; ) {
+                                        final int len = Math.min(bufferSize, b.readableBytes());
+                                        b.readBytes(buffer, 0, len);
+                                        bufferedSink.write(buffer, 0, len);
+                                    }
                                 }
                             }
                         }

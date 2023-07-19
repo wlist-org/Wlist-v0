@@ -2,7 +2,6 @@ package com.xuxiaocheng.WList.WebDrivers.Driver_123pan;
 
 import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.WList.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Databases.File.FileSqlHelper;
@@ -25,7 +24,7 @@ import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.List;
 
-public final class Driver_123Pan extends Driver_123Pan_NoCache {
+public class Driver_123Pan extends Driver_123Pan_NoCache {
     @Override
     public void initialize(final @NotNull DriverConfiguration_123Pan configuration) throws SQLException {
         FileManager.quicklyInitialize(new FileSqlHelper(DatabaseUtil.getInstance(), configuration.getName(), configuration.getWebSide().getRootDirectoryId()), null);

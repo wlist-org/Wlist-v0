@@ -326,12 +326,16 @@ public final class DriverManager_123pan {
                                 @Override
                                 public void writeTo(final @NotNull BufferedSink bufferedSink) throws IOException {
                                     assert b.readableBytes() == len;
-                                    // TODO optimise.
-                                    final int bufferSize = Math.min(len, 2 << 20);
-                                    for (final byte[] buffer = new byte[bufferSize]; b.readableBytes() > 0; ) {
-                                        final int len = Math.min(bufferSize, b.readableBytes());
-                                        b.readBytes(buffer, 0, len);
-                                        bufferedSink.write(buffer, 0, len);
+                                    try {
+                                        bufferedSink.write(b.nioBuffer());
+                                        // TODO optimise
+                                    } catch (final UnsupportedOperationException ignore) {
+                                        final int bufferSize = Math.min(len, 2 << 20);
+                                        for (final byte[] buffer = new byte[bufferSize]; b.readableBytes() > 0; ) {
+                                            final int len = Math.min(bufferSize, b.readableBytes());
+                                            b.readBytes(buffer, 0, len);
+                                            bufferedSink.write(buffer, 0, len);
+                                        }
                                     }
                                 }
                             }

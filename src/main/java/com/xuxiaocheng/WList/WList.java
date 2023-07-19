@@ -77,6 +77,10 @@ public final class WList {
                 HLog.setDebugMode(false);
             if (arg.startsWith("-path:"))
                 runtimePath = new File(arg.substring("-path:".length())).getAbsoluteFile();
+            if ("/?".equals(arg)) {
+                // TODO help.
+                return;
+            }
         }
         if (HLog.isDebugMode()) System.setProperty("io.netty.leakDetectionLevel", "ADVANCED");
         final HLog logger = HLog.createInstance("DefaultLogger", HLog.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, false, true, HMergedStream.getFileOutputStreamNoException(null));
