@@ -47,10 +47,10 @@ public final class WList {
             return false;
         synchronized (WList.mainStageAPI) {
             while (current != stage) {
-                WList.mainStageAPI.wait();
-                current = WList.mainStageAPI.get();
                 if (current == 3)
                     break;
+                WList.mainStageAPI.wait();
+                current = WList.mainStageAPI.get();
             }
         }
         if (current == 3 && stage == 3)

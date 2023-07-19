@@ -92,7 +92,7 @@ public final class UserSqlHelper implements UserSqlInterface {
                         statement.setLong(1, UserGroupManager.getAdminId());
                         try (final ResultSet admins = statement.executeQuery()) {
                             admins.next();
-                            adminId = admins.getLong("group_id");
+                            adminId = admins.getLong("id");
                         }
                     }
                     HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Reset admin user. password: ", password);
