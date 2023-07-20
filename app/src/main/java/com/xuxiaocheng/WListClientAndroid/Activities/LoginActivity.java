@@ -57,7 +57,7 @@ public class LoginActivity extends AppCompatActivity {
                         LoginActivity.this.runOnUiThread(() -> Toast.makeText(LoginActivity.this.getApplicationContext(), R.string.fatal_application_initialization, Toast.LENGTH_LONG).show());
                     }
                     LoginActivity.this.finish();
-                }, true));
+                }, true)).addListener(Main.ThrowableListener);
             }
 
             @Override

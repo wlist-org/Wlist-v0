@@ -95,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(this, FileInformationGetter.name(list.getSecond().get(i)), Toast.LENGTH_SHORT).show();
                 });
             }
-        }));
+        })).addListener(Main.ThrowableListener);
         final LinearLayoutCompat match = new LinearLayoutCompat(this);
         match.setOrientation(LinearLayoutCompat.VERTICAL);
         match.addView(header, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
