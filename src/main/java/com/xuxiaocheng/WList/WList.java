@@ -2,6 +2,7 @@ package com.xuxiaocheng.WList;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
@@ -21,7 +22,6 @@ import io.netty.util.concurrent.Future;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
-import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -32,6 +32,7 @@ public final class WList {
     }
 
     private static final @NotNull AtomicInteger mainStageAPI = new AtomicInteger(-1);
+    private static final @NotNull HInitializer<Throwable> mainStageExceptionAPI = new HInitializer<>("MainStageException");
     private static void setMainStageAPI(final int stage) {
         synchronized (WList.mainStageAPI) {
             WList.mainStageAPI.set(stage);
@@ -57,6 +58,9 @@ public final class WList {
             return true;
         return current != 3;
     }
+    public static @NotNull HInitializer<Throwable> getMainStageExceptionAPI() {
+        return WList.mainStageExceptionAPI;
+    }
 
     static {
         try {
@@ -67,7 +71,7 @@ public final class WList {
         }
     }
 
-    public static void main(final String @NotNull ... args) throws IOException, SQLException, InterruptedException {
+    public static void main(final String @NotNull ... args) {
         if (!WList.mainStageAPI.compareAndSet(-1, 0)) return;
         File runtimePath = new File("").getAbsoluteFile();
         for (final String arg : args) {
@@ -128,6 +132,9 @@ public final class WList {
                     future.sync();
                 logger.log(HLogLevel.MISTAKE, "Thanks to use WList.");
             }
+        } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable throwable) {
+            WList.mainStageExceptionAPI.initialize(throwable);
+            Thread.getDefaultUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), throwable);
         } finally {
             WList.setMainStageAPI(3);
         }

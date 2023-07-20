@@ -46,7 +46,7 @@ public record GlobalConfiguration(int port, int maxConnection,
         final Collection<Pair.ImmutablePair<String, String>> errors = new LinkedList<>();
         final GlobalConfiguration configuration = new GlobalConfiguration(
             YamlHelper.getConfig(config, "port", "5212",
-                o -> YamlHelper.transferIntegerFromStr(o, errors, "port", BigInteger.ONE, BigInteger.valueOf(65535))).intValue(),
+                o -> YamlHelper.transferIntegerFromStr(o, errors, "port", BigInteger.ZERO, BigInteger.valueOf(65535))).intValue(),
             YamlHelper.getConfig(config, "max_connection", "128",
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "max_connection", BigInteger.ONE, BigInteger.valueOf(Integer.MAX_VALUE) /*100*/)).intValue(),
             YamlHelper.getConfig(config, "token_expire_time", "259200",
@@ -80,6 +80,7 @@ public record GlobalConfiguration(int port, int maxConnection,
         );
         YamlHelper.throwErrors(errors);
         GlobalConfiguration.instance.initialize(Pair.ImmutablePair.makeImmutablePair(configuration, path));
+        GlobalConfiguration.dumpToFile();
     }
 
     public static synchronized @NotNull GlobalConfiguration getInstance() {
