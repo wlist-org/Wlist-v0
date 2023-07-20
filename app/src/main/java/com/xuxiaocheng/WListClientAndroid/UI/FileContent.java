@@ -34,14 +34,14 @@ public final class FileContent {
     }
 
     @NonNull public static View onChange(@NonNull final MainActivity activity) {
-        final ListView content = new ListView(activity);
 
         // TODO get list.
         final ConstraintLayout header = FileListHeaderBinding.inflate(activity.getLayoutInflater()).getRoot();
         final TextView counter = (TextView) header.getViewById(R.id.file_list_counter);
 
+        final ListView content = new ListView(activity);
         WListClientManager.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> {
-            TokenManager.ensureToken("admin", );
+            TokenManager.ensureToken("admin", "123456");
             final Pair.ImmutablePair<Long, List<VisibleFileInformation>> list = FileHelper.getFileList(new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), 0));
             if (list != null) {
                 FileContent.setList(activity, list, counter, content);

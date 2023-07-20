@@ -6,7 +6,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.os.Parcel;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -14,8 +14,8 @@ import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WListClientAndroid.Helpers.WListClientManager;
-import com.xuxiaocheng.WListClientAndroid.Service.InternalServerService;
 import com.xuxiaocheng.WListClientAndroid.R;
+import com.xuxiaocheng.WListClientAndroid.Service.InternalServerService;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
 
 import java.net.InetSocketAddress;
@@ -39,31 +39,22 @@ public class LoginActivity extends AppCompatActivity {
                 }
                 WListClientManager.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> {
                     logger.log(HLogLevel.INFO, "Waiting for server start completely...");
-                    final SocketAddress address;
-                    final Parcel data = Parcel.obtain();
-                    final Parcel reply = Parcel.obtain();
-                    try {
-                        data.writeInterfaceToken("GetAddress");
-                        iService.transact(1, data, reply, 0);
-                        final int success = reply.readInt();
-                        if (success != 0)
-                            throw new IllegalStateException("Failed to initialize WList server.");
-                        final String hostname = reply.readString();
-                        final int port = reply.readInt();
-                        address = new InetSocketAddress(hostname, port);
-                    } finally {
-                        data.recycle();
-                        reply.recycle();
-                    }
-                    logger.log(HLogLevel.INFO, "Connecting to: ", address);
-                    WListClientManager.initialize(new WListClientManager.ClientManagerConfig(address, 1, 2, 64));
+                    final SocketAddress[] address = new SocketAddress[1];
+                    InternalServerService.sendTransact(iService, InternalServerService.TransactOperate.GetAddress, null, p -> {
+                        if (p.readInt() != 0)
+                            throw new IllegalStateException("Failed to get internal server address.");
+                        final String hostname = p.readString();
+                        final int port = p.readInt();
+                        address[0] = new InetSocketAddress(hostname, port);
+                    });
+                    logger.log(HLogLevel.INFO, "Connecting to: ", address[0]);
+                    WListClientManager.initialize(new WListClientManager.ClientManagerConfig(address[0], 1, 2, 64));
+                    logger.log(HLogLevel.FINE, "Clients initialized.");
+                    LoginActivity.this.runOnUiThread(() -> LoginActivity.this.startActivity(new Intent(LoginActivity.this, MainActivity.class)));
                 }, e -> {
                     if (e != null) {
-                        logger.log(HLogLevel.FAULT, "Failed to initialize clients.", e);
-                        // TODO Toast.
-                    } else {
-                        logger.log(HLogLevel.FINE, "Clients initialized.");
-                        LoginActivity.this.runOnUiThread(() -> LoginActivity.this.startActivity(new Intent(LoginActivity.this, MainActivity.class)));
+                        logger.log(HLogLevel.FAULT, "Failed to initialize wlist clients.", e);
+                        LoginActivity.this.runOnUiThread(() -> Toast.makeText(LoginActivity.this.getApplicationContext(), R.string.fatal_application_initialization, Toast.LENGTH_LONG).show());
                     }
                     LoginActivity.this.finish();
                 }, true));

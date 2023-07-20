@@ -1,10 +1,11 @@
 package com.xuxiaocheng.WListClientAndroid.Utils;
 
 import android.content.Context;
+import android.os.Process;
 import android.util.Log;
 import androidx.annotation.NonNull;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
-import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.HeadLibs.Helper.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
@@ -28,9 +29,9 @@ public final class HLogManager {
     static {
         for (final String name: HLogManager.loggers)
             HLogManager.buildInstance(name, Integer.MIN_VALUE);
-        HExceptionWrapper.addUncaughtExceptionListener((t, e) -> {
-            HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Uncaught exception listened by WList Android. thread: ", t.getName(), e);
-        });
+        HUncaughtExceptionHelper.removeUncaughtExceptionListener("default");
+        HUncaughtExceptionHelper.putIfAbsentUncaughtExceptionListener("listener", (t, e) ->
+                HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Uncaught exception listened by WList Android.", ParametersMap.create().add("thread", t.getName()).add("pid", Process.myPid()), e));
     }
 
     @NonNull public static final AtomicBoolean initialized = new AtomicBoolean(false);
@@ -68,11 +69,11 @@ public final class HLogManager {
                 final String message = this.cache.toString();
                 this.cache.reset();
                 int priority = this.lastPriority;
-                if (message.contains("[VERBOSE]"))
+                if (message.contains("[VERBOSE]") || message.contains("[LESS]"))
                     priority = Log.VERBOSE;
                 if (message.contains("[DEBUG]") || message.contains("[NETWORK]"))
                     priority = Log.DEBUG;
-                if (message.contains("[LESS]") || message.contains("[FINE]") || message.contains("[INFO]") || message.contains("[ENHANCED]"))
+                if (message.contains("[FINE]") || message.contains("[INFO]") || message.contains("[ENHANCED]"))
                     priority = Log.INFO;
                 if (message.contains("[MISTAKE]") || message.contains("[WARN]"))
                     priority = Log.WARN;
