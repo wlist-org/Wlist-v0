@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListClientAndroid.UI;
+package com.xuxiaocheng.WListClientAndroid.Activities;
 
 import android.content.ComponentName;
 import android.content.Context;
@@ -13,9 +13,10 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.WListClientAndroid.Helpers.WListClientManager;
+import com.xuxiaocheng.WListClientAndroid.Client.WListClientManager;
+import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.R;
-import com.xuxiaocheng.WListClientAndroid.Service.InternalServerService;
+import com.xuxiaocheng.WListClientAndroid.Services.InternalServerService;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
 
 import java.net.InetSocketAddress;
@@ -25,19 +26,18 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     protected void onCreate(@Nullable final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        final HLog logger = HLogManager.getInstance(this, "DefaultLogger");
+        HLogManager.initialize(this, "Activities");
+        final HLog logger = HLogManager.getInstance("DefaultLogger");
+        logger.log(HLogLevel.VERBOSE, "Creating LoginActivity.");
         this.setContentView(R.layout.login_activity);
+
         final Intent serverIntent = new Intent(this, InternalServerService.class);
         logger.log(HLogLevel.LESS, "Starting internal server...");
         this.startService(serverIntent);
         this.bindService(serverIntent, new ServiceConnection() {
             @Override
             public void onServiceConnected(final ComponentName name, @NonNull final IBinder iService) {
-                if (!iService.isBinderAlive()) {
-                    logger.log(HLogLevel.WARN, "Dead iServer.");
-                    return;
-                }
-                WListClientManager.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> {
+                Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> {
                     logger.log(HLogLevel.INFO, "Waiting for server start completely...");
                     final SocketAddress[] address = new SocketAddress[1];
                     InternalServerService.sendTransact(iService, InternalServerService.TransactOperate.GetAddress, null, p -> {
@@ -49,7 +49,7 @@ public class LoginActivity extends AppCompatActivity {
                     });
                     logger.log(HLogLevel.INFO, "Connecting to: ", address[0]);
                     WListClientManager.initialize(new WListClientManager.ClientManagerConfig(address[0], 1, 2, 64));
-                    logger.log(HLogLevel.FINE, "Clients initialized.");
+                    logger.log(HLogLevel.LESS, "Clients initialized.");
                     LoginActivity.this.runOnUiThread(() -> LoginActivity.this.startActivity(new Intent(LoginActivity.this, MainActivity.class)));
                 }, e -> {
                     if (e != null) {
@@ -64,5 +64,11 @@ public class LoginActivity extends AppCompatActivity {
             public void onServiceDisconnected(final ComponentName name) {
             }
         }, Context.BIND_AUTO_CREATE);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Destroying LoginActivity.");
     }
 }

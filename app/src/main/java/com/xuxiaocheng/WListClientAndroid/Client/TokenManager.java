@@ -5,7 +5,6 @@ import androidx.annotation.Nullable;
 import com.xuxiaocheng.WListClient.Client.OperationHelpers.OperateUserHelper;
 import com.xuxiaocheng.WListClient.Client.OperationHelpers.WrongStateException;
 import com.xuxiaocheng.WListClient.Client.WListClient;
-import com.xuxiaocheng.WListClientAndroid.Helpers.WListClientManager;
 
 import java.io.IOException;
 

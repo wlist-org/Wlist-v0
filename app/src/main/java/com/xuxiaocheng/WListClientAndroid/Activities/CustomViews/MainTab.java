@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListClientAndroid.UI.CustomView;
+package com.xuxiaocheng.WListClientAndroid.Activities.CustomViews;
 
 import android.app.Activity;
 import android.view.View;

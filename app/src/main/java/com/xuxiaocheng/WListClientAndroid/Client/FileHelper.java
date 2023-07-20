@@ -9,7 +9,6 @@ import com.xuxiaocheng.WListClient.Client.WListClient;
 import com.xuxiaocheng.WListClient.Server.FileLocation;
 import com.xuxiaocheng.WListClient.Server.Options;
 import com.xuxiaocheng.WListClient.Server.VisibleFileInformation;
-import com.xuxiaocheng.WListClientAndroid.Helpers.WListClientManager;
 
 import java.io.IOException;
 import java.util.List;

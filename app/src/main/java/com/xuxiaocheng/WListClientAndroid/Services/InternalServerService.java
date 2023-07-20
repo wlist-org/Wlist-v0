@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListClientAndroid.Service;
+package com.xuxiaocheng.WListClientAndroid.Services;
 
 import android.app.Service;
 import android.content.Intent;
@@ -10,6 +10,7 @@ import android.os.RemoteException;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.WListServer;
@@ -32,19 +33,22 @@ public final class InternalServerService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        HLogManager.initialize(this, "Server");
+        final HLog logger = HLogManager.getInstance("DefaultLogger");
         if (WList.getMainStageAPI() == 3)
-            HLogManager.getInstance(this, "DefaultLogger").log(HLogLevel.ERROR, "Internal WList Server has already stopped.", ParametersMap.create().add("pid", Process.myPid()));
+            logger.log(HLogLevel.ERROR, "Internal WList Server has already stopped.", ParametersMap.create().add("pid", Process.myPid()));
         else if (WList.getMainStageAPI() != -1)
-            HLogManager.getInstance(this, "DefaultLogger").log(HLogLevel.MISTAKE, "Internal WList Server has already started.", ParametersMap.create().add("pid", Process.myPid()));
+            logger.log(HLogLevel.MISTAKE, "Internal WList Server has already started.", ParametersMap.create().add("pid", Process.myPid()));
         else
-            HLogManager.getInstance(this, "DefaultLogger").log(HLogLevel.FINE, "Internal WList Server is starting.", ParametersMap.create().add("pid", Process.myPid()));
+            logger.log(HLogLevel.FINE, "Internal WList Server is starting.", ParametersMap.create().add("pid", Process.myPid()));
         this.ServerMainThread.start();
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        HLogManager.getInstance(this, "DefaultLogger").log(HLogLevel.FINE, "Internal WList Server is stopping.");
+        final HLog logger = HLogManager.getInstance("DefaultLogger");
+        logger.log(HLogLevel.FINE, "Internal WList Server is stopping.");
         switch (WList.getMainStageAPI()) {
             case 0 -> this.ServerMainThread.interrupt();
             case 1 -> WListServer.getInstance().stop();
@@ -62,21 +66,6 @@ public final class InternalServerService extends Service {
     public enum TransactOperate {
         GetAddress,
         GetAndDeleteAdminPassword,
-        ;
-        private final int code;
-        TransactOperate() {
-            this.code = this.ordinal() + 1;
-        }
-        public int getCode() {
-            return this.code;
-        }
-        @Override
-        @NonNull public String toString() {
-            return "TransactOperate{" +
-                    "name='" + this.name() + '\'' +
-                    ", code=" + this.code +
-                    '}';
-        }
     }
 
     public static void sendTransact(@NonNull final IBinder iService, @NonNull final TransactOperate operate, @Nullable final Consumer<? super Parcel> dataCallback, @Nullable final Consumer<? super Parcel> replyCallback) throws RemoteException {
@@ -86,7 +75,7 @@ public final class InternalServerService extends Service {
             data.writeInterfaceToken(operate.name());
             if (dataCallback != null)
                 dataCallback.accept(data);
-            iService.transact(operate.code, data, reply, 0);
+            iService.transact(operate.ordinal() + 1, data, reply, 0);
             if (replyCallback != null)
                 replyCallback.accept(reply);
         } finally {
@@ -96,9 +85,9 @@ public final class InternalServerService extends Service {
     }
 
     public static final class ServerBinder extends Binder {
-        private static boolean waitStage(final int stage, @NonNull final Parcel reply) {
+        private static boolean waitStart(@NonNull final Parcel reply) {
             try {
-                if (WList.waitMainStageAPI(stage))
+                if (WList.waitMainStageAPI(1))
                     return false;
             } catch (final InterruptedException ignore) {
             }
@@ -115,7 +104,7 @@ public final class InternalServerService extends Service {
             assert reply != null;
             switch (operate) {
                 case GetAddress -> {
-                    if (ServerBinder.waitStage(1, reply)) break;
+                    if (ServerBinder.waitStart(reply)) break;
                     final InetSocketAddress address = WListServer.getInstance().getAddress().getInstanceNullable();
                     if (address == null)
                         reply.writeInt(1);
@@ -126,7 +115,7 @@ public final class InternalServerService extends Service {
                     }
                 }
                 case GetAndDeleteAdminPassword -> {
-                    if (ServerBinder.waitStage(1, reply)) break;
+                    if (ServerBinder.waitStart(reply)) break;
                     final String password = UserManager.getAndDeleteDefaultAdminPasswordAPI();
                     if (password == null)
                         reply.writeInt(1);

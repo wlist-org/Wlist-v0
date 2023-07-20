@@ -27,29 +27,32 @@ public final class HLogManager {
 
     @NonNull private static final Collection<String> loggers = Set.of("DefaultLogger", "NetworkLogger", "ServerLogger", "ClientLogger");
     static {
+        HLog.setLogTimeFLength(3);
         for (final String name: HLogManager.loggers)
             HLogManager.buildInstance(name, Integer.MIN_VALUE);
-        HUncaughtExceptionHelper.removeUncaughtExceptionListener("default");
+        HUncaughtExceptionHelper.removeUncaughtExceptionListener("default"); // Application Killer
         HUncaughtExceptionHelper.putIfAbsentUncaughtExceptionListener("listener", (t, e) ->
                 HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Uncaught exception listened by WList Android.", ParametersMap.create().add("thread", t.getName()).add("pid", Process.myPid()), e));
     }
 
     @NonNull public static final AtomicBoolean initialized = new AtomicBoolean(false);
-
-    @NonNull public static HLog getInstance(@NonNull final Context context, @NonNull final String name) {
+    public static void initialize(@NonNull final Context context, @NonNull final String processName) {
+        if (!HLogManager.initialized.compareAndSet(false, true))
+            return;
         try {
             HMergedStream.initializeDefaultFileOutputStream(new File(context.getApplicationContext().getExternalCacheDir(), "logs/" +
-                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH.mm.ss")) + ".log"));
+                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH.mm.ss")) + '.' + processName + ".log"));
         } catch (final IOException exception) {
             throw new RuntimeException("Unreachable!", exception);
         }
+        final OutputStream fileOutputStream = HMergedStream.getFileOutputStreamNoException(null);
+        for (final String loggerName: HLogManager.loggers)
+            HLog.getInstance(loggerName).getStreams().add(fileOutputStream);
+        HLog.DefaultLogger.log(HLogLevel.FINE, "Hello WList Client (Android Version).", ParametersMap.create().add("pid", Process.myPid()).add("thread", Thread.currentThread().getName()));
+    }
+
+    @NonNull public static HLog getInstance(@NonNull final String name) {
         final HLog instance = HLogManager.loggers.contains(name) ? HLog.getInstance(name) : HLog.getInstance("DefaultLogger");
-        if (HLogManager.initialized.compareAndSet(false, true)) {
-            final OutputStream fileOutputStream = HMergedStream.getFileOutputStreamNoException(null);
-            for (final String loggerName: HLogManager.loggers)
-                HLog.getInstance(loggerName).getStreams().add(fileOutputStream);
-            HLog.DefaultLogger.log(HLogLevel.FINE, "Initialized HLog Manager.", ParametersMap.create().add("thread", Thread.currentThread().getName()));
-        }
         if (!HLogManager.loggers.contains(name))
             instance.log(HLogLevel.BUG, "Getting unexpected HLog.", ParametersMap.create().add("name", name));
         return instance;
