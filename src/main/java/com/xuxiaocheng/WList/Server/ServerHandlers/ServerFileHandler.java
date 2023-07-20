@@ -63,7 +63,7 @@ public final class ServerFileHandler {
         final Options.OrderPolicy orderPolicy = Options.valueOfOrderPolicy(ByteBufIOUtil.readUTF(buffer));
         final Options.OrderDirection orderDirection = Options.valueOfOrderDirection(ByteBufIOUtil.readUTF(buffer));
         final boolean refresh = ByteBufIOUtil.readBoolean(buffer);
-        ServerHandler.logOperation(channel.id(), Operation.Type.ListFiles, user, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, Operation.Type.ListFiles, user, () -> ParametersMap.create()
                 .add("location", location).add("limit", limit).add("page", page).add("orderPolicy", orderPolicy).add("orderDirection", orderDirection).add("refresh", refresh)
                 .optionallyAddSupplier(refresh && user.isSuccess(), "allow", () -> user.getT().group().permissions().contains(Operation.Permission.FilesBuildIndex)));
         if (user.isFailure())
@@ -100,7 +100,7 @@ public final class ServerFileHandler {
         final FileLocation parentLocation = FileLocation.parse(buffer);
         final String directoryName = ByteBufIOUtil.readUTF(buffer);
         final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
-        ServerHandler.logOperation(channel.id(), Operation.Type.MakeDirectories, user, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, Operation.Type.MakeDirectories, user, () -> ParametersMap.create()
                 .add("parentLocation", parentLocation).add("directoryName", directoryName).add("duplicatePolicy", duplicatePolicy)
                 .optionallyAddSupplier(duplicatePolicy == Options.DuplicatePolicy.OVER && user.isSuccess(), "allow", () -> user.getT().group().permissions().contains(Operation.Permission.FileDelete)));
         if (user.isFailure())
@@ -132,7 +132,7 @@ public final class ServerFileHandler {
     public static final @NotNull ServerHandler doDeleteFile = (channel, buffer) -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDelete);
         final FileLocation location = FileLocation.parse(buffer);
-        ServerHandler.logOperation(channel.id(), Operation.Type.DeleteFile, user, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, Operation.Type.DeleteFile, user, () -> ParametersMap.create()
                 .add("location", location));
         if (user.isFailure())
             return user.getE();
@@ -151,7 +151,7 @@ public final class ServerFileHandler {
         final FileLocation location = FileLocation.parse(buffer);
         final String name = ByteBufIOUtil.readUTF(buffer);
         final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
-        ServerHandler.logOperation(channel.id(), Operation.Type.RenameFile, user, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, Operation.Type.RenameFile, user, () -> ParametersMap.create()
                 .add("location", location).add("name", name).add("duplicatePolicy", duplicatePolicy));
         if (user.isFailure())
             return user.getE();
@@ -183,7 +183,7 @@ public final class ServerFileHandler {
         final FileLocation location = FileLocation.parse(buffer);
         final long from = ByteBufIOUtil.readVariableLenLong(buffer);
         final long to = ByteBufIOUtil.readVariable2LenLong(buffer);
-        ServerHandler.logOperation(channel.id(), Operation.Type.RequestDownloadFile, user, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, Operation.Type.RequestDownloadFile, user, () -> ParametersMap.create()
                 .add("location", location).add("from", from).add("to", to));
         if (user.isFailure())
             return user.getE();
@@ -215,7 +215,7 @@ public final class ServerFileHandler {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FileDownload);
         final String id = ByteBufIOUtil.readUTF(buffer);
         final int chunk = ByteBufIOUtil.readVariableLenInt(buffer);
-        ServerHandler.logOperation(channel.id(), Operation.Type.DownloadFile, user, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, Operation.Type.DownloadFile, user, () -> ParametersMap.create()
                 .add("id", id).add("chunk", chunk));
         if (user.isFailure())
             return user.getE();
@@ -236,7 +236,7 @@ public final class ServerFileHandler {
     public static final @NotNull ServerHandler doCancelDownloadFile = (channel, buffer) -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FileDownload);
         final String id = ByteBufIOUtil.readUTF(buffer);
-        ServerHandler.logOperation(channel.id(), Operation.Type.CancelDownloadFile, user, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, Operation.Type.CancelDownloadFile, user, () -> ParametersMap.create()
                 .add("id", id));
         if (user.isFailure())
             return user.getE();
@@ -250,7 +250,7 @@ public final class ServerFileHandler {
         final long size = ByteBufIOUtil.readVariable2LenLong(buffer);
         final String md5 = ByteBufIOUtil.readUTF(buffer);
         final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
-        ServerHandler.logOperation(channel.id(), Operation.Type.RequestUploadFile, user, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, Operation.Type.RequestUploadFile, user, () -> ParametersMap.create()
                 .add("parentLocation", parentLocation).add("filename", filename).add("size", size).add("md5", md5).add("duplicatePolicy", duplicatePolicy)
                 .optionallyAddSupplier(duplicatePolicy == Options.DuplicatePolicy.OVER && user.isSuccess(), "allow", () -> user.getT().group().permissions().contains(Operation.Permission.FileDelete)));
         if (user.isFailure())
@@ -305,7 +305,7 @@ public final class ServerFileHandler {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FileUpload);
         final String id = ByteBufIOUtil.readUTF(buffer);
         final int chunk = ByteBufIOUtil.readVariableLenInt(buffer);
-        ServerHandler.logOperation(channel.id(), Operation.Type.UploadFile, user, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, Operation.Type.UploadFile, user, () -> ParametersMap.create()
                 .add("id", id).add("chunk", chunk));
         if (user.isFailure())
             return user.getE();
@@ -334,7 +334,7 @@ public final class ServerFileHandler {
     public static final @NotNull ServerHandler doCancelUploadFile = (channel, buffer) -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FileUpload);
         final String id = ByteBufIOUtil.readUTF(buffer);
-        ServerHandler.logOperation(channel.id(), Operation.Type.CancelUploadFile, user, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, Operation.Type.CancelUploadFile, user, () -> ParametersMap.create()
                 .add("id", id));
         if (user.isFailure())
             return user.getE();
@@ -347,7 +347,7 @@ public final class ServerFileHandler {
         final FileLocation targetParent = FileLocation.parse(buffer);
         final String filename = ByteBufIOUtil.readUTF(buffer);
         final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
-        ServerHandler.logOperation(channel.id(), Operation.Type.CopyFile, user, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, Operation.Type.CopyFile, user, () -> ParametersMap.create()
                 .add("source", source).add("targetParent", targetParent).add("filename", filename).add("duplicatePolicy", duplicatePolicy)
                 .optionallyAddSupplier(duplicatePolicy == Options.DuplicatePolicy.OVER && user.isSuccess(), "allow", () -> user.getT().group().permissions().contains(Operation.Permission.FileDelete)));
         if (user.isFailure())
@@ -382,7 +382,7 @@ public final class ServerFileHandler {
         final FileLocation source = FileLocation.parse(buffer);
         final FileLocation target = FileLocation.parse(buffer);
         final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
-        ServerHandler.logOperation(channel.id(), Operation.Type.MoveFile, user, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, Operation.Type.MoveFile, user, () -> ParametersMap.create()
                 .add("source", source).add("target", target).add("duplicatePolicy", duplicatePolicy));
         if (user.isFailure())
             return user.getE();

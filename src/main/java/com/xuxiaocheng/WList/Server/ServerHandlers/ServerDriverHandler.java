@@ -22,7 +22,7 @@ public final class ServerDriverHandler {
     public static final @NotNull ServerHandler doBuildIndex = (channel, buffer) -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesBuildIndex);
         final String driver = ByteBufIOUtil.readUTF(buffer);
-        ServerHandler.logOperation(channel.id(), Operation.Type.BuildIndex, user, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, Operation.Type.BuildIndex, user, () -> ParametersMap.create()
                 .add("driver", driver));
         if (user.isFailure())
             return user.getE();

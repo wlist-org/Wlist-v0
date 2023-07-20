@@ -66,10 +66,10 @@ public final class YamlHelper {
 
     public static void throwErrors(final @NotNull Collection<? extends Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors) throws IOException {
         if (!errors.isEmpty()) {
-            final StringBuilder builder = new StringBuilder();
+            final StringBuilder builder = new StringBuilder().append('\n');
             for (final Pair.ImmutablePair<String, String> pair: errors)
                 builder.append("In '").append(pair.getFirst()).append("': ").append(pair.getSecond()).append('\n');
-            throw new IOException(builder.toString());
+            throw new IOException(builder.deleteCharAt(builder.length() - 1).toString());
         }
     }
 

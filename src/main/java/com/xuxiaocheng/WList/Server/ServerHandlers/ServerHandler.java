@@ -12,7 +12,6 @@ import com.xuxiaocheng.WList.Server.ServerCodecs.MessageCiphers;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelId;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -46,8 +45,8 @@ public interface ServerHandler {
     @NotNull Function<@NotNull UnsupportedOperationException, @NotNull MessageProto> Unsupported = e ->
             ServerHandler.composeMessage(Operation.State.Unsupported, e.getMessage());
 
-    static void logOperation(final @NotNull ChannelId channelId, final Operation.@NotNull Type operation, final @Nullable UnionPair<@NotNull UserSqlInformation, @NotNull MessageProto> user, final @Nullable Supplier<? extends @NotNull ParametersMap> parameters) {
-        HLog.getInstance("ServerLogger").log(HLogLevel.DEBUG, "Operate: ", channelId.asLongText(), ", type: ", operation,
+    static void logOperation(final @NotNull Channel channel, final Operation.@NotNull Type operation, final @Nullable UnionPair<@NotNull UserSqlInformation, @NotNull MessageProto> user, final @Nullable Supplier<? extends @NotNull ParametersMap> parameters) {
+        HLog.getInstance("ServerLogger").log(HLogLevel.DEBUG, "Operate: ", channel.remoteAddress(), ", type: ", operation,
                 (Supplier<String>) () -> user == null ? "." :
                         user.isSuccess() ? " user: (id:" + user.getT().id() + ") '" + user.getT().username() + "'." : ". Refused because " + user.getE().state() + '.',
                 (Supplier<String>) () -> parameters == null ? "" : parameters.get().toString());

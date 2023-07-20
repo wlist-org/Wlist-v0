@@ -192,7 +192,7 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
             super("RootDriver", LocalSide::new, WebSide::new, CacheSide::new);
         }
         private static class LocalSide extends LocalSideDriverConfiguration {
-            private LocalSide() {
+            protected LocalSide() {
                 super("RootDriver");
             }
         }

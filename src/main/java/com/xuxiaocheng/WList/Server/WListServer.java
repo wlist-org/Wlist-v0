@@ -146,12 +146,12 @@ public class WListServer {
     public static class ServerChannelHandler extends SimpleChannelInboundHandler<ByteBuf> {
         @Override
         public void channelActive(final @NotNull ChannelHandlerContext ctx) {
-            WListServer.logger.log(HLogLevel.DEBUG, "Active: ", ctx.channel().id().asLongText(), " (", ctx.channel().remoteAddress(), ')');
+            WListServer.logger.log(HLogLevel.DEBUG, "Active: ", ctx.channel().remoteAddress(), " (", ctx.channel().id().asLongText(), ')');
         }
 
         @Override
         public void channelInactive(final @NotNull ChannelHandlerContext ctx) {
-            WListServer.logger.log(HLogLevel.DEBUG, "Inactive: ", ctx.channel().id().asLongText(), " (", ctx.channel().remoteAddress(), ')');
+            WListServer.logger.log(HLogLevel.DEBUG, "Inactive: ", ctx.channel().remoteAddress(), " (", ctx.channel().id().asLongText(), ')');
         }
 
         protected static void write(final @NotNull Channel channel, final @NotNull MessageProto message) throws IOException {
@@ -159,14 +159,14 @@ public class WListServer {
             prefix.writeByte(message.cipher());
             ByteBufIOUtil.writeUTF(prefix, message.state().name());
             final ByteBuf buffer = message.appender().apply(prefix);
-            WListServer.logger.log(HLogLevel.VERBOSE, "Write: ", channel.id().asLongText(), " len: ", buffer.readableBytes(), " cipher: ", MiscellaneousUtil.bin(message.cipher()));
+            WListServer.logger.log(HLogLevel.VERBOSE, "Write: ", channel.remoteAddress(), " len: ", buffer.readableBytes(), " cipher: ", MiscellaneousUtil.bin(message.cipher()));
             channel.writeAndFlush(buffer);
         }
 
         @Override
         protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) throws ServerException {
             final Channel channel = ctx.channel();
-            WListServer.logger.log(HLogLevel.VERBOSE, "Read: ", channel.id().asLongText(), " len: ", msg.readableBytes(), " cipher: ", MiscellaneousUtil.bin(msg.readByte()));
+            WListServer.logger.log(HLogLevel.VERBOSE, "Read: ", channel.remoteAddress(), " len: ", msg.readableBytes(), " cipher: ", MiscellaneousUtil.bin(msg.readByte()));
             try {
                 msg.markReaderIndex();
                 final Operation.Type type = Operation.valueOfType(ByteBufIOUtil.readUTF(msg));
@@ -185,19 +185,20 @@ public class WListServer {
         @Override
         public void exceptionCaught(final @NotNull ChannelHandlerContext ctx, final @NotNull Throwable cause) {
             if (cause instanceof CodecException) {
-                WListServer.logger.log(HLogLevel.MISTAKE, "Codec Exception at ", ctx.channel().id().asLongText(), ": ", cause.getMessage());
+                WListServer.logger.log(HLogLevel.MISTAKE, "Codec Exception at ", ctx.channel().remoteAddress(), ": ", cause.getMessage());
                 ServerChannelHandler.directlyWriteMessage(ctx.channel(), Operation.State.FormatError, "Codec");
                 return;
             }
             if (cause instanceof SocketException) {
-                WListServer.logger.log(HLogLevel.WARN, "Socket Exception at ", ctx.channel().id().asLongText(), ": ", cause.getMessage());
+                WListServer.logger.log(HLogLevel.WARN, "Socket Exception at ", ctx.channel().remoteAddress(), ": ", cause.getMessage());
                 ctx.close();
                 return;
             }
-            WListServer.logger.log(HLogLevel.WARN, "Exception at ", ctx.channel().id().asLongText(), ": ", cause);
+            if (cause instanceof ServerException)
+                WListServer.logger.log(HLogLevel.WARN, "Exception at ", ctx.channel().remoteAddress(), ": ", cause);
+            else
+                Thread.getDefaultUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), cause); // Logged by HUncaughtExceptionHelper.listener.
             ServerChannelHandler.directlyWriteMessage(ctx.channel(), Operation.State.ServerError, null);
-            if (!(cause instanceof ServerException))
-                Thread.getDefaultUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), cause);
         }
 
         protected static void directlyWriteMessage(final @NotNull Channel channel, final Operation.@NotNull State state, final @Nullable String message) {

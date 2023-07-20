@@ -34,14 +34,14 @@ public final class ServerStateHandler {
     }
 
     private static final @NotNull ServerHandler doUndefined = (channel, buffer) -> {
-        ServerHandler.logOperation(channel.id(), Operation.Type.Undefined, null, HExceptionWrapper.wrapSupplier(() -> ParametersMap.create()
+        ServerHandler.logOperation(channel, Operation.Type.Undefined, null, HExceptionWrapper.wrapSupplier(() -> ParametersMap.create()
                 .add("type", ByteBufIOUtil.readUTF(buffer.resetReaderIndex()))));
         return ServerHandler.composeMessage(Operation.State.Unsupported, "Undefined operation!");
     };
 
     private static final @NotNull ServerHandler doCloseServer = (channel, buffer) -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.ServerOperate);
-        ServerHandler.logOperation(channel.id(), Operation.Type.CloseServer, user, null);
+        ServerHandler.logOperation(channel, Operation.Type.CloseServer, user, null);
         if (user.isFailure())
             return user.getE();
         WListServer.ServerExecutors.schedule(() -> WListServer.getInstance().stop(), 3, TimeUnit.SECONDS);
@@ -50,7 +50,7 @@ public final class ServerStateHandler {
 
     private static final @NotNull ServerHandler doBroadcast = (channel, buffer) -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.Broadcast);
-        ServerHandler.logOperation(channel.id(), Operation.Type.Broadcast, user, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, Operation.Type.Broadcast, user, () -> ParametersMap.create()
                 .add("len", buffer.readableBytes()));
         if (user.isFailure())
             return user.getE();
