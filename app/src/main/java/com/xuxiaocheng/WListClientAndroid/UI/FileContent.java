@@ -41,7 +41,7 @@ public final class FileContent {
         final TextView counter = (TextView) header.getViewById(R.id.file_list_counter);
 
         WListClientManager.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> {
-            TokenManager.ensureToken("admin", "G7I-DTAE");
+            TokenManager.ensureToken("admin", );
             final Pair.ImmutablePair<Long, List<VisibleFileInformation>> list = FileHelper.getFileList(new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), 0));
             if (list != null) {
                 FileContent.setList(activity, list, counter, content);

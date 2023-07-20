@@ -6,18 +6,19 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.Parcel;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WListClientAndroid.Helpers.WListClientManager;
-import com.xuxiaocheng.WListClientAndroid.Helpers.WListServerManager;
+import com.xuxiaocheng.WListClientAndroid.Service.InternalServerService;
 import com.xuxiaocheng.WListClientAndroid.R;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
 
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 
 public class LoginActivity extends AppCompatActivity {
@@ -26,17 +27,35 @@ public class LoginActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         final HLog logger = HLogManager.getInstance(this, "DefaultLogger");
         this.setContentView(R.layout.login_activity);
-        final Intent serverIntent = new Intent(this, WListServerManager.class);
+        final Intent serverIntent = new Intent(this, InternalServerService.class);
+        logger.log(HLogLevel.LESS, "Starting internal server...");
         this.startService(serverIntent);
         this.bindService(serverIntent, new ServiceConnection() {
             @Override
             public void onServiceConnected(final ComponentName name, @NonNull final IBinder iService) {
+                if (!iService.isBinderAlive()) {
+                    logger.log(HLogLevel.WARN, "Dead iServer.");
+                    return;
+                }
                 WListClientManager.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> {
-                    final WListServerManager.ServerBinder service = (WListServerManager.ServerBinder) iService;
-                    final SocketAddress address = service.getAddress();
-                    if (address == null)
-                        throw new IllegalStateException("Failed to initialize WList server.");
-                    logger.log(HLogLevel.INFO, "Initializing WListClients.", ParametersMap.create().add("address", address));
+                    logger.log(HLogLevel.INFO, "Waiting for server start completely...");
+                    final SocketAddress address;
+                    final Parcel data = Parcel.obtain();
+                    final Parcel reply = Parcel.obtain();
+                    try {
+                        data.writeInterfaceToken("GetAddress");
+                        iService.transact(1, data, reply, 0);
+                        final int success = reply.readInt();
+                        if (success != 0)
+                            throw new IllegalStateException("Failed to initialize WList server.");
+                        final String hostname = reply.readString();
+                        final int port = reply.readInt();
+                        address = new InetSocketAddress(hostname, port);
+                    } finally {
+                        data.recycle();
+                        reply.recycle();
+                    }
+                    logger.log(HLogLevel.INFO, "Connecting to: ", address);
                     WListClientManager.initialize(new WListClientManager.ClientManagerConfig(address, 1, 2, 64));
                 }, e -> {
                     if (e != null) {
@@ -47,7 +66,7 @@ public class LoginActivity extends AppCompatActivity {
                         LoginActivity.this.runOnUiThread(() -> LoginActivity.this.startActivity(new Intent(LoginActivity.this, MainActivity.class)));
                     }
                     LoginActivity.this.finish();
-                }));
+                }, true));
             }
 
             @Override

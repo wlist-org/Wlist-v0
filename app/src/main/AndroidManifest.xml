@@ -25,9 +25,14 @@
 				<category android:name="android.intent.category.LAUNCHER" />
 			</intent-filter>
 		</activity>
+
 		<activity android:name=".UI.MainActivity" />
 
-		<service android:name=".Helpers.WListServerManager" />
+		<service
+			android:name=".Service.InternalServerService"
+			android:enabled="true"
+			android:exported="false"
+			android:process=":remote" />
 
 	</application>
 

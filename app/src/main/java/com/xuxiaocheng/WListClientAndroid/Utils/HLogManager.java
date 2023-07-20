@@ -3,36 +3,54 @@ package com.xuxiaocheng.WListClientAndroid.Utils;
 import android.content.Context;
 import android.util.Log;
 import androidx.annotation.NonNull;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Collection;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class HLogManager {
     private HLogManager() {
         super();
     }
 
+    @NonNull private static final Collection<String> loggers = Set.of("DefaultLogger", "NetworkLogger", "ServerLogger", "ClientLogger");
     static {
-        HLogManager.buildInstance("DefaultLogger", Integer.MIN_VALUE);
-        HLogManager.buildInstance("NetworkLogger", Integer.MIN_VALUE);
-        HLogManager.buildInstance("ServerLogger", Integer.MIN_VALUE);
-        HLogManager.buildInstance("ClientLogger", Integer.MIN_VALUE);
+        for (final String name: HLogManager.loggers)
+            HLogManager.buildInstance(name, Integer.MIN_VALUE);
+        HExceptionWrapper.addUncaughtExceptionListener((t, e) -> {
+            HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Uncaught exception listened by WList Android. thread: ", t.getName(), e);
+        });
     }
 
+    @NonNull public static final AtomicBoolean initialized = new AtomicBoolean(false);
+
     @NonNull public static HLog getInstance(@NonNull final Context context, @NonNull final String name) {
-        HMergedStream.initializeDefaultFileOutputStream(new File(context.getExternalCacheDir(), "logs/" +
-                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH.mm.ss")) + ".log"));
-        final HLog instance = HLog.getInstance(name);
-        if (HLog.isLogTime()) {
-            HLog.setLogTime(false);
-            instance.log(HLogLevel.FINE, "Initialized HLog in thread: ", Thread.currentThread());
+        try {
+            HMergedStream.initializeDefaultFileOutputStream(new File(context.getApplicationContext().getExternalCacheDir(), "logs/" +
+                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH.mm.ss")) + ".log"));
+        } catch (final IOException exception) {
+            throw new RuntimeException("Unreachable!", exception);
         }
+        final HLog instance = HLogManager.loggers.contains(name) ? HLog.getInstance(name) : HLog.getInstance("DefaultLogger");
+        if (HLogManager.initialized.compareAndSet(false, true)) {
+            final OutputStream fileOutputStream = HMergedStream.getFileOutputStreamNoException(null);
+            for (final String loggerName: HLogManager.loggers)
+                HLog.getInstance(loggerName).getStreams().add(fileOutputStream);
+            HLog.DefaultLogger.log(HLogLevel.FINE, "Initialized HLog Manager.", ParametersMap.create().add("thread", Thread.currentThread().getName()));
+        }
+        if (!HLogManager.loggers.contains(name))
+            instance.log(HLogLevel.BUG, "Getting unexpected HLog.", ParametersMap.create().add("name", name));
         return instance;
     }
 

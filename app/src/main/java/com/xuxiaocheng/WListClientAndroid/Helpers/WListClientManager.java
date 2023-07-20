@@ -2,15 +2,16 @@ package com.xuxiaocheng.WListClientAndroid.Helpers;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import com.xuxiaocheng.HeadLibs.AndroidSupport.ARandomHelper;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.WListClient.Client.WListClient;
 import com.xuxiaocheng.WListClient.Utils.MiscellaneousUtil;
-import com.xuxiaocheng.WListClientAndroid.Utils.ARandomHelper;
 import io.netty.util.IllegalReferenceCountException;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.EventExecutorGroup;
 
 import java.net.ConnectException;
@@ -26,7 +27,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 public class WListClientManager {
-    @NonNull public static final EventExecutorGroup ThreadPool = new DefaultEventExecutorGroup(64);
+    @NonNull public static final EventExecutorGroup ThreadPool = new DefaultEventExecutorGroup(64, new DefaultThreadFactory("AndroidExecutors"));
 
     @Nullable private static WListClientManager Instance;
 

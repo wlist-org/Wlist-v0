@@ -1,11 +1,13 @@
 package com.xuxiaocheng.WListClientAndroid.UI;
 
 import android.os.Bundle;
+import android.os.Process;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WListClientAndroid.R;
 import com.xuxiaocheng.WListClientAndroid.UI.CustomView.MainTab;
@@ -17,7 +19,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(@Nullable final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        HLogManager.getInstance(this, "DefaultLogger").log(HLogLevel.FINE, "Hello WList Client (Android Version).");
+        HLogManager.getInstance(this, "DefaultLogger").log(HLogLevel.FINE, "Hello WList Client (Android Version).", ParametersMap.create().add("pid", Process.myPid()));
         this.setContentView(R.layout.main_activity);
         final MainTab mainTab = new MainTab(
             new MainTab.ButtonGroup(this, R.id.main_tab_file, R.id.main_tab_file_button, R.id.main_tab_file_text,
