@@ -11,7 +11,6 @@ import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInterface;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.UploadMethods;
-import com.xuxiaocheng.WList.Utils.DatabaseUtil;
 import io.netty.buffer.ByteBuf;
 import okhttp3.Headers;
 import okhttp3.OkHttpClient;
@@ -33,7 +32,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * Initialize the web driver. (and bind to the configuration.) Create sql table in this method.
      * When user modify the configuration, this method will be call again automatically.
      * @param configuration The modified configuration.
-     * @see FileManager#quicklyInitialize(FileSqlInterface)
+     * @see FileManager#quicklyInitialize(FileSqlInterface, String)
      * @throws Exception Something went wrong.
      */
     void initialize(final @NotNull C configuration) throws Exception;
@@ -53,7 +52,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     void buildCache() throws Exception;
 
     /**
-     * Build file index into sql database {@link DatabaseUtil#getInstance()}.
+     * Build file index into sql database.
      * @throws Exception Something went wrong.
      * @see FileManager
      */

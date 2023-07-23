@@ -1,6 +1,6 @@
 package com.xuxiaocheng.WList.Databases.Constant;
 
-import com.xuxiaocheng.WList.Utils.DatabaseInterface;
+import com.xuxiaocheng.WList.Databases.DatabaseInterface;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

@@ -1,10 +1,10 @@
 package com.xuxiaocheng.WList.Databases.File;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.WList.Databases.GenericSql.PooledDatabaseInterface;
 import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Utils.AndroidSupport;
-import com.xuxiaocheng.WList.Utils.DatabaseUtil;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -52,12 +52,12 @@ public final class FileSqlHelper implements FileSqlInterface {
 
     private static final @NotNull DateTimeFormatter DefaultFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
-    private final @NotNull DatabaseUtil database;
+    private final @NotNull PooledDatabaseInterface database;
     private final @NotNull String driverName;
     private final @NotNull String tableName;
     private final long rootId;
 
-    public FileSqlHelper(final @NotNull DatabaseUtil database, final @NotNull String driverName, final long rootId) {
+    public FileSqlHelper(final @NotNull PooledDatabaseInterface database, final @NotNull String driverName, final long rootId) {
         super();
         this.database = database;
         this.driverName = driverName;

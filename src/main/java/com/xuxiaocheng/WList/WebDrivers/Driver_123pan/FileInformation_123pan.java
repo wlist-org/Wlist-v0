@@ -2,6 +2,7 @@ package com.xuxiaocheng.WList.WebDrivers.Driver_123pan;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInterface;
@@ -32,20 +33,20 @@ public final class FileInformation_123pan {
     public static @NotNull FileInfoExtra_123pan deserializeOther(final @NotNull FileSqlInformation information) throws IllegalParametersException {
         final String others = information.others();
         if (others == null || others.isEmpty())
-            throw new IllegalParametersException("No extra part.", information);
+            throw new IllegalParametersException("No extra part.", ParametersMap.create().add("information", information));
         if (others.charAt(0) == 'S')
             return new FileInfoExtra_123pan(information.isDirectory() ? 1 : 0, others.substring(1));
         if (others.charAt(0) == 'J') {
             final JSONObject json = JSON.parseObject(others.substring(1));
             final Integer type = json.getInteger("type");
             if (type == null)
-                throw new IllegalParametersException("No type.", information);
+                throw new IllegalParametersException("No type.", ParametersMap.create().add("information", information));
             final String s3key = json.getString("s3key");
             if (s3key == null)
-                throw new IllegalParametersException("No s3key.", information);
+                throw new IllegalParametersException("No s3key.", ParametersMap.create().add("information", information));
             return new FileInfoExtra_123pan(type.intValue(), s3key);
         }
-        throw new IllegalParametersException("Invalid extra part.", information);
+        throw new IllegalParametersException("Invalid extra part.", ParametersMap.create().add("information", information));
     }
 
     static @Nullable FileSqlInformation create(final @NotNull String driver, final @Nullable JSONObject info) {

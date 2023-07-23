@@ -6,6 +6,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.WList.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Databases.File.FileSqlHelper;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
+import com.xuxiaocheng.WList.Databases.GenericSql.PooledDatabase;
 import com.xuxiaocheng.WList.Driver.FailureReason;
 import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Driver.Options;
@@ -13,7 +14,6 @@ import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.UploadMethods;
-import com.xuxiaocheng.WList.Utils.DatabaseUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -27,7 +27,7 @@ import java.util.List;
 public class Driver_123Pan extends Driver_123Pan_NoCache {
     @Override
     public void initialize(final @NotNull DriverConfiguration_123Pan configuration) throws SQLException {
-        FileManager.quicklyInitialize(new FileSqlHelper(DatabaseUtil.getInstance(), configuration.getName(), configuration.getWebSide().getRootDirectoryId()), null);
+        FileManager.quicklyInitialize(new FileSqlHelper(PooledDatabase.instance.getInstance(), configuration.getName(), configuration.getWebSide().getRootDirectoryId()), null);
         this.configuration = configuration;
     }
 

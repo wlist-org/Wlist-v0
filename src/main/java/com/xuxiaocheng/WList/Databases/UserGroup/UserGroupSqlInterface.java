@@ -2,7 +2,7 @@ package com.xuxiaocheng.WList.Databases.UserGroup;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Driver.Options;
-import com.xuxiaocheng.WList.Utils.DatabaseInterface;
+import com.xuxiaocheng.WList.Databases.DatabaseInterface;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

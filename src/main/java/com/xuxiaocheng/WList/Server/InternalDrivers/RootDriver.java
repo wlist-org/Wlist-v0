@@ -196,8 +196,16 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
                 super("RootDriver");
             }
         }
-        private static class WebSide extends WebSideDriverConfiguration {}
-        private static class CacheSide extends CacheSideDriverConfiguration {}
+        private static class WebSide extends WebSideDriverConfiguration {
+            protected WebSide() {
+                super();
+            }
+        }
+        private static class CacheSide extends CacheSideDriverConfiguration {
+            protected CacheSide() {
+                super();
+            }
+        }
     }
 
     @Override

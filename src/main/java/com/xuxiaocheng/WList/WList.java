@@ -9,6 +9,8 @@ import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
 import com.xuxiaocheng.WList.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Databases.Constant.ConstantSqlHelper;
+import com.xuxiaocheng.WList.Databases.GenericSql.PooledDatabase;
+import com.xuxiaocheng.WList.Databases.GenericSql.PooledDatabaseHelper;
 import com.xuxiaocheng.WList.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Databases.User.UserSqlHelper;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupManager;
@@ -18,7 +20,6 @@ import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.ServerHandlers.ServerHandlerManager;
 import com.xuxiaocheng.WList.Server.WListServer;
-import com.xuxiaocheng.WList.Utils.DatabaseUtil;
 import io.netty.util.concurrent.Future;
 import org.jetbrains.annotations.NotNull;
 
@@ -98,11 +99,11 @@ public final class WList {
             logger.log(HLogLevel.VERBOSE, "Initialized global configuration.");
             final File databasePath = new File(runtimePath, "data.db");
             logger.log(HLogLevel.LESS, "Initializing databases.", ParametersMap.create().add("file", databasePath));
-            DatabaseUtil.initialize(databasePath);
+            PooledDatabase.quicklyInitialize(PooledDatabaseHelper.getDefault(databasePath));
             try {
-                ConstantManager.quicklyInitialize(new ConstantSqlHelper(DatabaseUtil.getInstance()), "initialize");
-                UserGroupManager.quicklyInitialize(new UserGroupSqlHelper(DatabaseUtil.getInstance()), "initialize");
-                UserManager.quicklyInitialize(new UserSqlHelper(DatabaseUtil.getInstance()), "initialize");
+                ConstantManager.quicklyInitialize(new ConstantSqlHelper(PooledDatabase.instance.getInstance()), "initialize");
+                UserGroupManager.quicklyInitialize(new UserGroupSqlHelper(PooledDatabase.instance.getInstance()), "initialize");
+                UserManager.quicklyInitialize(new UserSqlHelper(PooledDatabase.instance.getInstance()), "initialize");
             } catch (final RuntimeException exception) {
                 throw HExceptionWrapper.unwrapException(exception, SQLException.class);
             }

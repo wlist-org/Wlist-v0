@@ -1,9 +1,9 @@
 package com.xuxiaocheng.WList.Databases.TrashedFile;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.WList.Databases.GenericSql.PooledDatabaseInterface;
 import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Driver.Options;
-import com.xuxiaocheng.WList.Utils.DatabaseUtil;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -50,11 +50,11 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
 
     private static final @NotNull DateTimeFormatter DefaultFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
-    private final @NotNull DatabaseUtil database;
+    private final @NotNull PooledDatabaseInterface database;
     private final @NotNull String driverName;
     private final @NotNull String tableName;
 
-    public TrashedSqlHelper(final @NotNull DatabaseUtil database, final @NotNull String driverName) {
+    public TrashedSqlHelper(final @NotNull PooledDatabaseInterface database, final @NotNull String driverName) {
         super();
         this.database = database;
         this.driverName = driverName;

@@ -3,6 +3,7 @@ package com.xuxiaocheng.WList.WebDrivers.Driver_123pan;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
+import com.xuxiaocheng.WList.Databases.GenericSql.PooledDatabase;
 import com.xuxiaocheng.WList.Databases.TrashedFile.TrashedFileManager;
 import com.xuxiaocheng.WList.Databases.TrashedFile.TrashedSqlHelper;
 import com.xuxiaocheng.WList.Databases.TrashedFile.TrashedSqlInformation;
@@ -13,7 +14,6 @@ import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.WListServer;
-import com.xuxiaocheng.WList.Utils.DatabaseUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -34,7 +34,7 @@ public class Trash_123pan implements DriverTrashInterface<Driver_123Pan> {
 
     @Override
     public void initialize(final @NotNull Driver_123Pan driver) throws SQLException {
-        TrashedFileManager.quicklyInitialize(new TrashedSqlHelper(DatabaseUtil.getInstance(), driver.getConfiguration().getName()), null);
+        TrashedFileManager.quicklyInitialize(new TrashedSqlHelper(PooledDatabase.instance.getInstance(), driver.getConfiguration().getName()), null);
         this.driver = driver;
     }
 
