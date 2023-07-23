@@ -22,6 +22,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.sql.Connection;
 import java.util.Map;
 import java.util.Objects;
 
@@ -32,7 +33,14 @@ public final class WListTest {
 
     @SuppressWarnings("OverlyBroadThrowsClause")
     public static void main(final String @NotNull [] args) throws Exception {
-
+        PooledDatabase.quicklyInitialize(PooledDatabaseHelper.getDefault(new File("data.db")));
+        try (final Connection connection = PooledDatabase.instance.getInstance().getConnection(null, null)) {
+            HLog.DefaultLogger.log("", connection.isClosed());
+            HLog.DefaultLogger.log("", connection.isValid(0));
+            PooledDatabase.quicklyUninitialize();
+            HLog.DefaultLogger.log("", connection.isClosed());
+            HLog.DefaultLogger.log("", connection.isValid(0));
+        }
         if (true) return;
         WListTest.wrapServerInitialize(() -> {
             final DriverInterface<?> driver = Objects.requireNonNull(DriverManager.getDriver("123pan_136"));

@@ -67,10 +67,12 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
     }
 
     @Override
-    public void close() {
+    public void close() throws SQLException {
         final GenericObjectPool<Connection> pool = this.connectionPool.uninitialize();
         if (pool != null)
             pool.close();
+        for (final ReferencedConnection connection: this.activeConnections.values())
+            connection.closePool();
     }
 
     protected record PooledConnectionFactory(@NotNull DataSource source, @NotNull PooledDatabaseConfig configuration, @NotNull PooledDatabaseHelper database) implements PooledObjectFactory<Connection> {
@@ -122,6 +124,7 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
         void setId(final @NotNull String id);
         void retain();
         // void close() throws SQLException;
+        void closePool() throws SQLException;
     }
     protected static final class ReferencedConnectionProxy implements InvocationHandler {
         private @Nullable String id;
@@ -159,8 +162,15 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
                         this.allow = null;
                         assert this.id != null;
                         this.databaseHelper.activeConnections.remove(this.id, (ReferencedConnection) proxy);
-                        this.databaseHelper.connectionPool.getInstance().returnObject(this.rawConnection);
+                        final GenericObjectPool<Connection> pool = this.databaseHelper.connectionPool.getInstanceNullable();
+                        if (pool != null)
+                            pool.returnObject(this.rawConnection);
                     }
+                    return null;
+                }
+                case "closePool" -> {
+                    this.databaseHelper.activeConnections.remove(this.id, (ReferencedConnection) proxy);
+                    this.rawConnection.close();
                     return null;
                 }
                 case "commit" -> {
