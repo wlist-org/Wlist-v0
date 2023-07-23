@@ -27,7 +27,7 @@ import java.net.SocketAddress;
 import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class WListClient implements AutoCloseable {
+public class WListClient implements WListClientInterface {
     public static final int FileTransferBufferSize = 4 << 20;
     public static final int MaxSizePerPacket = (64 << 10) + WListClient.FileTransferBufferSize;
     private static final @NotNull HLog logger = HLog.createInstance("ClientLogger",
@@ -64,6 +64,7 @@ public class WListClient implements AutoCloseable {
         }
     }
 
+    @Override
     public @NotNull SocketAddress getAddress() {
         return this.address;
     }
@@ -71,6 +72,7 @@ public class WListClient implements AutoCloseable {
     private @Nullable ByteBuf receive = null;
     protected final @NotNull Object receiveLock = new Object();
 
+    @Override
     public @NotNull ByteBuf send(final @Nullable ByteBuf msg) throws InterruptedException {
         if (msg != null) {
             WListClient.logger.log(HLogLevel.VERBOSE, "Write len: ", msg.readableBytes());
@@ -85,10 +87,12 @@ public class WListClient implements AutoCloseable {
         }
     }
 
+    @Override
     public void close() {
         this.channel.close().syncUninterruptibly();
     }
 
+    @Override
     public boolean isActive() {
         return this.channel.isActive();
     }

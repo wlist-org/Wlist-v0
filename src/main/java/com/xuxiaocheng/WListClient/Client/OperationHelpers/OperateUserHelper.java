@@ -1,7 +1,7 @@
 package com.xuxiaocheng.WListClient.Client.OperationHelpers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.WListClient.Client.WListClient;
+import com.xuxiaocheng.WListClient.Client.WListClientInterface;
 import com.xuxiaocheng.WListClient.Server.Operation;
 import com.xuxiaocheng.WListClient.Server.Options;
 import com.xuxiaocheng.WListClient.Server.VisibleUserGroupInformation;
@@ -22,7 +22,7 @@ public final class OperateUserHelper {
         super();
     }
 
-    public static boolean register(final @NotNull WListClient client, final @NotNull String username, final @NotNull String password) throws IOException, InterruptedException, WrongStateException {
+    public static boolean register(final @NotNull WListClientInterface client, final @NotNull String username, final @NotNull String password) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operate(Operation.Type.Register);
         ByteBufIOUtil.writeUTF(send, username);
         ByteBufIOUtil.writeUTF(send, password);
@@ -34,7 +34,7 @@ public final class OperateUserHelper {
         }
     }
 
-    public static @Nullable String login(final @NotNull WListClient client, final @NotNull String username, final @NotNull String password) throws IOException, InterruptedException, WrongStateException {
+    public static @Nullable String login(final @NotNull WListClientInterface client, final @NotNull String username, final @NotNull String password) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operate(Operation.Type.Login);
         ByteBufIOUtil.writeUTF(send, username);
         ByteBufIOUtil.writeUTF(send, password);
@@ -48,7 +48,7 @@ public final class OperateUserHelper {
         }
     }
 
-    public static @Nullable VisibleUserGroupInformation getPermissions(final @NotNull WListClient client, final @NotNull String token) throws IOException, InterruptedException, WrongStateException {
+    public static @Nullable VisibleUserGroupInformation getPermissions(final @NotNull WListClientInterface client, final @NotNull String token) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.GetPermissions, token);
         final ByteBuf receive = client.send(send);
         try {
@@ -60,7 +60,7 @@ public final class OperateUserHelper {
         }
     }
 
-    public static boolean changeUsername(final @NotNull WListClient client, final @NotNull String token, final @NotNull String newUsername) throws IOException, InterruptedException, WrongStateException {
+    public static boolean changeUsername(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String newUsername) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.ChangeUsername, token);
         ByteBufIOUtil.writeUTF(send, newUsername);
         final ByteBuf receive = client.send(send);
@@ -71,7 +71,7 @@ public final class OperateUserHelper {
         }
     }
 
-    public static boolean changePassword(final @NotNull WListClient client, final @NotNull String token, final @NotNull String oldPassword, final @NotNull String newPassword) throws IOException, InterruptedException, WrongStateException {
+    public static boolean changePassword(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String oldPassword, final @NotNull String newPassword) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.ChangePassword, token);
         ByteBufIOUtil.writeUTF(send, oldPassword);
         ByteBufIOUtil.writeUTF(send, newPassword);
@@ -83,7 +83,7 @@ public final class OperateUserHelper {
         }
     }
 
-    public static boolean logoff(final @NotNull WListClient client, final @NotNull String token, final @NotNull String password) throws IOException, InterruptedException, WrongStateException {
+    public static boolean logoff(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String password) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.Logoff, token);
         ByteBufIOUtil.writeUTF(send, password);
         final ByteBuf receive = client.send(send);
@@ -94,7 +94,7 @@ public final class OperateUserHelper {
         }
     }
 
-    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull VisibleUserInformation>> listUsers(final @NotNull WListClient client, final @NotNull String token, final int limit, final int page, final Options.@NotNull OrderDirection direction) throws IOException, InterruptedException, WrongStateException {
+    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull VisibleUserInformation>> listUsers(final @NotNull WListClientInterface client, final @NotNull String token, final int limit, final int page, final Options.@NotNull OrderDirection direction) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.ListUsers, token);
         ByteBufIOUtil.writeVariableLenInt(send, limit);
         ByteBufIOUtil.writeVariableLenInt(send, page);
@@ -116,7 +116,7 @@ public final class OperateUserHelper {
         }
     }
 
-    public static boolean deleteUser(final @NotNull WListClient client, final @NotNull String token, final @NotNull String username) throws IOException, InterruptedException, WrongStateException {
+    public static boolean deleteUser(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String username) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.DeleteUser, token);
         ByteBufIOUtil.writeUTF(send, username);
         final ByteBuf receive = client.send(send);
@@ -130,7 +130,7 @@ public final class OperateUserHelper {
         }
     }
 
-    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull VisibleUserGroupInformation>> listGroups(final @NotNull WListClient client, final @NotNull String token, final int limit, final int page, final Options.@NotNull OrderDirection direction) throws IOException, InterruptedException, WrongStateException {
+    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull VisibleUserGroupInformation>> listGroups(final @NotNull WListClientInterface client, final @NotNull String token, final int limit, final int page, final Options.@NotNull OrderDirection direction) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.ListGroups, token);
         ByteBufIOUtil.writeVariableLenInt(send, limit);
         ByteBufIOUtil.writeVariableLenInt(send, page);
@@ -152,7 +152,7 @@ public final class OperateUserHelper {
         }
     }
 
-    public static boolean addGroup(final @NotNull WListClient client, final @NotNull String token, final @NotNull String groupName) throws IOException, InterruptedException, WrongStateException {
+    public static boolean addGroup(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String groupName) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.AddGroup, token);
         ByteBufIOUtil.writeUTF(send, groupName);
         final ByteBuf receive = client.send(send);
@@ -163,7 +163,7 @@ public final class OperateUserHelper {
         }
     }
 
-    public static @Nullable Boolean deleteGroup(final @NotNull WListClient client, final @NotNull String token, final @NotNull String groupName) throws IOException, InterruptedException, WrongStateException {
+    public static @Nullable Boolean deleteGroup(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String groupName) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.DeleteGroup, token);
         ByteBufIOUtil.writeUTF(send, groupName);
         final ByteBuf receive = client.send(send);
@@ -180,7 +180,7 @@ public final class OperateUserHelper {
         }
     }
 
-    public static @Nullable Boolean changeGroup(final @NotNull WListClient client, final @NotNull String token, final @NotNull String username, final @NotNull String groupName) throws IOException, InterruptedException, WrongStateException {
+    public static @Nullable Boolean changeGroup(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String username, final @NotNull String groupName) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.ChangeGroup, token);
         ByteBufIOUtil.writeUTF(send, username);
         ByteBufIOUtil.writeUTF(send, groupName);
@@ -198,7 +198,7 @@ public final class OperateUserHelper {
         }
     }
 
-    public static boolean changePermission(final @NotNull WListClient client, final @NotNull String token, final @NotNull String groupName, final boolean add, final @NotNull Iterable<Operation.@NotNull Permission> permissions) throws IOException, InterruptedException, WrongStateException {
+    public static boolean changePermission(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String groupName, final boolean add, final @NotNull Iterable<Operation.@NotNull Permission> permissions) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(add ? Operation.Type.AddPermission : Operation.Type.RemovePermission, token);
         ByteBufIOUtil.writeUTF(send, groupName);
         ByteBufIOUtil.writeUTF(send, Operation.dumpPermissions(permissions));

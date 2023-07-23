@@ -3,8 +3,8 @@ package com.xuxiaocheng.WListClient.AndroidSupports;
 import com.xuxiaocheng.WListClient.Server.FileLocation;
 import org.jetbrains.annotations.NotNull;
 
-public final class FileLocationGetter {
-    private FileLocationGetter() {
+public final class FileLocationSupporter {
+    private FileLocationSupporter() {
         super();
     }
 
