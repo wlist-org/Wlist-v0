@@ -97,9 +97,9 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
         protected void load(final @NotNull @UnmodifiableView Map<? super @NotNull String, @NotNull Object> local, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
             this.displayName = YamlHelper.getConfig(local, "display_name", this.displayName,
                     o -> YamlHelper.transferString(o, errors, prefix + "priority"));
-            this.createTime = YamlHelper.getConfig(local, "create_time", this.createTime.format(DriverConfiguration.TimeFormatter),
+            this.createTime = YamlHelper.getConfig(local, "create_time", this.createTime,
                     o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "priority", DriverConfiguration.TimeFormatter));
-            this.updateTime = YamlHelper.getConfig(local, "update_time", this.updateTime.format(DriverConfiguration.TimeFormatter),
+            this.updateTime = YamlHelper.getConfig(local, "update_time", this.updateTime,
                     o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "priority", DriverConfiguration.TimeFormatter));
         }
 
@@ -139,11 +139,11 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
         protected long maxSizePerFile = Long.MAX_VALUE;
 
         protected void load(final @NotNull @UnmodifiableView Map<? super @NotNull String, @NotNull Object> web, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
-            this.spaceAll = YamlHelper.getConfig(web, "space_all", () -> Long.toString(this.spaceAll),
+            this.spaceAll = YamlHelper.getConfig(web, "space_all", this.spaceAll,
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "space_all", BigInteger.ZERO, BigInteger.valueOf(Long.MAX_VALUE))).longValue();
-            this.spaceUsed = YamlHelper.getConfig(web, "space_used", () -> Long.toString(this.spaceUsed),
+            this.spaceUsed = YamlHelper.getConfig(web, "space_used", this.spaceUsed,
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "space_used", BigInteger.valueOf(-1), BigInteger.valueOf(Long.MAX_VALUE))).longValue();
-            this.maxSizePerFile = YamlHelper.getConfig(web, "max_size_per_file", () -> Long.toString(this.maxSizePerFile),
+            this.maxSizePerFile = YamlHelper.getConfig(web, "max_size_per_file", this.maxSizePerFile,
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "max_size_per_file", BigInteger.valueOf(-1), BigInteger.valueOf(Long.MAX_VALUE))).longValue();
         }
 
@@ -215,9 +215,9 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
                     o -> YamlHelper.transferString(o, errors, prefix + "nickname"));
             this.imageLink = YamlHelper.getConfigNullable(cache, "image_link",
                     o -> YamlHelper.transferString(o, errors, prefix + "image_link"));
-            this.vip = YamlHelper.getConfig(cache, "vip", () -> Boolean.toString(this.vip),
+            this.vip = YamlHelper.getConfig(cache, "vip", this.vip,
                     o -> YamlHelper.transferBooleanFromStr(o, errors, prefix + "vip")).booleanValue();
-            this.fileCount = YamlHelper.getConfig(cache, "file_count", () -> Long.toString(this.fileCount),
+            this.fileCount = YamlHelper.getConfig(cache, "file_count", this.fileCount,
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "file_count", BigInteger.valueOf(-1), BigInteger.valueOf(Long.MAX_VALUE))).longValue();
             this.lastFileIndexBuildTime = YamlHelper.getConfigNullable(cache, "last_file_index_build_time",
                     o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "last_file_index_build_time", DriverConfiguration.TimeFormatter));

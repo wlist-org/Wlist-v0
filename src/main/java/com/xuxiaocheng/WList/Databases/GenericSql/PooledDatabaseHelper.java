@@ -259,7 +259,9 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
     @Override
     public @NotNull String toString() {
         return "PooledDatabaseHelper{" +
-                "connectionPool=" + this.connectionPool +
+                "poolConfig=" + this.poolConfig +
+                ", connectionConfig=" + this.connectionConfig +
+                ", connectionPool=" + this.connectionPool +
                 ", activeConnections=" + this.activeConnections +
                 '}';
     }

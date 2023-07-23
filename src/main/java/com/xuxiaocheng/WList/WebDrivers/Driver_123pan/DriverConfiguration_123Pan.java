@@ -47,9 +47,9 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
                     o -> YamlHelper.transferString(o, errors, prefix + "passport"));
             this.password = YamlHelper.getConfig(web, "password", this.password,
                     o -> YamlHelper.transferString(o, errors, prefix + "password"));
-            this.loginType = YamlHelper.getConfig(web, "login_type", () -> Integer.toString(this.loginType),
+            this.loginType = YamlHelper.getConfig(web, "login_type", this.loginType,
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "login_type", BigInteger.ONE, AndroidSupport.BigIntegerTwo)).intValue();
-            this.rootDirectoryId = YamlHelper.getConfig(web, "root_directory_id", () -> Long.toString(this.rootDirectoryId),
+            this.rootDirectoryId = YamlHelper.getConfig(web, "root_directory_id", this.rootDirectoryId,
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "root_directory_id", BigInteger.ZERO, BigInteger.valueOf(Long.MAX_VALUE))).longValue();
         }
 

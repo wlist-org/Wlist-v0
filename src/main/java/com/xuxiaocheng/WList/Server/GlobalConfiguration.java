@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 public record GlobalConfiguration(int port, int maxConnection,
                                   long tokenExpireTime, long idIdleExpireTime,
                                   int maxLimitPerPage, int forwardDownloadCacheCount,
-                                  boolean deleteDriver, long maxCacheSize,
+                                  boolean deleteDriver,
                                   @NotNull Map<@NotNull String, @NotNull WebDriversType> drivers) {
     private static final @NotNull HInitializer<Pair<@NotNull GlobalConfiguration, @Nullable File>> instance = new HInitializer<>("GlobalConfiguration");
 
@@ -45,25 +45,23 @@ public record GlobalConfiguration(int port, int maxConnection,
             config = Map.of();
         final Collection<Pair.ImmutablePair<String, String>> errors = new LinkedList<>();
         final GlobalConfiguration configuration = new GlobalConfiguration(
-            YamlHelper.getConfig(config, "port", "5212",
+            YamlHelper.getConfig(config, "port", 5212,
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "port", BigInteger.ZERO, BigInteger.valueOf(65535))).intValue(),
-            YamlHelper.getConfig(config, "max_connection", "128",
+            YamlHelper.getConfig(config, "max_connection", 128,
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "max_connection", BigInteger.ONE, BigInteger.valueOf(Integer.MAX_VALUE) /*100*/)).intValue(),
-            YamlHelper.getConfig(config, "token_expire_time", "259200",
+            YamlHelper.getConfig(config, "token_expire_time", 3 * 24 * 60 * 60,
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "token_expire_time", BigInteger.ONE, BigInteger.valueOf(Long.MAX_VALUE))).longValue(),
-            YamlHelper.getConfig(config, "id_idle_expire_time", "1800",
+            YamlHelper.getConfig(config, "id_idle_expire_time", 30 * 60,
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "id_idle_expire_time", BigInteger.ONE, BigInteger.valueOf(Long.MAX_VALUE))).longValue(),
-            YamlHelper.getConfig(config, "max_limit_per_page", "500",
+            YamlHelper.getConfig(config, "max_limit_per_page", 500,
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "max_limit_per_page", BigInteger.ONE, BigInteger.valueOf(Integer.MAX_VALUE))).intValue(),
-            YamlHelper.getConfig(config, "forward_download_cache_count", "3",
+            YamlHelper.getConfig(config, "forward_download_cache_count", 3,
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "forward_download_cache_count", BigInteger.ZERO, BigInteger.valueOf(Integer.MAX_VALUE))).intValue(),
-            YamlHelper.getConfig(config, "delete_driver", "false",
+            YamlHelper.getConfig(config, "delete_driver", false,
                 o -> YamlHelper.transferBooleanFromStr(o, errors, "delete_driver")).booleanValue(),
-            YamlHelper.getConfig(config, "max_cache_size", "1000",
-                o -> YamlHelper.transferIntegerFromStr(o, errors, "max_cache_size", BigInteger.ONE, BigInteger.valueOf(Long.MAX_VALUE))).longValue(),
-            YamlHelper.getConfig(config, "drivers", new LinkedHashMap<>(),
+            YamlHelper.getConfig(config, "drivers", LinkedHashMap::new,
                 o -> { final Map<String, Object> map = YamlHelper.transferMapNode(o, errors, "drivers");
-                    if (map == null) return new LinkedHashMap<>();
+                    if (map == null) return null;
                     final Map<String, WebDriversType> drivers = new LinkedHashMap<>(map.size());
                     for (final Map.Entry<String, Object> e: map.entrySet()) {
                         final String identifier = YamlHelper.transferString(e.getValue(), errors, "driver(" + e.getKey() + ')');
@@ -100,7 +98,6 @@ public record GlobalConfiguration(int port, int maxConnection,
         config.put("max_limit_per_page", configuration.maxLimitPerPage);
         config.put("forward_download_cache_count", configuration.forwardDownloadCacheCount);
         config.put("delete_driver", configuration.deleteDriver);
-        config.put("max_cache_size", configuration.maxCacheSize);
         config.put("drivers", configuration.drivers.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, t -> t.getValue().getIdentifier())));
         try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(path))) {
             YamlHelper.dumpYaml(config, outputStream);
