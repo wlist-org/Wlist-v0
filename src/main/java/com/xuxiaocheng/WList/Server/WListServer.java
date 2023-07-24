@@ -124,7 +124,7 @@ public class WListServer {
     }
 
     public synchronized void stop() {
-        if (!this.address.isInitialized()) return;
+        if (this.address.uninitialize() == null) return;
         WListServer.logger.log(HLogLevel.ENHANCED, "WListServer is stopping...");
         final Future<?>[] futures = new Future<?>[2];
         futures[0] = this.bossGroup.shutdownGracefully();
