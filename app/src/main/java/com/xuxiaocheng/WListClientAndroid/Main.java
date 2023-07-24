@@ -5,6 +5,7 @@ import android.app.Application;
 import android.os.Bundle;
 import android.os.Process;
 import android.util.Log;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
@@ -24,6 +25,15 @@ public final class Main extends Application {
         if (f.cause() != null)
             HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), f.cause());
     };
+
+    @NonNull public static FutureListener<? super Object> ThrowableListenerWithToast(@NonNull final Activity activity) {
+        return f -> {
+            if (f.cause() != null) {
+                HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), f.cause());
+                activity.runOnUiThread(() -> Toast.makeText(activity.getApplicationContext(), f.cause().getLocalizedMessage(), Toast.LENGTH_SHORT).show());
+            }
+        };
+    }
 
     @NonNull private final AtomicInteger activeActivities = new AtomicInteger(0);
 

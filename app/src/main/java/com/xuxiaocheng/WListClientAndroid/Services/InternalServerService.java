@@ -48,8 +48,9 @@ public final class InternalServerService extends Service {
     public void onDestroy() {
         super.onDestroy();
         final HLog logger = HLogManager.getInstance("DefaultLogger");
-        logger.log(HLogLevel.FINE, "Internal WList Server is stopping.");
-        switch (WList.getMainStageAPI()) {
+        final int stage = WList.getMainStageAPI();
+        logger.log(HLogLevel.FINE, "Internal WList Server is stopping.", ParametersMap.create().add("stage", stage));
+        switch (stage) {
             case 0 -> this.ServerMainThread.interrupt();
             case 1 -> WListServer.getInstance().stop();
             default -> {}
@@ -63,12 +64,37 @@ public final class InternalServerService extends Service {
         return new ServerBinder();
     }
 
-    public enum TransactOperate {
+    private enum TransactOperate {
         GetAddress,
         GetAndDeleteAdminPassword,
     }
 
-    public static void sendTransact(@NonNull final IBinder iService, @NonNull final TransactOperate operate, @Nullable final Consumer<? super Parcel> dataCallback, @Nullable final Consumer<? super Parcel> replyCallback) throws RemoteException {
+    @NonNull public static InetSocketAddress getAddress(@NonNull final IBinder iService) throws RemoteException {
+        final InetSocketAddress[] address = new InetSocketAddress[1];
+        InternalServerService.sendTransact(iService, InternalServerService.TransactOperate.GetAddress, null, p -> {
+            final int success = p.readInt();
+            if (success != 0)
+                throw new IllegalStateException("Failed to get internal server address." + ParametersMap.create().add("code", success));
+            final String hostname = p.readString();
+            final int port = p.readInt();
+            address[0] = new InetSocketAddress(hostname, port);
+        });
+        return address[0];
+    }
+
+    @Nullable public static String getAndDeleteAdminPassword(@NonNull final IBinder iService) throws RemoteException {
+        final String[] password = new String[1];
+        InternalServerService.sendTransact(iService, TransactOperate.GetAndDeleteAdminPassword, null, p -> {
+            final int success = p.readInt();
+            if (success != 0 && success != 1)
+                throw new IllegalStateException("Failed to get default admin password." + ParametersMap.create().add("code", success));
+            if (success == 0)
+                password[0] = p.readString();
+        });
+        return password[0];
+    }
+
+    private static void sendTransact(@NonNull final IBinder iService, @NonNull final TransactOperate operate, @Nullable final Consumer<? super Parcel> dataCallback, @Nullable final Consumer<? super Parcel> replyCallback) throws RemoteException {
         final Parcel data = Parcel.obtain();
         final Parcel reply = Parcel.obtain();
         try {
@@ -84,17 +110,17 @@ public final class InternalServerService extends Service {
         }
     }
 
-    public static final class ServerBinder extends Binder {
-        private static boolean waitStart(@NonNull final Parcel reply) {
-            try {
-                if (WList.waitMainStageAPI(1, false))
-                    return false;
-            } catch (final InterruptedException ignore) {
-            }
-            reply.writeInt(-1);
-            return true;
+    private static boolean waitStart(@NonNull final Parcel reply) {
+        try {
+            if (WList.waitMainStageAPI(1, false))
+                return false;
+        } catch (final InterruptedException ignore) {
         }
+        reply.writeInt(-1);
+        return true;
+    }
 
+    private static final class ServerBinder extends Binder {
         @Override
         protected boolean onTransact(final int code, @NonNull final Parcel data, @Nullable final Parcel reply, final int flags) throws RemoteException {
             if (code < 1 || TransactOperate.values().length < code)
@@ -104,7 +130,7 @@ public final class InternalServerService extends Service {
             assert reply != null;
             switch (operate) {
                 case GetAddress -> {
-                    if (ServerBinder.waitStart(reply)) break;
+                    if (InternalServerService.waitStart(reply)) break;
                     final InetSocketAddress address = WListServer.getInstance().getAddress().getInstanceNullable();
                     if (address == null)
                         reply.writeInt(1);
@@ -115,7 +141,7 @@ public final class InternalServerService extends Service {
                     }
                 }
                 case GetAndDeleteAdminPassword -> {
-                    if (ServerBinder.waitStart(reply)) break;
+                    if (InternalServerService.waitStart(reply)) break;
                     final String password = UserManager.getAndDeleteDefaultAdminPasswordAPI();
                     if (password == null)
                         reply.writeInt(1);

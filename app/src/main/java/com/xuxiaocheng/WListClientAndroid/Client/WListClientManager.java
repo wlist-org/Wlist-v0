@@ -18,13 +18,12 @@ import org.jetbrains.annotations.NotNull;
 import java.io.Closeable;
 import java.net.ConnectException;
 import java.net.SocketAddress;
-import java.sql.SQLException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class WListClientManager implements Closeable {
-    @NonNull protected static final HMultiInitializers<SocketAddress, WListClientManager> instances = new HMultiInitializers<>("WListClientManagers");
+    @NonNull public static final HMultiInitializers<SocketAddress, WListClientManager> instances = new HMultiInitializers<>("WListClientManagers");
 
     public static void quicklyInitialize(@NonNull final WListClientManager manager) {
         WListClientManager.instances.initializeIfNot(manager.clientConfig.address, () -> {
@@ -33,16 +32,14 @@ public class WListClientManager implements Closeable {
         });
     }
 
-    public static boolean quicklyUninitialize(@NonNull final SocketAddress address) throws SQLException {
+    public static void quicklyUninitialize(@NonNull final SocketAddress address) {
         final WListClientManager manager = WListClientManager.instances.uninitialize(address);
-        if (manager == null)
-            return false;
-        manager.close();
-        return true;
+        if (manager != null)
+            manager.close();
     }
 
-    @NonNull public static WListClientManager getInternalClient() {
-        return WListClientManager.instances.getInstance(AddressManager.internalServerAddress.getInstance());
+    @NonNull public static WListClientInterface quicklyGetClient(@NonNull final SocketAddress address) {
+        return WListClientManager.instances.getInstance(address).getClient();
     }
 
     @NonNull protected final GenericObjectPoolConfig<WListClient> poolConfig;

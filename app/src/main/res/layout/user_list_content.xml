@@ -2,15 +2,14 @@
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
                                                    xmlns:app="http://schemas.android.com/apk/res-auto"
                                                    android:layout_width="match_parent"
-                                                   android:layout_height="match_parent"
-                                                   android:background="@color/white">
+                                                   android:layout_height="match_parent">
 
 	<androidx.appcompat.widget.AppCompatTextView
-		android:id="@+id/login_internal_server"
+		android:id="@+id/user_list_close_internal_server"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:background="@color/background"
-		android:text="@string/login_internal_server"
+		android:text="@string/close_server_connections"
 		android:textColor="@color/black"
 		android:textSize="50sp"
 		app:layout_constraintBottom_toBottomOf="parent"

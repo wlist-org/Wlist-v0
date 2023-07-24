@@ -7,6 +7,7 @@ import com.xuxiaocheng.WListClient.Client.OperationHelpers.WrongStateException;
 import com.xuxiaocheng.WListClient.Client.WListClientInterface;
 
 import java.io.IOException;
+import java.net.SocketAddress;
 
 public final class TokenManager {
     private TokenManager() {
@@ -15,8 +16,8 @@ public final class TokenManager {
 
     @Nullable private static String token;
 
-    public static synchronized void setToken(@NonNull final String username, @NonNull final String password) throws InterruptedException, IOException, WrongStateException {
-        try (final WListClientInterface client = WListClientManager.getInternalClient().getClient()) {
+    public static synchronized void setToken(@NonNull final SocketAddress address, @NonNull final String username, @NonNull final String password) throws InterruptedException, IOException, WrongStateException {
+        try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
             TokenManager.token = OperateUserHelper.login(client, username, password);
         }
     }
@@ -29,10 +30,5 @@ public final class TokenManager {
 
     public static synchronized boolean noToken() {
         return TokenManager.token == null;
-    }
-
-    public static synchronized void ensureToken(@NonNull final String username, @NonNull final String password) throws InterruptedException, IOException, WrongStateException {
-        if (TokenManager.noToken())
-            TokenManager.setToken(username, password);
     }
 }
