@@ -6,6 +6,7 @@ import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
+import com.xuxiaocheng.WList.Utils.AndroidSupport;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.util.IllegalReferenceCountException;
 import org.apache.commons.pool2.PooledObject;
@@ -50,6 +51,7 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
 
     public static @NotNull PooledDatabaseHelper getDefault(final @NotNull File database) {
         final GenericObjectPoolConfig<Connection> poolConfig = new GenericObjectPoolConfig<>();
+        poolConfig.setJmxEnabled(AndroidSupport.jmxEnable); // default: true
         poolConfig.setTestOnBorrow(true);
         return new PooledDatabaseHelper(poolConfig, new PooledDatabaseHelper.PooledDatabaseConfig(database, false,
                 SQLiteConfig.JournalMode.WAL, Connection.TRANSACTION_READ_COMMITTED));
