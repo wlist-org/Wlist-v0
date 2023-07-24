@@ -44,9 +44,13 @@ public final class WList {
     public static int getMainStageAPI() {
         return WList.mainStageAPI.get();
     }
-    public static boolean waitMainStageAPI(final int stage) throws InterruptedException {
+    public static boolean waitMainStageAPI(final int stage, final boolean mayNotBoot) throws InterruptedException {
+        if (stage < -1 || 3 < stage)
+            throw new IllegalArgumentException("Illegal target stage." + ParametersMap.create().add("stage", stage));
         int current = WList.mainStageAPI.get();
-        if (current == -1)
+        if (current == stage)
+            return true;
+        if (current == -1 && mayNotBoot)
             return false;
         synchronized (WList.mainStageAPI) {
             while (current != stage) {
@@ -92,7 +96,7 @@ public final class WList {
         final HLog logger = HLog.createInstance("DefaultLogger", HLog.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, false, true, HMergedStream.getFileOutputStreamNoException(null));
         HUncaughtExceptionHelper.putIfAbsentUncaughtExceptionListener("listener", (t, e) -> logger.log(HLogLevel.FAULT, "Uncaught exception listened by WList. thread: ", t.getName(), e));
         try {
-            logger.log(HLogLevel.FINE, "Hello WList! Loading...");
+            logger.log(HLogLevel.FINE, "Hello WList (Server v0.2.2)! Loading...");
             final File configurationPath = new File(runtimePath, "server.yaml");
             logger.log(HLogLevel.LESS, "Initializing global configuration.", ParametersMap.create().add("file", configurationPath));
             GlobalConfiguration.initialize(configurationPath);

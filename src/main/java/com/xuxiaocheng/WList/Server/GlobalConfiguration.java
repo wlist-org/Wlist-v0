@@ -39,7 +39,7 @@ public record GlobalConfiguration(int port, int maxConnection,
             if (!HFileHelper.ensureFileExist(path))
                 throw new IOException("Failed to create configuration file. path: " + path.getAbsolutePath());
             try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(path))) {
-                config = YamlHelper.loadYaml(inputStream); // config.putAll
+                config = YamlHelper.loadYaml(inputStream);
             }
         } else
             config = Map.of();
@@ -106,6 +106,11 @@ public record GlobalConfiguration(int port, int maxConnection,
 
     public static synchronized void reInitialize(final @NotNull GlobalConfiguration configuration) throws IOException {
         GlobalConfiguration.instance.getInstance().setFirst(configuration);
+        GlobalConfiguration.dumpToFile();
+    }
+
+    public static synchronized void setPath(final @Nullable File path) throws IOException {
+        GlobalConfiguration.instance.getInstance().setSecond(path);
         GlobalConfiguration.dumpToFile();
     }
 

@@ -73,6 +73,7 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
             pool.close();
         for (final ReferencedConnection connection: this.activeConnections.values())
             connection.closePool();
+        assert this.activeConnections.isEmpty();
     }
 
     protected record PooledConnectionFactory(@NotNull DataSource source, @NotNull PooledDatabaseConfig configuration, @NotNull PooledDatabaseHelper database) implements PooledObjectFactory<Connection> {
