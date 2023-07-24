@@ -29,7 +29,7 @@ public final class HLogManager {
     static {
         HLog.setLogTimeFLength(3);
         for (final String name: HLogManager.loggers)
-            HLogManager.buildInstance(name, Integer.MIN_VALUE);
+            HLogManager.buildInstance(name, "ServerLogger".equals(name) ? HLogLevel.DEBUG.getLevel() : Integer.MIN_VALUE);
         HUncaughtExceptionHelper.removeUncaughtExceptionListener("default"); // Application Killer
         HUncaughtExceptionHelper.putIfAbsentUncaughtExceptionListener("listener", (t, e) ->
                 HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Uncaught exception listened by WList Android.", ParametersMap.create().add("thread", t.getName()).add("pid", Process.myPid()), e));
@@ -48,7 +48,6 @@ public final class HLogManager {
         final OutputStream fileOutputStream = HMergedStream.getFileOutputStreamNoException(null);
         for (final String loggerName: HLogManager.loggers)
             HLog.getInstance(loggerName).getStreams().add(fileOutputStream);
-        HLog.DefaultLogger.log(HLogLevel.FINE, "Hello WList Client (Android Version).", ParametersMap.create().add("pid", Process.myPid()).add("thread", Thread.currentThread().getName()));
     }
 
     @NonNull public static HLog getInstance(@NonNull final String name) {

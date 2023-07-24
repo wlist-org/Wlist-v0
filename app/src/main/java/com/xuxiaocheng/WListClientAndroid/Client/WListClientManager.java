@@ -2,81 +2,65 @@ package com.xuxiaocheng.WListClientAndroid.Client;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import com.xuxiaocheng.HeadLibs.AndroidSupport.ARandomHelper;
-import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
-import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
-import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
-import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
+import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
+import com.xuxiaocheng.HeadLibs.Initializer.HMultiInitializers;
+import com.xuxiaocheng.WList.Utils.AndroidSupport;
 import com.xuxiaocheng.WListClient.Client.WListClient;
-import com.xuxiaocheng.WListClient.Utils.MiscellaneousUtil;
-import io.netty.util.IllegalReferenceCountException;
+import com.xuxiaocheng.WListClient.Client.WListClientInterface;
+import io.netty.buffer.ByteBuf;
+import org.apache.commons.pool2.PooledObject;
+import org.apache.commons.pool2.PooledObjectFactory;
+import org.apache.commons.pool2.impl.DefaultPooledObject;
+import org.apache.commons.pool2.impl.GenericObjectPool;
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
+import org.jetbrains.annotations.NotNull;
 
+import java.io.Closeable;
 import java.net.ConnectException;
 import java.net.SocketAddress;
 import java.sql.SQLException;
 import java.util.Objects;
-import java.util.concurrent.BlockingQueue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 
-public class WListClientManager {
-    @Nullable private static WListClientManager Instance;
+public class WListClientManager implements Closeable {
+    @NonNull protected static final HMultiInitializers<SocketAddress, WListClientManager> instances = new HMultiInitializers<>("WListClientManagers");
 
-    public static synchronized void initialize(@NonNull final ClientManagerConfig config) throws InterruptedException, ConnectException {
-        if (WListClientManager.Instance != null)
-            throw new IllegalStateException("Client manager is initialized." + ParametersMap.create()
-                    .add("instance", WListClientManager.Instance).add("config", config));
-        WListClientManager.Instance = new WListClientManager(config);
+    public static void quicklyInitialize(@NonNull final WListClientManager manager) {
+        WListClientManager.instances.initializeIfNot(manager.clientConfig.address, () -> {
+            manager.open();
+            return manager;
+        });
     }
 
-    @NonNull public static synchronized WListClientManager getInstance() {
-        if (WListClientManager.Instance == null)
-            throw new IllegalStateException("Client manager is not initialized.");
-        return WListClientManager.Instance;
+    public static boolean quicklyUninitialize(@NonNull final SocketAddress address) throws SQLException {
+        final WListClientManager manager = WListClientManager.instances.uninitialize(address);
+        if (manager == null)
+            return false;
+        manager.close();
+        return true;
     }
 
-    @NonNull protected final ClientManagerConfig config;
-    @NonNull protected final AtomicInteger createdSize = new AtomicInteger(0);
-    @NonNull protected final BlockingQueue<ReferencedClient> freeClients = new LinkedBlockingQueue<>();
-    @NonNull protected final ConcurrentMap<String, ReferencedClient> activeClients = new ConcurrentHashMap<>();
-    @NonNull protected final Object needIdleClient = new Object();
-
-    protected WListClientManager(@NonNull final ClientManagerConfig config) throws InterruptedException, ConnectException {
-        super();
-        this.config = config;
-        if (this.config.initSize > this.config.maxSize)
-            throw new IllegalStateException("Init client count > max count. config: " + this.config);
-        for (int i = 0; i < this.config.initSize; ++i)
-            this.freeClients.add(this.createNewClient());
-        assert this.freeClients.size() == this.config.initSize;
-        assert this.createdSize.get() == this.config.initSize;
+    @NonNull public static WListClientManager getInternalClient() {
+        return WListClientManager.instances.getInstance(AddressManager.internalServerAddress.getInstance());
     }
+
+    @NonNull protected final GenericObjectPoolConfig<WListClient> poolConfig;
+    @NonNull protected final ClientManagerConfig clientConfig;
+    @NonNull protected final HInitializer<GenericObjectPool<WListClient>> clientPool = new HInitializer<>("ClientPool");
 
     public static class ClientManagerConfig {
         @NonNull protected final SocketAddress address;
-        protected final int initSize;
-        protected final int averageSize;
-        protected final int maxSize;
 
-        public ClientManagerConfig(@NonNull final SocketAddress address, final int initSize, final int averageSize, final int maxSize) {
+        public ClientManagerConfig(@NonNull final SocketAddress address) {
             super();
             this.address = address;
-            this.initSize = initSize;
-            this.averageSize = averageSize;
-            this.maxSize = maxSize;
         }
 
         @Override
         @NonNull public String toString() {
             return "ClientManagerConfig{" +
                     "address=" + this.address +
-                    ", initSize=" + this.initSize +
-                    ", averageSize=" + this.averageSize +
-                    ", maxSize=" + this.maxSize +
                     '}';
         }
 
@@ -84,140 +68,146 @@ public class WListClientManager {
         public boolean equals(@Nullable final Object o) {
             if (this == o) return true;
             if (!(o instanceof final ClientManagerConfig that)) return false;
-            return this.initSize == that.initSize && this.averageSize == that.averageSize && this.maxSize == that.maxSize && this.address.equals(that.address);
+            return this.address.equals(that.address);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(this.address, this.initSize, this.averageSize, this.maxSize);
+            return Objects.hash(this.address);
         }
     }
 
-    @NonNull protected final ReferencedClient createNewClient() throws InterruptedException, ConnectException {
-        if (this.createdSize.getAndIncrement() < this.config.maxSize)
-            return new ReferencedClient(this.config.address, this);
-        this.createdSize.getAndDecrement();
-        ReferencedClient client = null;
-        synchronized (this.needIdleClient) {
-            while (client == null) {
-                this.needIdleClient.wait();
-                client = this.freeClients.poll();
-            }
-        }
-        return client;
+    public WListClientManager(@NonNull final GenericObjectPoolConfig<WListClient> poolConfig, @NonNull final ClientManagerConfig clientConfig) {
+        super();
+        this.poolConfig = poolConfig;
+        this.clientConfig = clientConfig;
     }
 
-    protected static final class ReferencedClient extends WListClient {
-        @NonNull private final WListClientManager manager;
-        private int referenceCounter = 0;
-        @NonNull private String id = "";
+    @NonNull public static WListClientManager getDefault(@NonNull final SocketAddress address) {
+        final GenericObjectPoolConfig<WListClient> poolConfig = new GenericObjectPoolConfig<>();
+        poolConfig.setJmxEnabled(AndroidSupport.jmxEnable);
+        poolConfig.setTestOnBorrow(true);
+        return new WListClientManager(poolConfig, new ClientManagerConfig(address));
+    }
 
-        public ReferencedClient(@NonNull final SocketAddress address, @NonNull final WListClientManager manager) throws InterruptedException, ConnectException {
-            super(address);
-            this.manager = manager;
-        }
+    public void open() {
+        this.clientPool.initialize(new GenericObjectPool<>(new PooledClientFactory(this.clientConfig), this.poolConfig));
+    }
 
-        private void retain() {
-            if (this.referenceCounter < 0)
-                throw new IllegalReferenceCountException(this.referenceCounter);
-            ++this.referenceCounter;
+    @Override
+    public void close() {
+        final GenericObjectPool<WListClient> pool = this.clientPool.uninitialize();
+        if (pool != null)
+            pool.close();
+        for (final WrappedClient client: this.activeClients)
+            client.closePool();
+        assert this.activeClients.isEmpty();
+    }
+
+    protected static class PooledClientFactory implements PooledObjectFactory<WListClient> {
+        @NonNull protected final ClientManagerConfig configuration;
+
+        protected PooledClientFactory(@NonNull final ClientManagerConfig configuration) {
+            super();
+            this.configuration = configuration;
         }
 
         @Override
-        public void close() {
-            if (this.referenceCounter < 1)
-                throw new IllegalReferenceCountException(this.referenceCounter);
-            if (--this.referenceCounter < 1)
-                this.manager.recycleClient(this.id);
+        public PooledObject<WListClient> makeObject() throws InterruptedException, ConnectException {
+            return new DefaultPooledObject<>(new WListClient(this.configuration.address));
         }
 
-        private void closeInside() {
-            super.close();
+        @Override
+        public void destroyObject(@NonNull final PooledObject<WListClient> p) {
+            p.getObject().close();
+        }
+
+        @Override
+        public void activateObject(@NonNull final PooledObject<WListClient> p) {
+        }
+
+        @Override
+        public void passivateObject(@NonNull final PooledObject<WListClient> p) {
+        }
+
+        @Override
+        public boolean validateObject(@NonNull final PooledObject<WListClient> p) {
+            return p.getObject().isActive();
         }
 
         @Override
         @NonNull public String toString() {
-            return "ReferencedClient{" +
-                    "manager=" + this.manager +
-                    ", referenceCounter=" + this.referenceCounter +
-                    ", id='" + this.id + '\'' +
-                    ", super=" + super.toString() +
+            return "PooledClientFactory{" +
+                    "configuration=" + this.configuration +
                     '}';
         }
     }
 
-    @NonNull public WListClient getExplicitClient(@NonNull final String id) throws SQLException, InterruptedException, ConnectException {
-        final ReferencedClient client;
+    @NonNull protected final Set<WrappedClient> activeClients = ConcurrentHashMap.newKeySet();
+
+    @NonNull public WListClientInterface getClient() {
+        final WrappedClient client;
         try {
-            client = this.activeClients.computeIfAbsent(id, HExceptionWrapper.wrapFunction(k -> {
-                ReferencedClient newClient = this.freeClients.poll();
-                if (newClient == null)
-                    newClient = this.createNewClient();
-                newClient.id = id;
-                return newClient;
-            }));
-            assert id.equals(client.id);
-        } catch (final RuntimeException exception) {
-            throw HExceptionWrapper.unwrapException(
-                    HExceptionWrapper.unwrapException(
-                            HExceptionWrapper.unwrapException(exception,
-                                    SQLException.class),
-                            InterruptedException.class),
-                    ConnectException.class);
+            client = new WrappedClient(this.clientPool.getInstance().borrowObject(), this);
+        } catch (final Exception exception) {
+            throw new RuntimeException("Unreachable!", exception);
         }
-        client.retain();
+        this.activeClients.add(client);
         return client;
     }
 
-    @NonNull public WListClient getNewClient(@Nullable final Consumer<? super String> idSaver) throws InterruptedException, ConnectException {
-        ReferencedClient client = this.freeClients.poll();
-        if (client == null)
-            client = this.createNewClient();
-        final String id = MiscellaneousUtil.randomKeyAndPut(this.activeClients,
-                () -> ARandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, HRandomHelper.DefaultWords), client);
-        client.id = id;
-        if (idSaver != null)
-            idSaver.accept(id);
-        client.retain();
-        return client;
-    }
+    protected static class WrappedClient implements WListClientInterface {
+        @NonNull protected final WListClient client;
+        @NonNull protected final WListClientManager manager;
 
-    @NonNull public WListClient getNewClient() throws InterruptedException, ConnectException {
-        return this.getNewClient(ConsumerE.emptyConsumer());
-    }
-
-    @NonNull public WListClient getNewClient(@NonNull final AtomicReference<? super String> clientId) throws InterruptedException, ConnectException {
-        return this.getNewClient(clientId::set);
-    }
-
-    @NonNull public WListClient getClient(@Nullable final String id, @NonNull final AtomicReference<? super String> clientId) throws SQLException, InterruptedException, ConnectException {
-        if (id == null)
-            return this.getNewClient(clientId);
-        clientId.set(id);
-        return this.getExplicitClient(id);
-    }
-
-    protected void recycleClient(@NonNull final String id) {
-        final ReferencedClient client = this.activeClients.remove(id);
-        if (client == null)
-            return;
-        if (this.createdSize.get() > this.config.averageSize || !client.isActive()) {
-            client.closeInside();
-            this.createdSize.getAndDecrement();
-            return;
+        protected WrappedClient(@NonNull final WListClient client, @NonNull final WListClientManager manager) {
+            super();
+            this.client = client;
+            this.manager = manager;
         }
-        synchronized (this.needIdleClient) {
-            this.freeClients.add(client);
-            this.needIdleClient.notify();
+
+        @Override
+        @NonNull public SocketAddress getAddress() {
+            return this.client.getAddress();
+        }
+
+        @Override
+        @NonNull public ByteBuf send(@Nullable final ByteBuf msg) throws InterruptedException {
+            return this.client.send(msg);
+        }
+
+        @Override
+        public void close() {
+            this.manager.activeClients.remove(this);
+            final GenericObjectPool<WListClient> pool = this.manager.clientPool.getInstanceNullable();
+            if (pool != null)
+                pool.returnObject(this.client);
+        }
+
+        public void closePool() {
+            this.client.close();
+        }
+
+        @Override
+        public boolean isActive() {
+            return this.client.isActive();
+        }
+
+        @Override
+        public @NotNull String toString() {
+            return "WrappedClient{" +
+                    "client=" + this.client +
+                    ", manager=" + this.manager +
+                    '}';
         }
     }
 
     @Override
-    @NonNull public String toString() {
+    public @NotNull String toString() {
         return "WListClientManager{" +
-                "config=" + this.config +
-                ", createdSize=" + this.createdSize +
-                ", freeClients=" + this.freeClients +
+                "poolConfig=" + this.poolConfig +
+                ", clientConfig=" + this.clientConfig +
+                ", clientPool=" + this.clientPool +
                 ", activeClients=" + this.activeClients +
                 '}';
     }

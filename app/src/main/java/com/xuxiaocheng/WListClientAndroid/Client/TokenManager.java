@@ -4,7 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.xuxiaocheng.WListClient.Client.OperationHelpers.OperateUserHelper;
 import com.xuxiaocheng.WListClient.Client.OperationHelpers.WrongStateException;
-import com.xuxiaocheng.WListClient.Client.WListClient;
+import com.xuxiaocheng.WListClient.Client.WListClientInterface;
 
 import java.io.IOException;
 
@@ -16,7 +16,7 @@ public final class TokenManager {
     @Nullable private static String token;
 
     public static synchronized void setToken(@NonNull final String username, @NonNull final String password) throws InterruptedException, IOException, WrongStateException {
-        try (final WListClient client = WListClientManager.getInstance().getNewClient()) {
+        try (final WListClientInterface client = WListClientManager.getInternalClient().getClient()) {
             TokenManager.token = OperateUserHelper.login(client, username, password);
         }
     }

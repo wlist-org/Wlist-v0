@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                                                   xmlns:app="http://schemas.android.com/apk/res-auto"
+                                                   android:layout_width="match_parent"
+                                                   android:layout_height="match_parent">
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/file_list_guideline_header"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="horizontal"
+		app:layout_constraintGuide_begin="50dp" />
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/file_list_guideline_counter"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		app:barrierDirection="start"
+		app:layout_constraintGuide_percent="0.75" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/file_list_name"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:autoSizeTextType="uniform"
+		android:gravity="center"
+		android:paddingStart="10dp"
+		android:paddingEnd="10dp"
+		android:text="directory_name"
+		android:textColor="@color/black"
+		app:layout_constraintBottom_toTopOf="@id/file_list_guideline_header"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toLeftOf="@id/file_list_guideline_counter"
+		app:layout_constraintTop_toTopOf="parent" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/file_list_counter"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:layout_marginStart="5dp"
+		android:layout_marginTop="10dp"
+		android:layout_marginBottom="5dp"
+		android:autoSizeTextType="uniform"
+		android:gravity="center"
+		android:text="0"
+		app:layout_constraintBottom_toTopOf="@id/file_list_guideline_header"
+		app:layout_constraintLeft_toRightOf="@id/file_list_guideline_counter"
+		app:layout_constraintRight_toLeftOf="@id/file_list_counter_text"
+		app:layout_constraintTop_toTopOf="parent" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/file_list_counter_text"
+		android:layout_width="wrap_content"
+		android:layout_height="0dp"
+		android:autoSizeTextType="uniform"
+		android:gravity="center"
+		android:includeFontPadding="false"
+		android:paddingStart="5dp"
+		android:paddingEnd="5dp"
+		android:text="@string/file_list_counter_text"
+		app:layout_constraintBottom_toTopOf="@id/file_list_guideline_header"
+		app:layout_constraintLeft_toRightOf="@id/file_list_counter"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toTopOf="parent" />
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/file_list_guideline_tailor"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="horizontal"
+		app:layout_constraintGuide_end="50dp" />
+
+	<ListView
+		android:id="@+id/file_list_content"
+		android:layout_width="match_parent"
+		android:layout_height="0dp"
+		app:layout_constraintBottom_toTopOf="@id/file_list_guideline_tailor"
+		app:layout_constraintHorizontal_bias="0.0"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/file_list_guideline_header"
+		app:layout_constraintVertical_bias="0.0" />
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/file_list_guideline_page_left"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		app:layout_constraintGuide_percent="0.15" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/file_list_page_left_bottom"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:autoSizeTextType="uniform"
+		android:gravity="center"
+		android:paddingStart="15dp"
+		android:paddingEnd="5dp"
+		android:text="@string/left_page"
+		android:textColor="@color/black"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toLeftOf="@id/file_list_guideline_page_left"
+		app:layout_constraintTop_toBottomOf="@id/file_list_guideline_tailor" />
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/file_list_guideline_page_right"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		app:layout_constraintGuide_percent="0.85" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/file_list_page_right_bottom"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:autoSizeTextType="uniform"
+		android:gravity="center"
+		android:paddingEnd="15dp"
+		android:paddingStart="5dp"
+		android:text="@string/right_page"
+		android:textColor="@color/black"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toRightOf="@id/file_list_guideline_page_right"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/file_list_guideline_tailor" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/file_list_page_current"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:autoSizeTextType="uniform"
+		android:gravity="end"
+		android:text="1"
+		android:textColor="@color/black"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toRightOf="@id/file_list_guideline_page_left"
+		app:layout_constraintRight_toLeftOf="@id/file_list_page_slash"
+		app:layout_constraintTop_toBottomOf="@id/file_list_guideline_tailor" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/file_list_page_slash"
+		android:layout_width="wrap_content"
+		android:layout_height="0dp"
+		android:autoSizeTextType="uniform"
+		android:gravity="center"
+		android:includeFontPadding="false"
+		android:paddingStart="10dp"
+		android:paddingEnd="10dp"
+		android:text="@string/slash_page"
+		android:textColor="@color/black"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toRightOf="@id/file_list_page_current"
+		app:layout_constraintRight_toLeftOf="@id/file_list_page_all"
+		app:layout_constraintTop_toBottomOf="@id/file_list_guideline_tailor" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/file_list_page_all"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:autoSizeTextType="uniform"
+		android:gravity="start"
+		android:text="3"
+		android:textColor="@color/black"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toRightOf="@id/file_list_page_slash"
+		app:layout_constraintRight_toLeftOf="@id/file_list_guideline_page_right"
+		app:layout_constraintTop_toBottomOf="@id/file_list_guideline_tailor" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

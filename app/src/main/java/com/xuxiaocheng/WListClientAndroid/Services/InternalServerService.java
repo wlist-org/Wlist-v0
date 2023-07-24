@@ -55,7 +55,7 @@ public final class InternalServerService extends Service {
             default -> {}
         }
         //noinspection CallToSystemExit
-        System.exit(1); // Require JVM exit to reboot WList class.
+        System.exit(0); // Require JVM exit to reboot WList class.
     }
 
     @Override
@@ -87,7 +87,7 @@ public final class InternalServerService extends Service {
     public static final class ServerBinder extends Binder {
         private static boolean waitStart(@NonNull final Parcel reply) {
             try {
-                if (WList.waitMainStageAPI(1))
+                if (WList.waitMainStageAPI(1, false))
                     return false;
             } catch (final InterruptedException ignore) {
             }

@@ -11,7 +11,6 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.LinearLayoutCompat;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
@@ -27,7 +26,7 @@ import com.xuxiaocheng.WListClientAndroid.Client.TokenManager;
 import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.R;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
-import com.xuxiaocheng.WListClientAndroid.databinding.FileListHeaderBinding;
+import com.xuxiaocheng.WListClientAndroid.databinding.FileListContentBinding;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -82,12 +81,11 @@ public class MainActivity extends AppCompatActivity {
 
     @NonNull private View onChangeFile() {
         // TODO get list.
-        final ConstraintLayout header = FileListHeaderBinding.inflate(this.getLayoutInflater()).getRoot();
-        final TextView counter = (TextView) header.getViewById(R.id.file_list_counter);
-
-        final ListView content = new ListView(this);
+        final ConstraintLayout page = FileListContentBinding.inflate(this.getLayoutInflater()).getRoot();
+        final TextView counter = (TextView) page.getViewById(R.id.file_list_counter);
+        final ListView content = (ListView) page.getViewById(R.id.file_list_content);
         Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> {
-            TokenManager.ensureToken("admin", "XJfx7x3J");
+            TokenManager.ensureToken("admin", "xk5eJtEQ");
             final Pair.ImmutablePair<Long, List<VisibleFileInformation>> list = FileHelper.getFileList(new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), 0));
             if (list != null) {
                 this.setList(list, counter, content);
@@ -96,11 +94,7 @@ public class MainActivity extends AppCompatActivity {
                 });
             }
         })).addListener(Main.ThrowableListener);
-        final LinearLayoutCompat match = new LinearLayoutCompat(this);
-        match.setOrientation(LinearLayoutCompat.VERTICAL);
-        match.addView(header, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        match.addView(content, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        return match;
+        return page;
     }
 
     private void setList(@NonNull final Pair.ImmutablePair<Long, ? extends List<VisibleFileInformation>> list, @NonNull final TextView counter, @NonNull final ListView content) {

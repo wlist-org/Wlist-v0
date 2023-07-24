@@ -44,8 +44,8 @@ dependencies {
     implementation 'com.alibaba.fastjson2:fastjson2:2.0.25'
     implementation 'com.auth0:java-jwt:4.3.0'
     implementation 'io.netty:netty-all:4.1.90.Final'
-    implementation 'org.xerial:sqlite-jdbc:3.41.0.0'
-    implementation 'io.netty:netty-all:4.1.90.Final'
+    implementation 'org.apache.commons:commons-pool2:2.11.1'
+    implementation 'org.xerial:sqlite-jdbc:3.42.0.0'
     implementation files('libs/WListClientJava.main.jar')
 
     implementation 'androidx.appcompat:appcompat:1.4.1'

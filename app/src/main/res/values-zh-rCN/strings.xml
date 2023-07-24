@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 	<string name="app_name">智存系统</string>
-	<string name="action_settings">设置</string>
 	<string name="tab_file">文件</string>
 	<string name="tab_user">我的</string>
 	<string name="fatal_application_initialization">初始化应用失败</string>
+	<string name="file_list_counter_text">项</string>
 </resources>
