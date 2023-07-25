@@ -162,7 +162,7 @@ public final class DriverNetworkHelper {
             request.url(url.getFirst());
         else {
             final StringBuilder builder = new StringBuilder(url.getFirst());
-            builder.append('?');
+            builder.append(url.getFirst().contains("?") ? '&' : '?');
             for (final Map.Entry<String, Object> entry : parameters.entrySet())
                 builder.append(entry.getKey()).append('=').append(entry.getValue()).append('&');
             builder.deleteCharAt(builder.length() - 1);

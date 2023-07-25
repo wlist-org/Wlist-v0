@@ -14,6 +14,8 @@ import com.xuxiaocheng.WList.Databases.User.UserSqlHelper;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupSqlHelper;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
+import com.xuxiaocheng.WList.Driver.FileLocation;
+import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Server.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
@@ -22,7 +24,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
-import java.sql.Connection;
 import java.util.Map;
 import java.util.Objects;
 
@@ -33,20 +34,13 @@ public final class WListTest {
 
     @SuppressWarnings("OverlyBroadThrowsClause")
     public static void main(final String @NotNull [] args) throws Exception {
-        PooledDatabase.quicklyInitialize(PooledDatabaseHelper.getDefault(new File("data.db")));
-        try (final Connection connection = PooledDatabase.instance.getInstance().getConnection(null, null)) {
-            HLog.DefaultLogger.log("", connection.isClosed());
-            HLog.DefaultLogger.log("", connection.isValid(0));
-            PooledDatabase.quicklyUninitialize();
-            HLog.DefaultLogger.log("", connection.isClosed());
-            HLog.DefaultLogger.log("", connection.isValid(0));
-        }
-        if (true) return;
+//        if (true) return;
         WListTest.wrapServerInitialize(() -> {
             final DriverInterface<?> driver = Objects.requireNonNull(DriverManager.getDriver("123pan_136"));
-//            HLog.DefaultLogger.log("",
+            HLog.DefaultLogger.log("",
+                    driver.list(new FileLocation("123pan_136", 0), 20, 0, Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND)
 //                    DriverManager_123pan.getFileInformation((DriverConfiguration_123Pan) driver.getConfiguration(), 2345490, null, null)
-//            );
+            );
 //            TrashedFileManager.initialize(configuration.getName());
 //            return TrashManager_123pan.restoreFile(configuration, 2293734, true, null, null);
             return null;
@@ -60,7 +54,7 @@ public final class WListTest {
 
     @SuppressWarnings("OverlyBroadThrowsClause")
     private static void wrapServerInitialize(final @NotNull SupplierE<@Nullable Object> runnable) throws Exception {
-        GlobalConfiguration.initialize(null);
+        GlobalConfiguration.initialize(new File("server.yaml"));
         PooledDatabase.quicklyInitialize(PooledDatabaseHelper.getDefault(new File("data.db")));
         ConstantManager.quicklyInitialize(new ConstantSqlHelper(PooledDatabase.instance.getInstance()), "initialize");
         UserGroupManager.quicklyInitialize(new UserGroupSqlHelper(PooledDatabase.instance.getInstance()), "initialize");
