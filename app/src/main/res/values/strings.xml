@@ -5,8 +5,8 @@
 	<string name="fatal_application_initialization">Failed to initialize application.</string>
 	<string name="file_list_counter_text">items</string>
 	<string name="left_page" translatable="false">\u003c</string>
-	<string name="right_page" translatable="false">\\u003e</string>
-	<string name="slash_page" translatable="false">\\u002f</string>
+	<string name="right_page" translatable="false">\u003e</string>
+	<string name="slash_page" translatable="false">\u002f</string>
 	<string name="login_internal_server">Internal server</string>
 	<string name="close_server_connections">Disconnection</string>
 	<string name="starting_internal_server">Starting internal server…</string>

@@ -11,7 +11,6 @@ import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
-import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -22,8 +21,10 @@ import com.xuxiaocheng.HeadLibs.Helper.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WListClient.AndroidSupports.FileInformationGetter;
+import com.xuxiaocheng.WListClient.AndroidSupports.FileLocationSupporter;
 import com.xuxiaocheng.WListClient.Client.OperationHelpers.OperateFileHelper;
 import com.xuxiaocheng.WListClient.Client.OperationHelpers.OperateServerHelper;
+import com.xuxiaocheng.WListClient.Client.OperationHelpers.WrongStateException;
 import com.xuxiaocheng.WListClient.Client.WListClientInterface;
 import com.xuxiaocheng.WListClient.Server.FileLocation;
 import com.xuxiaocheng.WListClient.Server.Options;
@@ -38,12 +39,16 @@ import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
 import com.xuxiaocheng.WListClientAndroid.databinding.FileListContentBinding;
 import com.xuxiaocheng.WListClientAndroid.databinding.UserListContentBinding;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -108,7 +113,11 @@ public class MainActivity extends AppCompatActivity {
         mainTab.click(MainTab.TabChoice.File);
     }
 
+    @NonNull private final AtomicReference<View> UserPageCache = new AtomicReference<>();
     @NonNull private View onChangeUser(@NonNull final InetSocketAddress address) {
+        final View cache = this.UserPageCache.get();
+        if (cache != null)
+            return cache;
         final ConstraintLayout page = UserListContentBinding.inflate(this.getLayoutInflater()).getRoot();
         final TextView disconnection = (TextView) page.getViewById(R.id.user_list_close_internal_server);
         final AtomicBoolean closed = new AtomicBoolean(false);
@@ -121,51 +130,46 @@ public class MainActivity extends AppCompatActivity {
                     success = OperateServerHelper.closeServer(client, TokenManager.getToken());
                 }
                 if (success) {
+                    TimeUnit.SECONDS.sleep(3); // TODO wait service close completely
                     this.runOnUiThread(() -> this.startActivity(new Intent(this, LoginActivity.class)));
                     this.finish();
                 }
             })).addListener(Main.ThrowableListenerWithToast(this));
         });
+        this.UserPageCache.set(page);
         return page;
     }
 
+    @NonNull private final AtomicReference<View> FilePageCache = new AtomicReference<>();
     @NonNull private View onChangeFile(@NonNull final InetSocketAddress address) {
+        final View cache = this.FilePageCache.get();
+        if (cache != null)
+            return cache;
         final ConstraintLayout page = FileListContentBinding.inflate(this.getLayoutInflater()).getRoot();
+        Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> this.setList(address,
+                        new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), 0), 0, page)))
+                .addListener(Main.ThrowableListenerWithToast(MainActivity.this));
+        this.FilePageCache.set(page);
+        return page;
+    }
+
+    private void setList(@NonNull final InetSocketAddress address, @NonNull final FileLocation directoryLocation, final int currentPage, @NonNull final ConstraintLayout page) throws WrongStateException, IOException, InterruptedException {
         final TextView counter = (TextView) page.getViewById(R.id.file_list_counter);
         final ListView content = (ListView) page.getViewById(R.id.file_list_content);
-        // TODO get list.
-        Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> {
-            final Pair.ImmutablePair<Long, List<VisibleFileInformation>> list;
-            try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
-                list = OperateFileHelper.listFiles(client, TokenManager.getToken(), new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), 0),
-                        20, 0, Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false);
-            }
-            if (list != null) {
-                this.setList(list, counter, content);
-                content.setOnItemClickListener((adapter, view, i, l) -> {
-                    Toast.makeText(this, FileInformationGetter.name(list.getSecond().get(i)), Toast.LENGTH_SHORT).show();
-                });
-            }
-        })).addListener(Main.ThrowableListenerWithToast(MainActivity.this));
-        return page;
-    }
-
-    @Override
-    public boolean onKeyDown(final int keyCode, final KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP) {
-
-            return true;
+        final Pair.ImmutablePair<Long, List<VisibleFileInformation>> list;
+        // TODO loading anim
+        try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
+            final Pair.ImmutablePair<Long, List<VisibleFileInformation>> tmp = OperateFileHelper.listFiles(client, TokenManager.getToken(), directoryLocation,
+                    20, currentPage, Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false);
+            list = tmp == null ? Pair.ImmutablePair.makeImmutablePair(-1L, List.of()) : tmp;
         }
-        return super.onKeyDown(keyCode, event);
-    }
-
-    private void setList(@NonNull final Pair.ImmutablePair<Long, ? extends List<VisibleFileInformation>> list, @NonNull final TextView counter, @NonNull final ListView content) {
-        final List<Map<String, Object>> resources = new ArrayList<>();
+        final List<Map<String, Object>> resources = new ArrayList<>(list.getSecond().size());
         for (final VisibleFileInformation information: list.getSecond()) {
             final Map<String, Object> map = new HashMap<>();
             map.put("image", R.mipmap.app_logo);
             map.put("name", FileInformationGetter.name(information));
-            map.put("tip", FileInformationGetter.id(information));
+            final LocalDateTime update = FileInformationGetter.updateTime(information);
+            map.put("tip", update == null ? "unknown" : update.format(DateTimeFormatter.ISO_DATE_TIME));
             resources.add(map);
         }
         final String count = String.format(Locale.getDefault(), "%d", list.getFirst());
@@ -175,7 +179,25 @@ public class MainActivity extends AppCompatActivity {
         this.runOnUiThread(() -> {
             counter.setText(count);
             content.setAdapter(adapter);
+            content.setOnItemClickListener((a, v, i, l) -> Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> {
+                final VisibleFileInformation information = list.getSecond().get(i);
+                final FileLocation location;
+                if (SpecialDriverName.RootDriver.getIdentifier().equals(FileLocationSupporter.driver(directoryLocation)))
+                    location = FileLocationSupporter.create(FileInformationGetter.name(information), 0);
+                else
+                    location = FileLocationSupporter.create(FileLocationSupporter.driver(directoryLocation), FileInformationGetter.id(information));
+                this.setList(address, location, 0, page);
+            })).addListener(Main.ThrowableListenerWithToast(MainActivity.this)));
         });
+    }
+
+    @Override
+    public boolean onKeyDown(final int keyCode, final KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP) {
+
+            return false;
+        }
+        return super.onKeyDown(keyCode, event);
     }
 
     @Override

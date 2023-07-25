@@ -26,7 +26,6 @@ import com.xuxiaocheng.WListClientAndroid.Services.InternalServerService;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
 
 import java.net.InetSocketAddress;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class LoginActivity extends AppCompatActivity {
     @Override
@@ -37,10 +36,7 @@ public class LoginActivity extends AppCompatActivity {
         logger.log(HLogLevel.VERBOSE, "Creating LoginActivity.");
         this.setContentView(R.layout.login_activity);
         final TextView internalServer = this.findViewById(R.id.login_internal_server);
-        final AtomicBoolean clickable = new AtomicBoolean(true);
         internalServer.setOnClickListener(v -> {
-            if (!clickable.compareAndSet(true, false))
-                return;
             final Intent serverIntent = new Intent(this, InternalServerService.class);
             logger.log(HLogLevel.LESS, "Starting internal server...");
             internalServer.setText(R.string.starting_internal_server);

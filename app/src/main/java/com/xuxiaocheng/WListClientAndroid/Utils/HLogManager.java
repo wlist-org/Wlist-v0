@@ -25,7 +25,7 @@ public final class HLogManager {
         super();
     }
 
-    @NonNull private static final Collection<String> loggers = Set.of("DefaultLogger", "NetworkLogger", "ServerLogger", "ClientLogger");
+    @NonNull private static final Collection<String> loggers = Set.of("DefaultLogger", "NetworkLogger", "ServerLogger", "ClientLogger", "DriverLogger", "DriverLogger/123pan");
     static {
         HLog.setLogTimeFLength(3);
         for (final String name: HLogManager.loggers)
