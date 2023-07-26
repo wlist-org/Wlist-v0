@@ -7,7 +7,6 @@ import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
-import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
@@ -31,9 +30,6 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -121,43 +117,27 @@ final class DriverHelper_123pan {
     };
     static final int UploadPartSize = 16 << 20; // const
 
-    private static @NotNull String getAuthKey(final @NotNull String url) {
-        final long unix = LocalDateTime.now().toEpochSecond(ZoneOffset.ofHours(8));
-        final int random = HRandomHelper.DefaultSecureRandom.nextInt(0x989680);
-        final String path;
-        try {
-            path = new URL(url).getPath();
-        } catch (final MalformedURLException exception) {
-            throw new RuntimeException("Unreachable!", exception);
-        }
-        //noinspection SpellCheckingInspection
-        final String auth = String.format("%d|%d|%s|%s|%s|%s", unix, random, path, "web", "3", "8-8D$sL8gPjom7bk#cY");
-        return String.format("%d-%d-%s", unix, random, MiscellaneousUtil.getMd5(auth.getBytes(StandardCharsets.UTF_8)));
-    }
-
     static @NotNull JSONObject sendRequestReceiveExtractedData(final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable DriverConfiguration_123Pan configuration, final @Nullable Map<@NotNull String, @NotNull Object> body, final boolean loginFlag) throws IllegalParametersException, IOException {
         final Headers.Builder builder = new Headers.Builder();
         if (configuration != null)
             builder.add("authorization", "Bearer " + configuration.getCacheSide().getToken());
-        builder.add("user-agent", DriverHelper_123pan.agent); // builder.set("user-agent", "123pan/1.0.100");
-        builder.add("platform", "web").add("app-version", "3");
-        final Pair.ImmutablePair<String, String> realUrl = Pair.ImmutablePair.makeImmutablePair(url.getFirst() + "?auth-key=" +
-                DriverHelper_123pan.getAuthKey(url.getFirst()), url.getSecond());
-        JSONObject json = DriverNetworkHelper.sendRequestReceiveJson(DriverHelper_123pan.httpClient, realUrl, builder.build(), body);
+        builder.add("user-agent", DriverHelper_123pan.agent);
+        builder.add("platform", "android").add("app-version", "36");
+        JSONObject json = DriverNetworkHelper.sendRequestReceiveJson(DriverHelper_123pan.httpClient, url, builder.build(), body);
         if (json.getIntValue("code", -1) == DriverHelper_123pan.TokenExpireResponseCode && !loginFlag && configuration != null) {
             DriverHelper_123pan.forceGetToken(configuration);
-            json = DriverNetworkHelper.sendRequestReceiveJson(DriverHelper_123pan.httpClient, realUrl,
+            json = DriverNetworkHelper.sendRequestReceiveJson(DriverHelper_123pan.httpClient, url,
                     builder.set("authorization", "Bearer " + configuration.getCacheSide().getToken()).build(), body);
         }
         final int code = json.getIntValue("code", -1);
         final String message = json.getString("message");
         if (code != (loginFlag ? 200 : 0) || !(loginFlag ? "success" : "ok").equals(message))
             throw new IllegalResponseCodeException(code, message, ParametersMap.create()
-                    .add("url", realUrl).add("configuration", configuration).add("body", body).add("json", json));
+                    .add("url", url).add("configuration", configuration).add("body", body).add("json", json));
         final JSONObject data = json.getJSONObject("data");
         if (data == null)
             throw new WrongResponseException("Missing response data.", json, ParametersMap.create()
-                    .add("url", realUrl).add("configuration", configuration).add("body", body).add("json", json));
+                    .add("url", url).add("configuration", configuration).add("body", body).add("json", json));
         return data;
     }
 
@@ -247,14 +227,11 @@ final class DriverHelper_123pan {
         final LocalDateTime time = LocalDateTime.now().minusMinutes(3);
         synchronized (configuration.getCacheSide()) {
             if (configuration.getCacheSide().getToken() == null
-                    || configuration.getCacheSide().getTokenExpire() == null
-                    || time.isAfter(configuration.getCacheSide().getTokenExpire()))
-                if (configuration.getCacheSide().getToken() == null
-                        || configuration.getCacheSide().getRefreshExpire() == null
-                        || time.isAfter(configuration.getCacheSide().getRefreshExpire())
-                        || DriverHelper_123pan.refreshToken(configuration)) {
-                    DriverHelper_123pan.login(configuration);
-                }
+                    || configuration.getCacheSide().getRefreshExpire() == null
+                    || time.isAfter(configuration.getCacheSide().getRefreshExpire())
+                    || DriverHelper_123pan.refreshToken(configuration)) {
+                DriverHelper_123pan.login(configuration);
+            }
         }
     }
 
@@ -264,10 +241,12 @@ final class DriverHelper_123pan {
      */
     static void ensureToken(final @NotNull DriverConfiguration_123Pan configuration) throws IllegalParametersException, IOException {
         final LocalDateTime time = LocalDateTime.now().minusMinutes(3);
-        if (configuration.getCacheSide().getToken() == null
-                || configuration.getCacheSide().getTokenExpire() == null
-                || time.isAfter(configuration.getCacheSide().getTokenExpire()))
-            DriverHelper_123pan.forceGetToken(configuration);
+        synchronized (configuration.getCacheSide()) {
+            if (configuration.getCacheSide().getToken() == null
+                    || configuration.getCacheSide().getTokenExpire() == null
+                    || time.isAfter(configuration.getCacheSide().getTokenExpire()))
+                DriverHelper_123pan.forceGetToken(configuration);
+        }
     }
 
     /**
