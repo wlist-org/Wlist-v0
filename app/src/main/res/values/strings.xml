@@ -6,9 +6,10 @@
 	<string name="file_list_counter_text">items</string>
 	<string name="left_page" translatable="false">\u003c</string>
 	<string name="right_page" translatable="false">\u003e</string>
-	<string name="slash_page" translatable="false">\u002f</string>
+	<string name="slash_page" translatable="false">/</string>
 	<string name="login_internal_server">Internal server</string>
 	<string name="close_server_connections">Disconnection</string>
 	<string name="starting_internal_server">Starting internal server…</string>
 	<string name="loading_clients">Connected to server. Loading…</string>
+	<string name="login_exit">Exit app</string>
 </resources>

@@ -9,10 +9,12 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helper.HUncaughtExceptionHelper;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.EventExecutorGroup;
+import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.FutureListener;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -21,17 +23,33 @@ public final class Main extends Application {
     @NonNull public static final EventExecutorGroup ThreadPool =
             new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 1, new DefaultThreadFactory("AndroidExecutor"));
 
+    @Nullable private static Throwable extraExceptionFromFuture(@NonNull final Future<?> future) {
+        final Throwable cause = future.cause();
+        if (cause == null)
+            return null;
+        if (cause instanceof RuntimeException exception && HExceptionWrapper.isWrappedException(exception))
+            try {
+                return HExceptionWrapper.unwrapException(exception, Exception.class);
+            } catch (final Exception throwable) {
+                return throwable;
+            }
+        return cause;
+    }
+
     @NonNull public static final FutureListener<? super Object> ThrowableListener = f -> {
-        if (f.cause() != null)
-            HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), f.cause());
+        final Throwable cause = Main.extraExceptionFromFuture(f);
+        if (cause == null)
+            return;
+        HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), cause);
     };
 
     @NonNull public static FutureListener<? super Object> ThrowableListenerWithToast(@NonNull final Activity activity) {
         return f -> {
-            if (f.cause() != null) {
-                HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), f.cause());
-                activity.runOnUiThread(() -> Toast.makeText(activity.getApplicationContext(), f.cause().getLocalizedMessage(), Toast.LENGTH_SHORT).show());
-            }
+            final Throwable cause = Main.extraExceptionFromFuture(f);
+            if (cause == null)
+                return;
+            HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), cause);
+            activity.runOnUiThread(() -> Toast.makeText(activity.getApplicationContext(), cause.getLocalizedMessage(), Toast.LENGTH_SHORT).show());
         };
     }
 

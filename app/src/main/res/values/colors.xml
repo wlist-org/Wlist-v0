@@ -6,6 +6,7 @@
 	<color name="green">#03DA8F</color>
 	<color name="teal_700">#4ABDAC</color>
 	<color name="black">#FF211431</color>
+	<color name="nonclickable">#948E9C</color>
 	<color name="white">#FFFFFFFF</color>
 	<color name="red">#FFE51816</color>
 	<color name="background">#FFE6E6E6</color>

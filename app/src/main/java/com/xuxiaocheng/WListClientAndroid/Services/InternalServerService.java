@@ -10,6 +10,7 @@ import android.os.RemoteException;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.HeadLibs.Helper.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Databases.User.UserManager;
@@ -49,12 +50,18 @@ public final class InternalServerService extends Service {
         super.onDestroy();
         final HLog logger = HLogManager.getInstance("DefaultLogger");
         final int stage = WList.getMainStageAPI();
-        logger.log(HLogLevel.FINE, "Internal WList Server is stopping.", ParametersMap.create().add("stage", stage));
+        logger.log(HLogLevel.FINE, "Internal WList Server is stopping.");
         switch (stage) {
             case 0 -> this.ServerMainThread.interrupt();
             case 1 -> WListServer.getInstance().stop();
             default -> {}
         }
+        if (stage > 0)
+            try {
+                WListServer.getInstance().awaitStop();
+            } catch (final InterruptedException exception) {
+                HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
+            }
         //noinspection CallToSystemExit
         System.exit(0); // Require JVM exit to reboot WList class.
     }

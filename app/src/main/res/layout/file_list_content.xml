@@ -12,27 +12,30 @@
 		app:layout_constraintGuide_begin="50dp" />
 
 	<androidx.constraintlayout.widget.Guideline
-		android:id="@+id/file_list_guideline_counter"
+		android:id="@+id/file_list_guideline_backer"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:orientation="vertical"
-		app:barrierDirection="start"
-		app:layout_constraintGuide_percent="0.7" />
+		app:layout_constraintGuide_percent="0.15" />
 
 	<androidx.appcompat.widget.AppCompatTextView
-		android:id="@+id/file_list_name"
 		android:layout_width="0dp"
 		android:layout_height="0dp"
 		android:autoSizeTextType="uniform"
 		android:gravity="center"
-		android:paddingStart="10dp"
-		android:paddingEnd="10dp"
-		android:text="directory_name"
+		android:text="@string/left_page"
 		android:textColor="@color/black"
 		app:layout_constraintBottom_toTopOf="@id/file_list_guideline_header"
 		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toLeftOf="@id/file_list_guideline_counter"
+		app:layout_constraintRight_toLeftOf="@id/file_list_guideline_backer"
 		app:layout_constraintTop_toTopOf="parent" />
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/file_list_guideline_counter"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		app:layout_constraintGuide_percent="0.7" />
 
 	<androidx.appcompat.widget.AppCompatTextView
 		android:id="@+id/file_list_counter"
@@ -48,6 +51,21 @@
 		app:layout_constraintBottom_toTopOf="@id/file_list_guideline_header"
 		app:layout_constraintLeft_toRightOf="@id/file_list_guideline_counter"
 		app:layout_constraintRight_toLeftOf="@id/file_list_counter_text"
+		app:layout_constraintTop_toTopOf="parent" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/file_list_name"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:autoSizeTextType="uniform"
+		android:gravity="center"
+		android:paddingStart="10dp"
+		android:paddingEnd="10dp"
+		android:text="directory_name"
+		android:textColor="@color/black"
+		app:layout_constraintBottom_toTopOf="@id/file_list_guideline_header"
+		app:layout_constraintLeft_toRightOf="@id/file_list_guideline_backer"
+		app:layout_constraintRight_toLeftOf="@id/file_list_guideline_counter"
 		app:layout_constraintTop_toTopOf="parent" />
 
 	<androidx.appcompat.widget.AppCompatTextView

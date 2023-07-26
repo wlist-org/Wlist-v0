@@ -20,6 +20,7 @@ import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helper.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WListClient.AndroidSupports.FileInformationGetter;
 import com.xuxiaocheng.WListClient.AndroidSupports.FileLocationSupporter;
 import com.xuxiaocheng.WListClient.Client.OperationHelpers.OperateFileHelper;
@@ -146,6 +147,8 @@ public class MainActivity extends AppCompatActivity {
         if (cache != null)
             return cache;
         final ConstraintLayout page = FileListContentBinding.inflate(this.getLayoutInflater()).getRoot();
+        final TextView namer = (TextView) page.getViewById(R.id.file_list_name);
+        namer.setText(R.string.app_name);
         Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> this.setList(address,
                         new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), 0), 0, page)))
                 .addListener(Main.ThrowableListenerWithToast(MainActivity.this));
@@ -154,8 +157,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setList(@NonNull final InetSocketAddress address, @NonNull final FileLocation directoryLocation, final int currentPage, @NonNull final ConstraintLayout page) throws WrongStateException, IOException, InterruptedException {
-        final TextView counter = (TextView) page.getViewById(R.id.file_list_counter);
+        final TextView name = (TextView) page.getViewById(R.id.file_list_name);
+        final TextView count = (TextView) page.getViewById(R.id.file_list_counter);
         final ListView content = (ListView) page.getViewById(R.id.file_list_content);
+        final TextView pageCurrent = (TextView) page.getViewById(R.id.file_list_page_current);
+        final TextView pageAll = (TextView) page.getViewById(R.id.file_list_page_all);
+        final TextView left = (TextView) page.getViewById(R.id.file_list_page_left_bottom);
+        final TextView right = (TextView) page.getViewById(R.id.file_list_page_right_bottom);
         final Pair.ImmutablePair<Long, List<VisibleFileInformation>> list;
         // TODO loading anim
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
@@ -172,21 +180,50 @@ public class MainActivity extends AppCompatActivity {
             map.put("tip", update == null ? "unknown" : update.format(DateTimeFormatter.ISO_DATE_TIME));
             resources.add(map);
         }
-        final String count = String.format(Locale.getDefault(), "%d", list.getFirst());
+        final int allPage = MiscellaneousUtil.calculatePartCount(list.getFirst().intValue(), 20);
+        final boolean isRoot = SpecialDriverName.RootDriver.getIdentifier().equals(FileLocationSupporter.driver(directoryLocation));
+        final String countS = String.format(Locale.getDefault(), "%d", list.getFirst());
+        final String currentPageS = String.format(Locale.getDefault(), "%d", currentPage + 1);
+        final String allPageS = String.format(Locale.getDefault(), "%d", allPage);
         final ListAdapter adapter = new SimpleAdapter(this, resources, R.layout.file_list_cell,
                 new String[] {"image", "name", "tip"},
                 new int[] {R.id.file_list_image, R.id.file_list_name, R.id.file_list_tip});
         this.runOnUiThread(() -> {
-            counter.setText(count);
+            count.setText(countS);
+            pageCurrent.setText(currentPageS);
+            pageAll.setText(allPageS);
+            if (currentPage == 0) {
+                left.setTextColor(this.getResources().getColor(R.color.nonclickable, this.getTheme()));
+                left.setOnClickListener(null);
+                left.setClickable(false);
+            } else {
+                left.setTextColor(this.getResources().getColor(R.color.black, this.getTheme()));
+                left.setOnClickListener(v -> Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() ->
+                                this.setList(address, directoryLocation, currentPage - 1, page)))
+                        .addListener(Main.ThrowableListenerWithToast(MainActivity.this)));
+                left.setClickable(true);
+            }
+            if (currentPage == allPage - 1) {
+                right.setTextColor(this.getResources().getColor(R.color.nonclickable, this.getTheme()));
+                right.setOnClickListener(null);
+                right.setClickable(false);
+            } else {
+                right.setTextColor(this.getResources().getColor(R.color.black, this.getTheme()));
+                right.setOnClickListener(v -> Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() ->
+                                this.setList(address, directoryLocation, currentPage + 1, page)))
+                        .addListener(Main.ThrowableListenerWithToast(MainActivity.this)));
+                right.setClickable(true);
+            }
             content.setAdapter(adapter);
             content.setOnItemClickListener((a, v, i, l) -> Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> {
                 final VisibleFileInformation information = list.getSecond().get(i);
                 final FileLocation location;
-                if (SpecialDriverName.RootDriver.getIdentifier().equals(FileLocationSupporter.driver(directoryLocation)))
+                if (isRoot)
                     location = FileLocationSupporter.create(FileInformationGetter.name(information), 0);
                 else
                     location = FileLocationSupporter.create(FileLocationSupporter.driver(directoryLocation), FileInformationGetter.id(information));
                 this.setList(address, location, 0, page);
+                name.setText(FileInformationGetter.name(information));
             })).addListener(Main.ThrowableListenerWithToast(MainActivity.this)));
         });
     }
