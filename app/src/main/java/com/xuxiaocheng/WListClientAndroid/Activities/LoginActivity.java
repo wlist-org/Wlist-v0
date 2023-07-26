@@ -52,7 +52,7 @@ public class LoginActivity extends AppCompatActivity {
                     final AtomicBoolean finishActivity = new AtomicBoolean(true);
                     Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> {
                         logger.log(HLogLevel.INFO, "Waiting for server start completely...");
-                        if (LoginActivity.internalServerAddress.isInitialized()) {
+                        if (LoginActivity.internalServerAddress.isInitialized() && InternalServerService.getMainStage(iService) > 1) {
                             Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> {
                                 LoginActivity.this.unbindService(this);
                                 synchronized (LoginActivity.internalServerAddress) {
@@ -68,7 +68,8 @@ public class LoginActivity extends AppCompatActivity {
                         final InetSocketAddress address = InternalServerService.getAddress(iService);
                         logger.log(HLogLevel.INFO, "Connecting to: ", address);
                         LoginActivity.this.runOnUiThread(() -> internalServer.setText(R.string.loading_clients));
-                        LoginActivity.internalServerAddress.initialize(address);
+                        assert !LoginActivity.internalServerAddress.isInitialized() || LoginActivity.internalServerAddress.getInstance().equals(address);
+                        LoginActivity.internalServerAddress.initializeIfNot(() -> address);
                         WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
                         logger.log(HLogLevel.LESS, "Clients initialized.");
                         PasswordManager.initialize(LoginActivity.this.getExternalFilesDir("passwords"));

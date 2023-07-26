@@ -49,7 +49,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -131,10 +130,10 @@ public class MainActivity extends AppCompatActivity {
                     success = OperateServerHelper.closeServer(client, TokenManager.getToken());
                 }
                 if (success) {
-                    TimeUnit.SECONDS.sleep(3); // TODO wait service close completely
                     this.runOnUiThread(() -> this.startActivity(new Intent(this, LoginActivity.class)));
                     this.finish();
-                }
+                } else
+                    closed.set(false);
             })).addListener(Main.ThrowableListenerWithToast(this));
         });
         this.UserPageCache.set(page);

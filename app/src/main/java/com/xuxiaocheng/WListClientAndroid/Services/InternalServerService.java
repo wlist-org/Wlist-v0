@@ -74,6 +74,8 @@ public final class InternalServerService extends Service {
     private enum TransactOperate {
         GetAddress,
         GetAndDeleteAdminPassword,
+        GetMainStage,
+        WaitMainStage,
     }
 
     @NonNull public static InetSocketAddress getAddress(@NonNull final IBinder iService) throws RemoteException {
@@ -99,6 +101,21 @@ public final class InternalServerService extends Service {
                 password[0] = p.readString();
         });
         return password[0];
+    }
+
+    public static int getMainStage(@NonNull final IBinder iService) throws RemoteException {
+        final int[] stage = new int[1];
+        InternalServerService.sendTransact(iService, TransactOperate.GetMainStage, null, p -> stage[0] = p.readInt());
+        return stage[0];
+    }
+
+    public static boolean waitMainStage(@NonNull final IBinder iService, final int stage, final boolean matNotBoot) throws RemoteException {
+        final boolean[] success = new boolean[1];
+        InternalServerService.sendTransact(iService, TransactOperate.GetMainStage, p -> {
+            p.writeInt(stage);
+            p.writeInt(matNotBoot ? 1 : 0);
+        }, p -> success[0] = p.readInt() == 1);
+        return success[0];
     }
 
     private static void sendTransact(@NonNull final IBinder iService, @NonNull final TransactOperate operate, @Nullable final Consumer<? super Parcel> dataCallback, @Nullable final Consumer<? super Parcel> replyCallback) throws RemoteException {
@@ -156,6 +173,20 @@ public final class InternalServerService extends Service {
                         reply.writeInt(0);
                         reply.writeString(password);
                     }
+                }
+                case GetMainStage -> {
+                    reply.writeInt(WList.getMainStageAPI());
+                }
+                case WaitMainStage -> {
+                    final int stage = data.readInt();
+                    final boolean mayNotBoot = data.readInt() == 1;
+                    boolean success = false;
+                    try {
+                        if (WList.waitMainStageAPI(stage, mayNotBoot))
+                            success = true;
+                    } catch (final InterruptedException ignore) {
+                    }
+                    reply.writeInt(success ? 1 : 0);
                 }
             }
             return true;
