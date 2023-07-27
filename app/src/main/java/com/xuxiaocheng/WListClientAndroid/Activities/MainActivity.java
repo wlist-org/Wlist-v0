@@ -193,6 +193,7 @@ public class MainActivity extends AppCompatActivity {
         final ListAdapter adapter = new SimpleAdapter(this, resources, R.layout.file_list_cell,
                 new String[] {"image", "name", "tip"},
                 new int[] {R.id.file_list_image, R.id.file_list_name, R.id.file_list_tip});
+        final AtomicBoolean clickable = new AtomicBoolean(true);
         this.runOnUiThread(() -> {
             count.setText(countS);
             pageCurrent.setText(currentPageS);
@@ -203,9 +204,13 @@ public class MainActivity extends AppCompatActivity {
                 left.setClickable(false);
             } else {
                 left.setTextColor(this.getResources().getColor(R.color.black, this.getTheme()));
-                left.setOnClickListener(v -> Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() ->
-                                this.setFileList(address, directoryLocation, currentPage - 1, page)))
-                        .addListener(Main.ThrowableListenerWithToast(MainActivity.this)));
+                left.setOnClickListener(v -> {
+                    if (!clickable.compareAndSet(true, false))
+                        return;
+                    Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() ->
+                                    this.setFileList(address, directoryLocation, currentPage - 1, page)))
+                            .addListener(Main.ThrowableListenerWithToast(MainActivity.this));
+                });
                 left.setClickable(true);
             }
             if (currentPage >= allPage - 1) {
@@ -214,13 +219,16 @@ public class MainActivity extends AppCompatActivity {
                 right.setClickable(false);
             } else {
                 right.setTextColor(this.getResources().getColor(R.color.black, this.getTheme()));
-                right.setOnClickListener(v -> Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() ->
-                                this.setFileList(address, directoryLocation, currentPage + 1, page)))
-                        .addListener(Main.ThrowableListenerWithToast(MainActivity.this)));
+                right.setOnClickListener(v -> {
+                    if (!clickable.compareAndSet(true, false))
+                        return;
+                    Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() ->
+                                    this.setFileList(address, directoryLocation, currentPage + 1, page)))
+                            .addListener(Main.ThrowableListenerWithToast(MainActivity.this));
+                });
                 right.setClickable(true);
             }
             content.setAdapter(adapter);
-            final AtomicBoolean clickable = new AtomicBoolean(true);
             content.setOnItemClickListener((a, v, i, l) -> {
                 if (!clickable.compareAndSet(true, false))
                     return;
@@ -229,12 +237,9 @@ public class MainActivity extends AppCompatActivity {
                 final VisibleFileInformation information = list.getSecond().get(i);
                 if (FileInformationGetter.isDirectory(information))
                     Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> {
-                        final FileLocation location;
-                        if (isRoot)
-                            location = FileLocationSupporter.create(FileInformationGetter.name(information), 0);
-                        else
-                            location = FileLocationSupporter.create(FileLocationSupporter.driver(directoryLocation), FileInformationGetter.id(information));
-                        this.setFileList(address, location, 0, page);
+                        this.setFileList(address, isRoot ? FileLocationSupporter.create(FileInformationGetter.name(information), 0) :
+                                FileLocationSupporter.create(FileLocationSupporter.driver(directoryLocation), FileInformationGetter.id(information)),
+                                0, page);
                         this.runOnUiThread(() -> name.setText(FileInformationGetter.name(information)));
                     })).addListener(Main.ThrowableListenerWithToast(MainActivity.this));
             });
