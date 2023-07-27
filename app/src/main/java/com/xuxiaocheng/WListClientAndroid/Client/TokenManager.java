@@ -20,6 +20,7 @@ public final class TokenManager {
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
             TokenManager.token = OperateUserHelper.login(client, username, password);
         }
+        // TODO refresh token.
     }
 
     @NonNull public static synchronized String getToken() {

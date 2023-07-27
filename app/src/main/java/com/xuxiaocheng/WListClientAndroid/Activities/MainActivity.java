@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.app.ActivityOptions;
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ListAdapter;
@@ -44,11 +43,14 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -67,6 +69,8 @@ public class MainActivity extends AppCompatActivity {
             return null;
         return new InetSocketAddress(host, port);
     }
+
+    @NonNull protected final AtomicReference<MainTab.TabChoice> minTabChoice = new AtomicReference<>();
 
     @Override
     protected void onCreate(@Nullable final Bundle savedInstanceState) {
@@ -109,6 +113,7 @@ public class MainActivity extends AppCompatActivity {
                 if (currentView.compareAndSet(null, newView))
                     activity.addView(newView, contentParams);
             }
+            this.minTabChoice.set(choice);
         });
         mainTab.click(MainTab.TabChoice.File);
     }
@@ -141,13 +146,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @NonNull private final AtomicReference<View> FilePageCache = new AtomicReference<>();
+    @NonNull private final Deque<Pair.ImmutablePair<Pair.ImmutablePair<FileLocation, Integer>, Pair.ImmutablePair<InetSocketAddress, ConstraintLayout>>> FileListStack = new ArrayDeque<>();
     @NonNull private View onChangeFile(@NonNull final InetSocketAddress address) {
         final View cache = this.FilePageCache.get();
         if (cache != null)
             return cache;
         final ConstraintLayout page = FileListContentBinding.inflate(this.getLayoutInflater()).getRoot();
-        final TextView namer = (TextView) page.getViewById(R.id.file_list_name);
-        namer.setText(R.string.app_name);
+        page.getViewById(R.id.file_list_backer).setOnClickListener(v -> this.onBackPressed());
+        ((TextView) page.getViewById(R.id.file_list_name)).setText(R.string.app_name);
         Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> this.setList(address,
                         new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), 0), 0, page)))
                 .addListener(Main.ThrowableListenerWithToast(MainActivity.this));
@@ -221,6 +227,8 @@ public class MainActivity extends AppCompatActivity {
                     location = FileLocationSupporter.create(FileInformationGetter.name(information), 0);
                 else
                     location = FileLocationSupporter.create(FileLocationSupporter.driver(directoryLocation), FileInformationGetter.id(information));
+                this.FileListStack.push(Pair.ImmutablePair.makeImmutablePair(Pair.ImmutablePair.makeImmutablePair(directoryLocation, currentPage),
+                        Pair.ImmutablePair.makeImmutablePair(address, page)));
                 this.setList(address, location, 0, page);
                 name.setText(FileInformationGetter.name(information));
             })).addListener(Main.ThrowableListenerWithToast(MainActivity.this)));
@@ -228,12 +236,30 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    public boolean onKeyDown(final int keyCode, final KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP) {
-
-            return false;
+    public void onBackPressed() {
+        final MainTab.TabChoice choice = this.minTabChoice.get();
+        if (choice == null) {
+            super.onBackPressed();
+            return;
         }
-        return super.onKeyDown(keyCode, event);
+        switch (choice) {
+            case File -> {
+                final Pair.ImmutablePair<Pair.ImmutablePair<FileLocation, Integer>, Pair.ImmutablePair<InetSocketAddress, ConstraintLayout>> p;
+                try {
+                    p = this.FileListStack.pop();
+                } catch (final NoSuchElementException ignore) {
+                    super.onBackPressed();
+                    return;
+                }
+                Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() ->
+                                this.setList(p.getSecond().getFirst(), p.getFirst().getFirst(),
+                                        p.getFirst().getSecond().intValue(), p.getSecond().getSecond())))
+                        .addListener(Main.ThrowableListenerWithToast(MainActivity.this));
+            }
+            case User -> {
+                super.onBackPressed();
+            } // TODO
+        }
     }
 
     @Override
