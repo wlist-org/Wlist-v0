@@ -235,7 +235,7 @@ public class MainActivity extends AppCompatActivity {
                         else
                             location = FileLocationSupporter.create(FileLocationSupporter.driver(directoryLocation), FileInformationGetter.id(information));
                         this.setFileList(address, location, 0, page);
-                        name.setText(FileInformationGetter.name(information));
+                        this.runOnUiThread(() -> name.setText(FileInformationGetter.name(information)));
                     })).addListener(Main.ThrowableListenerWithToast(MainActivity.this));
             });
         });
