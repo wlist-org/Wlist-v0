@@ -15,6 +15,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helper.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -50,7 +51,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -146,7 +146,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @NonNull private final AtomicReference<View> FilePageCache = new AtomicReference<>();
-    @NonNull private final Deque<Pair.ImmutablePair<Pair.ImmutablePair<FileLocation, Integer>, Pair.ImmutablePair<InetSocketAddress, ConstraintLayout>>> FileListStack = new ArrayDeque<>();
+    @NonNull private final Deque<Triad.ImmutableTriad<Pair.ImmutablePair<FileLocation, Integer>, Pair.ImmutablePair<InetSocketAddress, ConstraintLayout>, CharSequence>> FileListStack = new ArrayDeque<>();
     @NonNull private View onChangeFile(@NonNull final InetSocketAddress address) {
         final View cache = this.FilePageCache.get();
         if (cache != null)
@@ -154,14 +154,14 @@ public class MainActivity extends AppCompatActivity {
         final ConstraintLayout page = FileListContentBinding.inflate(this.getLayoutInflater()).getRoot();
         page.getViewById(R.id.file_list_backer).setOnClickListener(v -> this.onBackPressed());
         ((TextView) page.getViewById(R.id.file_list_name)).setText(R.string.app_name);
-        Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> this.setList(address,
+        Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> this.setFileList(address,
                         new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), 0), 0, page)))
                 .addListener(Main.ThrowableListenerWithToast(MainActivity.this));
         this.FilePageCache.set(page);
         return page;
     }
 
-    private void setList(@NonNull final InetSocketAddress address, @NonNull final FileLocation directoryLocation, final int currentPage, @NonNull final ConstraintLayout page) throws WrongStateException, IOException, InterruptedException {
+    private void setFileList(@NonNull final InetSocketAddress address, @NonNull final FileLocation directoryLocation, final int currentPage, @NonNull final ConstraintLayout page) throws WrongStateException, IOException, InterruptedException {
         final TextView name = (TextView) page.getViewById(R.id.file_list_name);
         final TextView count = (TextView) page.getViewById(R.id.file_list_counter);
         final ListView content = (ListView) page.getViewById(R.id.file_list_content);
@@ -189,7 +189,7 @@ public class MainActivity extends AppCompatActivity {
         final boolean isRoot = SpecialDriverName.RootDriver.getIdentifier().equals(FileLocationSupporter.driver(directoryLocation));
         final String countS = String.format(Locale.getDefault(), "%d", list.getFirst());
         final String currentPageS = String.format(Locale.getDefault(), "%d", currentPage + 1);
-        final String allPageS = String.format(Locale.getDefault(), "%d", allPage);
+        final String allPageS = String.format(Locale.getDefault(), "%d", Math.max(allPage, 1));
         final ListAdapter adapter = new SimpleAdapter(this, resources, R.layout.file_list_cell,
                 new String[] {"image", "name", "tip"},
                 new int[] {R.id.file_list_image, R.id.file_list_name, R.id.file_list_tip});
@@ -197,69 +197,69 @@ public class MainActivity extends AppCompatActivity {
             count.setText(countS);
             pageCurrent.setText(currentPageS);
             pageAll.setText(allPageS);
-            if (currentPage == 0) {
+            if (currentPage <= 0) {
                 left.setTextColor(this.getResources().getColor(R.color.nonclickable, this.getTheme()));
                 left.setOnClickListener(null);
                 left.setClickable(false);
             } else {
                 left.setTextColor(this.getResources().getColor(R.color.black, this.getTheme()));
                 left.setOnClickListener(v -> Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() ->
-                                this.setList(address, directoryLocation, currentPage - 1, page)))
+                                this.setFileList(address, directoryLocation, currentPage - 1, page)))
                         .addListener(Main.ThrowableListenerWithToast(MainActivity.this)));
                 left.setClickable(true);
             }
-            if (currentPage == allPage - 1) {
+            if (currentPage >= allPage - 1) {
                 right.setTextColor(this.getResources().getColor(R.color.nonclickable, this.getTheme()));
                 right.setOnClickListener(null);
                 right.setClickable(false);
             } else {
                 right.setTextColor(this.getResources().getColor(R.color.black, this.getTheme()));
                 right.setOnClickListener(v -> Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() ->
-                                this.setList(address, directoryLocation, currentPage + 1, page)))
+                                this.setFileList(address, directoryLocation, currentPage + 1, page)))
                         .addListener(Main.ThrowableListenerWithToast(MainActivity.this)));
                 right.setClickable(true);
             }
             content.setAdapter(adapter);
-            content.setOnItemClickListener((a, v, i, l) -> Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> {
+            final AtomicBoolean clickable = new AtomicBoolean(true);
+            content.setOnItemClickListener((a, v, i, l) -> {
+                if (!clickable.compareAndSet(true, false))
+                    return;
+                this.FileListStack.push(Triad.ImmutableTriad.makeImmutableTriad(Pair.ImmutablePair.makeImmutablePair(directoryLocation, currentPage),
+                        Pair.ImmutablePair.makeImmutablePair(address, page), name.getText()));
                 final VisibleFileInformation information = list.getSecond().get(i);
-                final FileLocation location;
-                if (isRoot)
-                    location = FileLocationSupporter.create(FileInformationGetter.name(information), 0);
-                else
-                    location = FileLocationSupporter.create(FileLocationSupporter.driver(directoryLocation), FileInformationGetter.id(information));
-                this.FileListStack.push(Pair.ImmutablePair.makeImmutablePair(Pair.ImmutablePair.makeImmutablePair(directoryLocation, currentPage),
-                        Pair.ImmutablePair.makeImmutablePair(address, page)));
-                this.setList(address, location, 0, page);
-                name.setText(FileInformationGetter.name(information));
-            })).addListener(Main.ThrowableListenerWithToast(MainActivity.this)));
+                if (FileInformationGetter.isDirectory(information))
+                    Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> {
+                        final FileLocation location;
+                        if (isRoot)
+                            location = FileLocationSupporter.create(FileInformationGetter.name(information), 0);
+                        else
+                            location = FileLocationSupporter.create(FileLocationSupporter.driver(directoryLocation), FileInformationGetter.id(information));
+                        this.setFileList(address, location, 0, page);
+                        name.setText(FileInformationGetter.name(information));
+                    })).addListener(Main.ThrowableListenerWithToast(MainActivity.this));
+            });
         });
     }
 
     @Override
     public void onBackPressed() {
         final MainTab.TabChoice choice = this.minTabChoice.get();
-        if (choice == null) {
-            super.onBackPressed();
-            return;
-        }
-        switch (choice) {
-            case File -> {
-                final Pair.ImmutablePair<Pair.ImmutablePair<FileLocation, Integer>, Pair.ImmutablePair<InetSocketAddress, ConstraintLayout>> p;
-                try {
-                    p = this.FileListStack.pop();
-                } catch (final NoSuchElementException ignore) {
-                    super.onBackPressed();
+        if (choice != null)
+            switch (choice) {
+                case File -> {
+                    final Triad.ImmutableTriad<Pair.ImmutablePair<FileLocation, Integer>, Pair.ImmutablePair<InetSocketAddress, ConstraintLayout>, CharSequence> p = this.FileListStack.poll();
+                    if (p == null)
+                        break;
+                    Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> {
+                                this.setFileList(p.getB().getFirst(), p.getA().getFirst(),
+                                        p.getA().getSecond().intValue(), p.getB().getSecond());
+                                this.runOnUiThread(() -> ((TextView) p.getB().getSecond().getViewById(R.id.file_list_name)).setText(p.getC()));
+                            })).addListener(Main.ThrowableListenerWithToast(MainActivity.this));
                     return;
                 }
-                Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() ->
-                                this.setList(p.getSecond().getFirst(), p.getFirst().getFirst(),
-                                        p.getFirst().getSecond().intValue(), p.getSecond().getSecond())))
-                        .addListener(Main.ThrowableListenerWithToast(MainActivity.this));
+                case User -> {} // TODO
             }
-            case User -> {
-                super.onBackPressed();
-            } // TODO
-        }
+        super.onBackPressed();
     }
 
     @Override
