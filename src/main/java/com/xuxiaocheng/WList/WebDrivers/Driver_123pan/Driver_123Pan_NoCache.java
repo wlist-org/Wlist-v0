@@ -50,7 +50,7 @@ public class Driver_123Pan_NoCache implements DriverInterface<DriverConfiguratio
 
     @Override
     public void buildCache() throws IllegalParametersException, IOException {
-        DriverManager_123pan.resetUserInformation(this.configuration);
+        DriverHelper_123pan.resetUserInformation(this.configuration);
     }
 
     @Override

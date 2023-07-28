@@ -31,12 +31,15 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serial;
 import java.nio.file.AccessDeniedException;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 public final class DriverManager {
@@ -123,9 +126,14 @@ public final class DriverManager {
                     throw new IllegalParametersException("Failed to initialize.", ParametersMap.create().add("name", name).add("type", type).add("configuration", configuration), exception);
                 }
                 try {
-                    driver.buildCache();
-                    if (trash != null)
-                        trash.buildCache();
+                    final LocalDateTime old = configuration.getCacheSide().getLastFileIndexBuildTime();
+                    final LocalDateTime now = LocalDateTime.now();
+                    if (old == null || Duration.between(old, now).toMillis() > TimeUnit.HOURS.toMillis(3)) {
+                        configuration.getCacheSide().setLastFileCacheBuildTime(now);
+                        driver.buildCache();
+                        if (trash != null)
+                            trash.buildCache();
+                    }
                 } catch (final Exception exception) {
                     throw new IllegalParametersException("Failed to build cache.", ParametersMap.create().add("name", name).add("type", type).add("configuration", configuration), exception);
                 } finally {

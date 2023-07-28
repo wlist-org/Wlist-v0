@@ -195,6 +195,7 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
         protected @Nullable String imageLink = null;
         protected boolean vip = false; // TODO vipLevel
         protected long fileCount = -1;
+        protected @Nullable LocalDateTime lastFileCacheBuildTime = null;
         protected @Nullable LocalDateTime lastFileIndexBuildTime = null;
         protected @Nullable LocalDateTime lastTrashIndexBuildTime = null;
 
@@ -219,6 +220,8 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
                     o -> YamlHelper.transferBooleanFromStr(o, errors, prefix + "vip")).booleanValue();
             this.fileCount = YamlHelper.getConfig(cache, "file_count", this.fileCount,
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "file_count", BigInteger.valueOf(-1), BigInteger.valueOf(Long.MAX_VALUE))).longValue();
+            this.lastFileCacheBuildTime = YamlHelper.getConfigNullable(cache, "last_file_cache_build_time",
+                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "last_file_cache_build_time", DriverConfiguration.TimeFormatter));
             this.lastFileIndexBuildTime = YamlHelper.getConfigNullable(cache, "last_file_index_build_time",
                     o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "last_file_index_build_time", DriverConfiguration.TimeFormatter));
             this.lastTrashIndexBuildTime = YamlHelper.getConfigNullable(cache, "last_trash_index_build_time",
@@ -231,6 +234,7 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
             cache.put("image_link", this.imageLink);
             cache.put("vip", this.vip);
             cache.put("file_count", this.fileCount);
+            cache.put("last_file_cache_build_time", this.lastFileCacheBuildTime == null ? null : this.lastFileCacheBuildTime.format(DriverConfiguration.TimeFormatter));
             cache.put("last_file_index_build_time", this.lastFileIndexBuildTime == null ? null : this.lastFileIndexBuildTime.format(DriverConfiguration.TimeFormatter));
             cache.put("last_trash_index_build_time", this.lastTrashIndexBuildTime == null ? null : this.lastTrashIndexBuildTime.format(DriverConfiguration.TimeFormatter));
             return cache;
@@ -266,6 +270,14 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
 
         public void setFileCount(final long fileCount) {
             this.fileCount = fileCount;
+        }
+
+        public @Nullable LocalDateTime getLastFileCacheBuildTime() {
+            return this.lastFileCacheBuildTime;
+        }
+
+        public void setLastFileCacheBuildTime(final @Nullable LocalDateTime lastFileCacheBuildTime) {
+            this.lastFileCacheBuildTime = lastFileCacheBuildTime;
         }
 
         public @Nullable LocalDateTime getLastFileIndexBuildTime() {

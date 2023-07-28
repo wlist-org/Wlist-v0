@@ -20,9 +20,11 @@ import org.jetbrains.annotations.UnmodifiableView;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class Trash_123pan implements DriverTrashInterface<Driver_123Pan> {
     private @NotNull Driver_123Pan driver = new Driver_123Pan();
@@ -45,8 +47,10 @@ public class Trash_123pan implements DriverTrashInterface<Driver_123Pan> {
 
     @Override
     public void buildCache() throws SQLException {
-//        if (this.driver.getConfiguration().getCacheSide().getLastTrashIndexBuildTime() == null)
-//            this.buildIndex();
+        final LocalDateTime old = this.driver.getConfiguration().getCacheSide().getLastTrashIndexBuildTime();
+        final LocalDateTime now = LocalDateTime.now();
+        if (old == null || Duration.between(old, now).toMillis() > TimeUnit.HOURS.toMillis(3))
+            this.buildIndex();
     }
 
     @Override
