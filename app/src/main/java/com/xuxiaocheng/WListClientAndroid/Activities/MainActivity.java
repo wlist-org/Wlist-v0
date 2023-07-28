@@ -8,7 +8,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ListAdapter;
 import android.widget.ListView;
-import android.widget.SimpleAdapter;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -31,6 +30,7 @@ import com.xuxiaocheng.WListClient.Server.FileLocation;
 import com.xuxiaocheng.WListClient.Server.Options;
 import com.xuxiaocheng.WListClient.Server.SpecialDriverName;
 import com.xuxiaocheng.WListClient.Server.VisibleFileInformation;
+import com.xuxiaocheng.WListClientAndroid.Activities.CustomViews.FileListAdapter;
 import com.xuxiaocheng.WListClientAndroid.Activities.CustomViews.MainTab;
 import com.xuxiaocheng.WListClientAndroid.Client.TokenManager;
 import com.xuxiaocheng.WListClientAndroid.Client.WListClientManager;
@@ -42,15 +42,10 @@ import com.xuxiaocheng.WListClientAndroid.databinding.UserListContentBinding;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -176,34 +171,25 @@ public class MainActivity extends AppCompatActivity {
                     20, currentPage, Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false);
             list = tmp == null ? Pair.ImmutablePair.makeImmutablePair(-1L, List.of()) : tmp;
         }
-        final List<Map<String, Object>> resources = new ArrayList<>(list.getSecond().size());
-        for (final VisibleFileInformation information: list.getSecond()) {
-            final Map<String, Object> map = new HashMap<>();
-            map.put("image", R.mipmap.app_logo);
-            map.put("name", FileInformationGetter.name(information));
-            final LocalDateTime update = FileInformationGetter.updateTime(information);
-            map.put("tip", update == null ? "unknown" : update.format(DateTimeFormatter.ISO_DATE_TIME));
-            resources.add(map);
-        }
         final int allPage = MiscellaneousUtil.calculatePartCount(list.getFirst().intValue(), 20);
         final boolean isRoot = SpecialDriverName.RootDriver.getIdentifier().equals(FileLocationSupporter.driver(directoryLocation));
         final String countS = String.format(Locale.getDefault(), "%d", list.getFirst());
         final String currentPageS = String.format(Locale.getDefault(), "%d", currentPage + 1);
         final String allPageS = String.format(Locale.getDefault(), "%d", Math.max(allPage, 1));
-        final ListAdapter adapter = new SimpleAdapter(this, resources, R.layout.file_list_cell,
-                new String[] {"image", "name", "tip"},
-                new int[] {R.id.file_list_image, R.id.file_list_name, R.id.file_list_tip});
+        final ListAdapter adapter = new FileListAdapter(list.getSecond(), this.getLayoutInflater());
         final AtomicBoolean clickable = new AtomicBoolean(true);
+        final int nonclickableColor = this.getResources().getColor(R.color.nonclickable, this.getTheme());
+        final int clickableColor = this.getResources().getColor(R.color.black, this.getTheme());
         this.runOnUiThread(() -> {
             count.setText(countS);
             pageCurrent.setText(currentPageS);
             pageAll.setText(allPageS);
             if (currentPage <= 0) {
-                left.setTextColor(this.getResources().getColor(R.color.nonclickable, this.getTheme()));
+                left.setTextColor(nonclickableColor);
                 left.setOnClickListener(null);
                 left.setClickable(false);
             } else {
-                left.setTextColor(this.getResources().getColor(R.color.black, this.getTheme()));
+                left.setTextColor(clickableColor);
                 left.setOnClickListener(v -> {
                     if (!clickable.compareAndSet(true, false))
                         return;
@@ -214,11 +200,11 @@ public class MainActivity extends AppCompatActivity {
                 left.setClickable(true);
             }
             if (currentPage >= allPage - 1) {
-                right.setTextColor(this.getResources().getColor(R.color.nonclickable, this.getTheme()));
+                right.setTextColor(nonclickableColor);
                 right.setOnClickListener(null);
                 right.setClickable(false);
             } else {
-                right.setTextColor(this.getResources().getColor(R.color.black, this.getTheme()));
+                right.setTextColor(clickableColor);
                 right.setOnClickListener(v -> {
                     if (!clickable.compareAndSet(true, false))
                         return;
@@ -237,9 +223,12 @@ public class MainActivity extends AppCompatActivity {
                 final VisibleFileInformation information = list.getSecond().get(i);
                 if (FileInformationGetter.isDirectory(information))
                     Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> {
-                        this.setFileList(address, isRoot ? FileLocationSupporter.create(FileInformationGetter.name(information), 0) :
-                                FileLocationSupporter.create(FileLocationSupporter.driver(directoryLocation), FileInformationGetter.id(information)),
-                                0, page);
+                        final FileLocation location;
+                        if (isRoot)
+                            location = FileLocationSupporter.create(FileInformationGetter.name(information), 0);
+                        else
+                            location = FileLocationSupporter.create(FileLocationSupporter.driver(directoryLocation), FileInformationGetter.id(information));
+                        this.setFileList(address, location, 0, page);
                         this.runOnUiThread(() -> name.setText(FileInformationGetter.name(information)));
                     })).addListener(Main.ThrowableListenerWithToast(MainActivity.this));
             });
