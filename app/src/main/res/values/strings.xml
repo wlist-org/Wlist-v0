@@ -12,4 +12,5 @@
 	<string name="starting_internal_server">Starting internal server…</string>
 	<string name="loading_clients">Connected to server. Loading…</string>
 	<string name="login_exit">Exit app</string>
+	<string name="exit_press_again">Press again to exit the app.</string>
 </resources>

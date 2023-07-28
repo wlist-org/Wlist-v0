@@ -10,4 +10,5 @@
 	<string name="starting_internal_server">正在启动内置服务端……</string>
 	<string name="loading_clients">已连接至服务端，加载中……</string>
 	<string name="login_exit">退出应用</string>
+	<string name="exit_press_again">再按一次退出应用</string>
 </resources>

@@ -9,6 +9,7 @@ import android.view.ViewGroup;
 import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -42,6 +43,8 @@ import com.xuxiaocheng.WListClientAndroid.databinding.UserListContentBinding;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
@@ -235,6 +238,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    @Nullable protected LocalDateTime lastBackPressedTime;
     @Override
     public void onBackPressed() {
         final MainTab.TabChoice choice = this.minTabChoice.get();
@@ -245,15 +249,22 @@ public class MainActivity extends AppCompatActivity {
                     if (p == null)
                         break;
                     Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> {
-                                this.setFileList(p.getB().getFirst(), p.getA().getFirst(),
-                                        p.getA().getSecond().intValue(), p.getB().getSecond());
-                                this.runOnUiThread(() -> ((TextView) p.getB().getSecond().getViewById(R.id.file_list_name)).setText(p.getC()));
-                            })).addListener(Main.ThrowableListenerWithToast(MainActivity.this));
+                        this.setFileList(p.getB().getFirst(), p.getA().getFirst(),
+                                p.getA().getSecond().intValue(), p.getB().getSecond());
+                        this.runOnUiThread(() -> ((TextView) p.getB().getSecond().getViewById(R.id.file_list_name)).setText(p.getC()));
+                    })).addListener(Main.ThrowableListenerWithToast(MainActivity.this));
                     return;
                 }
-                case User -> {} // TODO
+                case User -> {
+                } // TODO
             }
-        super.onBackPressed();
+        final LocalDateTime now = LocalDateTime.now();
+        if (this.lastBackPressedTime != null && Duration.between(this.lastBackPressedTime, now).toMillis() < 2000) {
+            super.onBackPressed();
+            return;
+        }
+        Toast.makeText(this, R.string.exit_press_again, Toast.LENGTH_SHORT).show();
+        this.lastBackPressedTime = now;
     }
 
     @Override
