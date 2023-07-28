@@ -36,11 +36,13 @@ public final class WListTest {
     public static void main(final String @NotNull [] args) throws Exception {
 //        if (true) return;
         WListTest.wrapServerInitialize(() -> {
+            HLog.DefaultLogger.log("", DriverManager.getFailedDriversAPI());
             final DriverInterface<?> driver = Objects.requireNonNull(DriverManager.getDriver("123pan_136"));
             HLog.DefaultLogger.log("",
-                    driver.list(new FileLocation("123pan_136", 0), 20, 0, Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND)
+                    driver.info(new FileLocation("123pan_136", 0)),
+                    driver.list(new FileLocation("123pan_136", 0), 20, 0, Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND),
+            null);
 //                    DriverManager_123pan.getFileInformation((DriverConfiguration_123Pan) driver.getConfiguration(), 2345490, null, null)
-            );
 //            TrashedFileManager.initialize(configuration.getName());
 //            return TrashManager_123pan.restoreFile(configuration, 2293734, true, null, null);
             return null;

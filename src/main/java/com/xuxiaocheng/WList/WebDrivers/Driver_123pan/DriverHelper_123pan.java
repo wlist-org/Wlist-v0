@@ -7,6 +7,7 @@ import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
@@ -30,6 +31,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
 import java.io.IOException;
+import java.net.URL;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -117,23 +119,59 @@ final class DriverHelper_123pan {
     };
     static final int UploadPartSize = 16 << 20; // const
 
+    private static final int[] ConstantArray = new int[256]; static {
+        for (int i = 0; i < 256; ++i) {
+            int k = i;
+            for (int j = 0; j < 8; ++j)
+                k = (1 & k) == 1 ? 0xedb88320 ^ k >>> 0x1 : k >>> 0x1;
+            DriverHelper_123pan.ConstantArray[i] = k;
+        }
+    }
+    private static @NotNull String getVerifyString(final @NotNull String source) {
+        int k = -1;
+        for (final int ch: source.toCharArray())
+            k = k >>> 0x8 ^ DriverHelper_123pan.ConstantArray[0xff & (k ^ ch)];
+        return Integer.toUnsignedString(~k);
+    }
+
+    private static final char[] ObscureArray = new char[] {'a', 'd', 'e', 'f', 'g', 'h', 'l', 'm', 'y', 'i', 'j', 'n', 'o', 'p', 'k', 'q', 'r', 's', 't', 'u', 'b', 'c', 'v', 'w', 's', 'z'};
+    @SuppressWarnings("SameParameterValue")
+    private static Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> generateDyKey(final @NotNull String url, final @NotNull String platform, final int appVersion) {
+        final int random = HRandomHelper.DefaultSecureRandom.nextInt(0x989680);
+        final LocalDateTime now = LocalDateTime.now();
+        final long time = now.toEpochSecond(ZoneOffset.ofHours(8));
+        // TODO getServerTime ;serverTime = response['data']['data']['timestamp']
+        // time = serverTime && getAbsMinuteDuration(time, serverTime) >= 20 ? serverTime : time,
+        // ;getAbsMinuteDuration: (a, b) => Math.abs(a - b) / 60;
+        final StringBuilder builder = new StringBuilder();
+        for (final char ch: now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm")).toCharArray())
+            //noinspection CharUsedInArithmeticContext
+            builder.append(DriverHelper_123pan.ObscureArray[ch - '0']);
+        final String _0x7f6d69 = DriverHelper_123pan.getVerifyString(builder.toString());
+        final String _0x3f8c6e = DriverHelper_123pan.getVerifyString(String.format("%d|%d|%s|%s|%d|%s", time, random, url, platform, appVersion, _0x7f6d69));
+        return Pair.ImmutablePair.makeImmutablePair(_0x7f6d69, String.format("%d-%d-%s", time, random, _0x3f8c6e));
+    }
+
     static @NotNull JSONObject sendRequestReceiveExtractedData(final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable DriverConfiguration_123Pan configuration, final @Nullable Map<@NotNull String, @NotNull Object> body, final boolean loginFlag) throws IllegalParametersException, IOException {
         final Headers.Builder builder = new Headers.Builder();
         if (configuration != null)
             builder.add("authorization", "Bearer " + configuration.getCacheSide().getToken());
         builder.add("user-agent", DriverHelper_123pan.agent);
-        builder.add("platform", "android").add("app-version", "36");
-        JSONObject json = DriverNetworkHelper.sendRequestReceiveJson(DriverHelper_123pan.httpClient, url, builder.build(), body);
+        builder.add("platform", "web").add("app-version", "3");
+        builder.set("cache-control", "no-cache");
+        final Pair.ImmutablePair<String, String> authKey = DriverHelper_123pan.generateDyKey(new URL(url.getFirst()).getPath(), "web", 3);
+        final Pair.ImmutablePair<String, String> realUrl = Pair.ImmutablePair.makeImmutablePair(String.format("%s?%s=%s", url.getFirst(), authKey.getFirst(), authKey.getSecond()), url.getSecond());
+        JSONObject json = DriverNetworkHelper.sendRequestReceiveJson(DriverHelper_123pan.httpClient, realUrl, builder.build(), body);
         if (json.getIntValue("code", -1) == DriverHelper_123pan.TokenExpireResponseCode && !loginFlag && configuration != null) {
             DriverHelper_123pan.forceGetToken(configuration);
-            json = DriverNetworkHelper.sendRequestReceiveJson(DriverHelper_123pan.httpClient, url,
+            json = DriverNetworkHelper.sendRequestReceiveJson(DriverHelper_123pan.httpClient, realUrl,
                     builder.set("authorization", "Bearer " + configuration.getCacheSide().getToken()).build(), body);
         }
         final int code = json.getIntValue("code", -1);
         final String message = json.getString("message");
         if (code != (loginFlag ? 200 : 0) || !(loginFlag ? "success" : "ok").equals(message))
             throw new IllegalResponseCodeException(code, message, ParametersMap.create()
-                    .add("url", url).add("configuration", configuration).add("body", body).add("json", json));
+                    .add("realUrl", realUrl).add("configuration", configuration).add("body", body).add("json", json));
         final JSONObject data = json.getJSONObject("data");
         if (data == null)
             throw new WrongResponseException("Missing response data.", json, ParametersMap.create()
@@ -448,7 +486,7 @@ final class DriverHelper_123pan {
      * <p> {@literal Ok.Failure: }Success. But need upload the file.
      * <p> {@literal Fail: }Failure.
      */
-    static @NotNull UnionPair<@NotNull UnionPair<@NotNull FileSqlInformation, @NotNull UploadIdentifier_123pan>, @NotNull FailureReason> uploadRequest(final @NotNull DriverConfiguration_123Pan configuration, final long parentId, final @NotNull String filename, final @LongRange(minimum = 0) long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException {
+    static @NotNull UnionPair<@NotNull UnionPair<@NotNull FileSqlInformation, @NotNull UploadIdentifier_123pan>, @NotNull FailureReason> uploadRequest(final @NotNull DriverConfiguration_123Pan configuration, final long parentId, final @NotNull String filename, final @LongRange(minimum = 0) long size, final @NotNull CharSequence md5, final Options.@NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException {
         if (!MiscellaneousUtil.md5Pattern.matcher(md5).matches()) // Unreachable!
             throw new IllegalParametersException("Invalid md5.", ParametersMap.create().add("md5", md5));
         if (!DriverHelper_123pan.filenamePredication.test(filename))

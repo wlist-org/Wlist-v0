@@ -15,6 +15,7 @@ import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.DriverManager;
+import com.xuxiaocheng.WList.Server.InternalDrivers.RootDriver;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.UploadMethods;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
@@ -72,7 +73,9 @@ public class Driver_123Pan_NoCache implements DriverInterface<DriverConfiguratio
 
     @Override
     public @Nullable FileSqlInformation info(final @NotNull FileLocation location) throws IllegalParametersException, IOException, SQLException {
-        final Long id = this.toRootId(location.id());
+        final long id = this.toRootId(location.id());
+        if (id == this.configuration.getWebSide().getRootDirectoryId()) return RootDriver.getDriverInformation(this.configuration);
+        if (id == 0) return null; // Out of Root File Tree.
         return DriverHelper_123pan.getFilesInformation(this.configuration, List.of(id)).get(id);
     }
 
