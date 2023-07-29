@@ -9,6 +9,7 @@ import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.WList.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInterface;
+import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.UploadMethods;
 import io.netty.buffer.ByteBuf;
@@ -119,7 +120,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @param policy Duplicate policy.
      * @return Upload methods for every 4MB ({@link com.xuxiaocheng.WList.Server.WListServer#FileTransferBufferSize}) chunks of file.
      * @see com.xuxiaocheng.WList.Driver.Helpers.DriverUtil#getRetryWrapper(String)
-     * @see com.xuxiaocheng.WList.Driver.Helpers.DriverUtil.OctetStreamRequestBody
+     * @see DriverNetworkHelper.ByteBufOctetStreamRequestBody
      * @see com.xuxiaocheng.WList.Driver.Helpers.DriverUtil#splitUploadMethod(ConsumerE, int)
      * @throws Exception Something went wrong.
      */

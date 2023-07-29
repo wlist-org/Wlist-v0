@@ -20,7 +20,6 @@ import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.UploadMethods;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
-import okio.BufferedSink;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -117,23 +116,7 @@ public class Driver_123Pan_NoCache implements DriverInterface<DriverConfiguratio
             final int len = (int) Math.min(DriverHelper_123pan.UploadPartSize, (size - readSize));readSize += len;
             final Pair.ImmutablePair<List<ConsumerE<ByteBuf>>, Runnable> split = DriverUtil.splitUploadMethod(b -> {
                 DriverNetworkHelper.callRequestWithBody(DriverHelper_123pan.fileClient, Pair.ImmutablePair.makeImmutablePair(url, "PUT"), null,
-                        new DriverUtil.OctetStreamRequestBody(len) {
-                            @Override
-                            public void writeTo(final @NotNull BufferedSink bufferedSink) throws IOException {
-                                assert b.readableBytes() == len;
-                                try {
-                                    bufferedSink.write(b.nioBuffer());
-                                } catch (final UnsupportedOperationException ignore) {
-                                    final int bufferSize = Math.min(len, 2 << 20);
-                                    for (final byte[] buffer = new byte[bufferSize]; b.readableBytes() > 0; ) {
-                                        final int len = Math.min(bufferSize, b.readableBytes());
-                                        b.readBytes(buffer, 0, len);
-                                        bufferedSink.write(buffer, 0, len);
-                                    }
-                                }
-                            }
-                        }
-                ).execute().close();
+                        new DriverNetworkHelper.ByteBufOctetStreamRequestBody(b)).execute().close();
                 countDown.getAndDecrement();
             }, len);
             consumers.addAll(split.getFirst());

@@ -8,6 +8,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
 import com.xuxiaocheng.WList.Exceptions.NetworkException;
 import com.xuxiaocheng.WList.Server.WListServer;
+import io.netty.buffer.ByteBuf;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.Dispatcher;
@@ -20,10 +21,13 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import okhttp3.internal.http.HttpMethod;
+import okio.BufferedSink;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Objects;
@@ -207,6 +211,54 @@ public final class DriverNetworkHelper {
     }
 
     public static @NotNull JSONObject sendRequestReceiveJson(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body) throws IOException {
-        return JSON.parseObject(DriverNetworkHelper.extraResponse(DriverNetworkHelper.sendRequestJson(client, url, headers, body)).byteStream());
+        try (final InputStream stream = DriverNetworkHelper.extraResponse(DriverNetworkHelper.sendRequestJson(client, url, headers, body)).byteStream()) {
+            return JSON.parseObject(stream);
+        }
+    }
+
+    public static class ByteBufOctetStreamRequestBody extends RequestBody {
+        protected final int length;
+        protected final @NotNull ByteBuf content;
+
+        public ByteBufOctetStreamRequestBody(final @NotNull ByteBuf content) {
+            super();
+            this.length = content.readableBytes();
+            this.content = content;
+        }
+
+        @Override
+        public @Nullable MediaType contentType() {
+            return MediaType.parse("application/octet-stream");
+        }
+
+        @Override
+        public long contentLength() {
+            return this.length;
+        }
+
+        @Override
+        public void writeTo(final @NotNull BufferedSink bufferedSink) throws IOException {
+            final ByteBuffer nio;
+            try {
+                nio = this.content.nioBuffer();
+            } catch (final RuntimeException exception) {
+                final int bufferSize = Math.min(this.length, 2 << 20);
+                for (final byte[] buffer = new byte[bufferSize]; this.content.readableBytes() > 0; ) {
+                    final int len = Math.min(bufferSize, this.content.readableBytes());
+                    this.content.readBytes(buffer, 0, len);
+                    bufferedSink.write(buffer, 0, len);
+                }
+                return;
+            }
+            bufferedSink.write(nio);
+        }
+
+        @Override
+        public @NotNull String toString() {
+            return "ByteBufOctetStreamRequestBody{" +
+                    "length=" + this.length +
+                    ", super=" + super.toString() +
+                    "}";
+        }
     }
 }

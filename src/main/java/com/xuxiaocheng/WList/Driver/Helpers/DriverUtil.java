@@ -17,9 +17,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.CompositeByteBuf;
 import okhttp3.Headers;
-import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
-import okhttp3.RequestBody;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -242,33 +240,6 @@ public final class DriverUtil {
         });
     }
 
-    public abstract static class OctetStreamRequestBody extends RequestBody {
-        protected final long length;
-
-        protected OctetStreamRequestBody(final long length) {
-            super();
-            this.length = length;
-        }
-
-        @Override
-        public @Nullable MediaType contentType() {
-            return MediaType.parse("application/octet-stream");
-        }
-
-        @Override
-        public long contentLength() {
-            return this.length;
-        }
-
-        @Override
-        public @NotNull String toString() {
-            return "OctetStreamRequestBody{" +
-                    "length=" + this.length +
-                    ", super=" + super.toString() +
-                    "}";
-        }
-    }
-
     // WARNING: assert requireSize % WListServer.FileTransferBufferSize == 0; (expected last chunk)
     public static Pair.@NotNull ImmutablePair<@NotNull List<@NotNull ConsumerE<@NotNull ByteBuf>>, @NotNull Runnable> splitUploadMethod(final @NotNull ConsumerE<? super @NotNull ByteBuf> sourceMethod, final int requireSize) {
         assert requireSize > 0;
@@ -290,8 +261,7 @@ public final class DriverUtil {
                     try {
                         sourceMethod.accept(buf);
                     } finally {
-                        if (buf.refCnt() > 0)
-                            buf.release();
+                        buf.release();
                     }
                 }
             });
