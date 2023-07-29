@@ -37,8 +37,9 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
 
     public static @NotNull FileSqlInformation getDriverInformation(final @NotNull DriverConfiguration<?, ?, ?> configuration) {
         return new FileSqlInformation(new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), 0),
-                0, configuration.getLocalSide().getDisplayName(), FileSqlInterface.FileSqlType.Directory, 0,
-                configuration.getLocalSide().getCreateTime(), configuration.getLocalSide().getUpdateTime(), "", null);
+                0, configuration.getName() , FileSqlInterface.FileSqlType.Directory, 0,
+                configuration.getLocalSide().getCreateTime(), configuration.getLocalSide().getUpdateTime(),
+                configuration.getLocalSide().getDisplayName(), null);
     }
 
     private @NotNull RootDriverConfiguration configuration = new RootDriverConfiguration();
