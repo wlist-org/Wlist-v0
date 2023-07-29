@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Exceptions;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -14,8 +15,13 @@ public class DriverTokenExpiredException extends IOException {
         super();
     }
 
+    @Deprecated
     public DriverTokenExpiredException(final @NotNull String message) {
         super(message);
+    }
+
+    public DriverTokenExpiredException(final @NotNull String message, final @NotNull ParametersMap parameters) {
+        super(message + parameters);
     }
 
     @Deprecated
@@ -23,7 +29,12 @@ public class DriverTokenExpiredException extends IOException {
         super(cause);
     }
 
+    @Deprecated
     public DriverTokenExpiredException(final @NotNull String message, final @NotNull Throwable cause) {
         super(message, cause);
+    }
+
+    public DriverTokenExpiredException(final @NotNull String message, final @NotNull ParametersMap parameters, final @NotNull Throwable cause) {
+        super(message + parameters, cause);
     }
 }

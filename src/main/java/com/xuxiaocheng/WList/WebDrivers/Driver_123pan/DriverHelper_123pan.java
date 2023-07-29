@@ -147,9 +147,9 @@ final class DriverHelper_123pan {
         for (final char ch: now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmm")).toCharArray())
             //noinspection CharUsedInArithmeticContext
             builder.append(DriverHelper_123pan.ObscureArray[ch - '0']);
-        final String _0x7f6d69 = DriverHelper_123pan.getVerifyString(builder.toString());
-        final String _0x3f8c6e = DriverHelper_123pan.getVerifyString(String.format("%d|%d|%s|%s|%d|%s", time, random, url, platform, appVersion, _0x7f6d69));
-        return Pair.ImmutablePair.makeImmutablePair(_0x7f6d69, String.format("%d-%d-%s", time, random, _0x3f8c6e));
+        final String timeVerifier = DriverHelper_123pan.getVerifyString(builder.toString());
+        final String mergeVerifier = DriverHelper_123pan.getVerifyString(String.format("%d|%d|%s|%s|%d|%s", time, random, url, platform, appVersion, timeVerifier));
+        return Pair.ImmutablePair.makeImmutablePair(timeVerifier, String.format("%d-%d-%s", time, random, mergeVerifier));
     }
 
     static @NotNull JSONObject sendRequestReceiveExtractedData(final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable DriverConfiguration_123Pan configuration, final @Nullable Map<@NotNull String, @NotNull Object> body, final boolean loginFlag) throws IllegalParametersException, IOException {
@@ -214,7 +214,7 @@ final class DriverHelper_123pan {
             default -> throw new IllegalParametersException("Unsupported login type.", ParametersMap.create().add("type", loginType));
         };
         if (!(isPhone ? DriverHelper_123pan.PhoneNumberPattern : DriverHelper_123pan.MailAddressPattern).matcher(configuration.getWebSide().getPassport()).matches())
-            throw new DriverTokenExpiredException(isPhone ? DriverUtil.InvalidPhoneNumber : DriverUtil.InvalidMailAddress);
+            throw new DriverTokenExpiredException(isPhone ? DriverUtil.InvalidPhoneNumber : DriverUtil.InvalidMailAddress, ParametersMap.create().add("passport", configuration.getWebSide().getPassport()));
                 // isPhone ? "\u8bf7\u8f93\u5165\u6b63\u786e\u7684\u624b\u673a\u53f7\u7801" : "\u8bf7\u8f93\u5165\u6b63\u786e\u7684\u90ae\u7bb1\u53f7";
         final Map<String, Object> request = new LinkedHashMap<>(3);
         request.put("type", loginType);
@@ -225,7 +225,7 @@ final class DriverHelper_123pan {
             data = DriverHelper_123pan.sendRequestReceiveExtractedData(DriverHelper_123pan.LoginURL, null, request, true);
         } catch (final IllegalResponseCodeException exception) {
             if (exception.getCode() == DriverHelper_123pan.TokenExpireResponseCode)
-                throw new DriverTokenExpiredException(exception.getMeaning());
+                throw new DriverTokenExpiredException(exception.getMeaning(), ParametersMap.create().add("passport", configuration.getWebSide().getPassport()));
             throw exception;
         }
         DriverHelper_123pan.handleLoginData(configuration.getCacheSide(), data);
@@ -312,7 +312,30 @@ final class DriverHelper_123pan {
         configuration.getCacheSide().setModified(true);
     }
 
-    // File
+    /**
+     * Logout.
+     * @param configuration
+     * <p> {@literal SET configuration.cacheSide.token: null}
+     * <p> {@literal SET configuration.cacheSide.nickname: }
+     * <p> {@literal SET configuration.cacheSide.imageLink: }
+     * <p> {@literal SET configuration.cacheSide.vip: }
+     * <p> {@literal SET configuration.cacheSide.fileCount: }
+     * <p> {@literal SET configuration.webSide.spaceAll: }
+     * <p> {@literal SET configuration.webSide.spaceUsed: }
+     * <p> {@literal SET configuration.webSide.maxSizePerFile: }
+     */
+    static void logout(final @NotNull DriverConfiguration_123Pan configuration) throws IllegalParametersException, IOException {
+        try {
+            DriverHelper_123pan.sendRequestReceiveExtractedData(DriverHelper_123pan.LogoutURL, configuration, null, false);
+            // {"code":200,"message":"请重新登录！"}
+        } catch (final IllegalResponseCodeException exception) {
+            if (exception.getCode() == 200 && "\u8bf7\u91cd\u65b0\u767b\u5f55\uff01".equals(exception.getMeaning()))
+                return;
+            throw exception;
+        }
+    }
+
+        // File
 
     private static @NotNull @UnmodifiableView Map<@NotNull Long, @Nullable FileSqlInformation> transferInformationMap(final @NotNull String driver, final @Nullable JSONArray infos) {
         if (infos == null)

@@ -32,8 +32,10 @@ public class Driver_123Pan extends Driver_123Pan_NoCache {
     }
 
     @Override
-    public void uninitialize() throws SQLException {
-        FileManager.quicklyUninitialize(this.configuration.getName(), null);
+    public void uninitialize() throws IllegalParametersException, IOException, SQLException {
+        final String name = this.configuration.getName();
+        super.uninitialize();
+        FileManager.quicklyUninitialize(name, null);
     }
 
     @Override

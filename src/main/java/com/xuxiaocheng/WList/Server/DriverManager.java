@@ -71,6 +71,7 @@ public final class DriverManager {
     }
 
     public static void initialize(final @NotNull File configurationsPath) {
+        final LocalDateTime t1 = LocalDateTime.now();
         DriverManager.configurationsPath.initialize(configurationsPath.getAbsoluteFile());
         DriverManager.drivers.clear();
         final CompletableFuture<?>[] futures = new CompletableFuture[GlobalConfiguration.getInstance().drivers().size()];
@@ -78,7 +79,8 @@ public final class DriverManager {
         for (final Map.Entry<String, WebDriversType> entry: GlobalConfiguration.getInstance().drivers().entrySet())
             futures[i++] = CompletableFuture.runAsync(() -> DriverManager.initializeDriver0(entry.getKey(), entry.getValue()), WListServer.ServerExecutors);
         CompletableFuture.allOf(futures).join();
-        DriverManager.logger.log(HLogLevel.ENHANCED, "Loaded ", DriverManager.drivers.size(), " driver", DriverManager.drivers.size() > 1 ? "s" : "", " successfully. ", DriverManager.failedDrivers.size(), " failed.");
+        final LocalDateTime t2 = LocalDateTime.now();
+        DriverManager.logger.log(HLogLevel.ENHANCED, "Loaded ", DriverManager.drivers.size(), " driver", DriverManager.drivers.size() > 1 ? "s" : "", " successfully. ", DriverManager.failedDrivers.size(), " failed.", ParametersMap.create().add("cost", (Supplier<String>) () -> Duration.between(t1, t2).toMillis() + " ms"));
     }
 
     private static @NotNull File getConfigurationFile(final @NotNull String name) throws IOException {
@@ -126,7 +128,7 @@ public final class DriverManager {
                     throw new IllegalParametersException("Failed to initialize.", ParametersMap.create().add("name", name).add("type", type).add("configuration", configuration), exception);
                 }
                 try {
-                    final LocalDateTime old = configuration.getCacheSide().getLastFileIndexBuildTime();
+                    final LocalDateTime old = configuration.getCacheSide().getLastFileCacheBuildTime();
                     final LocalDateTime now = LocalDateTime.now();
                     if (old == null || Duration.between(old, now).toMillis() > TimeUnit.HOURS.toMillis(3)) {
                         configuration.getCacheSide().setLastFileCacheBuildTime(now);

@@ -38,8 +38,8 @@ public final class WListTest {
         WListTest.wrapServerInitialize(() -> {
             HLog.DefaultLogger.log("", DriverManager.getFailedDriversAPI());
             final DriverInterface<?> driver = Objects.requireNonNull(DriverManager.getDriver("123pan_136"));
+            driver.uninitialize();
             HLog.DefaultLogger.log("",
-                    driver.info(new FileLocation("123pan_136", 0)),
                     driver.list(new FileLocation("123pan_136", 0), 20, 0, Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND),
             null);
 //                    DriverManager_123pan.getFileInformation((DriverConfiguration_123Pan) driver.getConfiguration(), 2345490, null, null)

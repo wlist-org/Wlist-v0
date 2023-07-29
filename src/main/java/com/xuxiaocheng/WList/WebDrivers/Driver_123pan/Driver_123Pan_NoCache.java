@@ -46,7 +46,9 @@ public class Driver_123Pan_NoCache implements DriverInterface<DriverConfiguratio
     }
 
     @Override
-    public void uninitialize() throws SQLException {
+    public void uninitialize() throws IllegalParametersException, IOException, SQLException {
+        DriverHelper_123pan.logout(this.configuration);
+        this.configuration = new DriverConfiguration_123Pan();
     }
 
     @Override
