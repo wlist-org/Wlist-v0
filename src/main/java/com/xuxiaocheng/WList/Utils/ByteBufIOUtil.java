@@ -12,6 +12,7 @@ import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.UUID;
 
 public final class ByteBufIOUtil {
@@ -496,8 +497,10 @@ public final class ByteBufIOUtil {
     }
 
     public static byte[] allToByteArray(final @NotNull ByteBuf buffer) {
-        if (buffer.hasArray())
-            return buffer.array().clone();
+        if (buffer.hasArray()) {
+            final int offset = buffer.arrayOffset();
+            return Arrays.copyOfRange(buffer.array(), offset, offset + buffer.readableBytes());
+        }
         final int index = buffer.readerIndex();
         final byte[] bytes = new byte[buffer.readableBytes()];
         buffer.readBytes(bytes);

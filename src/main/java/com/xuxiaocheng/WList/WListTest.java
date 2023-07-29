@@ -1,7 +1,6 @@
 package com.xuxiaocheng.WList;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
-import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Helper.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -15,21 +14,24 @@ import com.xuxiaocheng.WList.Databases.User.UserSqlHelper;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupSqlHelper;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
-import com.xuxiaocheng.WList.Driver.FailureReason;
 import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Server.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
-import com.xuxiaocheng.WList.Server.InternalDrivers.RootDriver;
-import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.ByteBufOutputStream;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Map;
 import java.util.Objects;
 
@@ -49,12 +51,13 @@ public final class WListTest {
 //                    driver.list(new FileLocation("123pan_136", 0), 20, 0, Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND),
             "");
 
-//            final ByteBuf content = ByteBufAllocator.DEFAULT.heapBuffer();
-//            try (final InputStream inputStream = new BufferedInputStream(new FileInputStream("C:\\Users\\27622\\Desktop\\WList - bugs.txt"))) {
-//                try (final OutputStream outputStream = new ByteBufOutputStream(content)) {
-//                    inputStream.transferTo(outputStream);
-//                }
-//            }
+            final ByteBuf content = ByteBufAllocator.DEFAULT.heapBuffer();
+            try (final InputStream inputStream = new BufferedInputStream(new FileInputStream("C:\\Users\\27622\\Desktop\\WList - bugs.txt"))) {
+                try (final OutputStream outputStream = new ByteBufOutputStream(content)) {
+                    inputStream.transferTo(outputStream);
+                }
+            }
+
 //            // size: 2493
 //            final UnionPair<UploadMethods, FailureReason> upload = RootDriver.getInstance().upload(new FileLocation("123pan_136", 0), "WList - bugs.txt",
 //                    content.readableBytes(), MiscellaneousUtil.getMd5(ByteBufIOUtil.allToByteArray(content)), Options.DuplicatePolicy.ERROR);
@@ -65,14 +68,14 @@ public final class WListTest {
 //            final FileSqlInformation information = upload.getT().supplier().get();
 //            upload.getT().finisher().run();
 //            return information;
-
-            final UnionPair<DownloadMethods, FailureReason> download = RootDriver.getInstance().download(new FileLocation("123pan_136", 2414972), 0, 3000);
-            if (download.isFailure())
-                return download.getE();
-            assert download.getT().methods().size() == 1;
-            final ByteBuf content = download.getT().methods().get(0).get();
+//
+//            final UnionPair<DownloadMethods, FailureReason> download = RootDriver.getInstance().download(new FileLocation("123pan_136", 2414972), 0, 3000);
+//            if (download.isFailure())
+//                return download.getE();
+//            assert download.getT().methods().size() == 1;
+//            final ByteBuf content = download.getT().methods().get(0).get();
             return MiscellaneousUtil.getMd5(ByteBufIOUtil.allToByteArray(content));
-            // a3ef4d507bef27b30319de7b029bc2b1 // 32e85c1c24968ca7f0f4a46e11403524
+            // 32e85c1c24968ca7f0f4a46e11403524
 
 //            DriverManager_123pan.getFileInformation((DriverConfiguration_123Pan) driver.getConfiguration(), 2345490, null, null)
 //            TrashedFileManager.initialize(configuration.getName());
