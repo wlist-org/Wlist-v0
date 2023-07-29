@@ -316,26 +316,27 @@ final class DriverHelper_123pan {
      * Logout.
      * @param configuration
      * <p> {@literal SET configuration.cacheSide.token: null}
-     * <p> {@literal SET configuration.cacheSide.nickname: }
-     * <p> {@literal SET configuration.cacheSide.imageLink: }
-     * <p> {@literal SET configuration.cacheSide.vip: }
-     * <p> {@literal SET configuration.cacheSide.fileCount: }
-     * <p> {@literal SET configuration.webSide.spaceAll: }
-     * <p> {@literal SET configuration.webSide.spaceUsed: }
-     * <p> {@literal SET configuration.webSide.maxSizePerFile: }
+     * <p> {@literal SET configuration.cacheSide.tokenExpire: null}
+     * <p> {@literal SET configuration.cacheSide.refreshExpire: null}
      */
     static void logout(final @NotNull DriverConfiguration_123Pan configuration) throws IllegalParametersException, IOException {
         try {
             DriverHelper_123pan.sendRequestReceiveExtractedData(DriverHelper_123pan.LogoutURL, configuration, null, false);
             // {"code":200,"message":"请重新登录！"}
+            throw new RuntimeException("Unreachable!");
         } catch (final IllegalResponseCodeException exception) {
-            if (exception.getCode() == 200 && "\u8bf7\u91cd\u65b0\u767b\u5f55\uff01".equals(exception.getMeaning()))
-                return;
-            throw exception;
+            if (exception.getCode() != 200 || !"\u8bf7\u91cd\u65b0\u767b\u5f55\uff01".equals(exception.getMeaning()))
+                throw exception;
         }
+        configuration.getCacheSide().setToken(null);
+        configuration.getCacheSide().setTokenExpire(null);
+        configuration.getCacheSide().setRefreshExpire(null);
+        configuration.getCacheSide().setModified(true);
+        DriverHelper_123pan.logger.log(HLogLevel.LESS, "Logged out.", ParametersMap.create()
+                .add("driver", configuration.getName()).add("passport", configuration.getWebSide().getPassport()));
     }
 
-        // File
+    // File
 
     private static @NotNull @UnmodifiableView Map<@NotNull Long, @Nullable FileSqlInformation> transferInformationMap(final @NotNull String driver, final @Nullable JSONArray infos) {
         if (infos == null)
