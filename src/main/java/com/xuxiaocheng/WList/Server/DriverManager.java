@@ -170,11 +170,13 @@ public final class DriverManager {
                         driver.getSecond().getSecond().uninitialize();
                 } catch (final Exception exception) {
                     throw new IllegalParametersException("Failed to uninitialize driver.", ParametersMap.create().add("name", name).add("type", driver.getFirst()), exception);
+                } finally {
+                    DriverManager.dumpConfigurationIfModified(driver.getSecond().getFirst().getConfiguration());
                 }
             return true;
         } catch (final IllegalParametersException | RuntimeException exception) {
             DriverManager.logger.log(HLogLevel.ERROR, "Failed to unload driver.", ParametersMap.create().add("name", name), exception);
-        } catch (final Throwable throwable) {
+        } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable throwable) {
             Thread.getDefaultUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), throwable);
         }
         return false;
