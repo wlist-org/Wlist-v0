@@ -18,15 +18,10 @@ import com.xuxiaocheng.WList.Server.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.WListServer;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.PooledByteBufAllocator;
-import io.netty.buffer.UnpooledByteBufAllocator;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 public final class WListTest {
@@ -34,33 +29,13 @@ public final class WListTest {
         super();
     }
 
-    private static void test(final @NotNull ByteBuf buf) {
-        try {
-            buf.writeBytes("tester".getBytes(StandardCharsets.UTF_8));
-            final byte[] bytes = new byte[6];
-            buf.nioBuffer().get(bytes);
-            HLog.DefaultLogger.log(HLogLevel.INFO, "Success (", new String(bytes, StandardCharsets.UTF_8), "): ", buf.getClass().getName());
-        } catch (final RuntimeException exception) {
-            HLog.DefaultLogger.log(HLogLevel.ERROR, "Failure: ", buf.getClass().getName(), exception.getMessage());
-        } finally {
-            buf.release();
-        }
-    }
-
     @SuppressWarnings("OverlyBroadThrowsClause")
     public static void main(final String @NotNull [] args) throws Exception {
-        WListTest.test(PooledByteBufAllocator.DEFAULT.heapBuffer());
-        WListTest.test(PooledByteBufAllocator.DEFAULT.directBuffer());
-        WListTest.test(UnpooledByteBufAllocator.DEFAULT.heapBuffer());
-        WListTest.test(UnpooledByteBufAllocator.DEFAULT.directBuffer());
-        WListTest.test(ByteBufAllocator.DEFAULT.compositeBuffer(2).addComponents(true,
-                ByteBufAllocator.DEFAULT.buffer().writeBytes("aa".getBytes(StandardCharsets.UTF_8)),
-                ByteBufAllocator.DEFAULT.buffer().writeBytes("bb".getBytes(StandardCharsets.UTF_8))));
+
         if (true) return;
         WListTest.wrapServerInitialize(() -> {
 //            DriverManager_123pan.getFileInformation((DriverConfiguration_123Pan) driver.getConfiguration(), 2345490, null, null)
-//            TrashedFileManager.initialize(configuration.getName());
-//            return TrashManager_123pan.restoreFile(configuration, 2293734, true, null, null);
+
         });
     }
 

@@ -31,7 +31,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class Driver_123Pan_NoCache implements DriverInterface<DriverConfiguration_123Pan> {
+public class Driver_123pan_NoCache implements DriverInterface<DriverConfiguration_123Pan> {
     protected @NotNull DriverConfiguration_123Pan configuration = new DriverConfiguration_123Pan();
 
     @Override
@@ -49,7 +49,6 @@ public class Driver_123Pan_NoCache implements DriverInterface<DriverConfiguratio
         DriverHelper_123pan.logout(this.configuration);
         this.configuration.getCacheSide().setLastFileCacheBuildTime(null);
         this.configuration.getCacheSide().setLastFileIndexBuildTime(null);
-        this.configuration.getCacheSide().setLastTrashIndexBuildTime(null);
         this.configuration.getCacheSide().setModified(true);
     }
 
@@ -160,7 +159,7 @@ public class Driver_123Pan_NoCache implements DriverInterface<DriverConfiguratio
     @Override
     public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> move(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetLocation, final Options.@NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException, SQLException {
         if (policy != Options.DuplicatePolicy.KEEP)
-            throw new UnsupportedOperationException("Driver_123Pan_NoCache method 'move' only supports duplicate policy KEEP.");
+            throw new UnsupportedOperationException("Driver_123pan_NoCache method 'move' only supports duplicate policy KEEP.");
         final Long sourceId = sourceLocation.id();
         final FileSqlInformation information = DriverHelper_123pan.moveFiles(this.configuration, List.of(sourceId), this.toRootId(targetLocation.id()), policy).get(sourceId);
         return information == null ? UnionPair.fail(FailureReason.byNoSuchFile("Moving.", sourceLocation)) : UnionPair.ok(information);
@@ -169,13 +168,13 @@ public class Driver_123Pan_NoCache implements DriverInterface<DriverConfiguratio
     @Override
     public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> rename(final @NotNull FileLocation sourceLocation, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException, SQLException {
         if (policy != Options.DuplicatePolicy.ERROR)
-            throw new UnsupportedOperationException("Driver_123Pan_NoCache method 'rename' only supports duplicate policy ERROR.");
+            throw new UnsupportedOperationException("Driver_123pan_NoCache method 'rename' only supports duplicate policy ERROR.");
         return DriverHelper_123pan.renameFile(this.configuration, sourceLocation.id(), name, policy);
     }
 
     @Override
     public @NotNull String toString() {
-        return "Driver_123Pan_NoCache{" +
+        return "Driver_123pan_NoCache{" +
                 "configuration=" + this.configuration +
                 '}';
     }

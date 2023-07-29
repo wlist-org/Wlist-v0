@@ -320,6 +320,8 @@ final class DriverHelper_123pan {
      * <p> {@literal SET configuration.cacheSide.refreshExpire: null}
      */
     static void logout(final @NotNull DriverConfiguration_123Pan configuration) throws IllegalParametersException, IOException {
+        if (configuration.getCacheSide().getToken() == null)
+            return;
         try {
             DriverHelper_123pan.sendRequestReceiveExtractedData(DriverHelper_123pan.LogoutURL, configuration, null, false);
             // {"code":200,"message":"请重新登录！"}

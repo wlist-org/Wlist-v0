@@ -24,7 +24,7 @@ import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.List;
 
-public class Driver_123Pan extends Driver_123Pan_NoCache {
+public class Driver_123pan extends Driver_123pan_NoCache {
     @Override
     public void initialize(final @NotNull DriverConfiguration_123Pan configuration) throws SQLException {
         FileManager.quicklyInitialize(new FileSqlHelper(PooledDatabase.instance.getInstance(), configuration.getName(), configuration.getWebSide().getRootDirectoryId()), null);
@@ -101,7 +101,7 @@ public class Driver_123Pan extends Driver_123Pan_NoCache {
 
     @Override
     public @NotNull String toString() {
-        return "Driver_123Pan{" +
+        return "Driver_123pan{" +
                 "configuration=" + this.configuration +
                 '}';
     }
