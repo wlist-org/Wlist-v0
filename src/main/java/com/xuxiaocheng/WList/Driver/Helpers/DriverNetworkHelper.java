@@ -49,14 +49,17 @@ public final class DriverNetworkHelper {
                 request.header("Range") == null ? "" : (" (Range: " + request.header("Range") + ')'));
         final long time1 = System.currentTimeMillis();
         final Response response;
+        boolean successFlag = false;
         try {
             response = chain.proceed(request);
+            successFlag = true;
         } catch (final RuntimeException exception) {
             Thread.getDefaultUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), exception);
             throw exception;
         } finally {
             final long time2 = System.currentTimeMillis();
-            DriverNetworkHelper.logger.log(HLogLevel.NETWORK, "Received. Totally cost time: ", time2 - time1, "ms.");
+            DriverNetworkHelper.logger.log(HLogLevel.NETWORK, "Received. Totally cost time: ", time2 - time1, "ms.",
+                    successFlag ? "" : " But something went wrong.");
         }
         return response;
     };

@@ -450,18 +450,13 @@ final class DriverHelper_123pan {
         final int aIndex = url.indexOf('&', pIndex);
         final String base64 = url.substring(pIndex, aIndex < 0 ? url.length() : aIndex);
         final String decodedUrl = new String(Base64.getDecoder().decode(base64));
-        if (!decodedUrl.startsWith("https://download-cdn.123pan.cn/")) {
-            DriverHelper_123pan.logger.log(HLogLevel.MISTAKE, "Something went wrong when getting download url! (Unresolvable! Caused by the web server.)",
-                    ParametersMap.create().add("decodedUrl", decodedUrl).add("file", file));
-            throw new WrongResponseException("Getting file download url. Invalid download url.", data, ParametersMap.create()
-                    .add("configuration", configuration).add("file", file));
+        if (!decodedUrl.startsWith("https://download-cdn.123pan.cn/") || !decodedUrl.contains("auto_redirect")) {
+            DriverHelper_123pan.logger.log(HLogLevel.MISTAKE, "Something went wrong when getting download url! (Unresolvable! Please report this to the developer!)",
+                    ParametersMap.create().add("file", file).add("decodedUrl", decodedUrl));
+            throw new WrongResponseException("Invalid file download url.", data, ParametersMap.create()
+                    .add("configuration", configuration).add("file", file).add("url", url).add("decodedUrl", decodedUrl));
         }
-        final JSONObject redirectData = DriverHelper_123pan.sendRequestReceiveExtractedData(Pair.ImmutablePair.makeImmutablePair(decodedUrl, "GET"), null, null, false);
-        final String redirectUrl = redirectData.getString("redirect_url");
-        if (redirectUrl == null)
-            throw new WrongResponseException("Getting file download url. Missing 'redirect_url'.", redirectData, ParametersMap.create()
-                    .add("configuration", configuration).add("file", file).add("data", data));
-        return redirectUrl;
+        return decodedUrl.replace("auto_redirect=0", "auto_redirect=1");
     }
 
     /**
