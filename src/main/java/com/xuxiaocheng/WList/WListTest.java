@@ -18,10 +18,12 @@ import com.xuxiaocheng.WList.Server.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.WListServer;
+import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 public final class WListTest {
@@ -31,10 +33,10 @@ public final class WListTest {
 
     @SuppressWarnings("OverlyBroadThrowsClause")
     public static void main(final String @NotNull [] args) throws Exception {
+        HLog.DefaultLogger.log("", MiscellaneousUtil.getSha256("12345678".getBytes(StandardCharsets.UTF_8)));
 
         if (true) return;
         WListTest.wrapServerInitialize(() -> {
-//            DriverManager_123pan.getFileInformation((DriverConfiguration_123Pan) driver.getConfiguration(), 2345490, null, null)
 
         });
     }

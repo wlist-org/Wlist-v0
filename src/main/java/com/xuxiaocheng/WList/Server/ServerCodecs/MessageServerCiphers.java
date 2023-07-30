@@ -22,7 +22,6 @@ import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.security.interfaces.RSAKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.AlgorithmParameterSpec;
@@ -46,7 +45,7 @@ public class MessageServerCiphers extends MessageCiphers {
             throw new IllegalStateException("Initialized.");
         try {
             final KeyPairGenerator rsaGenerator = KeyPairGenerator.getInstance("RSA");
-            rsaGenerator.initialize(1024, (SecureRandom) HRandomHelper.DefaultSecureRandom);
+            rsaGenerator.initialize(2048, HRandomHelper.DefaultSecureRandom);
             final KeyPair rsaKeys = rsaGenerator.generateKeyPair();
             rsaModulus = ((RSAKey) rsaKeys.getPublic()).getModulus().toByteArray();
             rsaExponent = ((RSAPublicKey) rsaKeys.getPublic()).getPublicExponent().toByteArray();

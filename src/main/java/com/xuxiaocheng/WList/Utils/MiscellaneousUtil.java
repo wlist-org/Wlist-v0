@@ -39,6 +39,18 @@ public final class MiscellaneousUtil {
         return MiscellaneousUtil.getMd5(md5);
     }
 
+    public static @NotNull String getSha256(final byte @NotNull [] source) {
+        final MessageDigest sha256;
+        try {
+            sha256 = MessageDigest.getInstance("SHA-256");
+        } catch (final NoSuchAlgorithmException exception) {
+            throw new RuntimeException("Unreachable!", exception);
+        }
+        sha256.update(source);
+        final BigInteger i = new BigInteger(1, sha256.digest());
+        return String.format("%64s", i.toString(16)).replace(' ', '0');
+    }
+
     public static void updateMessageDigest(final @NotNull MessageDigest digester, final @NotNull InputStream source) throws IOException {
         int remaining = source.available();
         final int size = Math.min(1 << 20, remaining);

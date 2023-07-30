@@ -19,6 +19,6 @@ public final class PasswordGuard {
             () -> ARandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 256, ConstantManager.DefaultRandomChars), "initialize")).get();
 
     public static @NotNull String encryptPassword(final @NotNull CharSequence password) {
-        return MiscellaneousUtil.getMd5((password + PasswordGuard.ServerPasswordSlat).getBytes(StandardCharsets.UTF_8)) + Integer.toString(password.length(), 36);
+        return Integer.toString(password.length(), 36) + MiscellaneousUtil.getSha256((password + PasswordGuard.ServerPasswordSlat).getBytes(StandardCharsets.UTF_8));
     }
 }

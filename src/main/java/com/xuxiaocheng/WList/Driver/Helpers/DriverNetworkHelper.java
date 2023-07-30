@@ -240,7 +240,7 @@ public final class DriverNetworkHelper {
         public void writeTo(final @NotNull BufferedSink bufferedSink) throws IOException {
             final ByteBuffer nio;
             try {
-                nio = this.content.nioBuffer();
+                nio = this.content.nioBuffer(this.content.readerIndex(), this.content.readableBytes());
             } catch (final RuntimeException exception) {
                 final int bufferSize = Math.min(this.length, 2 << 20);
                 for (final byte[] buffer = new byte[bufferSize]; this.content.readableBytes() > 0; ) {
