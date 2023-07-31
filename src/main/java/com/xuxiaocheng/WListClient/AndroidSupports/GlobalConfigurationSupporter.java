@@ -32,8 +32,8 @@ public final class GlobalConfigurationSupporter {
         return new GlobalConfiguration(host, port, limit, threadCount);
     }
 
-    public static void init(final @Nullable File path) throws IOException {
-        GlobalConfiguration.init(path);
+    public static void initialize(final @Nullable File path) throws IOException {
+        GlobalConfiguration.initialize(path);
     }
 
     public static @NotNull GlobalConfiguration getInstance() {

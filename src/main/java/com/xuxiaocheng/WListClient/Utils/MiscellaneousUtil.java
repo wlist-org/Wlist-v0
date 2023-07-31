@@ -1,5 +1,7 @@
 package com.xuxiaocheng.WListClient.Utils;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -37,6 +39,18 @@ public final class MiscellaneousUtil {
         final MessageDigest md5 = MiscellaneousUtil.getMd5Digester();
         md5.update(source);
         return MiscellaneousUtil.getMd5(md5);
+    }
+
+    public static @NotNull String getSha256(final byte @NotNull [] source) {
+        final MessageDigest sha256;
+        try {
+            sha256 = MessageDigest.getInstance("SHA-256");
+        } catch (final NoSuchAlgorithmException exception) {
+            throw new RuntimeException("Unreachable!", exception);
+        }
+        sha256.update(source);
+        final BigInteger i = new BigInteger(1, sha256.digest());
+        return String.format("%64s", i.toString(16)).replace(' ', '0');
     }
 
     public static void updateMessageDigest(final @NotNull MessageDigest digester, final @NotNull InputStream source) throws IOException {
@@ -79,6 +93,18 @@ public final class MiscellaneousUtil {
                 break;
         }
         return k;
+    }
+
+    public static Pair.@NotNull ImmutablePair<byte[], Integer> getCircleBytes(final byte @NotNull [] bytes, final int offset, final int len) {
+        if (bytes.length < len)
+            throw new IllegalStateException("Too short bytes." + ParametersMap.create().add("length", bytes.length).add("require", len));
+        if (offset < bytes.length - len)
+            return Pair.ImmutablePair.makeImmutablePair(bytes, offset);
+        final int length = bytes.length - offset;
+        final byte[] result = new byte[len];
+        System.arraycopy(bytes, offset, result, 0, length);
+        System.arraycopy(bytes, 0, result, length, len - length);
+        return Pair.ImmutablePair.makeImmutablePair(result, 0);
     }
 
     public static @NotNull String bin(final byte b) {

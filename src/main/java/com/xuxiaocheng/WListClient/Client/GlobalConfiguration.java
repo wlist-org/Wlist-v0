@@ -24,7 +24,7 @@ import java.util.Map;
 public record GlobalConfiguration(String host, int port, int limit, int threadCount) {
     private static final @NotNull HInitializer<Pair<@NotNull GlobalConfiguration, @Nullable File>> instance = new HInitializer<>("ClientGlobalConfiguration");
 
-    public static synchronized void init(final @Nullable File path) throws IOException {
+    public static synchronized void initialize(final @Nullable File path) throws IOException {
         final Map<String, Object> config;
         if (path != null) {
             if (!HFileHelper.ensureFileExist(path))

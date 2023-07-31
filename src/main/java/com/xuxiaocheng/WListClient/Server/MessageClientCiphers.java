@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WListClient.Server;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
 import com.xuxiaocheng.WListClient.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
@@ -11,17 +12,13 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
-import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
-import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAPublicKeySpec;
 import java.util.IllegalFormatFlagsException;
@@ -47,34 +44,44 @@ public class MessageClientCiphers extends MessageCiphers {
     @Override
     protected void decode(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg, final @NotNull List<Object> out) throws IOException {
         if (this.initializingStage.get()) {
-            if (!MessageCiphers.defaultHeader.equals(ByteBufIOUtil.readUTF(msg)))
-                throw new IllegalFormatFlagsException("Header");
-            final byte[] rsaModulus = ByteBufIOUtil.readByteArray(msg);
-            final byte[] rsaExponent = ByteBufIOUtil.readByteArray(msg);
-            final byte[] aesKey = new byte[117];
-            HRandomHelper.DefaultSecureRandom.nextBytes(aesKey);
+            final String header = ByteBufIOUtil.readUTF(msg);
+            if (!MessageCiphers.defaultHeader.equals(header))
+                throw new IllegalFormatFlagsException("Invalid header." + ParametersMap.create().add("excepted", MessageCiphers.defaultHeader).add("real", header));
+            final Cipher rsaEncryptCipher;
             try {
+                final byte[] rsaModulus = ByteBufIOUtil.readByteArray(msg);
+                final byte[] rsaExponent = ByteBufIOUtil.readByteArray(msg);
                 final Key rsaPublicKey = KeyFactory.getInstance("RSA").generatePublic(new RSAPublicKeySpec(
                         new BigInteger(rsaModulus), new BigInteger(rsaExponent)
                 ));
-                final Key key = new SecretKeySpec(aesKey, 50, 32, "AES");
-                final AlgorithmParameterSpec vector = new IvParameterSpec(aesKey, 82, 16);
-                this.aesDecryptCipher.init(Cipher.DECRYPT_MODE, key, vector);
-                this.aesEncryptCipher.init(Cipher.ENCRYPT_MODE, key, vector);
-                final Cipher rsaEncryptCipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+                rsaEncryptCipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
                 rsaEncryptCipher.init(Cipher.ENCRYPT_MODE, rsaPublicKey);
-                final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
-                ByteBufIOUtil.writeByteArray(buffer, rsaEncryptCipher.doFinal(aesKey));
-                ByteBufIOUtil.writeByteArray(buffer, this.aesEncryptCipher.doFinal(
-                        MessageCiphers.defaultTailor.getBytes(StandardCharsets.UTF_8)));
-                ctx.writeAndFlush(buffer);
-            } catch (final InvalidKeyException | InvalidKeySpecException |
-                           InvalidAlgorithmParameterException exception) {
+            } catch (final InvalidKeySpecException exception) {
                 throw new IllegalStateException(exception);
-            } catch (final NoSuchAlgorithmException | NoSuchPaddingException |
-                           IllegalBlockSizeException | BadPaddingException exception) {
+            } catch (final NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException exception) {
                 throw new RuntimeException("Unreachable!", exception);
             }
+            final byte[] tempKey = new byte[this.keyArray.length >> 1];
+            msg.readBytes(tempKey);
+            for (int i = 0; i < this.keyArray.length >> 1; ++i)
+                this.keyArray[i << 1] = tempKey[i];
+            HRandomHelper.DefaultSecureRandom.nextBytes(tempKey);
+            for (int i = 0; i < this.keyArray.length >> 1; ++i)
+                this.keyArray[(i << 1) + 1] = tempKey[i];
+            this.reinitializeAesCiphers(false);
+            final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
+            try {
+                ByteBufIOUtil.writeByteArray(buffer, rsaEncryptCipher.doFinal(tempKey, 0, 117));
+                ByteBufIOUtil.writeByteArray(buffer, rsaEncryptCipher.doFinal(tempKey, 117, 117));
+                ByteBufIOUtil.writeByteArray(buffer, rsaEncryptCipher.doFinal(tempKey, 117 << 1, 117));
+                ByteBufIOUtil.writeByteArray(buffer, this.aesEncryptCipher.doFinal(tempKey, 117 * 3, tempKey.length - 117 * 3));
+                this.vectorPosition += this.keyArray.length >> 1;
+                this.reinitializeAesCiphers(false);
+                ByteBufIOUtil.writeByteArray(buffer, this.aesEncryptCipher.doFinal(MessageCiphers.defaultTailor.getBytes(StandardCharsets.UTF_8)));
+            } catch (final IllegalBlockSizeException | BadPaddingException exception) {
+                throw new RuntimeException("Unreachable!", exception);
+            }
+            ctx.writeAndFlush(buffer);
             synchronized (this.initializingStage) {
                 this.initializingStage.set(false);
                 //noinspection NotifyWithoutCorrespondingWait
@@ -87,10 +94,8 @@ public class MessageClientCiphers extends MessageCiphers {
 
     @Override
     public @NotNull String toString() {
-        return "MessageServerCiphers{" +
-                "maxSize=" + this.maxSize +
-                ", initializingStage=" + this.initializingStage +
-                ", super=" + super.toString() +
+        return "MessageClientCiphers{" +
+                "super=" + super.toString() +
                 '}';
     }
 }
