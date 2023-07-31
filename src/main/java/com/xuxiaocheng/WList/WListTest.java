@@ -17,13 +17,12 @@ import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupSqlHelper;
 import com.xuxiaocheng.WList.Server.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
+import com.xuxiaocheng.WList.Server.ServerHandlers.ServerHandlerManager;
 import com.xuxiaocheng.WList.Server.WListServer;
-import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 public final class WListTest {
@@ -33,11 +32,11 @@ public final class WListTest {
 
     @SuppressWarnings("OverlyBroadThrowsClause")
     public static void main(final String @NotNull [] args) throws Exception {
-        HLog.DefaultLogger.log("", MiscellaneousUtil.getSha256("12345678".getBytes(StandardCharsets.UTF_8)));
-
-        if (true) return;
+//        if (true) return;
         WListTest.wrapServerInitialize(() -> {
-
+            ServerHandlerManager.initialize();
+            WListServer.getInstance().start(GlobalConfiguration.getInstance().port());
+            WListServer.getInstance().awaitStop();
         });
     }
 
@@ -48,7 +47,8 @@ public final class WListTest {
 
     @SuppressWarnings("OverlyBroadThrowsClause")
     private static void wrapServerInitialize(final @NotNull SupplierE<@Nullable Object> runnable) throws Exception {
-        GlobalConfiguration.initialize(new File("server.yaml"));
+//        GlobalConfiguration.initialize(new File("server.yaml"));
+        GlobalConfiguration.initialize(null);
         PooledDatabase.quicklyInitialize(PooledDatabaseHelper.getDefault(new File("data.db")));
         ConstantManager.quicklyInitialize(new ConstantSqlHelper(PooledDatabase.instance.getInstance()), "initialize");
         UserGroupManager.quicklyInitialize(new UserGroupSqlHelper(PooledDatabase.instance.getInstance()), "initialize");
@@ -72,7 +72,6 @@ public final class WListTest {
             BackgroundTaskManager.BackgroundExecutors.shutdownGracefully();
         }
     }
-
 
     private static void wrapServerInitialize(final @NotNull RunnableE runnable) throws Exception {
         WListTest.wrapServerInitialize(() -> {

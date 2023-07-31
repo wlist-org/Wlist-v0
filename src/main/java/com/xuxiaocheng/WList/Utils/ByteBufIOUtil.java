@@ -15,12 +15,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.UUID;
 
+@SuppressWarnings("NumericCastThatLosesPrecision")
 public final class ByteBufIOUtil {
-    public static final byte[] EmptyByteArray = new byte[0];
-
     private ByteBufIOUtil() {
         super();
     }
+
+    public static final byte[] EmptyByteArray = new byte[0];
 
     public static byte readByte(final @NotNull ByteBuf buffer) throws IOException {
         try {

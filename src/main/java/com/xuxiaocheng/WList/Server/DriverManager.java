@@ -5,6 +5,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
+import com.xuxiaocheng.HeadLibs.Helper.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
@@ -152,7 +153,7 @@ public final class DriverManager {
             DriverManager.logger.log(HLogLevel.ERROR, "Failed to load driver.", ParametersMap.create().add("name", name), exception);
             DriverManager.failedDrivers.put(name, exception);
         } catch (final Throwable throwable) {
-            Thread.getDefaultUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), throwable);
+            HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), throwable);
         }
         return false;
     }
@@ -177,7 +178,7 @@ public final class DriverManager {
         } catch (final IllegalParametersException | RuntimeException exception) {
             DriverManager.logger.log(HLogLevel.ERROR, "Failed to unload driver.", ParametersMap.create().add("name", name), exception);
         } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable throwable) {
-            Thread.getDefaultUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), throwable);
+            HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), throwable);
         }
         return false;
     }

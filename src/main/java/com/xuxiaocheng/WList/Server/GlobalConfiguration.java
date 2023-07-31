@@ -34,6 +34,7 @@ public record GlobalConfiguration(int port, int maxConnection,
     private static final @NotNull HInitializer<Pair<@NotNull GlobalConfiguration, @Nullable File>> instance = new HInitializer<>("GlobalConfiguration");
 
     public static synchronized void initialize(final @Nullable File path) throws IOException {
+        GlobalConfiguration.instance.requireUninitialized();
         final Map<String, Object> config;
         if (path != null) {
             if (!HFileHelper.ensureFileExist(path))

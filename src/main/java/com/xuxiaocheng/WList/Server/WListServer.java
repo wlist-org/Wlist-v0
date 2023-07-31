@@ -2,6 +2,7 @@ package com.xuxiaocheng.WList.Server;
 
 import com.xuxiaocheng.HeadLibs.Annotations.Range.IntRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.HeadLibs.Helper.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
@@ -197,7 +198,7 @@ public class WListServer {
             if (cause instanceof ServerException)
                 WListServer.logger.log(HLogLevel.WARN, "Exception at ", ctx.channel().remoteAddress(), ": ", cause);
             else
-                Thread.getDefaultUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), cause); // Logged by HUncaughtExceptionHelper.listener.
+                HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), cause); // Logged by HUncaughtExceptionHelper.listener.
             ServerChannelHandler.directlyWriteMessage(ctx.channel(), Operation.State.ServerError, null);
         }
 

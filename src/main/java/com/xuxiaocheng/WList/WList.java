@@ -140,7 +140,7 @@ public final class WList {
             }
         } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable throwable) {
             WList.mainStageExceptionAPI.initialize(throwable);
-            Thread.getDefaultUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), throwable);
+            HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), throwable);
         } finally {
             WList.setMainStageAPI(3);
         }

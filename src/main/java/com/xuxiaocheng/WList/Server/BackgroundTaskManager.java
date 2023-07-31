@@ -4,6 +4,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
+import com.xuxiaocheng.HeadLibs.Helper.HUncaughtExceptionHelper;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.EventExecutorGroup;
@@ -53,7 +54,7 @@ public final class BackgroundTaskManager {
                 try {
                     HExceptionWrapper.wrapRunnable(runnable, finisherAfterRun, true).run();
                 } catch (final Throwable throwable) {
-                    Thread.getDefaultUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), throwable);
+                    HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), throwable);
                 } finally {
                     if (removeLockAfterRun)
                         BackgroundTaskManager.removeLock(identify);

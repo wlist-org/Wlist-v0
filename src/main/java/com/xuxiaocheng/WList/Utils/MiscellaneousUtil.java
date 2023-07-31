@@ -1,5 +1,7 @@
 package com.xuxiaocheng.WList.Utils;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -91,6 +93,18 @@ public final class MiscellaneousUtil {
                 break;
         }
         return k;
+    }
+
+    public static Pair.@NotNull ImmutablePair<byte[], Integer> getCircleBytes(final byte @NotNull [] bytes, final int offset, final int len) {
+        if (bytes.length < len)
+            throw new IllegalStateException("Too short bytes." + ParametersMap.create().add("length", bytes.length).add("require", len));
+        if (offset < bytes.length - len)
+            return Pair.ImmutablePair.makeImmutablePair(bytes, offset);
+        final int length = bytes.length - offset;
+        final byte[] result = new byte[len];
+        System.arraycopy(bytes, offset, result, 0, length);
+        System.arraycopy(bytes, 0, result, length, len - length);
+        return Pair.ImmutablePair.makeImmutablePair(result, 0);
     }
 
     public static @NotNull String bin(final byte b) {

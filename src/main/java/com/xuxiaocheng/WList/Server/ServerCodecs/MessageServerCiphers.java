@@ -1,10 +1,15 @@
 package com.xuxiaocheng.WList.Server.ServerCodecs;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
+import com.xuxiaocheng.HeadLibs.Helper.HUncaughtExceptionHelper;
+import com.xuxiaocheng.HeadLibs.Logger.HLog;
+import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.CodecException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -12,19 +17,14 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
-import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
-import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAKey;
 import java.security.interfaces.RSAPublicKey;
-import java.security.spec.AlgorithmParameterSpec;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -53,10 +53,15 @@ public class MessageServerCiphers extends MessageCiphers {
         } catch (final NoSuchAlgorithmException | InvalidKeyException exception) {
             throw new RuntimeException("Unreachable!", exception);
         }
+        final byte[] tempKey = new byte[this.keyArray.length >> 1];
+        HRandomHelper.DefaultSecureRandom.nextBytes(tempKey);
+        for (int i = 0; i < this.keyArray.length >> 1; ++i)
+            this.keyArray[i << 1] = tempKey[i];
         final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
         ByteBufIOUtil.writeUTF(buffer, MessageCiphers.defaultHeader);
         ByteBufIOUtil.writeByteArray(buffer, rsaModulus);
         ByteBufIOUtil.writeByteArray(buffer, rsaExponent);
+        buffer.writeBytes(tempKey);
         ctx.writeAndFlush(buffer);
     }
 
@@ -71,29 +76,58 @@ public class MessageServerCiphers extends MessageCiphers {
         final Cipher rsaDecryptCipher = this.initializingStage.get();
         if (rsaDecryptCipher != null) {
             try {
-                final byte[] aesKey = rsaDecryptCipher.doFinal(ByteBufIOUtil.readByteArray(msg));
-                final Key key = new SecretKeySpec(aesKey, 50, 32, "AES");
-                final AlgorithmParameterSpec vector = new IvParameterSpec(aesKey, 82, 16);
-                this.aesDecryptCipher.init(Cipher.DECRYPT_MODE, key, vector);
-                this.aesEncryptCipher.init(Cipher.ENCRYPT_MODE, key, vector);
-                if (!MessageCiphers.defaultTailor.equals(new String(this.aesDecryptCipher.doFinal(ByteBufIOUtil.readByteArray(msg)), StandardCharsets.UTF_8)))
-                    throw new IllegalStateException("Invalid AES key.");
-            } catch (final IllegalBlockSizeException | BadPaddingException |
-                           InvalidKeyException | InvalidAlgorithmParameterException exception) {
+                final ByteBuf tempKey = ByteBufAllocator.DEFAULT.heapBuffer(117 * 3, 117 * 3);
+                try {
+                    try {
+                        tempKey.writeBytes(rsaDecryptCipher.doFinal(ByteBufIOUtil.readByteArray(msg)));
+                        tempKey.writeBytes(rsaDecryptCipher.doFinal(ByteBufIOUtil.readByteArray(msg)));
+                        tempKey.writeBytes(rsaDecryptCipher.doFinal(ByteBufIOUtil.readByteArray(msg)));
+                        if (tempKey.readableBytes() != 117 * 3)
+                            throw new IllegalStateException();
+                    } catch (final IndexOutOfBoundsException exception) {
+                        throw new IllegalStateException(exception);
+                    }
+                    for (int i = 0; i < 117 * 3; ++i)
+                        this.keyArray[(i << 1) + 1] = tempKey.getByte(i);
+                } finally {
+                    tempKey.release();
+                }
+                this.reinitializeAesCiphers(true);
+                final byte[] tempKey2 = this.aesDecryptCipher.doFinal(ByteBufIOUtil.readByteArray(msg));
+                if (tempKey2.length != (this.keyArray.length >> 1) - 117 * 3)
+                    throw new IllegalStateException();
+                for (int i = 0; i < tempKey2.length; ++i)
+                    this.keyArray[((i + 117 * 3) << 1) + 1] = tempKey2[i];
+                this.vectorPosition += this.keyArray.length >> 1;
+                this.reinitializeAesCiphers(true);
+                final String tailor = new String(this.aesDecryptCipher.doFinal(ByteBufIOUtil.readByteArray(msg)), StandardCharsets.UTF_8);
+                if (!MessageCiphers.defaultTailor.equals(tailor))
+                    throw new IllegalStateException("Invalid tailor." + ParametersMap.create().add("expected", MessageCiphers.defaultTailor).add("real", tailor));
+            } catch (final IllegalBlockSizeException | BadPaddingException exception) {
                 throw new IOException(exception);
             }
-            ctx.fireChannelActive();
             this.initializingStage.set(null);
+            ctx.fireChannelActive();
             return;
         }
         super.decode(ctx, msg, out);
     }
 
     @Override
+    public void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) {
+        if (this.initializingStage.get() == null)
+            ctx.fireExceptionCaught(cause);
+        else {
+            HLog.getInstance("ServerLogger").log(HLogLevel.MISTAKE, "Something wrong when codec at " + ctx.channel().remoteAddress(), ": ", cause.getLocalizedMessage());
+            if (cause instanceof CodecException)
+                HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), cause.getCause());
+        }
+    }
+
+    @Override
     public @NotNull String toString() {
         return "MessageServerCiphers{" +
-                "maxSize=" + this.maxSize +
-                ", super=" + super.toString() +
+                "super=" + super.toString() +
                 '}';
     }
 }

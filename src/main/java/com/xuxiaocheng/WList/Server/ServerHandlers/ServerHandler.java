@@ -24,7 +24,7 @@ public interface ServerHandler {
     @NotNull MessageProto handle(final @NotNull Channel channel, final @NotNull ByteBuf buffer) throws IOException, ServerException;
 
     byte defaultCipher = MessageCiphers.doAes | MessageCiphers.doGZip;
-    byte defaultFileCipher = MessageCiphers.doGZip;
+    byte defaultFileCipher = MessageCiphers.doAes | MessageCiphers.doGZip;
 
     static @NotNull MessageProto composeMessage(final Operation.@NotNull State state, final @Nullable String message) {
         return new MessageProto(ServerHandler.defaultCipher, state, buf -> {
