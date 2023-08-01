@@ -1,8 +1,9 @@
 package com.xuxiaocheng.WListClient.Client;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
-import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
+import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WListClient.Utils.YamlHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -16,6 +17,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.math.BigInteger;
+import java.nio.file.AccessDeniedException;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -24,12 +26,17 @@ import java.util.Map;
 public record GlobalConfiguration(String host, int port, int limit, int threadCount) {
     private static final @NotNull HInitializer<Pair<@NotNull GlobalConfiguration, @Nullable File>> instance = new HInitializer<>("ClientGlobalConfiguration");
 
-    public static synchronized void initialize(final @Nullable File path) throws IOException {
+    public static synchronized void initialize(final @Nullable File file) throws IOException {
         final Map<String, Object> config;
-        if (path != null) {
-            if (!HFileHelper.ensureFileExist(path))
-                throw new IOException("Failed to create configuration file. path: " + path.getAbsolutePath());
-            try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(path))) {
+        if (file != null) {
+            try {
+                HFileHelper.ensureFileExist(file.toPath(), true);
+            } catch (final IOException exception) {
+                throw new IOException("Failed to create global configuration file." + ParametersMap.create().add("file", file), exception);
+            }
+            if (!file.canRead() || !file.canWrite())
+                throw new AccessDeniedException("No permissions to read or write global configuration file." + ParametersMap.create().add("file", file));
+            try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(file))) {
                 config = YamlHelper.loadYaml(inputStream);
             }
         } else
@@ -46,7 +53,7 @@ public record GlobalConfiguration(String host, int port, int limit, int threadCo
                     o -> YamlHelper.transferIntegerFromStr(o, errors, "thread_count", BigInteger.ONE, BigInteger.valueOf(Integer.MAX_VALUE))).intValue()
         );
         YamlHelper.throwErrors(errors);
-        GlobalConfiguration.instance.initialize(Pair.ImmutablePair.makeImmutablePair(configuration, path));
+        GlobalConfiguration.instance.initialize(Pair.ImmutablePair.makeImmutablePair(configuration, file));
         GlobalConfiguration.dumpToFile();
     }
 
@@ -56,17 +63,15 @@ public record GlobalConfiguration(String host, int port, int limit, int threadCo
 
     private static synchronized void dumpToFile() throws IOException {
         final GlobalConfiguration configuration = GlobalConfiguration.instance.getInstance().getFirst();
-        final File path = GlobalConfiguration.instance.getInstance().getSecond();
-        if (path == null)
+        final File file = GlobalConfiguration.instance.getInstance().getSecond();
+        if (file == null)
             return;
-        if (!HFileHelper.ensureFileExist(path))
-            throw new IOException("Failed to create configuration file. path: " + path.getAbsolutePath());
         final Map<String, Object> config = new LinkedHashMap<>();
         config.put("host", configuration.host);
         config.put("port", configuration.port);
         config.put("limit", configuration.limit);
         config.put("thread_count", configuration.threadCount);
-        try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(path))) {
+        try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(file))) {
             YamlHelper.dumpYaml(config, outputStream);
         }
     }
@@ -76,8 +81,17 @@ public record GlobalConfiguration(String host, int port, int limit, int threadCo
         GlobalConfiguration.dumpToFile();
     }
 
-    public static synchronized void setPath(final @Nullable File path) throws IOException {
-        GlobalConfiguration.instance.getInstance().setSecond(path);
+    public static synchronized void setPath(final @Nullable File file) throws IOException {
+        if (file != null) {
+            try {
+                HFileHelper.ensureFileExist(file.toPath(), true);
+            } catch (final IOException exception) {
+                throw new IOException("Failed to create global configuration file." + ParametersMap.create().add("file", file), exception);
+            }
+            if (!file.canWrite())
+                throw new AccessDeniedException("No permissions to write global configuration file." + ParametersMap.create().add("file", file));
+        }
+        GlobalConfiguration.instance.getInstance().setSecond(file);
         GlobalConfiguration.dumpToFile();
     }
 }

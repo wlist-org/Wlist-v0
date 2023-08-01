@@ -1,13 +1,18 @@
 package com.xuxiaocheng.WListClient.Client.OperationHelpers;
 
-import com.xuxiaocheng.WListClient.Server.Operation;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.HeadLibs.Logger.HLog;
+import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WListClient.Server.MessageCiphers;
+import com.xuxiaocheng.WListClient.Server.Operation;
 import com.xuxiaocheng.WListClient.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.util.function.Supplier;
 
 public final class OperateHelper {
     private OperateHelper() {
@@ -50,5 +55,10 @@ public final class OperateHelper {
         final ByteBuf send = OperateHelper.operate(type);
         ByteBufIOUtil.writeUTF(send, token);
         return send;
+    }
+
+    static void logOperation(final Operation.@NotNull Type operation, final @Nullable Supplier<? extends @NotNull ParametersMap> parameters) {
+        HLog.getInstance("ClientLogger").log(HLogLevel.DEBUG, "Operate: ", operation,
+                (Supplier<String>) () -> parameters == null ? "" : parameters.get().toString());
     }
 }
