@@ -2,15 +2,17 @@ package com.xuxiaocheng.WList.WebDrivers.Driver_123pan;
 
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
+import com.xuxiaocheng.HeadLibs.AndroidSupport.AStreams;
 import com.xuxiaocheng.HeadLibs.Annotations.Range.IntRange;
 import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
-import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
+import com.xuxiaocheng.HeadLibs.Helpers.HMessageDigestHelper;
+import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
+import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Driver.FailureReason;
 import com.xuxiaocheng.WList.Driver.FileLocation;
@@ -21,8 +23,6 @@ import com.xuxiaocheng.WList.Exceptions.DriverTokenExpiredException;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Exceptions.IllegalResponseCodeException;
 import com.xuxiaocheng.WList.Exceptions.WrongResponseException;
-import com.xuxiaocheng.WList.Utils.AndroidSupport;
-import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import okhttp3.Headers;
 import okhttp3.OkHttpClient;
 import org.jetbrains.annotations.Contract;
@@ -55,7 +55,7 @@ final class DriverHelper_123pan {
         super();
     }
 
-    private static final @NotNull HLog logger = HLog.createInstance("DriverLogger/123pan", HLog.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, true, HMergedStream.getFileOutputStreamNoException(null));
+    private static final @NotNull HLog logger = HLog.createInstance("DriverLogger/123pan", HLog.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, true, HMergedStreams.getFileOutputStreamNoException(null));
 
     static final @NotNull OkHttpClient httpClient = DriverNetworkHelper.newHttpClientBuilder()
             .addNetworkInterceptor(new DriverNetworkHelper.FrequencyControlInterceptor(5, 100)).build();
@@ -412,7 +412,7 @@ final class DriverHelper_123pan {
             return Map.of();
         DriverHelper_123pan.ensureToken(configuration);
         final Map<String, Object> request = new LinkedHashMap<>(1);
-        request.put("FileIdList", AndroidSupport.streamToList(idList.stream().map(id -> {
+        request.put("FileIdList", AStreams.streamToList(idList.stream().map(id -> {
             final JSONObject pair = new JSONObject(1);
             pair.put("FileId", id);
             return pair;
@@ -508,7 +508,7 @@ final class DriverHelper_123pan {
      * <p> {@literal Fail: }Failure.
      */
     static @NotNull UnionPair<@NotNull UnionPair<@NotNull FileSqlInformation, @NotNull UploadIdentifier_123pan>, @NotNull FailureReason> uploadRequest(final @NotNull DriverConfiguration_123Pan configuration, final long parentId, final @NotNull String filename, final @LongRange(minimum = 0) long size, final @NotNull CharSequence md5, final Options.@NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException {
-        if (!MiscellaneousUtil.md5Pattern.matcher(md5).matches()) // Unreachable!
+        if (!HMessageDigestHelper.MD5.pattern.matcher(md5).matches()) // Unreachable!
             throw new IllegalParametersException("Invalid md5.", ParametersMap.create().add("md5", md5));
         if (!DriverHelper_123pan.filenamePredication.test(filename))
             return UnionPair.fail(FailureReason.byInvalidName("Uploading request.", new FileLocation(configuration.getName(), parentId), filename));
@@ -638,7 +638,7 @@ final class DriverHelper_123pan {
         final Map<String, Object> request = new LinkedHashMap<>(3);
         request.put("Operation", operate);
         request.put("DriveId", 0);
-        request.put("FileTrashInfoList", AndroidSupport.streamToList(idList.stream().map(id -> {
+        request.put("FileTrashInfoList", AStreams.streamToList(idList.stream().map(id -> {
             final JSONObject pair = new JSONObject(1);
             pair.put("FileId", id.longValue());
             return pair;
@@ -688,7 +688,7 @@ final class DriverHelper_123pan {
         DriverHelper_123pan.ensureToken(configuration);
         final Map<String, Object> request = new LinkedHashMap<>(2);
         request.put("ParentFileId", parentId);
-        request.put("FileIdList", AndroidSupport.streamToList(idList.stream().map(id -> {
+        request.put("FileIdList", AStreams.streamToList(idList.stream().map(id -> {
             final JSONObject pair = new JSONObject(1);
             pair.put("FileId", id.longValue());
             return pair;

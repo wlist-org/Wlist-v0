@@ -3,12 +3,12 @@ package com.xuxiaocheng.WList.WebDrivers.Driver_123pan;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
-import com.xuxiaocheng.WList.Driver.FileLocation;
+import com.xuxiaocheng.HeadLibs.Helpers.HMessageDigestHelper;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInterface;
 import com.xuxiaocheng.WList.Databases.TrashedFile.TrashedSqlInformation;
+import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
-import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -62,7 +62,7 @@ public final class FileInformation_123pan {
         final String flag = info.getString("S3KeyFlag");
         final String etag = info.getString("Etag");
         if (id == null || name == null || type == null || size == null || size.longValue() < 0 || create == null || update == null || flag == null
-                || etag == null || (!etag.isEmpty() && !MiscellaneousUtil.md5Pattern.matcher(etag).matches()))
+                || etag == null || (!etag.isEmpty() && !HMessageDigestHelper.MD5.pattern.matcher(etag).matches()))
             return null;
         try {
             return new FileSqlInformation(new FileLocation(driver, id.longValue()), parent.longValue(),
@@ -90,7 +90,7 @@ public final class FileInformation_123pan {
         final String etag = info.getString("Etag");
         if (id == null || name == null || type == null || size == null || size.longValue() < 0
                 || create == null || trashed == null || expire == null || flag == null
-                || etag == null || (!etag.isEmpty() && !MiscellaneousUtil.md5Pattern.matcher(etag).matches()))
+                || etag == null || (!etag.isEmpty() && !HMessageDigestHelper.MD5.pattern.matcher(etag).matches()))
             return null;
         try {
             return new TrashedSqlInformation(new FileLocation(driver, id.longValue()), name, type.intValue() == 1, size.longValue(),

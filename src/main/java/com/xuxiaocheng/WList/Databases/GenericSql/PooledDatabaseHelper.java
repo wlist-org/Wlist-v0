@@ -1,12 +1,12 @@
 package com.xuxiaocheng.WList.Databases.GenericSql;
 
 import com.xuxiaocheng.HeadLibs.AndroidSupport.ARandomHelper;
+import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
-import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
-import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
-import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
-import com.xuxiaocheng.WList.Utils.AndroidSupport;
+import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
+import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
+import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.util.IllegalReferenceCountException;
 import org.apache.commons.pool2.PooledObject;
@@ -22,6 +22,7 @@ import org.sqlite.SQLiteDataSource;
 
 import javax.sql.DataSource;
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -51,7 +52,7 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
 
     public static @NotNull PooledDatabaseHelper getDefault(final @NotNull File database) {
         final GenericObjectPoolConfig<Connection> poolConfig = new GenericObjectPoolConfig<>();
-        poolConfig.setJmxEnabled(AndroidSupport.jmxEnable); // default: true
+        poolConfig.setJmxEnabled(AndroidSupporter.jmxEnable); // default: true
         poolConfig.setTestOnBorrow(true);
         return new PooledDatabaseHelper(poolConfig, new PooledDatabaseHelper.PooledDatabaseConfig(database, false,
                 SQLiteConfig.JournalMode.WAL, Connection.TRANSACTION_READ_COMMITTED));
@@ -60,8 +61,11 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
     @Override
     public void open() throws SQLException {
         final File path = this.connectionConfig.source();
-        if (!HFileHelper.ensureFileExist(path))
-            throw new SQLException("Cannot create database file." + ParametersMap.create().add("path", path));
+        try {
+            HFileHelper.ensureFileExist(path.toPath(), true);
+        } catch (final SecurityException | IOException exception) {
+            throw new SQLException("Cannot create database file." + ParametersMap.create().add("path", path), exception);
+        }
         final SQLiteDataSource database = new SQLiteDataSource();
         database.setUrl(JDBC.PREFIX + path.getPath());
         database.setJournalMode(this.connectionConfig.journalMode().getValue());

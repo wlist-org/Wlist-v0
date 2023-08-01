@@ -2,7 +2,7 @@ package com.xuxiaocheng.WList.Databases.TrashedFile;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
-import com.xuxiaocheng.HeadLibs.Initializer.HMultiInitializers;
+import com.xuxiaocheng.HeadLibs.Initializers.HMultiInitializers;
 import com.xuxiaocheng.WList.Driver.Options;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

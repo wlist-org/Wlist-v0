@@ -1,7 +1,7 @@
 package com.xuxiaocheng.WList.Databases.UserGroup;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
+import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Server.Operation;
 import com.xuxiaocheng.WList.Databases.DatabaseInterface;

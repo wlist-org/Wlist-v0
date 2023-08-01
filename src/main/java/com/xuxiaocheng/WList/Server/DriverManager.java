@@ -4,12 +4,12 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
-import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
-import com.xuxiaocheng.HeadLibs.Helper.HUncaughtExceptionHelper;
-import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
+import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
+import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
+import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
+import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
 import com.xuxiaocheng.WList.Driver.DriverConfiguration;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.DriverTrashInterface;
@@ -48,7 +48,7 @@ public final class DriverManager {
         super();
     }
 
-    private static final @NotNull HLog logger = HLog.createInstance("DriverLogger", HLog.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, false, true, HMergedStream.getFileOutputStreamNoException(null));
+    private static final @NotNull HLog logger = HLog.createInstance("DriverLogger", HLog.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, false, true, HMergedStreams.getFileOutputStreamNoException(null));
     private static final @NotNull HInitializer<File> configurationsPath = new HInitializer<>("DriverConfigurationsDirectory");
     private static final @NotNull Map<@NotNull String, @NotNull Pair<@NotNull WebDriversType, Pair.@NotNull ImmutablePair<@NotNull DriverInterface<?>, @Nullable DriverTrashInterface<?>>>> drivers = new ConcurrentHashMap<>();
     private static final Pair.@NotNull ImmutablePair<@NotNull DriverInterface<?>, @Nullable DriverTrashInterface<?>> DriverPlaceholder = new Pair.ImmutablePair<>() {
@@ -86,8 +86,13 @@ public final class DriverManager {
 
     private static @NotNull File getConfigurationFile(final @NotNull String name) throws IOException {
         final File file = new File(DriverManager.configurationsPath.getInstance(), name + ".yaml");
-        if (!DriverManager.configurationsPath.getInstance().equals(file.getParentFile()) || !HFileHelper.ensureFileExist(file))
+        if (!DriverManager.configurationsPath.getInstance().equals(file.getParentFile()))
             throw new IOException("Invalid driver name." + ParametersMap.create().add("name", name).add("configurationsPath", DriverManager.configurationsPath.getInstance()));
+        try {
+            HFileHelper.ensureFileExist(file.toPath(), true);
+        } catch (final SecurityException | IOException exception) {
+            throw new IOException("Failed to create driver configuration file." + ParametersMap.create().add("name", name).add("file", file), exception);
+        }
         if (!file.canRead() || !file.canWrite())
             throw new AccessDeniedException("No permissions to read or write driver configuration file." + ParametersMap.create().add("name", name).add("file", file));
         return file;

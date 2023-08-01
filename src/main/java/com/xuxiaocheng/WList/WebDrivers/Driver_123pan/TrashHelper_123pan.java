@@ -2,6 +2,7 @@ package com.xuxiaocheng.WList.WebDrivers.Driver_123pan;
 
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
+import com.xuxiaocheng.HeadLibs.AndroidSupport.AStreams;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
@@ -12,7 +13,6 @@ import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Exceptions.IllegalResponseCodeException;
 import com.xuxiaocheng.WList.Exceptions.WrongResponseException;
-import com.xuxiaocheng.WList.Utils.AndroidSupport;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.UnmodifiableView;
 
@@ -87,7 +87,7 @@ public final class TrashHelper_123pan {
     static @NotNull @UnmodifiableView Set<@NotNull Long> deleteFiles(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull Collection<@NotNull Long> idList) throws IllegalParametersException, IOException {
         DriverHelper_123pan.ensureToken(configuration);
         final Map<String, Object> request = new LinkedHashMap<>(1);
-        request.put("FileIdList", AndroidSupport.streamToList(idList.stream().map(id -> {
+        request.put("FileIdList", AStreams.streamToList(idList.stream().map(id -> {
             final JSONObject pair = new JSONObject(1);
             pair.put("FileId", id.longValue());
             return pair;

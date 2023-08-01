@@ -2,7 +2,8 @@ package com.xuxiaocheng.WList.Server.ServerCodecs;
 
 import com.xuxiaocheng.HeadLibs.AndroidSupport.AIOStream;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
+import com.xuxiaocheng.HeadLibs.Helpers.HMiscellaneousHelper;
+import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
@@ -57,9 +58,9 @@ public abstract class MessageCiphers extends MessageToMessageCodec<ByteBuf, Byte
     }
 
     protected void reinitializeAesCiphers(final boolean decrypt) {
-        final Pair.ImmutablePair<byte[], Integer> keyArray = MiscellaneousUtil.getCircleBytes(this.keyArray, this.keyPosition, 16);
+        final Pair.ImmutablePair<byte[], Integer> keyArray = HMiscellaneousHelper.getCircleBytes(this.keyArray, this.keyPosition, 16);
         final Key key = new SecretKeySpec(keyArray.getFirst(), keyArray.getSecond().intValue(), 16, "AES");
-        final Pair.ImmutablePair<byte[], Integer> vectorArray = MiscellaneousUtil.getCircleBytes(this.keyArray, this.vectorPosition, 16);
+        final Pair.ImmutablePair<byte[], Integer> vectorArray = HMiscellaneousHelper.getCircleBytes(this.keyArray, this.vectorPosition, 16);
         final AlgorithmParameterSpec vector = new GCMParameterSpec(128, vectorArray.getFirst(), vectorArray.getSecond().intValue(), 16);
         try {
             if (decrypt)

@@ -2,11 +2,11 @@ package com.xuxiaocheng.WList;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
-import com.xuxiaocheng.HeadLibs.Helper.HUncaughtExceptionHelper;
-import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
+import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
+import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
+import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
 import com.xuxiaocheng.WList.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Databases.Constant.ConstantSqlHelper;
 import com.xuxiaocheng.WList.Databases.GenericSql.PooledDatabase;
@@ -93,8 +93,8 @@ public final class WList {
             }
         }
         if (HLog.isDebugMode()) System.setProperty("io.netty.leakDetectionLevel", "ADVANCED");
-        final HLog logger = HLog.createInstance("DefaultLogger", HLog.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, false, true, HMergedStream.getFileOutputStreamNoException(null));
-        HUncaughtExceptionHelper.putIfAbsentUncaughtExceptionListener("listener", (t, e) -> logger.log(HLogLevel.FAULT, "Uncaught exception listened by WList. thread: ", t.getName(), e));
+        final HLog logger = HLog.createInstance("DefaultLogger", HLog.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, false, true, HMergedStreams.getFileOutputStreamNoException(null));
+        HUncaughtExceptionHelper.setUncaughtExceptionListener("listener", (t, e) -> logger.log(HLogLevel.FAULT, "Uncaught exception listened by WList. thread: ", t.getName(), e));
         try {
             logger.log(HLogLevel.FINE, "Hello WList (Server v0.2.2)! Loading...");
             final File configurationPath = new File(runtimePath, "server.yaml");

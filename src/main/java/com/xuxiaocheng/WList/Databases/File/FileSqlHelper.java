@@ -1,10 +1,10 @@
 package com.xuxiaocheng.WList.Databases.File;
 
+import com.xuxiaocheng.HeadLibs.AndroidSupport.AStreams;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Databases.GenericSql.PooledDatabaseInterface;
 import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Driver.Options;
-import com.xuxiaocheng.WList.Utils.AndroidSupport;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -378,7 +378,7 @@ public final class FileSqlHelper implements FileSqlInterface {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
-            this.deleteFilesRecursively(AndroidSupport.streamToList(this.selectFilesByMd5(md5List, connectionId.get()).values().stream()
+            this.deleteFilesRecursively(AStreams.streamToList(this.selectFilesByMd5(md5List, connectionId.get()).values().stream()
                     .filter(Objects::nonNull).flatMap(Set::stream).map(FileSqlInformation::id)), connectionId.get());
             connection.commit();
         }

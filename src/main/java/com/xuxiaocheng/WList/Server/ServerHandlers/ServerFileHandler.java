@@ -3,6 +3,7 @@ package com.xuxiaocheng.WList.Server.ServerHandlers;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.Helpers.HMessageDigestHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Driver.FileLocation;
@@ -255,7 +256,7 @@ public final class ServerFileHandler {
                 .optionallyAddSupplier(duplicatePolicy == Options.DuplicatePolicy.OVER && user.isSuccess(), "allow", () -> user.getT().group().permissions().contains(Operation.Permission.FileDelete)));
         if (user.isFailure())
             return user.getE();
-        if (size < 0 || !MiscellaneousUtil.md5Pattern.matcher(md5).matches() || duplicatePolicy == null)
+        if (size < 0 || !HMessageDigestHelper.MD5.pattern.matcher(md5).matches() || duplicatePolicy == null)
             return ServerHandler.WrongParameters;
         if (duplicatePolicy == Options.DuplicatePolicy.OVER && !user.getT().group().permissions().contains(Operation.Permission.FileDelete))
             return ServerHandler.NoPermission;

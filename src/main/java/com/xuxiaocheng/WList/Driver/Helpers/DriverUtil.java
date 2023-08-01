@@ -8,6 +8,7 @@ import com.xuxiaocheng.HeadLibs.Functions.FunctionE;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
+import com.xuxiaocheng.HeadLibs.Helpers.HMiscellaneousHelper;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
@@ -81,12 +82,12 @@ public final class DriverUtil {
             firstPage = fileSupplierInPage.apply(0);
         } catch (final Exception exception) {
             finisher.accept(exception);
-            return Triad.ImmutableTriad.makeImmutableTriad(0L, MiscellaneousUtil.getEmptyIterator(), RunnableE.EmptyRunnable);
+            return Triad.ImmutableTriad.makeImmutableTriad(0L, HMiscellaneousHelper.getEmptyIterator(), RunnableE.EmptyRunnable);
         }
         final long fileCount = firstPage.getFirst().intValue();
         if (fileCount <= 0 || firstPage.getSecond().isEmpty()) {
             finisher.accept(null);
-            return Triad.ImmutableTriad.makeImmutableTriad(0L, MiscellaneousUtil.getEmptyIterator(), RunnableE.EmptyRunnable);
+            return Triad.ImmutableTriad.makeImmutableTriad(0L, HMiscellaneousHelper.getEmptyIterator(), RunnableE.EmptyRunnable);
         }
         assert firstPage.getSecond().size() <= defaultLimit;
         final int pageCount = MiscellaneousUtil.calculatePartCount(fileCount, defaultLimit);

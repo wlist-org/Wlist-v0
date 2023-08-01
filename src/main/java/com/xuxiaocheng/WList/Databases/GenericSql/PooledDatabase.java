@@ -1,7 +1,7 @@
 package com.xuxiaocheng.WList.Databases.GenericSql;
 
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
-import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
+import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import org.jetbrains.annotations.NotNull;
 
 import java.sql.SQLException;

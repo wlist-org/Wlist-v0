@@ -9,6 +9,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
+import com.xuxiaocheng.HeadLibs.Helpers.HMessageDigestHelper;
 import com.xuxiaocheng.WList.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInterface;
@@ -293,7 +294,7 @@ public final class DriverManager_123pan {
     }
 
     static @NotNull UnionPair<@NotNull UploadMethods, @NotNull FailureReason> getUploadMethods(final @NotNull DriverConfiguration_123Pan configuration, final long parentId, final @NotNull String name, final @NotNull CharSequence md5, final long size, final Options.@NotNull DuplicatePolicy policy, final @Nullable String _connectionId) throws IllegalParametersException, IOException, SQLException {
-        if (!MiscellaneousUtil.md5Pattern.matcher(md5).matches())
+        if (!HMessageDigestHelper.MD5.pattern.matcher(md5).matches())
             throw new IllegalParametersException("Invalid md5.", ParametersMap.create().add("md5", md5));
         if (!DriverHelper_123pan.filenamePredication.test(name))
             return UnionPair.fail(FailureReason.byInvalidName("Uploading.", new FileLocation(configuration.getName(), parentId), name));

@@ -2,8 +2,8 @@ package com.xuxiaocheng.WList.Server;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
-import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
-import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
+import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
+import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Utils.YamlHelper;
@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.math.BigInteger;
+import java.nio.file.AccessDeniedException;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -33,13 +34,18 @@ public record GlobalConfiguration(int port, int maxConnection,
                                   @NotNull Map<@NotNull String, @NotNull WebDriversType> drivers) {
     private static final @NotNull HInitializer<Pair<@NotNull GlobalConfiguration, @Nullable File>> instance = new HInitializer<>("GlobalConfiguration");
 
-    public static synchronized void initialize(final @Nullable File path) throws IOException {
-        GlobalConfiguration.instance.requireUninitialized();
+    public static synchronized void initialize(final @Nullable File file) throws IOException {
+        GlobalConfiguration.instance.requireUninitialized(() -> ParametersMap.create().add("file", file));
         final Map<String, Object> config;
-        if (path != null) {
-            if (!HFileHelper.ensureFileExist(path))
-                throw new IOException("Failed to create configuration file. path: " + path.getAbsolutePath());
-            try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(path))) {
+        if (file != null) {
+            try {
+                HFileHelper.ensureFileExist(file.toPath(), true);
+            } catch (final SecurityException | IOException exception) {
+                throw new IOException("Failed to create global configuration file." + ParametersMap.create().add("file", file), exception);
+            }
+            if (!file.canRead() || !file.canWrite())
+                throw new AccessDeniedException("No permissions to read or write global configuration file." + ParametersMap.create().add("file", file));
+            try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(file))) {
                 config = YamlHelper.loadYaml(inputStream);
             }
         } else
@@ -78,7 +84,7 @@ public record GlobalConfiguration(int port, int maxConnection,
                 })
         );
         YamlHelper.throwErrors(errors);
-        GlobalConfiguration.instance.initialize(Pair.ImmutablePair.makeImmutablePair(configuration, path));
+        GlobalConfiguration.instance.initialize(Pair.ImmutablePair.makeImmutablePair(configuration, file));
         GlobalConfiguration.dumpToFile();
     }
 

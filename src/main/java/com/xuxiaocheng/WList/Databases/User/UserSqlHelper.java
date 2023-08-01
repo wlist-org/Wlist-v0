@@ -2,8 +2,8 @@ package com.xuxiaocheng.WList.Databases.User;
 
 import com.xuxiaocheng.HeadLibs.AndroidSupport.ARandomHelper;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
-import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
+import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
+import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupManager;

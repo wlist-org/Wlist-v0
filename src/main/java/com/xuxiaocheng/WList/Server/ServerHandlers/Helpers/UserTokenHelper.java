@@ -8,7 +8,7 @@ import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.Payload;
 import com.xuxiaocheng.HeadLibs.AndroidSupport.ARandomHelper;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
-import com.xuxiaocheng.HeadLibs.Helper.HRandomHelper;
+import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.WList.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Databases.User.UserSqlInformation;

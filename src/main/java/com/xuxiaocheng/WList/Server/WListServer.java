@@ -2,17 +2,17 @@ package com.xuxiaocheng.WList.Server;
 
 import com.xuxiaocheng.HeadLibs.Annotations.Range.IntRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
-import com.xuxiaocheng.HeadLibs.Helper.HUncaughtExceptionHelper;
-import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
+import com.xuxiaocheng.HeadLibs.Helpers.HBinaryStringHelper;
+import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
+import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
+import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
 import com.xuxiaocheng.WList.Server.ServerCodecs.MessageServerCiphers;
 import com.xuxiaocheng.WList.Server.ServerHandlers.ServerHandler;
 import com.xuxiaocheng.WList.Server.ServerHandlers.ServerHandlerManager;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
-import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -56,7 +56,7 @@ public class WListServer {
     public static final @NotNull EventExecutorGroup IOExecutors =
             new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 3, new DefaultThreadFactory("IOExecutors"));
 
-    private static final @NotNull HLog logger = HLog.createInstance("ServerLogger", HLog.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, true, HMergedStream.getFileOutputStreamNoException(null));
+    private static final @NotNull HLog logger = HLog.createInstance("ServerLogger", HLog.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, true, HMergedStreams.getFileOutputStreamNoException(null));
 
     protected static @NotNull WListServer instance = new WListServer();
     public static synchronized @NotNull WListServer getInstance() {
@@ -160,14 +160,14 @@ public class WListServer {
             prefix.writeByte(message.cipher());
             ByteBufIOUtil.writeUTF(prefix, message.state().name());
             final ByteBuf buffer = message.appender().apply(prefix);
-            WListServer.logger.log(HLogLevel.VERBOSE, "Write: ", channel.remoteAddress(), " len: ", buffer.readableBytes(), " cipher: ", MiscellaneousUtil.bin(message.cipher()));
+            WListServer.logger.log(HLogLevel.VERBOSE, "Write: ", channel.remoteAddress(), " len: ", buffer.readableBytes(), " cipher: ", HBinaryStringHelper.bin(message.cipher()));
             channel.writeAndFlush(buffer);
         }
 
         @Override
         protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) throws ServerException {
             final Channel channel = ctx.channel();
-            WListServer.logger.log(HLogLevel.VERBOSE, "Read: ", channel.remoteAddress(), " len: ", msg.readableBytes(), " cipher: ", MiscellaneousUtil.bin(msg.readByte()));
+            WListServer.logger.log(HLogLevel.VERBOSE, "Read: ", channel.remoteAddress(), " len: ", msg.readableBytes(), " cipher: ", HBinaryStringHelper.bin(msg.readByte()));
             try {
                 msg.markReaderIndex();
                 final Operation.Type type = Operation.valueOfType(ByteBufIOUtil.readUTF(msg));
