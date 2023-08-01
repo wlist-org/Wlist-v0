@@ -90,7 +90,7 @@ public final class DriverManager {
             throw new IOException("Invalid driver name." + ParametersMap.create().add("name", name).add("configurationsPath", DriverManager.configurationsPath.getInstance()));
         try {
             HFileHelper.ensureFileExist(file.toPath(), true);
-        } catch (final SecurityException | IOException exception) {
+        } catch (final IOException exception) {
             throw new IOException("Failed to create driver configuration file." + ParametersMap.create().add("name", name).add("file", file), exception);
         }
         if (!file.canRead() || !file.canWrite())

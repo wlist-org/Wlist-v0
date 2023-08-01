@@ -63,7 +63,7 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
         final File path = this.connectionConfig.source();
         try {
             HFileHelper.ensureFileExist(path.toPath(), true);
-        } catch (final SecurityException | IOException exception) {
+        } catch (final IOException exception) {
             throw new SQLException("Cannot create database file." + ParametersMap.create().add("path", path), exception);
         }
         final SQLiteDataSource database = new SQLiteDataSource();

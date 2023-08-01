@@ -3,7 +3,6 @@ package com.xuxiaocheng.WList;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
-import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
@@ -34,7 +33,6 @@ public final class WList {
     }
 
     private static final @NotNull AtomicInteger mainStageAPI = new AtomicInteger(-1);
-    private static final @NotNull HInitializer<Throwable> mainStageExceptionAPI = new HInitializer<>("MainStageException");
     private static void setMainStageAPI(final int stage) {
         synchronized (WList.mainStageAPI) {
             WList.mainStageAPI.set(stage);
@@ -63,9 +61,6 @@ public final class WList {
         if (current == 3 && stage == 3)
             return true;
         return current != 3;
-    }
-    public static @NotNull HInitializer<Throwable> getMainStageExceptionAPI() {
-        return WList.mainStageExceptionAPI;
     }
 
     static {
@@ -139,7 +134,6 @@ public final class WList {
                 logger.log(HLogLevel.MISTAKE, "Thanks to use WList.");
             }
         } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable throwable) {
-            WList.mainStageExceptionAPI.initialize(throwable);
             HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), throwable);
         } finally {
             WList.setMainStageAPI(3);

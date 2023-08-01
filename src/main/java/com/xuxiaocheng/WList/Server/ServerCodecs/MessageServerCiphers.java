@@ -76,28 +76,19 @@ public class MessageServerCiphers extends MessageCiphers {
         final Cipher rsaDecryptCipher = this.initializingStage.get();
         if (rsaDecryptCipher != null) {
             try {
-                final ByteBuf tempKey = ByteBufAllocator.DEFAULT.heapBuffer(117 * 3, 117 * 3);
-                try {
-                    try {
-                        tempKey.writeBytes(rsaDecryptCipher.doFinal(ByteBufIOUtil.readByteArray(msg)));
-                        tempKey.writeBytes(rsaDecryptCipher.doFinal(ByteBufIOUtil.readByteArray(msg)));
-                        tempKey.writeBytes(rsaDecryptCipher.doFinal(ByteBufIOUtil.readByteArray(msg)));
-                        if (tempKey.readableBytes() != 117 * 3)
-                            throw new IllegalStateException();
-                    } catch (final IndexOutOfBoundsException exception) {
-                        throw new IllegalStateException(exception);
-                    }
-                    for (int i = 0; i < 117 * 3; ++i)
-                        this.keyArray[(i << 1) + 1] = tempKey.getByte(i);
-                } finally {
-                    tempKey.release();
+                for (int i = 0; i < 3; ++i) {
+                    final byte[] tempKey = rsaDecryptCipher.doFinal(ByteBufIOUtil.readByteArray(msg));
+                    if (tempKey.length != 117)
+                        throw new IllegalStateException("Illegal key array length.");
+                    for (int j = 0; j < 117; ++j)
+                        this.keyArray[((j + 117 * i) << 1) + 1] = tempKey[j];
                 }
                 this.reinitializeAesCiphers(true);
-                final byte[] tempKey2 = this.aesDecryptCipher.doFinal(ByteBufIOUtil.readByteArray(msg));
-                if (tempKey2.length != (this.keyArray.length >> 1) - 117 * 3)
+                final byte[] tempKey = this.aesDecryptCipher.doFinal(ByteBufIOUtil.readByteArray(msg));
+                if (tempKey.length != (this.keyArray.length >> 1) - 117 * 3)
                     throw new IllegalStateException();
-                for (int i = 0; i < tempKey2.length; ++i)
-                    this.keyArray[((i + 117 * 3) << 1) + 1] = tempKey2[i];
+                for (int i = 0; i < tempKey.length; ++i)
+                    this.keyArray[((i + 117 * 3) << 1) + 1] = tempKey[i];
                 this.vectorPosition += this.keyArray.length >> 1;
                 this.reinitializeAesCiphers(true);
                 final String tailor = new String(this.aesDecryptCipher.doFinal(ByteBufIOUtil.readByteArray(msg)), StandardCharsets.UTF_8);

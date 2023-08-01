@@ -40,7 +40,7 @@ public record GlobalConfiguration(int port, int maxConnection,
         if (file != null) {
             try {
                 HFileHelper.ensureFileExist(file.toPath(), true);
-            } catch (final SecurityException | IOException exception) {
+            } catch (final IOException exception) {
                 throw new IOException("Failed to create global configuration file." + ParametersMap.create().add("file", file), exception);
             }
             if (!file.canRead() || !file.canWrite())
