@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-	<color name="blue1">#86ADFC</color>
-	<color name="blue2">#0073EE</color>
-	<color name="purple_700">#FF3700B3</color>
-	<color name="green">#03DA8F</color>
-	<color name="teal_700">#4ABDAC</color>
-	<color name="black">#FF211431</color>
+	<color name="normal_text">@color/black</color>
+	<color name="edit_text">@color/black</color>
+	<color name="hint_text">#7FB5B4B6</color>
+	<color name="clickable">#211431</color>
 	<color name="nonclickable">#948E9C</color>
-	<color name="white">#FFFFFFFF</color>
-	<color name="red">#FFE51816</color>
-	<color name="background">#FFE6E6E6</color>
+	<color name="normal_background">@color/white</color>
+	<color name="differ_background">#E6E6E6</color>
+
+	<color name="black">#211431</color>
+	<color name="white">#FFFFFF</color>
+	<color name="red">#E51816</color>
 </resources>

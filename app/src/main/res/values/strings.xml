@@ -1,16 +1,21 @@
 <resources>
 	<string name="app_name">WList</string>
-	<string name="tab_file">File</string>
-	<string name="tab_user">User</string>
-	<string name="fatal_application_initialization">Failed to initialize application.</string>
-	<string name="file_list_counter_text">items</string>
-	<string name="left_page" translatable="false">\u003c</string>
-	<string name="right_page" translatable="false">\u003e</string>
-	<string name="slash_page" translatable="false">/</string>
-	<string name="login_internal_server">Internal server</string>
-	<string name="close_server_connections">Disconnection</string>
-	<string name="starting_internal_server">Starting internal server…</string>
-	<string name="loading_clients">Connected to server. Loading…</string>
-	<string name="login_exit">Exit app</string>
-	<string name="exit_press_again">Press again to exit the app.</string>
+	<string name="login_activity_welcome">Welcome to wlist</string>
+	<string name="login_activity_enter_passport">Please enter phone number.</string>
+	<string name="login_activity_enter_password">Please enter password</string>
+	<string name="login_activity_login">Login!</string>
+	<string name="login_activity_exit">Exit app</string>
+	<string name="loading_page_starting_internal_server">Starting internal server…</string>
+	<string name="loading_page_connecting">Connecting to server…</string>
+	<string name="loading_page_logging_in">Connected to server. Logging in…</string>
+	<string name="toast_fatal_application_initialization">Failed to initialize application.</string>
+	<string name="toast_press_again_to_exit">Press again to exit the app.</string>
+	<string name="main_tab_file">File</string>
+	<string name="main_tab_user">User</string>
+	<string name="file_content_left_page" translatable="false">\u003c</string>
+	<string name="file_content_right_page" translatable="false">\u003e</string>
+	<string name="file_content_slash_page" translatable="false">/</string>
+	<string name="file_content_counter">items</string>
+	<string name="user_content_close_server">Close server</string>
+	<string name="user_content_disconnect">Disconnection</string>
 </resources>

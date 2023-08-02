@@ -5,10 +5,10 @@ import android.os.Process;
 import android.util.Log;
 import androidx.annotation.NonNull;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
-import com.xuxiaocheng.HeadLibs.Helper.HUncaughtExceptionHelper;
+import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.HeadLibs.Logger.HMergedStream;
+import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -30,8 +30,8 @@ public final class HLogManager {
         HLog.setLogTimeFLength(3);
         for (final String name: HLogManager.loggers)
             HLogManager.buildInstance(name, "ServerLogger".equals(name) ? HLogLevel.DEBUG.getLevel() : Integer.MIN_VALUE);
-        HUncaughtExceptionHelper.removeUncaughtExceptionListener("default"); // Application Killer
-        HUncaughtExceptionHelper.putIfAbsentUncaughtExceptionListener("listener", (t, e) ->
+        HUncaughtExceptionHelper.disableUncaughtExceptionListener("default"); // Application Killer
+        HUncaughtExceptionHelper.setUncaughtExceptionListener("listener", (t, e) ->
                 HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Uncaught exception listened by WList Android.", ParametersMap.create().add("thread", t.getName()).add("pid", Process.myPid()), e));
     }
 
@@ -40,12 +40,12 @@ public final class HLogManager {
         if (!HLogManager.initialized.compareAndSet(false, true))
             return;
         try {
-            HMergedStream.initializeDefaultFileOutputStream(new File(context.getApplicationContext().getExternalCacheDir(), "logs/" +
+            HMergedStreams.initializeDefaultFileOutputStream(new File(context.getApplicationContext().getExternalCacheDir(), "logs/" +
                     LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH.mm.ss")) + '.' + processName + ".log"));
         } catch (final IOException exception) {
             throw new RuntimeException("Unreachable!", exception);
         }
-        final OutputStream fileOutputStream = HMergedStream.getFileOutputStreamNoException(null);
+        final OutputStream fileOutputStream = HMergedStreams.getFileOutputStreamNoException(null);
         for (final String loggerName: HLogManager.loggers)
             HLog.getInstance(loggerName).getStreams().add(fileOutputStream);
     }

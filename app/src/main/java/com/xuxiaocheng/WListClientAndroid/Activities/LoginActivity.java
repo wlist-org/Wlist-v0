@@ -14,7 +14,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
-import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
+import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Databases.User.UserManager;
@@ -44,7 +44,7 @@ public class LoginActivity extends AppCompatActivity {
         internalServer.setOnClickListener(v -> {
             final Intent serverIntent = new Intent(this, InternalServerService.class);
             logger.log(HLogLevel.LESS, "Starting internal server...");
-            internalServer.setText(R.string.starting_internal_server);
+            internalServer.setText(R.string.loading_page_starting_internal_server);
             this.startService(serverIntent);
             this.bindService(serverIntent, new ServiceConnection() {
                 @Override
@@ -67,7 +67,7 @@ public class LoginActivity extends AppCompatActivity {
                         }
                         final InetSocketAddress address = InternalServerService.getAddress(iService);
                         logger.log(HLogLevel.INFO, "Connecting to: ", address);
-                        LoginActivity.this.runOnUiThread(() -> internalServer.setText(R.string.loading_clients));
+                        LoginActivity.this.runOnUiThread(() -> internalServer.setText(R.string.loading_page_connecting));
                         assert !LoginActivity.internalServerAddress.isInitialized() || LoginActivity.internalServerAddress.getInstance().equals(address);
                         LoginActivity.internalServerAddress.initializeIfNot(() -> address);
                         WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
@@ -78,6 +78,7 @@ public class LoginActivity extends AppCompatActivity {
                             PasswordManager.registerInternalPassword(UserManager.ADMIN, initPassword);
                         final String password = PasswordManager.getInternalPassword(UserManager.ADMIN);
                         logger.log(HLogLevel.ENHANCED, "Got server password.", ParametersMap.create().add("init", initPassword != null).add("password", password));
+                        LoginActivity.this.runOnUiThread(() -> internalServer.setText(R.string.loading_page_logging_in));
                         if (password != null)
                             TokenManager.setToken(address, UserManager.ADMIN, password);
                         else {
@@ -89,7 +90,7 @@ public class LoginActivity extends AppCompatActivity {
                     }, e -> {
                         if (e != null) {
                             logger.log(HLogLevel.FAULT, "Failed to initialize wlist clients.", e);
-                            LoginActivity.this.runOnUiThread(() -> Toast.makeText(LoginActivity.this.getApplicationContext(), R.string.fatal_application_initialization, Toast.LENGTH_LONG).show());
+                            LoginActivity.this.runOnUiThread(() -> Toast.makeText(LoginActivity.this.getApplicationContext(), R.string.toast_fatal_application_initialization, Toast.LENGTH_LONG).show());
                         }
                     }, false)).addListener(Main.ThrowableListenerWithToast(LoginActivity.this));
                 }

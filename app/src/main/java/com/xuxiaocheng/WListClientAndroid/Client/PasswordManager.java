@@ -2,10 +2,9 @@ package com.xuxiaocheng.WListClientAndroid.Client;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
-import com.xuxiaocheng.HeadLibs.Helper.HFileHelper;
-import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
+import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
+import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WListClient.Utils.YamlHelper;
 
 import java.io.BufferedInputStream;
@@ -44,13 +43,12 @@ public final class PasswordManager {
         try {
             PasswordManager.directory.initializeIfNot(HExceptionWrapper.wrapSupplier(() -> {
                 final File file = new File(directory, "internal_password.yaml");
-                if (!HFileHelper.ensureFileExist(file))
-                    throw new IllegalStateException("Failed to create internal server password saver file." + ParametersMap.create().add("file", file));
+                HFileHelper.ensureFileExist(file.toPath(), true);
                 final Map<String, Object> map;
                 try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(file))) {
                     map = YamlHelper.loadYaml(inputStream);
                 } catch (final FileNotFoundException exception) {
-                    throw new RuntimeException("unreachable!", exception);
+                    throw new RuntimeException("Unreachable!", exception);
                 }
                 PasswordManager.InternalPasswords.putAll(map.entrySet().stream()
                         .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().toString())));
@@ -63,14 +61,13 @@ public final class PasswordManager {
 
     private static void dumpToFile() throws IOException {
         final File file = new File(PasswordManager.directory.getInstance(), "internal_password.yaml");
-        if (!HFileHelper.ensureFileExist(file))
-            throw new IllegalStateException("Failed to create internal server password saver file." + ParametersMap.create().add("file", file));
+        HFileHelper.ensureFileExist(file.toPath(), true);
         final Map<String, Object> map = PasswordManager.InternalPasswords.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(file))) {
             YamlHelper.dumpYaml(map, outputStream);
         } catch (final FileNotFoundException exception) {
-            throw new RuntimeException("unreachable!", exception);
+            throw new RuntimeException("Unreachable!", exception);
         }
     }
 

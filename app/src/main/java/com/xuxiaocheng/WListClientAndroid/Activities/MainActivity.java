@@ -17,7 +17,7 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
-import com.xuxiaocheng.HeadLibs.Helper.HUncaughtExceptionHelper;
+import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
@@ -85,9 +85,9 @@ public class MainActivity extends AppCompatActivity {
         }
         final MainTab mainTab = new MainTab(
             new MainTab.ButtonGroup(this, R.id.main_tab_file, R.id.main_tab_file_button, R.id.main_tab_file_text,
-                    R.drawable.main_tab_file, R.drawable.main_tab_file_chose, R.color.black, R.color.red),
+                    R.mipmap.main_tab_file, R.mipmap.main_tab_file_chose, R.color.normal_text, R.color.red),
             new MainTab.ButtonGroup(this, R.id.main_tab_user, R.id.main_tab_user_button, R.id.main_tab_user_text,
-                    R.drawable.main_tab_user, R.drawable.main_tab_user_chose, R.color.black, R.color.red)
+                    R.mipmap.main_tab_user, R.mipmap.main_tab_user_chose, R.color.normal_text, R.color.red)
         );
         final AtomicReference<View> currentView = new AtomicReference<>(new View(this));
         final ConstraintLayout activity = this.findViewById(R.id.main_activity);
@@ -122,9 +122,10 @@ public class MainActivity extends AppCompatActivity {
         if (cache != null)
             return cache;
         final ConstraintLayout page = UserListContentBinding.inflate(this.getLayoutInflater()).getRoot();
-        final TextView disconnection = (TextView) page.getViewById(R.id.user_list_close_internal_server);
+        final TextView close = (TextView) page.getViewById(R.id.user_content_close_server);
+        final TextView disconnection = (TextView) page.getViewById(R.id.user_content_disconnect);
         final AtomicBoolean closed = new AtomicBoolean(false);
-        disconnection.setOnClickListener(v -> {
+        close.setOnClickListener(v -> {
             if (!closed.compareAndSet(false, true))
                 return;
             Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> {
@@ -138,6 +139,12 @@ public class MainActivity extends AppCompatActivity {
                 } else
                     closed.set(false);
             })).addListener(Main.ThrowableListenerWithToast(this));
+        });
+        disconnection.setOnClickListener(v -> {
+            if (!closed.compareAndSet(false, true))
+                return;
+            this.startActivity(new Intent(this, LoginActivity.class));
+            this.finish();
         });
         this.UserPageCache.set(page);
         return page;
@@ -182,7 +189,7 @@ public class MainActivity extends AppCompatActivity {
         final ListAdapter adapter = new FileListAdapter(list.getSecond(), this.getLayoutInflater());
         final AtomicBoolean clickable = new AtomicBoolean(true);
         final int nonclickableColor = this.getResources().getColor(R.color.nonclickable, this.getTheme());
-        final int clickableColor = this.getResources().getColor(R.color.black, this.getTheme());
+        final int clickableColor = this.getResources().getColor(R.color.normal_text, this.getTheme());
         this.runOnUiThread(() -> {
             count.setText(countS);
             pageCurrent.setText(currentPageS);
@@ -263,7 +270,7 @@ public class MainActivity extends AppCompatActivity {
             super.onBackPressed();
             return;
         }
-        Toast.makeText(this, R.string.exit_press_again, Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, R.string.toast_press_again_to_exit, Toast.LENGTH_SHORT).show();
         this.lastBackPressedTime = now;
     }
 

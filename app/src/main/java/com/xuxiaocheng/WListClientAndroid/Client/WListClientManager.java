@@ -2,9 +2,9 @@ package com.xuxiaocheng.WListClientAndroid.Client;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import com.xuxiaocheng.HeadLibs.Initializer.HInitializer;
-import com.xuxiaocheng.HeadLibs.Initializer.HMultiInitializers;
-import com.xuxiaocheng.WList.Utils.AndroidSupport;
+import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
+import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
+import com.xuxiaocheng.HeadLibs.Initializers.HMultiInitializers;
 import com.xuxiaocheng.WListClient.Client.WListClient;
 import com.xuxiaocheng.WListClient.Client.WListClientInterface;
 import io.netty.buffer.ByteBuf;
@@ -82,7 +82,7 @@ public class WListClientManager implements Closeable {
 
     @NonNull public static WListClientManager getDefault(@NonNull final SocketAddress address) {
         final GenericObjectPoolConfig<WListClient> poolConfig = new GenericObjectPoolConfig<>();
-        poolConfig.setJmxEnabled(AndroidSupport.jmxEnable);
+        poolConfig.setJmxEnabled(AndroidSupporter.jmxEnable);
         poolConfig.setTestOnBorrow(true);
         return new WListClientManager(poolConfig, new ClientManagerConfig(address));
     }
