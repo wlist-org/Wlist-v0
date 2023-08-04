@@ -13,11 +13,11 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Map;
 
-public final class DriverConfiguration_123Pan extends DriverConfiguration<
-        DriverConfiguration_123Pan.LocalSide,
-        DriverConfiguration_123Pan.WebSide,
-        DriverConfiguration_123Pan.CacheSide> {
-    public DriverConfiguration_123Pan() {
+public final class DriverConfiguration_123pan extends DriverConfiguration<
+        DriverConfiguration_123pan.LocalSide,
+        DriverConfiguration_123pan.WebSide,
+        DriverConfiguration_123pan.CacheSide> {
+    public DriverConfiguration_123pan() {
         super("123pan", LocalSide::new, WebSide::new, CacheSide::new);
     }
 
@@ -28,7 +28,7 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
 
         @Override
         public @NotNull String toString() {
-            return "DriverConfiguration_123Pan$LocalSide{" +
+            return "DriverConfiguration_123pan$LocalSide{" +
                     "super=" + super.toString() +
                     '}';
         }
@@ -38,7 +38,6 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
         private @NotNull String passport = "";
         private @NotNull String password = "";
         private int loginType = 1;
-        private long rootDirectoryId = 0;
 
         @Override
         protected void load(final @NotNull @UnmodifiableView Map<? super @NotNull String, @NotNull Object> web, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
@@ -49,8 +48,6 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
                     o -> YamlHelper.transferString(o, errors, prefix + "password"));
             this.loginType = YamlHelper.getConfig(web, "login_type", this.loginType,
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "login_type", BigInteger.ONE, AndroidSupporter.BigIntegerTwo)).intValue();
-            this.rootDirectoryId = YamlHelper.getConfig(web, "root_directory_id", this.rootDirectoryId,
-                    o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "root_directory_id", BigInteger.ZERO, BigInteger.valueOf(Long.MAX_VALUE))).longValue();
         }
 
         @Override
@@ -59,7 +56,6 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
             web.put("passport", this.passport);
             web.put("password", this.password);
             web.put("login_type", this.loginType);
-            web.put("root_directory_id", this.rootDirectoryId);
             return web;
         }
 
@@ -75,17 +71,12 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
             return this.loginType;
         }
 
-        public long getRootDirectoryId() {
-            return this.rootDirectoryId;
-        }
-
         @Override
         public @NotNull String toString() {
-            return "DriverConfiguration_123Pan$WebSide{" +
+            return "DriverConfiguration_123pan$WebSide{" +
                     "passport='" + this.passport + '\'' +
                     ", password='" + this.password + '\'' +
                     ", loginType=" + this.loginType +
-                    ", rootDirectoryId=" + this.rootDirectoryId +
                     ", super=" + super.toString() +
                     '}';
         }
@@ -142,7 +133,7 @@ public final class DriverConfiguration_123Pan extends DriverConfiguration<
 
         @Override
         public @NotNull String toString() {
-            return "DriverConfiguration_123Pan$CacheSide{" +
+            return "DriverConfiguration_123pan$CacheSide{" +
                     "token='" + this.token + '\'' +
                     ", tokenExpire=" + this.tokenExpire +
                     ", refreshExpire=" + this.refreshExpire +

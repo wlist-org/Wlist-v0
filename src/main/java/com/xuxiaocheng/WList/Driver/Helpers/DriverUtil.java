@@ -179,8 +179,8 @@ public final class DriverUtil {
             list.add(() -> {
                 //noinspection NumericCastThatLosesPrecision
                 final int length = (int) (e - b);
-                try (final InputStream stream = DriverNetworkHelper.extraResponse(DriverNetworkHelper.sendRequestJson(client, url,
-                        Objects.requireNonNullElseGet(builder, Headers.Builder::new).set("Range", String.format("bytes=%d-%d", b, e - 1)).build(), null)).byteStream()) {
+                try (final InputStream stream = DriverNetworkHelper.extraResponseBody(DriverNetworkHelper.callWithJson(client, url,
+                        Objects.requireNonNullElseGet(builder, Headers.Builder::new).set("Range", String.format("bytes=%d-%d", b, e - 1)).build(), null).execute()).byteStream()) {
                     final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(length, length);
                     try {
                         int read = 0;

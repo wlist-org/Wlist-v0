@@ -15,7 +15,7 @@ public class IllegalResponseCodeException extends WrongResponseException {
     protected final int code;
     protected final @NotNull String meaning;
 
-    public IllegalResponseCodeException(final int code, final @Nullable String message, final @Nullable ParametersMap parameters) {
+    public IllegalResponseCodeException(final int code, final @Nullable String message, final @NotNull ParametersMap parameters) {
         super(code, message, parameters);
         this.code = code;
         this.meaning = Objects.requireNonNullElse(message, "");

@@ -34,7 +34,7 @@ public final class TrashHelper_123pan {
     static final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> DeleteFileURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/delete", "POST");
     static final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> DeleteAllFilesURL = Pair.ImmutablePair.makeImmutablePair("https://www.123pan.com/api/file/trash_delete_all", "POST");
 
-    static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull List<@NotNull TrashedSqlInformation>> listFiles(final @NotNull DriverConfiguration_123Pan configuration, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws IllegalParametersException, IOException {
+    static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull List<@NotNull TrashedSqlInformation>> listFiles(final @NotNull DriverConfiguration_123pan configuration, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws IllegalParametersException, IOException {
         DriverHelper_123pan.ensureToken(configuration);
         final Map<String, Object> request = new LinkedHashMap<>(7);
         request.put("Trashed", true);
@@ -61,7 +61,7 @@ public final class TrashHelper_123pan {
         return Pair.ImmutablePair.makeImmutablePair(total, list);
     }
 
-    static @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull TrashedSqlInformation> getFilesInformation(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull Collection<@NotNull Long> idList) throws IllegalParametersException, IOException {
+    static @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull TrashedSqlInformation> getFilesInformation(final @NotNull DriverConfiguration_123pan configuration, final @NotNull Collection<@NotNull Long> idList) throws IllegalParametersException, IOException {
         DriverHelper_123pan.ensureToken(configuration);
         final Map<String, Object> request = new LinkedHashMap<>(1);
         request.put("FileIdList", idList.stream().map(id -> {
@@ -84,7 +84,7 @@ public final class TrashHelper_123pan {
     }
 
     @SuppressWarnings({"UnusedReturnValue", "DuplicatedCode"})
-    static @NotNull @UnmodifiableView Set<@NotNull Long> deleteFiles(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull Collection<@NotNull Long> idList) throws IllegalParametersException, IOException {
+    static @NotNull @UnmodifiableView Set<@NotNull Long> deleteFiles(final @NotNull DriverConfiguration_123pan configuration, final @NotNull Collection<@NotNull Long> idList) throws IllegalParametersException, IOException {
         DriverHelper_123pan.ensureToken(configuration);
         final Map<String, Object> request = new LinkedHashMap<>(1);
         request.put("FileIdList", AStreams.streamToList(idList.stream().map(id -> {
@@ -97,12 +97,12 @@ public final class TrashHelper_123pan {
         return DriverHelper_123pan.transferInformationSet(infos);
     }
 
-    static void deleteAllFiles(final @NotNull DriverConfiguration_123Pan configuration) throws IllegalParametersException, IOException {
+    static void deleteAllFiles(final @NotNull DriverConfiguration_123pan configuration) throws IllegalParametersException, IOException {
         DriverHelper_123pan.ensureToken(configuration);
         DriverHelper_123pan.sendRequestReceiveExtractedData(TrashHelper_123pan.DeleteAllFilesURL, configuration, Map.of(), false);
     }
 
-    static @NotNull UnionPair<@NotNull TrashedSqlInformation, @NotNull FailureReason> renameFile(final @NotNull DriverConfiguration_123Pan configuration, final long sourceId, final @NotNull String filename) throws IllegalParametersException, IOException {
+    static @NotNull UnionPair<@NotNull TrashedSqlInformation, @NotNull FailureReason> renameFile(final @NotNull DriverConfiguration_123pan configuration, final long sourceId, final @NotNull String filename) throws IllegalParametersException, IOException {
         if (!DriverHelper_123pan.filenamePredication.test(filename))
             return UnionPair.fail(FailureReason.byInvalidName("Renaming trashed file.", new FileLocation(configuration.getName(), sourceId), filename));
         DriverHelper_123pan.ensureToken(configuration);

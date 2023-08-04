@@ -10,10 +10,13 @@ import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
 import com.xuxiaocheng.WList.Exceptions.NetworkException;
 import com.xuxiaocheng.WList.Server.WListServer;
 import io.netty.buffer.ByteBuf;
+import io.netty.util.concurrent.DefaultEventExecutorGroup;
+import io.netty.util.concurrent.DefaultThreadFactory;
+import io.netty.util.concurrent.EventExecutorGroup;
 import okhttp3.Call;
-import okhttp3.Callback;
 import okhttp3.Dispatcher;
 import okhttp3.Headers;
+import okhttp3.HttpUrl;
 import okhttp3.Interceptor;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -32,10 +35,9 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public final class DriverNetworkHelper {
     private DriverNetworkHelper() {
@@ -44,9 +46,12 @@ public final class DriverNetworkHelper {
 
     private static final @NotNull HLog logger = HLog.createInstance("NetworkLogger", HLog.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, true, HMergedStreams.getFileOutputStreamNoException(null));
 
+    public static final @NotNull EventExecutorGroup CountDownExecutors =
+            new DefaultEventExecutorGroup(2, new DefaultThreadFactory("CountDownExecutors"));
     @SuppressWarnings("SpellCheckingInspection")
     public static final @NotNull String defaultWebAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.37";
     public static final @NotNull String defaultAgent = "WList/0.2.1";
+
     private static final @NotNull Dispatcher dispatcher = new Dispatcher(WListServer.IOExecutors);
     private static final @NotNull Interceptor NetworkLoggerInterceptor = chain -> {
         final Request request = chain.request();
@@ -76,9 +81,6 @@ public final class DriverNetworkHelper {
                 .dispatcher(DriverNetworkHelper.dispatcher)
                 .addInterceptor(DriverNetworkHelper.NetworkLoggerInterceptor);
     }
-
-    public static final @NotNull Executor threadPoolSecond = CompletableFuture.delayedExecutor(1, TimeUnit.SECONDS);
-    public static final @NotNull Executor threadPoolMinute = CompletableFuture.delayedExecutor(1, TimeUnit.MINUTES);
 
     public static class FrequencyControlInterceptor implements Interceptor {
         protected final int perSecond;
@@ -127,22 +129,22 @@ public final class DriverNetworkHelper {
             try {
                 response = chain.proceed(chain.request());
             } finally {
-                DriverNetworkHelper.threadPoolSecond.execute(() -> {
+                DriverNetworkHelper.CountDownExecutors.schedule(() -> {
                     synchronized (this.frequencyControlSecond) {
                         if (this.frequencyControlSecond.getAndDecrement() > 1)
                             this.frequencyControlSecond.notify();
                         else
                             this.frequencyControlSecond.notifyAll();
                     }
-                });
-                DriverNetworkHelper.threadPoolMinute.execute(() -> {
+                }, 1, TimeUnit.SECONDS);
+                DriverNetworkHelper.CountDownExecutors.schedule(() -> {
                     synchronized (this.frequencyControlMinute) {
                         if (this.frequencyControlMinute.getAndDecrement() > 1)
                             this.frequencyControlMinute.notify();
                         else
                             this.frequencyControlMinute.notifyAll();
                     }
-                });
+                }, 1, TimeUnit.MINUTES);
             }
             return response;
         }
@@ -158,108 +160,110 @@ public final class DriverNetworkHelper {
         }
     }
 
-    public static @NotNull RequestBody createJsonRequestBody(final @Nullable Object obj) {
-        return RequestBody.create(JSON.toJSONBytes(obj),
-                MediaType.parse("application/json;charset=utf-8"));
-    }
-
-    public static @NotNull Call callRequestWithParameters(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> parameters) {
-        assert !HttpMethod.requiresRequestBody(url.getSecond());
-        final Request.Builder request = new Request.Builder();
+    private static @NotNull HttpUrl getRealUrl(final @NotNull String url, final @Nullable Map<@NotNull String, @NotNull String> parameters) {
         if (parameters == null)
-            request.url(url.getFirst());
-        else {
-            final StringBuilder builder = new StringBuilder(url.getFirst());
-            builder.append(url.getFirst().contains("?") ? '&' : '?');
-            for (final Map.Entry<String, Object> entry : parameters.entrySet())
-                builder.append(entry.getKey()).append('=').append(entry.getValue()).append('&');
-            builder.deleteCharAt(builder.length() - 1);
-            request.url(builder.toString());
-        }
-        return client.newCall(request
-                .headers(Objects.requireNonNullElseGet(headers, () -> new Headers.Builder().build()))
-                .method(url.getSecond(), null).build());
+            return Objects.requireNonNull(HttpUrl.parse(url));
+        final HttpUrl.Builder builder = Objects.requireNonNull(HttpUrl.parse(url)).newBuilder();
+        for (final Map.Entry<String, String> entry: parameters.entrySet())
+            builder.addQueryParameter(entry.getKey(), entry.getValue());
+        return builder.build();
     }
 
-    public static @NotNull Call callRequestWithBody(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable Headers headers, final @Nullable RequestBody body) {
+    private static final Headers.@NotNull Builder emptyHeaders = new Headers.Builder();
+
+    public static @NotNull Call getWithParameters(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull String> parameters) {
+        assert !HttpMethod.requiresRequestBody(url.getSecond());
+        return client.newCall(new Request.Builder().url(DriverNetworkHelper.getRealUrl(url.getFirst(), parameters))
+                .headers(Objects.requireNonNullElseGet(headers, DriverNetworkHelper.emptyHeaders::build))
+                .method(url.getSecond(), null)
+                .build());
+    }
+
+    public static @NotNull Call postWithBody(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable Headers headers, final @Nullable RequestBody body) {
         assert HttpMethod.requiresRequestBody(url.getSecond());
         return client.newCall(new Request.Builder().url(url.getFirst())
-                .headers(Objects.requireNonNullElseGet(headers, () -> new Headers.Builder().build()))
+                .headers(Objects.requireNonNullElseGet(headers, DriverNetworkHelper.emptyHeaders::build))
                 .method(url.getSecond(),
                         Objects.requireNonNullElseGet(body, () -> RequestBody.create("".getBytes(StandardCharsets.UTF_8))))
                 .build());
     }
 
-    public static @NotNull Response sendRequestJson(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body) throws IOException {
-        return (HttpMethod.requiresRequestBody(url.getSecond()) ?
-                DriverNetworkHelper.callRequestWithBody(client, url, headers, DriverNetworkHelper.createJsonRequestBody(body)) :
-                DriverNetworkHelper.callRequestWithParameters(client, url, headers, body)).execute();
+    public static @NotNull Call postWithParametersAndBody(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull String> parameters, final @Nullable RequestBody body) {
+        assert HttpMethod.requiresRequestBody(url.getSecond());
+        return client.newCall(new Request.Builder().url(DriverNetworkHelper.getRealUrl(url.getFirst(), parameters))
+                .headers(Objects.requireNonNullElseGet(headers, DriverNetworkHelper.emptyHeaders::build))
+                .method(url.getSecond(), Objects.requireNonNullElseGet(body, () ->
+                        RequestBody.create("".getBytes(StandardCharsets.UTF_8))))
+                .build());
     }
 
-    public static void sendRequestAsync(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body, final @NotNull Callback callback) {
-        (HttpMethod.requiresRequestBody(url.getSecond()) ?
-                DriverNetworkHelper.callRequestWithBody(client, url, headers, DriverNetworkHelper.createJsonRequestBody(body)) :
-                DriverNetworkHelper.callRequestWithParameters(client, url, headers, body)).enqueue(callback);
+    public static @NotNull Call callWithJson(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body) {
+        return HttpMethod.requiresRequestBody(url.getSecond()) ?
+                DriverNetworkHelper.postWithBody(client, url, headers, DriverNetworkHelper.createJsonRequestBody(body)) :
+                DriverNetworkHelper.getWithParameters(client, url, headers, body == null ? null : body.entrySet().stream()
+                        .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().toString())));
     }
 
-    public static @NotNull ResponseBody extraResponse(final @NotNull Response response) throws NetworkException {
+    public static @NotNull ResponseBody extraResponseBody(final @NotNull Response response) throws NetworkException {
         if (!response.isSuccessful())
             throw new NetworkException(response.code(), response.message());
-        final ResponseBody responseBody = response.body();
-        if (responseBody == null)
+        final ResponseBody body = response.body();
+        if (body == null)
             throw new NetworkException("Null response body.");
-        return responseBody;
+        return body;
     }
 
-    public static @NotNull JSONObject sendRequestReceiveJson(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body) throws IOException {
-        try (final InputStream stream = DriverNetworkHelper.extraResponse(DriverNetworkHelper.sendRequestJson(client, url, headers, body)).byteStream()) {
+    public static @NotNull JSONObject extraJsonResponseBody(final @NotNull Response response) throws IOException {
+        try (final InputStream stream = DriverNetworkHelper.extraResponseBody(response).byteStream()) {
             return JSON.parseObject(stream);
         }
     }
 
-    public static class ByteBufOctetStreamRequestBody extends RequestBody {
-        protected final int length;
-        protected final @NotNull ByteBuf content;
+    public static @NotNull RequestBody createJsonRequestBody(final @Nullable Object obj) {
+        return RequestBody.create(JSON.toJSONBytes(obj),
+                MediaType.parse("application/json;charset=utf-8"));
+    }
 
-        public ByteBufOctetStreamRequestBody(final @NotNull ByteBuf content) {
-            super();
-            this.length = content.readableBytes();
-            this.content = content;
-        }
+    public static @NotNull RequestBody createOctetStreamRequestBody(final @NotNull ByteBuf content) {
+        final ByteBuf _content = content;
+        return new RequestBody() {
+            private final int length = _content.readableBytes();
+            private final @NotNull ByteBuf content = _content;
 
-        @Override
-        public @Nullable MediaType contentType() {
-            return MediaType.parse("application/octet-stream");
-        }
-
-        @Override
-        public long contentLength() {
-            return this.length;
-        }
-
-        @Override
-        public void writeTo(final @NotNull BufferedSink bufferedSink) throws IOException {
-            final ByteBuffer nio;
-            try {
-                nio = this.content.nioBuffer(this.content.readerIndex(), this.content.readableBytes());
-            } catch (final RuntimeException exception) {
-                final int bufferSize = Math.min(this.length, 2 << 20);
-                for (final byte[] buffer = new byte[bufferSize]; this.content.readableBytes() > 0; ) {
-                    final int len = Math.min(bufferSize, this.content.readableBytes());
-                    this.content.readBytes(buffer, 0, len);
-                    bufferedSink.write(buffer, 0, len);
-                }
-                return;
+            @Override
+            public @Nullable MediaType contentType() {
+                return MediaType.parse("application/octet-stream");
             }
-            bufferedSink.write(nio);
-        }
 
-        @Override
-        public @NotNull String toString() {
-            return "ByteBufOctetStreamRequestBody{" +
-                    "length=" + this.length +
-                    ", super=" + super.toString() +
-                    "}";
-        }
+            @Override
+            public long contentLength() {
+                return this.length;
+            }
+
+            @Override
+            public void writeTo(final @NotNull BufferedSink bufferedSink) throws IOException {
+                final ByteBuffer nio;
+                try {
+                    nio = this.content.nioBuffer(this.content.readerIndex(), this.content.readableBytes());
+                } catch (final RuntimeException exception) {
+                    final int bufferSize = Math.min(this.length, 2 << 20);
+                    for (final byte[] buffer = new byte[bufferSize]; this.content.readableBytes() > 0; ) {
+                        final int len = Math.min(bufferSize, this.content.readableBytes());
+                        this.content.readBytes(buffer, 0, len);
+                        bufferedSink.write(buffer, 0, len);
+                    }
+                    return;
+                }
+                bufferedSink.write(nio);
+            }
+
+            @Override
+            public @NotNull String toString() {
+                return "ByteBufOctetStreamRequestBody{" +
+                        "length=" + this.length +
+                        ", super=" + super.toString() +
+                        "}";
+            }
+        };
     }
 }

@@ -137,6 +137,7 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
         protected long spaceAll = 0;
         protected long spaceUsed = -1;
         protected long maxSizePerFile = Long.MAX_VALUE;
+        protected long rootDirectoryId = 0;
 
         protected void load(final @NotNull @UnmodifiableView Map<? super @NotNull String, @NotNull Object> web, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
             this.spaceAll = YamlHelper.getConfig(web, "space_all", this.spaceAll,
@@ -145,6 +146,8 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "space_used", BigInteger.valueOf(-1), BigInteger.valueOf(Long.MAX_VALUE))).longValue();
             this.maxSizePerFile = YamlHelper.getConfig(web, "max_size_per_file", this.maxSizePerFile,
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "max_size_per_file", BigInteger.valueOf(-1), BigInteger.valueOf(Long.MAX_VALUE))).longValue();
+            this.rootDirectoryId = YamlHelper.getConfig(web, "root_directory_id", this.rootDirectoryId,
+                    o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "root_directory_id", BigInteger.ZERO, BigInteger.valueOf(Long.MAX_VALUE))).longValue();
         }
 
         protected @NotNull Map<@NotNull String, @NotNull Object> dump() {
@@ -152,6 +155,7 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
             web.put("space_all", this.spaceAll);
             web.put("space_used", this.spaceUsed);
             web.put("max_size_per_file", this.maxSizePerFile);
+            web.put("root_directory_id", this.rootDirectoryId);
             return web;
         }
 
@@ -179,12 +183,21 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
             this.maxSizePerFile = maxSizePerFile;
         }
 
+        public long getRootDirectoryId() {
+            return this.rootDirectoryId;
+        }
+
+        public void setRootDirectoryId(final long rootDirectoryId) {
+            this.rootDirectoryId = rootDirectoryId;
+        }
+
         @Override
         public @NotNull String toString() {
             return "WebSideDriverConfiguration{" +
                     "spaceAll=" + this.spaceAll + " Byte" +
                     ", spaceUsed=" + this.spaceUsed + " Byte" +
                     ", maxSizePerFile=" + this.maxSizePerFile + " Byte" +
+                    ", rootDirectoryId=" + this.rootDirectoryId +
                     '}';
         }
     }

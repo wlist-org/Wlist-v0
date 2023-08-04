@@ -152,7 +152,7 @@ final class DriverHelper_123pan {
         return Pair.ImmutablePair.makeImmutablePair(timeVerifier, String.format("%d-%d-%s", time, random, mergeVerifier));
     }
 
-    static @NotNull JSONObject sendRequestReceiveExtractedData(final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable DriverConfiguration_123Pan configuration, final @Nullable Map<@NotNull String, @NotNull Object> body, final boolean loginFlag) throws IllegalParametersException, IOException {
+    static @NotNull JSONObject sendRequestReceiveExtractedData(final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable DriverConfiguration_123pan configuration, final @Nullable Map<@NotNull String, @NotNull Object> body, final boolean loginFlag) throws IllegalParametersException, IOException {
         final Headers.Builder builder = new Headers.Builder();
         if (configuration != null)
             builder.add("authorization", "Bearer " + configuration.getCacheSide().getToken());
@@ -161,11 +161,11 @@ final class DriverHelper_123pan {
         builder.set("cache-control", "no-cache");
         final Pair.ImmutablePair<String, String> authKey = DriverHelper_123pan.generateDyKey(new URL(url.getFirst()).getPath(), "web", 3);
         final Pair.ImmutablePair<String, String> realUrl = Pair.ImmutablePair.makeImmutablePair(String.format("%s?%s=%s", url.getFirst(), authKey.getFirst(), authKey.getSecond()), url.getSecond());
-        JSONObject json = DriverNetworkHelper.sendRequestReceiveJson(DriverHelper_123pan.httpClient, realUrl, builder.build(), body);
+        JSONObject json = DriverNetworkHelper.extraJsonResponseBody(DriverNetworkHelper.callWithJson(DriverHelper_123pan.httpClient, realUrl, builder.build(), body).execute());
         if (json.getIntValue("code", -1) == DriverHelper_123pan.TokenExpireResponseCode && !loginFlag && configuration != null) {
             DriverHelper_123pan.forceGetToken(configuration);
-            json = DriverNetworkHelper.sendRequestReceiveJson(DriverHelper_123pan.httpClient, realUrl,
-                    builder.set("authorization", "Bearer " + configuration.getCacheSide().getToken()).build(), body);
+            json = DriverNetworkHelper.extraJsonResponseBody(DriverNetworkHelper.callWithJson(DriverHelper_123pan.httpClient, realUrl,
+                    builder.set("authorization", "Bearer " + configuration.getCacheSide().getToken()).build(), body).execute());
         }
         final int code = json.getIntValue("code", -1);
         final String message = json.getString("message");
@@ -181,7 +181,7 @@ final class DriverHelper_123pan {
 
     // User
 
-    private static void handleLoginData(final DriverConfiguration_123Pan.@NotNull CacheSide configurationCache, final @NotNull JSONObject data) throws WrongResponseException {
+    private static void handleLoginData(final DriverConfiguration_123pan.@NotNull CacheSide configurationCache, final @NotNull JSONObject data) throws WrongResponseException {
         final String token = data.getString("token");
         if (token == null)
             throw new WrongResponseException("No token in response.", data, ParametersMap.create().add("configurationCache", configurationCache));
@@ -207,7 +207,7 @@ final class DriverHelper_123pan {
      * <p> {@literal SET configuration.cacheSide.tokenExpire: }Token expire time.
      * <p> {@literal SET configuration.cacheSide.refreshExpire: }Refresh token expire time.
      */
-    private static void login(final @NotNull DriverConfiguration_123Pan configuration) throws IllegalParametersException, IOException {
+    private static void login(final @NotNull DriverConfiguration_123pan configuration) throws IllegalParametersException, IOException {
         final int loginType = configuration.getWebSide().getLoginType();
         final boolean isPhone = switch (loginType) {
             case 1 -> true; case 2 -> false;
@@ -244,7 +244,7 @@ final class DriverHelper_123pan {
      * <p> {@code true}: Failure.
      * <p> {@code false}: Success.
      */
-    private static boolean refreshToken(final @NotNull DriverConfiguration_123Pan configuration) throws IllegalParametersException, IOException {
+    private static boolean refreshToken(final @NotNull DriverConfiguration_123pan configuration) throws IllegalParametersException, IOException {
         if (configuration.getCacheSide().getToken() == null) // Quick response.
             return true;
         final JSONObject data;
@@ -261,7 +261,7 @@ final class DriverHelper_123pan {
         return false;
     }
 
-    static void forceGetToken(final @NotNull DriverConfiguration_123Pan configuration) throws IllegalParametersException, IOException {
+    static void forceGetToken(final @NotNull DriverConfiguration_123pan configuration) throws IllegalParametersException, IOException {
         final LocalDateTime time = LocalDateTime.now().minusMinutes(3);
         synchronized (configuration.getCacheSide()) {
             if (configuration.getCacheSide().getToken() == null
@@ -274,10 +274,10 @@ final class DriverHelper_123pan {
     }
 
     /**
-     * @see DriverHelper_123pan#refreshToken(DriverConfiguration_123Pan)
-     * @see DriverHelper_123pan#login(DriverConfiguration_123Pan)
+     * @see DriverHelper_123pan#refreshToken(DriverConfiguration_123pan)
+     * @see DriverHelper_123pan#login(DriverConfiguration_123pan)
      */
-    static void ensureToken(final @NotNull DriverConfiguration_123Pan configuration) throws IllegalParametersException, IOException {
+    static void ensureToken(final @NotNull DriverConfiguration_123pan configuration) throws IllegalParametersException, IOException {
         final LocalDateTime time = LocalDateTime.now().minusMinutes(3);
         synchronized (configuration.getCacheSide()) {
             if (configuration.getCacheSide().getToken() == null
@@ -290,7 +290,7 @@ final class DriverHelper_123pan {
     /**
      * Get user information.
      * @param configuration
-     * <p> {@literal GET configuration.cacheSide.token: }Token. (May refresh. {@link DriverHelper_123pan#ensureToken(DriverConfiguration_123Pan)})
+     * <p> {@literal GET configuration.cacheSide.token: }Token. (May refresh. {@link DriverHelper_123pan#ensureToken(DriverConfiguration_123pan)})
      * <p> {@literal SET configuration.cacheSide.nickname: }
      * <p> {@literal SET configuration.cacheSide.imageLink: }
      * <p> {@literal SET configuration.cacheSide.vip: }
@@ -299,7 +299,7 @@ final class DriverHelper_123pan {
      * <p> {@literal SET configuration.webSide.spaceUsed: }
      * <p> {@literal SET configuration.webSide.maxSizePerFile: }
      */
-    static void resetUserInformation(final @NotNull DriverConfiguration_123Pan configuration) throws IllegalParametersException, IOException {
+    static void resetUserInformation(final @NotNull DriverConfiguration_123pan configuration) throws IllegalParametersException, IOException {
         DriverHelper_123pan.ensureToken(configuration);
         final JSONObject data = DriverHelper_123pan.sendRequestReceiveExtractedData(DriverHelper_123pan.UserInformationURL, configuration, null, false);
         configuration.getCacheSide().setNickname(Objects.requireNonNullElse(data.getString("Nickname"), "undefined"));
@@ -319,7 +319,7 @@ final class DriverHelper_123pan {
      * <p> {@literal SET configuration.cacheSide.tokenExpire: null}
      * <p> {@literal SET configuration.cacheSide.refreshExpire: null}
      */
-    static void logout(final @NotNull DriverConfiguration_123Pan configuration) throws IllegalParametersException, IOException {
+    static void logout(final @NotNull DriverConfiguration_123pan configuration) throws IllegalParametersException, IOException {
         if (configuration.getCacheSide().getToken() == null)
             return;
         try {
@@ -369,12 +369,12 @@ final class DriverHelper_123pan {
     /**
      * List file from directory path.
      * @param configuration
-     * <p> {@literal GET configuration.cacheSide.token: }Token. (May refresh. {@link DriverHelper_123pan#ensureToken(DriverConfiguration_123Pan)})
+     * <p> {@literal GET configuration.cacheSide.token: }Token. (May refresh. {@link DriverHelper_123pan#ensureToken(DriverConfiguration_123pan)})
      * @return Notice! The return value when the directory does not exist is the same as when it's empty.
      * <p> {@literal return.first: }Total count in directory.
      * <p> {@literal return.second: }Files list.
      */
-    static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull List<@NotNull FileSqlInformation>> listFiles(final @NotNull DriverConfiguration_123Pan configuration, final long directoryId, final @IntRange(minimum = 1) int limit, final @IntRange(minimum = 0) int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws IllegalParametersException, IOException {
+    static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull List<@NotNull FileSqlInformation>> listFiles(final @NotNull DriverConfiguration_123pan configuration, final long directoryId, final @IntRange(minimum = 1) int limit, final @IntRange(minimum = 0) int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws IllegalParametersException, IOException {
         DriverHelper_123pan.ensureToken(configuration);
         final Map<String, Object> request = new LinkedHashMap<>(7);
         request.put("DriveId", 0);
@@ -402,12 +402,12 @@ final class DriverHelper_123pan {
     /**
      * Get files information.
      * @param configuration
-     * <p> {@literal GET configuration.cacheSide.token: }Token. (May refresh. {@link DriverHelper_123pan#ensureToken(DriverConfiguration_123Pan)})
+     * <p> {@literal GET configuration.cacheSide.token: }Token. (May refresh. {@link DriverHelper_123pan#ensureToken(DriverConfiguration_123pan)})
      * @param idList Ids to get information.
      * @return Notice! Not necessarily every requested ID has corresponding information.
      * <p> Files map.
      */
-    static @NotNull @UnmodifiableView Map<@NotNull Long, @Nullable FileSqlInformation> getFilesInformation(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull Collection<@NotNull Long> idList) throws IllegalParametersException, IOException {
+    static @NotNull @UnmodifiableView Map<@NotNull Long, @Nullable FileSqlInformation> getFilesInformation(final @NotNull DriverConfiguration_123pan configuration, final @NotNull Collection<@NotNull Long> idList) throws IllegalParametersException, IOException {
         if (idList.isEmpty())
             return Map.of();
         DriverHelper_123pan.ensureToken(configuration);
@@ -425,7 +425,7 @@ final class DriverHelper_123pan {
     /**
      * Get directly download url.
      * @param configuration
-     * <p> {@literal GET configuration.cacheSide.token: }Token. (May refresh. {@link DriverHelper_123pan#ensureToken(DriverConfiguration_123Pan)})
+     * <p> {@literal GET configuration.cacheSide.token: }Token. (May refresh. {@link DriverHelper_123pan#ensureToken(DriverConfiguration_123pan)})
      * @param file
      * <p> {@literal GET file.id: }No requirement for accuracy.
      * <p> {@literal GET file.other.deserialize().s3key: }Require accuracy.
@@ -433,7 +433,7 @@ final class DriverHelper_123pan {
      * <p> {@literal GET file.size: }No requirement for accuracy.
      * <p> {@literal GET file.md5: }Require accuracy.
      */
-    static @Nullable String getFileDownloadUrl(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull FileSqlInformation file) throws IllegalParametersException, IOException {
+    static @Nullable String getFileDownloadUrl(final @NotNull DriverConfiguration_123pan configuration, final @NotNull FileSqlInformation file) throws IllegalParametersException, IOException {
         assert !file.isDirectory();
         final FileInformation_123pan.FileInfoExtra_123pan extra = FileInformation_123pan.deserializeOther(file);
         DriverHelper_123pan.ensureToken(configuration);
@@ -464,9 +464,9 @@ final class DriverHelper_123pan {
     /**
      * Create a directory.
      * @param configuration
-     * <p> {@literal GET configuration.cacheSide.token: }Token. (May refresh. {@link DriverHelper_123pan#ensureToken(DriverConfiguration_123Pan)})
+     * <p> {@literal GET configuration.cacheSide.token: }Token. (May refresh. {@link DriverHelper_123pan#ensureToken(DriverConfiguration_123pan)})
      */
-    static @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> createDirectory(final @NotNull DriverConfiguration_123Pan configuration, final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException {
+    static @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> createDirectory(final @NotNull DriverConfiguration_123pan configuration, final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException {
         if (!DriverHelper_123pan.filenamePredication.test(directoryName))
             return UnionPair.fail(FailureReason.byInvalidName("Creating directory.", new FileLocation(configuration.getName(), parentId), directoryName));
         DriverHelper_123pan.ensureToken(configuration);
@@ -501,13 +501,13 @@ final class DriverHelper_123pan {
     /**
      * Request upload a file.
      * @param configuration
-     * <p> {@literal GET configuration.cacheSide.token: }Token. (May refresh. {@link DriverHelper_123pan#ensureToken(DriverConfiguration_123Pan)})
+     * <p> {@literal GET configuration.cacheSide.token: }Token. (May refresh. {@link DriverHelper_123pan#ensureToken(DriverConfiguration_123pan)})
      * @return
      * <p> {@literal Ok.Ok: }Success. Reuse.
      * <p> {@literal Ok.Failure: }Success. But need upload the file.
      * <p> {@literal Fail: }Failure.
      */
-    static @NotNull UnionPair<@NotNull UnionPair<@NotNull FileSqlInformation, @NotNull UploadIdentifier_123pan>, @NotNull FailureReason> uploadRequest(final @NotNull DriverConfiguration_123Pan configuration, final long parentId, final @NotNull String filename, final @LongRange(minimum = 0) long size, final @NotNull CharSequence md5, final Options.@NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException {
+    static @NotNull UnionPair<@NotNull UnionPair<@NotNull FileSqlInformation, @NotNull UploadIdentifier_123pan>, @NotNull FailureReason> uploadRequest(final @NotNull DriverConfiguration_123pan configuration, final long parentId, final @NotNull String filename, final @LongRange(minimum = 0) long size, final @NotNull CharSequence md5, final Options.@NotNull DuplicatePolicy policy) throws IllegalParametersException, IOException {
         if (!HMessageDigestHelper.MD5.pattern.matcher(md5).matches()) // Unreachable!
             throw new IllegalParametersException("Invalid md5.", ParametersMap.create().add("md5", md5));
         if (!DriverHelper_123pan.filenamePredication.test(filename))
@@ -562,10 +562,10 @@ final class DriverHelper_123pan {
     /**
      * Get upload urls.
      * @param configuration
-     * <p> {@literal GET configuration.cacheSide.token: }Token. (May refresh. {@link DriverHelper_123pan#ensureToken(DriverConfiguration_123Pan)})
+     * <p> {@literal GET configuration.cacheSide.token: }Token. (May refresh. {@link DriverHelper_123pan#ensureToken(DriverConfiguration_123pan)})
      * @param uploadIdentifier {@literal GET bucket, key, node, (may uploadId)}
      */
-    static @NotNull List<@NotNull String> uploadPare(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull UploadIdentifier_123pan uploadIdentifier, final @IntRange(minimum = 1) int partCount) throws IllegalParametersException, IOException {
+    static @NotNull List<@NotNull String> uploadPare(final @NotNull DriverConfiguration_123pan configuration, final @NotNull UploadIdentifier_123pan uploadIdentifier, final @IntRange(minimum = 1) int partCount) throws IllegalParametersException, IOException {
         DriverHelper_123pan.ensureToken(configuration);
         final Map<String, Object> request = new LinkedHashMap<>(partCount == 1 ? 3 : 6);
         request.put("Bucket", uploadIdentifier.bucket);
@@ -597,13 +597,13 @@ final class DriverHelper_123pan {
     /**
      * Complete a file uploading process.
      * @param configuration
-     * <p> {@literal GET configuration.cacheSide.token: }Token. (May refresh. {@link DriverHelper_123pan#ensureToken(DriverConfiguration_123Pan)})
+     * <p> {@literal GET configuration.cacheSide.token: }Token. (May refresh. {@link DriverHelper_123pan#ensureToken(DriverConfiguration_123pan)})
      * @param uploadIdentifier {@literal GET unionId, path, uploadId}
      * @return
      * <p> {@literal Null: }Failure. Possible error during upload process.
      * <p> {@literal NotNull: }Success.
      */
-    static @Nullable FileSqlInformation uploadComplete(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull UploadIdentifier_123pan uploadIdentifier, final int partCount) throws IllegalParametersException, IOException {
+    static @Nullable FileSqlInformation uploadComplete(final @NotNull DriverConfiguration_123pan configuration, final @NotNull UploadIdentifier_123pan uploadIdentifier, final int partCount) throws IllegalParametersException, IOException {
         DriverHelper_123pan.ensureToken(configuration);
         final Map<String, Object> request = new LinkedHashMap<>(partCount == 1 ? 2 : 3);
         request.put("FileId", uploadIdentifier.unionId);
@@ -628,12 +628,12 @@ final class DriverHelper_123pan {
     /**
      * Trash files.
      * @param configuration
-     * <p> {@literal GET configuration.cacheSide.token: }Token. (May refresh. {@link DriverHelper_123pan#ensureToken(DriverConfiguration_123Pan)})
+     * <p> {@literal GET configuration.cacheSide.token: }Token. (May refresh. {@link DriverHelper_123pan#ensureToken(DriverConfiguration_123pan)})
      * @return Successful ids.
      * <p> Other ids are more likely to no longer exist, so this method return value can be ignored.
      */
     @SuppressWarnings("UnusedReturnValue")
-    static @NotNull @UnmodifiableView Set<@NotNull Long> trashFiles(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull Collection<@NotNull Long> idList, final boolean operate) throws IllegalParametersException, IOException {
+    static @NotNull @UnmodifiableView Set<@NotNull Long> trashFiles(final @NotNull DriverConfiguration_123pan configuration, final @NotNull Collection<@NotNull Long> idList, final boolean operate) throws IllegalParametersException, IOException {
         DriverHelper_123pan.ensureToken(configuration);
         final Map<String, Object> request = new LinkedHashMap<>(3);
         request.put("Operation", operate);
@@ -651,9 +651,9 @@ final class DriverHelper_123pan {
     /**
      * Rename file. (Not support DuplicatePolicy. Only {@code ERROR})
      * @param configuration
-     * <p> {@literal GET configuration.cacheSide.token: }Token. (May refresh. {@link DriverHelper_123pan#ensureToken(DriverConfiguration_123Pan)})
+     * <p> {@literal GET configuration.cacheSide.token: }Token. (May refresh. {@link DriverHelper_123pan#ensureToken(DriverConfiguration_123pan)})
      */
-    static @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> renameFile(final @NotNull DriverConfiguration_123Pan configuration, final long sourceId, final @NotNull String filename, final Options.@NotNull DuplicatePolicy ignoredPolicy) throws IllegalParametersException, IOException {
+    static @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> renameFile(final @NotNull DriverConfiguration_123pan configuration, final long sourceId, final @NotNull String filename, final Options.@NotNull DuplicatePolicy ignoredPolicy) throws IllegalParametersException, IOException {
         if (!DriverHelper_123pan.filenamePredication.test(filename))
             return UnionPair.fail(FailureReason.byInvalidName("Renaming file.", new FileLocation(configuration.getName(), sourceId), filename));
         DriverHelper_123pan.ensureToken(configuration);
@@ -681,10 +681,10 @@ final class DriverHelper_123pan {
     /**
      * Move files. (Not support DuplicatePolicy. Only {@code KEEP})
      * @param configuration
-     * <p> {@literal GET configuration.cacheSide.token: }Token. (May refresh. {@link DriverHelper_123pan#ensureToken(DriverConfiguration_123Pan)})
+     * <p> {@literal GET configuration.cacheSide.token: }Token. (May refresh. {@link DriverHelper_123pan#ensureToken(DriverConfiguration_123pan)})
      * @return Successful ids map.
      */
-    static @NotNull @UnmodifiableView Map<@NotNull Long, @Nullable FileSqlInformation> moveFiles(final @NotNull DriverConfiguration_123Pan configuration, final @NotNull Collection<@NotNull Long> idList, final long parentId, final Options.@NotNull DuplicatePolicy ignoredPolicy) throws IllegalParametersException, IOException {
+    static @NotNull @UnmodifiableView Map<@NotNull Long, @Nullable FileSqlInformation> moveFiles(final @NotNull DriverConfiguration_123pan configuration, final @NotNull Collection<@NotNull Long> idList, final long parentId, final Options.@NotNull DuplicatePolicy ignoredPolicy) throws IllegalParametersException, IOException {
         DriverHelper_123pan.ensureToken(configuration);
         final Map<String, Object> request = new LinkedHashMap<>(2);
         request.put("ParentFileId", parentId);

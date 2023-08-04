@@ -7,5 +7,5 @@ import org.jetbrains.annotations.NotNull;
 import java.util.List;
 
 public record DownloadMethods(long total, @NotNull List<@NotNull SupplierE<@NotNull ByteBuf>> methods,
-                              @NotNull Runnable finisher) {
+                              @NotNull Runnable finisher) { // TODO Expiration
 }

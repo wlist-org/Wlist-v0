@@ -65,7 +65,7 @@ public final class Operation {
         Broadcast,
         ServerError,
         Unsupported,
-        NoPermission,
+        NoPermission, // TODO Details: which permission
         DataError,
         FormatError,
     }

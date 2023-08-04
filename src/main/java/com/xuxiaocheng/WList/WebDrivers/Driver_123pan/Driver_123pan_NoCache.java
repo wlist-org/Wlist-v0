@@ -31,16 +31,16 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class Driver_123pan_NoCache implements DriverInterface<DriverConfiguration_123Pan> {
-    protected @NotNull DriverConfiguration_123Pan configuration = new DriverConfiguration_123Pan();
+public class Driver_123pan_NoCache implements DriverInterface<DriverConfiguration_123pan> {
+    protected @NotNull DriverConfiguration_123pan configuration = new DriverConfiguration_123pan();
 
     @Override
-    public @NotNull DriverConfiguration_123Pan getConfiguration() {
+    public @NotNull DriverConfiguration_123pan getConfiguration() {
         return this.configuration;
     }
 
     @Override
-    public void initialize(final @NotNull DriverConfiguration_123Pan configuration) throws SQLException {
+    public void initialize(final @NotNull DriverConfiguration_123pan configuration) throws SQLException {
         this.configuration = configuration;
     }
 
@@ -114,8 +114,8 @@ public class Driver_123pan_NoCache implements DriverInterface<DriverConfiguratio
             //noinspection NumericCastThatLosesPrecision
             final int len = (int) Math.min(DriverHelper_123pan.UploadPartSize, (size - readSize));readSize += len;
             final Pair.ImmutablePair<List<ConsumerE<ByteBuf>>, Runnable> split = DriverUtil.splitUploadMethod(b -> {
-                DriverNetworkHelper.callRequestWithBody(DriverHelper_123pan.fileClient, Pair.ImmutablePair.makeImmutablePair(url, "PUT"), null,
-                        new DriverNetworkHelper.ByteBufOctetStreamRequestBody(b)).execute().close();
+                DriverNetworkHelper.postWithBody(DriverHelper_123pan.fileClient, Pair.ImmutablePair.makeImmutablePair(url, "PUT"), null,
+                        DriverNetworkHelper.createOctetStreamRequestBody(b)).execute().close();
                 countDown.getAndDecrement();
             }, len);
             consumers.addAll(split.getFirst());

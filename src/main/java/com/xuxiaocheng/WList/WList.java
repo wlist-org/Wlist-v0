@@ -14,6 +14,7 @@ import com.xuxiaocheng.WList.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Databases.User.UserSqlHelper;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupSqlHelper;
+import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Server.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
@@ -75,7 +76,7 @@ public final class WList {
     public static void main(final String @NotNull ... args) {
         if (!WList.mainStageAPI.compareAndSet(-1, 0)) return;
         File runtimePath = new File("").getAbsoluteFile();
-        for (final String arg : args) {
+        for (final String arg: args) {
             if ("-Debug".equalsIgnoreCase(arg))
                 HLog.setDebugMode(true);
             if ("-NoDebug".equalsIgnoreCase(arg))
@@ -124,12 +125,13 @@ public final class WList {
                 for (final Map.Entry<String, Exception> exception: DriverManager.operateAllDrivers(d -> DriverManager.dumpConfigurationIfModified(d.getConfiguration())).entrySet())
                     logger.log(HLogLevel.ERROR, "Failed to dump driver configuration.", ParametersMap.create().add("name", exception.getKey()), exception.getValue());
                 logger.log(HLogLevel.FINE, "Shutting down the whole application...");
-                final Future<?>[] futures = new Future[4];
+                final Future<?>[] futures = new Future[5];
                 futures[0] = WListServer.CodecExecutors.shutdownGracefully();
                 futures[1] = WListServer.ServerExecutors.shutdownGracefully();
                 futures[2] = WListServer.IOExecutors.shutdownGracefully();
                 futures[3] = BackgroundTaskManager.BackgroundExecutors.shutdownGracefully();
-                for (final Future<?> future : futures)
+                futures[4] = DriverNetworkHelper.CountDownExecutors.shutdownGracefully();
+                for (final Future<?> future: futures)
                     future.sync();
                 logger.log(HLogLevel.MISTAKE, "Thanks to use WList.");
             }

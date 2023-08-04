@@ -63,6 +63,7 @@ public final class ServerFileHandler {
         final int page = ByteBufIOUtil.readVariableLenInt(buffer);
         final Options.OrderPolicy orderPolicy = Options.valueOfOrderPolicy(ByteBufIOUtil.readUTF(buffer));
         final Options.OrderDirection orderDirection = Options.valueOfOrderDirection(ByteBufIOUtil.readUTF(buffer));
+        // TODO directory first ?
         final boolean refresh = ByteBufIOUtil.readBoolean(buffer);
         ServerHandler.logOperation(channel, Operation.Type.ListFiles, user, () -> ParametersMap.create()
                 .add("location", location).add("limit", limit).add("page", page).add("orderPolicy", orderPolicy).add("orderDirection", orderDirection).add("refresh", refresh)

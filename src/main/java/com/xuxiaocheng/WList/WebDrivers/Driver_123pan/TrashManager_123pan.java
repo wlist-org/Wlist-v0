@@ -36,13 +36,13 @@ public final class TrashManager_123pan {
         super();
     }
 
-    static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull List<@NotNull TrashedSqlInformation>> listFilesNoCache(final @NotNull DriverConfiguration_123Pan configuration, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction, final @Nullable String _connectionId) throws IllegalParametersException, IOException, SQLException {
+    static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull List<@NotNull TrashedSqlInformation>> listFilesNoCache(final @NotNull DriverConfiguration_123pan configuration, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction, final @Nullable String _connectionId) throws IllegalParametersException, IOException, SQLException {
         final Pair.ImmutablePair<Long, List<TrashedSqlInformation>> data = TrashHelper_123pan.listFiles(configuration, limit, page, policy, direction);
         TrashedFileManager.insertOrUpdateFiles(configuration.getName(), data.getSecond(), _connectionId);
         return data;
     }
 
-    static Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Iterator<@NotNull TrashedSqlInformation>, @NotNull Runnable> listAllFilesNoCache(final @NotNull DriverConfiguration_123Pan configuration, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws SQLException {
+    static Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Iterator<@NotNull TrashedSqlInformation>, @NotNull Runnable> listAllFilesNoCache(final @NotNull DriverConfiguration_123pan configuration, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         final Connection connection = TrashedFileManager.getConnection(configuration.getName(), _connectionId, connectionId);
         final Set<Long> allIds = ConcurrentHashMap.newKeySet();
@@ -66,7 +66,7 @@ public final class TrashManager_123pan {
                 }));
     }
 
-    static @Nullable TrashedSqlInformation getFileInformation(final @NotNull DriverConfiguration_123Pan configuration, final long id, final boolean useCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
+    static @Nullable TrashedSqlInformation getFileInformation(final @NotNull DriverConfiguration_123pan configuration, final long id, final boolean useCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = TrashedFileManager.getConnection(configuration.getName(), _connectionId, connectionId)) {
             connection.setAutoCommit(false);
@@ -84,7 +84,7 @@ public final class TrashManager_123pan {
         }
     }
 
-    static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull TrashedSqlInformation>> listFiles(final @NotNull DriverConfiguration_123Pan configuration, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction, final boolean useCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
+    static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull TrashedSqlInformation>> listFiles(final @NotNull DriverConfiguration_123pan configuration, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction, final boolean useCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = TrashedFileManager.getConnection(configuration.getName(), _connectionId, connectionId)) {
             connection.setAutoCommit(false);
@@ -115,7 +115,7 @@ public final class TrashManager_123pan {
         }
     }
 
-    static @Nullable DrivePath buildPath(final @NotNull DriverConfiguration_123Pan configuration, final long id, final boolean useCache, final @Nullable String _connectionId) throws IllegalParametersException, IOException, SQLException {
+    static @Nullable DrivePath buildPath(final @NotNull DriverConfiguration_123pan configuration, final long id, final boolean useCache, final @Nullable String _connectionId) throws IllegalParametersException, IOException, SQLException {
 //        if (id == configuration.getWebSide().getRootDirectoryId())
 //            return new DrivePath("");
 //        if (id == 0)
@@ -137,7 +137,7 @@ public final class TrashManager_123pan {
 //        }
     }
 
-    static @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> restoreFile(final @NotNull DriverConfiguration_123Pan configuration, final long id, final @NotNull DrivePath path, final Options.@NotNull DuplicatePolicy policy, final boolean useCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
+    static @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> restoreFile(final @NotNull DriverConfiguration_123pan configuration, final long id, final @NotNull DrivePath path, final Options.@NotNull DuplicatePolicy policy, final boolean useCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
 //        final Set<Long> ids = DriverHelper_123pan.trashFiles(configuration, List.of(id), false);
 //        if (ids.isEmpty())
 //            return UnionPair.fail(FailureReason.byNoSuchFile("Restoring file.", new FailureReason.DriveIdPath(id)));
@@ -165,7 +165,7 @@ public final class TrashManager_123pan {
         throw new RemoteException("Stub");
     }
 
-    static void deleteFile(final @NotNull DriverConfiguration_123Pan configuration, final long id, final boolean useCache, final @Nullable String _connectionId) throws IllegalParametersException, IOException, SQLException {
+    static void deleteFile(final @NotNull DriverConfiguration_123pan configuration, final long id, final boolean useCache, final @Nullable String _connectionId) throws IllegalParametersException, IOException, SQLException {
         final Set<Long> ids = TrashHelper_123pan.deleteFiles(configuration, List.of(id));
         if (ids.isEmpty())
             return;
@@ -174,13 +174,13 @@ public final class TrashManager_123pan {
         DriverManager_123pan.resetUserInformation(configuration);
     }
 
-    static void deleteAllFiles(final @NotNull DriverConfiguration_123Pan configuration, final @Nullable String _connectionId) throws IllegalParametersException, IOException, SQLException {
+    static void deleteAllFiles(final @NotNull DriverConfiguration_123pan configuration, final @Nullable String _connectionId) throws IllegalParametersException, IOException, SQLException {
         TrashHelper_123pan.deleteAllFiles(configuration);
         TrashedFileManager.clear(configuration.getName(), _connectionId);
         DriverManager_123pan.resetUserInformation(configuration);
     }
 
-    static @Nullable DownloadMethods getDownloadMethods(final @NotNull DriverConfiguration_123Pan configuration, final long id, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final boolean useCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
+    static @Nullable DownloadMethods getDownloadMethods(final @NotNull DriverConfiguration_123pan configuration, final long id, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final boolean useCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
 //        final TrashedSqlInformation info = TrashManager_123pan.getFileInformation(configuration, id, useCache, _connectionId, _threadPool);
 //        if (info == null || info.isDirectory())
 //            return null;
@@ -191,7 +191,7 @@ public final class TrashManager_123pan {
 //                Pair.ImmutablePair.makeImmutablePair(url, "GET"), info.size(), from, to, null));
     }
 
-    static @NotNull UnionPair<@NotNull TrashedSqlInformation, @NotNull FailureReason> renameFile(final @NotNull DriverConfiguration_123Pan configuration, final long id, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final boolean useCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
+    static @NotNull UnionPair<@NotNull TrashedSqlInformation, @NotNull FailureReason> renameFile(final @NotNull DriverConfiguration_123pan configuration, final long id, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final boolean useCache, final @Nullable String _connectionId, final @Nullable ExecutorService _threadPool) throws IllegalParametersException, IOException, SQLException {
 //        if (!DriverHelper_123pan.filenamePredication.test(name))
 //            return UnionPair.fail(FailureReason.byInvalidName(name, new FailureReason.DriveIdPath(id)));
 //        final AtomicReference<String> connectionId = new AtomicReference<>();
