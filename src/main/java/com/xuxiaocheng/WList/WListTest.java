@@ -14,16 +14,19 @@ import com.xuxiaocheng.WList.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Databases.User.UserSqlHelper;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupSqlHelper;
+import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Server.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
-import com.xuxiaocheng.WList.Server.ServerHandlers.ServerHandlerManager;
 import com.xuxiaocheng.WList.Server.WListServer;
+import com.xuxiaocheng.WList.WebDrivers.Driver_lanzou.DriverConfiguration_lanzou;
+import com.xuxiaocheng.WList.WebDrivers.Driver_lanzou.DriverHelper_lanzou;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.util.Map;
+import java.util.Objects;
 
 public final class WListTest {
     private WListTest() {
@@ -34,12 +37,13 @@ public final class WListTest {
     public static void main(final String @NotNull [] args) throws Exception {
 //        if (true) return;
         WListTest.wrapServerInitialize(() -> {
-            ServerHandlerManager.initialize();
-            WListServer.getInstance().start(GlobalConfiguration.getInstance().port());
-            WListServer.getInstance().awaitStop();
+            final DriverConfiguration_lanzou lanzou = (DriverConfiguration_lanzou) Objects.requireNonNull(DriverManager.getDriver("test")).getConfiguration();
+            return DriverHelper_lanzou.listAllDirectory(lanzou, -1);
         });
     }
 
+    @SuppressWarnings({"unused", "PublicField"})
+    public static @Nullable Object tempPlaceForDebug;
     static {
         HUncaughtExceptionHelper.setUncaughtExceptionListener("listener", (t, e) -> HLog.DefaultLogger.log(HLogLevel.FAULT, "Uncaught exception listened by WListTester. thread: ", t.getName(), e));
         System.setProperty("io.netty.leakDetectionLevel", "ADVANCED");
@@ -47,8 +51,8 @@ public final class WListTest {
 
     @SuppressWarnings("OverlyBroadThrowsClause")
     private static void wrapServerInitialize(final @NotNull SupplierE<@Nullable Object> runnable) throws Exception {
-//        GlobalConfiguration.initialize(new File("server.yaml"));
-        GlobalConfiguration.initialize(null);
+        GlobalConfiguration.initialize(new File("server.yaml"));
+//        GlobalConfiguration.initialize(null);
         PooledDatabase.quicklyInitialize(PooledDatabaseHelper.getDefault(new File("data.db")));
         ConstantManager.quicklyInitialize(new ConstantSqlHelper(PooledDatabase.instance.getInstance()), "initialize");
         UserGroupManager.quicklyInitialize(new UserGroupSqlHelper(PooledDatabase.instance.getInstance()), "initialize");
@@ -70,6 +74,7 @@ public final class WListTest {
             WListServer.ServerExecutors.shutdownGracefully();
             WListServer.IOExecutors.shutdownGracefully();
             BackgroundTaskManager.BackgroundExecutors.shutdownGracefully();
+            DriverNetworkHelper.CountDownExecutors.shutdownGracefully();
         }
     }
 

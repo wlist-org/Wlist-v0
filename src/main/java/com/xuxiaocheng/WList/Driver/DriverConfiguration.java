@@ -1,7 +1,9 @@
 package com.xuxiaocheng.WList.Driver;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Utils.YamlHelper;
+import okhttp3.OkHttpClient;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -15,6 +17,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
+// TODO: thread safe.
 public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSideDriverConfiguration, W extends DriverConfiguration.WebSideDriverConfiguration, C extends DriverConfiguration.CacheSideDriverConfiguration> {
     public static final @NotNull DateTimeFormatter TimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
@@ -37,6 +40,14 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
 
     public void setName(final @NotNull String name) {
         this.name = name;
+    }
+
+    public @NotNull OkHttpClient getHttpClient() {
+        return DriverNetworkHelper.defaultHttpClient;
+    }
+
+    public @NotNull OkHttpClient getFileClient() {
+        return DriverNetworkHelper.defaultHttpClient;
     }
 
     public @NotNull L getLocalSide() {

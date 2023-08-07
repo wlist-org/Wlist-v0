@@ -19,6 +19,12 @@ public final class Options {
         UpdateTime,
     }
 
+    public enum DirectoriesOrFiles {
+        OnlyDirectories,
+        OnlyFiles,
+        Both,
+    }
+
     public static @Nullable OrderDirection valueOfOrderDirection(final @NotNull String direction) {
         try {
             return OrderDirection.valueOf(direction);
@@ -33,6 +39,15 @@ public final class Options {
         } catch (final IllegalArgumentException exception) {
             return null;
         }
+    }
+
+    public static @Nullable DirectoriesOrFiles valueOfDirectoriesOrFiles(final byte policy) {
+        return switch (policy) {
+            case 1 -> DirectoriesOrFiles.OnlyDirectories;
+            case 2 -> DirectoriesOrFiles.OnlyFiles;
+            case 3 -> DirectoriesOrFiles.Both;
+            default -> null;
+        };
     }
 
     public enum DuplicatePolicy {

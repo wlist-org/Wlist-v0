@@ -6,36 +6,18 @@ import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.FailureReason;
 import com.xuxiaocheng.WList.Driver.FileLocation;
-import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.UploadMethods;
-import okhttp3.Cookie;
-import okhttp3.CookieJar;
-import okhttp3.HttpUrl;
-import okhttp3.OkHttpClient;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
+import java.io.IOException;
 import java.util.List;
 
 public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou> {
     protected final @NotNull DriverConfiguration_lanzou configuration = new DriverConfiguration_lanzou();
-    public final @NotNull OkHttpClient httpClient = DriverNetworkHelper.newHttpClientBuilder()
-            .addNetworkInterceptor(new DriverNetworkHelper.FrequencyControlInterceptor(5, 100))
-            .cookieJar(new CookieJar() {
-                @Override
-                public void saveFromResponse(final @NotNull HttpUrl httpUrl, final @NotNull List<@NotNull Cookie> list) {
-                    Driver_lanzou.this.configuration.getCacheSide().setCookies(list);
-                    Driver_lanzou.this.configuration.getCacheSide().setModified(true);
-                }
-
-                @Override
-                public @NotNull List<@NotNull Cookie> loadForRequest(final @NotNull HttpUrl httpUrl) {
-                    return Driver_lanzou.this.configuration.getCacheSide().getCookies();
-                }
-            }).build();
 
     @Override
     public @NotNull DriverConfiguration_lanzou getConfiguration() {
@@ -53,8 +35,9 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
     }
 
     @Override
-    public void buildCache() throws Exception {
-
+    public void buildCache() throws IOException {
+        if (this.configuration.getCacheSide().getVei() == null)
+            DriverHelper_lanzou.login(this.configuration);
     }
 
     @Override
@@ -69,7 +52,7 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
 
     @Nullable
     @Override
-    public Pair.ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(@NotNull FileLocation location, int limit, int page, @NotNull Options.OrderPolicy policy, @NotNull Options.OrderDirection direction) throws Exception {
+    public Pair.ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(@NotNull FileLocation location, int limit, int page, @NotNull Options.OrderPolicy policy, @NotNull Options.OrderDirection direction, final Options.@NotNull DirectoriesOrFiles filter) throws Exception {
         return null;
     }
 

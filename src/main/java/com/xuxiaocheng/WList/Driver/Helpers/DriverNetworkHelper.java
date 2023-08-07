@@ -81,6 +81,7 @@ public final class DriverNetworkHelper {
                 .dispatcher(DriverNetworkHelper.dispatcher)
                 .addInterceptor(DriverNetworkHelper.NetworkLoggerInterceptor);
     }
+    public static final @NotNull OkHttpClient defaultHttpClient = DriverNetworkHelper.newHttpClientBuilder().build();
 
     public static class FrequencyControlInterceptor implements Interceptor {
         protected final int perSecond;

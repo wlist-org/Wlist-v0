@@ -185,9 +185,9 @@ public final class DriverManager_123pan {
             final FileSqlInformation directoryInformation = DriverManager_123pan.getFileInformation(configuration, directoryId, connectionId.get());
             if (directoryInformation == null) {connection.commit();return null;}
             switch (directoryInformation.type()) {
-                case RegularFile: return null;
-                case Directory: break;
-                case EmptyDirectory: return Pair.ImmutablePair.makeImmutablePair(0L, List.of());
+                case FileSqlType.RegularFile: return null;
+                case FileSqlType.Directory: break;
+                case FileSqlType.EmptyDirectory: return Pair.ImmutablePair.makeImmutablePair(0L, List.of());
             }
             final Pair.ImmutablePair<Long, List<FileSqlInformation>> cachedList = FileManager.selectFilesByParentIdInPage(configuration.getName(), directoryId, limit, (long) page * limit, direction, policy, connectionId.get());
             if (cachedList.getFirst().longValue() > 0) return cachedList;

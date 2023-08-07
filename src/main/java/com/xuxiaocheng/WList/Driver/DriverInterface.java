@@ -75,10 +75,11 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @param limit Max length in one page.
      * @param policy Sort order policy.
      * @param direction Sort order direction.
+     * @param filter Directories or files filter.
      * @return The first {@code long} is files count in directory. The second {@code list} is the files list. Null means directory is not available.
      * @throws Exception Something went wrong.
      */
-    Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(final @NotNull FileLocation location, final @LongRange(minimum = 0) int limit, final @LongRange(minimum = 0) int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws Exception;
+    Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(final @NotNull FileLocation location, final @LongRange(minimum = 0) int limit, final @LongRange(minimum = 0) int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction, final Options.@NotNull DirectoriesOrFiles filter) throws Exception;
 
     /**
      * Get the file information of a specific file.
@@ -120,7 +121,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @param policy Duplicate policy.
      * @return Upload methods for every 4MB ({@link com.xuxiaocheng.WList.Server.WListServer#FileTransferBufferSize}) chunks of file.
      * @see com.xuxiaocheng.WList.Driver.Helpers.DriverUtil#getRetryWrapper(String)
-     * @see DriverNetworkHelper.ByteBufOctetStreamRequestBody
+     * @see DriverNetworkHelper#createOctetStreamRequestBody
      * @see com.xuxiaocheng.WList.Driver.Helpers.DriverUtil#splitUploadMethod(ConsumerE, int)
      * @throws Exception Something went wrong.
      */

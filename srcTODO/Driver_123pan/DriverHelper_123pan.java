@@ -87,23 +87,23 @@ final class DriverHelper_123pan {
 
     @Contract(pure = true) static int getDuplicatePolicy(final Options.@NotNull DuplicatePolicy policy) {
         return switch (policy) {
-            case ERROR -> 0;
-            case OVER -> 2;
-            case KEEP -> 1;
+            case DuplicatePolicy.ERROR -> 0;
+            case DuplicatePolicy.OVER -> 2;
+            case DuplicatePolicy.KEEP -> 1;
         };
     }
     @Contract(pure = true) static @NotNull String getOrderPolicy(final Options.@NotNull OrderPolicy policy) {
         return switch (policy) {
-            case FileName -> "file_name";
-            case Size -> "size";
-            case CreateTime -> "fileId";
-            case UpdateTime -> "update_at";
+            case OrderPolicy.FileName -> "file_name";
+            case OrderPolicy.Size -> "size";
+            case OrderPolicy.CreateTime -> "fileId";
+            case OrderPolicy.UpdateTime -> "update_at";
         };
     }
     @Contract(pure = true) static @NotNull String getOrderDirection(final Options.@NotNull OrderDirection policy) {
         return switch (policy) {
-            case ASCEND -> "asc";
-            case DESCEND -> "desc";
+            case OrderDirection.ASCEND -> "asc";
+            case OrderDirection.DESCEND -> "desc";
         };
     }
 

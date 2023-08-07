@@ -189,10 +189,12 @@ public final class DriverManager {
     }
 
     public static void dumpConfigurationIfModified(final @NotNull DriverConfiguration<?, ?, ?> configuration) throws IOException {
-        if (configuration.getCacheSide().resetModified())
-            try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(DriverManager.getConfigurationFile(configuration.getName())))) {
-                YamlHelper.dumpYaml(configuration.dump(), outputStream);
-            }
+        synchronized (configuration) {
+            if (configuration.getCacheSide().resetModified())
+                try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(DriverManager.getConfigurationFile(configuration.getName())))) {
+                    YamlHelper.dumpYaml(configuration.dump(), outputStream);
+                }
+        }
     }
 
     public static boolean addDriver(final @NotNull String name, final @NotNull WebDriversType type) throws IOException {

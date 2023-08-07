@@ -2,8 +2,12 @@ package com.xuxiaocheng.WList.WebDrivers.Driver_lanzou;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Driver.DriverConfiguration;
+import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Utils.YamlHelper;
 import okhttp3.Cookie;
+import okhttp3.CookieJar;
+import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -13,7 +17,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public final class DriverConfiguration_lanzou extends DriverConfiguration<
         DriverConfiguration_lanzou.LocalSide,
@@ -22,6 +28,27 @@ public final class DriverConfiguration_lanzou extends DriverConfiguration<
     public DriverConfiguration_lanzou() {
         super("lanzou", LocalSide::new, WebSide::new, CacheSide::new);
     }
+
+    private final @NotNull OkHttpClient httpClient = DriverNetworkHelper.newHttpClientBuilder()
+            .addNetworkInterceptor(new DriverNetworkHelper.FrequencyControlInterceptor(5, 100))
+            .cookieJar(new CookieJar() {
+                @Override
+                public void saveFromResponse(final @NotNull HttpUrl httpUrl, final @NotNull List<@NotNull Cookie> list) {
+                    DriverConfiguration_lanzou.this.getCacheSide().setCookies(list);
+                    DriverConfiguration_lanzou.this.getCacheSide().setModified(true);
+                }
+
+                @Override
+                public @NotNull List<@NotNull Cookie> loadForRequest(final @NotNull HttpUrl httpUrl) {
+                    return DriverConfiguration_lanzou.this.getCacheSide().getCookies();
+                }
+            }).build();
+
+    @Override
+    public @NotNull OkHttpClient getHttpClient() {
+        return this.httpClient;
+    }
+
 
     public static final class LocalSide extends LocalSideDriverConfiguration {
         public LocalSide() {
@@ -90,7 +117,11 @@ public final class DriverConfiguration_lanzou extends DriverConfiguration<
                     o -> YamlHelper.transferString(o, errors, prefix + "vei"));
             this.tokenExpire = YamlHelper.getConfigNullable(cache, "token_expire",
                     o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "token_expire", DriverConfiguration.TimeFormatter));
-            // TODO save cookies  Cookie.parse(httpUrl, list.get(0).toString())
+            final HttpUrl url = HttpUrl.parse("https://up.woozooo.com/");assert url != null;
+            this.setCookies(YamlHelper.getConfig(cache, "cookies", List::of,
+                    o -> YamlHelper.transferListNode(o, errors, prefix + "cookies"))
+                    .stream().map(c -> Cookie.parse(url, c.toString()))
+                    .filter(Objects::nonNull).collect(Collectors.toList()));
         }
 
         @Override
@@ -99,6 +130,7 @@ public final class DriverConfiguration_lanzou extends DriverConfiguration<
             cache.put("uid", this.uid);
             cache.put("vei", this.vei);
             cache.put("token_expire", this.tokenExpire == null ? null : DriverConfiguration.TimeFormatter.format(this.tokenExpire));
+            cache.put("cookies", this.cookies.values().stream().map(Cookie::toString).collect(Collectors.toList()));
             return cache;
         }
 

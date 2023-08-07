@@ -63,15 +63,16 @@ public final class ServerFileHandler {
         final int page = ByteBufIOUtil.readVariableLenInt(buffer);
         final Options.OrderPolicy orderPolicy = Options.valueOfOrderPolicy(ByteBufIOUtil.readUTF(buffer));
         final Options.OrderDirection orderDirection = Options.valueOfOrderDirection(ByteBufIOUtil.readUTF(buffer));
-        // TODO directory first ?
+        final Options.DirectoriesOrFiles filter = Options.valueOfDirectoriesOrFiles(ByteBufIOUtil.readByte(buffer));
         final boolean refresh = ByteBufIOUtil.readBoolean(buffer);
         ServerHandler.logOperation(channel, Operation.Type.ListFiles, user, () -> ParametersMap.create()
-                .add("location", location).add("limit", limit).add("page", page).add("orderPolicy", orderPolicy).add("orderDirection", orderDirection).add("refresh", refresh)
+                .add("location", location).add("limit", limit).add("page", page)
+                .add("orderPolicy", orderPolicy).add("orderDirection", orderDirection).add("filter", filter).add("refresh", refresh)
                 .optionallyAddSupplier(refresh && user.isSuccess(), "allow", () -> user.getT().group().permissions().contains(Operation.Permission.FilesBuildIndex)));
         if (user.isFailure())
             return user.getE();
         if (limit < 1 || limit > GlobalConfiguration.getInstance().maxLimitPerPage()
-                || page < 0 || orderPolicy == null || orderDirection == null)
+                || page < 0 || orderPolicy == null || orderDirection == null || filter == null)
             return ServerHandler.WrongParameters;
         if (refresh && !user.getT().group().permissions().contains(Operation.Permission.FilesBuildIndex))
             return ServerHandler.NoPermission;
@@ -80,7 +81,7 @@ public final class ServerFileHandler {
             if (refresh)
                 RootDriver.getInstance().forceRefreshDirectory(location);
             // TODO with groups
-            list = RootDriver.getInstance().list(location, limit, page, orderPolicy, orderDirection);
+            list = RootDriver.getInstance().list(location, limit, page, orderPolicy, orderDirection, filter);
         } catch (final UnsupportedOperationException exception) {
             return ServerHandler.Unsupported.apply(exception);
         } catch (final Exception exception) {

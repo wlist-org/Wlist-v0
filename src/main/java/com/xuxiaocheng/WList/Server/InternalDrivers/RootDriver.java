@@ -110,11 +110,13 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
     }
 
     @Override
-    public Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(final @NotNull FileLocation location, final @LongRange(minimum = 0) int limit, final @LongRange(minimum = 0) int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws Exception {
+    public Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(final @NotNull FileLocation location, final @LongRange(minimum = 0) int limit, final @LongRange(minimum = 0) int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction, final Options.@NotNull DirectoriesOrFiles filter) throws Exception {
         if (SpecialDriverName.RootDriver.getIdentifier().equals(location.driver())) {
+            if (filter == Options.DirectoriesOrFiles.OnlyFiles)
+                return Pair.ImmutablePair.makeImmutablePair(0L, List.of());
             final Comparator<DriverConfiguration<?, ?, ?>> comparator = switch (policy) {
                 case FileName -> Comparator.comparing((DriverConfiguration<?, ?, ?> a) -> a.getLocalSide().getDisplayName());
-                case Size -> Comparator.comparingLong((DriverConfiguration<?, ?, ?> a) -> a.getWebSide().getSpaceAll());
+                case Size -> Comparator.comparing((DriverConfiguration<?, ?, ?> a) -> a.getWebSide().getSpaceUsed(), Long::compareUnsigned);
                 case CreateTime -> Comparator.comparing((DriverConfiguration<?, ?, ?> a) -> a.getLocalSide().getCreateTime());
                 case UpdateTime -> Comparator.comparing((DriverConfiguration<?, ?, ?> a) -> a.getLocalSide().getUpdateTime());
             };
@@ -130,7 +132,7 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
         }
         final DriverInterface<?> real = DriverManager.getDriver(location.driver());
         if (real == null) return null;
-        final Pair.ImmutablePair<Long, List<FileSqlInformation>> list = real.list(location, limit, page, policy, direction);
+        final Pair.ImmutablePair<Long, List<FileSqlInformation>> list = real.list(location, limit, page, policy, direction, filter);
         DriverManager.dumpConfigurationIfModified(real.getConfiguration());
         return list;
     }
