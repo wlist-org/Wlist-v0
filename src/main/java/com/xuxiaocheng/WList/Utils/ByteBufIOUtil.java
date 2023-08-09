@@ -497,7 +497,7 @@ public final class ByteBufIOUtil {
             serializer.serialize(buffer, object);
     }
 
-    public static byte[] allToByteArray(final @NotNull ByteBuf buffer) {
+    public static byte @NotNull [] allToByteArray(final @NotNull ByteBuf buffer) {
         if (buffer.hasArray()) {
             final int offset = buffer.arrayOffset();
             return Arrays.copyOfRange(buffer.array(), offset, offset + buffer.readableBytes());

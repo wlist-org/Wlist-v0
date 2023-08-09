@@ -84,7 +84,7 @@ public final class WList {
             if (arg.startsWith("-path:"))
                 runtimePath = new File(arg.substring("-path:".length())).getAbsoluteFile();
             if ("/?".equals(arg)) {
-                // TODO help.
+                HLog.DefaultLogger.log(HLogLevel.FINE, "Usage: [-Debug|-NoDebug] [-path:<path>]");
                 return;
             }
         }
