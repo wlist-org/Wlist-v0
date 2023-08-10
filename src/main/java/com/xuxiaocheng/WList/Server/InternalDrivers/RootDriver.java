@@ -36,8 +36,8 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
     }
 
     public static @NotNull FileSqlInformation getDriverInformation(final @NotNull DriverConfiguration<?, ?, ?> configuration) {
-        return new FileSqlInformation(new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), 0),
-                configuration.getWebSide().getRootDirectoryId(), configuration.getName() , FileSqlInterface.FileSqlType.Directory, 0,
+        return new FileSqlInformation(new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), configuration.getWebSide().getRootDirectoryId()),
+                0, configuration.getName() , FileSqlInterface.FileSqlType.Directory, configuration.getWebSide().getSpaceUsed(),
                 configuration.getLocalSide().getCreateTime(), configuration.getLocalSide().getUpdateTime(),
                 configuration.getLocalSide().getDisplayName(), null);
     }
@@ -196,7 +196,7 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
         }
         private static class LocalSide extends LocalSideDriverConfiguration {
             protected LocalSide() {
-                super("RootDriver");
+                super();
             }
         }
         private static class WebSide extends WebSideDriverConfiguration {

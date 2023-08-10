@@ -58,6 +58,16 @@ public final class DriverUtil {
     public static final Options.@NotNull OrderPolicy DefaultOrderPolicy = Options.OrderPolicy.FileName;
     public static final Options.@NotNull OrderDirection DefaultOrderDirection = Options.OrderDirection.ASCEND;
 
+    private static final @NotNull Iterable<@NotNull Pattern> HtmlCommentsTags = List.of(Pattern.compile("//.*"), Pattern.compile("<!--.*?-->"));
+    public static @NotNull String removeHtmlComments(final @Nullable String html) {
+        if (html == null)
+            return "";
+        String res = html;
+        for (final Pattern pattern: DriverUtil.HtmlCommentsTags) {
+            res = pattern.matcher(res).replaceAll("");
+        }
+        return res;
+    }
 
     /**
      * Example: <pre>{@code

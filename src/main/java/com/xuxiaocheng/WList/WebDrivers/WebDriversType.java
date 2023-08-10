@@ -47,6 +47,9 @@ public enum WebDriversType {
 
     @Override
     public @NotNull String toString() {
-        return "WebDriversType(" + this.name() + ')';
+        return "WebDriversType{" +
+                "identifier='" + this.identifier + '\'' +
+                ", name='" + this.name() + '\'' +
+                '}';
     }
 }

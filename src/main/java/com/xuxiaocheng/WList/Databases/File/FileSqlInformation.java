@@ -21,7 +21,7 @@ import java.util.Objects;
  * @param md5 File md5.
  * @param others Something extra for driver.
  */
-public record FileSqlInformation(@NotNull FileLocation location, long parentId, @NotNull String name, @NotNull FileSqlInterface.FileSqlType type, long size,
+public record FileSqlInformation(@NotNull FileLocation location, long parentId, @NotNull String name, FileSqlInterface.@NotNull FileSqlType type, long size,
                                  @Nullable LocalDateTime createTime, @Nullable LocalDateTime updateTime,
                                  @NotNull String md5, @Nullable String others) {
     public long id() {
@@ -30,6 +30,14 @@ public record FileSqlInformation(@NotNull FileLocation location, long parentId, 
 
     public boolean isDirectory() {
         return this.type != FileSqlInterface.FileSqlType.RegularFile;
+    }
+
+    public @NotNull FileSqlInformation getAsEmptyDirectory() {
+        if (this.type == FileSqlInterface.FileSqlType.RegularFile)
+            throw new IllegalStateException("Setting a regular file as an empty directory is not allowed.");
+        if (this.type == FileSqlInterface.FileSqlType.EmptyDirectory)
+            return this;
+        return new FileSqlInformation(this.location, this.parentId, this.name, FileSqlInterface.FileSqlType.EmptyDirectory, this.size, this.createTime, this.updateTime, this.md5, this.others);
     }
 
     @Override

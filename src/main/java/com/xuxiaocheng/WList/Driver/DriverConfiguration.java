@@ -100,11 +100,6 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
         // TODO modify update time.
         protected @NotNull LocalDateTime updateTime = LocalDateTime.now();
 
-        protected LocalSideDriverConfiguration(final @NotNull String displayName) {
-            super();
-            this.displayName = displayName;
-        }
-
         protected void load(final @NotNull @UnmodifiableView Map<? super @NotNull String, @NotNull Object> local, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
             this.displayName = YamlHelper.getConfig(local, "display_name", this.displayName,
                     o -> YamlHelper.transferString(o, errors, prefix + "priority"));
@@ -158,7 +153,7 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
             this.maxSizePerFile = YamlHelper.getConfig(web, "max_size_per_file", this.maxSizePerFile,
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "max_size_per_file", BigInteger.valueOf(-1), BigInteger.valueOf(Long.MAX_VALUE))).longValue();
             this.rootDirectoryId = YamlHelper.getConfig(web, "root_directory_id", this.rootDirectoryId,
-                    o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "root_directory_id", BigInteger.ZERO, BigInteger.valueOf(Long.MAX_VALUE))).longValue();
+                    o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "root_directory_id", BigInteger.valueOf(Long.MIN_VALUE), BigInteger.valueOf(Long.MAX_VALUE))).longValue();
         }
 
         protected @NotNull Map<@NotNull String, @NotNull Object> dump() {

@@ -14,7 +14,10 @@ import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.EventExecutorGroup;
 import okhttp3.Call;
+import okhttp3.Cookie;
+import okhttp3.CookieJar;
 import okhttp3.Dispatcher;
+import okhttp3.FormBody;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okhttp3.Interceptor;
@@ -33,10 +36,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public final class DriverNetworkHelper {
@@ -56,7 +63,19 @@ public final class DriverNetworkHelper {
     private static final @NotNull Interceptor NetworkLoggerInterceptor = chain -> {
         final Request request = chain.request();
         DriverNetworkHelper.logger.log(HLogLevel.NETWORK, "Sending: ", request.method(), ' ', request.url(),
-                request.header("Range") == null ? "" : (" (Range: " + request.header("Range") + ')'));
+                request.header("Range") == null ? "" : (" (Range: " + request.header("Range") + ')'),
+                (Supplier<String>) () -> {
+                    final RequestBody requestBody = request.body();
+                    if (!(requestBody instanceof FormBody formBody))
+                        return "";
+                    final StringBuilder builder = new StringBuilder();
+                    builder.append(" (Form: {");
+                    for (int i = 0; i < formBody.size(); i++) {
+                        builder.append(formBody.name(i)).append("=").append(formBody.value(i)).append(", ");
+                    }
+                    builder.replace(builder.length() - 2, builder.length(), "}) ");
+                    return builder.toString();
+                });
         final long time1 = System.currentTimeMillis();
         final Response response;
         boolean successFlag = false;
@@ -266,5 +285,40 @@ public final class DriverNetworkHelper {
                         "}";
             }
         };
+    }
+
+    public static class PersistenceCookieJar implements CookieJar {
+        protected final @NotNull List<@NotNull Cookie> cookies;
+
+        public PersistenceCookieJar(final @Nullable List<@NotNull Cookie> cookies) {
+            super();
+            this.cookies = Objects.requireNonNullElseGet(cookies, ArrayList::new);
+        }
+
+        @Override
+        public synchronized void saveFromResponse(final @NotNull HttpUrl url, final @NotNull List<@NotNull Cookie> cookies) {
+            this.cookies.addAll(cookies);
+        }
+
+        @Override
+        public synchronized @NotNull List<@NotNull Cookie> loadForRequest(final @NotNull HttpUrl url) {
+            final Collection<Cookie> invalidCookies = new ArrayList<>();
+            final List<Cookie> validCookies = new ArrayList<>();
+            final long now = System.currentTimeMillis();
+            for (final Cookie cookie: this.cookies)
+                if (cookie.expiresAt() < now)
+                    invalidCookies.add(cookie);
+                else if (cookie.matches(url))
+                    validCookies.add(cookie);
+            this.cookies.removeAll(invalidCookies);
+            return validCookies;
+        }
+
+        @Override
+        public @NotNull String toString() {
+            return "PersistenceCookieJar{" +
+                    "cache=" + this.cookies +
+                    '}';
+        }
     }
 }
