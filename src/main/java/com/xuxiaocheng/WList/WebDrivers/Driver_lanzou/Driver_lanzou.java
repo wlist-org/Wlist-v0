@@ -2,7 +2,10 @@ package com.xuxiaocheng.WList.WebDrivers.Driver_lanzou;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.WList.Databases.File.FileManager;
+import com.xuxiaocheng.WList.Databases.File.FileSqlHelper;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
+import com.xuxiaocheng.WList.Databases.GenericSql.PooledDatabase;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.FailureReason;
 import com.xuxiaocheng.WList.Driver.FileLocation;
@@ -14,10 +17,11 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.List;
 
 public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou> {
-    protected final @NotNull DriverConfiguration_lanzou configuration = new DriverConfiguration_lanzou();
+    protected @NotNull DriverConfiguration_lanzou configuration = new DriverConfiguration_lanzou();
 
     @Override
     public @NotNull DriverConfiguration_lanzou getConfiguration() {
@@ -25,13 +29,14 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
     }
 
     @Override
-    public void initialize(@NotNull DriverConfiguration_lanzou configuration) throws Exception {
-
+    public void initialize(final @NotNull DriverConfiguration_lanzou configuration) throws SQLException {
+        FileManager.quicklyInitialize(new FileSqlHelper(PooledDatabase.instance.getInstance(), configuration.getName(), configuration.getWebSide().getRootDirectoryId()), null);
+        this.configuration = configuration;
     }
 
     @Override
-    public void uninitialize() throws Exception {
-
+    public void uninitialize() throws SQLException {
+        FileManager.quicklyUninitialize(this.configuration.getName(), null);
     }
 
     @Override
@@ -46,8 +51,8 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
     }
 
     @Override
-    public void forceRefreshDirectory(@NotNull FileLocation location) throws Exception {
-        DriverInterface.super.forceRefreshDirectory(location);
+    public void forceRefreshDirectory(final @NotNull FileLocation location) throws Exception {
+
     }
 
     @Nullable
@@ -94,5 +99,12 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
     @Override
     public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> rename(@NotNull FileLocation sourceLocation, @NotNull String name, @NotNull Options.DuplicatePolicy policy) throws Exception {
         return DriverInterface.super.rename(sourceLocation, name, policy);
+    }
+
+    @Override
+    public@NotNull String toString() {
+        return "Driver_lanzou{" +
+                "configuration=" + this.configuration +
+                '}';
     }
 }

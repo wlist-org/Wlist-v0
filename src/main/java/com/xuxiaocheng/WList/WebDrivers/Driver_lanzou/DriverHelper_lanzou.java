@@ -2,6 +2,7 @@ package com.xuxiaocheng.WList.WebDrivers.Driver_lanzou;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONException;
 import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
@@ -14,11 +15,13 @@ import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInterface;
 import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
+import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Exceptions.IllegalResponseCodeException;
 import com.xuxiaocheng.WList.Exceptions.WrongResponseException;
 import com.xuxiaocheng.WList.Server.WListServer;
 import okhttp3.FormBody;
 import okhttp3.Headers;
+import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
@@ -33,15 +36,17 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @SuppressWarnings("SameParameterValue")
-public final class DriverHelper_lanzou {
+final class DriverHelper_lanzou {
     private DriverHelper_lanzou() {
         super();
     }
@@ -49,11 +54,11 @@ public final class DriverHelper_lanzou {
     private static final @NotNull HLog logger = HLog.createInstance("DriverLogger/lanzou", HLog.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, true, HMergedStreams.getFileOutputStreamNoException(null));
 
     static final @NotNull DateTimeFormatter dataTimeFormatter = DateTimeFormatter.RFC_1123_DATE_TIME;
-    static final @NotNull Headers headers = new Headers.Builder().set("referer", "https://up.woozooo.com").set("accept-language", "zh-CN")
+    static final @NotNull Headers headers = new Headers.Builder().set("referer", "https://up.woozooo.com/").set("accept-language", "zh-CN")
             .set("user-agent", DriverNetworkHelper.defaultAgent).set("cache-control", "no-cache").build();
 
     static final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> LoginURL = Pair.ImmutablePair.makeImmutablePair("https://up.woozooo.com/mlogin.php", "POST"); // TODO use account.php
-    static final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> ListFilesURL = Pair.ImmutablePair.makeImmutablePair("https://up.woozooo.com/mydisk.php", "GET");
+    static final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> InformationURL = Pair.ImmutablePair.makeImmutablePair("https://up.woozooo.com/mydisk.php", "GET");
     static final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> TaskURL = Pair.ImmutablePair.makeImmutablePair("https://up.woozooo.com/doupload.php", "POST");
 
     static @NotNull ResponseBody request(final @NotNull OkHttpClient httpClient, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @NotNull Map<@NotNull String, @NotNull String> request) throws IOException {
@@ -69,8 +74,8 @@ public final class DriverHelper_lanzou {
         return DriverNetworkHelper.extraJsonResponseBody(DriverNetworkHelper.postWithBody(httpClient, url, DriverHelper_lanzou.headers, request.build()).execute());
     }
 
-    private static final @NotNull Pattern uidGetter = Pattern.compile("\\?uid=([0-9]+)");
-    private static final @NotNull Pattern veiGetter = Pattern.compile("'vei':'([^']+)");
+    private static final @NotNull Pattern uidPattern = Pattern.compile("\\?uid=([0-9]+)");
+    private static final @NotNull Pattern veiPattern = Pattern.compile("'vei':'([^']+)");
     static void login(final @NotNull DriverConfiguration_lanzou configuration) throws IOException {
         if (configuration.getWebSide().getPassport().isEmpty() || configuration.getWebSide().getPassword().isEmpty())
             throw new IllegalResponseCodeException(0, "\u5BC6\u7801\u4E0D\u5BF9", ParametersMap.create()
@@ -89,13 +94,13 @@ public final class DriverHelper_lanzou {
         request.put("item", "files");
         request.put("action", "index");
         final String message;
-        try (final ResponseBody body = DriverHelper_lanzou.request(configuration.getHttpClient(), DriverHelper_lanzou.ListFilesURL, request)) {
-            message = body.string();
+        try (final ResponseBody body = DriverHelper_lanzou.request(configuration.getHttpClient(), DriverHelper_lanzou.InformationURL, request)) {
+            message = DriverUtil.removeHtmlComments(body.string());
         }
-        final Matcher uidMatcher = DriverHelper_lanzou.uidGetter.matcher(message);
+        final Matcher uidMatcher = DriverHelper_lanzou.uidPattern.matcher(message);
         if (!uidMatcher.find())
             throw new WrongResponseException("No uid matched.", message, ParametersMap.create().add("configuration", configuration));
-        final Matcher veiMatcher = DriverHelper_lanzou.veiGetter.matcher(message);
+        final Matcher veiMatcher = DriverHelper_lanzou.veiPattern.matcher(message);
         if (!veiMatcher.find())
             throw new WrongResponseException("No vei matched.", message, ParametersMap.create().add("configuration", configuration));
         configuration.getCacheSide().setUid(Long.parseLong(uidMatcher.group().substring("?uid=".length())));
@@ -105,7 +110,13 @@ public final class DriverHelper_lanzou {
                 .add("driver", configuration.getName()).add("passport", configuration.getWebSide().getPassport()));
     }
 
-    static @NotNull JSONObject task(final @NotNull DriverConfiguration_lanzou configuration, final int type, final FormBody.@NotNull Builder request, final int zt) throws IOException {
+    @SuppressWarnings("SpellCheckingInspection")
+    static void loginIfNot(final @NotNull DriverConfiguration_lanzou configuration) throws IOException {
+        if (configuration.getCacheSide().noCookie("phpdisk_info"))
+            DriverHelper_lanzou.login(configuration);
+    }
+
+    static @NotNull JSONObject task(final @NotNull DriverConfiguration_lanzou configuration, final int type, final FormBody.@NotNull Builder request, final @Nullable Integer zt) throws IOException {
         if (configuration.getCacheSide().getVei() == null)
             DriverHelper_lanzou.login(configuration);
         request.add("vei", configuration.getCacheSide().getVei());
@@ -114,45 +125,34 @@ public final class DriverHelper_lanzou {
         request.add("task", String.valueOf(type));
         final JSONObject json = DriverNetworkHelper.extraJsonResponseBody(DriverNetworkHelper.postWithParametersAndBody(configuration.getHttpClient(), DriverHelper_lanzou.TaskURL,
                 DriverHelper_lanzou.headers, parameters, request.build()).execute());
-        final Integer code = json.getInteger("zt");
-        if (code == null || code.intValue() != zt)
-            throw new IllegalResponseCodeException(code == null ? -1 : code.intValue(), json.getString("info") == null ? json.getString("text") : json.getString("info"),
-                    ParametersMap.create().add("configuration", configuration).add("requireZt", zt).add("json", json));
+        if (zt != null) {
+            final Integer code = json.getInteger("zt");
+            if (code == null || code.intValue() != zt)
+                throw new IllegalResponseCodeException(code == null ? -1 : code.intValue(), json.getString("info") == null ? json.getString("text") : json.getString("info"),
+                        ParametersMap.create().add("configuration", configuration).add("requireZt", zt).add("json", json));
+        }
         return json;
     }
 
-    private static final @NotNull Pattern signGetter = Pattern.compile("&sign=([^'&]+)");
+    private static final @NotNull Pattern signPattern = Pattern.compile("&sign=([^'&]+)");
     @SuppressWarnings("SpellCheckingInspection")
-    static @Nullable String getDownloadUrl(final @NotNull DriverConfiguration_lanzou configuration, final long fileId) throws IOException {
-        final FormBody.Builder sharerBuilder = new FormBody.Builder()
-                .add("file_id", String.valueOf(fileId));
-        final JSONObject sharerJson = DriverHelper_lanzou.task(configuration, 22, sharerBuilder, 1);
-        final JSONObject info = sharerJson.getJSONObject("info");
-        if (info == null)
-            throw new WrongResponseException("Getting download url.", sharerJson, ParametersMap.create().add("configuration", configuration).add("fileId", fileId));
-        final String domain = info.getString("is_newd");
-        final String path = info.getString("f_id");
-        final String password = info.getString("pwd");
-        if (domain == null || path == null || password == null)
-            throw new WrongResponseException("Getting download url.", sharerJson, ParametersMap.create().add("configuration", configuration).add("fileId", fileId));
+    static @Nullable String getSingleShareFileDownloadUrl(final @NotNull DriverConfiguration_lanzou configuration, final @NotNull String domin, final @NotNull String identifier, final @NotNull String pwd) throws IOException {
         final String message;
-        try (final ResponseBody body = DriverHelper_lanzou.request(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domain + '/' + path, "GET"), Map.of())) {
-            message = body.string();
+        try (final ResponseBody body = DriverHelper_lanzou.request(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(HttpUrl.parse(domin).newBuilder().addPathSegment(identifier).toString(), "GET"), Map.of())) {
+            message = DriverUtil.removeHtmlComments(body.string());
         }
         if (message.contains("\u6587\u4EF6\u53D6\u6D88\u5206\u4EAB\u4E86"))
             return null;
-        final Matcher signMatcher = DriverHelper_lanzou.signGetter.matcher(message);
+        final Matcher signMatcher = DriverHelper_lanzou.signPattern.matcher(message);
         if (!signMatcher.find())
-            throw new WrongResponseException("No sign matched.", message, ParametersMap.create().add("configuration", configuration).add("fileId", fileId));
-        if (!signMatcher.find())
-            throw new WrongResponseException("No sign matched.", message, ParametersMap.create().add("configuration", configuration).add("fileId", fileId));
+            throw new WrongResponseException("No sign matched.", message, ParametersMap.create().add("configuration", configuration).add("domin", domin).add("identifier", identifier).add("pwd", pwd));
         final String sign = signMatcher.group().substring("&sign=".length());
         final FormBody.Builder builder = new FormBody.Builder()
                 .add("action", "downprocess")
                 .add("sign", sign)
-                .add("p", password);
+                .add("p", pwd);
         final JSONObject json;
-        try (final ResponseBody body = DriverHelper_lanzou.request(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domain + "/ajaxm.php", "POST"), builder)) {
+        try (final ResponseBody body = DriverHelper_lanzou.request(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin + "/ajaxm.php", "POST"), builder)) {
             try (final InputStream stream = body.byteStream()) {
                 json = JSON.parseObject(stream);
             }
@@ -163,17 +163,37 @@ public final class DriverHelper_lanzou {
         final String dom = json.getString("dom");
         final String para = json.getString("url");
         if (dom == null || para == null)
-            throw new WrongResponseException("Getting download url.", json, ParametersMap.create().add("configuration", configuration).add("fileId", fileId));
+            throw new WrongResponseException("Getting single shared file download url.", json, ParametersMap.create().add("configuration", configuration).add("domin", domin).add("identifier", identifier).add("pwd", pwd));
         return dom + "/file/" + para;
     }
 
-    public static @NotNull List<@NotNull FileSqlInformation> listAllDirectory(final @NotNull DriverConfiguration_lanzou configuration, final long directoryId) throws IOException {
+    @SuppressWarnings("SpellCheckingInspection")
+    static @Nullable String getDownloadUrl(final @NotNull DriverConfiguration_lanzou configuration, final long fileId) throws IOException {
+        final FormBody.Builder sharerBuilder = new FormBody.Builder()
+                .add("file_id", String.valueOf(fileId));
+        final JSONObject json = DriverHelper_lanzou.task(configuration, 22, sharerBuilder, 1);
+        final JSONObject info = json.getJSONObject("info");
+        if (info == null)
+            throw new WrongResponseException("Getting download url.", json, ParametersMap.create().add("configuration", configuration).add("fileId", fileId));
+        final String domin = info.getString("is_newd");
+        final String identifier = info.getString("f_id");
+        final String password = info.getString("pwd");
+        if (domin == null || identifier == null || password == null)
+            throw new WrongResponseException("Getting download url.", json, ParametersMap.create().add("configuration", configuration).add("fileId", fileId));
+        return DriverHelper_lanzou.getSingleShareFileDownloadUrl(configuration, domin, identifier, password);
+    }
+
+    static @NotNull List<@NotNull FileSqlInformation> listAllDirectory(final @NotNull DriverConfiguration_lanzou configuration, final long directoryId) throws IOException {
         final FormBody.Builder filesBuilder = new FormBody.Builder()
                 .add("folder_id", String.valueOf(directoryId));
-        final JSONObject directories = DriverHelper_lanzou.task(configuration, 47, filesBuilder, 1);
-        final JSONArray filesInfos = directories.getJSONArray("text");
+        final JSONObject json = DriverHelper_lanzou.task(configuration, 47, filesBuilder, null);
+        final Integer code = json.getInteger("zt");
+        if (code == null || (code.intValue() != 1 && code.intValue() != 2))
+            throw new IllegalResponseCodeException(code == null ? -1 : code.intValue(), json.getString("info") == null ? json.getString("text") : json.getString("info"),
+                    ParametersMap.create().add("configuration", configuration).add("directoryId", directoryId).add("requireZt", "1 || 2").add("json", json));
+        final JSONArray filesInfos = json.getJSONArray(code.intValue() == 1 ? "text" : "info");
         if (filesInfos == null)
-            throw new WrongResponseException("Listing directories.", directories, ParametersMap.create()
+            throw new WrongResponseException("Listing directories.", json, ParametersMap.create()
                     .add("configuration", configuration).add("directoryId", directoryId));
         final List<FileSqlInformation> list = new ArrayList<>(filesInfos.size());
         for (final JSONObject info: filesInfos.toList(JSONObject.class)) {
@@ -189,6 +209,7 @@ public final class DriverHelper_lanzou {
     static @NotNull List<@NotNull FileSqlInformation> listAllFiles(final @NotNull DriverConfiguration_lanzou configuration, final long directoryId) throws IOException, InterruptedException {
         final Collection<CountDownLatch> latches = new ArrayList<>();
         final Map<Integer, Triad.ImmutableTriad<String, Long, Headers>> filesMap = new ConcurrentHashMap<>();
+        final Collection<CompletableFuture<?>> futures = new LinkedList<>();
         int total = 0;
         int page = 0;
         while (true) {
@@ -207,7 +228,7 @@ public final class DriverHelper_lanzou {
             latches.add(filesLatch);
             for (final JSONObject info: filesInfos.toList(JSONObject.class)) {
                 final int k = total++;
-                WListServer.IOExecutors.execute(() -> {
+                futures.add(CompletableFuture.runAsync(() -> {
                     try {
                         final String name = info.getString("name");
                         final Long id = info.getLong("id");
@@ -222,11 +243,16 @@ public final class DriverHelper_lanzou {
                     } finally {
                         filesLatch.countDown();
                     }
-                });
+                }, WListServer.IOExecutors));
             }
         }
-        for (final CountDownLatch latch: latches)
-            latch.await();
+        try {
+            for (final CountDownLatch latch: latches)
+                latch.await();
+        } catch (final InterruptedException exception) {
+            futures.forEach(f -> f.cancel(false));
+            throw exception;
+        }
         final List<FileSqlInformation> list = new ArrayList<>(filesMap.size());
         for (int i = 0; i < total; ++i) {
             final Triad.ImmutableTriad<String, Long, Headers> headers = filesMap.get(i);
@@ -250,4 +276,27 @@ public final class DriverHelper_lanzou {
         return list;
     }
 
+    static Pair.@Nullable ImmutablePair<@NotNull String, @NotNull Boolean> getFileName(final @NotNull DriverConfiguration_lanzou configuration, final long itemId) throws IOException {
+        final FormBody.Builder fileBuilder = new FormBody.Builder()
+                .add("file_id", String.valueOf(itemId));
+        final JSONObject fileJson = DriverHelper_lanzou.task(configuration, 12, fileBuilder, 1);
+        final String filename = fileJson.getString("text");
+        if (filename != null)
+            return Pair.ImmutablePair.makeImmutablePair(filename, false);
+        final FormBody.Builder directoryBuilder = new FormBody.Builder()
+                .add("folder_id", String.valueOf(itemId));
+        final JSONObject directoryJson;
+        try {
+            directoryJson = DriverHelper_lanzou.task(configuration, 18, fileBuilder, 1);
+        } catch (final JSONException ignore) {
+            return null;
+        }
+        final JSONObject info = directoryJson.getJSONObject("info");
+        if (info == null)
+            throw new WrongResponseException("Getting directory name.", directoryJson, ParametersMap.create().add("configuration", configuration).add("itemId", itemId));
+        final String directoryName = info.getString("name");
+        if (directoryName == null)
+            throw new WrongResponseException("Getting directory name.", directoryJson, ParametersMap.create().add("configuration", configuration).add("itemId", itemId));
+        return Pair.ImmutablePair.makeImmutablePair(directoryName, true);
+    }
 }

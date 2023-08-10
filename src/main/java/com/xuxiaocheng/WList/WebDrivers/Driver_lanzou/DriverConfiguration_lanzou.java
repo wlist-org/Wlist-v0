@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.WebDrivers.Driver_lanzou;
 
+import com.xuxiaocheng.HeadLibs.AndroidSupport.AStreams;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Driver.DriverConfiguration;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
@@ -29,18 +30,20 @@ public final class DriverConfiguration_lanzou extends DriverConfiguration<
         super("lanzou", LocalSide::new, WebSide::new, CacheSide::new);
     }
 
+    // TODO: No cookie jar. Only Need 'phpdisk_info' and Uid (Also NO vei)
     private final @NotNull OkHttpClient httpClient = DriverNetworkHelper.newHttpClientBuilder()
             .addNetworkInterceptor(new DriverNetworkHelper.FrequencyControlInterceptor(5, 100))
             .cookieJar(new CookieJar() {
                 @Override
                 public void saveFromResponse(final @NotNull HttpUrl httpUrl, final @NotNull List<@NotNull Cookie> list) {
-                    DriverConfiguration_lanzou.this.getCacheSide().setCookies(list);
+                    DriverConfiguration_lanzou.this.getCacheSide().addCookies(list);
                     DriverConfiguration_lanzou.this.getCacheSide().setModified(true);
                 }
 
                 @Override
                 public @NotNull List<@NotNull Cookie> loadForRequest(final @NotNull HttpUrl httpUrl) {
-                    return DriverConfiguration_lanzou.this.getCacheSide().getCookies();
+                    final Cookie cookie = DriverConfiguration_lanzou.this.getCacheSide().cookies.get("phpdisk_info");
+                    return cookie == null ? List.of() : List.of(cookie);
                 }
             }).build();
 
@@ -51,8 +54,10 @@ public final class DriverConfiguration_lanzou extends DriverConfiguration<
 
 
     public static final class LocalSide extends LocalSideDriverConfiguration {
-        public LocalSide() {
-            super("123pan");
+        @Override
+        protected void load(final @NotNull @UnmodifiableView Map<? super @NotNull String, @NotNull Object> local, @NotNull final Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, @NotNull final String prefix) {
+            super.displayName = "lanzou";
+            super.load(local, errors, prefix);
         }
 
         @Override
@@ -69,6 +74,7 @@ public final class DriverConfiguration_lanzou extends DriverConfiguration<
 
         @Override
         protected void load(final @NotNull @UnmodifiableView Map<? super @NotNull String, @NotNull Object> web, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
+            super.rootDirectoryId = -1;
             super.load(web, errors, prefix);
             this.passport = YamlHelper.getConfig(web, "passport", this.passport,
                     o -> YamlHelper.transferString(o, errors, prefix + "passport"));
@@ -118,7 +124,7 @@ public final class DriverConfiguration_lanzou extends DriverConfiguration<
             this.tokenExpire = YamlHelper.getConfigNullable(cache, "token_expire",
                     o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "token_expire", DriverConfiguration.TimeFormatter));
             final HttpUrl url = HttpUrl.parse("https://up.woozooo.com/");assert url != null;
-            this.setCookies(YamlHelper.getConfig(cache, "cookies", List::of,
+            this.addCookies(YamlHelper.getConfig(cache, "cookies", List::of,
                     o -> YamlHelper.transferListNode(o, errors, prefix + "cookies"))
                     .stream().map(c -> Cookie.parse(url, c.toString()))
                     .filter(Objects::nonNull).collect(Collectors.toList()));
@@ -158,13 +164,26 @@ public final class DriverConfiguration_lanzou extends DriverConfiguration<
             this.tokenExpire = tokenExpire;
         }
 
-        public @NotNull @UnmodifiableView List<@NotNull Cookie> getCookies() {
+        public @NotNull List<@NotNull Cookie> getCookies() {
+            final List<String> expiredCookies = AStreams.streamToList(this.cookies.values().stream().filter(cookie -> !cookie.persistent()).map(Cookie::name));
+            expiredCookies.forEach(this.cookies::remove);
             return new ArrayList<>(this.cookies.values());
         }
 
-        public void setCookies(final @NotNull @UnmodifiableView Iterable<@NotNull Cookie> cookies) {
+        public void addCookies(final @NotNull @UnmodifiableView Iterable<@NotNull Cookie> cookies) {
             for (final Cookie cookie: cookies)
-                this.cookies.put(cookie.name(), cookie);
+                if (cookie.persistent())
+                    this.cookies.put(cookie.name(), cookie);
+                else
+                    this.cookies.remove(cookie.name());
+        }
+
+        public boolean noCookie(final @NotNull String name) {
+            final Cookie cookie = this.cookies.get(name);
+            if (cookie == null) return true;
+            if (cookie.persistent()) return false;
+            this.cookies.remove(name);
+            return true;
         }
 
         @Override
@@ -176,5 +195,12 @@ public final class DriverConfiguration_lanzou extends DriverConfiguration<
                     ", super=" + super.toString() +
                     '}';
         }
+    }
+
+    @Override
+    public @NotNull String toString() {
+        return "DriverConfiguration_lanzou{" +
+                "super=" + super.toString() +
+                '}';
     }
 }
