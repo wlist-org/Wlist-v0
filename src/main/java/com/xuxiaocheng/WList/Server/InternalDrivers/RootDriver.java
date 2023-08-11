@@ -1,8 +1,8 @@
 package com.xuxiaocheng.WList.Server.InternalDrivers;
 
 import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
-import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInterface;
@@ -37,9 +37,16 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
 
     public static @NotNull FileSqlInformation getDriverInformation(final @NotNull DriverConfiguration<?, ?, ?> configuration) {
         return new FileSqlInformation(new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), configuration.getWebSide().getRootDirectoryId()),
-                0, configuration.getName() , FileSqlInterface.FileSqlType.Directory, configuration.getWebSide().getSpaceUsed(),
+                0, configuration.getName(), FileSqlInterface.FileSqlType.Directory, configuration.getWebSide().getSpaceUsed(),
                 configuration.getLocalSide().getCreateTime(), configuration.getLocalSide().getUpdateTime(),
                 configuration.getLocalSide().getDisplayName(), null);
+    }
+
+    public static @NotNull FileSqlInformation getDatabaseDriverInformation(final @NotNull DriverConfiguration<?, ?, ?> configuration) {
+        return new FileSqlInformation(new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), configuration.getWebSide().getRootDirectoryId()),
+                configuration.getWebSide().getRootDirectoryId(), configuration.getName(),
+                FileSqlInterface.FileSqlType.Directory, configuration.getWebSide().getSpaceUsed(),
+                configuration.getLocalSide().getCreateTime(), configuration.getLocalSide().getUpdateTime(), "", null);
     }
 
     private @NotNull RootDriverConfiguration configuration = new RootDriverConfiguration();
@@ -110,10 +117,10 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
     }
 
     @Override
-    public Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(final @NotNull FileLocation location, final @LongRange(minimum = 0) int limit, final @LongRange(minimum = 0) int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction, final Options.@NotNull DirectoriesOrFiles filter) throws Exception {
+    public Triad.@Nullable ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(final @NotNull FileLocation location, final Options.@NotNull DirectoriesOrFiles filter, final @LongRange(minimum = 0) int limit, final @LongRange(minimum = 0) int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws Exception {
         if (SpecialDriverName.RootDriver.getIdentifier().equals(location.driver())) {
             if (filter == Options.DirectoriesOrFiles.OnlyFiles)
-                return Pair.ImmutablePair.makeImmutablePair(0L, List.of());
+                return Triad.ImmutableTriad.makeImmutableTriad((long) DriverManager.getDriverCount(), 0L, List.of());
             final Comparator<DriverConfiguration<?, ?, ?>> comparator = switch (policy) {
                 case FileName -> Comparator.comparing((DriverConfiguration<?, ?, ?> a) -> a.getLocalSide().getDisplayName());
                 case Size -> Comparator.comparing((DriverConfiguration<?, ?, ?> a) -> a.getWebSide().getSpaceUsed(), Long::compareUnsigned);
@@ -128,11 +135,11 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
             final List<FileSqlInformation> list = new ArrayList<>(limit);
             while (list.size() < limit && iterator.hasNext())
                 list.add(RootDriver.getDriverInformation(iterator.next()));
-            return Pair.ImmutablePair.makeImmutablePair((long) all.size(), list);
+            return Triad.ImmutableTriad.makeImmutableTriad((long) all.size(), (long) all.size(), list);
         }
         final DriverInterface<?> real = DriverManager.getDriver(location.driver());
         if (real == null) return null;
-        final Pair.ImmutablePair<Long, List<FileSqlInformation>> list = real.list(location, limit, page, policy, direction, filter);
+        final Triad.ImmutableTriad<Long, Long, List<FileSqlInformation>> list = real.list(location, filter, limit, page, policy, direction);
         DriverManager.dumpConfigurationIfModified(real.getConfiguration());
         return list;
     }

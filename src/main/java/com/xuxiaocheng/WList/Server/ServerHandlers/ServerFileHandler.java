@@ -1,23 +1,23 @@
 package com.xuxiaocheng.WList.Server.ServerHandlers;
 
-import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Helpers.HMessageDigestHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Databases.User.UserSqlInformation;
 import com.xuxiaocheng.WList.Driver.FailureReason;
+import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
-import com.xuxiaocheng.WList.Server.InternalDrivers.RootDriver;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
+import com.xuxiaocheng.WList.Server.InternalDrivers.RootDriver;
 import com.xuxiaocheng.WList.Server.MessageProto;
 import com.xuxiaocheng.WList.Server.Operation;
-import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadIdHelper;
+import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.UploadIdHelper;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.UploadMethods;
 import com.xuxiaocheng.WList.Server.WListServer;
@@ -59,15 +59,15 @@ public final class ServerFileHandler {
     public static final @NotNull ServerHandler doListFiles = (channel, buffer) -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList);
         final FileLocation location = FileLocation.parse(buffer);
+        final Options.DirectoriesOrFiles filter = Options.valueOfDirectoriesOrFiles(ByteBufIOUtil.readByte(buffer));
         final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
         final int page = ByteBufIOUtil.readVariableLenInt(buffer);
         final Options.OrderPolicy orderPolicy = Options.valueOfOrderPolicy(ByteBufIOUtil.readUTF(buffer));
         final Options.OrderDirection orderDirection = Options.valueOfOrderDirection(ByteBufIOUtil.readUTF(buffer));
-        final Options.DirectoriesOrFiles filter = Options.valueOfDirectoriesOrFiles(ByteBufIOUtil.readByte(buffer));
         final boolean refresh = ByteBufIOUtil.readBoolean(buffer);
         ServerHandler.logOperation(channel, Operation.Type.ListFiles, user, () -> ParametersMap.create()
-                .add("location", location).add("limit", limit).add("page", page)
-                .add("orderPolicy", orderPolicy).add("orderDirection", orderDirection).add("filter", filter).add("refresh", refresh)
+                .add("location", location).add("filter", filter).add("limit", limit).add("page", page)
+                .add("orderPolicy", orderPolicy).add("orderDirection", orderDirection).add("refresh", refresh)
                 .optionallyAddSupplier(refresh && user.isSuccess(), "allow", () -> user.getT().group().permissions().contains(Operation.Permission.FilesBuildIndex)));
         if (user.isFailure())
             return user.getE();
@@ -76,12 +76,12 @@ public final class ServerFileHandler {
             return ServerHandler.WrongParameters;
         if (refresh && !user.getT().group().permissions().contains(Operation.Permission.FilesBuildIndex))
             return ServerHandler.NoPermission;
-        final Pair.ImmutablePair<Long, List<FileSqlInformation>> list;
+        final Triad.ImmutableTriad<Long, Long, List<FileSqlInformation>> list;
         try {
             if (refresh)
                 RootDriver.getInstance().forceRefreshDirectory(location);
             // TODO with groups
-            list = RootDriver.getInstance().list(location, limit, page, orderPolicy, orderDirection, filter);
+            list = RootDriver.getInstance().list(location, filter, limit, page, orderPolicy, orderDirection);
         } catch (final UnsupportedOperationException exception) {
             return ServerHandler.Unsupported.apply(exception);
         } catch (final Exception exception) {
@@ -90,9 +90,10 @@ public final class ServerFileHandler {
         if (list == null)
             return ServerFileHandler.FileNotFound;
         return ServerHandler.successMessage(buf -> {
-            ByteBufIOUtil.writeVariableLenLong(buf, list.getFirst().longValue());
-            ByteBufIOUtil.writeVariableLenInt(buf, list.getSecond().size());
-            for (final FileSqlInformation information: list.getSecond())
+            ByteBufIOUtil.writeVariableLenLong(buf, list.getA().longValue());
+            ByteBufIOUtil.writeVariableLenLong(buf, list.getB().longValue());
+            ByteBufIOUtil.writeVariableLenInt(buf, list.getC().size());
+            for (final FileSqlInformation information: list.getC())
                 FileSqlInformation.dumpVisible(buf, information);
             return buf;
         });

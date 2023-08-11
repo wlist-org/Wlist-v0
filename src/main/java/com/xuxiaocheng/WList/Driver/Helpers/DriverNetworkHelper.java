@@ -57,7 +57,7 @@ public final class DriverNetworkHelper {
             new DefaultEventExecutorGroup(2, new DefaultThreadFactory("CountDownExecutors"));
     @SuppressWarnings("SpellCheckingInspection")
     public static final @NotNull String defaultWebAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.37";
-    public static final @NotNull String defaultAgent = "WList/0.2.1";
+    public static final @NotNull String defaultAgent = "WList/0.2.2";
 
     private static final @NotNull Dispatcher dispatcher = new Dispatcher(WListServer.IOExecutors);
     private static final @NotNull Interceptor NetworkLoggerInterceptor = chain -> {
@@ -122,7 +122,7 @@ public final class DriverNetworkHelper {
                 while (this.frequencyControlSecond.get() > this.perSecond)
                     try {
                         if (first) {
-                            HLog.DefaultLogger.log(HLogLevel.NETWORK, "At frequency control: Second.");
+                            HLog.DefaultLogger.log(HLogLevel.NETWORK, "At frequency control: ", this.perSecond, " per second.");
                             first = false;
                         }
                         this.frequencyControlSecond.wait();
@@ -136,7 +136,7 @@ public final class DriverNetworkHelper {
                 while (this.frequencyControlMinute.get() > this.perMinute)
                     try {
                         if (first) {
-                            HLog.DefaultLogger.log(HLogLevel.NETWORK, "At frequency control: Minute.");
+                            HLog.DefaultLogger.log(HLogLevel.NETWORK, "At frequency control: ", this.perMinute, " per minute.");
                             first = false;
                         }
                         this.frequencyControlMinute.wait();

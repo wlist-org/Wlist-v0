@@ -235,6 +235,10 @@ public final class DriverManager {
         return driver.getSecond().getSecond();
     }
 
+    public static int getDriverCount() {
+        return DriverManager.drivers.size();
+    }
+
     public static @NotNull Map<@NotNull String, @NotNull Exception> operateAllDrivers(final @NotNull ConsumerE<? super @NotNull DriverInterface<?>> consumer) {
         final Map<String, Exception> exceptions = new ConcurrentHashMap<>();
         final Collection<CompletableFuture<?>> futures = new LinkedList<>();

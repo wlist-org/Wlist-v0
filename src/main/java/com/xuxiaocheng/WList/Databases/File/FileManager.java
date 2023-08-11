@@ -1,6 +1,7 @@
 package com.xuxiaocheng.WList.Databases.File;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HMultiInitializers;
 import com.xuxiaocheng.WList.Driver.Options;
@@ -110,8 +111,8 @@ public final class FileManager {
         return FileManager.selectFilesCountByParentId(driverName, List.of(parentId), _connectionId).get(parentId).longValue();
     }
 
-    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> selectFilesByParentIdInPage(final @NotNull String driverName, final long parentId, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final Options.@NotNull DirectoriesOrFiles filter, final @Nullable String _connectionId) throws SQLException {
-        return FileManager.sqlInstances.getInstance(driverName).selectFilesByParentIdInPage(parentId, limit, offset, direction, policy, filter, _connectionId);
+    public static Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> selectFilesByParentIdInPage(final @NotNull String driverName, final long parentId, final Options.@NotNull DirectoriesOrFiles filter, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final @Nullable String _connectionId) throws SQLException {
+        return FileManager.sqlInstances.getInstance(driverName).selectFilesByParentIdInPage(parentId, filter, limit, offset, direction, policy, _connectionId);
     }
 
     public static void deleteFilesRecursively(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {

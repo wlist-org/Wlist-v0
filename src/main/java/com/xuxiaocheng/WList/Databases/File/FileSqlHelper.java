@@ -1,7 +1,7 @@
 package com.xuxiaocheng.WList.Databases.File;
 
 import com.xuxiaocheng.HeadLibs.AndroidSupport.AStreams;
-import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.WList.Databases.GenericSql.PooledDatabaseInterface;
 import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Driver.Options;
@@ -318,21 +318,40 @@ public final class FileSqlHelper implements FileSqlInterface {
     }
 
     @Override
-    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> selectFilesByParentIdInPage(final long parentId, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final Options.@NotNull DirectoriesOrFiles filter, final @Nullable String _connectionId) throws SQLException {
+    public Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> selectFilesByParentIdInPage(final long parentId, final Options.@NotNull DirectoriesOrFiles filter, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final @Nullable String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
             final long count = this.selectFilesCountByParentId(List.of(parentId), connectionId.get()).get(parentId).longValue();
-            if (offset >= count)
-                return Pair.ImmutablePair.makeImmutablePair(count, List.of());
+            final long filterCount;
+            if (filter == Options.DirectoriesOrFiles.Both)
+                filterCount = count;
+            else {
+                try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+                    SELECT COUNT(*) FROM %s WHERE parent_id == ?""" + switch (filter) {
+                        case OnlyFiles -> " AND type == 0;";
+                        case OnlyDirectories -> " AND (type == 1 OR type == 2);";
+                        default -> throw new IllegalStateException("Unexpected value: " + filter);
+                    }, this.tableName))) {
+                    statement.setLong(1, parentId);
+                    try (final ResultSet result = statement.executeQuery()) {
+                        result.next();
+                        filterCount = result.getLong(1);
+                    }
+                }
+            }
+            if (offset >= filterCount || limit <= 0)
+                return Triad.ImmutableTriad.makeImmutableTriad(count, filterCount, List.of());
             final List<FileSqlInformation> list;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT * FROM %s WHERE parent_id == ?""" + switch (filter) {
                         case OnlyDirectories -> " AND (type == 1 OR type == 2) ";
                         case OnlyFiles -> " AND type == 0 ";
                         case Both -> " ";
-                    } + """
-                    ORDER BY ? ? LIMIT ? OFFSET ?;
+                    } + "ORDER BY " + FileSqlHelper.getOrderPolicy(policy) + " " + FileSqlHelper.getOrderDirection(direction) +
+                    (policy == Options.OrderPolicy.FileName ? "" : ", " + FileSqlHelper.getOrderPolicy(Options.OrderPolicy.FileName) + " " +
+                            FileSqlHelper.getOrderDirection(Options.OrderDirection.ASCEND)) + """
+                    LIMIT ? OFFSET ?;
                 """, this.tableName))) {
                 statement.setLong(1, parentId);
                 statement.setString(2, FileSqlHelper.getOrderPolicy(policy));
@@ -343,7 +362,7 @@ public final class FileSqlHelper implements FileSqlInterface {
                     list = FileSqlHelper.createFilesInfoInOrder(this.driverName, result);
                 }
             }
-            return Pair.ImmutablePair.makeImmutablePair(count, list);
+            return Triad.ImmutableTriad.makeImmutableTriad(count, filterCount, list);
         }
     }
 

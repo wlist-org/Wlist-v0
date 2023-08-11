@@ -3,6 +3,7 @@ package com.xuxiaocheng.WList.Driver;
 import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
@@ -71,15 +72,15 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     /**
      * Get the list of files in directory.
      * @param location The directory location to get files list.
+     * @param filter Directories or files filter.
      * @param page The page of the list.
      * @param limit Max length in one page.
      * @param policy Sort order policy.
      * @param direction Sort order direction.
-     * @param filter Directories or files filter.
-     * @return The first {@code long} is files count in directory. The second {@code list} is the files list. Null means directory is not available.
+     * @return The A {@code long} is files count in directory. The B {@code long} is files count after applied filter. The C {@code list} is the files list. Null means directory is not available.
      * @throws Exception Something went wrong.
      */
-    Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(final @NotNull FileLocation location, final @LongRange(minimum = 0) int limit, final @LongRange(minimum = 0) int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction, final Options.@NotNull DirectoriesOrFiles filter) throws Exception;
+    Triad.@Nullable ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(final @NotNull FileLocation location, final Options.@NotNull DirectoriesOrFiles filter, final @LongRange(minimum = 0) int limit, final @LongRange(minimum = 0) int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws Exception;
 
     /**
      * Get the file information of a specific file.
