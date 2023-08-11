@@ -40,6 +40,14 @@ public record FileSqlInformation(@NotNull FileLocation location, long parentId, 
         return new FileSqlInformation(this.location, this.parentId, this.name, FileSqlInterface.FileSqlType.EmptyDirectory, this.size, this.createTime, this.updateTime, this.md5, this.others);
     }
 
+    public @NotNull FileSqlInformation getAsNormalDirectory() {
+        if (this.type == FileSqlInterface.FileSqlType.RegularFile)
+            throw new IllegalStateException("Setting a regular file as a normal directory is not allowed.");
+        if (this.type == FileSqlInterface.FileSqlType.Directory)
+            return this;
+        return new FileSqlInformation(this.location, this.parentId, this.name, FileSqlInterface.FileSqlType.Directory, this.size, this.createTime, this.updateTime, this.md5, this.others);
+    }
+
     @Override
     public boolean equals(final @Nullable Object o) {
         if (this == o) return true;

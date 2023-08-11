@@ -8,22 +8,18 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Databases.Constant.ConstantSqlHelper;
-import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
-import com.xuxiaocheng.WList.Databases.File.FileSqlInterface;
 import com.xuxiaocheng.WList.Databases.GenericSql.PooledDatabase;
 import com.xuxiaocheng.WList.Databases.GenericSql.PooledDatabaseHelper;
 import com.xuxiaocheng.WList.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Databases.User.UserSqlHelper;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupSqlHelper;
-import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Server.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.WListServer;
-import com.xuxiaocheng.WList.WebDrivers.Driver_lanzou.DriverConfiguration_lanzou;
-import com.xuxiaocheng.WList.WebDrivers.Driver_lanzou.DriverManager_lanzou;
+import com.xuxiaocheng.WList.WebDrivers.Driver_lanzou.Driver_lanzou;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -40,9 +36,9 @@ public final class WListTest {
     public static void main(final String @NotNull [] args) throws Exception {
 //        if (true) return;
         WListTest.wrapServerInitialize(() -> {
-            final DriverConfiguration_lanzou lanzou = (DriverConfiguration_lanzou) Objects.requireNonNull(DriverManager.getDriver("test")).getConfiguration();
-//            return DriverManager_lanzou.getFileInformation(lanzou, 0, RootDriver.getDriverInformation(lanzou), null);
-            return DriverManager_lanzou.getFileInformation(lanzou, 0, new FileSqlInformation(new FileLocation("lanzou", 8100439), -1, "", FileSqlInterface.FileSqlType.Directory, -1, null, null, "", null), null);
+            final Driver_lanzou lanzou = (Driver_lanzou) Objects.requireNonNull(DriverManager.getDriver("test"));
+            lanzou.buildIndex();
+            return;
         });
     }
 
@@ -65,7 +61,7 @@ public final class WListTest {
         try {
             final Map<String, Exception> failures = DriverManager.getFailedDriversAPI();
             if (!failures.isEmpty()) {
-                HLog.DefaultLogger.log(HLogLevel.ERROR, failures);
+                HLog.DefaultLogger.log(HLogLevel.FAULT, failures);
                 return;
             }
             final Object obj = runnable.get();
