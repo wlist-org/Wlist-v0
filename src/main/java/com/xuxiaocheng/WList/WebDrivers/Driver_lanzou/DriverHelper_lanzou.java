@@ -45,7 +45,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-@SuppressWarnings("SameParameterValue")
+@SuppressWarnings({"SameParameterValue", "SpellCheckingInspection"})
 final class DriverHelper_lanzou {
     private DriverHelper_lanzou() {
         super();
@@ -183,7 +183,7 @@ final class DriverHelper_lanzou {
         return DriverHelper_lanzou.getSingleShareFileDownloadUrl(configuration, domin, identifier, password);
     }
 
-    static @NotNull List<@NotNull FileSqlInformation> listAllDirectory(final @NotNull DriverConfiguration_lanzou configuration, final long directoryId) throws IOException {
+    static @Nullable List<@NotNull FileSqlInformation> listAllDirectory(final @NotNull DriverConfiguration_lanzou configuration, final long directoryId) throws IOException {
         final FormBody.Builder filesBuilder = new FormBody.Builder()
                 .add("folder_id", String.valueOf(directoryId));
         final JSONObject json = DriverHelper_lanzou.task(configuration, 47, filesBuilder, null);
@@ -191,7 +191,17 @@ final class DriverHelper_lanzou {
         if (code == null || (code.intValue() != 1 && code.intValue() != 2))
             throw new IllegalResponseCodeException(code == null ? -1 : code.intValue(), json.getString("info") == null ? json.getString("text") : json.getString("info"),
                     ParametersMap.create().add("configuration", configuration).add("directoryId", directoryId).add("requireZt", "1 || 2").add("json", json));
-        final JSONArray filesInfos = json.getJSONArray(code.intValue() == 1 ? "text" : "info");
+        if (directoryId != -1) {
+            final JSONArray directoryInfo = json.getJSONArray("info");
+            if (directoryInfo == null)
+                throw new WrongResponseException("Listing directories.", json, ParametersMap.create()
+                        .add("configuration", configuration).add("directoryId", directoryId));
+            if (directoryInfo.isEmpty())
+                return null;
+            //noinspection SpellCheckingInspection
+            assert directoryInfo.size() == 1 && directoryInfo.getJSONObject(0) != null && directoryInfo.getJSONObject(0).getIntValue("folderid", -1) == directoryId;
+        }
+        final JSONArray filesInfos = json.getJSONArray("text");
         if (filesInfos == null)
             throw new WrongResponseException("Listing directories.", json, ParametersMap.create()
                     .add("configuration", configuration).add("directoryId", directoryId));
