@@ -1,13 +1,20 @@
 package com.xuxiaocheng.WList.WebDrivers.Driver_lanzou;
 
+import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
+import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.WList.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInterface;
+import com.xuxiaocheng.WList.Driver.FailureReason;
+import com.xuxiaocheng.WList.Driver.FileLocation;
+import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Server.InternalDrivers.RootDriver;
+import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -133,17 +140,17 @@ public final class DriverManager_lanzou {
             return list;
         }
     }
-/*
-    static @NotNull UnionPair<@NotNull DownloadMethods, @NotNull FailureReason> getDownloadMethods(final @NotNull DriverConfiguration_lanzou configuration, final long fileId, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @Nullable String _connectionId) throws IllegalParametersException, IOException, SQLException {
-        final FileSqlInformation info = DriverManager_lanzou.getFileInformation(configuration, fileId, _connectionId);
+
+    static @NotNull UnionPair<@NotNull DownloadMethods, @NotNull FailureReason> getDownloadMethods(final @NotNull DriverConfiguration_lanzou configuration, final long fileId, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @Nullable String _connectionId) throws IOException, SQLException, InterruptedException {
+        final FileSqlInformation info = DriverManager_lanzou.getFileInformation(configuration, fileId, null, _connectionId);
         if (info == null || info.isDirectory()) return UnionPair.fail(FailureReason.byNoSuchFile("Downloading.", new FileLocation(configuration.getName(), fileId)));
-        final String url = DriverHelper_lanzou.getFileDownloadUrl(configuration, info);
+        final String url = DriverHelper_lanzou.getFileDownloadUrl(configuration, fileId);
         if (url == null) return UnionPair.fail(FailureReason.byNoSuchFile("Downloading.", new FileLocation(configuration.getName(), fileId)));
-        return UnionPair.ok(DriverUtil.toCachedDownloadMethods(DriverUtil.getDownloadMethodsByUrlWithRangeHeader(DriverHelper_lanzou.fileClient, Pair.ImmutablePair.makeImmutablePair(url, "GET"), info.size(), from, to, null)));
+        return UnionPair.ok(DriverUtil.toCachedDownloadMethods(DriverUtil.getDownloadMethodsByUrlWithRangeHeader(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(url, "GET"), info.size(), from, to, null)));
     }
 
     // File Writer
-
+/*
     static void trashFile(final @NotNull DriverConfiguration_lanzou configuration, final long id, final @Nullable String _connectionId) throws IllegalParametersException, IOException, SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = FileManager.getConnection(configuration.getName(), _connectionId, connectionId)) {

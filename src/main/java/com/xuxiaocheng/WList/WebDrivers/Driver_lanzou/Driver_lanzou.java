@@ -67,8 +67,8 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
     }
 
     @Override
-    public @NotNull UnionPair<@NotNull DownloadMethods, @NotNull FailureReason> download(@NotNull FileLocation location, long from, long to) throws Exception {
-        return null;
+    public @NotNull UnionPair<@NotNull DownloadMethods, @NotNull FailureReason> download(final @NotNull FileLocation location, final long from, final long to) throws IOException, SQLException, InterruptedException {
+        return DriverManager_lanzou.getDownloadMethods(this.configuration, location.id(), from, to, null);
     }
 
     @Override

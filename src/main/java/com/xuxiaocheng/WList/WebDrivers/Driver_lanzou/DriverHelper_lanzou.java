@@ -167,7 +167,7 @@ final class DriverHelper_lanzou {
     }
 
     @SuppressWarnings("SpellCheckingInspection")
-    static @Nullable String getDownloadUrl(final @NotNull DriverConfiguration_lanzou configuration, final long fileId) throws IOException {
+    static @Nullable String getFileDownloadUrl(final @NotNull DriverConfiguration_lanzou configuration, final long fileId) throws IOException {
         final FormBody.Builder sharerBuilder = new FormBody.Builder()
                 .add("file_id", String.valueOf(fileId));
         final JSONObject json = DriverHelper_lanzou.task(configuration, 22, sharerBuilder, 1);
@@ -242,7 +242,7 @@ final class DriverHelper_lanzou {
                         final String name = info.getString("name");
                         final Long id = info.getLong("id");
                         if (name == null || id == null) return;
-                        final String url = DriverHelper_lanzou.getDownloadUrl(configuration, id.longValue());
+                        final String url = DriverHelper_lanzou.getFileDownloadUrl(configuration, id.longValue());
                         if (url == null) return;
                         try (final Response response = DriverNetworkHelper.getWithParameters(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(url, "HEAD"), DriverHelper_lanzou.headers, null).execute()) {
                             filesMap.put(k, Triad.ImmutableTriad.makeImmutableTriad(name, id, response.headers()));
