@@ -318,7 +318,7 @@ public final class FileSqlHelper implements FileSqlInterface {
     }
 
     @Override
-    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> selectFilesByParentIdInPage(final long parentId, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final @Nullable String _connectionId) throws SQLException {
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> selectFilesByParentIdInPage(final long parentId, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final Options.@NotNull DirectoriesOrFiles filter, final @Nullable String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
@@ -327,7 +327,12 @@ public final class FileSqlHelper implements FileSqlInterface {
                 return Pair.ImmutablePair.makeImmutablePair(count, List.of());
             final List<FileSqlInformation> list;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM %s WHERE parent_id == ? ORDER BY ? ? LIMIT ? OFFSET ?;
+                    SELECT * FROM %s WHERE parent_id == ?""" + switch (filter) {
+                        case OnlyDirectories -> " AND (type == 1 OR type == 2) ";
+                        case OnlyFiles -> " AND type == 0 ";
+                        case Both -> " ";
+                    } + """
+                    ORDER BY ? ? LIMIT ? OFFSET ?;
                 """, this.tableName))) {
                 statement.setLong(1, parentId);
                 statement.setString(2, FileSqlHelper.getOrderPolicy(policy));
@@ -351,13 +356,16 @@ public final class FileSqlHelper implements FileSqlInterface {
             connection.setAutoCommit(false);
             final Collection<Long> leave = new HashSet<>();
             final Collection<Long> set = new HashSet<>(idList);
+            final Collection<Long> universe = new HashSet<>();
             while (!set.isEmpty()) {
+                set.removeAll(universe);
                 final Map<Long, Set<Long>> maps = this.selectFilesIdByParentId(set, connectionId.get());
                 set.clear();
                 maps.forEach((key, value) -> {
                     leave.add(key);
                     set.addAll(value);
                 });
+                universe.addAll(set);
             }
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     DELETE FROM %s WHERE id == ?;
