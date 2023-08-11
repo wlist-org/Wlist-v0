@@ -6,12 +6,14 @@ import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
+import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInterface;
+import com.xuxiaocheng.WList.Driver.FailureReason;
 import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
@@ -26,6 +28,7 @@ import okhttp3.Response;
 import okhttp3.ResponseBody;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -40,9 +43,11 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -57,6 +62,20 @@ final class DriverHelper_lanzou {
     static final @NotNull DateTimeFormatter dataTimeFormatter = DateTimeFormatter.RFC_1123_DATE_TIME;
     static final @NotNull Headers headers = new Headers.Builder().set("referer", "https://up.woozooo.com/").set("accept-language", "zh-CN")
             .set("user-agent", DriverNetworkHelper.defaultAgent).set("cache-control", "no-cache").build();
+
+    private static final @NotNull @Unmodifiable Set<@NotNull String> allowSuffix = Set.of("doc","docx","zip","rar","apk","ipa","txt","exe","7z","e","z","ct","ke",
+            "cetrainer","db","tar","pdf","w3x","epub","mobi","azw","azw3","osk","osz","xpa","cpk","lua","jar","dmg","ppt","pptx","xls","xlsx","mp3","iso","img",
+            "gho","ttf","ttc","txf","dwg","bat","imazingapp","dll","crx","xapk","conf","deb","rp","rpm","rplib","mobileconfig","appimage","lolgezi","flac","cad",
+            "hwt","accdb","ce","xmind","enc","bds","bdi","ssf","it","pkg","cfg");
+    static final @NotNull Predicate<@NotNull String> filenamePredication = s -> {
+        final int index = s.lastIndexOf('.');
+        if (index < 0) return false;
+        final String suffix = s.substring(index + 1);
+        for (final String a: DriverHelper_lanzou.allowSuffix)
+            if (suffix.equalsIgnoreCase(a))
+                return true;
+        return false;
+    };
 
     static final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> LoginURL = Pair.ImmutablePair.makeImmutablePair("https://up.woozooo.com/mlogin.php", "POST"); // TODO use account.php
 //    static final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> InformationURL = Pair.ImmutablePair.makeImmutablePair("https://up.woozooo.com/mydisk.php", "GET");
@@ -285,4 +304,25 @@ final class DriverHelper_lanzou {
         return list;
     }
 
+    static @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> createDirectory(final @NotNull DriverConfiguration_lanzou configuration, final String name, final long parentId) throws IOException {
+        final FormBody.Builder builder = new FormBody.Builder()
+                .add("parent_id", String.valueOf(parentId))
+                .add("folder_name", name);
+        final JSONObject json;
+        try {
+            json = DriverHelper_lanzou.task(configuration, 2, builder, 1);
+        } catch (final IllegalResponseCodeException exception) {
+            if (exception.getCode() == 0 && "\u540D\u79F0\u542B\u6709\u7279\u6B8A\u5B57\u7B26".equals(exception.getMeaning()))
+                return UnionPair.fail(FailureReason.byInvalidName("Creating directory.", new FileLocation(configuration.getName(), parentId), name));
+            throw exception;
+        }
+        final String message = json.getString("info");
+        final Long id = json.getLong("text");
+        if (id == null || !"\u521B\u5EFA\u6210\u529F".equals(message))
+            throw new WrongResponseException("Creating directories.", message, ParametersMap.create()
+                    .add("configuration", configuration).add("name", name).add("parentId", parentId).add("json", json));
+        final LocalDateTime now = LocalDateTime.now();
+        return UnionPair.ok(new FileSqlInformation(new FileLocation(configuration.getName(), id.longValue()), parentId, name,
+                FileSqlInterface.FileSqlType.EmptyDirectory, 0, now, now, "", null));
+    }
 }

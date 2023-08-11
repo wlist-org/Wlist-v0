@@ -72,17 +72,17 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
     }
 
     @Override
-    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> createDirectory(@NotNull FileLocation parentLocation, @NotNull String directoryName, @NotNull Options.DuplicatePolicy policy) throws Exception {
+    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> createDirectory(final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+        return DriverManager_lanzou.createDirectory(this.configuration, parentLocation.id(), directoryName, policy, null);
+    }
+
+    @Override
+    public @NotNull UnionPair<@NotNull UploadMethods, @NotNull FailureReason> upload(final @NotNull FileLocation parentLocation, final @NotNull String filename, final long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws Exception {
         return null;
     }
 
     @Override
-    public @NotNull UnionPair<@NotNull UploadMethods, @NotNull FailureReason> upload(@NotNull FileLocation parentLocation, @NotNull String filename, long size, @NotNull String md5, @NotNull Options.DuplicatePolicy policy) throws Exception {
-        return null;
-    }
-
-    @Override
-    public void delete(@NotNull FileLocation location) throws Exception {
+    public void delete(final @NotNull FileLocation location) throws Exception {
 
     }
 

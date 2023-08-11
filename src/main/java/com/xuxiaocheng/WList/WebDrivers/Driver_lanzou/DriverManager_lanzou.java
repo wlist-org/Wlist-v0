@@ -150,9 +150,9 @@ public final class DriverManager_lanzou {
     }
 
     // File Writer
-/*
-    static void trashFile(final @NotNull DriverConfiguration_lanzou configuration, final long id, final @Nullable String _connectionId) throws IllegalParametersException, IOException, SQLException {
-        final AtomicReference<String> connectionId = new AtomicReference<>();
+
+    static void trashFile(final @NotNull DriverConfiguration_lanzou configuration, final long id, final @Nullable String _connectionId) throws IOException, SQLException {
+        /*final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = FileManager.getConnection(configuration.getName(), _connectionId, connectionId)) {
             connection.setAutoCommit(false);
             final FileSqlInformation information = DriverManager_lanzou.getFileInformation(configuration, id, connectionId.get());
@@ -176,61 +176,64 @@ public final class DriverManager_lanzou {
 //                trashedConnection.commit();
 //            }
             connection.commit();
-        }
+        }*/
     }
-*/
-//    static @NotNull UnionPair<@NotNull UnionPair<@NotNull String/*new name*/, @NotNull FileSqlInformation/*for directory*/>, @NotNull FailureReason> getDuplicatePolicyName(final @NotNull DriverConfiguration_lanzou configuration, final long parentId, final @NotNull String name, final boolean requireDirectory, final Options.@NotNull DuplicatePolicy policy, final @NotNull String duplicateErrorMessage, final @Nullable String _connectionId) throws IllegalParametersException, IOException, SQLException {
-        /*final AtomicReference<String> connectionId = new AtomicReference<>();
+
+    static @Nullable FileSqlInformation tryGetFileInDirectory(final @NotNull DriverConfiguration_lanzou configuration, final long parentId, final @NotNull String name, final @Nullable String _connectionId) throws IOException, SQLException {
+        final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = FileManager.getConnection(configuration.getName(), _connectionId, connectionId)) {
-            connection.setAutoCommit(false);
+            final FileSqlInformation parentInformation = DriverManager_lanzou.getFileInformation(configuration, parentId, null, connectionId.get());
+            if (parentInformation == null || parentInformation.type() != FileSqlInterface.FileSqlType.Directory) return null;
+            if (FileManager.selectFileCountByParentId(configuration.getName(), parentId, connectionId.get()) == 0) {
+                DriverManager_lanzou.syncFilesList(configuration, parentId, connectionId.get());
+                connection.commit();
+            }
+            return FileManager.selectFileInDirectory(configuration.getName(), parentId, name, connectionId.get());
+        } catch (final InterruptedException ignore) {
+        }
+        throw new RuntimeException("Unreachable!");
+    }
+
+    static @NotNull UnionPair<@NotNull UnionPair<@NotNull String/*new name*/, @NotNull FileSqlInformation/*for directory*/>, @NotNull FailureReason> getDuplicatePolicyName(final @NotNull DriverConfiguration_lanzou configuration, final long parentId, final @NotNull String name, final boolean requireDirectory, final Options.@NotNull DuplicatePolicy policy, final @NotNull String duplicateErrorMessage, final @Nullable String _connectionId) throws IOException, SQLException {
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = FileManager.getConnection(configuration.getName(), _connectionId, connectionId)) {
             FileSqlInformation information = DriverManager_lanzou.tryGetFileInDirectory(configuration, parentId, name, connectionId.get());
-            if (information == null) {
-                connection.commit();
+            if (information == null)
                 return UnionPair.ok(UnionPair.ok(name));
-            }
-            if (requireDirectory && information.isDirectory()) {
-                connection.commit();
+            if (requireDirectory && information.isDirectory())
                 return UnionPair.ok(UnionPair.fail(information));
-            }
-            if (policy == Options.DuplicatePolicy.ERROR) {
-                connection.commit();
-                return UnionPair.fail(FailureReason.byDuplicateError(duplicateErrorMessage, new FileLocation(configuration.getName(), parentId), name));
-            }
-            if (policy == Options.DuplicatePolicy.OVER) {
-                DriverManager_lanzou.trashFile(configuration, information.id(), connectionId.get());
-                // TODO waiting trash. Delete.
-                connection.commit();
-                return UnionPair.ok(UnionPair.ok(name));
-            }
-            if (policy == Options.DuplicatePolicy.KEEP) {
-                int retry = 0;
-                final Pair.ImmutablePair<String, String> wrapper = DriverUtil.getRetryWrapper(name);
-                while (information != null && !(requireDirectory && information.isDirectory()))
-                    information = FileManager.selectFileInDirectory(configuration.getName(), parentId, wrapper.getFirst() + (++retry) + wrapper.getSecond(), connectionId.get());
-                connection.commit();
-                return information == null ? UnionPair.ok(UnionPair.ok(wrapper.getFirst() + retry + wrapper.getSecond())) : UnionPair.ok(UnionPair.fail(information));
+            switch (policy) {
+                case ERROR:
+                    return UnionPair.fail(FailureReason.byDuplicateError(duplicateErrorMessage, new FileLocation(configuration.getName(), parentId), name));
+                case OVER:
+                    DriverManager_lanzou.trashFile(configuration, information.id(), connectionId.get());
+                    connection.commit();
+                    return UnionPair.ok(UnionPair.ok(name));
+                case KEEP:
+                    int retry = 0;
+                    final Pair.ImmutablePair<String, String> wrapper = DriverUtil.getRetryWrapper(name);
+                    while (information != null && !(requireDirectory && information.isDirectory()))
+                        information = FileManager.selectFileInDirectory(configuration.getName(), parentId, wrapper.getFirst() + (++retry) + wrapper.getSecond(), connectionId.get());
+                    return information == null ? UnionPair.ok(UnionPair.ok(wrapper.getFirst() + retry + wrapper.getSecond())) : UnionPair.ok(UnionPair.fail(information));
             }
             throw new RuntimeException("Unreachable!");
         }
     }
 
-    static @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> createDirectory(final @NotNull DriverConfiguration_lanzou configuration, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @Nullable String _connectionId) throws IllegalParametersException, IOException, SQLException {
-        if (!DriverHelper_lanzou.filenamePredication.test(name))
-            return UnionPair.fail(FailureReason.byInvalidName("Creating directory.", new FileLocation(configuration.getName(), parentId), name));
+    static @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> createDirectory(final @NotNull DriverConfiguration_lanzou configuration, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @Nullable String _connectionId) throws IOException, SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = FileManager.getConnection(configuration.getName(), _connectionId, connectionId)) {
-            connection.setAutoCommit(false);
             final UnionPair<UnionPair<String, FileSqlInformation>, FailureReason> duplicate = DriverManager_lanzou.getDuplicatePolicyName(configuration, parentId, name, true, policy, "Creating directory.", connectionId.get());
             if (duplicate.isFailure()) {connection.commit();return UnionPair.fail(duplicate.getE());}
             if (duplicate.getT().isFailure()) {connection.commit();return UnionPair.ok(duplicate.getT().getE());}
             final String realName = duplicate.getT().getT();
-            final UnionPair<FileSqlInformation, FailureReason> information = DriverHelper_lanzou.createDirectory(configuration, parentId, realName, policy);
+            final UnionPair<FileSqlInformation, FailureReason> information = DriverHelper_lanzou.createDirectory(configuration, realName, parentId);
             if (information.isSuccess()) FileManager.insertOrUpdateFile(configuration.getName(), information.getT(), connectionId.get());
             connection.commit();
             return information;
         }
     }
-
+/*
     static @NotNull UnionPair<@NotNull UploadMethods, @NotNull FailureReason> getUploadMethods(final @NotNull DriverConfiguration_lanzou configuration, final long parentId, final @NotNull String name, final @NotNull CharSequence md5, final long size, final Options.@NotNull DuplicatePolicy policy, final @Nullable String _connectionId) throws IllegalParametersException, IOException, SQLException {
         if (!HMessageDigestHelper.MD5.pattern.matcher(md5).matches())
             throw new IllegalParametersException("Invalid md5.", ParametersMap.create().add("md5", md5));
