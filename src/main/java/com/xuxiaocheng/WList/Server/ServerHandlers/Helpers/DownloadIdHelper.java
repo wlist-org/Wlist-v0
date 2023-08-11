@@ -78,6 +78,8 @@ public final class DownloadIdHelper {
             this.rest = mod == 0 ? WListServer.FileTransferBufferSize : mod;
             this.id = MiscellaneousUtil.randomKeyAndPut(DownloadIdHelper.buffers,
                     () -> ARandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, ConstantManager.DefaultRandomChars), this);
+            if (methods.expireTime() != null)
+                DownloadIdHelper.checkTime.add(Pair.ImmutablePair.makeImmutablePair(methods.expireTime(), this));
             this.appendExpireTime();
         }
 

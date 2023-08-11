@@ -2,6 +2,7 @@ package com.xuxiaocheng.WList.Driver.Helpers;
 
 import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.FunctionE;
@@ -19,10 +20,15 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.CompositeByteBuf;
 import okhttp3.Headers;
 import okhttp3.OkHttpClient;
+import okhttp3.Response;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
 import java.io.InputStream;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -176,11 +182,19 @@ public final class DriverUtil {
         });
     }
 
-    public static @NotNull DownloadMethods getDownloadMethodsByUrlWithRangeHeader(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final long size, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final Headers.@Nullable Builder builder) {
+    public static @NotNull DownloadMethods getDownloadMethodsByUrlWithRangeHeader(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final long size, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final Headers.@Nullable Builder builder) throws IOException {
         final long end = Math.min(to, size);
         final long total = end - from;
         if (from >= size || total < 0)
-            return new DownloadMethods(0, List.of(), RunnableE.EmptyRunnable);
+            return new DownloadMethods(0, List.of(), RunnableE.EmptyRunnable, null);
+        final Headers headers;
+        try (final Response response = DriverNetworkHelper.postWithBody(DriverNetworkHelper.defaultHttpClient, Pair.ImmutablePair.makeImmutablePair(url.getFirst(), "HEAD"), Objects.requireNonNullElseGet(builder, Headers.Builder::new).build(), null).execute()) {
+            headers = response.headers();
+        }
+        final Instant instant = headers.getInstant("Expires");
+        if (!Objects.requireNonNullElse(headers.get("Accept-Ranges"), "").contains("bytes") || instant == null)
+            throw new IllegalStateException("File cannot download by range header." + ParametersMap.create().add("url", url).add("size", size).add("from", from).add("to", to).add("headers", headers.toMultimap()));
+        final LocalDateTime expires = LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
         final int count = MiscellaneousUtil.calculatePartCount(total, WListServer.FileTransferBufferSize);
         final List<SupplierE<ByteBuf>> list = new ArrayList<>(count);
         for (long i = from; i < end; i += WListServer.FileTransferBufferSize) {
@@ -207,7 +221,7 @@ public final class DriverUtil {
                 }
             });
         }
-        return new DownloadMethods(total, list, RunnableE.EmptyRunnable);
+        return new DownloadMethods(total, list, RunnableE.EmptyRunnable, expires);
     }
 
     public static @NotNull DownloadMethods toCachedDownloadMethods(final @NotNull DownloadMethods source) {
@@ -248,7 +262,7 @@ public final class DriverUtil {
                         future.get().release();
                     } catch (final InterruptedException | ExecutionException ignore) {
                     }
-        });
+        }, source.expireTime());
     }
 
     // WARNING: assert requireSize % WListServer.FileTransferBufferSize == 0; (expected last chunk)
