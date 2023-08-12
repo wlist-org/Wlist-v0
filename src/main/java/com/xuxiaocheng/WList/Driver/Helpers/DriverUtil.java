@@ -64,7 +64,7 @@ public final class DriverUtil {
     public static final Options.@NotNull OrderPolicy DefaultOrderPolicy = Options.OrderPolicy.FileName;
     public static final Options.@NotNull OrderDirection DefaultOrderDirection = Options.OrderDirection.ASCEND;
 
-    private static final @NotNull Iterable<@NotNull Pattern> HtmlCommentsTags = List.of(Pattern.compile("//.*"), Pattern.compile("<!--.*?-->"));
+    private static final @NotNull Iterable<@NotNull Pattern> HtmlCommentsTags = List.of(Pattern.compile("[^:]//.*"), Pattern.compile("<!--.*?-->"), Pattern.compile("/\\*.*?\\*/"));
     public static @NotNull String removeHtmlComments(final @Nullable String html) {
         if (html == null)
             return "";
@@ -73,7 +73,7 @@ public final class DriverUtil {
             res = pattern.matcher(res).replaceAll("");
         }
         return res;
-    } // TODO: "<!--", /**/
+    }
 
     /**
      * Example: <pre>{@code
@@ -188,7 +188,7 @@ public final class DriverUtil {
         if (from >= size || total < 0)
             return new DownloadMethods(0, List.of(), RunnableE.EmptyRunnable, null);
         final Headers headers;
-        try (final Response response = DriverNetworkHelper.postWithBody(DriverNetworkHelper.defaultHttpClient, Pair.ImmutablePair.makeImmutablePair(url.getFirst(), "HEAD"), Objects.requireNonNullElseGet(builder, Headers.Builder::new).build(), null).execute()) {
+        try (final Response response = DriverNetworkHelper.getWithParameters(DriverNetworkHelper.defaultHttpClient, Pair.ImmutablePair.makeImmutablePair(url.getFirst(), "HEAD"), Objects.requireNonNullElseGet(builder, Headers.Builder::new).build(), null).execute()) {
             headers = response.headers();
         }
         final Instant instant = headers.getInstant("Expires");

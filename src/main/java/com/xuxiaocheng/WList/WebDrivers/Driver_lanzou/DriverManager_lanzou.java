@@ -56,8 +56,6 @@ public final class DriverManager_lanzou {
             final FileSqlInformation directoryInformation = FileManager.selectFile(configuration.getName(), directoryId, connectionId.get());
             if (directoryInformation == null || directoryInformation.type() == FileSqlInterface.FileSqlType.RegularFile)
                 return null;
-            if (directoryInformation.type() == FileSqlInterface.FileSqlType.EmptyDirectory)
-                return List.of();
             final List<FileSqlInformation> information = DriverHelper_lanzou.listAllDirectory(configuration, directoryId);
             if (information == null) {
                 FileManager.deleteFileRecursively(configuration.getName(), directoryId, connectionId.get());
@@ -67,13 +65,16 @@ public final class DriverManager_lanzou {
             information.addAll(DriverHelper_lanzou.listAllFiles(configuration, directoryId));
             if (information.isEmpty()) {
                 FileManager.deleteFileRecursively(configuration.getName(), directoryId, connectionId.get());
-                FileManager.insertOrUpdateFile(configuration.getName(), directoryInformation.getAsEmptyDirectory(), connectionId.get());
+                if (directoryInformation.type() == FileSqlInterface.FileSqlType.Directory)
+                    FileManager.insertOrUpdateFile(configuration.getName(), directoryInformation.getAsEmptyDirectory(), connectionId.get());
             } else {
                 final Set<Long> deletedIds = FileManager.selectFileIdByParentId(configuration.getName(), directoryId, connectionId.get());
                 deletedIds.removeAll(information.stream().map(FileSqlInformation::id).collect(Collectors.toSet()));
                 deletedIds.remove(-1L);
                 FileManager.deleteFilesRecursively(configuration.getName(), deletedIds, connectionId.get());
                 FileManager.insertOrUpdateFiles(configuration.getName(), information, connectionId.get());
+                if (directoryInformation.type() == FileSqlInterface.FileSqlType.EmptyDirectory)
+                    FileManager.insertOrUpdateFile(configuration.getName(), directoryInformation.getAsNormalDirectory(), connectionId.get());
             }
             connection.commit();
             return information;
@@ -136,7 +137,7 @@ public final class DriverManager_lanzou {
         if (info == null || info.isDirectory()) return UnionPair.fail(FailureReason.byNoSuchFile("Downloading.", new FileLocation(configuration.getName(), fileId)));
         final String url = DriverHelper_lanzou.getFileDownloadUrl(configuration, fileId);
         if (url == null) return UnionPair.fail(FailureReason.byNoSuchFile("Downloading.", new FileLocation(configuration.getName(), fileId)));
-        return UnionPair.ok(DriverUtil.toCachedDownloadMethods(DriverUtil.getDownloadMethodsByUrlWithRangeHeader(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(url, "GET"), info.size(), from, to, null)));
+        return UnionPair.ok(DriverUtil.toCachedDownloadMethods(DriverUtil.getDownloadMethodsByUrlWithRangeHeader(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(url, "GET"), info.size(), from, to, DriverHelper_lanzou.headers.newBuilder())));
     }
 
     // File Writer
@@ -216,7 +217,7 @@ public final class DriverManager_lanzou {
     }
 
     static @NotNull UnionPair<@NotNull UploadMethods, @NotNull FailureReason> getUploadMethods(final @NotNull DriverConfiguration_lanzou configuration, final long parentId, final @NotNull String name, final @NotNull String md5, final long size, final Options.@NotNull DuplicatePolicy policy, final @Nullable String _connectionId) throws IOException, SQLException, InterruptedException {
-        if (!HMessageDigestHelper.MD5.pattern.matcher(md5).matches())
+        if (!md5.isEmpty() && !HMessageDigestHelper.MD5.pattern.matcher(md5).matches())
             throw new IllegalStateException("Invalid md5." + ParametersMap.create().add("md5", md5));
         if (!DriverHelper_lanzou.filenamePredication.test(name))
             return UnionPair.fail(FailureReason.byInvalidName("Uploading file.", new FileLocation(configuration.getName(), parentId), name));

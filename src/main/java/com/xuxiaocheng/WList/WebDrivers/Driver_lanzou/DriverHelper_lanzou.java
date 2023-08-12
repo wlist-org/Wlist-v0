@@ -43,7 +43,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -54,7 +53,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @SuppressWarnings("SpellCheckingInspection")
-final class DriverHelper_lanzou {
+public final class DriverHelper_lanzou {
     private DriverHelper_lanzou() {
         super();
     }
@@ -153,13 +152,15 @@ final class DriverHelper_lanzou {
 
     private static final @NotNull Pattern passwordSignPattern = Pattern.compile("&sign=([^'&]+)");
     private static final @NotNull Pattern srcPattern = Pattern.compile("src=\"/fn?([^\"]+)");
-    private static final @NotNull Pattern signPattern = Pattern.compile("'sign':([^']+)");
-    static @Nullable String getSingleShareFileDownloadUrl(final @NotNull DriverConfiguration_lanzou configuration, final @NotNull String domin, final @NotNull String identifier, final @Nullable String pwd) throws IOException, IllegalParametersException {
+    private static final @NotNull Pattern signPattern = Pattern.compile("'sign':'([^']+)");
+    private static final @NotNull Pattern filePattern = Pattern.compile("'file':'([^']+)");
+    public static @Nullable String getSingleShareFileDownloadUrl(final @NotNull DriverConfiguration_lanzou configuration, final @NotNull String domin, final @NotNull String identifier, final @Nullable String pwd) throws IOException, IllegalParametersException {
         final String sharePage = DriverHelper_lanzou.requestHtml(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin + identifier, "GET"));
         if (sharePage.contains("\u6587\u4EF6\u53D6\u6D88\u5206\u4EAB\u4E86") || sharePage.contains("\u6587\u4EF6\u5730\u5740\u9519\u8BEF"))
             return null;
         final String sign;
-        if (sharePage.contains("\u8F93\u5165\u5BC6\u7801")) {
+        final boolean hasPwd = sharePage.contains("\u8F93\u5165\u5BC6\u7801");
+        if (hasPwd) {
             if (pwd == null)
                 throw new IllegalParametersException("Require password.", ParametersMap.create().add("domin", domin).add("identifier", identifier));
             final Matcher signMatcher = DriverHelper_lanzou.passwordSignPattern.matcher(sharePage);
@@ -175,12 +176,13 @@ final class DriverHelper_lanzou {
             final Matcher signMatcher = DriverHelper_lanzou.signPattern.matcher(loadingPage);
             if (!signMatcher.find())
                 throw new WrongResponseException("No sign matched.", loadingPage, ParametersMap.create().add("configuration", configuration).add("domin", domin).add("identifier", identifier));
-            sign = srcMatcher.group().substring("'sign':".length());
+            sign = signMatcher.group().substring("'sign':'".length());
         }
         final FormBody.Builder builder = new FormBody.Builder()
                 .add("action", "downprocess")
-                .add("sign", sign)
-                .add("p", Objects.requireNonNullElse(pwd, ""));
+                .add("sign", sign);
+        if (hasPwd)
+            builder.add("p", pwd);
         final JSONObject json = DriverHelper_lanzou.requestJson(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin + "ajaxm.php", "POST"), builder);
         final int code = json.getIntValue("zt", -1);
         if (code != 1)
@@ -189,7 +191,33 @@ final class DriverHelper_lanzou {
         final String para = json.getString("url");
         if (dom == null || para == null)
             throw new WrongResponseException("Getting single shared file download url.", json, ParametersMap.create().add("configuration", configuration).add("domin", domin).add("identifier", identifier).add("pwd", pwd));
-        return dom + "/file/" + para;
+        final String displayUrl = dom + "/file/" + para;
+        final String redirectPage;
+        try (final Response response = DriverNetworkHelper.getWithParameters(DriverNetworkHelper.noRedirectHttpClient, Pair.ImmutablePair.makeImmutablePair(displayUrl, "GET"), DriverHelper_lanzou.headers, null).execute()) {
+            if (response.code() == 302)
+                return response.header("Location");
+            redirectPage = DriverUtil.removeHtmlComments(DriverNetworkHelper.extraResponseBody(response).string());
+        }
+        // TODO: Unchecked.
+HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Running in redirect mode: ", redirectPage);
+        final Matcher redirectFileMatcher = DriverHelper_lanzou.filePattern.matcher(redirectPage);
+        if (!redirectFileMatcher.find())
+            throw new WrongResponseException("No redirect file matched.", redirectPage, ParametersMap.create().add("configuration", configuration).add("domin", domin).add("identifier", identifier).add("displayUrl", displayUrl).add("pwd", pwd));
+        final String redirectFile = redirectFileMatcher.group().substring("'file':'".length());
+        final Matcher redirectSignMatcher = DriverHelper_lanzou.signPattern.matcher(redirectPage);
+        if (!redirectSignMatcher.find())
+            throw new WrongResponseException("No redirect sign matched.", redirectPage, ParametersMap.create().add("configuration", configuration).add("domin", domin).add("identifier", identifier).add("displayUrl", displayUrl).add("pwd", pwd));
+        final String redirectSign = redirectSignMatcher.group().substring("'sign':'".length());
+        final FormBody.Builder redirectBuilder = new FormBody.Builder()
+                .add("file", redirectFile)
+                .add("sign", redirectSign)
+                .add("el", "2");
+        final JSONObject redirectJson = DriverHelper_lanzou.requestJson(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin + "ajax.php", "POST"), redirectBuilder);
+HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Finally getting redirected download url: ", redirectJson);
+        final String finalUrl = redirectJson.getString("url");
+        if (finalUrl == null)
+            throw new WrongResponseException("Getting single shared file download url. Final URL.", redirectJson, ParametersMap.create().add("configuration", configuration).add("domin", domin).add("identifier", identifier).add("displayUrl", displayUrl).add("pwd", pwd));
+        return finalUrl;
     }
 
     static @Nullable String getFileDownloadUrl(final @NotNull DriverConfiguration_lanzou configuration, final long fileId) throws IOException {

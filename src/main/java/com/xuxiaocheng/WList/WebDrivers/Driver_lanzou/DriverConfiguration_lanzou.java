@@ -29,7 +29,6 @@ final class DriverConfiguration_lanzou extends DriverConfiguration<
         return this.httpClient;
     }
 
-
     public static final class LocalSide extends LocalSideDriverConfiguration {
         @Override
         protected void load(final @NotNull @UnmodifiableView Map<? super @NotNull String, @NotNull Object> local, @NotNull final Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, @NotNull final String prefix) {

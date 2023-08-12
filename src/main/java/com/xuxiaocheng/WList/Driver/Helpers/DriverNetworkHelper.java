@@ -112,6 +112,7 @@ public final class DriverNetworkHelper {
                 .addInterceptor(DriverNetworkHelper.NetworkLoggerInterceptor);
     }
     public static final @NotNull OkHttpClient defaultHttpClient = DriverNetworkHelper.newHttpClientBuilder().build();
+    public static final @NotNull OkHttpClient noRedirectHttpClient = DriverNetworkHelper.newHttpClientBuilder().followRedirects(false).followSslRedirects(false).build();
 
     public static class FrequencyControlInterceptor implements Interceptor {
         protected final int perSecond;
