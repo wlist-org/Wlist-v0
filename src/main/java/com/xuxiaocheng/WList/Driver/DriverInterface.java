@@ -123,7 +123,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @return Upload methods for every 4MB ({@link com.xuxiaocheng.WList.Server.WListServer#FileTransferBufferSize}) chunks of file.
      * @see com.xuxiaocheng.WList.Driver.Helpers.DriverUtil#getRetryWrapper(String)
      * @see DriverNetworkHelper#createOctetStreamRequestBody
-     * @see com.xuxiaocheng.WList.Driver.Helpers.DriverUtil#splitUploadMethod(ConsumerE, int)
+     * @see com.xuxiaocheng.WList.Driver.Helpers.DriverUtil#splitUploadMethodEveryFileTransferBufferSize(ConsumerE, int)
      * @throws Exception Something went wrong.
      */
     @NotNull UnionPair<@NotNull UploadMethods, @NotNull FailureReason> upload(final @NotNull FileLocation parentLocation, final @NotNull String filename, final @LongRange(minimum = 0) long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws Exception;

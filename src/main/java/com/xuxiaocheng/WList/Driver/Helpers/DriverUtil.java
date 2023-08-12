@@ -265,11 +265,15 @@ public final class DriverUtil {
         }, source.expireTime());
     }
 
-    // WARNING: assert requireSize % WListServer.FileTransferBufferSize == 0; (expected last chunk)
-    public static Pair.@NotNull ImmutablePair<@NotNull List<@NotNull ConsumerE<@NotNull ByteBuf>>, @NotNull Runnable> splitUploadMethod(final @NotNull ConsumerE<? super @NotNull ByteBuf> sourceMethod, final int requireSize) {
-        assert requireSize > 0;
-        final int mod = requireSize % WListServer.FileTransferBufferSize;
-        final int count = requireSize / WListServer.FileTransferBufferSize - (mod == 0 ? 1 : 0);
+    /**
+     * @see WListServer#FileTransferBufferSize
+     */
+    public static Pair.@NotNull ImmutablePair<@NotNull List<@NotNull ConsumerE<@NotNull ByteBuf>>, @NotNull Runnable> splitUploadMethodEveryFileTransferBufferSize(final @NotNull ConsumerE<@NotNull ByteBuf> sourceMethod, final int totalSize) {
+        assert totalSize > 0;
+        if (totalSize < WListServer.FileTransferBufferSize)
+            return Pair.ImmutablePair.makeImmutablePair(List.of(sourceMethod), RunnableE.EmptyRunnable);
+        final int mod = totalSize % WListServer.FileTransferBufferSize;
+        final int count = totalSize / WListServer.FileTransferBufferSize - (mod == 0 ? 1 : 0);
         final int rest = mod == 0 ? WListServer.FileTransferBufferSize : mod;
         final List<ConsumerE<ByteBuf>> list = new ArrayList<>(count + 1);
         final AtomicBoolean leaked = new AtomicBoolean(true);

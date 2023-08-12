@@ -180,7 +180,9 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
         if (SpecialDriverName.RootDriver.getIdentifier().equals(parentLocation.driver()))
             throw new UnsupportedOperationException("Cannot create root file.");
         final DriverInterface<?> real = DriverManager.getDriver(parentLocation.driver());
-        if (real == null) return UnionPair.fail(FailureReason.byNoSuchFile("Uploading.", parentLocation));
+        if (real == null) return UnionPair.fail(FailureReason.byNoSuchFile("Uploading file.", parentLocation));
+        if (size > real.getConfiguration().getWebSide().getMaxSizePerFile())
+            return UnionPair.fail(FailureReason.byExceedMaxSize("Uploading file.", size, real.getConfiguration().getWebSide().getMaxSizePerFile(), parentLocation, filename));
         final UnionPair<UploadMethods, FailureReason> methods = real.upload(parentLocation, filename, size, md5, policy);
         DriverManager.dumpConfigurationIfModified(real.getConfiguration());
         return methods;

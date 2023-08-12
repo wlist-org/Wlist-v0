@@ -5,6 +5,9 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.HeadLibs.Helpers.HMessageDigestHelper;
 import com.xuxiaocheng.WList.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInterface;
@@ -16,6 +19,8 @@ import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Server.InternalDrivers.RootDriver;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
+import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.UploadMethods;
+import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -209,52 +214,30 @@ public final class DriverManager_lanzou {
             return information;
         }
     }
-/*
-    static @NotNull UnionPair<@NotNull UploadMethods, @NotNull FailureReason> getUploadMethods(final @NotNull DriverConfiguration_lanzou configuration, final long parentId, final @NotNull String name, final @NotNull CharSequence md5, final long size, final Options.@NotNull DuplicatePolicy policy, final @Nullable String _connectionId) throws IllegalParametersException, IOException, SQLException {
-        if (!HMessageDigestHelper.MD5.pattern.matcher(md5).matches())
-            throw new IllegalParametersException("Invalid md5.", ParametersMap.create().add("md5", md5));
-        if (!DriverHelper_lanzou.filenamePredication.test(name))
-            return UnionPair.fail(FailureReason.byInvalidName("Uploading.", new FileLocation(configuration.getName(), parentId), name));
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = FileManager.getConnection(configuration.getName(), _connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            final UnionPair<UnionPair<String, FileSqlInformation>, FailureReason> duplicate = DriverManager_lanzou.getDuplicatePolicyName(configuration, parentId, name, false, policy, "Uploading file.", connectionId.get());
-            if (duplicate.isFailure()) {connection.commit();return UnionPair.fail(duplicate.getE());}
-            final String realName = duplicate.getT().getT();
-            final UnionPair<UnionPair<FileSqlInformation, DriverHelper_lanzou.UploadIdentifier_lanzou>, FailureReason> requestUploadData = DriverHelper_lanzou.uploadRequest(configuration, parentId, realName, size, md5, policy);
-            if (requestUploadData.isFailure()) {connection.commit();return UnionPair.fail(requestUploadData.getE());}
-            if (requestUploadData.getT().isSuccess()) {
-                final FileSqlInformation information = requestUploadData.getT().getT();
-                FileManager.insertOrUpdateFile(configuration.getName(), information, connectionId.get());
-                connection.commit();return UnionPair.ok(new UploadMethods(List.of(), () -> information, RunnableE.EmptyRunnable));
-            }
-            final int partCount = MiscellaneousUtil.calculatePartCount(size, DriverHelper_lanzou.UploadPartSize);
-            final List<String> urls = DriverHelper_lanzou.uploadPare(configuration, requestUploadData.getT().getE(), partCount);
-            long readSize = 0;
-            final List<ConsumerE<ByteBuf>> consumers = new ArrayList<>(partCount);
-            final Collection<Runnable> finishers = new ArrayList<>(partCount);
-            final AtomicInteger countDown = new AtomicInteger(urls.size());
-            for (final String url: urls) {
-                //noinspection NumericCastThatLosesPrecision
-                final int len = (int) Math.min(DriverHelper_lanzou.UploadPartSize, (size - readSize));readSize += len;
-                final Pair.ImmutablePair<List<ConsumerE<ByteBuf>>, Runnable> split = DriverUtil.splitUploadMethod(b -> {
-                    DriverNetworkHelper.postWithBody(DriverHelper_lanzou.fileClient, Pair.ImmutablePair.makeImmutablePair(url, "PUT"),
-                            null, DriverNetworkHelper.createOctetStreamRequestBody(b)).execute().close();
-                    countDown.getAndDecrement();
-                }, len);
-                consumers.addAll(split.getFirst());
-                finishers.add(split.getSecond());
-            }
-            FileManager.getConnection(configuration.getName(), connectionId.get(), null);
-            return UnionPair.ok(new UploadMethods(consumers, () -> {
-                if (countDown.get() > 0) return null;
-                final FileSqlInformation information = DriverHelper_lanzou.uploadComplete(configuration, requestUploadData.getT().getE(), partCount);
-                if (information != null) FileManager.insertOrUpdateFile(configuration.getName(), information, connectionId.get());
-                connection.commit();return information;
-            }, HExceptionWrapper.wrapRunnable(() -> {finishers.forEach(Runnable::run);connection.close();})));
-        }
-    }
 
+    static @NotNull UnionPair<@NotNull UploadMethods, @NotNull FailureReason> getUploadMethods(final @NotNull DriverConfiguration_lanzou configuration, final long parentId, final @NotNull String name, final @NotNull String md5, final long size, final Options.@NotNull DuplicatePolicy policy, final @Nullable String _connectionId) throws IOException, SQLException, InterruptedException {
+        if (!HMessageDigestHelper.MD5.pattern.matcher(md5).matches())
+            throw new IllegalStateException("Invalid md5." + ParametersMap.create().add("md5", md5));
+        if (!DriverHelper_lanzou.filenamePredication.test(name))
+            return UnionPair.fail(FailureReason.byInvalidName("Uploading file.", new FileLocation(configuration.getName(), parentId), name));
+        if (size > configuration.getWebSide().getMaxSizePerFile())
+            return UnionPair.fail(FailureReason.byExceedMaxSize("Uploading file.", size, configuration.getWebSide().getMaxSizePerFile(),  new FileLocation(configuration.getName(), parentId), name));
+        final int intSize = Math.toIntExact(size);
+        final UnionPair<UnionPair<String, FileSqlInformation>, FailureReason> duplicate = DriverManager_lanzou.getDuplicatePolicyName(configuration, parentId, name, false, policy, "Uploading file.", _connectionId);
+        if (duplicate.isFailure()) return UnionPair.fail(duplicate.getE());
+        final String realName = duplicate.getT().getT();
+        final AtomicReference<UnionPair<FileSqlInformation, FailureReason>> reference = new AtomicReference<>(null);
+        final Pair.ImmutablePair<List<ConsumerE<ByteBuf>>, Runnable> methods = DriverUtil.splitUploadMethodEveryFileTransferBufferSize(b ->
+                reference.set(DriverHelper_lanzou.uploadFile(configuration, realName, parentId, b, md5)), intSize);
+        return UnionPair.ok(new UploadMethods(methods.getFirst(), () -> {
+            final UnionPair<FileSqlInformation, FailureReason> result = reference.get();
+            if (result == null) return null;
+            final FileSqlInformation information = result.getT();
+            FileManager.insertOrUpdateFile(configuration.getName(), information, _connectionId);
+            return information;
+        }, HExceptionWrapper.wrapRunnable(() -> methods.getSecond().run())));
+    }
+/*
     static @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> renameFile(final @NotNull DriverConfiguration_lanzou configuration, final long id, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @Nullable String _connectionId) throws IllegalParametersException, IOException, SQLException {
         if (!DriverHelper_lanzou.filenamePredication.test(name))
             return UnionPair.fail(FailureReason.byInvalidName(name, new FileLocation(configuration.getName(), id), name));
