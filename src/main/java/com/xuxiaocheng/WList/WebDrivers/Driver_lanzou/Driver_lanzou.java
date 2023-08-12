@@ -6,6 +6,8 @@ import com.xuxiaocheng.WList.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Databases.File.FileSqlHelper;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Databases.GenericSql.PooledDatabase;
+import com.xuxiaocheng.WList.Databases.TrashedFile.TrashedFileManager;
+import com.xuxiaocheng.WList.Databases.TrashedFile.TrashedSqlHelper;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.FailureReason;
 import com.xuxiaocheng.WList.Driver.FileLocation;
@@ -34,11 +36,13 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
         FileManager.quicklyInitialize(new FileSqlHelper(PooledDatabase.instance.getInstance(), configuration.getName(), configuration.getWebSide().getRootDirectoryId()), null);
         this.configuration = configuration;
         FileManager.insertOrUpdateFile(this.configuration.getName(), RootDriver.getDatabaseDriverInformation(this.configuration), null);
+        TrashedFileManager.quicklyInitialize(new TrashedSqlHelper(PooledDatabase.instance.getInstance(), configuration.getName()), null);
     }
 
     @Override
     public void uninitialize() throws SQLException {
         FileManager.quicklyUninitialize(this.configuration.getName(), null);
+        TrashedFileManager.quicklyUninitialize(this.configuration.getName(), null);
     }
 
     @Override
@@ -82,8 +86,10 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
     }
 
     @Override
-    public void delete(final @NotNull FileLocation location) throws Exception {
-
+    public void delete(final @NotNull FileLocation location) throws IOException, SQLException, InterruptedException {
+        final FileSqlInformation information = DriverManager_lanzou.getFileInformation(this.configuration, location.id(), null, null);
+        if (information != null)
+            DriverManager_lanzou.trashFile(this.configuration, information, null, null);
     }
 
     @Override

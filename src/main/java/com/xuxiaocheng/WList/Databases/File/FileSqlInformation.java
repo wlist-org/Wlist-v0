@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Databases.File;
 
+import com.xuxiaocheng.WList.Databases.TrashedFile.TrashedSqlInformation;
 import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
@@ -46,6 +47,10 @@ public record FileSqlInformation(@NotNull FileLocation location, long parentId, 
         if (this.type == FileSqlInterface.FileSqlType.Directory)
             return this;
         return new FileSqlInformation(this.location, this.parentId, this.name, FileSqlInterface.FileSqlType.Directory, this.size, this.createTime, this.updateTime, this.md5, this.others);
+    }
+
+    public @NotNull TrashedSqlInformation toTrashedSqlInformation(final @Nullable LocalDateTime trashedTime, final @Nullable LocalDateTime expireTime) {
+        return new TrashedSqlInformation(this.location, this.name, this.isDirectory(), this.size, this.createTime, trashedTime, expireTime, this.md5, this.others);
     }
 
     @Override

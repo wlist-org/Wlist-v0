@@ -40,9 +40,11 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -50,6 +52,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @SuppressWarnings({"SameParameterValue", "SpellCheckingInspection"})
 final class DriverHelper_lanzou {
@@ -170,7 +173,7 @@ final class DriverHelper_lanzou {
                 .add("sign", sign)
                 .add("p", pwd);
         final JSONObject json;
-        try (final ResponseBody body = DriverHelper_lanzou.request(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin + "/ajaxm.php", "POST"), builder)) {
+        try (final ResponseBody body = DriverHelper_lanzou.request(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin + "ajaxm.php", "POST"), builder)) {
             try (final InputStream stream = body.byteStream()) {
                 json = JSON.parseObject(stream);
             }
@@ -232,6 +235,27 @@ final class DriverHelper_lanzou {
                     directoryId, name, FileSqlInterface.FileSqlType.Directory, -1, null, null, "", null));
         }
         return list;
+    }
+
+    static @NotNull Set<@NotNull Long> listAllFilesId(final @NotNull DriverConfiguration_lanzou configuration, final long directoryId) throws IOException {
+        final Set<Long> ids = new HashSet<>();
+        int page = 0;
+        while (true) {
+            final FormBody.Builder filesBuilder = new FormBody.Builder()
+                    .add("folder_id", String.valueOf(directoryId))
+                    .add("pg", String.valueOf(++page));
+            final JSONObject files = DriverHelper_lanzou.task(configuration, 5, filesBuilder, 1);
+            final Integer filesTotal = files.getInteger("info");
+            final JSONArray filesInfos = files.getJSONArray("text");
+            if (filesTotal == null || filesInfos == null)
+                throw new WrongResponseException("Listing files id.", files, ParametersMap.create()
+                        .add("configuration", configuration).add("directoryId", directoryId).add("page", page));
+            if (filesTotal.intValue() <= 0)
+                break;
+            ids.addAll(filesInfos.toList(JSONObject.class).stream().map(f -> f.getLong("id"))
+                    .filter(Objects::nonNull).collect(Collectors.toSet()));
+        }
+        return ids;
     }
 
     static @NotNull List<@NotNull FileSqlInformation> listAllFiles(final @NotNull DriverConfiguration_lanzou configuration, final long directoryId) throws IOException, InterruptedException {
@@ -302,6 +326,26 @@ final class DriverHelper_lanzou {
                     directoryId, headers.getA(), FileSqlInterface.FileSqlType.RegularFile, size, time, time, "", null));
         }
         return list;
+    }
+
+    static void trashFile(final @NotNull DriverConfiguration_lanzou configuration, final long fileId) throws IOException {
+        final FormBody.Builder builder = new FormBody.Builder()
+                .add("file_id", String.valueOf(fileId));
+        final JSONObject json = DriverHelper_lanzou.task(configuration, 6, builder, 1);
+        final String message = json.getString("info");
+        if (!"\u5DF2\u5220\u9664".equals(message))
+            throw new WrongResponseException("Trashing file.", message, ParametersMap.create()
+                    .add("configuration", configuration).add("fileId", fileId).add("json", json));
+    }
+
+    static void trashDirectories(final @NotNull DriverConfiguration_lanzou configuration, final long directoryId) throws IOException {
+        final FormBody.Builder builder = new FormBody.Builder()
+                .add("folder_id", String.valueOf(directoryId));
+        final JSONObject json = DriverHelper_lanzou.task(configuration, 3, builder, 1);
+        final String message = json.getString("info");
+        if (!"\u5220\u9664\u6210\u529F".equals(message))
+            throw new WrongResponseException("Trashing directory.", message, ParametersMap.create()
+                    .add("configuration", configuration).add("directoryId", directoryId).add("json", json));
     }
 
     static @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> createDirectory(final @NotNull DriverConfiguration_lanzou configuration, final String name, final long parentId) throws IOException {

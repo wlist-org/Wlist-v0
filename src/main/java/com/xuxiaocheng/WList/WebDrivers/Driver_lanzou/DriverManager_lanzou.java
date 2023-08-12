@@ -5,17 +5,17 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
-import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.WList.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInterface;
+import com.xuxiaocheng.WList.Databases.TrashedFile.TrashedFileManager;
+import com.xuxiaocheng.WList.Databases.TrashedFile.TrashedSqlInformation;
 import com.xuxiaocheng.WList.Driver.FailureReason;
 import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Server.InternalDrivers.RootDriver;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
-import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -23,12 +23,11 @@ import org.jetbrains.annotations.UnmodifiableView;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -54,27 +53,13 @@ public final class DriverManager_lanzou {
                 return null;
             if (directoryInformation.type() == FileSqlInterface.FileSqlType.EmptyDirectory)
                 return List.of();
-            final CompletableFuture<List<FileSqlInformation>> directoriesFuture = CompletableFuture.supplyAsync(HExceptionWrapper.wrapSupplier(() ->
-                    DriverHelper_lanzou.listAllDirectory(configuration, directoryId)), WListServer.IOExecutors);
-            final CompletableFuture<List<FileSqlInformation>> filesFuture = CompletableFuture.supplyAsync(HExceptionWrapper.wrapSupplier(() ->
-                    DriverHelper_lanzou.listAllFiles(configuration, directoryId)), WListServer.IOExecutors);
-            final List<FileSqlInformation> information;
-            try {
-                information = directoriesFuture.get();
-                if (information == null) {
-                    FileManager.deleteFileRecursively(configuration.getName(), directoryId, connectionId.get());
-                    connection.commit();
-                    return null;
-                }
-                information.addAll(filesFuture.get());
-            } catch (final ExecutionException exception) {
-                if (exception.getCause() instanceof RuntimeException runtimeException)
-                    throw HExceptionWrapper.unwrapException(HExceptionWrapper.unwrapException(runtimeException, IOException.class), InterruptedException.class);
-                throw new RuntimeException(exception.getCause());
-            } finally {
-                directoriesFuture.cancel(true);
-                filesFuture.cancel(true);
+            final List<FileSqlInformation> information = DriverHelper_lanzou.listAllDirectory(configuration, directoryId);
+            if (information == null) {
+                FileManager.deleteFileRecursively(configuration.getName(), directoryId, connectionId.get());
+                connection.commit();
+                return null;
             }
+            information.addAll(DriverHelper_lanzou.listAllFiles(configuration, directoryId));
             if (information.isEmpty()) {
                 FileManager.deleteFileRecursively(configuration.getName(), directoryId, connectionId.get());
                 FileManager.insertOrUpdateFile(configuration.getName(), directoryInformation.getAsEmptyDirectory(), connectionId.get());
@@ -151,53 +136,44 @@ public final class DriverManager_lanzou {
 
     // File Writer
 
-    static void trashFile(final @NotNull DriverConfiguration_lanzou configuration, final long id, final @Nullable String _connectionId) throws IOException, SQLException {
-        /*final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = FileManager.getConnection(configuration.getName(), _connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            final FileSqlInformation information = DriverManager_lanzou.getFileInformation(configuration, id, connectionId.get());
-            if (information == null) {
-                connection.commit();
-                return;
+    static void trashFile(final @NotNull DriverConfiguration_lanzou configuration, final @NotNull FileSqlInformation information, final @Nullable String _connectionId, final @Nullable String _trashConnectionId) throws IOException, SQLException, InterruptedException {
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        final AtomicReference<String> trashConnectionId = new AtomicReference<>();
+        try (final Connection connection = FileManager.getConnection(configuration.getName(), _connectionId, connectionId); final Connection trashConnection = TrashedFileManager.getConnection(configuration.getName(), _trashConnectionId, trashConnectionId)) {
+            final LocalDateTime time;
+            if (information.isDirectory()) {
+                Triad.ImmutableTriad<Long, Long, List<FileSqlInformation>> list;
+                do {
+                    list = DriverManager_lanzou.listFiles(configuration, information.id(), Options.DirectoriesOrFiles.Both, DriverUtil.DefaultLimitPerRequestPage, 0, DriverUtil.DefaultOrderPolicy, DriverUtil.DefaultOrderDirection, connectionId.get());
+                    if (list == null)
+                        return;
+                    for (final FileSqlInformation f: list.getC())
+                        DriverManager_lanzou.trashFile(configuration, f, connectionId.get(), trashConnectionId.get());
+                } while (list.getA().longValue() > 0);
+                time = LocalDateTime.now();
+                DriverHelper_lanzou.trashDirectories(configuration, information.id());
+            } else {
+                time = LocalDateTime.now();
+                DriverHelper_lanzou.trashFile(configuration, information.id());
             }
-            final Set<Long> ids = DriverHelper_lanzou.trashFiles(configuration, List.of(id), true);
-            if (!ids.contains(id)) {
-                connection.commit();
-                return;
-            }
-            FileManager.deleteFileRecursively(configuration.getName(), id, connectionId.get());
-            // TODO: waiting trash.
-//            final TrashedSqlInformation trashed = TrashHelper_lanzou.getFilesInformation(configuration, ids).get(id);
-//            if (trashed == null)
-//                throw new IllegalStateException("Failed to get trashed file information. [Unreachable]. id: " + id);
-//            try (final Connection trashedConnection = TrashedFileManager.getConnection(configuration.getName(), FileManager.sqlInstances.getInstance(configuration.getName()) == TrashedFileManager.sqlInstances.getInstance(configuration.getName()) ? _connectionId : null, connectionId)) {
-//                trashedConnection.setAutoCommit(false);
-//                TrashedFileManager.insertOrUpdateFile(configuration.getName(), trashed, connectionId.get());
-//                trashedConnection.commit();
-//            }
+            FileManager.deleteFileRecursively(configuration.getName(), information.id(), connectionId.get());
+            final TrashedSqlInformation trashed = information.toTrashedSqlInformation(time, null);
+            TrashedFileManager.insertOrUpdateFile(configuration.getName(), trashed, connectionId.get());
+            trashConnection.commit();
             connection.commit();
-        }*/
+        }
     }
 
-    static @Nullable FileSqlInformation tryGetFileInDirectory(final @NotNull DriverConfiguration_lanzou configuration, final long parentId, final @NotNull String name, final @Nullable String _connectionId) throws IOException, SQLException {
+    static @NotNull UnionPair<@NotNull UnionPair<@NotNull String/*new name*/, @NotNull FileSqlInformation/*for directory*/>, @NotNull FailureReason> getDuplicatePolicyName(final @NotNull DriverConfiguration_lanzou configuration, final long parentId, final @NotNull String name, final boolean requireDirectory, final Options.@NotNull DuplicatePolicy policy, final @NotNull String duplicateErrorMessage, final @Nullable String _connectionId) throws IOException, SQLException, InterruptedException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = FileManager.getConnection(configuration.getName(), _connectionId, connectionId)) {
             final FileSqlInformation parentInformation = DriverManager_lanzou.getFileInformation(configuration, parentId, null, connectionId.get());
-            if (parentInformation == null || parentInformation.type() != FileSqlInterface.FileSqlType.Directory) return null;
+            if (parentInformation == null || parentInformation.type() != FileSqlInterface.FileSqlType.Directory) return UnionPair.ok(UnionPair.ok(name));
             if (FileManager.selectFileCountByParentId(configuration.getName(), parentId, connectionId.get()) == 0) {
                 DriverManager_lanzou.syncFilesList(configuration, parentId, connectionId.get());
                 connection.commit();
             }
-            return FileManager.selectFileInDirectory(configuration.getName(), parentId, name, connectionId.get());
-        } catch (final InterruptedException ignore) {
-        }
-        throw new RuntimeException("Unreachable!");
-    }
-
-    static @NotNull UnionPair<@NotNull UnionPair<@NotNull String/*new name*/, @NotNull FileSqlInformation/*for directory*/>, @NotNull FailureReason> getDuplicatePolicyName(final @NotNull DriverConfiguration_lanzou configuration, final long parentId, final @NotNull String name, final boolean requireDirectory, final Options.@NotNull DuplicatePolicy policy, final @NotNull String duplicateErrorMessage, final @Nullable String _connectionId) throws IOException, SQLException {
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = FileManager.getConnection(configuration.getName(), _connectionId, connectionId)) {
-            FileSqlInformation information = DriverManager_lanzou.tryGetFileInDirectory(configuration, parentId, name, connectionId.get());
+            FileSqlInformation information = FileManager.selectFileInDirectory(configuration.getName(), parentId, name, connectionId.get());
             if (information == null)
                 return UnionPair.ok(UnionPair.ok(name));
             if (requireDirectory && information.isDirectory())
@@ -206,7 +182,7 @@ public final class DriverManager_lanzou {
                 case ERROR:
                     return UnionPair.fail(FailureReason.byDuplicateError(duplicateErrorMessage, new FileLocation(configuration.getName(), parentId), name));
                 case OVER:
-                    DriverManager_lanzou.trashFile(configuration, information.id(), connectionId.get());
+                    DriverManager_lanzou.trashFile(configuration, information, connectionId.get(), null);
                     connection.commit();
                     return UnionPair.ok(UnionPair.ok(name));
                 case KEEP:
@@ -220,7 +196,7 @@ public final class DriverManager_lanzou {
         }
     }
 
-    static @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> createDirectory(final @NotNull DriverConfiguration_lanzou configuration, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @Nullable String _connectionId) throws IOException, SQLException {
+    static @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> createDirectory(final @NotNull DriverConfiguration_lanzou configuration, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @Nullable String _connectionId) throws IOException, SQLException, InterruptedException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = FileManager.getConnection(configuration.getName(), _connectionId, connectionId)) {
             final UnionPair<UnionPair<String, FileSqlInformation>, FailureReason> duplicate = DriverManager_lanzou.getDuplicatePolicyName(configuration, parentId, name, true, policy, "Creating directory.", connectionId.get());

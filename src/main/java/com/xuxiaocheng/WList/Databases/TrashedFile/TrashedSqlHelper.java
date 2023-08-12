@@ -115,11 +115,12 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
     private static @Nullable TrashedSqlInformation createNextFileInfo(final @NotNull String driverName, final @NotNull ResultSet result) throws SQLException {
         final @NotNull String createTime = result.getString("create_time");
         final @NotNull String trashedTime = result.getString("trashed_time");
+        final @NotNull String expire_time = result.getString("expire_time");
         return result.next() ? new TrashedSqlInformation(new FileLocation(driverName, result.getLong("id")), result.getString("name"),
                 result.getBoolean("is_directory"), result.getLong("size"),
                 createTime.isEmpty() ? null : LocalDateTime.parse(createTime, TrashedSqlHelper.DefaultFormatter),
                 trashedTime.isEmpty() ? null : LocalDateTime.parse(trashedTime, TrashedSqlHelper.DefaultFormatter),
-                LocalDateTime.parse(result.getString("expire_time"), TrashedSqlHelper.DefaultFormatter),
+                expire_time.isEmpty() ? null : LocalDateTime.parse(expire_time, TrashedSqlHelper.DefaultFormatter),
                 result.getString("md5"), result.getString("others")) : null;
     }
 
