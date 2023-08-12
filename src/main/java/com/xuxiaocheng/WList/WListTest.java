@@ -3,6 +3,7 @@ package com.xuxiaocheng.WList;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
+import com.xuxiaocheng.HeadLibs.Helpers.HMessageDigestHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
@@ -19,11 +20,14 @@ import com.xuxiaocheng.WList.Server.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.WListServer;
+import com.xuxiaocheng.WList.WebDrivers.Driver_lanzou.DriverHelper_lanzou;
 import com.xuxiaocheng.WList.WebDrivers.Driver_lanzou.Driver_lanzou;
+import io.netty.buffer.Unpooled;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Objects;
 
@@ -38,7 +42,8 @@ public final class WListTest {
         WListTest.wrapServerInitialize(() -> {
             final Driver_lanzou lanzou = (Driver_lanzou) Objects.requireNonNull(DriverManager.getDriver("test"));
 //            DriverManager_lanzou.trashFile(lanzou.getConfiguration(), FileManager.selectFile("test", 8100439, null), null, null);
-            lanzou.buildIndex();
+//            lanzou.buildIndex();
+            return DriverHelper_lanzou.uploadFile(lanzou.getConfiguration(), "1.txt", -1, Unpooled.wrappedBuffer("123".getBytes(StandardCharsets.UTF_8)), HMessageDigestHelper.MD5.get("123"));
         });
     }
 

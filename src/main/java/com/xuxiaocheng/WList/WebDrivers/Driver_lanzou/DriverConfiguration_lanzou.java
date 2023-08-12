@@ -51,6 +51,7 @@ final class DriverConfiguration_lanzou extends DriverConfiguration<
 
         @Override
         protected void load(final @NotNull @UnmodifiableView Map<? super @NotNull String, @NotNull Object> web, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
+            super.maxSizePerFile = 100 << 20;
             super.rootDirectoryId = -1;
             super.load(web, errors, prefix);
             this.passport = YamlHelper.getConfig(web, "passport", this.passport,
