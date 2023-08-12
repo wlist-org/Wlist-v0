@@ -156,7 +156,7 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
                     statement.setLong(4, inserter.size());
                     statement.setString(5, inserter.createTime() == null ? "" : inserter.createTime().format(TrashedSqlHelper.DefaultFormatter));
                     statement.setString(6, inserter.trashedTime() == null ? "" : inserter.trashedTime().format(TrashedSqlHelper.DefaultFormatter));
-                    statement.setString(7, inserter.expireTime().format(TrashedSqlHelper.DefaultFormatter));
+                    statement.setString(7, inserter.expireTime() == null ? "" : inserter.expireTime().format(TrashedSqlHelper.DefaultFormatter));
                     statement.setString(8, inserter.md5());
                     statement.setString(9, inserter.others());
                     statement.executeUpdate();

@@ -37,10 +37,11 @@ public final class FileManager {
         }
     }
 
-    public static boolean quicklyUninitialize(final @NotNull String driverName) {
+    public static boolean quicklyUninitializeReserveTable(final @NotNull String driverName) {
         return FileManager.sqlInstances.uninitialize(driverName) != null;
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     public static boolean quicklyUninitialize(final @NotNull String driverName, final @Nullable String _connectionId) throws SQLException {
         final FileSqlInterface sqlInstance = FileManager.sqlInstances.uninitialize(driverName);
         if (sqlInstance != null) sqlInstance.deleteTable(_connectionId);

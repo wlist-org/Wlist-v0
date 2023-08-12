@@ -28,10 +28,11 @@ public final class ConstantManager {
         }
     }
 
-    public static boolean quicklyUninitialize() {
+    public static boolean quicklyUninitializeReserveTable() {
         return ConstantManager.sqlInstance.uninitialize() != null;
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     public static boolean quicklyUninitialize(final @Nullable String _connectionId) throws SQLException {
         final ConstantSqlInterface sqlInstance = ConstantManager.sqlInstance.uninitialize();
         if (sqlInstance != null) sqlInstance.deleteTable(_connectionId);

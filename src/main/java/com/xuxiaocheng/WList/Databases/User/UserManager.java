@@ -33,10 +33,11 @@ public final class UserManager {
         }
     }
 
-    public static boolean quicklyUninitialize() {
+    public static boolean quicklyUninitializeReserveTable() {
         return UserManager.sqlInstance.uninitialize() != null;
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     public static boolean quicklyUninitialize(final @Nullable String _connectionId) throws SQLException {
         final UserSqlInterface sqlInstance = UserManager.sqlInstance.uninitialize();
         if (sqlInstance != null) sqlInstance.deleteTable(_connectionId);

@@ -34,10 +34,11 @@ public final class TrashedFileManager {
         }
     }
 
-    public static boolean quicklyUninitialize(final @NotNull String driverName) {
+    public static boolean quicklyUninitializeReserveTable(final @NotNull String driverName) {
         return TrashedFileManager.sqlInstances.uninitialize(driverName) != null;
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     public static boolean quicklyUninitialize(final @NotNull String driverName, final @Nullable String _connectionId) throws SQLException {
         final TrashedSqlInterface sqlInstance = TrashedFileManager.sqlInstances.uninitialize(driverName);
         if (sqlInstance != null) sqlInstance.deleteTable(_connectionId);

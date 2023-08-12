@@ -354,10 +354,8 @@ public final class FileSqlHelper implements FileSqlInterface {
                     LIMIT ? OFFSET ?;
                 """, this.tableName))) {
                 statement.setLong(1, parentId);
-                statement.setString(2, FileSqlHelper.getOrderPolicy(policy));
-                statement.setString(3, FileSqlHelper.getOrderDirection(direction));
-                statement.setInt(4, limit);
-                statement.setLong(5, offset);
+                statement.setInt(2, limit);
+                statement.setLong(3, offset);
                 try (final ResultSet result = statement.executeQuery()) {
                     list = FileSqlHelper.createFilesInfoInOrder(this.driverName, result);
                 }

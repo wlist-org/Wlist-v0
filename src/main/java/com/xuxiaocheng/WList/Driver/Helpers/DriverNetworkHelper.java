@@ -31,6 +31,7 @@ import okhttp3.internal.http.HttpMethod;
 import okio.BufferedSink;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -41,6 +42,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
@@ -60,6 +62,7 @@ public final class DriverNetworkHelper {
     public static final @NotNull String defaultAgent = "WList/0.2.2";
 
     private static final @NotNull Dispatcher dispatcher = new Dispatcher(WListServer.IOExecutors);
+    private static final @NotNull @Unmodifiable Set<@NotNull String> privateFormNames = Set.of("password", "pwd", "passwd", "pw");
     private static final @NotNull Interceptor NetworkLoggerInterceptor = chain -> {
         final Request request = chain.request();
         DriverNetworkHelper.logger.log(HLogLevel.NETWORK, "Sending: ", request.method(), ' ', request.url(),
@@ -71,9 +74,17 @@ public final class DriverNetworkHelper {
                     final StringBuilder builder = new StringBuilder();
                     builder.append(" (Form: {");
                     for (int i = 0; i < formBody.size(); i++) {
-                        builder.append(formBody.name(i)).append("=").append(formBody.value(i)).append(", ");
+                        final String name = formBody.name(i);
+                        builder.append(name);
+                        if (DriverNetworkHelper.privateFormNames.contains(name))
+                            builder.append(": ***");
+                        else
+                            builder.append("=").append(formBody.value(i));
+                        if (i == formBody.size() - 1)
+                            builder.append("})");
+                        else
+                            builder.append(", ");
                     }
-                    builder.replace(builder.length() - 2, builder.length(), "}) ");
                     return builder.toString();
                 });
         final long time1 = System.currentTimeMillis();
