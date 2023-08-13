@@ -70,8 +70,11 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
     @Override
     public void buildCache() throws Exception {
         final Map<String, Exception> exceptions = DriverManager.operateAllDrivers(d -> {
-            d.buildCache();
-            DriverManager.dumpConfigurationIfModified(d.getConfiguration());
+            try {
+                d.buildCache();
+            } finally {
+                DriverManager.dumpConfigurationIfModified(d.getConfiguration());
+            }
         });
         if (!exceptions.isEmpty()) {
             final Exception exception = new Exception("Failed to build cache." + ParametersMap.create().add("names", exceptions.keySet()));
@@ -84,8 +87,11 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
     @Override
     public void buildIndex() throws Exception {
         final Map<String, Exception> exceptions = DriverManager.operateAllDrivers(d -> {
-            d.buildIndex();
-            DriverManager.dumpConfigurationIfModified(d.getConfiguration());
+            try {
+                d.buildIndex();
+            } finally {
+                DriverManager.dumpConfigurationIfModified(d.getConfiguration());
+            }
         });
         if (!exceptions.isEmpty()) {
             final Exception exception = new Exception("Failed to build index." + ParametersMap.create().add("names", exceptions.keySet()));
@@ -96,24 +102,29 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
 
     public boolean buildIndex(final @NotNull String name) throws Exception {
         final DriverInterface<?> driver = DriverManager.getDriver(name);
-        if (driver != null) {
-            // TODO Background task.
-            // TODO build time interval and force control.
-            driver.buildIndex();
-            final DriverTrashInterface<?> trash = DriverManager.getTrash(name);
-            if (trash != null)
-                trash.buildIndex();
-        }
+        if (driver != null)
+            try {
+                // TODO Background task.
+                // TODO build time interval and force control.
+                driver.buildIndex();
+                final DriverTrashInterface<?> trash = DriverManager.getTrash(name);
+                if (trash != null)
+                    trash.buildIndex();
+            } finally {
+                DriverManager.dumpConfigurationIfModified(driver.getConfiguration());
+            }
         return driver != null;
     }
 
     @Override
     public void forceRefreshDirectory(final @NotNull FileLocation location) throws Exception {
         final DriverInterface<?> driver = DriverManager.getDriver(location.driver());
-        if (driver != null) {
-            driver.forceRefreshDirectory(location);
-            DriverManager.dumpConfigurationIfModified(driver.getConfiguration());
-        }
+        if (driver != null)
+            try {
+                driver.forceRefreshDirectory(location);
+            } finally {
+                DriverManager.dumpConfigurationIfModified(driver.getConfiguration());
+            }
     }
 
     @Override
@@ -139,8 +150,12 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
         }
         final DriverInterface<?> real = DriverManager.getDriver(location.driver());
         if (real == null) return null;
-        final Triad.ImmutableTriad<Long, Long, List<FileSqlInformation>> list = real.list(location, filter, limit, page, policy, direction);
-        DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+        final Triad.ImmutableTriad<Long, Long, List<FileSqlInformation>> list;
+        try {
+            list = real.list(location, filter, limit, page, policy, direction);
+        } finally {
+            DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+        }
         return list;
     }
 
@@ -150,8 +165,12 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
             throw new UnsupportedOperationException("Cannot get root info.");
         final DriverInterface<?> real = DriverManager.getDriver(location.driver());
         if (real == null) return null;
-        final FileSqlInformation info = real.info(location);
-        DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+        final FileSqlInformation info;
+        try {
+            info = real.info(location);
+        } finally {
+            DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+        }
         return info;
     }
 
@@ -159,8 +178,12 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
     public @NotNull UnionPair<@NotNull DownloadMethods, @NotNull FailureReason> download(final @NotNull FileLocation location, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws Exception {
         final DriverInterface<?> real = DriverManager.getDriver(location.driver());
         if (real == null) return UnionPair.fail(FailureReason.byNoSuchFile("Downloading.", location));
-        final UnionPair<DownloadMethods, FailureReason> methods = real.download(location, from, to);
-        DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+        final UnionPair<DownloadMethods, FailureReason> methods;
+        try {
+            methods = real.download(location, from, to);
+        } finally {
+            DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+        }
         return methods;
     }
 
@@ -170,8 +193,12 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
             throw new UnsupportedOperationException("Cannot create root directory.");
         final DriverInterface<?> real = DriverManager.getDriver(parentLocation.driver());
         if (real == null) return UnionPair.fail(FailureReason.byNoSuchFile("Creating directories.", parentLocation));
-        final UnionPair<FileSqlInformation, FailureReason> directory = real.createDirectory(parentLocation, directoryName, policy);
-        DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+        final UnionPair<FileSqlInformation, FailureReason> directory;
+        try {
+            directory = real.createDirectory(parentLocation, directoryName, policy);
+        } finally {
+            DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+        }
         return directory;
     }
 
@@ -183,8 +210,12 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
         if (real == null) return UnionPair.fail(FailureReason.byNoSuchFile("Uploading file.", parentLocation));
         if (size > real.getConfiguration().getWebSide().getMaxSizePerFile())
             return UnionPair.fail(FailureReason.byExceedMaxSize("Uploading file.", size, real.getConfiguration().getWebSide().getMaxSizePerFile(), parentLocation, filename));
-        final UnionPair<UploadMethods, FailureReason> methods = real.upload(parentLocation, filename, size, md5, policy);
-        DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+        final UnionPair<UploadMethods, FailureReason> methods;
+        try {
+            methods = real.upload(parentLocation, filename, size, md5, policy);
+        } finally {
+            DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+        }
         return methods;
     }
 
@@ -195,8 +226,11 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
             throw new UnsupportedOperationException("Cannot delete root driver.");
         final DriverInterface<?> real = DriverManager.getDriver(location.driver());
         if (real == null) return;
-        real.delete(location);
-        DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+        try {
+            real.delete(location);
+        } finally {
+            DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+        }
     }
 
     protected static class RootDriverConfiguration extends DriverConfiguration<RootDriverConfiguration.LocalSide, RootDriverConfiguration.WebSide, RootDriverConfiguration.CacheSide> {

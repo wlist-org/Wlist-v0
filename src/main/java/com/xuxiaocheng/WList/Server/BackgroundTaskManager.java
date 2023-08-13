@@ -27,7 +27,12 @@ public final class BackgroundTaskManager {
     public static final @NotNull EventExecutorGroup BackgroundExecutors =
             new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 2, new DefaultThreadFactory("BackgroundExecutors"));
 
-    public record BackgroundTaskIdentify(@NotNull String type, @NotNull String name) {
+    public enum BackgroundTaskType {
+        Driver,
+        User,
+    }
+
+    public record BackgroundTaskIdentify(@NotNull BackgroundTaskType type, @NotNull String driver, @NotNull String task, @NotNull String identifier) {
     }
 
     private static final @NotNull Map<@NotNull BackgroundTaskIdentify, @NotNull Object> LockMap = new ConcurrentHashMap<>();

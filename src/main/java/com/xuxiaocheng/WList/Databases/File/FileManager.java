@@ -96,11 +96,11 @@ public final class FileManager {
         return FileManager.selectFilesByMd5(driverName, List.of(md5), _connectionId).get(md5);
     }
 
-    public static @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull Set<@NotNull Long>> selectFilesIdByParentId(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> parentIdList, final @Nullable String _connectionId) throws SQLException {
+    public static @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull @UnmodifiableView Set<@NotNull Long>> selectFilesIdByParentId(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> parentIdList, final @Nullable String _connectionId) throws SQLException {
         return FileManager.sqlInstances.getInstance(driverName).selectFilesIdByParentId(parentIdList, _connectionId);
     }
 
-    public static @NotNull Set<@NotNull Long> selectFileIdByParentId(final @NotNull String driverName, final long parentId, final @Nullable String _connectionId) throws SQLException {
+    public static @NotNull @UnmodifiableView Set<@NotNull Long> selectFileIdByParentId(final @NotNull String driverName, final long parentId, final @Nullable String _connectionId) throws SQLException {
         return FileManager.selectFilesIdByParentId(driverName, List.of(parentId), _connectionId).get(parentId);
     }
 
