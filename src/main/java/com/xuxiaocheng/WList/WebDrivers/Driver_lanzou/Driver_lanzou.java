@@ -91,7 +91,7 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
 
     @Override
     public void forceRefreshDirectory(final @NotNull FileLocation location) throws IOException, SQLException, InterruptedException {
-        DriverManager_lanzou.syncFilesList(this.configuration, location.id(), null);
+        DriverManager_lanzou.waitSyncComplete(DriverManager_lanzou.syncFilesList(this.configuration, location.id(), null));
     }
 
     @Override
@@ -142,7 +142,7 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
     }
 
     @Override
-    public@NotNull String toString() {
+    public @NotNull String toString() {
         return "Driver_lanzou{" +
                 "configuration=" + this.configuration +
                 '}';

@@ -1,10 +1,8 @@
 package com.xuxiaocheng.WList;
 
-import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
-import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
@@ -18,7 +16,6 @@ import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupSqlHelper;
 import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
-import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Server.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.DriverManager;
@@ -29,10 +26,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 public final class WListTest {
     private WListTest() {
@@ -41,17 +35,6 @@ public final class WListTest {
 
     @SuppressWarnings("OverlyBroadThrowsClause")
     public static void main(final String @NotNull [] args) throws Exception {
-        final Pair.ImmutablePair<Iterator<Integer>, Runnable> lister = DriverUtil.wrapSuppliersInPages(page -> {
-            final int time = HRandomHelper.DefaultSecureRandom.nextInt(1, 3);
-            HLog.DefaultLogger.log("FINE", "Getting page: ", page, " Sleep: ", time);
-            if (page.intValue() >= 10)
-                return List.of();
-            TimeUnit.SECONDS.sleep(time);
-            HLog.DefaultLogger.log("INFO", "Gotten page: ", page);
-            return List.of(page);
-        }, e -> HLog.DefaultLogger.log("DEBUG", "Callback: ", e));
-        while (lister.getFirst().hasNext())
-            HLog.DefaultLogger.log("MISTAKE", lister.getFirst().next());
         if (true) return;
         WListTest.wrapServerInitialize(() -> {
 //            final Driver_lanzou lanzou = (Driver_lanzou) Objects.requireNonNull(DriverManager.getDriver("test"));

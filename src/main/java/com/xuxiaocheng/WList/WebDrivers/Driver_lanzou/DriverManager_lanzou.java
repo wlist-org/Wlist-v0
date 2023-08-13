@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -84,18 +85,18 @@ public final class DriverManager_lanzou {
             FileManager.insertOrUpdateFiles(configuration.getName(), directoriesInformation, connectionId.get());
             if (directoryInformation.type() == FileSqlInterface.FileSqlType.EmptyDirectory)
                 FileManager.insertOrUpdateFile(configuration.getName(), directoryInformation.getAsNormalDirectory(), connectionId.get());
+            final Collection<FileSqlInformation> firstPage = new ArrayList<>(directoriesInformation.size() + filesInformation.size());
+            firstPage.addAll(directoriesInformation);
+            firstPage.addAll(filesInformation);
             final Set<Long> deletedIds = ConcurrentHashMap.newKeySet();
             deletedIds.addAll(FileManager.selectFileIdByParentId(configuration.getName(), directoryId, _connectionId));
-            deletedIds.removeAll(directoriesInformation.stream().map(FileSqlInformation::id).collect(Collectors.toSet()));
-            deletedIds.removeAll(filesInformation.stream().map(FileSqlInformation::id).collect(Collectors.toSet()));
+            deletedIds.removeAll(firstPage.stream().map(FileSqlInformation::id).collect(Collectors.toSet()));
             deletedIds.remove(-1L);
             FileManager.getConnection(configuration.getName(), connectionId.get(), null);
             return DriverUtil.wrapSuppliersInPages(page -> {
                 if (page.intValue() == 0)
-                    return directoriesInformation;
-                if (page.intValue() == 1)
-                    return filesInformation;
-                final Set<FileSqlInformation> list = DriverHelper_lanzou.listFilesInPage(configuration, directoryId, page.intValue() - 1);
+                    return firstPage;
+                final Set<FileSqlInformation> list = DriverHelper_lanzou.listFilesInPage(configuration, directoryId, page.intValue());
                 deletedIds.removeAll(list.stream().map(FileSqlInformation::id).collect(Collectors.toSet()));
                 return list;
             }, HExceptionWrapper.wrapConsumer(e -> {
@@ -106,6 +107,12 @@ public final class DriverManager_lanzou {
                     throw e;
             }, connection::close));
         }
+    }
+
+    static void waitSyncComplete(final Pair.@Nullable ImmutablePair<? extends @NotNull Iterator<@NotNull FileSqlInformation>, ? extends @NotNull Runnable> result) {
+        if (result == null)
+            return;
+        HMiscellaneousHelper.consumeIterator(result.getFirst(), result.getSecond());
     }
 
     static @Nullable FileSqlInformation getFileInformation(final @NotNull DriverConfiguration_lanzou configuration, final long id, final @Nullable Long parentId, final @Nullable String _connectionId) throws IOException, SQLException, InterruptedException {
@@ -178,7 +185,7 @@ public final class DriverManager_lanzou {
                 return Triad.ImmutableTriad.makeImmutableTriad(0L, 0L, List.of());
             final Triad.ImmutableTriad<Long, Long, List<FileSqlInformation>> cachedList = FileManager.selectFilesByParentIdInPage(configuration.getName(), directoryId, filter, limit, (long) page * limit, direction, policy, connectionId.get());
             if (cachedList.getA().longValue() > 0) return cachedList;
-            DriverManager_lanzou.syncFilesList(configuration, directoryId, connectionId.get());
+            DriverManager_lanzou.waitSyncComplete(DriverManager_lanzou.syncFilesList(configuration, directoryId, connectionId.get()));
             final Triad.ImmutableTriad<Long, Long, List<FileSqlInformation>> list = FileManager.selectFilesByParentIdInPage(configuration.getName(), directoryId, filter, limit, (long) page * limit, direction, policy, connectionId.get());
             connection.commit();
             return list;
@@ -229,7 +236,7 @@ public final class DriverManager_lanzou {
             final FileSqlInformation parentInformation = DriverManager_lanzou.getFileInformation(configuration, parentId, null, connectionId.get());
             if (parentInformation == null || parentInformation.type() != FileSqlInterface.FileSqlType.Directory) return UnionPair.ok(UnionPair.ok(name));
             if (FileManager.selectFileCountByParentId(configuration.getName(), parentId, connectionId.get()) == 0) {
-                DriverManager_lanzou.syncFilesList(configuration, parentId, connectionId.get());
+                DriverManager_lanzou.waitSyncComplete(DriverManager_lanzou.syncFilesList(configuration, parentId, connectionId.get()));
                 connection.commit();
             }
             FileSqlInformation information = FileManager.selectFileInDirectory(configuration.getName(), parentId, name, connectionId.get());
