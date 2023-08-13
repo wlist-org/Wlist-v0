@@ -4,7 +4,6 @@ import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
-import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -31,6 +30,7 @@ import okhttp3.ResponseBody;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
+import org.jetbrains.annotations.UnmodifiableView;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -39,7 +39,6 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -229,17 +228,38 @@ HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Fi
             throw new WrongResponseException("Getting download url.", json, ParametersMap.create().add("configuration", configuration).add("fileId", fileId));
         final String domin = info.getString("is_newd");
         final String identifier = info.getString("f_id");
-        final String pwd = info.getString("pwd"); // if 'onof' === '1', pwd exists but is random.
-        if (domin == null || identifier == null)
+        final Boolean hasPwd = info.getInteger("onof") == null ? null : info.getIntValue("onof") == 1;
+        final String pwd = info.getString("pwd");
+        if (domin == null || identifier == null || hasPwd == null || (hasPwd.booleanValue() && pwd == null))
             throw new WrongResponseException("Getting download url.", json, ParametersMap.create().add("configuration", configuration).add("fileId", fileId));
         try {
-            return DriverHelper_lanzou.getSingleShareFileDownloadUrl(configuration, domin + "/", identifier, pwd);
+            return DriverHelper_lanzou.getSingleShareFileDownloadUrl(configuration, domin + "/", identifier, hasPwd.booleanValue() ? pwd : null);
         } catch (final IllegalParametersException exception) {
             throw new RuntimeException("Unreachable!", exception);
         }
     }
 
-    static @Nullable List<@NotNull FileSqlInformation> listAllDirectory(final @NotNull DriverConfiguration_lanzou configuration, final long directoryId) throws IOException {
+    static Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull LocalDateTime> testRealSizeAndData(final @NotNull DriverConfiguration_lanzou configuration, final @NotNull String downloadUrl) throws IOException {
+        final Headers headers;
+        try (final Response response = DriverNetworkHelper.getWithParameters(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(downloadUrl, "HEAD"), DriverHelper_lanzou.headers, null).execute()) {
+            headers = response.headers();
+        }
+        final String sizeS = headers.get("Content-Length");
+        final String dataS = headers.get("Last-Modified");
+        if (sizeS == null || dataS == null)
+            return null;
+        final long size;
+        final LocalDateTime time;
+        try {
+            size = Long.parseLong(sizeS);
+            time = LocalDateTime.parse(dataS, DriverHelper_lanzou.dataTimeFormatter);
+        } catch (final NumberFormatException | DateTimeParseException ignore) {
+            return null;
+        }
+        return Pair.ImmutablePair.makeImmutablePair(size, time);
+    }
+
+    static @Nullable @UnmodifiableView List<@NotNull FileSqlInformation> listAllDirectory(final @NotNull DriverConfiguration_lanzou configuration, final long directoryId) throws IOException {
         final FormBody.Builder filesBuilder = new FormBody.Builder()
                 .add("folder_id", String.valueOf(directoryId));
         final JSONObject json = DriverHelper_lanzou.task(configuration, 47, filesBuilder, null);
@@ -272,74 +292,49 @@ HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Fi
         return list;
     }
 
-    static @NotNull List<@NotNull FileSqlInformation> listAllFiles(final @NotNull DriverConfiguration_lanzou configuration, final long directoryId) throws IOException, InterruptedException {
-        final Collection<CountDownLatch> latches = new ArrayList<>();
-        final Map<Integer, Triad.ImmutableTriad<String, Long, Headers>> filesMap = new ConcurrentHashMap<>();
+    static @NotNull @UnmodifiableView Set<@NotNull FileSqlInformation> listFilesInPage(final @NotNull DriverConfiguration_lanzou configuration, final long directoryId, final int page) throws IOException, InterruptedException {
         int total = 0;
-        int page = 0;
         final AtomicBoolean interrupttedFlag = new AtomicBoolean(false);
-        while (true) {
-            final FormBody.Builder filesBuilder = new FormBody.Builder()
-                    .add("folder_id", String.valueOf(directoryId))
-                    .add("pg", String.valueOf(++page));
-            final JSONObject files = DriverHelper_lanzou.task(configuration, 5, filesBuilder, 1);
-            final Integer filesTotal = files.getInteger("info");
-            final JSONArray filesInfos = files.getJSONArray("text");
-            if (filesTotal == null || filesInfos == null)
-                throw new WrongResponseException("Listing files.", files, ParametersMap.create()
-                        .add("configuration", configuration).add("directoryId", directoryId).add("page", page));
-            if (filesTotal.intValue() <= 0)
-                break;
-            final CountDownLatch filesLatch = new CountDownLatch(filesInfos.size());
-            latches.add(filesLatch);
-            for (final JSONObject info: filesInfos.toList(JSONObject.class)) {
-                final int k = total++;
-                CompletableFuture.runAsync(() -> {
-                    try {
-                        final String name = info.getString("name");
-                        final Long id = info.getLong("id");
-                        if (name == null || id == null || interrupttedFlag.get()) return;
-                        final String url = DriverHelper_lanzou.getFileDownloadUrl(configuration, id.longValue());
-                        if (url == null || interrupttedFlag.get()) return;
-                        try (final Response response = DriverNetworkHelper.getWithParameters(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(url, "HEAD"), DriverHelper_lanzou.headers, null).execute()) {
-                            filesMap.put(k, Triad.ImmutableTriad.makeImmutableTriad(name, id, response.headers()));
-                        }
-                    } catch (final IOException exception) {
-                        HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
-                    } finally {
-                        filesLatch.countDown();
-                    }
-                }, WListServer.IOExecutors);
-            }
+        final FormBody.Builder builder = new FormBody.Builder()
+                .add("folder_id", String.valueOf(directoryId))
+                .add("pg", String.valueOf(page + 1));
+        final JSONObject files = DriverHelper_lanzou.task(configuration, 5, builder, 1);
+        final JSONArray infos = files.getJSONArray("text");
+        if (infos == null)
+            throw new WrongResponseException("Listing files.", files, ParametersMap.create()
+                    .add("configuration", configuration).add("directoryId", directoryId).add("page", page));
+        if (infos.isEmpty())
+            return Set.of();
+        final Set<FileSqlInformation> set = ConcurrentHashMap.newKeySet();
+        final CountDownLatch latch = new CountDownLatch(infos.size());
+        for (final JSONObject info: infos.toList(JSONObject.class)) {
+            final String name = info.getString("name");
+            final Long id = info.getLong("id");
+            if (name == null || id == null) continue;
+            final int k = total++;
+            CompletableFuture.runAsync(() -> {
+                try {
+                    final String url = DriverHelper_lanzou.getFileDownloadUrl(configuration, id.longValue());
+                    if (url == null || interrupttedFlag.get()) return;
+                    final Pair<Long, LocalDateTime> fixed = DriverHelper_lanzou.testRealSizeAndData(configuration, url);
+                    if (fixed == null || interrupttedFlag.get()) return;
+                    set.add(new FileSqlInformation(new FileLocation(configuration.getName(), id.longValue()),
+                            directoryId, name, FileSqlInterface.FileSqlType.RegularFile, fixed.getFirst().longValue(),
+                            fixed.getSecond(), fixed.getSecond(), "", null));
+                } catch (final IOException exception) {
+                    HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
+                } finally {
+                    latch.countDown();
+                }
+            }, WListServer.IOExecutors);
         }
         try {
-            for (final CountDownLatch latch: latches)
-                latch.await();
+            latch.await();
         } catch (final InterruptedException exception) {
             interrupttedFlag.set(true);
             throw exception;
         }
-        final List<FileSqlInformation> list = new ArrayList<>(filesMap.size());
-        for (int i = 0; i < total; ++i) {
-            final Triad.ImmutableTriad<String, Long, Headers> headers = filesMap.get(i);
-            if (headers == null)
-                continue;
-            final String sizeS = headers.getC().get("Content-Length");
-            final String dataS = headers.getC().get("Last-Modified");
-            if (sizeS == null || dataS == null)
-                continue;
-            final long size;
-            final LocalDateTime time;
-            try {
-                size = Long.parseLong(sizeS);
-                time = LocalDateTime.parse(dataS, DriverHelper_lanzou.dataTimeFormatter);
-            } catch (final NumberFormatException | DateTimeParseException ignore) {
-                continue;
-            }
-            list.add(new FileSqlInformation(new FileLocation(configuration.getName(), headers.getB().longValue()),
-                    directoryId, headers.getA(), FileSqlInterface.FileSqlType.RegularFile, size, time, time, "", null));
-        }
-        return list;
+        return set;
     }
 
     static void trashFile(final @NotNull DriverConfiguration_lanzou configuration, final long fileId) throws IOException {

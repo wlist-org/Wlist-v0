@@ -2,6 +2,8 @@ package com.xuxiaocheng.WList.WebDrivers.Driver_lanzou;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.WList.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Databases.File.FileSqlHelper;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
@@ -22,6 +24,13 @@ import org.jetbrains.annotations.UnmodifiableView;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou> {
     protected @NotNull DriverConfiguration_lanzou configuration = new DriverConfiguration_lanzou();
@@ -52,7 +61,32 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
 
     @Override
     public void buildIndex() throws IOException, SQLException, InterruptedException {
-        DriverManager_lanzou.refreshDirectoryRecursively(this.configuration, this.configuration.getWebSide().getRootDirectoryId());
+        final Set<CompletableFuture<?>> futures = ConcurrentHashMap.newKeySet();
+        final AtomicLong runningFutures = new AtomicLong(1);
+        final AtomicBoolean interruptFlag = new AtomicBoolean(false);
+        DriverManager_lanzou.refreshDirectoryRecursively(this.configuration, this.configuration.getWebSide().getRootDirectoryId(), futures, runningFutures, interruptFlag);
+        try {
+            synchronized (runningFutures) {
+                while (runningFutures.get() > 0)
+                    runningFutures.wait();
+            }
+        } catch (final InterruptedException exception) {
+            interruptFlag.set(true);
+            throw exception;
+        }
+        for (final CompletableFuture<?> future: futures)
+            try {
+                future.join();
+            } catch (final CancellationException ignore) {
+            } catch (final CompletionException exception) {
+                Throwable throwable;
+                try {
+                    throwable = HExceptionWrapper.unwrapException(exception.getCause(), IOException.class, SQLException.class, InterruptedException.class);
+                } catch (final IOException | SQLException | InterruptedException e) {
+                    throwable = e;
+                }
+                HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), throwable);
+            }
     }
 
     @Override

@@ -7,7 +7,10 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Helpers.HMessageDigestHelper;
+import com.xuxiaocheng.HeadLibs.Helpers.HMiscellaneousHelper;
+import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.WList.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInterface;
@@ -17,9 +20,11 @@ import com.xuxiaocheng.WList.Driver.FailureReason;
 import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Driver.Options;
+import com.xuxiaocheng.WList.Server.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.InternalDrivers.RootDriver;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.UploadMethods;
+import com.xuxiaocheng.WList.Server.WListServer;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -30,9 +35,15 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -50,34 +61,50 @@ public final class DriverManager_lanzou {
 
     // File Reader
 
-    static @Nullable @UnmodifiableView List<@NotNull FileSqlInformation> syncFilesList(final @NotNull DriverConfiguration_lanzou configuration, final long directoryId, final @Nullable String _connectionId) throws IOException, SQLException, InterruptedException {
+    static Pair.@Nullable ImmutablePair<@NotNull Iterator<@NotNull FileSqlInformation>, @NotNull Runnable> syncFilesList(final @NotNull DriverConfiguration_lanzou configuration, final long directoryId, final @Nullable String _connectionId) throws IOException, SQLException, InterruptedException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = FileManager.getConnection(configuration.getName(), _connectionId, connectionId)) {
             final FileSqlInformation directoryInformation = FileManager.selectFile(configuration.getName(), directoryId, connectionId.get());
             if (directoryInformation == null || directoryInformation.type() == FileSqlInterface.FileSqlType.RegularFile)
                 return null;
-            final List<FileSqlInformation> information = DriverHelper_lanzou.listAllDirectory(configuration, directoryId);
-            if (information == null) {
+            final List<FileSqlInformation> directoriesInformation = DriverHelper_lanzou.listAllDirectory(configuration, directoryId);
+            if (directoriesInformation == null) {
                 FileManager.deleteFileRecursively(configuration.getName(), directoryId, connectionId.get());
                 connection.commit();
                 return null;
             }
-            information.addAll(DriverHelper_lanzou.listAllFiles(configuration, directoryId));
-            if (information.isEmpty()) {
+            final Set<FileSqlInformation> filesInformation = DriverHelper_lanzou.listFilesInPage(configuration, directoryId, 0);
+            if (directoriesInformation.isEmpty() && filesInformation.isEmpty()) {
                 FileManager.deleteFileRecursively(configuration.getName(), directoryId, connectionId.get());
                 if (directoryInformation.type() == FileSqlInterface.FileSqlType.Directory)
                     FileManager.insertOrUpdateFile(configuration.getName(), directoryInformation.getAsEmptyDirectory(), connectionId.get());
-            } else {
-                final Set<Long> deletedIds = FileManager.selectFileIdByParentId(configuration.getName(), directoryId, connectionId.get());
-                deletedIds.removeAll(information.stream().map(FileSqlInformation::id).collect(Collectors.toSet()));
-                deletedIds.remove(-1L);
-                FileManager.deleteFilesRecursively(configuration.getName(), deletedIds, connectionId.get());
-                FileManager.insertOrUpdateFiles(configuration.getName(), information, connectionId.get());
-                if (directoryInformation.type() == FileSqlInterface.FileSqlType.EmptyDirectory)
-                    FileManager.insertOrUpdateFile(configuration.getName(), directoryInformation.getAsNormalDirectory(), connectionId.get());
+                connection.commit();
+                return Pair.ImmutablePair.makeImmutablePair(HMiscellaneousHelper.getEmptyIterator(), RunnableE.EmptyRunnable);
             }
-            connection.commit();
-            return information;
+            FileManager.insertOrUpdateFiles(configuration.getName(), directoriesInformation, connectionId.get());
+            if (directoryInformation.type() == FileSqlInterface.FileSqlType.EmptyDirectory)
+                FileManager.insertOrUpdateFile(configuration.getName(), directoryInformation.getAsNormalDirectory(), connectionId.get());
+            final Set<Long> deletedIds = ConcurrentHashMap.newKeySet();
+            deletedIds.addAll(FileManager.selectFileIdByParentId(configuration.getName(), directoryId, _connectionId));
+            deletedIds.removeAll(directoriesInformation.stream().map(FileSqlInformation::id).collect(Collectors.toSet()));
+            deletedIds.removeAll(filesInformation.stream().map(FileSqlInformation::id).collect(Collectors.toSet()));
+            deletedIds.remove(-1L);
+            FileManager.getConnection(configuration.getName(), connectionId.get(), null);
+            return DriverUtil.wrapSuppliersInPages(page -> {
+                if (page.intValue() == 0)
+                    return directoriesInformation;
+                if (page.intValue() == 1)
+                    return filesInformation;
+                final Set<FileSqlInformation> list = DriverHelper_lanzou.listFilesInPage(configuration, directoryId, page.intValue() - 1);
+                deletedIds.removeAll(list.stream().map(FileSqlInformation::id).collect(Collectors.toSet()));
+                return list;
+            }, HExceptionWrapper.wrapConsumer(e -> {
+                if (e == null) {
+                    FileManager.deleteFilesRecursively(configuration.getName(), deletedIds, null);
+                    connection.commit();
+                } else if (!(e instanceof CancellationException))
+                    throw e;
+            }, connection::close));
         }
     }
 
@@ -93,27 +120,53 @@ public final class DriverManager_lanzou {
             final long count = FileManager.selectFileCountByParentId(configuration.getName(), parentId.longValue(), connectionId.get());
             if (count > 0)
                 return null;
-            final List<FileSqlInformation> list = DriverManager_lanzou.syncFilesList(configuration, parentId.longValue(), connectionId.get());
-            connection.commit();
-            if (list == null || list.isEmpty())
+            final Pair.ImmutablePair<Iterator<FileSqlInformation>, Runnable> list = DriverManager_lanzou.syncFilesList(configuration, parentId.longValue(), connectionId.get());
+            if (list == null)
                 return null;
-            for (final FileSqlInformation information: list)
-                if (information.id() == id)
+            while (list.getFirst().hasNext()) {
+                final FileSqlInformation information = list.getFirst().next();
+                if (information.id() == id) {
+                    BackgroundTaskManager.background(new BackgroundTaskManager.BackgroundTaskIdentify(BackgroundTaskManager.BackgroundTaskType.Driver,
+                            configuration.getName(), "Sync files list.", parentId.toString()), () ->
+                            HMiscellaneousHelper.consumeIterator(list.getFirst(), list.getSecond()), false, e -> {
+                        if (e != null)
+                            HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), e);
+                    });
+                    connection.commit();
                     return information;
+                }
+            }
+            list.getSecond().run();
             return null;
         }
     }
 
-    static void refreshDirectoryRecursively(final @NotNull DriverConfiguration_lanzou configuration, final long directoryId) throws IOException, SQLException, InterruptedException {
-        final List<FileSqlInformation> list = DriverManager_lanzou.syncFilesList(configuration, directoryId, null);
-        if (list == null)
-            return;
-        final Collection<Long> directoryIdList = new LinkedList<>();
-        for (final FileSqlInformation information: list)
-            if (information.isDirectory())
-                directoryIdList.add(information.id());
-        for (final Long id: directoryIdList)
-            DriverManager_lanzou.refreshDirectoryRecursively(configuration, id.longValue());
+    static void refreshDirectoryRecursively(final @NotNull DriverConfiguration_lanzou configuration, final long directoryId, final @NotNull Set<@NotNull CompletableFuture<?>> futures, final @NotNull AtomicLong runningFutures, final @NotNull AtomicBoolean interruptFlag) throws IOException, SQLException, InterruptedException {
+        try {
+            final Pair.ImmutablePair<Iterator<FileSqlInformation>, Runnable> list = DriverManager_lanzou.syncFilesList(configuration, directoryId, null);
+            if (list == null)
+                return;
+            final Collection<Long> directoryIdList = new LinkedList<>();
+            try {
+                while (list.getFirst().hasNext()) {
+                    final FileSqlInformation information = list.getFirst().next();
+                    if (information.isDirectory())
+                        directoryIdList.add(information.id());
+                }
+            } finally {
+                list.getSecond().run();
+            }
+            if (interruptFlag.get()) return;
+            runningFutures.addAndGet(directoryIdList.size());
+            for (final Long id: directoryIdList)
+                futures.add(CompletableFuture.runAsync(HExceptionWrapper.wrapRunnable(() -> DriverManager_lanzou.refreshDirectoryRecursively(configuration,
+                        id.longValue(), futures, runningFutures, interruptFlag)), WListServer.IOExecutors));
+        } finally {
+            synchronized (runningFutures) {
+                if (runningFutures.decrementAndGet() == 0)
+                    runningFutures.notifyAll();
+            }
+        }
     }
 
     static Triad.@Nullable ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> listFiles(final @NotNull DriverConfiguration_lanzou configuration, final long directoryId, final Options.@NotNull DirectoriesOrFiles filter, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction, final @Nullable String _connectionId) throws IOException, SQLException, InterruptedException {

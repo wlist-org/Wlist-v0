@@ -3,7 +3,6 @@ package com.xuxiaocheng.WList.Driver.Helpers;
 import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
-import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.FunctionE;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
@@ -30,6 +29,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -40,12 +40,11 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
@@ -92,93 +91,80 @@ public final class DriverUtil {
         return Pair.ImmutablePair.makeImmutablePair(left, right);
     }
 
-    public static <I> Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Iterator<@NotNull I>, @NotNull Runnable> wrapAllFilesListerInPages(final @NotNull FunctionE<? super @NotNull Integer, ? extends Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull List<@NotNull I>>> fileSupplierInPage, final int defaultLimit, final @NotNull Consumer<? super @Nullable Exception> finisher) {
-        final Pair.ImmutablePair<Long, List<I>> firstPage;
+    public static <I> Pair.@NotNull ImmutablePair<@NotNull Iterator<@NotNull I>, @NotNull Runnable> wrapSuppliersInPages(final @NotNull FunctionE<? super @NotNull Integer, ? extends @NotNull Collection<@NotNull I>> supplierInPage, final @NotNull Consumer<? super @Nullable Exception> callback) {
+        final Collection<I> firstPage;
         try {
-            firstPage = fileSupplierInPage.apply(0);
+            firstPage = supplierInPage.apply(0);
         } catch (final Exception exception) {
-            finisher.accept(exception);
-            return Triad.ImmutableTriad.makeImmutableTriad(0L, HMiscellaneousHelper.getEmptyIterator(), RunnableE.EmptyRunnable);
+            callback.accept(exception);
+            return Pair.ImmutablePair.makeImmutablePair(HMiscellaneousHelper.getEmptyIterator(), RunnableE.EmptyRunnable);
         }
-        final long fileCount = firstPage.getFirst().intValue();
-        if (fileCount <= 0 || firstPage.getSecond().isEmpty()) {
-            finisher.accept(null);
-            return Triad.ImmutableTriad.makeImmutableTriad(0L, HMiscellaneousHelper.getEmptyIterator(), RunnableE.EmptyRunnable);
+        if (firstPage.isEmpty()) {
+            callback.accept(null);
+            return Pair.ImmutablePair.makeImmutablePair(HMiscellaneousHelper.getEmptyIterator(), RunnableE.EmptyRunnable);
         }
-        assert firstPage.getSecond().size() <= defaultLimit;
-        final int pageCount = MiscellaneousUtil.calculatePartCount(fileCount, defaultLimit);
-        if (pageCount <= 1) {
-            finisher.accept(null);
-            return Triad.ImmutableTriad.makeImmutableTriad(fileCount, firstPage.getSecond().iterator(), RunnableE.EmptyRunnable);
-        }
-        final BlockingQueue<I> allFiles = new LinkedBlockingQueue<>(Math.max((int) fileCount, firstPage.getSecond().size() << 1));
-        allFiles.addAll(firstPage.getSecond());
-        final AtomicInteger countDown = new AtomicInteger(pageCount);
-        final AtomicBoolean calledFinisher = new AtomicBoolean(false);
-        final AtomicBoolean cancelFlag = new AtomicBoolean(false);
-        final CompletableFuture<?>[] futures = new CompletableFuture[pageCount - 1];
-        for (int i = 0; i < pageCount - 1; ++i)
-            futures[i] = new CompletableFuture<>();
-        final CompletableFuture<?> future = CompletableFuture.allOf(futures);
-        final Future<?>[] threads = new Future[pageCount - 1];
-        for (int page = 1; page < pageCount; ++page) {
-            final int current = page;
-            threads[current - 1] = WListServer.IOExecutors.submit(() -> {
+        final BlockingQueue<I> allFiles = new LinkedBlockingQueue<>(firstPage);
+        final AtomicInteger nextPage = new AtomicInteger(1);
+        final AtomicBoolean gettingFlag = new AtomicBoolean(false);
+        final AtomicBoolean noNext = new AtomicBoolean(false);
+        final AtomicReference<BiConsumer<Integer, Boolean>> nextGetter = new AtomicReference<>(null);
+        nextGetter.set((forwardPages, outsideCalling) -> {
+            if (noNext.get())
+                return;
+            if (gettingFlag.compareAndSet(false, true)) {
+                final Collection<I> page;
                 try {
-                    final Pair.ImmutablePair<Long, List<I>> infos = fileSupplierInPage.apply(current);
-                    assert infos.getFirst().longValue() == fileCount;
-                    assert current == pageCount - 1 ? infos.getSecond().size() <= defaultLimit : infos.getSecond().size() == defaultLimit;
-                    allFiles.addAll(infos.getSecond());
-                    futures[current - 1].complete(null);
-                    if (countDown.decrementAndGet() == 1 && calledFinisher.compareAndSet(false, true))
-                        finisher.accept(null);
+                    page = supplierInPage.apply(nextPage.getAndIncrement());
                 } catch (final Exception exception) {
-                    cancelFlag.set(true);
-                    future.completeExceptionally(exception);
-                    futures[current - 1].completeExceptionally(exception);
-                    if (calledFinisher.compareAndSet(false, true))
-                        finisher.accept(exception);
+                    if (noNext.compareAndSet(false, true))
+                        callback.accept(exception);
+                    throw new NoSuchElementException(exception);
                 }
-            });
-        }
-        final AtomicLong spareElement = new AtomicLong(fileCount);
-        final AtomicInteger takingElement = new AtomicInteger(0);
-        return Triad.ImmutableTriad.makeImmutableTriad(fileCount, new Iterator<>() {
+                if (page.isEmpty()) {
+                    if (noNext.compareAndSet(false, true))
+                        callback.accept(null);
+                } else
+                    allFiles.addAll(page);
+                synchronized (gettingFlag) {
+                    gettingFlag.set(false);
+                    gettingFlag.notifyAll();
+                }
+                if (forwardPages.intValue() > 0)
+                    WListServer.IOExecutors.execute(() -> nextGetter.get().accept(forwardPages.intValue() - 1, false));
+            } else if (outsideCalling.booleanValue())
+                synchronized (gettingFlag) {
+                    while (gettingFlag.get())
+                        try {
+                            gettingFlag.wait();
+                        } catch (final InterruptedException exception) {
+                            throw new NoSuchElementException(exception);
+                        }
+                }
+        });
+        return Pair.ImmutablePair.makeImmutablePair(new Iterator<>() {
             @Override
             public boolean hasNext() {
-                return spareElement.get() > takingElement.get() && !cancelFlag.get();
+                if (allFiles.peek() != null)
+                    return true;
+                if (noNext.get())
+                    return false;
+                nextGetter.get().accept(2, true);
+                return this.hasNext();
             }
 
             @Override
             public @NotNull I next() {
-                if (!this.hasNext())
+                final I item = allFiles.poll();
+                if (item != null)
+                    return item;
+                if (noNext.get())
                     throw new NoSuchElementException();
-                takingElement.getAndIncrement();
-                try {
-                    I t = null;
-                    while (t == null) {
-                        // TODO optimise.
-                        t = allFiles.poll(10, TimeUnit.SECONDS);
-                        if (t == null && cancelFlag.get())
-                            throw new InterruptedException();
-                    }
-                    spareElement.getAndDecrement();
-                    return t;
-                } catch (final InterruptedException exception) {
-                    throw new NoSuchElementException(exception);
-                } finally {
-                    takingElement.getAndDecrement();
-                }
+                nextGetter.get().accept(2, true);
+                return this.next();
             }
         }, () -> {
-            cancelFlag.set(true);
-            future.cancel(true);
-            for (final CompletableFuture<?> f: futures)
-                f.cancel(true);
-            for (final Future<?> thread: threads)
-                thread.cancel(true);
-            if (calledFinisher.compareAndSet(false, true))
-                finisher.accept(new CancellationException());
+            if (noNext.compareAndSet(false, true))
+                callback.accept(new CancellationException());
         });
     }
 

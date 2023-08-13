@@ -191,6 +191,7 @@ public final class DriverManager {
     public static void dumpConfigurationIfModified(final @NotNull DriverConfiguration<?, ?, ?> configuration) throws IOException {
         synchronized (configuration) {
             if (configuration.getCacheSide().resetModified())
+                // TODO: -bak file. Prevent IOException.
                 try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(DriverManager.getConfigurationFile(configuration.getName())))) {
                     YamlHelper.dumpYaml(configuration.dump(), outputStream);
                 }
