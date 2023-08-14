@@ -43,6 +43,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
 public final class DriverUtil {
@@ -88,43 +89,7 @@ public final class DriverUtil {
         return Pair.ImmutablePair.makeImmutablePair(left, right);
     }
 
-    public static <I> Pair.@NotNull ImmutablePair<@NotNull Iterator<@NotNull I>, @NotNull Runnable> wrapSuppliersInPages(final @NotNull FunctionE<? super @NotNull Integer, ? extends @Nullable Collection<@NotNull I>> supplierInPage, final @NotNull Consumer<? super @Nullable Exception> callback) {
-        final AtomicBoolean noNext = new AtomicBoolean(false);
-        final AtomicInteger nextPage = new AtomicInteger(0);
-        final BlockingQueue<I> filesQueue = new LinkedBlockingQueue<>();
-        final AtomicBoolean threadRunning = new AtomicBoolean(false);
-        final Runnable supplier = () -> {
-            if (threadRunning.compareAndSet(false, true))
-                WListServer.IOExecutors.execute(() -> {
-                    try {
-                        while (filesQueue.size() < DriverUtil.DefaultLimitPerRequestPage) {
-                            if (noNext.get())
-                                return;
-                            final Collection<I> page;
-                            try {
-                                page = supplierInPage.apply(nextPage.getAndIncrement());
-                            } catch (final Exception exception) {
-                                if (noNext.compareAndSet(false, true))
-                                    callback.accept(exception);
-                                throw new NoSuchElementException(exception);
-                            }
-                            if (page == null) {
-                                if (noNext.compareAndSet(false, true))
-                                    callback.accept(null);
-                                return;
-                            }
-                            synchronized (threadRunning) {
-                                filesQueue.addAll(page);
-                                threadRunning.notifyAll();
-                            }
-                            if (filesQueue.size() >= DriverUtil.DefaultLimitPerRequestPage)
-                                break;
-                        }
-                    } finally {
-                        threadRunning.set(false);
-                    }
-                });
-        };
+    private static <I> Pair.@NotNull ImmutablePair<@NotNull Iterator<@NotNull I>, @NotNull Runnable> getIteratorWrappedSuppliers(final @NotNull Runnable supplier, final @NotNull BlockingQueue<? extends @NotNull I> filesQueue, final @NotNull AtomicBoolean noNext, final @NotNull AtomicBoolean threadRunning, final @NotNull Consumer<? super @Nullable Exception> callback) {
         return Pair.ImmutablePair.makeImmutablePair(new Iterator<>() {
             @Override
             public boolean hasNext() {
@@ -162,6 +127,76 @@ public final class DriverUtil {
         });
     }
 
+    public static <I> Pair.@NotNull ImmutablePair<@NotNull Iterator<@NotNull I>, @NotNull Runnable> wrapSuppliersInPages(final @NotNull FunctionE<? super @NotNull Integer, ? extends @Nullable Collection<@NotNull I>> supplierInPage, final @NotNull Consumer<? super @Nullable Exception> callback) {
+        final AtomicBoolean noNext = new AtomicBoolean(false);
+        final BlockingQueue<I> filesQueue = new LinkedBlockingQueue<>();
+        final AtomicBoolean threadRunning = new AtomicBoolean(false);
+        final AtomicInteger nextPage = new AtomicInteger(0);
+        return DriverUtil.getIteratorWrappedSuppliers(() -> {
+            if (threadRunning.compareAndSet(false, true))
+                WListServer.IOExecutors.execute(() -> {
+                    try {
+                        while (filesQueue.size() < DriverUtil.DefaultLimitPerRequestPage) {
+                            if (noNext.get())
+                                return;
+                            final Collection<I> page;
+                            try {
+                                page = supplierInPage.apply(nextPage.getAndIncrement());
+                            } catch (final Exception exception) {
+                                if (noNext.compareAndSet(false, true))
+                                    callback.accept(exception);
+                                throw new NoSuchElementException(exception);
+                            }
+                            if (page == null) {
+                                if (noNext.compareAndSet(false, true))
+                                    callback.accept(null);
+                                return;
+                            }
+                            synchronized (threadRunning) {
+                                filesQueue.addAll(page);
+                                threadRunning.notifyAll();
+                            }
+                            if (filesQueue.size() >= DriverUtil.DefaultLimitPerRequestPage)
+                                break;
+                        }
+                    } finally {
+                        threadRunning.set(false);
+                    }
+                });
+        }, filesQueue, noNext, threadRunning, callback);
+    }
+
+    @Deprecated // TODO
+    public static <I> Pair.@NotNull ImmutablePair<@NotNull Iterator<@NotNull I>, @NotNull Runnable> wrapSuppliersInPages(final int pageCount, final @NotNull FunctionE<? super @NotNull Integer, @NotNull Collection<@NotNull I>> supplierInPage, final @NotNull Consumer<? super @Nullable Exception> callback) {
+        //noinspection ConstantConditions
+        if (true)
+            throw new UnsupportedOperationException();
+        final AtomicBoolean noNext = new AtomicBoolean(false);
+        final BlockingQueue<I> filesQueue = new LinkedBlockingQueue<>();
+        final AtomicBoolean threadRunning = new AtomicBoolean(false);
+        final AtomicInteger nextPage = new AtomicInteger(0);
+        final Supplier<@Nullable Collection<I>> wrappedSupplier = () -> {
+            final Collection<I> page;
+            try {
+                page = supplierInPage.apply(nextPage.getAndIncrement());
+            } catch (final Exception exception) {
+                if (noNext.compareAndSet(false, true))
+                    callback.accept(exception);
+                throw new NoSuchElementException(exception);
+            }
+            return page;
+        };
+        return DriverUtil.getIteratorWrappedSuppliers(() -> {
+            if (threadRunning.compareAndSet(false, true))
+                WListServer.IOExecutors.execute(() -> {
+                    try {
+                        // Multi-call wapperedSupplier.
+                    } finally {
+                        threadRunning.set(false);
+                    }
+                });
+        }, filesQueue, noNext, threadRunning, callback);
+    }
 
     public static @NotNull DownloadMethods getDownloadMethodsByUrlWithRangeHeader(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final long size, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final Headers.@Nullable Builder builder) throws IOException {
         final long end = Math.min(to, size);

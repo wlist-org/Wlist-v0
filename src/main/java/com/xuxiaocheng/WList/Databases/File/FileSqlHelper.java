@@ -410,6 +410,62 @@ public final class FileSqlHelper implements FileSqlInterface {
     }
 
     @Override
+    public @Nullable Long calculateDirectorySizeRecursively(final long directoryId, @Nullable final String _connectionId) throws SQLException {
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
+            connection.setAutoCommit(false);
+            final FileSqlInformation directory = this.selectFiles(List.of(directoryId), connectionId.get()).get(directoryId);
+            if (directory == null || !directory.isDirectory())
+                return null;
+            long realSize = 0;
+            if (directory.type() == FileSqlType.Directory)
+                try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+                        SELECT id, size, type FROM %s WHERE parent_id == ?;
+                    """, this.tableName))) {
+                    statement.setLong(1, directoryId);
+                    try (final ResultSet result = statement.executeQuery()) {
+                        while (result.next()) {
+                            final long id = result.getLong("id");
+                            if (id == directoryId)
+                                continue;
+                            final long size = result.getLong("size");
+                            if (size >= 0) {
+                                realSize += size;
+                                continue;
+                            }
+                            final FileSqlType type = FileSqlInterface.FileSqlType.values()[result.getInt("type")];
+                            if (type == FileSqlType.RegularFile) {
+                                realSize = -1;
+                                break;
+                            }
+                            final Long fixedSize = this.calculateDirectorySizeRecursively(id, connectionId.get());
+                            if (fixedSize == null || fixedSize.longValue() < 0) {
+                                realSize = -1;
+                                break;
+                            }
+                            realSize += fixedSize.longValue();
+                        }
+                    }
+                }
+            if (directory.size() == realSize) {
+                connection.commit();
+                return null;
+            }
+            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+                    UPDATE %s SET size = ? WHERE id == ?;
+                """, this.tableName))) {
+                statement.setLong(1, realSize);
+                statement.setLong(2, directoryId);
+                statement.executeUpdate();
+            }
+            if (directoryId != directory.parentId())
+                this.calculateDirectorySizeRecursively(directory.parentId(), connectionId.get());
+            connection.commit();
+            return realSize;
+        }
+    }
+
+    @Override
     public @NotNull String toString() {
         return "FileSqlHelper{" +
                 "database=" + this.database +

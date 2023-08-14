@@ -1,6 +1,5 @@
 package com.xuxiaocheng.WList.Databases.File;
 
-import com.xuxiaocheng.WList.Databases.TrashedFile.TrashedSqlInformation;
 import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
@@ -38,7 +37,8 @@ public record FileSqlInformation(@NotNull FileLocation location, long parentId, 
             throw new IllegalStateException("Setting a regular file as an empty directory is not allowed.");
         if (this.type == FileSqlInterface.FileSqlType.EmptyDirectory)
             return this;
-        return new FileSqlInformation(this.location, this.parentId, this.name, FileSqlInterface.FileSqlType.EmptyDirectory, this.size, this.createTime, this.updateTime, this.md5, this.others);
+        return new FileSqlInformation(this.location, this.parentId, this.name, FileSqlInterface.FileSqlType.EmptyDirectory,
+                this.size, this.createTime, this.updateTime, this.md5, this.others);
     }
 
     public @NotNull FileSqlInformation getAsNormalDirectory() {
@@ -46,11 +46,18 @@ public record FileSqlInformation(@NotNull FileLocation location, long parentId, 
             throw new IllegalStateException("Setting a regular file as a normal directory is not allowed.");
         if (this.type == FileSqlInterface.FileSqlType.Directory)
             return this;
-        return new FileSqlInformation(this.location, this.parentId, this.name, FileSqlInterface.FileSqlType.Directory, this.size, this.createTime, this.updateTime, this.md5, this.others);
+        return new FileSqlInformation(this.location, this.parentId, this.name, FileSqlInterface.FileSqlType.Directory,
+                this.size, this.createTime, this.updateTime, this.md5, this.others);
     }
 
-    public @NotNull TrashedSqlInformation toTrashedSqlInformation(final @Nullable LocalDateTime trashedTime, final @Nullable LocalDateTime expireTime) {
-        return new TrashedSqlInformation(this.location, this.name, this.isDirectory(), this.size, this.createTime, trashedTime, expireTime, this.md5, this.others);
+    public @NotNull FileSqlInformation mergeCachedInformation(final @Nullable FileSqlInformation cached) {
+        if (cached == null || (cached.createTime == null && cached.updateTime == null && cached.md5.isEmpty())
+                || (this.createTime != null && this.updateTime != null && !this.md5.isEmpty()))
+            return this;
+        return new FileSqlInformation(this.location, this.parentId, this.name, this.type, this.size,
+                this.createTime == null ? cached.createTime : this.createTime,
+                this.updateTime == null ? cached.updateTime : this.updateTime,
+                this.md5.isEmpty() ? cached.md5 : this.md5, this.others);
     }
 
     @Override
@@ -59,7 +66,8 @@ public record FileSqlInformation(@NotNull FileLocation location, long parentId, 
         if (!(o instanceof FileSqlInformation that)) return false;
         return this.parentId == that.parentId && this.size == that.size && this.location.equals(that.location) && this.name.equals(that.name) &&
                 ((this.type == FileSqlInterface.FileSqlType.RegularFile) == (that.type == FileSqlInterface.FileSqlType.RegularFile)) &&
-                Objects.equals(this.createTime, that.createTime) && Objects.equals(this.updateTime, that.updateTime) && this.md5.equals(that.md5) && Objects.equals(this.others, that.others);
+                Objects.equals(this.createTime, that.createTime) && Objects.equals(this.updateTime, that.updateTime) &&
+                this.md5.equals(that.md5) && Objects.equals(this.others, that.others);
     }
 
     @Override

@@ -121,7 +121,7 @@ public final class FileManager {
     }
 
     public static void deleteFileRecursively(final @NotNull String driverName, final long id, final @Nullable String _connectionId) throws SQLException {
-        FileManager.deleteFilesRecursively(driverName, List.of(id),_connectionId);
+        FileManager.deleteFilesRecursively(driverName, List.of(id), _connectionId);
     }
 
     public static void deleteFilesByMd5Recursively(final @NotNull String driverName, final @NotNull Collection<@NotNull String> md5List, final @Nullable String _connectionId) throws SQLException {
@@ -130,5 +130,9 @@ public final class FileManager {
 
     public static void deleteFileByMd5Recursively(final @NotNull String driverName, final @NotNull String md5, final @Nullable String _connectionId) throws SQLException {
         FileManager.deleteFilesByMd5Recursively(driverName, List.of(md5), _connectionId);
+    }
+
+    public static @Nullable Long calculateDirectorySizeRecursively(final @NotNull String driverName, final long directoryId, @Nullable final String _connectionId) throws SQLException {
+        return FileManager.sqlInstances.getInstance(driverName).calculateDirectorySizeRecursively(directoryId, _connectionId);
     }
 }

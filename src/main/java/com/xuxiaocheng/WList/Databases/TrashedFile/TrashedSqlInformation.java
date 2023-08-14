@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Databases.TrashedFile;
 
+import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
@@ -15,6 +16,10 @@ public record TrashedSqlInformation(@NotNull FileLocation location, @NotNull Str
                                     @NotNull String md5, @Nullable String others) {
     public long id() {
         return this.location.id();
+    }
+
+    public static @NotNull TrashedSqlInformation fromFileSqlInformation(final @NotNull FileSqlInformation information, final @Nullable LocalDateTime trashedTime, final @Nullable LocalDateTime expireTime) {
+        return new TrashedSqlInformation(information.location(), information.name(), information.isDirectory(), information.size(), information.createTime(), trashedTime, expireTime, information.md5(), information.others());
     }
 
     @Deprecated // only for client

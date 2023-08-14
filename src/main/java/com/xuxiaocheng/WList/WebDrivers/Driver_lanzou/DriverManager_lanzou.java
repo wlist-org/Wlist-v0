@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.WebDrivers.Driver_lanzou;
 
+import com.xuxiaocheng.HeadLibs.AndroidSupport.AStreams;
 import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
@@ -38,6 +39,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -81,28 +83,30 @@ public final class DriverManager_lanzou {
                 connection.commit();
                 return Pair.ImmutablePair.makeImmutablePair(HMiscellaneousHelper.getEmptyIterator(), RunnableE.EmptyRunnable);
             }
-            FileManager.insertOrUpdateFiles(configuration.getName(), directoriesInformation, connectionId.get());
             if (directoryInformation.type() == FileSqlInterface.FileSqlType.EmptyDirectory)
                 FileManager.insertOrUpdateFile(configuration.getName(), directoryInformation.getAsNormalDirectory(), connectionId.get());
             final Set<Long> deletedIds = ConcurrentHashMap.newKeySet();
             deletedIds.addAll(FileManager.selectFileIdByParentId(configuration.getName(), directoryId, _connectionId));
-            deletedIds.removeAll(directoriesInformation.stream().map(FileSqlInformation::id).collect(Collectors.toSet()));
-            deletedIds.removeAll(filesInformation.stream().map(FileSqlInformation::id).collect(Collectors.toSet()));
             deletedIds.remove(-1L);
             FileManager.getConnection(configuration.getName(), connectionId.get(), null);
             return DriverUtil.wrapSuppliersInPages(page -> {
-                if (page.intValue() == 0)
-                    return directoriesInformation;
-                if (page.intValue() == 1)
-                    return filesInformation;
-                final Set<FileSqlInformation> list = DriverHelper_lanzou.listFilesInPage(configuration, directoryId, page.intValue() - 1);
-                if (list.isEmpty())
+                final Collection<FileSqlInformation> list = switch (page.intValue()) {
+                    case 0 -> directoriesInformation;
+                    case 1 -> filesInformation;
+                    default -> DriverHelper_lanzou.listFilesInPage(configuration, directoryId, page.intValue() - 1);
+                };
+                if (page.intValue() > 1 && list.isEmpty())
                     return null;
-                deletedIds.removeAll(list.stream().map(FileSqlInformation::id).collect(Collectors.toSet()));
+                final Set<Long> ids = list.stream().map(FileSqlInformation::id).collect(Collectors.toSet());
+                deletedIds.removeAll(ids);
+                final Map<Long, FileSqlInformation> cached = FileManager.selectFiles(configuration.getName(), ids, connectionId.get());
+                FileManager.insertOrUpdateFiles(configuration.getName(), AStreams.streamToList(directoriesInformation.stream().map(d ->
+                        d.mergeCachedInformation(cached.get(d.id())))), connectionId.get());
                 return list;
             }, HExceptionWrapper.wrapConsumer(e -> {
                 if (e == null) {
-                    FileManager.deleteFilesRecursively(configuration.getName(), deletedIds, null);
+                    FileManager.deleteFilesRecursively(configuration.getName(), deletedIds, connectionId.get());
+                    FileManager.calculateDirectorySizeRecursively(configuration.getName(), directoryId, connectionId.get());
                     connection.commit();
                 } else if (!(e instanceof CancellationException))
                     throw e;
@@ -224,7 +228,7 @@ public final class DriverManager_lanzou {
                 DriverHelper_lanzou.trashFile(configuration, information.id());
             }
             FileManager.deleteFileRecursively(configuration.getName(), information.id(), connectionId.get());
-            final TrashedSqlInformation trashed = information.toTrashedSqlInformation(time, null);
+            final TrashedSqlInformation trashed = TrashedSqlInformation.fromFileSqlInformation(information, time, null);
             TrashedFileManager.insertOrUpdateFile(configuration.getName(), trashed, connectionId.get());
             trashConnection.commit();
             connection.commit();

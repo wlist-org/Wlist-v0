@@ -293,7 +293,6 @@ HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Fi
     }
 
     static @NotNull @UnmodifiableView Set<@NotNull FileSqlInformation> listFilesInPage(final @NotNull DriverConfiguration_lanzou configuration, final long directoryId, final int page) throws IOException, InterruptedException {
-        int total = 0;
         final AtomicBoolean interrupttedFlag = new AtomicBoolean(false);
         final FormBody.Builder builder = new FormBody.Builder()
                 .add("folder_id", String.valueOf(directoryId))
@@ -311,7 +310,6 @@ HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Fi
             final String name = info.getString("name");
             final Long id = info.getLong("id");
             if (name == null || id == null) continue;
-            final int k = total++;
             CompletableFuture.runAsync(() -> {
                 try {
                     final String url = DriverHelper_lanzou.getFileDownloadUrl(configuration, id.longValue());

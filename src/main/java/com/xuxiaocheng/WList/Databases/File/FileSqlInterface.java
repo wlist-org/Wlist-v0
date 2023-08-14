@@ -31,6 +31,8 @@ public interface FileSqlInterface extends DatabaseInterface {
     void deleteFilesRecursively(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException;
     void deleteFilesByMd5Recursively(final @NotNull Collection<@NotNull String> md5List, final @Nullable String _connectionId) throws SQLException;
 
+    @Nullable Long calculateDirectorySizeRecursively(final long directoryId, final @Nullable String _connectionId) throws SQLException;
+
     // TODO Search
 
     enum FileSqlType {
