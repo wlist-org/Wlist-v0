@@ -160,7 +160,10 @@ public final class DriverUtil {
                                 break;
                         }
                     } finally {
-                        threadRunning.set(false);
+                        synchronized (threadRunning) {
+                            threadRunning.set(false);
+                            threadRunning.notifyAll();
+                        }
                     }
                 });
         }, filesQueue, noNext, threadRunning, callback);

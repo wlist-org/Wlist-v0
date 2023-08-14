@@ -141,6 +141,11 @@ public final class FileManager {
     }
 
     @SuppressWarnings("UnusedReturnValue")
+    public static @Nullable Long updateDirectorySize(final @NotNull String driverName, final long directoryId, final long delta, final @Nullable String _connectionId) throws SQLException {
+        return FileManager.sqlInstances.getInstance(driverName).updateDirectorySize(directoryId, delta, _connectionId);
+    }
+
+    @SuppressWarnings("UnusedReturnValue")
     public static @Nullable Long calculateDirectorySizeRecursively(final @NotNull String driverName, final long directoryId, @Nullable final String _connectionId) throws SQLException {
         return FileManager.sqlInstances.getInstance(driverName).calculateDirectorySizeRecursively(directoryId, _connectionId);
     }

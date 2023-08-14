@@ -19,11 +19,13 @@ import com.xuxiaocheng.WList.Server.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.WListServer;
+import com.xuxiaocheng.WList.WebDrivers.Driver_lanzou.Driver_lanzou;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.util.Map;
+import java.util.Objects;
 
 public final class WListTest {
     private WListTest() {
@@ -34,8 +36,8 @@ public final class WListTest {
     public static void main(final String @NotNull [] args) throws Exception {
 //        if (true) return;
         WListTest.wrapServerInitialize(() -> {
-//            final Driver_lanzou lanzou = (Driver_lanzou) Objects.requireNonNull(DriverManager.getDriver("test"));
-
+            final Driver_lanzou lanzou = (Driver_lanzou) Objects.requireNonNull(DriverManager.getDriver("test"));
+            lanzou.buildIndex();
         });
     }
 

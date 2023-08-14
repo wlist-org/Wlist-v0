@@ -85,7 +85,7 @@ public final class DriverManager_lanzou {
                 FileManager.updateDirectoryType(configuration.getName(), directoryId, false, connectionId.get());
             final Set<Long> deletedIds = ConcurrentHashMap.newKeySet();
             deletedIds.addAll(FileManager.selectFileIdByParentId(configuration.getName(), directoryId, _connectionId));
-            deletedIds.remove(-1L);
+            deletedIds.remove(configuration.getWebSide().getRootDirectoryId());
             FileManager.getConnection(configuration.getName(), connectionId.get(), null);
             return DriverUtil.wrapSuppliersInPages(page -> {
                 final Collection<FileSqlInformation> list = switch (page.intValue()) {
