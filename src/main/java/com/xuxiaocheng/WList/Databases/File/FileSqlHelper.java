@@ -165,7 +165,7 @@ public final class FileSqlHelper implements FileSqlInterface {
     }
 
     @Override
-    public void insertOrUpdateFiles(final @NotNull Collection<@NotNull FileSqlInformation> inserters, final @Nullable String _connectionId) throws SQLException {
+    public void insertFilesForce(final @NotNull Collection<@NotNull FileSqlInformation> inserters, final @Nullable String _connectionId) throws SQLException {
         if (inserters.isEmpty())
             return;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
@@ -365,6 +365,25 @@ public final class FileSqlHelper implements FileSqlInterface {
     }
 
     @Override
+    public void mergeFiles(final @NotNull Collection<@NotNull FileSqlInformation> inserters, final @Nullable Collection<@NotNull Long> mergingUniverse, final @Nullable String _connectionId) throws SQLException {
+        if (inserters.isEmpty())
+            return;
+        final Collection<Long> ids = mergingUniverse == null ? AStreams.streamToList(inserters.stream().map(FileSqlInformation::id)) : mergingUniverse;
+        if (ids.isEmpty()) {
+            this.insertFilesForce(inserters, _connectionId);
+            return;
+        }
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
+            connection.setAutoCommit(false);
+            final Map<Long, FileSqlInformation> cached = this.selectFiles(ids, connectionId.get());
+            this.insertFilesForce(AStreams.streamToList(inserters.stream().map(d ->
+                    d.mergeCachedInformation(cached.get(d.id())))), connectionId.get());
+            connection.commit();
+        }
+    }
+
+    @Override
     public void deleteFilesRecursively(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
         if (idList.isEmpty())
             return;
@@ -410,7 +429,7 @@ public final class FileSqlHelper implements FileSqlInterface {
     }
 
     @Override
-    public @Nullable Long calculateDirectorySizeRecursively(final long directoryId, @Nullable final String _connectionId) throws SQLException {
+    public @Nullable Long calculateDirectorySizeRecursively(final long directoryId, final @Nullable String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);

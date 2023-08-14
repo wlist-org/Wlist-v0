@@ -52,12 +52,12 @@ public final class FileManager {
         return FileManager.sqlInstances.getInstance(driverName).getConnection(_connectionId, connectionId);
     }
 
-    public static void insertOrUpdateFiles(final @NotNull String driverName, final @NotNull Collection<@NotNull FileSqlInformation> inserters, final @Nullable String _connectionId) throws SQLException {
-        FileManager.sqlInstances.getInstance(driverName).insertOrUpdateFiles(inserters, _connectionId);
+    public static void insertFilesForce(final @NotNull String driverName, final @NotNull Collection<@NotNull FileSqlInformation> inserters, final @Nullable String _connectionId) throws SQLException {
+        FileManager.sqlInstances.getInstance(driverName).insertFilesForce(inserters, _connectionId);
     }
 
-    public static void insertOrUpdateFile(final @NotNull String driverName, final @NotNull FileSqlInformation inserter, final @Nullable String _connectionId) throws SQLException {
-        FileManager.insertOrUpdateFiles(driverName, List.of(inserter), _connectionId);
+    public static void insertFileForce(final @NotNull String driverName, final @NotNull FileSqlInformation inserter, final @Nullable String _connectionId) throws SQLException {
+        FileManager.insertFilesForce(driverName, List.of(inserter), _connectionId);
     }
 
     public static void updateDirectoryType(final @NotNull String driverName, final long id, final boolean empty, final @Nullable String _connectionId) throws SQLException {
@@ -116,6 +116,14 @@ public final class FileManager {
         return FileManager.sqlInstances.getInstance(driverName).selectFilesByParentIdInPage(parentId, filter, limit, offset, direction, policy, _connectionId);
     }
 
+    public static void mergeFiles(final @NotNull String driverName, final @NotNull Collection<@NotNull FileSqlInformation> inserters, final @Nullable Collection<@NotNull Long> mergingUniverse, final @Nullable String _connectionId) throws SQLException {
+        FileManager.sqlInstances.getInstance(driverName).mergeFiles(inserters, mergingUniverse, _connectionId);
+    }
+
+    public static void mergeFile(final @NotNull String driverName, final @NotNull FileSqlInformation inserter, final @Nullable String _connectionId) throws SQLException {
+        FileManager.mergeFiles(driverName, List.of(inserter), List.of(inserter.id()), _connectionId);
+    }
+
     public static void deleteFilesRecursively(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
         FileManager.sqlInstances.getInstance(driverName).deleteFilesRecursively(idList, _connectionId);
     }
@@ -132,6 +140,7 @@ public final class FileManager {
         FileManager.deleteFilesByMd5Recursively(driverName, List.of(md5), _connectionId);
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     public static @Nullable Long calculateDirectorySizeRecursively(final @NotNull String driverName, final long directoryId, @Nullable final String _connectionId) throws SQLException {
         return FileManager.sqlInstances.getInstance(driverName).calculateDirectorySizeRecursively(directoryId, _connectionId);
     }

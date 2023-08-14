@@ -32,24 +32,6 @@ public record FileSqlInformation(@NotNull FileLocation location, long parentId, 
         return this.type != FileSqlInterface.FileSqlType.RegularFile;
     }
 
-    public @NotNull FileSqlInformation getAsEmptyDirectory() {
-        if (this.type == FileSqlInterface.FileSqlType.RegularFile)
-            throw new IllegalStateException("Setting a regular file as an empty directory is not allowed.");
-        if (this.type == FileSqlInterface.FileSqlType.EmptyDirectory)
-            return this;
-        return new FileSqlInformation(this.location, this.parentId, this.name, FileSqlInterface.FileSqlType.EmptyDirectory,
-                this.size, this.createTime, this.updateTime, this.md5, this.others);
-    }
-
-    public @NotNull FileSqlInformation getAsNormalDirectory() {
-        if (this.type == FileSqlInterface.FileSqlType.RegularFile)
-            throw new IllegalStateException("Setting a regular file as a normal directory is not allowed.");
-        if (this.type == FileSqlInterface.FileSqlType.Directory)
-            return this;
-        return new FileSqlInformation(this.location, this.parentId, this.name, FileSqlInterface.FileSqlType.Directory,
-                this.size, this.createTime, this.updateTime, this.md5, this.others);
-    }
-
     public @NotNull FileSqlInformation mergeCachedInformation(final @Nullable FileSqlInformation cached) {
         if (cached == null || (cached.createTime == null && cached.updateTime == null && cached.md5.isEmpty())
                 || (this.createTime != null && this.updateTime != null && !this.md5.isEmpty()))

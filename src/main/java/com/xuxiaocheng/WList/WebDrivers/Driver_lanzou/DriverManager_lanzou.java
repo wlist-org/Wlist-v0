@@ -1,6 +1,5 @@
 package com.xuxiaocheng.WList.WebDrivers.Driver_lanzou;
 
-import com.xuxiaocheng.HeadLibs.AndroidSupport.AStreams;
 import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
@@ -39,7 +38,6 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -79,12 +77,12 @@ public final class DriverManager_lanzou {
             if (directoriesInformation.isEmpty() && filesInformation.isEmpty()) {
                 FileManager.deleteFileRecursively(configuration.getName(), directoryId, connectionId.get());
                 if (directoryInformation.type() == FileSqlInterface.FileSqlType.Directory)
-                    FileManager.insertOrUpdateFile(configuration.getName(), directoryInformation.getAsEmptyDirectory(), connectionId.get());
+                    FileManager.updateDirectoryType(configuration.getName(), directoryId, true, connectionId.get());
                 connection.commit();
                 return Pair.ImmutablePair.makeImmutablePair(HMiscellaneousHelper.getEmptyIterator(), RunnableE.EmptyRunnable);
             }
             if (directoryInformation.type() == FileSqlInterface.FileSqlType.EmptyDirectory)
-                FileManager.insertOrUpdateFile(configuration.getName(), directoryInformation.getAsNormalDirectory(), connectionId.get());
+                FileManager.updateDirectoryType(configuration.getName(), directoryId, false, connectionId.get());
             final Set<Long> deletedIds = ConcurrentHashMap.newKeySet();
             deletedIds.addAll(FileManager.selectFileIdByParentId(configuration.getName(), directoryId, _connectionId));
             deletedIds.remove(-1L);
@@ -99,9 +97,7 @@ public final class DriverManager_lanzou {
                     return null;
                 final Set<Long> ids = list.stream().map(FileSqlInformation::id).collect(Collectors.toSet());
                 deletedIds.removeAll(ids);
-                final Map<Long, FileSqlInformation> cached = FileManager.selectFiles(configuration.getName(), ids, connectionId.get());
-                FileManager.insertOrUpdateFiles(configuration.getName(), AStreams.streamToList(directoriesInformation.stream().map(d ->
-                        d.mergeCachedInformation(cached.get(d.id())))), connectionId.get());
+                FileManager.mergeFiles(configuration.getName(), list, ids, connectionId.get());
                 return list;
             }, HExceptionWrapper.wrapConsumer(e -> {
                 if (e == null) {
@@ -275,7 +271,7 @@ public final class DriverManager_lanzou {
             if (duplicate.getT().isFailure()) {connection.commit();return UnionPair.ok(duplicate.getT().getE());}
             final String realName = duplicate.getT().getT();
             final UnionPair<FileSqlInformation, FailureReason> information = DriverHelper_lanzou.createDirectory(configuration, realName, parentId);
-            if (information.isSuccess()) FileManager.insertOrUpdateFile(configuration.getName(), information.getT(), connectionId.get());
+            if (information.isSuccess()) FileManager.insertFileForce(configuration.getName(), information.getT(), connectionId.get()); // TODO
             connection.commit();
             return information;
         }
@@ -299,7 +295,8 @@ public final class DriverManager_lanzou {
             final UnionPair<FileSqlInformation, FailureReason> result = reference.get();
             if (result == null) return null;
             final FileSqlInformation information = result.getT();
-            FileManager.insertOrUpdateFile(configuration.getName(), information, _connectionId);
+            FileManager.insertFileForce(configuration.getName(), information, _connectionId);
+            // TODO
             return information;
         }, HExceptionWrapper.wrapRunnable(() -> methods.getSecond().run())));
     }

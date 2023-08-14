@@ -44,13 +44,15 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
     public void initialize(final @NotNull DriverConfiguration_lanzou configuration) throws SQLException {
         FileManager.quicklyInitialize(new FileSqlHelper(PooledDatabase.instance.getInstance(), configuration.getName(), configuration.getWebSide().getRootDirectoryId()), null);
         this.configuration = configuration;
-        FileManager.insertOrUpdateFile(this.configuration.getName(), RootDriver.getDatabaseDriverInformation(this.configuration), null);
+        FileManager.mergeFile(this.configuration.getName(), RootDriver.getDatabaseDriverInformation(this.configuration), null);
+
         TrashedFileManager.quicklyInitialize(new TrashedSqlHelper(PooledDatabase.instance.getInstance(), configuration.getName()), null);
     }
 
     @Override
     public void uninitialize() throws SQLException {
         FileManager.quicklyUninitialize(this.configuration.getName(), null);
+
         TrashedFileManager.quicklyUninitialize(this.configuration.getName(), null);
     }
 
@@ -87,6 +89,9 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
                 }
                 HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), throwable);
             }
+        final FileSqlInformation root = FileManager.selectFile(this.configuration.getName(), this.configuration.getWebSide().getRootDirectoryId(), null);
+        if (root != null)
+            this.configuration.getWebSide().setSpaceUsed(root.size());
     }
 
     @Override
