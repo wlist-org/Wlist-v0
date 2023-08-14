@@ -126,10 +126,7 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
             DriverManager_lanzou.trashFile(this.configuration, information, null, null);
     }
 
-    @Override
-    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> copy(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final @NotNull String targetFilename, final Options.@NotNull DuplicatePolicy policy) throws Exception {
-        return DriverInterface.super.copy(sourceLocation, targetParentLocation, targetFilename, policy);
-    }
+    // Default copy method.
 
     @Override
     public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> move(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetLocation, final Options.@NotNull DuplicatePolicy policy) throws Exception {

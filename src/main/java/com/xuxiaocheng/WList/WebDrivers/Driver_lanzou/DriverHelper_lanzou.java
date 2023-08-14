@@ -382,10 +382,10 @@ HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Fi
 
     static @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> uploadFile(final @NotNull DriverConfiguration_lanzou configuration, final String name, final long parentId, final @NotNull ByteBuf content, final @NotNull String md5) throws IOException {
         if (!DriverHelper_lanzou.filenamePredication.test(name))
-            return UnionPair.fail(FailureReason.byInvalidName("Uploading file.", new FileLocation(configuration.getName(), parentId), name));
+            return UnionPair.fail(FailureReason.byInvalidName("Uploading.", new FileLocation(configuration.getName(), parentId), name));
         final int size = content.readableBytes();
         if (size > configuration.getWebSide().getMaxSizePerFile())
-            return UnionPair.fail(FailureReason.byExceedMaxSize("Uploading file.", size, configuration.getWebSide().getMaxSizePerFile(),  new FileLocation(configuration.getName(), parentId), name));
+            return UnionPair.fail(FailureReason.byExceedMaxSize("Uploading.", size, configuration.getWebSide().getMaxSizePerFile(),  new FileLocation(configuration.getName(), parentId), name));
         DriverManager_lanzou.ensureLoggedIn(configuration);
         final MultipartBody body = new MultipartBody.Builder().setType(MultipartBody.FORM)
                 .addFormDataPart("task", "1")
@@ -402,11 +402,11 @@ HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Fi
         final String message = json.getString("info");
         final JSONArray array = json.getJSONArray("text");
         if (!"\u4E0A\u4F20\u6210\u529F".equals(message) || array == null || array.isEmpty())
-            throw new WrongResponseException("Uploading file.", message, ParametersMap.create().add("configuration", configuration)
+            throw new WrongResponseException("Uploading.", message, ParametersMap.create().add("configuration", configuration)
                     .add("name", name).add("parentId", parentId).add("json", json));
         final JSONObject info = array.getJSONObject(0);
         if (info == null || info.getLong("id") == null)
-            throw new WrongResponseException("Uploading file.", message, ParametersMap.create().add("configuration", configuration)
+            throw new WrongResponseException("Uploading.", message, ParametersMap.create().add("configuration", configuration)
                     .add("name", name).add("parentId", parentId).add("json", json));
         return UnionPair.ok(new FileSqlInformation(new FileLocation(configuration.getName(), info.getLongValue("id")),
                 parentId, name, FileSqlInterface.FileSqlType.RegularFile, size, now, now, md5, null));

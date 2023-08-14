@@ -156,21 +156,24 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
             if (upload.isFailure())
                 return UnionPair.fail(upload.getE());
             uploadFinisher = upload.getT().finisher();
-            final FileSqlInformation information;
             if (!upload.getT().methods().isEmpty()) {
                 final UnionPair<DownloadMethods, FailureReason> download = this.download(sourceLocation, 0, Long.MAX_VALUE);
                 if (download.isFailure())
                     return UnionPair.fail(download.getE());
                 downloadFinisher = download.getT().finisher();
                 assert source.size() == download.getT().total();
-                assert upload.getT().methods().size() == download.getT().methods().size();
+                if (upload.getT().methods().size() != download.getT().methods().size())
+                    throw new AssertionError("Copying. Same size but different methods count." + ParametersMap.create()
+                            .add("size_uploader", source.size()).add("size_downloader", download.getT().total())
+                            .add("downloader", download.getT().methods().size()).add("uploader", upload.getT().methods().size())
+                            .add("source", source).add("target", targetParentLocation).add("filename", targetFilename).add("policy", policy));
                 final Iterator<ConsumerE<ByteBuf>> uploadIterator = upload.getT().methods().iterator();
                 final Iterator<SupplierE<ByteBuf>> downloadIterator = download.getT().methods().iterator();
                 while (uploadIterator.hasNext() && downloadIterator.hasNext())
                     uploadIterator.next().accept(downloadIterator.next().get());
                 assert !uploadIterator.hasNext() && !downloadIterator.hasNext();
             }
-            information = upload.getT().supplier().get();
+            final FileSqlInformation information = upload.getT().supplier().get();
             if (information == null)
                 throw new IllegalStateException("Failed to copy file. Failed to get target file information." + ParametersMap.create()
                         .add("sourceLocation", sourceLocation).add("sourceInfo", source).add("targetParentLocation", targetParentLocation).add(targetFilename, "targetFilename").add("policy", policy));

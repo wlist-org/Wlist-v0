@@ -8,7 +8,6 @@ import com.xuxiaocheng.HeadLibs.Functions.FunctionE;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
-import com.xuxiaocheng.HeadLibs.Helpers.HMiscellaneousHelper;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
@@ -43,8 +42,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
@@ -91,75 +88,72 @@ public final class DriverUtil {
         return Pair.ImmutablePair.makeImmutablePair(left, right);
     }
 
-    public static <I> Pair.@NotNull ImmutablePair<@NotNull Iterator<@NotNull I>, @NotNull Runnable> wrapSuppliersInPages(final @NotNull FunctionE<? super @NotNull Integer, ? extends @NotNull Collection<@NotNull I>> supplierInPage, final @NotNull Consumer<? super @Nullable Exception> callback) {
-        final Collection<I> firstPage;
-        try {
-            firstPage = supplierInPage.apply(0);
-        } catch (final Exception exception) {
-            callback.accept(exception);
-            return Pair.ImmutablePair.makeImmutablePair(HMiscellaneousHelper.getEmptyIterator(), RunnableE.EmptyRunnable);
-        }
-        if (firstPage.isEmpty()) {
-            callback.accept(null);
-            return Pair.ImmutablePair.makeImmutablePair(HMiscellaneousHelper.getEmptyIterator(), RunnableE.EmptyRunnable);
-        }
-        final BlockingQueue<I> allFiles = new LinkedBlockingQueue<>(firstPage);
-        final AtomicInteger nextPage = new AtomicInteger(1);
-        final AtomicBoolean gettingFlag = new AtomicBoolean(false);
+    public static <I> Pair.@NotNull ImmutablePair<@NotNull Iterator<@NotNull I>, @NotNull Runnable> wrapSuppliersInPages(final @NotNull FunctionE<? super @NotNull Integer, ? extends @Nullable Collection<@NotNull I>> supplierInPage, final @NotNull Consumer<? super @Nullable Exception> callback) {
         final AtomicBoolean noNext = new AtomicBoolean(false);
-        final AtomicReference<BiConsumer<Integer, Boolean>> nextGetter = new AtomicReference<>(null);
-        nextGetter.set((forwardPages, outsideCalling) -> {
-            if (noNext.get())
-                return;
-            if (gettingFlag.compareAndSet(false, true)) {
-                final Collection<I> page;
-                try {
-                    page = supplierInPage.apply(nextPage.getAndIncrement());
-                } catch (final Exception exception) {
-                    if (noNext.compareAndSet(false, true))
-                        callback.accept(exception);
-                    throw new NoSuchElementException(exception);
-                }
-                if (page.isEmpty()) {
-                    if (noNext.compareAndSet(false, true))
-                        callback.accept(null);
-                } else
-                    allFiles.addAll(page);
-                synchronized (gettingFlag) {
-                    gettingFlag.set(false);
-                    gettingFlag.notifyAll();
-                }
-                if (forwardPages.intValue() > 0)
-                    WListServer.IOExecutors.execute(() -> nextGetter.get().accept(forwardPages.intValue() - 1, false));
-            } else if (outsideCalling.booleanValue())
-                synchronized (gettingFlag) {
-                    while (gettingFlag.get())
-                        try {
-                            gettingFlag.wait();
-                        } catch (final InterruptedException exception) {
-                            throw new NoSuchElementException(exception);
+        final AtomicInteger nextPage = new AtomicInteger(0);
+        final BlockingQueue<I> filesQueue = new LinkedBlockingQueue<>();
+        final AtomicBoolean threadRunning = new AtomicBoolean(false);
+        final Runnable supplier = () -> {
+            if (threadRunning.compareAndSet(false, true))
+                WListServer.IOExecutors.execute(() -> {
+                    try {
+                        while (filesQueue.size() < DriverUtil.DefaultLimitPerRequestPage) {
+                            if (noNext.get())
+                                return;
+                            final Collection<I> page;
+                            try {
+                                page = supplierInPage.apply(nextPage.getAndIncrement());
+                            } catch (final Exception exception) {
+                                if (noNext.compareAndSet(false, true))
+                                    callback.accept(exception);
+                                throw new NoSuchElementException(exception);
+                            }
+                            if (page == null) {
+                                if (noNext.compareAndSet(false, true))
+                                    callback.accept(null);
+                                return;
+                            }
+                            synchronized (threadRunning) {
+                                filesQueue.addAll(page);
+                                threadRunning.notifyAll();
+                            }
+                            if (filesQueue.size() >= DriverUtil.DefaultLimitPerRequestPage)
+                                break;
                         }
-                }
-        });
+                    } finally {
+                        threadRunning.set(false);
+                    }
+                });
+        };
         return Pair.ImmutablePair.makeImmutablePair(new Iterator<>() {
             @Override
             public boolean hasNext() {
-                if (allFiles.peek() != null)
+                if (filesQueue.peek() != null)
                     return true;
                 if (noNext.get())
                     return false;
-                nextGetter.get().accept(2, true);
+                supplier.run();
+                synchronized (threadRunning) {
+                    while (threadRunning.get() && filesQueue.peek() == null)
+                        try {
+                            threadRunning.wait();
+                        } catch (final InterruptedException ignore) {
+                            return false;
+                        }
+                }
                 return this.hasNext();
             }
 
             @Override
             public @NotNull I next() {
-                final I item = allFiles.poll();
-                if (item != null)
+                final I item = filesQueue.poll();
+                if (item != null) {
+                    if (filesQueue.size() < DriverUtil.DefaultLimitPerRequestPage >> 1)
+                        supplier.run();
                     return item;
-                if (noNext.get())
+                }
+                if (!this.hasNext())
                     throw new NoSuchElementException();
-                nextGetter.get().accept(2, true);
                 return this.next();
             }
         }, () -> {
@@ -167,6 +161,7 @@ public final class DriverUtil {
                 callback.accept(new CancellationException());
         });
     }
+
 
     public static @NotNull DownloadMethods getDownloadMethodsByUrlWithRangeHeader(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final long size, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final Headers.@Nullable Builder builder) throws IOException {
         final long end = Math.min(to, size);
@@ -193,11 +188,14 @@ public final class DriverUtil {
                         Objects.requireNonNullElseGet(builder, Headers.Builder::new).set("Range", String.format("bytes=%d-%d", b, e - 1)).build(), null).execute()).byteStream()) {
                     final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(length, length);
                     try {
+                        // stream.transferTo(new ByteBufOutputStream(buffer));
                         int read = 0;
                         while (read < length) {
                             final int current = buffer.writeBytes(stream, length - read);
                             if (current < 0)
                                 break;
+                            if (current == 0)
+                                Thread.onSpinWait();
                             read += current;
                         }
                         return buffer.retain();

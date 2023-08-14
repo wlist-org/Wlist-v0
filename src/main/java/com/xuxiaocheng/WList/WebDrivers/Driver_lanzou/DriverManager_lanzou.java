@@ -34,7 +34,6 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -85,18 +84,20 @@ public final class DriverManager_lanzou {
             FileManager.insertOrUpdateFiles(configuration.getName(), directoriesInformation, connectionId.get());
             if (directoryInformation.type() == FileSqlInterface.FileSqlType.EmptyDirectory)
                 FileManager.insertOrUpdateFile(configuration.getName(), directoryInformation.getAsNormalDirectory(), connectionId.get());
-            final Collection<FileSqlInformation> firstPage = new ArrayList<>(directoriesInformation.size() + filesInformation.size());
-            firstPage.addAll(directoriesInformation);
-            firstPage.addAll(filesInformation);
             final Set<Long> deletedIds = ConcurrentHashMap.newKeySet();
             deletedIds.addAll(FileManager.selectFileIdByParentId(configuration.getName(), directoryId, _connectionId));
-            deletedIds.removeAll(firstPage.stream().map(FileSqlInformation::id).collect(Collectors.toSet()));
+            deletedIds.removeAll(directoriesInformation.stream().map(FileSqlInformation::id).collect(Collectors.toSet()));
+            deletedIds.removeAll(filesInformation.stream().map(FileSqlInformation::id).collect(Collectors.toSet()));
             deletedIds.remove(-1L);
             FileManager.getConnection(configuration.getName(), connectionId.get(), null);
             return DriverUtil.wrapSuppliersInPages(page -> {
                 if (page.intValue() == 0)
-                    return firstPage;
-                final Set<FileSqlInformation> list = DriverHelper_lanzou.listFilesInPage(configuration, directoryId, page.intValue());
+                    return directoriesInformation;
+                if (page.intValue() == 1)
+                    return filesInformation;
+                final Set<FileSqlInformation> list = DriverHelper_lanzou.listFilesInPage(configuration, directoryId, page.intValue() - 1);
+                if (list.isEmpty())
+                    return null;
                 deletedIds.removeAll(list.stream().map(FileSqlInformation::id).collect(Collectors.toSet()));
                 return list;
             }, HExceptionWrapper.wrapConsumer(e -> {
@@ -280,11 +281,11 @@ public final class DriverManager_lanzou {
         if (!md5.isEmpty() && !HMessageDigestHelper.MD5.pattern.matcher(md5).matches())
             throw new IllegalStateException("Invalid md5." + ParametersMap.create().add("md5", md5));
         if (!DriverHelper_lanzou.filenamePredication.test(name))
-            return UnionPair.fail(FailureReason.byInvalidName("Uploading file.", new FileLocation(configuration.getName(), parentId), name));
+            return UnionPair.fail(FailureReason.byInvalidName("Uploading.", new FileLocation(configuration.getName(), parentId), name));
         if (size > configuration.getWebSide().getMaxSizePerFile())
-            return UnionPair.fail(FailureReason.byExceedMaxSize("Uploading file.", size, configuration.getWebSide().getMaxSizePerFile(),  new FileLocation(configuration.getName(), parentId), name));
+            return UnionPair.fail(FailureReason.byExceedMaxSize("Uploading.", size, configuration.getWebSide().getMaxSizePerFile(),  new FileLocation(configuration.getName(), parentId), name));
         final int intSize = Math.toIntExact(size);
-        final UnionPair<UnionPair<String, FileSqlInformation>, FailureReason> duplicate = DriverManager_lanzou.getDuplicatePolicyName(configuration, parentId, name, false, policy, "Uploading file.", _connectionId);
+        final UnionPair<UnionPair<String, FileSqlInformation>, FailureReason> duplicate = DriverManager_lanzou.getDuplicatePolicyName(configuration, parentId, name, false, policy, "Uploading.", _connectionId);
         if (duplicate.isFailure()) return UnionPair.fail(duplicate.getE());
         final String realName = duplicate.getT().getT();
         final AtomicReference<UnionPair<FileSqlInformation, FailureReason>> reference = new AtomicReference<>(null);
