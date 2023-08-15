@@ -9,7 +9,6 @@ import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.CodecException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -110,8 +109,7 @@ public class MessageServerCiphers extends MessageCiphers {
             ctx.fireExceptionCaught(cause);
         else {
             HLog.getInstance("ServerLogger").log(HLogLevel.MISTAKE, "Something wrong when codec at " + ctx.channel().remoteAddress(), ": ", cause.getLocalizedMessage());
-            if (cause instanceof CodecException)
-                HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), cause.getCause());
+            HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), cause.getCause());
         }
     }
 

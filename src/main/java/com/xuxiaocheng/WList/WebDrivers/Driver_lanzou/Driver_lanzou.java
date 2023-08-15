@@ -23,6 +23,7 @@ import org.jetbrains.annotations.UnmodifiableView;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
@@ -59,6 +60,8 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
     @Override
     public void buildCache() throws IOException {
         DriverManager_lanzou.ensureLoggedIn(this.configuration);
+        this.configuration.getCacheSide().setLastFileCacheBuildTime(LocalDateTime.now());
+        this.configuration.getCacheSide().setModified(true);
     }
 
     @Override
@@ -92,6 +95,8 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
         final FileSqlInformation root = FileManager.selectFile(this.configuration.getName(), this.configuration.getWebSide().getRootDirectoryId(), null);
         if (root != null)
             this.configuration.getWebSide().setSpaceUsed(root.size());
+        this.configuration.getCacheSide().setLastFileIndexBuildTime(LocalDateTime.now());
+        this.configuration.getCacheSide().setModified(true);
     }
 
     @Override

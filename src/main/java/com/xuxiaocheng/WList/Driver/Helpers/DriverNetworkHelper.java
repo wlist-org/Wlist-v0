@@ -3,7 +3,6 @@ package com.xuxiaocheng.WList.Driver.Helpers;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
@@ -93,9 +92,6 @@ public final class DriverNetworkHelper {
         try {
             response = chain.proceed(request);
             successFlag = true;
-        } catch (final RuntimeException exception) {
-            HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
-            throw exception;
         } finally {
             final long time2 = System.currentTimeMillis();
             DriverNetworkHelper.logger.log(HLogLevel.NETWORK, "Received. Totally cost time: ", time2 - time1, "ms.",

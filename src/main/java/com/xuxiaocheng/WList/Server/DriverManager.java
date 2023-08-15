@@ -136,9 +136,7 @@ public final class DriverManager {
                 }
                 try {
                     final LocalDateTime old = configuration.getCacheSide().getLastFileCacheBuildTime();
-                    final LocalDateTime now = LocalDateTime.now();
-                    if (old == null || Duration.between(old, now).toMillis() > TimeUnit.HOURS.toMillis(3)) {
-                        configuration.getCacheSide().setLastFileCacheBuildTime(now);
+                    if (old == null || Duration.between(old, LocalDateTime.now()).toMillis() > TimeUnit.HOURS.toMillis(3)) {
                         driver.buildCache();
                         if (trash != null)
                             trash.buildCache();

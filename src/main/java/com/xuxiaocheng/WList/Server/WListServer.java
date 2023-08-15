@@ -3,7 +3,6 @@ package com.xuxiaocheng.WList.Server;
 import com.xuxiaocheng.HeadLibs.Annotations.Range.IntRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Helpers.HBinaryStringHelper;
-import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
@@ -185,20 +184,12 @@ public class WListServer {
 
         @Override
         public void exceptionCaught(final @NotNull ChannelHandlerContext ctx, final @NotNull Throwable cause) {
-            if (cause instanceof CodecException) {
-                WListServer.logger.log(HLogLevel.MISTAKE, "Codec Exception at ", ctx.channel().remoteAddress(), ": ", cause.getMessage());
-                ServerChannelHandler.directlyWriteMessage(ctx.channel(), Operation.State.FormatError, "Codec");
-                return;
-            }
-            if (cause instanceof SocketException) {
-                WListServer.logger.log(HLogLevel.WARN, "Socket Exception at ", ctx.channel().remoteAddress(), ": ", cause.getMessage());
+            if (cause instanceof CodecException || cause instanceof SocketException) {
+                WListServer.logger.log(HLogLevel.MISTAKE, "Codec/Socket Exception at ", ctx.channel().remoteAddress(), ": ", cause.getLocalizedMessage());
                 ctx.close();
                 return;
             }
-            if (cause instanceof ServerException)
-                WListServer.logger.log(HLogLevel.WARN, "Exception at ", ctx.channel().remoteAddress(), ": ", cause);
-            else
-                HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), cause); // Logged by HUncaughtExceptionHelper.listener.
+            WListServer.logger.log(HLogLevel.ERROR, "Exception at ", ctx.channel().remoteAddress(), ": ", cause);
             ServerChannelHandler.directlyWriteMessage(ctx.channel(), Operation.State.ServerError, null);
         }
 
