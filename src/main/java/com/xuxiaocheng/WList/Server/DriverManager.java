@@ -15,6 +15,7 @@ import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.DriverTrashInterface;
 import com.xuxiaocheng.WList.Driver.SpecialDriverName;
 import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
+import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Utils.YamlHelper;
 import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
 import org.jetbrains.annotations.NotNull;
@@ -251,7 +252,7 @@ public final class DriverManager {
                 } catch (final Exception exception) {
                     exceptions.put(driver.getKey(), exception);
                 }
-            }));
+            }, WListServer.IOExecutors).exceptionally(MiscellaneousUtil.exceptionHandler()));
         }
         for (final CompletableFuture<?> future: futures)
             future.join();
@@ -269,7 +270,7 @@ public final class DriverManager {
                 } catch (final Exception exception) {
                     exceptions.put(driver.getKey(), exception);
                 }
-            }));
+            }, WListServer.IOExecutors).exceptionally(MiscellaneousUtil.exceptionHandler()));
         }
         for (final CompletableFuture<?> future: futures)
             future.join();

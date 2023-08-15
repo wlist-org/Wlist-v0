@@ -33,7 +33,7 @@ public final class WListTest {
     }
 
     @SuppressWarnings("OverlyBroadThrowsClause")
-    public static void main(final String @NotNull [] args) throws Exception {
+    public static void _main() throws Exception {
 //        if (true) return;
         WListTest.wrapServerInitialize(() -> {
             final Driver_lanzou lanzou = (Driver_lanzou) Objects.requireNonNull(DriverManager.getDriver("test"));
@@ -41,8 +41,6 @@ public final class WListTest {
         });
     }
 
-    @SuppressWarnings({"unused", "PublicField"})
-    public static @Nullable Object tempPlaceForDebug;
     static {
         HUncaughtExceptionHelper.setUncaughtExceptionListener("listener", (t, e) -> HLog.DefaultLogger.log(HLogLevel.FAULT, "Uncaught exception listened by WListTester. thread: ", t.getName(), e));
         System.setProperty("io.netty.leakDetectionLevel", "ADVANCED");
@@ -69,11 +67,6 @@ public final class WListTest {
         } finally {
             for (final Map.Entry<String, Exception> exception: DriverManager.operateAllDrivers(d -> DriverManager.dumpConfigurationIfModified(d.getConfiguration())).entrySet())
                 HLog.DefaultLogger.log(HLogLevel.ERROR, "Failed to dump driver configuration.", ParametersMap.create().add("name", exception.getKey()), exception.getValue());
-            WListServer.CodecExecutors.shutdownGracefully();
-            WListServer.ServerExecutors.shutdownGracefully();
-            WListServer.IOExecutors.shutdownGracefully();
-            BackgroundTaskManager.BackgroundExecutors.shutdownGracefully();
-            DriverNetworkHelper.CountDownExecutors.shutdownGracefully();
         }
     }
 
@@ -82,5 +75,20 @@ public final class WListTest {
             runnable.run();
             return null;
         });
+    }
+
+
+    public static void main(final String @NotNull [] args) {
+        try {
+            WListTest._main();
+        } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable throwable) {
+            HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), throwable);
+        } finally {
+            WListServer.CodecExecutors.shutdownGracefully();
+            WListServer.ServerExecutors.shutdownGracefully();
+            WListServer.IOExecutors.shutdownGracefully();
+            BackgroundTaskManager.BackgroundExecutors.shutdownGracefully();
+            DriverNetworkHelper.CountDownExecutors.shutdownGracefully();
+        }
     }
 }

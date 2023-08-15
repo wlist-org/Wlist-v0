@@ -44,6 +44,7 @@ public final class ServerStateHandler {
         ServerHandler.logOperation(channel, Operation.Type.CloseServer, user, null);
         if (user.isFailure())
             return user.getE();
+        // TODO refuse new connections.
         WListServer.ServerExecutors.schedule(() -> WListServer.getInstance().stop(), 3, TimeUnit.SECONDS);
         return ServerHandler.Success;
     };

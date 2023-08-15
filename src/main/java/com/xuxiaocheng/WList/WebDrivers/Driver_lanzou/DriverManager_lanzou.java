@@ -25,6 +25,7 @@ import com.xuxiaocheng.WList.Server.InternalDrivers.RootDriver;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.UploadMethods;
 import com.xuxiaocheng.WList.Server.WListServer;
+import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -168,7 +169,7 @@ public final class DriverManager_lanzou {
             runningFutures.addAndGet(directoryIdList.size());
             for (final Long id: directoryIdList)
                 futures.add(CompletableFuture.runAsync(HExceptionWrapper.wrapRunnable(() -> DriverManager_lanzou.refreshDirectoryRecursively(configuration,
-                        id.longValue(), futures, runningFutures, interruptFlag)), WListServer.IOExecutors));
+                        id.longValue(), futures, runningFutures, interruptFlag)), WListServer.IOExecutors).exceptionally(MiscellaneousUtil.exceptionHandler()));
         } finally {
             synchronized (runningFutures) {
                 if (runningFutures.decrementAndGet() == 0)

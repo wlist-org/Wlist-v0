@@ -120,7 +120,7 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
     }
 
     @Override
-    public @NotNull UnionPair<@NotNull UploadMethods, @NotNull FailureReason> upload(final @NotNull FileLocation parentLocation, final @NotNull String filename, final long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+    public @NotNull UnionPair<@NotNull UploadMethods, @NotNull FailureReason> upload(final @NotNull FileLocation parentLocation, final @NotNull String filename, final long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws IOException, SQLException, InterruptedException {
         return DriverManager_lanzou.getUploadMethods(this.configuration, parentLocation.id(), filename, md5, size, policy, null);
     }
 

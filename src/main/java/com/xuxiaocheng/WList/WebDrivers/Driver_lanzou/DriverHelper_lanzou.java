@@ -5,6 +5,7 @@ import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
@@ -19,6 +20,7 @@ import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Exceptions.IllegalResponseCodeException;
 import com.xuxiaocheng.WList.Exceptions.WrongResponseException;
 import com.xuxiaocheng.WList.Server.WListServer;
+import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
 import okhttp3.Cookie;
 import okhttp3.FormBody;
@@ -310,7 +312,7 @@ HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Fi
             final String name = info.getString("name");
             final Long id = info.getLong("id");
             if (name == null || id == null) continue;
-            CompletableFuture.runAsync(() -> {
+            CompletableFuture.runAsync(HExceptionWrapper.wrapRunnable(() -> {
                 try {
                     final String url = DriverHelper_lanzou.getFileDownloadUrl(configuration, id.longValue());
                     if (url == null || interrupttedFlag.get()) return;
@@ -319,12 +321,10 @@ HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Fi
                     set.add(new FileSqlInformation(new FileLocation(configuration.getName(), id.longValue()),
                             directoryId, name, FileSqlInterface.FileSqlType.RegularFile, fixed.getFirst().longValue(),
                             fixed.getSecond(), fixed.getSecond(), "", null));
-                } catch (final IOException exception) {
-                    HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
                 } finally {
                     latch.countDown();
                 }
-            }, WListServer.IOExecutors);
+            }), WListServer.IOExecutors).exceptionally(MiscellaneousUtil.exceptionHandler());
         }
         try {
             latch.await();
