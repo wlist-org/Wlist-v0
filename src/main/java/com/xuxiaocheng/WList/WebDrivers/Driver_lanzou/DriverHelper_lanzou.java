@@ -2,11 +2,11 @@ package com.xuxiaocheng.WList.WebDrivers.Driver_lanzou;
 
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
+import com.xuxiaocheng.HeadLibs.DataStructures.OptionalNullable;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
-import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
@@ -410,4 +410,51 @@ HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Fi
                 parentId, name, FileSqlInterface.FileSqlType.RegularFile, size, now, now, md5, null));
     }
 
+    static @Nullable UnionPair<@NotNull LocalDateTime, @NotNull FailureReason> moveFile(final @NotNull DriverConfiguration_lanzou configuration, final long fileId, final long parentId) throws IOException {
+        final FormBody.Builder builder = new FormBody.Builder()
+                .add("file_id", String.valueOf(fileId))
+                .add("folder_id", String.valueOf(parentId));
+        final JSONObject json;
+        final LocalDateTime now;
+        try {
+            if (parentId == 0) throw new IllegalResponseCodeException(0, "\u6CA1\u6709\u627E\u5230\u6587\u4EF6", ParametersMap.create());
+            json = DriverHelper_lanzou.task(configuration, 20, builder, 1);
+            now = LocalDateTime.now();
+        } catch (final IllegalResponseCodeException exception) {
+            if (exception.getCode() == 0) {
+                if ("\u79FB\u52A8\u5931\u8D25\uFF0C\u6587\u4EF6\u5DF2\u5728\u6B64\u76EE\u5F55".equals(exception.getMeaning()))
+                    return null;
+                if ("\u6CA1\u6709\u627E\u5230\u6587\u4EF6".equals(exception.getMeaning()))
+                    return UnionPair.fail(FailureReason.byNoSuchFile("Moving (source).", new FileLocation(configuration.getName(), fileId)));
+                if ("\u6CA1\u6709\u627E\u5230\u6587\u4EF6\u5939".equals(exception.getMeaning()))
+                    return UnionPair.fail(FailureReason.byNoSuchFile("Moving (target).", new FileLocation(configuration.getName(), parentId)));
+            }
+            throw exception;
+        }
+        final String message = json.getString("info");
+        if (!"\u79FB\u52A8\u6210\u529F".equals(message))
+            throw new WrongResponseException("Moving.", message, ParametersMap.create()
+                    .add("configuration", configuration).add("fileId", fileId).add("parentId", parentId).add("json", json));
+        return UnionPair.ok(now);
+    }
+
+    static @Nullable OptionalNullable<FailureReason> renameFile(final @NotNull DriverConfiguration_lanzou configuration, final long fileId, final @NotNull String name) throws IOException {
+        if (!DriverHelper_lanzou.filenamePredication.test(name))
+            return OptionalNullable.of(FailureReason.byInvalidName("Renaming.", new FileLocation(configuration.getName(), fileId), name));
+        final FormBody.Builder builder = new FormBody.Builder()
+                .add("file_id", String.valueOf(fileId))
+                .add("file_name", name)
+                .add("type", "2");
+        final JSONObject json;
+        try {
+            json = DriverHelper_lanzou.task(configuration, 46, builder, 1);
+        } catch (final IllegalResponseCodeException exception) {
+            if (exception.getCode() == 0 && "\u6B64\u529F\u80FD\u4EC5\u4F1A\u5458\u4F7F\u7528\uFF0C\u8BF7\u5148\u5F00\u901A\u4F1A\u5458".equals(exception.getMeaning()))
+                return null;
+            throw exception;
+        }
+        // TODO: Unchecked.
+HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Running in vip mode (rename): ", json);
+        return OptionalNullable.empty();
+    }
 }

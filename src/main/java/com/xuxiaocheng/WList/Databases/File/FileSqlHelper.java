@@ -194,10 +194,12 @@ public final class FileSqlHelper implements FileSqlInterface {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    UPDATE %s SET type = ? WHERE id == ?;
-                """, this.tableName))) {
+                    UPDATE %s SET type = ? %s WHERE id == ?;
+                """, this.tableName, empty ? ", size = ?" : ""))) {
                 statement.setInt(1, (empty ? FileSqlInterface.FileSqlType.EmptyDirectory : FileSqlInterface.FileSqlType.Directory).ordinal());
-                statement.setLong(2, id);
+                if (empty)
+                    statement.setLong(2, 0L);
+                statement.setLong(empty ? 3 : 2, id);
                 statement.executeUpdate();
             }
             connection.commit();
@@ -370,8 +372,16 @@ public final class FileSqlHelper implements FileSqlInterface {
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
             connection.setAutoCommit(false);
             final Map<Long, FileSqlInformation> cached = this.selectFiles(ids, connectionId.get());
-            this.insertFilesForce(AStreams.streamToList(inserters.stream().map(d ->
-                    d.mergeCachedInformation(cached.get(d.id())))), connectionId.get());
+            this.insertFilesForce(AStreams.streamToList(inserters.stream().map(d -> {
+                @Nullable final FileSqlInformation cached1 = cached.get(d.id());
+                if (cached1 == null || (cached1.createTime() == null && cached1.updateTime() == null && cached1.md5().isEmpty())
+                        || (d.createTime() != null && d.updateTime() != null && !d.md5().isEmpty()))
+                    return d;
+                return new FileSqlInformation(d.location(), d.parentId(), d.name(), d.type(), d.size(),
+                        d.createTime() == null ? cached1.createTime() : d.createTime(),
+                        d.updateTime() == null ? cached1.updateTime() : d.updateTime(),
+                        d.md5().isEmpty() ? cached1.md5() : d.md5(), d.others());
+            })), connectionId.get()); // TODO: No select and update directly.
             connection.commit();
         }
     }

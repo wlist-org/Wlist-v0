@@ -6,13 +6,17 @@ import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.WList.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInterface;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
+import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.UploadMethods;
+import com.xuxiaocheng.WList.Server.WListServer;
+import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
 import okhttp3.Headers;
 import okhttp3.OkHttpClient;
@@ -22,6 +26,8 @@ import org.jetbrains.annotations.UnmodifiableView;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 
 public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     /**
@@ -189,31 +195,53 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     /**
      * Move file/directory.
      * @param sourceLocation The file/directory location to move.
-     * @param targetLocation The target directory location.
+     * @param targetParentLocation The target directory location.
      * @param policy Duplicate policy.
      * @return The information of new file/directory.
      * @throws Exception Something went wrong.
      */
     @SuppressWarnings("OverlyBroadThrowsClause")
-    default @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> move(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetLocation, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+    default @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> move(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final Options.@NotNull DuplicatePolicy policy) throws Exception {
         final FileSqlInformation source = this.info(sourceLocation);
         if (source == null)
             return UnionPair.fail(FailureReason.byNoSuchFile("Moving.", sourceLocation));
-        if (source.isDirectory())
-            throw new UnsupportedOperationException("Moving directory by default algorithm.");
-        if (source.location().equals(targetLocation))
+        if (source.isDirectory()) {
+            final UnionPair<FileSqlInformation, FailureReason> directory = this.createDirectory(targetParentLocation, source.name(), policy);
+            if (directory.isFailure())
+                return UnionPair.fail(directory.getE());
+            Triad.ImmutableTriad<Long, Long, List<FileSqlInformation>> list;
+            do {
+                list = this.list(sourceLocation, Options.DirectoriesOrFiles.OnlyDirectories, DriverUtil.DefaultLimitPerRequestPage, 0, DriverUtil.DefaultOrderPolicy, DriverUtil.DefaultOrderDirection);
+                if (list == null)
+                    return directory;
+                for (final FileSqlInformation f: list.getC())
+                    this.move(f.location(), directory.getT().location(), policy);
+            } while (list.getB().longValue() > 0);
+            do {
+                list = this.list(sourceLocation, Options.DirectoriesOrFiles.Both, DriverUtil.DefaultLimitPerRequestPage, 0, DriverUtil.DefaultOrderPolicy, DriverUtil.DefaultOrderDirection);
+                if (list == null)
+                    break;
+                final CountDownLatch latch = new CountDownLatch(list.getC().size());
+                for (final FileSqlInformation f: list.getC())
+                    CompletableFuture.runAsync(HExceptionWrapper.wrapRunnable(() -> this.move(f.location(), directory.getT().location(), policy),
+                            latch::countDown), WListServer.ServerExecutors).exceptionally(MiscellaneousUtil.exceptionHandler());
+                latch.await();
+            } while (list.getA().longValue() > 0);
+            return directory;
+        }
+        if (source.location().equals(targetParentLocation))
             return UnionPair.ok(source);
-        final UnionPair<FileSqlInformation, FailureReason> information = this.copy(sourceLocation, targetLocation, source.name(), policy);
+        final UnionPair<FileSqlInformation, FailureReason> information = this.copy(sourceLocation, targetParentLocation, source.name(), policy);
         if (information.isFailure())
             return UnionPair.fail(information.getE());
         try {
             this.delete(sourceLocation);
         } catch (final Exception exception) {
             try {
-                this.delete(targetLocation);
+                this.delete(targetParentLocation);
             } catch (final Exception e) {
                 throw new IllegalStateException("Failed to delete target file after a failed deletion of source file when moving file by default algorithm." +
-                        ParametersMap.create().add("sourceLocation", sourceLocation).add("targetLocation", targetLocation).add("policy", policy).add("exception", exception), e);
+                        ParametersMap.create().add("sourceLocation", sourceLocation).add("targetParentLocation", targetParentLocation).add("policy", policy).add("exception", exception), e);
             }
             throw exception;
         }

@@ -95,7 +95,7 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
     }
 
     public abstract static class LocalSideDriverConfiguration {
-        protected @NotNull String displayName;
+        protected @NotNull String displayName = "driver";
         protected @NotNull LocalDateTime createTime = LocalDateTime.now();
         // TODO modify update time.
         protected @NotNull LocalDateTime updateTime = LocalDateTime.now();

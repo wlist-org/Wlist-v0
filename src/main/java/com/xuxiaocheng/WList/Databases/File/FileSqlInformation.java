@@ -32,16 +32,6 @@ public record FileSqlInformation(@NotNull FileLocation location, long parentId, 
         return this.type != FileSqlInterface.FileSqlType.RegularFile;
     }
 
-    public @NotNull FileSqlInformation mergeCachedInformation(final @Nullable FileSqlInformation cached) {
-        if (cached == null || (cached.createTime == null && cached.updateTime == null && cached.md5.isEmpty())
-                || (this.createTime != null && this.updateTime != null && !this.md5.isEmpty()))
-            return this;
-        return new FileSqlInformation(this.location, this.parentId, this.name, this.type, this.size,
-                this.createTime == null ? cached.createTime : this.createTime,
-                this.updateTime == null ? cached.updateTime : this.updateTime,
-                this.md5.isEmpty() ? cached.md5 : this.md5, this.others);
-    }
-
     @Override
     public boolean equals(final @Nullable Object o) {
         if (this == o) return true;

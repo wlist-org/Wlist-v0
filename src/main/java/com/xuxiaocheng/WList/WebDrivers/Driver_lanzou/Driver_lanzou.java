@@ -133,14 +133,16 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
     public void delete(final @NotNull FileLocation location) throws IOException, SQLException, InterruptedException {
         final FileSqlInformation information = DriverManager_lanzou.getFileInformation(this.configuration, location.id(), null, null);
         if (information != null)
-            DriverManager_lanzou.trashFile(this.configuration, information, null, null);
+            DriverManager_lanzou.trash(this.configuration, information, null, null);
     }
 
     // Default copy method.
 
     @Override
-    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> move(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetLocation, final Options.@NotNull DuplicatePolicy policy) throws Exception {
-        return DriverInterface.super.move(sourceLocation, targetLocation, policy);
+    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> move(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+        final FileSqlInformation information = DriverManager_lanzou.getFileInformation(this.configuration, sourceLocation.id(), null, null);
+        if (information == null) return UnionPair.fail(FailureReason.byNoSuchFile("Moving (source).", sourceLocation));
+        return DriverManager_lanzou.move(this.configuration, information, targetParentLocation.id(), policy, null);
     }
 
     @Override
