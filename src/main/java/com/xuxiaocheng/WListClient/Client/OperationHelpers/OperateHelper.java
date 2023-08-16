@@ -26,8 +26,10 @@ public final class OperateHelper {
             throw new UnsupportedOperationException(ByteBufIOUtil.readUTF(receive));
         if (state == Operation.State.Broadcast)
             throw new WrongStateException(Operation.State.Broadcast, receive.toString());
-        if (state == Operation.State.ServerError || state == Operation.State.NoPermission)
-            throw new WrongStateException(state);
+        if (state == Operation.State.ServerError)
+            throw new WrongStateException(Operation.State.ServerError);
+        if (state == Operation.State.NoPermission)
+            throw new NoPermissionException();
         if (state == Operation.State.Unsupported)
             throw new WrongStateException(Operation.State.Unsupported, ByteBufIOUtil.readUTF(receive));
         return state == Operation.State.Success;
@@ -57,6 +59,7 @@ public final class OperateHelper {
         return send;
     }
 
+    // TODO
     static void logOperation(final Operation.@NotNull Type operation, final @Nullable Supplier<? extends @NotNull ParametersMap> parameters) {
         HLog.getInstance("ClientLogger").log(HLogLevel.DEBUG, "Operate: ", operation,
                 (Supplier<String>) () -> parameters == null ? "" : parameters.get().toString());

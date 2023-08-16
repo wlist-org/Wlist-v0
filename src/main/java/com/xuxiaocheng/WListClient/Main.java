@@ -29,13 +29,14 @@ public final class Main {
 
     public static void main(final String[] args) throws Exception {
         Main.logger.log(HLogLevel.FINE, "Hello WList Client Java Library v0.2.2!");
-
         GlobalConfiguration.initialize(null);
         try (final WListClientInterface client = new WListClient(new InetSocketAddress(5212))) {
-            final String token = OperateUserHelper.login(client, "admin", "HCkC228o");
+            final String token = OperateUserHelper.login(client, "admin", "123456");
             HLog.DefaultLogger.log("", "Got token: ", token);
             if (token != null) {
-                OperateServerHelper.closeServer(client, token);
+                if (OperateServerHelper.closeServer(client, token))
+                    return;
+                assert false;
             }
         } finally {
             WListClient.ClientThreadPool.shutdownGracefully();

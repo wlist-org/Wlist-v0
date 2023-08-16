@@ -22,9 +22,11 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -164,9 +166,18 @@ public final class YamlHelper {
     public static @Nullable @UnmodifiableView Map<@NotNull String, @NotNull Object> transferMapNode(final @Nullable Object obj, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String slot) {
         if (obj == null) return null;
         if (!(obj instanceof Map<?, ?> map)) {
-            errors.add(Pair.ImmutablePair.makeImmutablePair(slot, "Require map node." + ParametersMap.create().add("obj", obj)));
+            errors.add(Pair.ImmutablePair.makeImmutablePair(slot, "Require map node." + ParametersMap.create().add("real", obj.getClass()).add("obj", obj)));
             return null;
         }
         return YamlHelper.normalizeMapNode(map);
+    }
+
+    public static @Nullable @UnmodifiableView List<@NotNull Object> transferListNode(final @Nullable Object obj, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String slot) {
+        if (obj == null) return null;
+        if (!(obj instanceof ArrayList<?> list)) {
+            errors.add(Pair.ImmutablePair.makeImmutablePair(slot, "Require list node." + ParametersMap.create().add("real", obj.getClass()).add("obj", obj)));
+            return null;
+        }
+        return Collections.unmodifiableList(list);
     }
 }
