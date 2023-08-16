@@ -139,15 +139,15 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
     // Default copy method.
 
     @Override
-    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> move(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> move(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final Options.@NotNull DuplicatePolicy policy) throws IOException, SQLException, InterruptedException {
         final FileSqlInformation information = DriverManager_lanzou.getFileInformation(this.configuration, sourceLocation.id(), null, null);
         if (information == null) return UnionPair.fail(FailureReason.byNoSuchFile("Moving (source).", sourceLocation));
         return DriverManager_lanzou.move(this.configuration, information, targetParentLocation.id(), policy, null);
     }
 
     @Override
-    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> rename(final @NotNull FileLocation sourceLocation, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
-        return DriverInterface.super.rename(sourceLocation, name, policy);
+    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> rename(final @NotNull FileLocation sourceLocation, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws IOException, SQLException {
+        return DriverManager_lanzou.rename(this.configuration, sourceLocation.id(), name, policy, null);
     }
 
     @Override

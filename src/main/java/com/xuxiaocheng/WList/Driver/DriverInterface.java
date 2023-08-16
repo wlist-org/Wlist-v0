@@ -8,6 +8,8 @@ import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
+import com.xuxiaocheng.HeadLibs.Logger.HLog;
+import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInterface;
@@ -152,6 +154,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      */
     @SuppressWarnings("OverlyBroadThrowsClause")
     default @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> copy(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final @NotNull String targetFilename, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+        HLog.getInstance("ServerLogger").log(HLogLevel.WARN, "Copying by default algorithm.", ParametersMap.create().add("sourceLocation", sourceLocation).add("targetParentLocation", targetParentLocation).add("targetFilename", targetFilename).add("policy", policy));
         final FileSqlInformation source = this.info(sourceLocation);
         if (source == null || source.isDirectory())
             return UnionPair.fail(FailureReason.byNoSuchFile("Copying.", sourceLocation));
@@ -202,6 +205,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      */
     @SuppressWarnings("OverlyBroadThrowsClause")
     default @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> move(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+        HLog.getInstance("ServerLogger").log(HLogLevel.WARN, "Moving by default algorithm.", ParametersMap.create().add("sourceLocation", sourceLocation).add("targetParentLocation", targetParentLocation).add("policy", policy));
         final FileSqlInformation source = this.info(sourceLocation);
         if (source == null)
             return UnionPair.fail(FailureReason.byNoSuchFile("Moving.", sourceLocation));
@@ -217,16 +221,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
                 for (final FileSqlInformation f: list.getC())
                     this.move(f.location(), directory.getT().location(), policy);
             } while (list.getB().longValue() > 0);
-            do {
-                list = this.list(sourceLocation, Options.DirectoriesOrFiles.Both, DriverUtil.DefaultLimitPerRequestPage, 0, DriverUtil.DefaultOrderPolicy, DriverUtil.DefaultOrderDirection);
-                if (list == null)
-                    break;
-                final CountDownLatch latch = new CountDownLatch(list.getC().size());
-                for (final FileSqlInformation f: list.getC())
-                    CompletableFuture.runAsync(HExceptionWrapper.wrapRunnable(() -> this.move(f.location(), directory.getT().location(), policy),
-                            latch::countDown), WListServer.ServerExecutors).exceptionally(MiscellaneousUtil.exceptionHandler());
-                latch.await();
-            } while (list.getA().longValue() > 0);
+            this.moveFilesInDirectory(sourceLocation, policy, directory);
             return directory;
         }
         if (source.location().equals(targetParentLocation))
@@ -258,11 +253,18 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      */
     @SuppressWarnings("OverlyBroadThrowsClause")
     default @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> rename(final @NotNull FileLocation sourceLocation, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+        HLog.getInstance("ServerLogger").log(HLogLevel.WARN, "Renaming by default algorithm.", ParametersMap.create().add("sourceLocation", sourceLocation).add("name", name).add("policy", policy));
         final FileSqlInformation source = this.info(sourceLocation);
         if (source == null)
             return UnionPair.fail(FailureReason.byNoSuchFile("Renaming.", sourceLocation));
-        if (source.isDirectory())
-            throw new UnsupportedOperationException("Renaming directory by default algorithm.");
+        if (source.isDirectory()) {
+            final UnionPair<FileSqlInformation, FailureReason> directory = this.createDirectory(new FileLocation(sourceLocation.driver(), source.parentId()), name, policy);
+            if (directory.isFailure())
+                return UnionPair.fail(directory.getE());
+            this.moveFilesInDirectory(sourceLocation, policy, directory);
+            this.delete(sourceLocation);
+            return directory;
+        }
         if (source.name().equals(name))
             return UnionPair.ok(source);
         final UnionPair<FileSqlInformation, FailureReason> information = this.copy(sourceLocation, sourceLocation, name, policy);
@@ -280,5 +282,20 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
             throw exception;
         }
         return information;
+    }
+
+    @SuppressWarnings("OverlyBroadThrowsClause")
+    private void moveFilesInDirectory(final @NotNull FileLocation sourceLocation, final Options.@NotNull DuplicatePolicy policy, final @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> directory) throws Exception {
+        Triad.ImmutableTriad<Long, Long, List<FileSqlInformation>> list;
+        do {
+            list = this.list(sourceLocation, Options.DirectoriesOrFiles.Both, 10, 0, DriverUtil.DefaultOrderPolicy, DriverUtil.DefaultOrderDirection);
+            if (list == null)
+                break;
+            final CountDownLatch latch = new CountDownLatch(list.getC().size());
+            for (final FileSqlInformation f: list.getC())
+                CompletableFuture.runAsync(HExceptionWrapper.wrapRunnable(() -> this.move(f.location(), directory.getT().location(), policy),
+                        latch::countDown), WListServer.ServerExecutors).exceptionally(MiscellaneousUtil.exceptionHandler());
+            latch.await();
+        } while (list.getA().longValue() > 0);
     }
 }

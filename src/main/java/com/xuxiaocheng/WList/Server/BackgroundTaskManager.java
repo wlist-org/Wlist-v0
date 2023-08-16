@@ -12,6 +12,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -51,13 +52,13 @@ public final class BackgroundTaskManager {
 
     private static final @NotNull Map<@NotNull BackgroundTaskIdentify, @NotNull CompletableFuture<?>> TaskMap = new ConcurrentHashMap<>();
 
-    public static void background(final @NotNull BackgroundTaskIdentify identify, final @NotNull RunnableE runnable, final boolean removeLockAfterRun, final @NotNull ConsumerE<? super @Nullable Exception> finisherAfterRun) {
+    public static void background(final @NotNull BackgroundTaskIdentify identify, final @NotNull RunnableE runnable, final boolean removeLockAfterRun, final @Nullable ConsumerE<? super @Nullable Throwable> finisherAfterRun) {
         final boolean[] flag = {true};
         BackgroundTaskManager.TaskMap.computeIfAbsent(identify, k -> {
             flag[0] = false;
             return CompletableFuture.runAsync(() -> {
                 try {
-                    HExceptionWrapper.wrapRunnable(runnable, finisherAfterRun, true).run();
+                    HExceptionWrapper.wrapRunnable(runnable, Objects.requireNonNullElse(finisherAfterRun, ConsumerE.emptyConsumerE()), false).run();
                 } catch (final Throwable throwable) {
                     HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), throwable);
                 } finally {

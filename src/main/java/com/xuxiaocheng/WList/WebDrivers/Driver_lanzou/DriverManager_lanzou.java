@@ -10,7 +10,6 @@ import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Helpers.HMessageDigestHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMiscellaneousHelper;
-import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.WList.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInterface;
@@ -43,6 +42,7 @@ import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -136,11 +136,8 @@ public final class DriverManager_lanzou {
                 final FileSqlInformation information = list.getFirst().next();
                 if (information.id() == id) {
                     BackgroundTaskManager.background(new BackgroundTaskManager.BackgroundTaskIdentify(BackgroundTaskManager.BackgroundTaskType.Driver,
-                            configuration.getName(), "Sync files list.", parentId.toString()), () ->
-                            HMiscellaneousHelper.consumeIterator(list.getFirst(), list.getSecond()), false, e -> {
-                        if (e != null)
-                            HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), e);
-                    });
+                            configuration.getName(), "Sync files list.", parentId.toString()), () -> /*Held connection id*/
+                            HMiscellaneousHelper.consumeIterator(list.getFirst(), list.getSecond()), false, null);
                     connection.commit();
                     return information;
                 }
@@ -212,11 +209,22 @@ public final class DriverManager_lanzou {
             if (information.isDirectory()) {
                 Triad.ImmutableTriad<Long, Long, List<FileSqlInformation>> list;
                 do {
-                    list = DriverManager_lanzou.listFiles(configuration, information.id(), Options.DirectoriesOrFiles.Both, DriverUtil.DefaultLimitPerRequestPage, 0, DriverUtil.DefaultOrderPolicy, DriverUtil.DefaultOrderDirection, connectionId.get());
+                    list = DriverManager_lanzou.listFiles(configuration, information.id(), Options.DirectoriesOrFiles.OnlyDirectories, DriverUtil.DefaultLimitPerRequestPage, 0, DriverUtil.DefaultOrderPolicy, DriverUtil.DefaultOrderDirection, connectionId.get());
                     if (list == null)
                         return;
                     for (final FileSqlInformation f: list.getC())
                         DriverManager_lanzou.trash(configuration, f, connectionId.get(), trashConnectionId.get());
+                } while (list.getB().longValue() > 0);
+                do {
+                    list = DriverManager_lanzou.listFiles(configuration, information.id(), Options.DirectoriesOrFiles.Both, DriverUtil.DefaultLimitPerRequestPage, 0, DriverUtil.DefaultOrderPolicy, DriverUtil.DefaultOrderDirection, connectionId.get());
+                    if (list == null)
+                        return;
+                    final CountDownLatch latch = new CountDownLatch(list.getC().size());
+                    for (final FileSqlInformation f: list.getC())
+                        CompletableFuture.runAsync(HExceptionWrapper.wrapRunnable(() ->
+                                                DriverManager_lanzou.trash(configuration, f, connectionId.get(), trashConnectionId.get()),
+                                latch::countDown), WListServer.IOExecutors).exceptionally(MiscellaneousUtil.exceptionHandler());
+                    latch.await();
                 } while (list.getA().longValue() > 0);
                 time = LocalDateTime.now();
                 DriverHelper_lanzou.trashDirectories(configuration, information.id());
@@ -225,6 +233,7 @@ public final class DriverManager_lanzou {
                 DriverHelper_lanzou.trashFile(configuration, information.id());
             }
             FileManager.deleteFileRecursively(configuration.getName(), information.id(), connectionId.get());
+            FileManager.calculateDirectorySizeRecursively(configuration.getName(), information.parentId(), connectionId.get());
             final TrashedSqlInformation trashed = TrashedSqlInformation.fromFileSqlInformation(information, time, null);
             TrashedFileManager.insertOrUpdateFile(configuration.getName(), trashed, trashConnectionId.get());
             trashConnection.commit();
@@ -273,7 +282,10 @@ public final class DriverManager_lanzou {
             if (duplicate.getT().isFailure()) {connection.commit();return UnionPair.ok(duplicate.getT().getE());}
             final String realName = duplicate.getT().getT();
             final UnionPair<FileSqlInformation, FailureReason> information = DriverHelper_lanzou.createDirectory(configuration, realName, parentId);
-            if (information.isSuccess()) FileManager.insertFileForce(configuration.getName(), information.getT(), connectionId.get()); // TODO
+            if (information.isSuccess()) {
+                FileManager.insertFileForce(configuration.getName(), information.getT(), connectionId.get());
+                FileManager.updateDirectoryType(configuration.getName(), parentId, false, connectionId.get());
+            }
             connection.commit();
             return information;
         }
@@ -310,11 +322,12 @@ public final class DriverManager_lanzou {
 
     static @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> move(final @NotNull DriverConfiguration_lanzou configuration, final @NotNull FileSqlInformation source, final long targetId, final Options.@NotNull DuplicatePolicy policy, final @Nullable String _connectionId) throws IOException, SQLException, InterruptedException {
         if (source.parentId() == targetId) return UnionPair.ok(source);
-        if (!configuration.getCacheSide().isVip() && policy == Options.DuplicatePolicy.KEEP) // TODO: vip
+        if (policy == Options.DuplicatePolicy.KEEP) // TODO: vip
             throw new UnsupportedOperationException("Driver lanzou not support rename file while moving.");
+        if (source.isDirectory()) // TODO: directory
+            throw new UnsupportedOperationException("Driver lanzou not support move directory.");
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = FileManager.getConnection(configuration.getName(), _connectionId, connectionId)) {
-            // TODO directory.
             final UnionPair<UnionPair<String, FileSqlInformation>, FailureReason> duplicate = DriverManager_lanzou.getDuplicatePolicyName(configuration, targetId, source.name(), false, policy, "Moving.", connectionId.get());
             if (duplicate.isFailure()) {connection.commit();return UnionPair.fail(duplicate.getE());}
             assert duplicate.getT().getT().equals(source.name());
@@ -330,23 +343,10 @@ public final class DriverManager_lanzou {
             return UnionPair.ok(source);
         }
     }
-/*
-    static @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> renameFile(final @NotNull DriverConfiguration_lanzou configuration, final long id, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @Nullable String _connectionId) throws IllegalParametersException, IOException, SQLException {
+
+    static @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> rename(final @NotNull DriverConfiguration_lanzou configuration, final long id, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @Nullable String _connectionId) throws IOException, SQLException {
         if (!DriverHelper_lanzou.filenamePredication.test(name))
             return UnionPair.fail(FailureReason.byInvalidName(name, new FileLocation(configuration.getName(), id), name));
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = FileManager.getConnection(configuration.getName(), _connectionId, connectionId)) {
-            connection.setAutoCommit(false);
-            final FileSqlInformation source = DriverManager_lanzou.getFileInformation(configuration, id, connectionId.get());
-            if (source == null) {connection.commit();return UnionPair.fail(FailureReason.byNoSuchFile("Renaming file.", new FileLocation(configuration.getName(), id)));}
-            if (name.equals(source.name())) return UnionPair.ok(source);
-            final UnionPair<UnionPair<String, FileSqlInformation>, FailureReason> duplicate = DriverManager_lanzou.getDuplicatePolicyName(configuration, source.parentId(), name, false, policy, "Renaming file.", connectionId.get());
-            if (duplicate.isFailure()) {connection.commit();return UnionPair.fail(duplicate.getE());}
-            final UnionPair<FileSqlInformation, FailureReason> information = DriverHelper_lanzou.renameFile(configuration, id, duplicate.getT().getT(), policy);
-            if (information.isFailure()) {connection.commit();return information;}
-            FileManager.insertOrUpdateFile(configuration.getName(), information.getT(), connectionId.get());
-            connection.commit();
-            return information;
-        }
-    }*/
+        throw new UnsupportedOperationException("Driver lanzou not support rename."); // TODO: vip
+    }
 }

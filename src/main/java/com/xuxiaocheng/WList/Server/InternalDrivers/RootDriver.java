@@ -233,6 +233,55 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
         }
     }
 
+    @Override
+    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> copy(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final @NotNull String targetFilename, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+        if (SpecialDriverName.RootDriver.getIdentifier().equals(sourceLocation.driver()))
+            throw new UnsupportedOperationException("Cannot copy from root driver.");
+        if (SpecialDriverName.RootDriver.getIdentifier().equals(targetParentLocation.driver()))
+            throw new UnsupportedOperationException("Cannot copy to root driver.");
+        if (sourceLocation.driver().equals(targetParentLocation.driver())) {
+            final DriverInterface<?> real = DriverManager.getDriver(sourceLocation.driver());
+            if (real == null) return UnionPair.fail(FailureReason.byNoSuchFile("Copying.", sourceLocation));
+            try {
+                return real.copy(sourceLocation, targetParentLocation, targetFilename, policy);
+            } finally {
+                DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+            }
+        }
+        return DriverInterface.super.copy(sourceLocation, targetParentLocation, targetFilename, policy);
+    }
+
+    @Override
+    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> move(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+        if (SpecialDriverName.RootDriver.getIdentifier().equals(sourceLocation.driver()))
+            throw new UnsupportedOperationException("Cannot move from root driver.");
+        if (SpecialDriverName.RootDriver.getIdentifier().equals(targetParentLocation.driver()))
+            throw new UnsupportedOperationException("Cannot move to root driver.");
+        if (sourceLocation.driver().equals(targetParentLocation.driver())) {
+            final DriverInterface<?> real = DriverManager.getDriver(sourceLocation.driver());
+            if (real == null) return UnionPair.fail(FailureReason.byNoSuchFile("Moving.", sourceLocation));
+            try {
+                return real.move(sourceLocation, targetParentLocation, policy);
+            } finally {
+                DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+            }
+        }
+        return DriverInterface.super.move(sourceLocation, targetParentLocation, policy);
+    }
+
+    @Override
+    public @NotNull UnionPair<@NotNull FileSqlInformation, @NotNull FailureReason> rename(final @NotNull FileLocation sourceLocation, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+        if (SpecialDriverName.RootDriver.getIdentifier().equals(sourceLocation.driver()))
+            throw new UnsupportedOperationException("Cannot rename root driver.");
+        final DriverInterface<?> real = DriverManager.getDriver(sourceLocation.driver());
+        if (real == null) return UnionPair.fail(FailureReason.byNoSuchFile("Renaming.", sourceLocation));
+        try {
+            return real.rename(sourceLocation, name, policy);
+        } finally {
+            DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+        }
+    }
+
     protected static class RootDriverConfiguration extends DriverConfiguration<RootDriverConfiguration.LocalSide, RootDriverConfiguration.WebSide, RootDriverConfiguration.CacheSide> {
         private RootDriverConfiguration() {
             super("RootDriver", LocalSide::new, WebSide::new, CacheSide::new);
