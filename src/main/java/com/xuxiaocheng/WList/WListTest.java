@@ -42,7 +42,8 @@ public final class WListTest {
     }
 
     static {
-        HUncaughtExceptionHelper.setUncaughtExceptionListener("listener", (t, e) -> HLog.DefaultLogger.log(HLogLevel.FAULT, "Uncaught exception listened by WListTester. thread: ", t.getName(), e));
+        HUncaughtExceptionHelper.setUncaughtExceptionListener(HUncaughtExceptionHelper.listenerKey, (t, e) ->
+                HLog.DefaultLogger.log(HLogLevel.FAULT, "Uncaught exception listened by WListTester. thread: ", t.getName(), e));
         System.setProperty("io.netty.leakDetectionLevel", "ADVANCED");
     }
 

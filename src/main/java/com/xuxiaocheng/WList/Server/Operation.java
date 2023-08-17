@@ -99,7 +99,7 @@ public final class Operation {
     }
 
     public static @NotNull EnumSet<Permission> defaultPermissions() {
-        return EnumSet.of(Permission.FilesList, Permission.FileDownload);
+        return EnumSet.of(Permission.FilesList);
     }
 
     public static @NotNull EnumSet<Permission> allPermissions() {
@@ -125,7 +125,7 @@ public final class Operation {
                 permissionsSet.add(Permission.values()[Long.numberOfTrailingZeros(current)]);
             }
             return permissionsSet;
-        } catch (final NumberFormatException exception) {
+        } catch (final NumberFormatException | IndexOutOfBoundsException exception) {
             return null;
         }
     }

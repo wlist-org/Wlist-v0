@@ -35,7 +35,6 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.EventExecutorGroup;
 import io.netty.util.concurrent.Future;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import javax.crypto.NoSuchPaddingException;
 import java.io.IOException;
@@ -164,7 +163,7 @@ public class WListServer {
         }
 
         @Override
-        protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) throws ServerException {
+        protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) throws ServerException, IOException {
             final Channel channel = ctx.channel();
             WListServer.logger.log(HLogLevel.VERBOSE, "Read: ", channel.remoteAddress(), " len: ", msg.readableBytes(), " cipher: ", HBinaryStringHelper.bin(msg.readByte()));
             try {
@@ -178,7 +177,8 @@ public class WListServer {
             } catch (final IOException exception) {
                 assert exception.getCause() instanceof IndexOutOfBoundsException;
                 assert ByteBufIOUtil.class.getName().equals(exception.getStackTrace()[0].getClassName());
-                ServerChannelHandler.directlyWriteMessage(channel, Operation.State.FormatError, exception.getMessage());
+                ServerChannelHandler.write(channel, ServerHandler.composeMessage(Operation.State.FormatError, null));
+                channel.close();
             }
         }
 
@@ -190,16 +190,13 @@ public class WListServer {
                 return;
             }
             WListServer.logger.log(HLogLevel.ERROR, "Exception at ", ctx.channel().remoteAddress(), ": ", cause);
-            ServerChannelHandler.directlyWriteMessage(ctx.channel(), Operation.State.ServerError, null);
-        }
-
-        protected static void directlyWriteMessage(final @NotNull Channel channel, final Operation.@NotNull State state, final @Nullable String message) {
             try {
-                final MessageProto composition = ServerHandler.composeMessage(state, message);
-                ServerChannelHandler.write(channel, composition);
+                ServerChannelHandler.write(ctx.channel(), ServerHandler.composeMessage(Operation.State.ServerError, null));
+            } catch (final CodecException | SocketException exception) {
+                ctx.close();
             } catch (final IOException exception) {
                 WListServer.logger.log(HLogLevel.ERROR, exception);
-                channel.close();
+                ctx.close();
             }
         }
     }
