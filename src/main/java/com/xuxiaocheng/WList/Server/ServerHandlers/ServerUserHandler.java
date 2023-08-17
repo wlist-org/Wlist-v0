@@ -47,8 +47,11 @@ public final class ServerUserHandler {
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
-        if (user == null || (permissions.length > 0 && !user.group().permissions().containsAll(List.of(permissions))))
-            return UnionPair.fail(ServerHandler.NoPermission);
+        if (user == null)
+            return UnionPair.fail(ServerHandler.NoPermission.apply(Operation.Permission.Undefined));
+        for (final Operation.Permission permission: permissions)
+            if (!user.group().permissions().contains(permission))
+                return UnionPair.fail(ServerHandler.NoPermission.apply(permission));
         return UnionPair.ok(user);
     }
 

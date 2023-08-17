@@ -42,7 +42,6 @@ public final class ServerFileHandler { // TODO more logger.
     public static final @NotNull MessageProto InvalidFile = ServerHandler.composeMessage(Operation.State.DataError, "Content");
 
     public static void initialize() {
-        ServerHandlerManager.register(Operation.Type.BuildIndex, ServerFileHandler.doBuildIndex);
         ServerHandlerManager.register(Operation.Type.ListFiles, ServerFileHandler.doListFiles);
         ServerHandlerManager.register(Operation.Type.MakeDirectories, ServerFileHandler.doMakeDirectories);
         ServerHandlerManager.register(Operation.Type.DeleteFile, ServerFileHandler.doDeleteFile);
@@ -56,21 +55,6 @@ public final class ServerFileHandler { // TODO more logger.
         ServerHandlerManager.register(Operation.Type.CopyFile, ServerFileHandler.doCopyFile);
         ServerHandlerManager.register(Operation.Type.MoveFile, ServerFileHandler.doMoveFile);
     }
-
-    public static final @NotNull ServerHandler doBuildIndex = (channel, buffer) -> {
-        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesBuildIndex);
-        final String driver = ByteBufIOUtil.readUTF(buffer);
-        ServerHandler.logOperation(channel, Operation.Type.BuildIndex, user, () -> ParametersMap.create()
-                .add("driver", driver));
-        try {
-            RootDriver.getInstance().buildIndex(driver);
-        } catch (final UnsupportedOperationException exception) {
-            return ServerHandler.Unsupported.apply(exception);
-        } catch (final Exception exception) {
-            throw new ServerException(exception);
-        }
-        return ServerHandler.Success;
-    };
 
     public static final @NotNull ServerHandler doListFiles = (channel, buffer) -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList);
@@ -91,7 +75,7 @@ public final class ServerFileHandler { // TODO more logger.
                 || page < 0 || orderPolicy == null || orderDirection == null || filter == null)
             return ServerHandler.WrongParameters;
         if (refresh && !user.getT().group().permissions().contains(Operation.Permission.FilesBuildIndex))
-            return ServerHandler.NoPermission;
+            return ServerHandler.NoPermission.apply(Operation.Permission.FilesBuildIndex);
         final Triad.ImmutableTriad<Long, Long, List<FileSqlInformation>> list;
         try {
             if (refresh)
@@ -128,7 +112,7 @@ public final class ServerFileHandler { // TODO more logger.
         if (duplicatePolicy == null)
             return ServerHandler.WrongParameters;
         if (duplicatePolicy == Options.DuplicatePolicy.OVER && !user.getT().group().permissions().contains(Operation.Permission.FileDelete))
-            return ServerHandler.NoPermission;
+            return ServerHandler.NoPermission.apply(Operation.Permission.FileDelete);
         final UnionPair<FileSqlInformation, FailureReason> dir;
         try {
             dir = RootDriver.getInstance().createDirectory(parentLocation, directoryName, duplicatePolicy);
@@ -278,7 +262,7 @@ public final class ServerFileHandler { // TODO more logger.
         if (size < 0 || !HMessageDigestHelper.MD5.pattern.matcher(md5).matches() || duplicatePolicy == null)
             return ServerHandler.WrongParameters;
         if (duplicatePolicy == Options.DuplicatePolicy.OVER && !user.getT().group().permissions().contains(Operation.Permission.FileDelete))
-            return ServerHandler.NoPermission;
+            return ServerHandler.NoPermission.apply(Operation.Permission.FileDelete);
         final UnionPair<UploadMethods, FailureReason> methods;
         try {
             methods = RootDriver.getInstance().upload(parentLocation, filename, size, md5, duplicatePolicy);
@@ -375,7 +359,7 @@ public final class ServerFileHandler { // TODO more logger.
         if (duplicatePolicy == null)
             return ServerHandler.WrongParameters;
         if (duplicatePolicy == Options.DuplicatePolicy.OVER && !user.getT().group().permissions().contains(Operation.Permission.FileDelete))
-            return ServerHandler.NoPermission;
+            return ServerHandler.NoPermission.apply(Operation.Permission.FileDelete);
         final UnionPair<FileSqlInformation, FailureReason> file;
         try {
             file = RootDriver.getInstance().copy(source, targetParent, filename, duplicatePolicy);

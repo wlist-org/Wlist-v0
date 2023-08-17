@@ -42,7 +42,8 @@ public interface ServerHandler {
     @NotNull MessageProto Success = ServerHandler.composeMessage(Operation.State.Success, null);
     @NotNull MessageProto DataError = ServerHandler.composeMessage(Operation.State.DataError, null);
     @NotNull MessageProto WrongParameters = ServerHandler.composeMessage(Operation.State.DataError, "Parameters");
-    @NotNull MessageProto NoPermission = ServerHandler.composeMessage(Operation.State.NoPermission, null);
+    @NotNull Function<Operation.@NotNull Permission, @NotNull MessageProto> NoPermission = p ->
+            ServerHandler.composeMessage(Operation.State.NoPermission, p.name());
     @NotNull Function<@NotNull UnsupportedOperationException, @NotNull MessageProto> Unsupported = e ->
             ServerHandler.composeMessage(Operation.State.Unsupported, e.getMessage());
 
