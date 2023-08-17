@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListClient.Client.OperationHelpers;
+package com.xuxiaocheng.WListClient.Client.Exceptions;
 
 import com.xuxiaocheng.WListClient.Server.Operation;
 

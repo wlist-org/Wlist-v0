@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WListClient.Client;
 
+import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WListClient.Main;
@@ -7,6 +8,7 @@ import com.xuxiaocheng.WListClient.Server.MessageClientCiphers;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
@@ -18,14 +20,18 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.crypto.NoSuchPaddingException;
-import java.net.ConnectException;
+import java.io.IOException;
 import java.net.SocketAddress;
 import java.security.NoSuchAlgorithmException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class WListClient implements WListClientInterface {
     public static final int FileTransferBufferSize = 4 << 20;
@@ -33,16 +39,24 @@ public class WListClient implements WListClientInterface {
     private static final @NotNull HLog logger = HLog.createInstance("ClientLogger",
             Main.DebugMode ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1,
             true);
-    public static final @NotNull EventLoopGroup ClientThreadPool = new NioEventLoopGroup(1);
 
+    protected final @NotNull EventLoopGroup clientEventLoop = new NioEventLoopGroup(1, new DefaultThreadFactory("ClientEventLoop"));
     protected final @NotNull SocketAddress address;
-    private final @NotNull Channel channel;
+    private final @NotNull HInitializer<Channel> channel = new HInitializer<>("WListClientChannel");
 
-    public WListClient(final @NotNull SocketAddress address) throws InterruptedException, ConnectException {
+    public WListClient(final @NotNull SocketAddress address) {
         super();
         this.address = address;
+    }
+
+    /**
+     * Require call {@link #close()} even this throws any exception.
+     */
+    @Override
+    public void open() throws IOException, InterruptedException {
+        this.channel.requireUninitialized(null);
         final Bootstrap bootstrap = new Bootstrap();
-        bootstrap.group(WListClient.ClientThreadPool);
+        bootstrap.group(this.clientEventLoop);
         bootstrap.channel(NioSocketChannel.class);
         bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
         bootstrap.option(ChannelOption.SO_REUSEADDR, true);
@@ -57,7 +71,20 @@ public class WListClient implements WListClientInterface {
                 pipeline.addLast("ClientHandler", new ClientChannelInboundHandler(WListClient.this));
             }
         });
-        this.channel = bootstrap.connect(this.address).sync().channel();
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<Throwable> exception = new AtomicReference<>();
+        final ChannelFuture future = bootstrap.connect(this.address).addListener(f -> {
+            exception.set(f.cause());
+            latch.countDown();
+        }).await();
+        latch.await();
+        final Throwable throwable = exception.get();
+        if (throwable != null) {
+            if (throwable instanceof IOException ioException)
+                throw ioException;
+            throw new IOException(throwable);
+        }
+        this.channel.initialize(future.channel());
         synchronized (uninitialized) {
             while (uninitialized.get())
                 uninitialized.wait();
@@ -73,14 +100,28 @@ public class WListClient implements WListClientInterface {
     protected final @NotNull Object receiveLock = new Object();
 
     @Override
-    public @NotNull ByteBuf send(final @Nullable ByteBuf msg) throws InterruptedException {
+    public @NotNull ByteBuf send(final @Nullable ByteBuf msg) throws IOException, InterruptedException {
+        if (!this.isActive())
+            throw new IOException("Closed client.");
         if (msg != null) {
             WListClient.logger.log(HLogLevel.VERBOSE, "Write len: ", msg.readableBytes());
-            this.channel.writeAndFlush(msg);
+            final CountDownLatch latch = new CountDownLatch(1);
+            final AtomicReference<Throwable> exception = new AtomicReference<>();
+            this.channel.getInstance().writeAndFlush(msg).addListener(f -> {
+                exception.set(f.cause());
+                latch.countDown();
+            }).await();
+            latch.await();
+            final Throwable throwable = exception.get();
+            if (throwable != null) {
+                if (throwable instanceof IOException ioException)
+                    throw ioException;
+                throw new IOException(throwable);
+            }
         }
         synchronized (this.receiveLock) {
-            while (this.receive == null)
-                this.receiveLock.wait();
+            while (this.receive == null && this.isActive())
+                this.receiveLock.wait(TimeUnit.SECONDS.toMillis(1));
             final ByteBuf r = this.receive;
             this.receive = null;
             return r;
@@ -89,12 +130,15 @@ public class WListClient implements WListClientInterface {
 
     @Override
     public void close() {
-        this.channel.close().syncUninterruptibly();
+        final Channel channel = this.channel.getInstanceNullable();
+        if (channel != null)
+            channel.close().syncUninterruptibly();
+        this.clientEventLoop.shutdownGracefully().syncUninterruptibly();
     }
 
     @Override
     public boolean isActive() {
-        return this.channel.isActive();
+        return this.channel.getInstance().isActive();
     }
 
     public static class ClientChannelInboundHandler extends SimpleChannelInboundHandler<ByteBuf> {
