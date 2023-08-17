@@ -29,7 +29,7 @@ public final class OperateHelper {
             case Undefined, Broadcast -> throw new WrongStateException(state, receive.toString());
             case ServerError, FormatError -> throw new WrongStateException(state);
             case Unsupported -> throw new UnsupportedOperationException(ByteBufIOUtil.readUTF(receive));
-            case NoPermission -> throw new NoPermissionException();
+            case NoPermission -> throw new NoPermissionException(Operation.valueOfPermission(ByteBufIOUtil.readUTF(receive)));
             case Success -> true;
             case DataError -> false;
         };
@@ -42,7 +42,7 @@ public final class OperateHelper {
             case Undefined, Success, DataError -> throw new WrongStateException(state, receive.toString());
             case ServerError, FormatError -> throw new WrongStateException(state);
             case Unsupported -> throw new UnsupportedOperationException(ByteBufIOUtil.readUTF(receive));
-            case NoPermission -> throw new NoPermissionException();
+            case NoPermission -> throw new NoPermissionException(Operation.valueOfPermission(ByteBufIOUtil.readUTF(receive)));
             case Broadcast -> {}
         }
     }
