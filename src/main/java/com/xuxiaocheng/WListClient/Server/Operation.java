@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.EnumSet;
+import java.util.Objects;
 
 public final class Operation {
     private Operation() {
@@ -29,6 +30,7 @@ public final class Operation {
         ChangeGroup,
         AddPermission,
         RemovePermission,
+        BuildIndex,
         ListFiles,
         MakeDirectories,
         DeleteFile,
@@ -50,6 +52,7 @@ public final class Operation {
         UsersList,
         UsersOperate,
         DriverOperate,
+        FilesBuildIndex,
         FilesList,
         FileDownload,
         FileUpload,
@@ -125,5 +128,9 @@ public final class Operation {
         } catch (final NumberFormatException | IndexOutOfBoundsException exception) {
             return null;
         }
+    }
+
+    public static @NotNull EnumSet<Permission> parsePermissionsNotNull(final @NotNull String permissions) {
+        return Objects.requireNonNullElseGet(Operation.parsePermissions(permissions), Operation::emptyPermissions);
     }
 }

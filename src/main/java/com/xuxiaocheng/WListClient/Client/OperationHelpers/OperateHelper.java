@@ -14,6 +14,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 public final class OperateHelper {
@@ -24,17 +25,14 @@ public final class OperateHelper {
     static boolean handleState(final @NotNull ByteBuf receive) throws IOException, WrongStateException {
         final byte ignoredCipher = ByteBufIOUtil.readByte(receive);
         final Operation.State state = Operation.valueOfState(ByteBufIOUtil.readUTF(receive));
-        if (state == Operation.State.Undefined)
-            throw new UnsupportedOperationException(ByteBufIOUtil.readUTF(receive));
-        if (state == Operation.State.Broadcast)
-            throw new WrongStateException(Operation.State.Broadcast, receive.toString());
-        if (state == Operation.State.ServerError)
-            throw new WrongStateException(Operation.State.ServerError);
-        if (state == Operation.State.NoPermission)
-            throw new NoPermissionException();
-        if (state == Operation.State.Unsupported)
-            throw new WrongStateException(Operation.State.Unsupported, ByteBufIOUtil.readUTF(receive));
-        return state == Operation.State.Success;
+        return switch (state) {
+            case Undefined, Broadcast -> throw new WrongStateException(state, receive.toString());
+            case ServerError, FormatError -> throw new WrongStateException(state);
+            case Unsupported -> throw new UnsupportedOperationException(ByteBufIOUtil.readUTF(receive));
+            case NoPermission -> throw new NoPermissionException();
+            case Success -> true;
+            case DataError -> false;
+        };
     }
 
     static void handleBroadcastState(final @NotNull ByteBuf receive) throws IOException, WrongStateException {
@@ -61,9 +59,17 @@ public final class OperateHelper {
         return send;
     }
 
-    // TODO
-    static void logOperation(final Operation.@NotNull Type operation, final @Nullable Supplier<? extends @NotNull ParametersMap> parameters) {
-        HLog.getInstance("ClientLogger").log(HLogLevel.DEBUG, "Operate: ", operation,
-                (Supplier<String>) () -> parameters == null ? "" : parameters.get().toString());
+    public static final AtomicBoolean logOperation = new AtomicBoolean(true);
+
+    static void logOperating(final Operation.@NotNull Type operation, final @Nullable Supplier<? extends @NotNull ParametersMap> parameters) {
+        if (OperateHelper.logOperation.get())
+            HLog.getInstance("ClientLogger").log(HLogLevel.DEBUG, "Operating: ", operation,
+                    (Supplier<String>) () -> parameters == null ? "" : parameters.get().toString());
+    }
+
+    static void logOperated(final Operation.@NotNull Type operation, final @Nullable Supplier<? extends @NotNull ParametersMap> parameters) {
+        if (OperateHelper.logOperation.get())
+            HLog.getInstance("ClientLogger").log(HLogLevel.DEBUG, "Operated: ", operation,
+                    (Supplier<String>) () -> parameters == null ? "" : parameters.get().toString());
     }
 }

@@ -40,7 +40,7 @@ public class WListClientManager implements Closeable {
         }
     }
 
-    public static @NotNull WListClientInterface quicklyGetClient(final @NotNull SocketAddress address) throws IOException {
+    public static @NotNull WListClientInterface quicklyGetClient(final @NotNull SocketAddress address) throws IOException, InterruptedException {
         return WListClientManager.instances.getInstance(address).getClient();
     }
 
@@ -65,7 +65,7 @@ public class WListClientManager implements Closeable {
     }
 
     public void open() {
-        this.clientPool.initialize(new GenericObjectPool<>(new PooledClientFactory(this.clientConfig), this.poolConfig));
+        this.clientPool.initialize(new GenericObjectPool<>(new PooledClientFactory(this.clientConfig, this), this.poolConfig));
     }
 
     @Override
@@ -73,7 +73,7 @@ public class WListClientManager implements Closeable {
         WListClientManager.quicklyUninitialize(this.clientConfig.address);
     }
 
-    protected record PooledClientFactory(@NotNull ClientManagerConfig configuration) implements PooledObjectFactory<WListClient> {
+    protected record PooledClientFactory(@NotNull ClientManagerConfig configuration, @NotNull WListClientManager manager) implements PooledObjectFactory<WListClient> {
         @Override
         public @NotNull PooledObject<@NotNull WListClient> makeObject() throws IOException, InterruptedException {
             final WListClient client = new WListClient(this.configuration.address);
@@ -107,11 +107,11 @@ public class WListClientManager implements Closeable {
 
     protected final @NotNull Set<@NotNull WrappedClient> activeClients = ConcurrentHashMap.newKeySet();
 
-    public @NotNull WListClientInterface getClient() throws IOException {
+    public @NotNull WListClientInterface getClient() throws IOException, InterruptedException {
         final WListClient real;
         try {
             real = this.clientPool.getInstance().borrowObject();
-        } catch (final IOException exception) {
+        } catch (final IOException | InterruptedException exception) {
             this.close();
             throw exception;
         } catch (final Exception exception) {
