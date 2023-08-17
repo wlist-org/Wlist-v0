@@ -20,7 +20,7 @@ public interface UserSqlInterface extends DatabaseInterface {
     @Contract(pure = true) long getAdminId();
     @NotNull HInitializer<String> getDefaultAdminPassword();
 
-    @NotNull @UnmodifiableView Map<UserSqlInformation.@NotNull Inserter, @NotNull Boolean> insertUsers(final @NotNull Collection<UserSqlInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException;
+    @NotNull @UnmodifiableView Map<UserSqlInformation.@NotNull Inserter, @Nullable Long> insertUsers(final @NotNull Collection<UserSqlInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException;
     void updateUsers(final @NotNull Collection<UserSqlInformation.@NotNull Updater> updaters, final @Nullable String _connectionId) throws SQLException;
     void updateUsersByName(final @NotNull Collection<UserSqlInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException;
     void deleteUsers(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException;

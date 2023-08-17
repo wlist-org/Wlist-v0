@@ -71,7 +71,6 @@ public final class FileSqlHelper implements FileSqlInterface {
     @Override
     public void createTable(final @Nullable String _connectionId) throws SQLException {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate(String.format("""
                     CREATE TABLE IF NOT EXISTS %s (
@@ -110,7 +109,6 @@ public final class FileSqlHelper implements FileSqlInterface {
     @Override
     public void deleteTable(final @Nullable String _connectionId) throws SQLException {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate(String.format("DROP TABLE IF EXISTS %s;", this.tableName));
                 statement.executeUpdate(String.format("DROP TRIGGER IF EXISTS %s_inserter;", this.tableName));
@@ -162,7 +160,6 @@ public final class FileSqlHelper implements FileSqlInterface {
         if (inserters.isEmpty())
             return;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     INSERT INTO %s (id, parent_id, name, type, size, create_time, update_time, md5, others)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -192,7 +189,6 @@ public final class FileSqlHelper implements FileSqlInterface {
     @Override
     public void updateDirectoryType(final long id, final boolean empty, final @Nullable String _connectionId) throws SQLException {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     UPDATE %s SET type = ? %s WHERE id == ?;
                 """, this.tableName, empty ? ", size = ?" : ""))) {
@@ -211,7 +207,6 @@ public final class FileSqlHelper implements FileSqlInterface {
         if (idList.isEmpty())
             return Map.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             final Map<Long, FileSqlInformation> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT * FROM %s WHERE id == ? LIMIT 1;
@@ -230,7 +225,6 @@ public final class FileSqlHelper implements FileSqlInterface {
     @Override
     public @Nullable FileSqlInformation selectFileInDirectory(final long parentId, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             final FileSqlInformation information;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT * FROM %s WHERE parent_id == ? AND name == ? LIMIT 1;
@@ -250,7 +244,6 @@ public final class FileSqlHelper implements FileSqlInterface {
         if (md5List.isEmpty())
             return Map.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             final Map<String, Set<FileSqlInformation>> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT * FROM %s WHERE md5 == ? LIMIT 1;
@@ -271,7 +264,6 @@ public final class FileSqlHelper implements FileSqlInterface {
         if (parentIdList.isEmpty())
             return Map.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             final Map<Long, Set<Long>> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT id FROM %s WHERE parent_id == ?;
@@ -295,7 +287,6 @@ public final class FileSqlHelper implements FileSqlInterface {
         if (parentIdList.isEmpty())
             return Map.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             final Map<Long, Long> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT COUNT(*) FROM %s WHERE parent_id == ?;
@@ -316,7 +307,6 @@ public final class FileSqlHelper implements FileSqlInterface {
     public Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> selectFilesByParentIdInPage(final long parentId, final Options.@NotNull DirectoriesOrFiles filter, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final @Nullable String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
             final long count = this.selectFilesCountByParentId(List.of(parentId), connectionId.get()).get(parentId).longValue();
             final long filterCount;
             if (filter == Options.DirectoriesOrFiles.Both)
@@ -370,7 +360,6 @@ public final class FileSqlHelper implements FileSqlInterface {
         }
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
             final Map<Long, FileSqlInformation> cached = this.selectFiles(ids, connectionId.get());
             this.insertFilesForce(AStreams.streamToList(inserters.stream().map(d -> {
                 @Nullable final FileSqlInformation cached1 = cached.get(d.id());
@@ -392,7 +381,6 @@ public final class FileSqlHelper implements FileSqlInterface {
             return;
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
             final Collection<Long> leave = new HashSet<>();
             final Collection<Long> set = new HashSet<>(idList);
             final Collection<Long> universe = new HashSet<>();
@@ -424,7 +412,6 @@ public final class FileSqlHelper implements FileSqlInterface {
             return;
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
             this.deleteFilesRecursively(AStreams.streamToList(this.selectFilesByMd5(md5List, connectionId.get()).values().stream()
                     .filter(Objects::nonNull).flatMap(Set::stream).map(FileSqlInformation::id)), connectionId.get());
             connection.commit();
@@ -435,7 +422,6 @@ public final class FileSqlHelper implements FileSqlInterface {
     public synchronized @Nullable Long updateDirectorySize(final long directoryId, final long delta, final @Nullable String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
             final FileSqlInformation directory = this.selectFiles(List.of(directoryId), connectionId.get()).get(directoryId);
             if (directory == null || directory.type() != FileSqlType.Directory)
                 return null;
@@ -453,7 +439,6 @@ public final class FileSqlHelper implements FileSqlInterface {
     public synchronized @Nullable Long calculateDirectorySizeRecursively(final long directoryId, final @Nullable String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
             final FileSqlInformation directory = this.selectFiles(List.of(directoryId), connectionId.get()).get(directoryId);
             if (directory == null || !directory.isDirectory())
                 return null;
@@ -500,7 +485,6 @@ public final class FileSqlHelper implements FileSqlInterface {
     private void updateParentsSize(final long directoryId, final @NotNull FileSqlInformation directory, final long realSize, final @Nullable String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     UPDATE %s SET size = ? WHERE id == ?;
                 """, this.tableName))) {

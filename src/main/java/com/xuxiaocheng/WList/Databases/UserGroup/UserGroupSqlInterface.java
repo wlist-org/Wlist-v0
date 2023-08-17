@@ -19,7 +19,7 @@ public interface UserGroupSqlInterface extends DatabaseInterface {
     @Contract(pure = true) long getAdminId();
     @Contract(pure = true) long getDefaultId();
 
-    @NotNull @UnmodifiableView Map<UserGroupSqlInformation.@NotNull Inserter, @NotNull Boolean> insertGroups(final @NotNull Collection<UserGroupSqlInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException;
+    @NotNull @UnmodifiableView Map<UserGroupSqlInformation.@NotNull Inserter, @Nullable Long> insertGroups(final @NotNull Collection<UserGroupSqlInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException;
     void updateGroups(final @NotNull Collection<@NotNull UserGroupSqlInformation> infoList, final @Nullable String _connectionId) throws SQLException;
     void updateGroupsByName(final @NotNull Collection<UserGroupSqlInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException;
     void deleteGroups(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException;

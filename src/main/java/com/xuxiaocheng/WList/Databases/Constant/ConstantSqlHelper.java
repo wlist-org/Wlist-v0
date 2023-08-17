@@ -28,7 +28,6 @@ public final class ConstantSqlHelper implements ConstantSqlInterface {
     @Override
     public void createTable(final @Nullable String _connectionId) throws SQLException {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate("""
                     CREATE TABLE IF NOT EXISTS constants (
@@ -46,7 +45,6 @@ public final class ConstantSqlHelper implements ConstantSqlInterface {
     @Override
     public void deleteTable(final @Nullable String _connectionId) throws SQLException {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate("""
                     DROP TABLE IF EXISTS constants;
@@ -59,7 +57,6 @@ public final class ConstantSqlHelper implements ConstantSqlInterface {
     @Override
     public @NotNull String get(final @NotNull String key, final @NotNull Supplier<@NotNull String> defaultValue, final @Nullable String _connectionId) throws SQLException {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement("""
                     SELECT value FROM constants WHERE key == ? LIMIT 1;
                 """)) {

@@ -69,7 +69,6 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
     @Override
     public void createTable(final @Nullable String _connectionId) throws SQLException {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate(String.format("""
                     CREATE TABLE IF NOT EXISTS %s (
@@ -99,7 +98,6 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
     @Override
     public void deleteTable(final @Nullable String _connectionId) throws SQLException {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate(String.format("DROP TABLE %s;", this.tableName));
             }
@@ -140,7 +138,6 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
         if (inserters.isEmpty())
             return;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     INSERT INTO %s (id, name, is_directory, size, create_time, trashed_time, expire_time, md5, others)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -172,7 +169,6 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
         if (idList.isEmpty())
             return Map.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             final Map<Long, TrashedSqlInformation> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT * FROM %s WHERE id == ? LIMIT 1;
@@ -193,7 +189,6 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
         if (nameList.isEmpty())
             return Map.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             final Map<String, List<TrashedSqlInformation>> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT * FROM %s WHERE name == ?;
@@ -214,7 +209,6 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
         if (md5List.isEmpty())
             return Map.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             final Map<String, List<TrashedSqlInformation>> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT * FROM %s WHERE md5 == ? LIMIT 1;
@@ -233,7 +227,6 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
     @Override
     public @NotNull @UnmodifiableView Set<@NotNull Long> selectFilesId(final @Nullable String _connectionId) throws SQLException {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             final Set<Long> set = new HashSet<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT id FROM %s;
@@ -250,7 +243,6 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
     @Override
     public long selectFileCount(final @Nullable String _connectionId) throws SQLException {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT COUNT(*) FROM %s;
                 """, this.tableName))) {
@@ -266,7 +258,6 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
     public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull TrashedSqlInformation>> selectFilesInPage(final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final @Nullable String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
             final long count = this.selectFileCount(connectionId.get());
             if (offset >= count)
                 return Pair.ImmutablePair.makeImmutablePair(count, List.of());
@@ -290,7 +281,6 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
         if (idList.isEmpty())
             return;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     DELETE FROM %s WHERE id == ?;
                 """, this.tableName))) {
@@ -308,7 +298,6 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
         if (nameList.isEmpty())
             return;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     DELETE FROM %s WHERE name == ?;
                 """, this.tableName))) {
@@ -326,7 +315,6 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
         if (md5List.isEmpty())
             return;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     DELETE FROM %s WHERE md5 == ?;
                 """, this.tableName))) {
@@ -344,7 +332,6 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
     @Override
     public void clear(final @Nullable String _connectionId) throws SQLException {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     DELETE FROM %s;
                 """, this.tableName))) {
@@ -359,7 +346,6 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
         if (limit <= 0)
             return List.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             final List<TrashedSqlInformation> list;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT * FROM %s WHERE name %s ? ORDER BY abs(length(name) - ?) ASC, id DESC LIMIT ?;

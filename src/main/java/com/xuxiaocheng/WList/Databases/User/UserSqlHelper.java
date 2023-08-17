@@ -6,11 +6,11 @@ import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.Databases.DatabaseInterface;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupSqlInformation;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Server.Operation;
-import com.xuxiaocheng.WList.Databases.DatabaseInterface;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -25,6 +25,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -50,7 +51,6 @@ public final class UserSqlHelper implements UserSqlInterface {
     public void createTable(final @Nullable String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate(String.format("""
                     CREATE TABLE IF NOT EXISTS users (
@@ -108,7 +108,6 @@ public final class UserSqlHelper implements UserSqlInterface {
     public void deleteTable(@Nullable final String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate("""
                     DROP TABLE IF EXISTS users;
@@ -159,12 +158,12 @@ public final class UserSqlHelper implements UserSqlInterface {
     }
 
     @Override
-    public @NotNull @UnmodifiableView Map<UserSqlInformation.@NotNull Inserter, @NotNull Boolean> insertUsers(final @NotNull Collection<UserSqlInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException {
+    public @NotNull @UnmodifiableView Map<UserSqlInformation.@NotNull Inserter, @Nullable Long> insertUsers(final @NotNull Collection<UserSqlInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException {
         if (inserters.isEmpty())
             return Map.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
-            final Map<UserSqlInformation.Inserter, Boolean> map = new HashMap<>();
+            final Map<UserSqlInformation.Inserter, Long> map = new HashMap<>();
+            final Collection<UserSqlInformation.Inserter> inserted = new HashSet<>();
             try (final PreparedStatement statement = connection.prepareStatement("""
                         INSERT OR IGNORE INTO users (username, password, group_id, modify_time)
                             VALUES (?, ?, ?, ?);
@@ -174,7 +173,23 @@ public final class UserSqlHelper implements UserSqlInterface {
                     statement.setString(2, PasswordGuard.encryptPassword(inserter.password()));
                     statement.setLong(3, inserter.groupId());
                     statement.setString(4, LocalDateTime.now().format(UserSqlHelper.DefaultFormatter));
-                    map.put(inserter, statement.executeUpdate() > 0);
+                    if (statement.executeUpdate() > 0)
+                        inserted.add(inserter);
+                    else
+                        map.put(inserter, null);
+                }
+            }
+            if (!inserted.isEmpty()) {
+                try (final PreparedStatement statement = connection.prepareStatement("""
+                        SELECT id from users WHERE username == ?;
+                        """)) {
+                    for (final UserSqlInformation.Inserter inserter: inserted) {
+                        statement.setString(1, inserter.username());
+                        try (final ResultSet resultSet = statement.executeQuery()) {
+                            resultSet.next();
+                            map.put(inserter, resultSet.getLong("id"));
+                        }
+                    }
                 }
             }
             connection.commit();
@@ -187,7 +202,6 @@ public final class UserSqlHelper implements UserSqlInterface {
         if (updaters.isEmpty())
             return;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement("""
                     UPDATE users SET username = ?, password = ?, group_id = ?, modify_time = ? WHERE id == ?;
                 """)) {
@@ -209,7 +223,6 @@ public final class UserSqlHelper implements UserSqlInterface {
         if (inserters.isEmpty())
             return;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement("""
                     UPDATE users SET password = ?, group_id = ?, modify_time = ? WHERE username == ?;
                 """)) {
@@ -230,7 +243,6 @@ public final class UserSqlHelper implements UserSqlInterface {
         if (idList.isEmpty())
             return;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement("""
                     DELETE FROM users WHERE id == ?;
                 """)) {
@@ -248,7 +260,6 @@ public final class UserSqlHelper implements UserSqlInterface {
         if (usernameList.isEmpty())
             return;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement("""
                     DELETE FROM users WHERE username == ?;
                 """)) {
@@ -266,7 +277,6 @@ public final class UserSqlHelper implements UserSqlInterface {
         if (idList.isEmpty())
             return Map.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             final Map<Long, UserSqlInformation> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement("""
                     SELECT * FROM users NATURAL JOIN groups WHERE users.id == ? LIMIT 1;
@@ -289,7 +299,6 @@ public final class UserSqlHelper implements UserSqlInterface {
         if (usernameList.isEmpty())
             return Map.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             final Map<String, UserSqlInformation> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement("""
                     SELECT * FROM users NATURAL JOIN groups WHERE username == ? LIMIT 1;
@@ -312,7 +321,6 @@ public final class UserSqlHelper implements UserSqlInterface {
         if (groupIdList.isEmpty())
             return Map.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             final Map<Long, Long> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement("""
                     SELECT COUNT(*) FROM users WHERE group_id == ?;
@@ -332,7 +340,6 @@ public final class UserSqlHelper implements UserSqlInterface {
     @Override
     public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull UserSqlInformation>> selectAllUsersInPage(final int limit, final long offset, final Options.@NotNull OrderDirection direction, final @Nullable String _connectionId) throws SQLException {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             final long count;
             try (final Statement statement = connection.createStatement()) {
                 try (final ResultSet result = statement.executeQuery("SELECT COUNT(*) FROM users;")) {
@@ -361,7 +368,6 @@ public final class UserSqlHelper implements UserSqlInterface {
         if (limit <= 0)
             return List.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             final List<UserSqlInformation> list;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT * FROM users NATURAL JOIN groups WHERE username %s ?

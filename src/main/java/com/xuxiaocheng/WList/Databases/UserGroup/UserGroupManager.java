@@ -59,12 +59,12 @@ public final class UserGroupManager {
         return UserGroupManager.sqlInstance.getInstance().getDefaultId();
     }
 
-    public static @NotNull @UnmodifiableView Map<UserGroupSqlInformation.@NotNull Inserter, @NotNull Boolean> insertGroups(final @NotNull Collection<UserGroupSqlInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException {
+    public static @NotNull @UnmodifiableView Map<UserGroupSqlInformation.@NotNull Inserter, @Nullable Long> insertGroups(final @NotNull Collection<UserGroupSqlInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException {
         return UserGroupManager.sqlInstance.getInstance().insertGroups(inserters, _connectionId);
     }
 
-    public static boolean insertGroup(final UserGroupSqlInformation.@NotNull Inserter inserter, final @Nullable String _connectionId) throws SQLException {
-        return UserGroupManager.insertGroups(List.of(inserter), _connectionId).get(inserter).booleanValue();
+    public static @Nullable Long insertGroup(final UserGroupSqlInformation.@NotNull Inserter inserter, final @Nullable String _connectionId) throws SQLException {
+        return UserGroupManager.insertGroups(List.of(inserter), _connectionId).get(inserter);
     }
 
     public static void updateGroups(final @NotNull Collection<@NotNull UserGroupSqlInformation> infoList, final @Nullable String _connectionId) throws SQLException {

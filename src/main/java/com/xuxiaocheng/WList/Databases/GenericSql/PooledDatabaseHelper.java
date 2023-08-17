@@ -41,7 +41,7 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
     protected final @NotNull PooledDatabaseConfig connectionConfig;
     protected final @NotNull HInitializer<GenericObjectPool<@NotNull Connection>> connectionPool = new HInitializer<>("ConnectionPool");
 
-    public record PooledDatabaseConfig(@NotNull File source, boolean autoCommit, SQLiteConfig.@NotNull JournalMode journalMode, int transactionIsolationLevel) {
+    public record PooledDatabaseConfig(@NotNull File source, SQLiteConfig.@NotNull JournalMode journalMode, int transactionIsolationLevel) {
     }
 
     public PooledDatabaseHelper(final @NotNull GenericObjectPoolConfig<Connection> poolConfig, final @NotNull PooledDatabaseHelper.PooledDatabaseConfig connectionConfig) {
@@ -54,7 +54,7 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
         final GenericObjectPoolConfig<Connection> poolConfig = new GenericObjectPoolConfig<>();
         poolConfig.setJmxEnabled(AndroidSupporter.jmxEnable); // default: true
         poolConfig.setTestOnBorrow(true);
-        return new PooledDatabaseHelper(poolConfig, new PooledDatabaseHelper.PooledDatabaseConfig(database, false,
+        return new PooledDatabaseHelper(poolConfig, new PooledDatabaseHelper.PooledDatabaseConfig(database,
                 SQLiteConfig.JournalMode.WAL, Connection.TRANSACTION_READ_COMMITTED));
     }
 
@@ -101,8 +101,7 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
         public void activateObject(@NotNull final PooledObject<@NotNull Connection> p) throws SQLException {
             final Connection connection = p.getObject();
             connection.clearWarnings();
-            if (connection.getAutoCommit() != this.configuration.autoCommit())
-                connection.setAutoCommit(this.configuration.autoCommit());
+            connection.setAutoCommit(false);
             if (connection.getTransactionIsolation() != this.configuration.transactionIsolationLevel())
                 connection.setTransactionIsolation(this.configuration.transactionIsolationLevel());
         }
@@ -110,8 +109,7 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
         @Override
         public void passivateObject(final @NotNull PooledObject<@NotNull Connection> p) throws SQLException {
             final Connection connection = p.getObject();
-            if (!connection.getAutoCommit())
-                connection.rollback();
+            connection.rollback();
         }
 
         @Override

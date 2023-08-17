@@ -84,13 +84,16 @@ public final class ServerUserHandler {
         final String password = ByteBufIOUtil.readUTF(buffer);
         ServerHandler.logOperation(channel, Operation.Type.Register, null, () -> ParametersMap.create()
                 .add("username", username).add("password", password));
-        final boolean success;
+        final Long id;
         try {
-            success = UserManager.insertUser(new UserSqlInformation.Inserter(username, password, UserGroupManager.getDefaultId()), null);
+            id = UserManager.insertUser(new UserSqlInformation.Inserter(username, password, UserGroupManager.getDefaultId()), null);
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
-        return success ? ServerHandler.Success : ServerHandler.DataError;
+        if (id == null)
+            return ServerHandler.DataError;
+        HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Registered." + ServerHandler.buildUserString(id.longValue(), username));
+        return ServerHandler.Success;
     };
 
     private static final @NotNull ServerHandler doLogin = (channel, buffer) -> {
@@ -107,7 +110,7 @@ public final class ServerUserHandler {
         if (user == null || !PasswordGuard.encryptPassword(password).equals(user.password()))
             return ServerHandler.DataError;
         final String token = UserTokenHelper.encodeToken(user.id(), user.modifyTime());
-        HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Signed token for user: '", username, "' token: ", token);
+        HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Logged in.", ServerHandler.buildUserString(user.id(), username), ParametersMap.create().add("token", token));
         return ServerHandler.composeMessage(Operation.State.Success, token);
     };
 
@@ -137,6 +140,7 @@ public final class ServerUserHandler {
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
+        HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Changed username.", ServerHandler.buildUserString(user.getT().id(), user.getT().username()));
         return ServerHandler.Success;
     };
 
@@ -153,6 +157,7 @@ public final class ServerUserHandler {
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
+        HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Changed password.", ServerHandler.buildUserString(user.getT().id(), user.getT().username()));
         return ServerHandler.Success;
     };
 
@@ -169,6 +174,7 @@ public final class ServerUserHandler {
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
+        HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Logged off.", ServerHandler.buildUserString(user.getT().id(), user.getT().username()));
         return ServerHandler.Success;
     };
 
@@ -207,10 +213,9 @@ public final class ServerUserHandler {
             return changer.getE();
         if (UserManager.ADMIN.equals(username))
             return ServerUserHandler.UserDataError;
+        final long id;
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = UserManager.getConnection(null, connectionId)) {
-            connection.setAutoCommit(false);
-            final long id;
             if (username.equals(changer.getT().username()))
                 id = changer.getT().id();
             else {
@@ -224,6 +229,7 @@ public final class ServerUserHandler {
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
+        HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Deleted user.", ServerHandler.buildUserString(id, username), ", changer", ServerHandler.buildUserString(changer.getT().id(), changer.getT().username()));
         return ServerHandler.Success;
     };
 
@@ -254,44 +260,48 @@ public final class ServerUserHandler {
     };
 
     private static final @NotNull ServerHandler doAddGroup = (channel, buffer) -> {
-        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.UsersOperate);
+        final UnionPair<UserSqlInformation, MessageProto> changer = ServerUserHandler.checkToken(buffer, Operation.Permission.UsersOperate);
         final String groupName = ByteBufIOUtil.readUTF(buffer);
-        ServerHandler.logOperation(channel, Operation.Type.AddGroup, user, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, Operation.Type.AddGroup, changer, () -> ParametersMap.create()
                 .add("groupName", groupName));
-        if (user.isFailure())
-            return user.getE();
-        final boolean success;
+        if (changer.isFailure())
+            return changer.getE();
+        final Long id;
         try {
-            success = UserGroupManager.insertGroup(new UserGroupSqlInformation.Inserter(groupName, Operation.emptyPermissions()), null);
+            id = UserGroupManager.insertGroup(new UserGroupSqlInformation.Inserter(groupName, Operation.emptyPermissions()), null);
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
-        return success ? ServerHandler.Success : ServerHandler.DataError;
+        if (id == null)
+            return ServerHandler.DataError;
+        HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Added group.", ServerHandler.buildUserGroupString(id.longValue(), groupName), ", changer", ServerHandler.buildUserString(changer.getT().id(), changer.getT().username()));
+        return ServerHandler.Success;
     };
 
     private static final @NotNull ServerHandler doDeleteGroup = (channel, buffer) -> {
-        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.UsersOperate);
+        final UnionPair<UserSqlInformation, MessageProto> changer = ServerUserHandler.checkToken(buffer, Operation.Permission.UsersOperate);
         final String groupName = ByteBufIOUtil.readUTF(buffer);
-        ServerHandler.logOperation(channel, Operation.Type.DeleteGroup, user, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, Operation.Type.DeleteGroup, changer, () -> ParametersMap.create()
                 .add("groupName", groupName).add("denied", UserGroupManager.ADMIN.equals(groupName) || UserGroupManager.DEFAULT.equals(groupName)));
-        if (user.isFailure())
-            return user.getE();
+        if (changer.isFailure())
+            return changer.getE();
         if (UserGroupManager.ADMIN.equals(groupName) || UserGroupManager.DEFAULT.equals(groupName))
             return ServerUserHandler.GroupDataError;
+        final UserGroupSqlInformation group;
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = UserManager.getConnection(null, connectionId)) {
-            connection.setAutoCommit(false);
-            final UserGroupSqlInformation information = UserGroupManager.selectGroupByName(groupName, connectionId.get());
-            if (information == null)
+            group = UserGroupManager.selectGroupByName(groupName, connectionId.get());
+            if (group == null)
                 return ServerUserHandler.GroupDataError;
-            final long count = UserManager.selectUserCountByGroup(information.id(), connectionId.get());
+            final long count = UserManager.selectUserCountByGroup(group.id(), connectionId.get());
             if (count > 0)
                 return ServerUserHandler.UsersDataError;
-            UserGroupManager.deleteGroup(information.id(), connectionId.get());
+            UserGroupManager.deleteGroup(group.id(), connectionId.get());
             connection.commit();
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
+        HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Deleted group.", ServerHandler.buildUserGroupString(group.id(), group.name()), ", changer", ServerHandler.buildUserString(changer.getT().id(), changer.getT().username()));
         return ServerHandler.Success;
     };
 
@@ -305,13 +315,14 @@ public final class ServerUserHandler {
             return changer.getE();
         if (UserManager.ADMIN.equals(username))
             return ServerUserHandler.UserDataError;
+        final UserSqlInformation user;
+        final UserGroupSqlInformation group;
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = UserManager.getConnection(null, connectionId)) {
-            connection.setAutoCommit(false);
-            final UserSqlInformation user = UserManager.selectUserByName(username, connectionId.get());
+            user = UserManager.selectUserByName(username, connectionId.get());
             if (user == null)
                 return ServerUserHandler.UserDataError;
-            final UserGroupSqlInformation group = UserGroupManager.selectGroupByName(groupName, connectionId.get());
+            group = UserGroupManager.selectGroupByName(groupName, connectionId.get());
             if (group == null)
                 return ServerUserHandler.GroupDataError;
             UserManager.updateUser(new UserSqlInformation.Updater(user.id(), user.username(),
@@ -320,6 +331,9 @@ public final class ServerUserHandler {
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
+        HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Changed group.", ServerHandler.buildUserString(user.id(), user.username()),
+                " from ", ServerHandler.buildUserGroupString(user.group().id(), user.group().name()), ", to", ServerHandler.buildUserGroupString(group.id(), group.name()),
+                ", changer", ServerHandler.buildUserString(changer.getT().id(), changer.getT().username()));
         return ServerHandler.Success;
     };
 
@@ -335,10 +349,10 @@ public final class ServerUserHandler {
             return ServerUserHandler.GroupDataError;
         if (permissions == null)
             return ServerUserHandler.PermissionsDataError;
+        final UserGroupSqlInformation group;
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = UserManager.getConnection(null, connectionId)) {
-            connection.setAutoCommit(false);
-            final UserGroupSqlInformation group = UserGroupManager.selectGroupByName(groupName, connectionId.get());
+            group = UserGroupManager.selectGroupByName(groupName, connectionId.get());
             if (group == null)
                 return ServerUserHandler.GroupDataError;
             final EnumSet<Operation.Permission> p = group.permissions();
@@ -351,6 +365,8 @@ public final class ServerUserHandler {
         } catch (final SQLException exception) {
             throw new ServerException(exception);
         }
+        HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Changed permission.", ServerHandler.buildUserGroupString(group.id(), group.name()),
+                ", changer", ServerHandler.buildUserString(changer.getT().id(), changer.getT().username()), ParametersMap.create().add("permissions", group.permissions()));
         return ServerHandler.Success;
     }
 }

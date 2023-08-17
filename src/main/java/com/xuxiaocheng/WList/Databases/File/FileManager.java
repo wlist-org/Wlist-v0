@@ -76,7 +76,6 @@ public final class FileManager {
     public static @NotNull @UnmodifiableView Map<Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull String>, @NotNull FileSqlInformation> selectFilesInDirectory(final @NotNull String driverName, final @NotNull Collection<? extends Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull String>> pairList, final @Nullable String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = FileManager.sqlInstances.getInstance(driverName).getConnection(_connectionId, connectionId)) {
-            connection.setAutoCommit(false);
             return pairList.stream().collect(Collectors.toMap(UnaryOperator.identity(), HExceptionWrapper.wrapFunction(p ->
                     FileManager.selectFileInDirectory(driverName, p.getFirst().longValue(), p.getSecond(), connectionId.get()))));
         } catch (final RuntimeException exception) {

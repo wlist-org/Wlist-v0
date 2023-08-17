@@ -60,12 +60,12 @@ public final class UserManager {
         return password;
     }
 
-    public static @NotNull @UnmodifiableView Map<UserSqlInformation.@NotNull Inserter, @NotNull Boolean> insertUsers(final @NotNull Collection<UserSqlInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException {
+    public static @NotNull @UnmodifiableView Map<UserSqlInformation.@NotNull Inserter, @Nullable Long> insertUsers(final @NotNull Collection<UserSqlInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException {
         return UserManager.sqlInstance.getInstance().insertUsers(inserters, _connectionId);
     }
 
-    public static boolean insertUser(final UserSqlInformation.@NotNull Inserter inserter, final @Nullable String _connectionId) throws SQLException {
-        return UserManager.insertUsers(List.of(inserter), _connectionId).get(inserter).booleanValue();
+    public static @Nullable Long insertUser(final UserSqlInformation.@NotNull Inserter inserter, final @Nullable String _connectionId) throws SQLException {
+        return UserManager.insertUsers(List.of(inserter), _connectionId).get(inserter);
     }
 
     public static void updateUsers(final @NotNull Collection<UserSqlInformation.@NotNull Updater> updaters, final @Nullable String _connectionId) throws SQLException {

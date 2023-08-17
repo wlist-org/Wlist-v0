@@ -73,16 +73,17 @@ public final class DriverManager {
     }
 
     public static void initialize(final @NotNull File configurationsPath) {
-        final LocalDateTime t1 = LocalDateTime.now();
         DriverManager.configurationsPath.initialize(configurationsPath.getAbsoluteFile());
         DriverManager.drivers.clear();
+        final LocalDateTime t1 = LocalDateTime.now();
         final CompletableFuture<?>[] futures = new CompletableFuture[GlobalConfiguration.getInstance().drivers().size()];
         int i = 0;
         for (final Map.Entry<String, WebDriversType> entry: GlobalConfiguration.getInstance().drivers().entrySet())
             futures[i++] = CompletableFuture.runAsync(() -> DriverManager.initializeDriver0(entry.getKey(), entry.getValue()), WListServer.ServerExecutors);
         CompletableFuture.allOf(futures).join();
         final LocalDateTime t2 = LocalDateTime.now();
-        DriverManager.logger.log(HLogLevel.ENHANCED, "Loaded ", DriverManager.drivers.size(), " driver", DriverManager.drivers.size() > 1 ? "s" : "", " successfully. ", DriverManager.failedDrivers.size(), " failed.", ParametersMap.create().add("cost", (Supplier<String>) () -> Duration.between(t1, t2).toMillis() + " ms"));
+        DriverManager.logger.log(HLogLevel.ENHANCED, "Loaded ", DriverManager.drivers.size(), " driver", DriverManager.drivers.size() > 1 ? "s" : "", " successfully. ",
+                DriverManager.failedDrivers.size(), " failed. Totally cost time: ", Duration.between(t1, t2).toMillis() + " ms.");
     }
 
     private static @NotNull File getConfigurationFile(final @NotNull String name) throws IOException {

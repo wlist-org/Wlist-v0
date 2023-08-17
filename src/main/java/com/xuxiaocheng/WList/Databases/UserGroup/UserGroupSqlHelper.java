@@ -2,6 +2,7 @@ package com.xuxiaocheng.WList.Databases.UserGroup;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
+import com.xuxiaocheng.WList.Databases.User.UserSqlInformation;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Server.Operation;
 import com.xuxiaocheng.WList.Databases.DatabaseInterface;
@@ -17,6 +18,7 @@ import java.sql.Statement;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +42,6 @@ public final class UserGroupSqlHelper implements UserGroupSqlInterface {
     @Override
     public void createTable(final @Nullable String _connectionId) throws SQLException {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate(String.format("""
                         CREATE TABLE IF NOT EXISTS groups (
@@ -111,7 +112,6 @@ public final class UserGroupSqlHelper implements UserGroupSqlInterface {
     @Override
     public void deleteTable(final @Nullable String _connectionId) throws SQLException {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate("""
                         DROP TABLE IF EXISTS groups;
@@ -150,19 +150,35 @@ public final class UserGroupSqlHelper implements UserGroupSqlInterface {
     }
 
     @Override
-    public @NotNull @UnmodifiableView Map<UserGroupSqlInformation.@NotNull Inserter, @NotNull Boolean> insertGroups(final @NotNull Collection<UserGroupSqlInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException {
+    public @NotNull @UnmodifiableView Map<UserGroupSqlInformation.@NotNull Inserter, @Nullable Long> insertGroups(final @NotNull Collection<UserGroupSqlInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException {
         if (inserters.isEmpty())
             return Map.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
-            final Map<UserGroupSqlInformation.Inserter, Boolean> map = new HashMap<>(inserters.size());
+            final Map<UserGroupSqlInformation.Inserter, Long> map = new HashMap<>(inserters.size());
+            final Collection<UserGroupSqlInformation.Inserter> inserted = new HashSet<>();
             try (final PreparedStatement statement = connection.prepareStatement("""
                     INSERT OR IGNORE INTO groups (name, permissions) VALUES (?, ?);
                 """)) {
                 for (final UserGroupSqlInformation.Inserter inserter: inserters) {
                     statement.setString(1, inserter.name());
                     statement.setString(2, Operation.dumpPermissions(inserter.permissions()));
-                    map.put(inserter, statement.executeUpdate() > 0);
+                    if (statement.executeUpdate() > 0)
+                        inserted.add(inserter);
+                    else
+                        map.put(inserter, null);
+                }
+            }
+            if (!inserted.isEmpty()) {
+                try (final PreparedStatement statement = connection.prepareStatement("""
+                        SELECT group_id from groups WHERE name == ?;
+                        """)) {
+                    for (final UserGroupSqlInformation.Inserter inserter: inserted) {
+                        statement.setString(1, inserter.name());
+                        try (final ResultSet resultSet = statement.executeQuery()) {
+                            resultSet.next();
+                            map.put(inserter, resultSet.getLong("group_id"));
+                        }
+                    }
                 }
             }
             connection.commit();
@@ -175,7 +191,6 @@ public final class UserGroupSqlHelper implements UserGroupSqlInterface {
         if (infoList.isEmpty())
             return;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement("""
                     UPDATE groups SET name = ?, permissions = ? WHERE group_id == ?;
                 """)) {
@@ -195,7 +210,6 @@ public final class UserGroupSqlHelper implements UserGroupSqlInterface {
         if (inserters.isEmpty())
             return;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement("""
                     UPDATE groups SET permissions = ? WHERE name == ?;
                 """)) {
@@ -214,7 +228,6 @@ public final class UserGroupSqlHelper implements UserGroupSqlInterface {
         if (idList.isEmpty())
             return;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement("""
                     DELETE FROM groups WHERE group_id == ?;
                 """)) {
@@ -232,7 +245,6 @@ public final class UserGroupSqlHelper implements UserGroupSqlInterface {
         if (nameList.isEmpty())
             return;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             try (final PreparedStatement statement = connection.prepareStatement("""
                     DELETE FROM groups WHERE name == ?;
                 """)) {
@@ -250,7 +262,6 @@ public final class UserGroupSqlHelper implements UserGroupSqlInterface {
         if (idList.isEmpty())
             return Map.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             final Map<Long, UserGroupSqlInformation> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement("""
                     SELECT * FROM groups WHERE group_id == ? LIMIT 1;
@@ -273,7 +284,6 @@ public final class UserGroupSqlHelper implements UserGroupSqlInterface {
         if (nameList.isEmpty())
             return Map.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             final Map<String, UserGroupSqlInformation> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement("""
                         SELECT * FROM groups WHERE name == ? LIMIT 1;
@@ -294,7 +304,6 @@ public final class UserGroupSqlHelper implements UserGroupSqlInterface {
     @Override
     public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull UserGroupSqlInformation>> selectAllUserGroupsInPage(final int limit, final long offset, final Options.@NotNull OrderDirection direction, final @Nullable String _connectionId) throws SQLException {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             final long count;
             try (final Statement statement = connection.createStatement()) {
                 try (final ResultSet result = statement.executeQuery("SELECT COUNT(*) FROM groups;")) {
@@ -323,7 +332,6 @@ public final class UserGroupSqlHelper implements UserGroupSqlInterface {
         if (limit <= 0)
             return List.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            connection.setAutoCommit(false);
             final List<UserGroupSqlInformation> list;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT * FROM groups WHERE name %s ?
