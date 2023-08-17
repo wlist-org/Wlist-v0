@@ -43,7 +43,7 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
 
     @Override
     public void initialize(final @NotNull DriverConfiguration_lanzou configuration) throws SQLException {
-        FileManager.quicklyInitialize(new FileSqlHelper(PooledDatabase.instance.getInstance(), configuration.getName()), null);
+        FileManager.quicklyInitialize(new FileSqlHelper(PooledDatabase.instance.getInstance(), configuration.getName(), configuration.getWebSide().getRootDirectoryId()), null);
         this.configuration = configuration;
         FileManager.mergeFile(this.configuration.getName(), RootDriver.getDatabaseDriverInformation(this.configuration), null);
 

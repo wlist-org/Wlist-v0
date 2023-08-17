@@ -18,6 +18,9 @@ public interface FileSqlInterface extends DatabaseInterface {
     void createTable(final @Nullable String _connectionId) throws SQLException;
     void deleteTable(final @Nullable String _connectionId) throws SQLException;
     @Contract(pure = true) @NotNull String getDriverName();
+    @Contract(pure = true) long getRootId();
+
+    // Notice: Exclude root record (id == parent_id) automatically.
 
     void insertFilesForce(final @NotNull Collection<@NotNull FileSqlInformation> inserters, final @Nullable String _connectionId) throws SQLException;
     void updateDirectoryType(final long id, final boolean empty, final @Nullable String _connectionId) throws SQLException;

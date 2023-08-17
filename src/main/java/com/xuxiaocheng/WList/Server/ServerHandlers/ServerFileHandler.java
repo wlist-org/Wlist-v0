@@ -29,7 +29,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
-public final class ServerFileHandler {
+public final class ServerFileHandler { // TODO more logger.
     private ServerFileHandler() {
         super();
     }

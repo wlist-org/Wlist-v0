@@ -10,6 +10,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -25,6 +26,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -37,7 +39,7 @@ public final class FileSqlHelper implements FileSqlInterface {
 
     @Contract(pure = true) private static @NotNull String getOrderPolicy(final Options.@NotNull OrderPolicy policy) {
         return switch (policy) {
-            case FileName -> "name";
+            case FileName -> "name_ordered";
             case Size -> "size";
             case CreateTime -> "create_time";
             case UpdateTime -> "update_time";
@@ -55,12 +57,14 @@ public final class FileSqlHelper implements FileSqlInterface {
     private final @NotNull PooledDatabaseInterface database;
     private final @NotNull String driverName;
     private final @NotNull String tableName;
+    private final long rootId;
 
-    public FileSqlHelper(final @NotNull PooledDatabaseInterface database, final @NotNull String driverName) {
+    public FileSqlHelper(final @NotNull PooledDatabaseInterface database, final @NotNull String driverName, final long rootId) {
         super();
         this.database = database;
         this.driverName = driverName;
         this.tableName = FileSqlHelper.getTableName(driverName);
+        this.rootId = rootId;
     }
 
     @Override
@@ -79,6 +83,7 @@ public final class FileSqlHelper implements FileSqlInterface {
                                              NOT NULL,
                         parent_id    INTEGER ,
                         name         TEXT    NOT NULL,
+                        name_ordered BLOB    NOT NULL,
                         type         INTEGER NOT NULL
                                              DEFAULT (0)
                                              CHECK (type == 0 OR type == 1 OR type == 2),
@@ -122,6 +127,11 @@ public final class FileSqlHelper implements FileSqlInterface {
         return this.driverName;
     }
 
+    @Override
+    public long getRootId() {
+        return this.rootId;
+    }
+
     private static @Nullable FileSqlInformation createNextFileInfo(final @NotNull String driver, final @NotNull ResultSet result) throws SQLException {
         final @NotNull String createTime = result.getString("create_time");
         final @NotNull String updateTime = result.getString("update_time");
@@ -161,10 +171,10 @@ public final class FileSqlHelper implements FileSqlInterface {
             return;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    INSERT INTO %s (id, parent_id, name, type, size, create_time, update_time, md5, others)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO %s (id, parent_id, name, name_ordered, type, size, create_time, update_time, md5, others)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT (id) DO UPDATE SET
-                        parent_id = excluded.parent_id, name = excluded.name,
+                        parent_id = excluded.parent_id, name = excluded.name, name_ordered = excluded.name_ordered,
                         type = excluded.type, size = excluded.size,
                         create_time = excluded.create_time, update_time = excluded.update_time,
                         md5 = excluded.md5, others = excluded.others;
@@ -173,12 +183,14 @@ public final class FileSqlHelper implements FileSqlInterface {
                     statement.setLong(1, inserter.id());
                     statement.setLong(2, inserter.parentId());
                     statement.setString(3, inserter.name());
-                    statement.setInt(4, inserter.type().ordinal());
-                    statement.setLong(5, inserter.size());
-                    statement.setString(6, inserter.createTime() == null ? "" : inserter.createTime().format(FileSqlHelper.DefaultFormatter));
-                    statement.setString(7, inserter.updateTime() == null ? "" : inserter.updateTime().format(FileSqlHelper.DefaultFormatter));
-                    statement.setString(8, inserter.md5());
-                    statement.setString(9, inserter.others());
+                    statement.setBytes(4, ((inserter.isDirectory() ? "d" : "f") +
+                            inserter.name()).toLowerCase(Locale.ROOT).getBytes(Charset.forName("GBK")));
+                    statement.setInt(5, inserter.type().ordinal());
+                    statement.setLong(6, inserter.size());
+                    statement.setString(7, inserter.createTime() == null ? "" : inserter.createTime().format(FileSqlHelper.DefaultFormatter));
+                    statement.setString(8, inserter.updateTime() == null ? "" : inserter.updateTime().format(FileSqlHelper.DefaultFormatter));
+                    statement.setString(9, inserter.md5());
+                    statement.setString(10, inserter.others());
                     statement.executeUpdate();
                 }
             }
@@ -227,7 +239,7 @@ public final class FileSqlHelper implements FileSqlInterface {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             final FileSqlInformation information;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM %s WHERE parent_id == ? AND name == ? LIMIT 1;
+                    SELECT * FROM %s WHERE parent_id == ? AND name == ? AND parent_id != id LIMIT 1;
                 """, this.tableName))) {
                 statement.setLong(1, parentId);
                 statement.setString(2, name);
@@ -246,7 +258,7 @@ public final class FileSqlHelper implements FileSqlInterface {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             final Map<String, Set<FileSqlInformation>> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM %s WHERE md5 == ? LIMIT 1;
+                    SELECT * FROM %s WHERE md5 == ?;
                 """, this.tableName))) {
                 for (final String md5: md5List) {
                     statement.setString(1, md5);
@@ -266,7 +278,7 @@ public final class FileSqlHelper implements FileSqlInterface {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             final Map<Long, Set<Long>> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT id FROM %s WHERE parent_id == ?;
+                    SELECT id FROM %s WHERE parent_id == ? AND parent_id != id;
                 """, this.tableName))) {
                 for (final Long parentId: parentIdList) {
                     statement.setLong(1, parentId.longValue());
@@ -289,7 +301,7 @@ public final class FileSqlHelper implements FileSqlInterface {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             final Map<Long, Long> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT COUNT(*) FROM %s WHERE parent_id == ?;
+                    SELECT COUNT(*) FROM %s WHERE parent_id == ? AND parent_id != id;
                 """, this.tableName))) {
                 for (final Long parentId: parentIdList) {
                     statement.setLong(1, parentId.longValue());
@@ -313,7 +325,7 @@ public final class FileSqlHelper implements FileSqlInterface {
                 filterCount = count;
             else {
                 try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT COUNT(*) FROM %s WHERE parent_id == ?""" + switch (filter) {
+                    SELECT COUNT(*) FROM %s WHERE parent_id == ? AND parent_id != id""" + switch (filter) {
                         case OnlyFiles -> " AND type == 0;";
                         case OnlyDirectories -> " AND (type == 1 OR type == 2);";
                         default -> throw new IllegalStateException("Unexpected value: " + filter);
@@ -329,7 +341,7 @@ public final class FileSqlHelper implements FileSqlInterface {
                 return Triad.ImmutableTriad.makeImmutableTriad(count, filterCount, List.of());
             final List<FileSqlInformation> list;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM %s WHERE parent_id == ?""" + switch (filter) {
+                    SELECT * FROM %s WHERE parent_id == ? AND parent_id != id""" + switch (filter) {
                         case OnlyDirectories -> " AND (type == 1 OR type == 2) ";
                         case OnlyFiles -> " AND type == 0 ";
                         case Both -> " ";
@@ -383,6 +395,7 @@ public final class FileSqlHelper implements FileSqlInterface {
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
             final Collection<Long> leave = new HashSet<>();
             final Collection<Long> set = new HashSet<>(idList);
+            set.remove(this.rootId);
             final Collection<Long> universe = new HashSet<>();
             while (!set.isEmpty()) {
                 set.removeAll(universe);
