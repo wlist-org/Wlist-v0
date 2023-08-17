@@ -2,6 +2,7 @@ package com.xuxiaocheng.WListClient.Client.OperationHelpers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.WListClient.Client.Exceptions.WrongStateException;
 import com.xuxiaocheng.WListClient.Client.WListClientInterface;
@@ -34,10 +35,10 @@ public final class OperateFileHelper {
         return FailureReason.parse(reason);
     }
 
-    public static Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull VisibleFileInformation>> listFiles(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation directoryLocation, final Options.@NotNull DirectoriesOrFiles filter, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction, final boolean refresh) throws IOException, InterruptedException, WrongStateException {
+    public static Triad.@Nullable ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull @UnmodifiableView List<@NotNull VisibleFileInformation>> listFiles(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation directoryLocation, final Options.@NotNull DirectoriesOrFiles filter, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction, final boolean refresh) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.ListFiles, token);
         FileLocation.dump(send, directoryLocation);
-        ByteBufIOUtil.writeUTF(send, filter.name());
+        ByteBufIOUtil.writeByte(send, (byte) (filter.ordinal() + 1));
         ByteBufIOUtil.writeVariableLenInt(send, limit);
         ByteBufIOUtil.writeVariableLenInt(send, page);
         ByteBufIOUtil.writeUTF(send, policy.name());
@@ -49,13 +50,14 @@ public final class OperateFileHelper {
         try {
             if (OperateHelper.handleState(receive)) {
                 final long total = ByteBufIOUtil.readVariableLenLong(receive);
+                final long filtered = ByteBufIOUtil.readVariableLenLong(receive);
                 final int count = ByteBufIOUtil.readVariableLenInt(receive);
                 final List<VisibleFileInformation> list = new ArrayList<>(count);
                 for (int i = 0; i < count; ++i)
                     list.add(VisibleFileInformation.parse(receive));
                 OperateHelper.logOperated(Operation.Type.ListFiles, () -> ParametersMap.create().add("success", true)
-                        .add("total", total).add("list", list));
-                return Pair.ImmutablePair.makeImmutablePair(total, Collections.unmodifiableList(list));
+                        .add("total", total).add("filtered", filtered).add("list", list));
+                return Triad.ImmutableTriad.makeImmutableTriad(total, filtered, Collections.unmodifiableList(list));
             }
             final String reason = ByteBufIOUtil.readUTF(receive);
             OperateHelper.logOperated(Operation.Type.ListFiles, () -> ParametersMap.create().add("success", false).add("reason", reason));

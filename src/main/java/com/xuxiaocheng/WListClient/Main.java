@@ -4,9 +4,11 @@ import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WListClient.Client.GlobalConfiguration;
-import com.xuxiaocheng.WListClient.Client.OperationHelpers.OperateUserHelper;
+import com.xuxiaocheng.WListClient.Client.OperationHelpers.OperateFileHelper;
 import com.xuxiaocheng.WListClient.Client.WListClientInterface;
 import com.xuxiaocheng.WListClient.Client.WListClientManager;
+import com.xuxiaocheng.WListClient.Server.FileLocation;
+import com.xuxiaocheng.WListClient.Server.Options;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -43,7 +45,8 @@ public final class Main {
             //noinspection SpellCheckingInspection
             final String adminToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJhdWQiOiIxIiwic3ViIjoiNzA0ODA0MzAwIiwiaXNzIjoiV0xpc3QiLCJleHAiOjE2OTI1NzE1OTAsImp0aSI6IjE2OTIzMTIzNTgifQ.OOkqw70lPiHzdWuOUA6L_HkQ0GtyxpnsWwGsAqIM-jG7H0QCp4vWfkWK6KVEEZhthsqpwKpkJLFZM39V_0imww";
             try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
-                Main.logger.log(HLogLevel.FINE, OperateUserHelper.getPermissions(client, token));
+                Main.logger.log(HLogLevel.FINE, OperateFileHelper.listFiles(client, token, new FileLocation("lanzou_136", -1),
+                        Options.DirectoriesOrFiles.Both, 50, 0, Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false));
             }
         } finally {
             WListClientManager.quicklyUninitialize(address);
