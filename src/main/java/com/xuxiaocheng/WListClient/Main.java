@@ -39,9 +39,9 @@ public final class Main {
         WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
         try {
             //noinspection SpellCheckingInspection
-            final String token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJhdWQiOiIyIiwic3ViIjoiMzU3ODk3MzAwIiwiaXNzIjoiV0xpc3QiLCJleHAiOjE2OTI1NTAxMDcsImp0aSI6IjE2OTAxMzQwMDAifQ.q6ciMwIz4ooUnPBrz1IBLAfFgbaQsRQKEps28vaSLN-mc2aBKmqt-6omNcfhCkVV-a6oSRWuoSSt6OxmAYO1ng";
+            final String token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJhdWQiOiIyIiwic3ViIjoiNjExNzU2MzAwIiwiaXNzIjoiV0xpc3QiLCJleHAiOjE2OTI1NzE2NTQsImp0aSI6IjE2OTIzMTI0MjgifQ.fdrnOyY2Dqo2XNMqD_E5zxgBfxLOvj-jIrYONAag3eLUQ76vY2U0mU3kqTvjaBG98uz2X8KvRn04mnxRevhtIg";
             //noinspection SpellCheckingInspection
-            final String adminToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJhdWQiOiIxIiwic3ViIjoiMzU3ODk3MzAwIiwiaXNzIjoiV0xpc3QiLCJleHAiOjE2OTI1NDk3NTMsImp0aSI6IjE2OTAxMzQwMDAifQ.hYoB_Srm1Ix9sdwuOdtKC_FSLOkYI1YW7AejyvVCl_nNdpOg60JUBnMJrcp2WStWgfrkqqVERkK8tM4FkjtRig";
+            final String adminToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJhdWQiOiIxIiwic3ViIjoiNzA0ODA0MzAwIiwiaXNzIjoiV0xpc3QiLCJleHAiOjE2OTI1NzE1OTAsImp0aSI6IjE2OTIzMTIzNTgifQ.OOkqw70lPiHzdWuOUA6L_HkQ0GtyxpnsWwGsAqIM-jG7H0QCp4vWfkWK6KVEEZhthsqpwKpkJLFZM39V_0imww";
             try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
                 Main.logger.log(HLogLevel.FINE, OperateUserHelper.getPermissions(client, token));
             }

@@ -38,12 +38,13 @@ public final class OperateHelper {
     static void handleBroadcastState(final @NotNull ByteBuf receive) throws IOException, WrongStateException {
         final byte ignoredCipher = ByteBufIOUtil.readByte(receive);
         final Operation.State state = Operation.valueOfState(ByteBufIOUtil.readUTF(receive));
-        if (state == Operation.State.Undefined)
-            throw new UnsupportedOperationException(ByteBufIOUtil.readUTF(receive));
-        if (state == Operation.State.ServerError || state == Operation.State.Unsupported)
-            throw new WrongStateException(state, ByteBufIOUtil.readUTF(receive));
-        if (state != Operation.State.Broadcast)
-            throw new WrongStateException(state, receive.toString());
+        switch (state) {
+            case Undefined, Success, DataError -> throw new WrongStateException(state, receive.toString());
+            case ServerError, FormatError -> throw new WrongStateException(state);
+            case Unsupported -> throw new UnsupportedOperationException(ByteBufIOUtil.readUTF(receive));
+            case NoPermission -> throw new NoPermissionException();
+            case Broadcast -> {}
+        }
     }
 
     static @NotNull ByteBuf operate(final Operation.@NotNull Type type) throws IOException {

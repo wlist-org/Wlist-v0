@@ -1,6 +1,7 @@
 package com.xuxiaocheng.WListClient.Client.OperationHelpers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.WListClient.Client.Exceptions.WrongStateException;
 import com.xuxiaocheng.WListClient.Server.Operation;
 import com.xuxiaocheng.WListClient.Utils.ByteBufIOUtil;
@@ -18,9 +19,12 @@ public final class OperateServerHelper {
 
     public static boolean closeServer(final @NotNull WListClientInterface client, final @NotNull String token) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.CloseServer, token);
+        OperateHelper.logOperating(Operation.Type.CloseServer, () -> ParametersMap.create().add("tokenHash", token.hashCode()));
         final ByteBuf receive = client.send(send);
         try {
-            return OperateHelper.handleState(receive);
+            final boolean success = OperateHelper.handleState(receive);
+            OperateHelper.logOperated(Operation.Type.CloseServer, () -> ParametersMap.create().add("success", success));
+            return success;
         } finally {
             receive.release();
         }
@@ -32,6 +36,7 @@ public final class OperateServerHelper {
         return Pair.ImmutablePair.makeImmutablePair(ByteBufIOUtil.readUTF(broadcast), broadcast);
     }
 
+    // TODO: broadcast
     public static void broadcast(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull ByteBuf message) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf prefix = OperateHelper.operateWithToken(Operation.Type.Broadcast, token);
         final ByteBuf send = ByteBufAllocator.DEFAULT.compositeBuffer(2).addComponents(true, prefix, message);
@@ -49,8 +54,9 @@ public final class OperateServerHelper {
         ByteBufIOUtil.writeBoolean(send, allow);
         final ByteBuf receive = client.send(send);
         try {
-            if (!OperateHelper.handleState(receive))
-                throw new WrongStateException(Operation.State.DataError, receive.toString());
+            if (OperateHelper.handleState(receive))
+                return;
+            throw new WrongStateException(Operation.State.DataError, ByteBufIOUtil.readUTF(receive));
         } finally {
             receive.release();
         }

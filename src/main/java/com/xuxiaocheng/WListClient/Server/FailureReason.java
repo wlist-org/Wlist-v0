@@ -19,4 +19,14 @@ public enum FailureReason {
             case Others -> "Failure, unknown reason.";
         };
     }
+
+    public static @NotNull FailureReason parse(final @NotNull String reason) {
+        return switch (reason) {
+            case "Filename" -> FailureReason.InvalidFilename;
+            case "Duplicate" -> FailureReason.DuplicatePolicyError;
+            case "Size" -> FailureReason.ExceedMaxSize;
+            case "File" -> FailureReason.NoSuchFile;
+            default -> FailureReason.Others;
+        };
+    }
 }
