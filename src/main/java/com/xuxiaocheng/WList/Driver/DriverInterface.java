@@ -26,6 +26,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
+import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -58,6 +59,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     /**
      * Login the web server. Check token etc.
      * @throws Exception Something went wrong.
+     * @see com.xuxiaocheng.WList.Driver.DriverConfiguration.CacheSideDriverConfiguration#setLastFileCacheBuildTime(LocalDateTime)
      */
     void buildCache() throws Exception;
 
@@ -65,6 +67,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * Build file index into sql database.
      * @throws Exception Something went wrong.
      * @see FileManager
+     * @see com.xuxiaocheng.WList.Driver.DriverConfiguration.CacheSideDriverConfiguration#setLastFileIndexBuildTime(LocalDateTime)
      */
     void buildIndex() throws Exception;
 

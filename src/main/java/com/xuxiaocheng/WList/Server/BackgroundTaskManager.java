@@ -52,7 +52,7 @@ public final class BackgroundTaskManager {
 
     private static final @NotNull Map<@NotNull BackgroundTaskIdentify, @NotNull CompletableFuture<?>> TaskMap = new ConcurrentHashMap<>();
 
-    public static void background(final @NotNull BackgroundTaskIdentify identify, final @NotNull RunnableE runnable, final boolean removeLockAfterRun, final @Nullable ConsumerE<? super @Nullable Throwable> finisherAfterRun) {
+    public static void background(final @NotNull BackgroundTaskIdentify identify, final @NotNull RunnableE runnable, final @Nullable ConsumerE<? super @Nullable Throwable> finisherAfterRun) {
         final boolean[] flag = {true};
         BackgroundTaskManager.TaskMap.computeIfAbsent(identify, k -> {
             flag[0] = false;
@@ -62,8 +62,6 @@ public final class BackgroundTaskManager {
                 } catch (final Throwable throwable) {
                     HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), throwable);
                 } finally {
-                    if (removeLockAfterRun)
-                        BackgroundTaskManager.removeLock(identify);
                     BackgroundTaskManager.TaskMap.remove(identify);
                 }
             }, BackgroundTaskManager.BackgroundExecutors);
@@ -88,12 +86,16 @@ public final class BackgroundTaskManager {
     }
 
     public static <T> void backgroundWithLock(final @NotNull BackgroundTaskIdentify identify, final @NotNull Supplier<? extends @NotNull T> defaultLockSupplier, final @NotNull Class<T> lockClass,
-                                              final @NotNull Predicate<? super @NotNull T> runningPredicate, final @NotNull RunnableE runnable, final @NotNull RunnableE finisherAfterRun) {
+                                              final @NotNull Predicate<? super @NotNull T> runningPredicate, final @NotNull RunnableE runnable, final @Nullable RunnableE finisherAfterRun) {
         final T lock = BackgroundTaskManager.getLock(identify, defaultLockSupplier, lockClass);
         synchronized (lock) {
             if (runningPredicate.test(lock)) {
                 BackgroundTaskManager.cancel(identify);
-                BackgroundTaskManager.background(identify, runnable, true, e -> finisherAfterRun.run());
+                BackgroundTaskManager.background(identify, runnable, e -> {
+                    BackgroundTaskManager.removeLock(identify);
+                    if (finisherAfterRun != null)
+                        finisherAfterRun.run();
+                });
             }
         }
     }

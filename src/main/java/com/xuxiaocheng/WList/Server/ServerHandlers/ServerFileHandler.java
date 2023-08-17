@@ -42,6 +42,7 @@ public final class ServerFileHandler { // TODO more logger.
     public static final @NotNull MessageProto InvalidFile = ServerHandler.composeMessage(Operation.State.DataError, "Content");
 
     public static void initialize() {
+        ServerHandlerManager.register(Operation.Type.BuildIndex, ServerFileHandler.doBuildIndex);
         ServerHandlerManager.register(Operation.Type.ListFiles, ServerFileHandler.doListFiles);
         ServerHandlerManager.register(Operation.Type.MakeDirectories, ServerFileHandler.doMakeDirectories);
         ServerHandlerManager.register(Operation.Type.DeleteFile, ServerFileHandler.doDeleteFile);
@@ -55,6 +56,21 @@ public final class ServerFileHandler { // TODO more logger.
         ServerHandlerManager.register(Operation.Type.CopyFile, ServerFileHandler.doCopyFile);
         ServerHandlerManager.register(Operation.Type.MoveFile, ServerFileHandler.doMoveFile);
     }
+
+    public static final @NotNull ServerHandler doBuildIndex = (channel, buffer) -> {
+        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesBuildIndex);
+        final String driver = ByteBufIOUtil.readUTF(buffer);
+        ServerHandler.logOperation(channel, Operation.Type.BuildIndex, user, () -> ParametersMap.create()
+                .add("driver", driver));
+        try {
+            RootDriver.getInstance().buildIndex(driver);
+        } catch (final UnsupportedOperationException exception) {
+            return ServerHandler.Unsupported.apply(exception);
+        } catch (final Exception exception) {
+            throw new ServerException(exception);
+        }
+        return ServerHandler.Success;
+    };
 
     public static final @NotNull ServerHandler doListFiles = (channel, buffer) -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList);

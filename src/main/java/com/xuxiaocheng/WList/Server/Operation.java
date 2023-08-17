@@ -30,7 +30,7 @@ public final class Operation {
         ChangeGroup,
         AddPermission,
         RemovePermission,
-        BuildIndex, // TODO
+        BuildIndex,
         ListFiles,
         MakeDirectories,
         DeleteFile,

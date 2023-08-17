@@ -20,6 +20,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -27,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.TimeUnit;
 
 @SuppressWarnings("OverlyBroadThrowsClause")
 public final class RootDriver implements DriverInterface<RootDriver.RootDriverConfiguration> {
@@ -102,17 +105,24 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
 
     public boolean buildIndex(final @NotNull String name) throws Exception {
         final DriverInterface<?> driver = DriverManager.getDriver(name);
-        if (driver != null)
+        if (driver != null) {
+            final DriverTrashInterface<?> trash = DriverManager.getTrash(name);
             try {
-                // TODO Background task.
-                // TODO build time interval and force control.
-                driver.buildIndex();
-                final DriverTrashInterface<?> trash = DriverManager.getTrash(name);
-                if (trash != null)
-                    trash.buildIndex();
+                final LocalDateTime old = driver.getConfiguration().getCacheSide().getLastFileIndexBuildTime();
+                if (old == null || Duration.between(old, LocalDateTime.now()).toMillis() > TimeUnit.HOURS.toMillis(3))
+                    driver.buildIndex();
             } finally {
                 DriverManager.dumpConfigurationIfModified(driver.getConfiguration());
             }
+            if (trash != null)
+                try {
+                    final LocalDateTime old = trash.getDriver().getConfiguration().getCacheSide().getLastTrashIndexBuildTime();
+                    if (old == null || Duration.between(old, LocalDateTime.now()).toMillis() > TimeUnit.HOURS.toMillis(3))
+                        trash.buildIndex();
+                } finally {
+                    DriverManager.dumpConfigurationIfModified(trash.getDriver().getConfiguration());
+                }
+        }
         return driver != null;
     }
 
