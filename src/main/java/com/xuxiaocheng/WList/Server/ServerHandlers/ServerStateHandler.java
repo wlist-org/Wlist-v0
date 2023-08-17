@@ -16,8 +16,6 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.concurrent.TimeUnit;
-
 public final class ServerStateHandler {
     private ServerStateHandler() {
         super();
@@ -44,8 +42,7 @@ public final class ServerStateHandler {
         ServerHandler.logOperation(channel, Operation.Type.CloseServer, user, null);
         if (user.isFailure())
             return user.getE();
-        // TODO refuse new connections.
-        WListServer.ServerExecutors.schedule(() -> WListServer.getInstance().stop(), 3, TimeUnit.SECONDS);
+        WListServer.ServerExecutors.execute(() -> WListServer.getInstance().stop());
         return ServerHandler.Success;
     };
 

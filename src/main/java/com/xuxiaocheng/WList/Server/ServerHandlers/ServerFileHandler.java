@@ -29,7 +29,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
-public final class ServerFileHandler { // TODO more logger.
+public final class ServerFileHandler {
     private ServerFileHandler() {
         super();
     }
@@ -43,7 +43,7 @@ public final class ServerFileHandler { // TODO more logger.
 
     public static void initialize() {
         ServerHandlerManager.register(Operation.Type.ListFiles, ServerFileHandler.doListFiles);
-        ServerHandlerManager.register(Operation.Type.MakeDirectories, ServerFileHandler.doMakeDirectories);
+        ServerHandlerManager.register(Operation.Type.CreateDirectory, ServerFileHandler.doCreateDirectory);
         ServerHandlerManager.register(Operation.Type.DeleteFile, ServerFileHandler.doDeleteFile);
         ServerHandlerManager.register(Operation.Type.RenameFile, ServerFileHandler.doRenameFile);
         ServerHandlerManager.register(Operation.Type.RequestDownloadFile, ServerFileHandler.doRequestDownloadFile);
@@ -99,12 +99,12 @@ public final class ServerFileHandler { // TODO more logger.
         });
     };
 
-    public static final @NotNull ServerHandler doMakeDirectories = (channel, buffer) -> {
+    public static final @NotNull ServerHandler doCreateDirectory = (channel, buffer) -> {
         final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload);
         final FileLocation parentLocation = FileLocation.parse(buffer);
         final String directoryName = ByteBufIOUtil.readUTF(buffer);
         final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
-        ServerHandler.logOperation(channel, Operation.Type.MakeDirectories, user, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, Operation.Type.CreateDirectory, user, () -> ParametersMap.create()
                 .add("parentLocation", parentLocation).add("directoryName", directoryName).add("duplicatePolicy", duplicatePolicy)
                 .optionallyAddSupplier(duplicatePolicy == Options.DuplicatePolicy.OVER && user.isSuccess(), "allow", () -> user.getT().group().permissions().contains(Operation.Permission.FileDelete)));
         if (user.isFailure())
@@ -113,22 +113,24 @@ public final class ServerFileHandler { // TODO more logger.
             return ServerHandler.WrongParameters;
         if (duplicatePolicy == Options.DuplicatePolicy.OVER && !user.getT().group().permissions().contains(Operation.Permission.FileDelete))
             return ServerHandler.NoPermission.apply(Operation.Permission.FileDelete);
-        final UnionPair<FileSqlInformation, FailureReason> dir;
+        final UnionPair<FileSqlInformation, FailureReason> directory;
         try {
-            dir = RootDriver.getInstance().createDirectory(parentLocation, directoryName, duplicatePolicy);
+            directory = RootDriver.getInstance().createDirectory(parentLocation, directoryName, duplicatePolicy);
         } catch (final UnsupportedOperationException exception) {
             return ServerHandler.Unsupported.apply(exception);
         } catch (final Exception exception) {
             throw new ServerException(exception);
         }
-        if (dir.isFailure())
-            return switch (dir.getE().kind()) {
+        if (directory.isFailure())
+            return switch (directory.getE().kind()) {
                 case FailureReason.InvalidFilename -> ServerFileHandler.InvalidFilename;
                 case FailureReason.DuplicatePolicyError -> ServerFileHandler.DuplicateError;
-                default -> throw new ServerException("Unknown failure reason. " + dir.getE(), dir.getE().throwable());
+                default -> throw new ServerException("Unknown failure reason. " + directory.getE(), directory.getE().throwable());
             };
+        HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Created directory.", ServerHandler.buildUserString(user.getT().id(), user.getT().username()),
+                ParametersMap.create().add("directory", directory.getT()));
         return ServerHandler.successMessage(buf -> {
-            FileSqlInformation.dumpVisible(buf, dir.getT());
+            FileSqlInformation.dumpVisible(buf, directory.getT());
             return buf;
         });
     };
@@ -147,6 +149,8 @@ public final class ServerFileHandler { // TODO more logger.
         } catch (final Exception exception) {
             throw new ServerException(exception);
         }
+        HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Deleted.", ServerHandler.buildUserString(user.getT().id(), user.getT().username()),
+                ParametersMap.create().add("location", location));
         return ServerHandler.Success;
     };
 
@@ -176,6 +180,8 @@ public final class ServerFileHandler { // TODO more logger.
                 case FailureReason.NoSuchFile -> ServerFileHandler.FileNotFound;
                 default -> throw new ServerException("Unknown failure reason. " + file.getE(), file.getE().throwable());
             };
+        HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Renamed.", ServerHandler.buildUserString(user.getT().id(), user.getT().username()),
+                ParametersMap.create().add("location", location).add("name", name));
         return ServerHandler.successMessage(buf -> {
             FileSqlInformation.dumpVisible(buf, file.getT());
             return buf;
@@ -327,6 +333,9 @@ public final class ServerFileHandler { // TODO more logger.
             return ServerFileHandler.InvalidFile;
         buffer.readerIndex(buffer.writerIndex());
         final FileSqlInformation file = information.isSuccess() ? information.getT() : null;
+        if (file != null)
+            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Uploaded.", ServerHandler.buildUserString(user.getT().id(), user.getT().username()),
+                    ParametersMap.create().add("file", file));
         return ServerHandler.successMessage(buf -> {
             ByteBufIOUtil.writeBoolean(buf, file == null);
             if (file != null)
@@ -375,6 +384,8 @@ public final class ServerFileHandler { // TODO more logger.
                 case FailureReason.NoSuchFile -> ServerFileHandler.FileNotFound;
                 default -> throw new ServerException("Unknown failure reason. " + file.getE(), file.getE().throwable());
             };
+        HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Copied.", ServerHandler.buildUserString(user.getT().id(), user.getT().username()),
+                ParametersMap.create().add("source", source).add("file", file));
         return ServerHandler.successMessage(buf -> {
             FileSqlInformation.dumpVisible(buf, file.getT());
             return buf;
@@ -407,6 +418,8 @@ public final class ServerFileHandler { // TODO more logger.
                 case FailureReason.NoSuchFile -> ServerFileHandler.FileNotFound;
                 default -> throw new ServerException("Unknown failure reason. " + file.getE(), file.getE().throwable());
             };
+        HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Moved.", ServerHandler.buildUserString(user.getT().id(), user.getT().username()),
+                ParametersMap.create().add("source", source).add("file", file));
         return ServerHandler.successMessage(buf -> {
             FileSqlInformation.dumpVisible(buf, file.getT());
             return buf;
