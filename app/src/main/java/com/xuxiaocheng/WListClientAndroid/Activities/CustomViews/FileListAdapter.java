@@ -21,11 +21,13 @@ import java.util.List;
 import java.util.Objects;
 
 public class FileListAdapter extends BaseAdapter {
+    protected final boolean isRoot;
     @NonNull protected final List<VisibleFileInformation> data;
     @NonNull protected final LayoutInflater inflate;
 
-    public FileListAdapter(@NonNull final List<VisibleFileInformation> data, @NonNull final LayoutInflater inflater) {
+    public FileListAdapter(final boolean isRoot, @NonNull final List<VisibleFileInformation> data, @NonNull final LayoutInflater inflater) {
         super();
+        this.isRoot = isRoot;
         this.data = data;
         this.inflate = inflater;
     }
@@ -99,7 +101,8 @@ public class FileListAdapter extends BaseAdapter {
     @Override
     @NonNull public String toString() {
         return "FileListAdapter{" +
-                "data=" + this.data +
+                "isRoot=" + this.isRoot +
+                ", data=" + this.data +
                 ", inflate=" + this.inflate +
                 ", super=" + super.toString() +
                 '}';
@@ -108,7 +111,7 @@ public class FileListAdapter extends BaseAdapter {
     protected void setCellViewContent(final int position, @NonNull final CellViewHolder view, @NonNull final ListView parent) {
         final VisibleFileInformation information = this.data.get(position);
         view.image.setImageResource(R.mipmap.app_logo);
-        view.name.setText(FileInformationGetter.name(information));
+        view.name.setText(this.isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information));
         final LocalDateTime update = FileInformationGetter.updateTime(information);
         view.tip.setText(update == null ? "unknown" : update.format(DateTimeFormatter.ISO_DATE_TIME).replace('T', ' '));
         view.name.setOnClickListener(v -> parent.getOnItemClickListener().onItemClick(parent, v, position, this.getItemId(position)));

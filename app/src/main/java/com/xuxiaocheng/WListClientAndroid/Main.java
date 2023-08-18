@@ -30,6 +30,6 @@ public final class Main extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-        Log.i("HLog", "Hello WList Client (Android v0.1.0)." + ParametersMap.create().add("pid", Process.myPid()));
+        Log.i("HLog", "Hello WList (Android v0.1.0)!" + ParametersMap.create().add("pid", Process.myPid()));
     }
 }

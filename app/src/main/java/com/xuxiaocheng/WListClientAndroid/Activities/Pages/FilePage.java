@@ -9,7 +9,6 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
-import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WListClient.AndroidSupports.FileInformationGetter;
 import com.xuxiaocheng.WListClient.AndroidSupports.FileLocationSupporter;
 import com.xuxiaocheng.WListClient.Client.Exceptions.WrongStateException;
@@ -20,6 +19,7 @@ import com.xuxiaocheng.WListClient.Server.FileLocation;
 import com.xuxiaocheng.WListClient.Server.Options;
 import com.xuxiaocheng.WListClient.Server.SpecialDriverName;
 import com.xuxiaocheng.WListClient.Server.VisibleFileInformation;
+import com.xuxiaocheng.WListClient.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WListClientAndroid.Activities.CustomViews.FileListAdapter;
 import com.xuxiaocheng.WListClientAndroid.Activities.CustomViews.MainTab;
 import com.xuxiaocheng.WListClientAndroid.Client.TokenManager;
@@ -127,7 +127,7 @@ public class FilePage implements MainTab.MainTabPage {
                         final VisibleFileInformation information = list.getC().get(i);
                         if (FileInformationGetter.isDirectory(information)) {
                             this.setFileList(address, FileLocationSupporter.create(isRoot ? FileInformationGetter.name(information) : FileLocationSupporter.driver(directoryLocation), FileInformationGetter.id(information)), 0);
-                            this.activity.runOnUiThread(() -> name.setText(isRoot ? FileInformationGetter.md5(information)/*display name*/ : FileInformationGetter.name(information)));
+                            this.activity.runOnUiThread(() -> name.setText(isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information)));
                         } else {
                             // TODO: show file.
                         }
