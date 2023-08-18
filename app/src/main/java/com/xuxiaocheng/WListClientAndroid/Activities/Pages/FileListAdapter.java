@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListClientAndroid.Activities.CustomViews;
+package com.xuxiaocheng.WListClientAndroid.Activities.Pages;
 
 import android.view.LayoutInflater;
 import android.view.View;
@@ -7,6 +7,7 @@ import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
+import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.constraintlayout.widget.ConstraintLayout;
@@ -18,6 +19,7 @@ import com.xuxiaocheng.WListClientAndroid.databinding.FileListCellBinding;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 public class FileListAdapter extends BaseAdapter {
@@ -110,10 +112,21 @@ public class FileListAdapter extends BaseAdapter {
 
     protected void setCellViewContent(final int position, @NonNull final CellViewHolder view, @NonNull final ListView parent) {
         final VisibleFileInformation information = this.data.get(position);
-        view.image.setImageResource(R.mipmap.app_logo);
+        view.image.setImageResource(FileInformationGetter.isDirectory(information) ? R.mipmap.page_file_image_directory :
+                FileListAdapter.getFileImage(FileInformationGetter.name(information).toLowerCase(Locale.ROOT)));
         view.name.setText(this.isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information));
         final LocalDateTime update = FileInformationGetter.updateTime(information);
         view.tip.setText(update == null ? "unknown" : update.format(DateTimeFormatter.ISO_DATE_TIME).replace('T', ' '));
         view.name.setOnClickListener(v -> parent.getOnItemClickListener().onItemClick(parent, v, position, this.getItemId(position)));
+    }
+
+    @DrawableRes private static int getFileImage(@NonNull final String name) {
+        if (name.endsWith(".doc") || name.endsWith(".docx"))
+            return R.mipmap.page_file_image_docx;
+        if (name.endsWith(".ppt") || name.endsWith(".pptx"))
+            return R.mipmap.page_file_image_pptx;
+        if (name.endsWith(".xls") || name.endsWith(".xlsx"))
+            return R.mipmap.page_file_image_xlsx;
+        return R.mipmap.page_file_image_file;
     }
 }

@@ -29,14 +29,13 @@
 		app:layout_constraintRight_toLeftOf="@id/file_list_cell_guideline_icon"
 		app:layout_constraintTop_toTopOf="parent" />
 
-	<androidx.appcompat.widget.AppCompatTextView
+	<androidx.appcompat.widget.AppCompatImageView
 		android:id="@+id/file_list_cell_option"
 		android:layout_width="0dp"
 		android:layout_height="0dp"
 		android:autoSizeTextType="uniform"
 		android:gravity="center"
-		android:text="@string/file_content_right_page"
-		android:textColor="@color/normal_text"
+		android:src="@mipmap/page_file_ellipsis"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toRightOf="@id/file_list_cell_guideline_option"
 		app:layout_constraintRight_toRightOf="parent"

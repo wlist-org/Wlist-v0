@@ -20,7 +20,6 @@ import com.xuxiaocheng.WListClient.Server.Options;
 import com.xuxiaocheng.WListClient.Server.SpecialDriverName;
 import com.xuxiaocheng.WListClient.Server.VisibleFileInformation;
 import com.xuxiaocheng.WListClient.Utils.MiscellaneousUtil;
-import com.xuxiaocheng.WListClientAndroid.Activities.CustomViews.FileListAdapter;
 import com.xuxiaocheng.WListClientAndroid.Activities.CustomViews.MainTab;
 import com.xuxiaocheng.WListClientAndroid.Client.TokenManager;
 import com.xuxiaocheng.WListClientAndroid.Main;
