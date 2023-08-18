@@ -70,6 +70,11 @@ public final class MainTab {
         }
     }
 
+    public interface MainTabPage {
+        @NonNull View onChange();
+        boolean onBackPressed();
+    }
+
     @NonNull private final ButtonGroup fileButton;
     @NonNull private final ButtonGroup userButton;
 

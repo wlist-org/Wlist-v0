@@ -6,50 +6,25 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ListAdapter;
-import android.widget.ListView;
-import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
-import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
-import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
-import com.xuxiaocheng.WListClient.AndroidSupports.FileInformationGetter;
-import com.xuxiaocheng.WListClient.AndroidSupports.FileLocationSupporter;
-import com.xuxiaocheng.WListClient.Client.Exceptions.WrongStateException;
-import com.xuxiaocheng.WListClient.Client.OperationHelpers.OperateFileHelper;
-import com.xuxiaocheng.WListClient.Client.OperationHelpers.OperateServerHelper;
-import com.xuxiaocheng.WListClient.Client.WListClientInterface;
-import com.xuxiaocheng.WListClient.Client.WListClientManager;
-import com.xuxiaocheng.WListClient.Server.FileLocation;
-import com.xuxiaocheng.WListClient.Server.Options;
-import com.xuxiaocheng.WListClient.Server.SpecialDriverName;
-import com.xuxiaocheng.WListClient.Server.VisibleFileInformation;
-import com.xuxiaocheng.WListClientAndroid.Activities.CustomViews.FileListAdapter;
 import com.xuxiaocheng.WListClientAndroid.Activities.CustomViews.MainTab;
-import com.xuxiaocheng.WListClientAndroid.Client.TokenManager;
-import com.xuxiaocheng.WListClientAndroid.Main;
+import com.xuxiaocheng.WListClientAndroid.Activities.Pages.FilePage;
+import com.xuxiaocheng.WListClientAndroid.Activities.Pages.UserPage;
 import com.xuxiaocheng.WListClientAndroid.R;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
-import com.xuxiaocheng.WListClientAndroid.databinding.FileListContentBinding;
-import com.xuxiaocheng.WListClientAndroid.databinding.UserListContentBinding;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.List;
-import java.util.Locale;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class MainActivity extends AppCompatActivity {
@@ -69,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @NonNull protected final AtomicReference<MainTab.TabChoice> minTabChoice = new AtomicReference<>();
+    @NonNull protected final Map<MainTab.TabChoice, MainTab.MainTabPage> pages = new EnumMap<>(MainTab.TabChoice.class);
 
     @Override
     protected void onCreate(@Nullable final Bundle savedInstanceState) {
@@ -89,7 +65,10 @@ public class MainActivity extends AppCompatActivity {
             new MainTab.ButtonGroup(this, R.id.main_tab_user, R.id.main_tab_user_button, R.id.main_tab_user_text,
                     R.mipmap.main_tab_user, R.mipmap.main_tab_user_chose, R.color.normal_text, R.color.red)
         );
-        final AtomicReference<View> currentView = new AtomicReference<>(new View(this));
+        final AtomicReference<View> currentView = new AtomicReference<>(null);
+        this.pages.clear();
+        this.pages.put(MainTab.TabChoice.File, new FilePage(this, address));
+        this.pages.put(MainTab.TabChoice.User, new UserPage(this, address));
         final ConstraintLayout activity = this.findViewById(R.id.main_activity);
         final ConstraintLayout.LayoutParams contentParams = new ConstraintLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ConstraintLayout.LayoutParams.MATCH_CONSTRAINT);
         contentParams.bottomToTop = R.id.main_tab_guideline;
@@ -98,176 +77,40 @@ public class MainActivity extends AppCompatActivity {
         contentParams.topToBottom = R.id.main_title_guideline;
         mainTab.setOnChangeListener(choice -> {
             logger.log(HLogLevel.DEBUG, "Choosing main tab: ", choice);
+            final View oldView;
             synchronized (currentView) {
-                final View oldView = currentView.getAndSet(null);
-                if (oldView != null)
-                    activity.removeView(oldView);
+                oldView = currentView.getAndSet(null);
+                this.minTabChoice.set(null);
             }
-            final View newView = switch (choice) {
-                case File -> this.onChangeFile(address);
-                case User -> this.onChangeUser(address);
-            };
+            if (oldView != null)
+                activity.removeView(oldView);
+            final MainTab.MainTabPage page = this.pages.get(choice);
+            assert page != null;
+            final View newView = page.onChange();
+            final boolean ok;
             synchronized (currentView) {
-                if (currentView.compareAndSet(null, newView))
-                    activity.addView(newView, contentParams);
+                ok = currentView.compareAndSet(null, newView);
+                this.minTabChoice.set(choice);
             }
-            this.minTabChoice.set(choice);
+            if (ok)
+                activity.addView(newView, contentParams);
         });
         mainTab.click(MainTab.TabChoice.File);
-    }
-
-    @NonNull private final AtomicReference<View> UserPageCache = new AtomicReference<>();
-    @NonNull private View onChangeUser(@NonNull final InetSocketAddress address) {
-        final View cache = this.UserPageCache.get();
-        if (cache != null)
-            return cache;
-        final ConstraintLayout page = UserListContentBinding.inflate(this.getLayoutInflater()).getRoot();
-        final TextView close = (TextView) page.getViewById(R.id.user_content_close_server);
-        final TextView disconnection = (TextView) page.getViewById(R.id.user_content_disconnect);
-        final AtomicBoolean closed = new AtomicBoolean(false);
-        close.setOnClickListener(v -> {
-            if (!closed.compareAndSet(false, true))
-                return;
-            Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
-                final boolean success;
-                try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
-                    success = OperateServerHelper.closeServer(client, TokenManager.getToken());
-                }
-                if (success) {
-                    this.runOnUiThread(() -> this.startActivity(new Intent(this, LoginActivity.class)));
-                    this.finish();
-                } else
-                    closed.set(false);
-            })).addListener(Main.exceptionListenerWithToast(this));
-        });
-        disconnection.setOnClickListener(v -> {
-            if (!closed.compareAndSet(false, true))
-                return;
-            this.startActivity(new Intent(this, LoginActivity.class));
-            this.finish();
-        });
-        this.UserPageCache.set(page);
-        return page;
-    }
-
-    @NonNull private final AtomicReference<View> FilePageCache = new AtomicReference<>();
-    @NonNull private final Deque<Triad.ImmutableTriad<Pair.ImmutablePair<FileLocation, Integer>, Pair.ImmutablePair<InetSocketAddress, ConstraintLayout>, CharSequence>> FileListStack = new ArrayDeque<>();
-    @NonNull private View onChangeFile(@NonNull final InetSocketAddress address) {
-        final View cache = this.FilePageCache.get();
-        if (cache != null)
-            return cache;
-        final ConstraintLayout page = FileListContentBinding.inflate(this.getLayoutInflater()).getRoot();
-        page.getViewById(R.id.file_list_backer).setOnClickListener(v -> this.onBackPressed());
-        ((TextView) page.getViewById(R.id.file_list_name)).setText(R.string.app_name);
-        Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() -> this.setFileList(address,
-                        new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), 0), 0, page)))
-                .addListener(Main.exceptionListenerWithToast(MainActivity.this));
-        this.FilePageCache.set(page);
-        return page;
-    }
-
-    private void setFileList(@NonNull final InetSocketAddress address, @NonNull final FileLocation directoryLocation, final int currentPage, @NonNull final ConstraintLayout page) throws WrongStateException, IOException, InterruptedException {
-        final TextView name = (TextView) page.getViewById(R.id.file_list_name);
-        final TextView count = (TextView) page.getViewById(R.id.file_list_counter);
-        final ListView content = (ListView) page.getViewById(R.id.file_list_content);
-        final TextView pageCurrent = (TextView) page.getViewById(R.id.file_list_page_current);
-        final TextView pageAll = (TextView) page.getViewById(R.id.file_list_page_all);
-        final TextView left = (TextView) page.getViewById(R.id.file_list_page_left_bottom);
-        final TextView right = (TextView) page.getViewById(R.id.file_list_page_right_bottom);
-        final Pair.ImmutablePair<Long, List<VisibleFileInformation>> list;
-        // TODO loading anim
-        try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
-            final Triad.ImmutableTriad<Long, Long, List<VisibleFileInformation>> tmp = OperateFileHelper.listFiles(client, TokenManager.getToken(), directoryLocation,
-                    Options.DirectoriesOrFiles.Both, 20, currentPage, Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false);
-            list = tmp == null ? Pair.ImmutablePair.makeImmutablePair(-1L, List.of()) : Pair.ImmutablePair.makeImmutablePair(tmp.getA(), tmp.getC());
-        }
-        final int allPage = MiscellaneousUtil.calculatePartCount(list.getFirst().intValue(), 20);
-        final boolean isRoot = SpecialDriverName.RootDriver.getIdentifier().equals(FileLocationSupporter.driver(directoryLocation));
-        final String countS = String.format(Locale.getDefault(), "%d", list.getFirst());
-        final String currentPageS = String.format(Locale.getDefault(), "%d", currentPage + 1);
-        final String allPageS = String.format(Locale.getDefault(), "%d", Math.max(allPage, 1));
-        final ListAdapter adapter = new FileListAdapter(list.getSecond(), this.getLayoutInflater());
-        final AtomicBoolean clickable = new AtomicBoolean(true);
-        final int nonclickableColor = this.getResources().getColor(R.color.nonclickable, this.getTheme());
-        final int clickableColor = this.getResources().getColor(R.color.normal_text, this.getTheme());
-        this.runOnUiThread(() -> {
-            count.setText(countS);
-            pageCurrent.setText(currentPageS);
-            pageAll.setText(allPageS);
-            if (currentPage <= 0) {
-                left.setTextColor(nonclickableColor);
-                left.setOnClickListener(null);
-                left.setClickable(false);
-            } else {
-                left.setTextColor(clickableColor);
-                left.setOnClickListener(v -> {
-                    if (!clickable.compareAndSet(true, false))
-                        return;
-                    Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() ->
-                                    this.setFileList(address, directoryLocation, currentPage - 1, page)))
-                            .addListener(Main.exceptionListenerWithToast(MainActivity.this));
-                });
-                left.setClickable(true);
-            }
-            if (currentPage >= allPage - 1) {
-                right.setTextColor(nonclickableColor);
-                right.setOnClickListener(null);
-                right.setClickable(false);
-            } else {
-                right.setTextColor(clickableColor);
-                right.setOnClickListener(v -> {
-                    if (!clickable.compareAndSet(true, false))
-                        return;
-                    Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() ->
-                                    this.setFileList(address, directoryLocation, currentPage + 1, page)))
-                            .addListener(Main.exceptionListenerWithToast(MainActivity.this));
-                });
-                right.setClickable(true);
-            }
-            content.setAdapter(adapter);
-            content.setOnItemClickListener((a, v, i, l) -> {
-                if (!clickable.compareAndSet(true, false))
-                    return;
-                this.FileListStack.push(Triad.ImmutableTriad.makeImmutableTriad(Pair.ImmutablePair.makeImmutablePair(directoryLocation, currentPage),
-                        Pair.ImmutablePair.makeImmutablePair(address, page), name.getText()));
-                final VisibleFileInformation information = list.getSecond().get(i);
-                if (FileInformationGetter.isDirectory(information))
-                    Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
-                        final FileLocation location;
-                        if (isRoot)
-                            location = FileLocationSupporter.create(FileInformationGetter.name(information), FileInformationGetter.id(information));
-                        else
-                            location = FileLocationSupporter.create(FileLocationSupporter.driver(directoryLocation), FileInformationGetter.id(information));
-                        this.setFileList(address, location, 0, page);
-                        this.runOnUiThread(() -> name.setText(isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information)));
-                    })).addListener(Main.exceptionListenerWithToast(MainActivity.this));
-            });
-        });
     }
 
     @Nullable protected LocalDateTime lastBackPressedTime;
     @Override
     public void onBackPressed() {
         final MainTab.TabChoice choice = this.minTabChoice.get();
-        if (choice != null)
-            switch (choice) {
-                case File -> {
-                    final Triad.ImmutableTriad<Pair.ImmutablePair<FileLocation, Integer>, Pair.ImmutablePair<InetSocketAddress, ConstraintLayout>, CharSequence> p = this.FileListStack.poll();
-                    if (p == null)
-                        break;
-                    Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
-                        this.setFileList(p.getB().getFirst(), p.getA().getFirst(),
-                                p.getA().getSecond().intValue(), p.getB().getSecond());
-                        this.runOnUiThread(() -> ((TextView) p.getB().getSecond().getViewById(R.id.file_list_name)).setText(p.getC()));
-                    })).addListener(Main.exceptionListenerWithToast(MainActivity.this));
-                    return;
-                }
-                case User -> {
-                } // TODO
-            }
+        if (choice != null) {
+            final MainTab.MainTabPage page = this.pages.get(choice);
+            assert page != null;
+            if (page.onBackPressed())
+                return;
+        }
         final LocalDateTime now = LocalDateTime.now();
         if (this.lastBackPressedTime != null && Duration.between(this.lastBackPressedTime, now).toMillis() < 2000) {
-            super.onBackPressed();
+            super.onBackPressed(); // this.finish();
             return;
         }
         Toast.makeText(this, R.string.toast_press_again_to_exit, Toast.LENGTH_SHORT).show();
@@ -278,5 +121,14 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Destroying MainActivity.");
+    }
+
+    @Override
+    @NonNull public String toString() {
+        return "MainActivity{" +
+                "minTabChoice=" + this.minTabChoice +
+                ", lastBackPressedTime=" + this.lastBackPressedTime +
+                ", super=" + super.toString() +
+                '}';
     }
 }
