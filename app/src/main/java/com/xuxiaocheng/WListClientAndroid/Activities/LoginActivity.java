@@ -18,9 +18,9 @@ import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Databases.User.UserManager;
+import com.xuxiaocheng.WListClient.Client.WListClientManager;
 import com.xuxiaocheng.WListClientAndroid.Client.PasswordManager;
 import com.xuxiaocheng.WListClientAndroid.Client.TokenManager;
-import com.xuxiaocheng.WListClientAndroid.Client.WListClientManager;
 import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.R;
 import com.xuxiaocheng.WListClientAndroid.Services.InternalServerService;
@@ -50,10 +50,10 @@ public class LoginActivity extends AppCompatActivity {
                 @Override
                 public void onServiceConnected(final ComponentName name, @NonNull final IBinder iService) {
                     final AtomicBoolean finishActivity = new AtomicBoolean(true);
-                    Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> {
+                    Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
                         logger.log(HLogLevel.INFO, "Waiting for server start completely...");
                         if (LoginActivity.internalServerAddress.isInitialized() && InternalServerService.getMainStage(iService) > 1) {
-                            Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> {
+                            Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
                                 LoginActivity.this.unbindService(this);
                                 synchronized (LoginActivity.internalServerAddress) {
                                     while (LoginActivity.internalServerAddress.isInitialized())
@@ -61,7 +61,7 @@ public class LoginActivity extends AppCompatActivity {
                                 }
                                 LoginActivity.this.startService(serverIntent);
                                 LoginActivity.this.bindService(serverIntent, this, Context.BIND_AUTO_CREATE);
-                            })).addListener(Main.ThrowableListenerWithToast(LoginActivity.this));
+                            })).addListener(Main.exceptionListenerWithToast(LoginActivity.this));
                             finishActivity.set(false);
                             return;
                         }
@@ -92,12 +92,12 @@ public class LoginActivity extends AppCompatActivity {
                             logger.log(HLogLevel.FAULT, "Failed to initialize wlist clients.", e);
                             LoginActivity.this.runOnUiThread(() -> Toast.makeText(LoginActivity.this.getApplicationContext(), R.string.toast_fatal_application_initialization, Toast.LENGTH_LONG).show());
                         }
-                    }, false)).addListener(Main.ThrowableListenerWithToast(LoginActivity.this));
+                    }, false)).addListener(Main.exceptionListenerWithToast(LoginActivity.this));
                 }
 
                 @Override
                 public void onServiceDisconnected(final ComponentName name) {
-                    Main.ThreadPool.submit(() -> {
+                    Main.AndroidExecutors.submit(() -> {
                         final InetSocketAddress address = LoginActivity.internalServerAddress.uninitialize();
                         if (address != null) {
                             logger.log(HLogLevel.INFO, "Disconnecting to: ", address);
@@ -107,7 +107,7 @@ public class LoginActivity extends AppCompatActivity {
                             LoginActivity.internalServerAddress.uninitialize(); // assert == null;
                             LoginActivity.internalServerAddress.notifyAll();
                         }
-                    }).addListener(Main.ThrowableListenerWithToast(LoginActivity.this));
+                    }).addListener(Main.exceptionListenerWithToast(LoginActivity.this));
                 }
             }, Context.BIND_AUTO_CREATE);
         });

@@ -36,8 +36,8 @@ android {
 }
 
 dependencies {
-    implementation files('libs/HeadLibs.main.jar')
     implementation 'org.jetbrains:annotations:24.0.1'
+    implementation files('libs/HeadLibs.main.jar')
     implementation files('libs/WList.main.jar')
     implementation 'org.snakeyaml:snakeyaml-engine:2.6'
     implementation 'com.squareup.okhttp3:okhttp:4.10.0'

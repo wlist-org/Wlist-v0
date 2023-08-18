@@ -23,10 +23,11 @@ import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WListClient.AndroidSupports.FileInformationGetter;
 import com.xuxiaocheng.WListClient.AndroidSupports.FileLocationSupporter;
+import com.xuxiaocheng.WListClient.Client.Exceptions.WrongStateException;
 import com.xuxiaocheng.WListClient.Client.OperationHelpers.OperateFileHelper;
 import com.xuxiaocheng.WListClient.Client.OperationHelpers.OperateServerHelper;
-import com.xuxiaocheng.WListClient.Client.OperationHelpers.WrongStateException;
 import com.xuxiaocheng.WListClient.Client.WListClientInterface;
+import com.xuxiaocheng.WListClient.Client.WListClientManager;
 import com.xuxiaocheng.WListClient.Server.FileLocation;
 import com.xuxiaocheng.WListClient.Server.Options;
 import com.xuxiaocheng.WListClient.Server.SpecialDriverName;
@@ -34,7 +35,6 @@ import com.xuxiaocheng.WListClient.Server.VisibleFileInformation;
 import com.xuxiaocheng.WListClientAndroid.Activities.CustomViews.FileListAdapter;
 import com.xuxiaocheng.WListClientAndroid.Activities.CustomViews.MainTab;
 import com.xuxiaocheng.WListClientAndroid.Client.TokenManager;
-import com.xuxiaocheng.WListClientAndroid.Client.WListClientManager;
 import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.R;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
@@ -128,7 +128,7 @@ public class MainActivity extends AppCompatActivity {
         close.setOnClickListener(v -> {
             if (!closed.compareAndSet(false, true))
                 return;
-            Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> {
+            Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
                 final boolean success;
                 try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
                     success = OperateServerHelper.closeServer(client, TokenManager.getToken());
@@ -138,7 +138,7 @@ public class MainActivity extends AppCompatActivity {
                     this.finish();
                 } else
                     closed.set(false);
-            })).addListener(Main.ThrowableListenerWithToast(this));
+            })).addListener(Main.exceptionListenerWithToast(this));
         });
         disconnection.setOnClickListener(v -> {
             if (!closed.compareAndSet(false, true))
@@ -159,9 +159,9 @@ public class MainActivity extends AppCompatActivity {
         final ConstraintLayout page = FileListContentBinding.inflate(this.getLayoutInflater()).getRoot();
         page.getViewById(R.id.file_list_backer).setOnClickListener(v -> this.onBackPressed());
         ((TextView) page.getViewById(R.id.file_list_name)).setText(R.string.app_name);
-        Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> this.setFileList(address,
+        Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() -> this.setFileList(address,
                         new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), 0), 0, page)))
-                .addListener(Main.ThrowableListenerWithToast(MainActivity.this));
+                .addListener(Main.exceptionListenerWithToast(MainActivity.this));
         this.FilePageCache.set(page);
         return page;
     }
@@ -177,9 +177,9 @@ public class MainActivity extends AppCompatActivity {
         final Pair.ImmutablePair<Long, List<VisibleFileInformation>> list;
         // TODO loading anim
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
-            final Pair.ImmutablePair<Long, List<VisibleFileInformation>> tmp = OperateFileHelper.listFiles(client, TokenManager.getToken(), directoryLocation,
-                    20, currentPage, Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false);
-            list = tmp == null ? Pair.ImmutablePair.makeImmutablePair(-1L, List.of()) : tmp;
+            final Triad.ImmutableTriad<Long, Long, List<VisibleFileInformation>> tmp = OperateFileHelper.listFiles(client, TokenManager.getToken(), directoryLocation,
+                    Options.DirectoriesOrFiles.Both, 20, currentPage, Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false);
+            list = tmp == null ? Pair.ImmutablePair.makeImmutablePair(-1L, List.of()) : Pair.ImmutablePair.makeImmutablePair(tmp.getA(), tmp.getC());
         }
         final int allPage = MiscellaneousUtil.calculatePartCount(list.getFirst().intValue(), 20);
         final boolean isRoot = SpecialDriverName.RootDriver.getIdentifier().equals(FileLocationSupporter.driver(directoryLocation));
@@ -203,9 +203,9 @@ public class MainActivity extends AppCompatActivity {
                 left.setOnClickListener(v -> {
                     if (!clickable.compareAndSet(true, false))
                         return;
-                    Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() ->
+                    Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() ->
                                     this.setFileList(address, directoryLocation, currentPage - 1, page)))
-                            .addListener(Main.ThrowableListenerWithToast(MainActivity.this));
+                            .addListener(Main.exceptionListenerWithToast(MainActivity.this));
                 });
                 left.setClickable(true);
             }
@@ -218,9 +218,9 @@ public class MainActivity extends AppCompatActivity {
                 right.setOnClickListener(v -> {
                     if (!clickable.compareAndSet(true, false))
                         return;
-                    Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() ->
+                    Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() ->
                                     this.setFileList(address, directoryLocation, currentPage + 1, page)))
-                            .addListener(Main.ThrowableListenerWithToast(MainActivity.this));
+                            .addListener(Main.exceptionListenerWithToast(MainActivity.this));
                 });
                 right.setClickable(true);
             }
@@ -232,15 +232,15 @@ public class MainActivity extends AppCompatActivity {
                         Pair.ImmutablePair.makeImmutablePair(address, page), name.getText()));
                 final VisibleFileInformation information = list.getSecond().get(i);
                 if (FileInformationGetter.isDirectory(information))
-                    Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> {
+                    Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
                         final FileLocation location;
                         if (isRoot)
-                            location = FileLocationSupporter.create(FileInformationGetter.name(information), 0);
+                            location = FileLocationSupporter.create(FileInformationGetter.name(information), FileInformationGetter.id(information));
                         else
                             location = FileLocationSupporter.create(FileLocationSupporter.driver(directoryLocation), FileInformationGetter.id(information));
                         this.setFileList(address, location, 0, page);
-                        this.runOnUiThread(() -> name.setText(FileInformationGetter.name(information)));
-                    })).addListener(Main.ThrowableListenerWithToast(MainActivity.this));
+                        this.runOnUiThread(() -> name.setText(isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information)));
+                    })).addListener(Main.exceptionListenerWithToast(MainActivity.this));
             });
         });
     }
@@ -255,11 +255,11 @@ public class MainActivity extends AppCompatActivity {
                     final Triad.ImmutableTriad<Pair.ImmutablePair<FileLocation, Integer>, Pair.ImmutablePair<InetSocketAddress, ConstraintLayout>, CharSequence> p = this.FileListStack.poll();
                     if (p == null)
                         break;
-                    Main.ThreadPool.submit(HExceptionWrapper.wrapRunnable(() -> {
+                    Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
                         this.setFileList(p.getB().getFirst(), p.getA().getFirst(),
                                 p.getA().getSecond().intValue(), p.getB().getSecond());
                         this.runOnUiThread(() -> ((TextView) p.getB().getSecond().getViewById(R.id.file_list_name)).setText(p.getC()));
-                    })).addListener(Main.ThrowableListenerWithToast(MainActivity.this));
+                    })).addListener(Main.exceptionListenerWithToast(MainActivity.this));
                     return;
                 }
                 case User -> {
