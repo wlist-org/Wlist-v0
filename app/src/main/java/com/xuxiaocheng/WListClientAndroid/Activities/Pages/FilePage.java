@@ -31,7 +31,6 @@ import java.net.InetSocketAddress;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
-import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class FilePage implements MainTab.MainTabPage {
@@ -49,9 +48,8 @@ public class FilePage implements MainTab.MainTabPage {
         final ConstraintLayout cache = this.pageCache.getInstanceNullable();
         if (cache != null) return cache;
         final ConstraintLayout page = FileListContentBinding.inflate(this.activity.getLayoutInflater()).getRoot();
-        page.getViewById(R.id.file_list_backer).setOnClickListener(v -> this.onBackPressed());
-        ((TextView) page.getViewById(R.id.file_list_name)).setText(R.string.app_name);
         this.pageCache.initialize(page);
+        ((TextView) page.getViewById(R.id.file_list_name)).setText(R.string.app_name);
         Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() ->
                         this.setFileList(this.address, new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), 0), 0)))
                 .addListener(Main.exceptionListenerWithToast(this.activity));
@@ -63,6 +61,7 @@ public class FilePage implements MainTab.MainTabPage {
 
     protected void setFileList(@NonNull final InetSocketAddress address, @NonNull final FileLocation directoryLocation, final int currentPage) throws WrongStateException, IOException, InterruptedException {
         final ConstraintLayout page = this.onChange();
+        final TextView backer = (TextView) page.getViewById(R.id.file_list_backer);
         final TextView name = (TextView) page.getViewById(R.id.file_list_name);
         final TextView counter = (TextView) page.getViewById(R.id.file_list_counter);
         final ListView content = (ListView) page.getViewById(R.id.file_list_content);
@@ -87,9 +86,18 @@ public class FilePage implements MainTab.MainTabPage {
         final int nonclickableColor = this.activity.getResources().getColor(R.color.nonclickable, this.activity.getTheme());
         final int clickableColor = this.activity.getResources().getColor(R.color.normal_text, this.activity.getTheme());
         this.activity.runOnUiThread(() -> {
-            counter.setText(String.format(Locale.getDefault(), "%d", list.getB()));
-            pageCurrent.setText(String.format(Locale.getDefault(), "%d", currentPage + 1));
-            pageAll.setText(String.format(Locale.getDefault(), "%d", allPage));
+            if (isRoot) {
+                backer.setTextColor(nonclickableColor);
+                backer.setOnClickListener(null);
+                backer.setClickable(false);
+            } else {
+                backer.setTextColor(clickableColor);
+                backer.setOnClickListener(v -> this.onBackPressed());
+                backer.setClickable(true);
+            }
+            counter.setText(String.valueOf(list.getB()));
+            pageCurrent.setText(String.valueOf(currentPage + 1));
+            pageAll.setText(String.valueOf(allPage));
             if (currentPage <= 0) {
                 left.setTextColor(nonclickableColor);
                 left.setOnClickListener(null);
