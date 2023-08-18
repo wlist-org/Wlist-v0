@@ -38,6 +38,8 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -110,69 +112,104 @@ public final class DriverNetworkHelper {
     public static final @NotNull OkHttpClient defaultHttpClient = DriverNetworkHelper.newHttpClientBuilder().build();
     public static final @NotNull OkHttpClient noRedirectHttpClient = DriverNetworkHelper.newHttpClientBuilder().followRedirects(false).followSslRedirects(false).build();
 
-    public static class FrequencyControlInterceptor implements Interceptor {
-        protected final int perSecond;
-        protected final @NotNull AtomicInteger frequencyControlSecond = new AtomicInteger(0);
+    public static class FrequencyControlPolicy {
+        protected final int limit;
+        protected final int amount;
+        protected final @NotNull TimeUnit unit;
+        protected final @NotNull AtomicInteger accepted = new AtomicInteger(0);
 
-        protected final int perMinute;
-        protected final @NotNull AtomicInteger frequencyControlMinute = new AtomicInteger(0);
-
-        public FrequencyControlInterceptor(final int perSecond, final int perMinute) {
+        public FrequencyControlPolicy(final int limit, final int amount, final @NotNull TimeUnit unit) {
             super();
-            this.perSecond = perSecond;
-            this.perMinute = perMinute;
+            this.limit = limit;
+            this.amount = amount;
+            this.unit = unit;
+        }
+
+        protected void tryLock() throws InterruptedException {
+            synchronized (this.accepted) {
+                boolean first = true;
+                while (this.accepted.get() > this.limit) {
+                    if (first) {
+                        HLog.DefaultLogger.log(HLogLevel.NETWORK, "At frequency control: ", this.limit, " every ", this.unit.toMillis(this.amount), " ms.");
+                        first = false;
+                    }
+                    this.accepted.wait();
+                }
+                this.accepted.getAndIncrement();
+            }
+        }
+
+        protected void release() {
+            DriverNetworkHelper.CountDownExecutors.schedule(() -> {
+                synchronized (this.accepted) {
+                    if (this.accepted.getAndDecrement() > 1)
+                        this.accepted.notify();
+                    else
+                        this.accepted.notifyAll();
+                }
+            }, this.amount, this.unit);
+        }
+
+        @Override
+        public boolean equals(final @Nullable Object o) {
+            if (this == o) return true;
+            if (!(o instanceof FrequencyControlPolicy that)) return false;
+            return this.limit == that.limit && this.amount == that.amount && this.unit == that.unit;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(this.limit, this.amount, this.unit);
+        }
+
+        @Override
+        public @NotNull String toString() {
+            return "FrequencyControlPolicy{" +
+                    "limit=" + this.limit +
+                    ", duration=" + this.amount +
+                    ", timeUnit=" + this.unit +
+                    ", accepted=" + this.accepted +
+                    '}';
+        }
+    }
+    public static @NotNull FrequencyControlPolicy defaultFrequencyControlPolicyPerSecond() {
+        return new FrequencyControlPolicy(5, 1, TimeUnit.SECONDS);
+    }
+    public static @NotNull FrequencyControlPolicy defaultFrequencyControlPolicyPerMinute() {
+        return new FrequencyControlPolicy(100, 1, TimeUnit.MINUTES);
+    }
+
+    public static class FrequencyControlInterceptor implements Interceptor {
+        protected final Set<FrequencyControlPolicy> policies = new HashSet<>();
+
+        public FrequencyControlInterceptor(final @NotNull FrequencyControlPolicy @NotNull... policies) {
+            super();
+            this.policies.addAll(List.of(policies));
         }
 
         @Override
         public @NotNull Response intercept(final Interceptor.@NotNull Chain chain) throws IOException {
-            synchronized (this.frequencyControlSecond) {
-                boolean first = true;
-                while (this.frequencyControlSecond.get() > this.perSecond)
-                    try {
-                        if (first) {
-                            HLog.DefaultLogger.log(HLogLevel.NETWORK, "At frequency control: ", this.perSecond, " per second.");
-                            first = false;
-                        }
-                        this.frequencyControlSecond.wait();
-                    } catch (final InterruptedException exception) {
-                        throw new IOException(exception);
+            final Collection<FrequencyControlPolicy> locked = new LinkedList<>();
+            boolean interrupted = true;
+            try {
+                synchronized (this.policies) {
+                    for (final FrequencyControlPolicy policy: this.policies) {
+                        policy.tryLock();
+                        locked.add(policy);
                     }
-                this.frequencyControlSecond.getAndIncrement();
-            }
-            synchronized (this.frequencyControlMinute) {
-                boolean first = true;
-                while (this.frequencyControlMinute.get() > this.perMinute)
-                    try {
-                        if (first) {
-                            HLog.DefaultLogger.log(HLogLevel.NETWORK, "At frequency control: ", this.perMinute, " per minute.");
-                            first = false;
-                        }
-                        this.frequencyControlMinute.wait();
-                    } catch (final InterruptedException exception) {
-                        throw new IOException(exception);
-                    }
-                this.frequencyControlMinute.getAndIncrement();
+                }
+                interrupted = false;
+            } catch (final InterruptedException exception) {
+                throw new IOException(exception);
+            } finally {
+                if (interrupted)
+                    locked.forEach(FrequencyControlPolicy::release);
             }
             final Response response;
             try {
                 response = chain.proceed(chain.request());
             } finally {
-                DriverNetworkHelper.CountDownExecutors.schedule(() -> {
-                    synchronized (this.frequencyControlSecond) {
-                        if (this.frequencyControlSecond.getAndDecrement() > 1)
-                            this.frequencyControlSecond.notify();
-                        else
-                            this.frequencyControlSecond.notifyAll();
-                    }
-                }, 1, TimeUnit.SECONDS);
-                DriverNetworkHelper.CountDownExecutors.schedule(() -> {
-                    synchronized (this.frequencyControlMinute) {
-                        if (this.frequencyControlMinute.getAndDecrement() > 1)
-                            this.frequencyControlMinute.notify();
-                        else
-                            this.frequencyControlMinute.notifyAll();
-                    }
-                }, 1, TimeUnit.MINUTES);
+                locked.forEach(FrequencyControlPolicy::release);
             }
             return response;
         }
@@ -180,10 +217,7 @@ public final class DriverNetworkHelper {
         @Override
         public @NotNull String toString() {
             return "FrequencyControlInterceptor{" +
-                    "perSecond=" + this.perSecond +
-                    ", perMinute=" + this.perMinute +
-                    ", frequencyControlSecond=" + this.frequencyControlSecond +
-                    ", frequencyControlMinute=" + this.frequencyControlMinute +
+                    "policies=" + this.policies +
                     '}';
         }
     }

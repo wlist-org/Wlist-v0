@@ -22,7 +22,9 @@ final class DriverConfiguration_lanzou extends DriverConfiguration<
     }
 
     private final @NotNull OkHttpClient httpClient = DriverNetworkHelper.newHttpClientBuilder()
-            .addNetworkInterceptor(new DriverNetworkHelper.FrequencyControlInterceptor(5, 100)).build();
+            .addNetworkInterceptor(new DriverNetworkHelper.FrequencyControlInterceptor(
+                    DriverNetworkHelper.defaultFrequencyControlPolicyPerSecond(),
+                    DriverNetworkHelper.defaultFrequencyControlPolicyPerMinute())).build();
 
     @Override
     public @NotNull OkHttpClient getHttpClient() {

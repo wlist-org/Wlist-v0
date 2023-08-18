@@ -152,7 +152,7 @@ public final class DriverHelper_lanzou {
     }
 
     private static final @NotNull Pattern passwordSignPattern = Pattern.compile("skdklds = '([^']+)");
-    private static final @NotNull Pattern srcPattern = Pattern.compile("src=\"/fn?([^\"]+)");
+    private static final @NotNull Pattern srcPattern = Pattern.compile("src=\"(/fn?[^\"]+)");
     private static final @NotNull Pattern signPattern = Pattern.compile("'sign':'([^']+)");
     private static final @NotNull Pattern filePattern = Pattern.compile("'file':'([^']+)");
     public static @Nullable String getSingleShareFileDownloadUrl(final @NotNull DriverConfiguration_lanzou configuration, final @NotNull String domin, final @NotNull String identifier, final @Nullable String pwd) throws IOException, IllegalParametersException {
@@ -222,6 +222,7 @@ HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Fi
     }
 
     static @Nullable String getFileDownloadUrl(final @NotNull DriverConfiguration_lanzou configuration, final long fileId) throws IOException {
+        // TODO: get by FileSalInformation.others
         final FormBody.Builder sharerBuilder = new FormBody.Builder()
                 .add("file_id", String.valueOf(fileId));
         final JSONObject json = DriverHelper_lanzou.task(configuration, 22, sharerBuilder, 1);
