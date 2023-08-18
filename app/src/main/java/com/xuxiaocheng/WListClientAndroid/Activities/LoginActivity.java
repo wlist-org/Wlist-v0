@@ -79,9 +79,9 @@ public class LoginActivity extends AppCompatActivity {
                         final String password = PasswordManager.getInternalPassword(UserManager.ADMIN);
                         logger.log(HLogLevel.ENHANCED, "Got server password.", ParametersMap.create().add("init", initPassword != null).add("password", password));
                         LoginActivity.this.runOnUiThread(() -> internalServer.setText(R.string.loading_page_logging_in));
-                        if (password != null)
+                        if (password != null) {
                             TokenManager.setToken(address, UserManager.ADMIN, password);
-                        else {
+                        } else {
                             // TODO get password from user.
                             LoginActivity.this.runOnUiThread(() -> Toast.makeText(LoginActivity.this, "No password!!!", Toast.LENGTH_SHORT).show());
                         }

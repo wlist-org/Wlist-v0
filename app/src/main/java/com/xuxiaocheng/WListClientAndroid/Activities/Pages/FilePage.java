@@ -75,7 +75,7 @@ public class FilePage implements MainTab.MainTabPage {
         // TODO loading anim
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
             // TODO: more configurable params.
-            list = OperateFileHelper.listFiles(client, TokenManager.getToken(), directoryLocation,
+            list = OperateFileHelper.listFiles(client, TokenManager.getToken(address), directoryLocation,
                     Options.DirectoriesOrFiles.Both, 20, currentPage, Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false);
         }
         if (list == null) {

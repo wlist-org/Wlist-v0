@@ -46,7 +46,7 @@ public class UserPage implements MainTab.MainTabPage {
             Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
                 final boolean success;
                 try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address)) {
-                    success = OperateServerHelper.closeServer(client, TokenManager.getToken());
+                    success = OperateServerHelper.closeServer(client, TokenManager.getToken(this.address));
                 }
                 if (success) {
                     this.activity.runOnUiThread(() -> this.activity.startActivity(new Intent(this.activity, LoginActivity.class)));
