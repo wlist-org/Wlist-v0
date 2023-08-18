@@ -1,6 +1,7 @@
 package com.xuxiaocheng.WListClientAndroid.Utils;
 
 import android.content.Context;
+import android.os.Looper;
 import android.os.Process;
 import android.util.Log;
 import androidx.annotation.NonNull;
@@ -33,6 +34,14 @@ public final class HLogManager {
         HUncaughtExceptionHelper.disableUncaughtExceptionListener(HUncaughtExceptionHelper.defaultKey); // Application Killer
         HUncaughtExceptionHelper.setUncaughtExceptionListener(HUncaughtExceptionHelper.listenerKey, (t, e) ->
                 HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Uncaught exception listened by WList Android.", ParametersMap.create().add("thread", t.getName()).add("pid", Process.myPid()), e));
+        final Thread.UncaughtExceptionHandler defaulter = HUncaughtExceptionHelper.getUncaughtExceptionListener(HUncaughtExceptionHelper.defaultKey);
+        final Thread.UncaughtExceptionHandler killer = HUncaughtExceptionHelper.getUncaughtExceptionListener(HUncaughtExceptionHelper.killerKey);
+        HUncaughtExceptionHelper.setUncaughtExceptionListener(HUncaughtExceptionHelper.killerKey, (t, e) -> {
+            if (Looper.getMainLooper().getThread() == t) {
+                if (defaulter != null) defaulter.uncaughtException(t, e);
+                if (killer != null) killer.uncaughtException(t, e);
+            }
+        });
     }
 
     @NonNull public static final AtomicBoolean initialized = new AtomicBoolean(false);

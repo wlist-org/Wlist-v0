@@ -1,11 +1,11 @@
 package com.xuxiaocheng.WListClientAndroid.Activities.Pages;
 
 import android.app.Activity;
-import android.widget.ListAdapter;
-import android.widget.ListView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
@@ -19,7 +19,6 @@ import com.xuxiaocheng.WListClient.Server.FileLocation;
 import com.xuxiaocheng.WListClient.Server.Options;
 import com.xuxiaocheng.WListClient.Server.SpecialDriverName;
 import com.xuxiaocheng.WListClient.Server.VisibleFileInformation;
-import com.xuxiaocheng.WListClient.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WListClientAndroid.Activities.CustomViews.MainTab;
 import com.xuxiaocheng.WListClientAndroid.Client.TokenManager;
 import com.xuxiaocheng.WListClientAndroid.Main;
@@ -64,82 +63,58 @@ public class FilePage implements MainTab.MainTabPage {
         final TextView backer = (TextView) page.getViewById(R.id.file_list_backer);
         final TextView name = (TextView) page.getViewById(R.id.file_list_name);
         final TextView counter = (TextView) page.getViewById(R.id.file_list_counter);
-        final ListView content = (ListView) page.getViewById(R.id.file_list_content);
-        final TextView pageCurrent = (TextView) page.getViewById(R.id.file_list_page_current);
-        final TextView pageAll = (TextView) page.getViewById(R.id.file_list_page_all);
-        final TextView left = (TextView) page.getViewById(R.id.file_list_page_left_bottom);
-        final TextView right = (TextView) page.getViewById(R.id.file_list_page_right_bottom);
+        final RecyclerView content = (RecyclerView) page.getViewById(R.id.file_list_content);
         final Triad.ImmutableTriad<Long, Long, List<VisibleFileInformation>> list;
         // TODO loading anim
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
             // TODO: more configurable params.
             list = OperateFileHelper.listFiles(client, TokenManager.getToken(address), directoryLocation,
-                    Options.DirectoriesOrFiles.Both, 20, currentPage, Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false);
+                    Options.DirectoriesOrFiles.Both, 50, currentPage, Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false);
         }
         if (list == null) {
             // TODO: directory not exists.
             return;
         }
-        final int allPage = MiscellaneousUtil.calculatePartCount( list.getB().intValue(), 20);
         final boolean isRoot = SpecialDriverName.RootDriver.getIdentifier().equals(FileLocationSupporter.driver(directoryLocation));
-        final ListAdapter adapter = new FileListAdapter(isRoot, list.getC(), this.activity.getLayoutInflater());
-        final int nonclickableColor = this.activity.getResources().getColor(R.color.nonclickable, this.activity.getTheme());
-        final int clickableColor = this.activity.getResources().getColor(R.color.normal_text, this.activity.getTheme());
         this.activity.runOnUiThread(() -> {
             if (isRoot) {
-                backer.setTextColor(nonclickableColor);
+                backer.setTextColor(this.activity.getResources().getColor(R.color.nonclickable, this.activity.getTheme()));
                 backer.setOnClickListener(null);
                 backer.setClickable(false);
             } else {
-                backer.setTextColor(clickableColor);
+                backer.setTextColor(this.activity.getResources().getColor(R.color.normal_text, this.activity.getTheme()));
                 backer.setOnClickListener(v -> this.onBackPressed());
                 backer.setClickable(true);
             }
             counter.setText(String.valueOf(list.getB()));
-            pageCurrent.setText(String.valueOf(currentPage + 1));
-            pageAll.setText(String.valueOf(allPage));
-            if (currentPage <= 0) {
-                left.setTextColor(nonclickableColor);
-                left.setOnClickListener(null);
-                left.setClickable(false);
-            } else {
-                left.setTextColor(clickableColor);
-                left.setOnClickListener(v -> {
-                    if (this.clickable.compareAndSet(true, false))
-                        Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() ->
-                                        this.setFileList(address, directoryLocation, currentPage - 1),
-                                () -> this.clickable.set(true))).addListener(Main.exceptionListenerWithToast(this.activity));
-                });
-                left.setClickable(true);
-            }
-            if (currentPage >= allPage - 1) {
-                right.setTextColor(nonclickableColor);
-                right.setOnClickListener(null);
-                right.setClickable(false);
-            } else {
-                right.setTextColor(clickableColor);
-                right.setOnClickListener(v -> {
-                    if (this.clickable.compareAndSet(true, false))
-                        Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() ->
-                                this.setFileList(address, directoryLocation, currentPage + 1),
-                                () -> this.clickable.set(true))).addListener(Main.exceptionListenerWithToast(this.activity));
-                });
-                right.setClickable(true);
-            }
-            content.setAdapter(adapter);
-            content.setOnItemClickListener((a, v, i, l) -> {
-                if (this.clickable.compareAndSet(true, false))
+            content.setLayoutManager(new LinearLayoutManager(this.activity));
+//        TODO    final int allPage = MiscellaneousUtil.calculatePartCount( list.getB().intValue(), 50);
+            content.setAdapter(new FileListAdapter(isRoot, list.getC(), this.activity.getLayoutInflater(), information -> {
+                if (this.clickable.compareAndSet(true, false)) {
+                    this.fileListStack.push(Triad.makeTriad(directoryLocation, currentPage, name.getText()));
+                    final AtomicBoolean failure = new AtomicBoolean(true);
                     Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
-                        this.fileListStack.push(Triad.makeTriad(directoryLocation, currentPage, name.getText()));
-                        final VisibleFileInformation information = list.getC().get(i);
                         if (FileInformationGetter.isDirectory(information)) {
                             this.setFileList(address, FileLocationSupporter.create(isRoot ? FileInformationGetter.name(information) : FileLocationSupporter.driver(directoryLocation), FileInformationGetter.id(information)), 0);
                             this.activity.runOnUiThread(() -> name.setText(isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information)));
                         } else {
                             // TODO: show file.
+                            throw new UnsupportedOperationException("Show file is unsupported now!");
                         }
-                    }, () -> this.clickable.set(true))).addListener(Main.exceptionListenerWithToast(this.activity));
-            });
+                        failure.set(false);
+                    }, () -> {
+                        this.clickable.set(true);
+                        if (failure.get())
+                            this.fileListStack.pop();
+                    })).addListener(Main.exceptionListenerWithToast(this.activity));
+                }
+            }));
+//    TODO            left.setOnClickListener(v -> {
+//                    if (this.clickable.compareAndSet(true, false))
+//                        Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() ->
+//                                        this.setFileList(address, directoryLocation, currentPage - 1),
+//                                () -> this.clickable.set(true))).addListener(Main.exceptionListenerWithToast(this.activity));
+//                });
         });
     }
 

@@ -3,7 +3,9 @@
                                                    xmlns:app="http://schemas.android.com/apk/res-auto"
                                                    android:layout_width="match_parent"
                                                    android:layout_height="50dp"
-                                                   android:background="@android:color/transparent">
+                                                   android:background="@drawable/recycler_water_selector"
+                                                   android:clickable="true"
+                                                   android:focusable="true">
 
 	<androidx.constraintlayout.widget.Guideline
 		android:id="@+id/file_list_cell_guideline_icon"
@@ -48,22 +50,18 @@
 		android:orientation="horizontal"
 		app:layout_constraintGuide_percent="0.65" />
 
-	<androidx.appcompat.widget.AppCompatEditText
+	<androidx.appcompat.widget.AppCompatTextView
 		android:id="@+id/file_list_cell_name"
 		android:layout_width="0dp"
 		android:layout_height="wrap_content"
 		android:layout_marginStart="5dp"
 		android:layout_marginTop="5dp"
 		android:layout_marginBottom="5dp"
-		android:background="@android:color/transparent"
-		android:cursorVisible="false"
 		android:ellipsize="end"
-		android:focusable="false"
 		android:gravity="start"
-		android:singleLine="true"
-		android:text="file_name"
+		android:text="@string/app_name"
 		android:textColor="@color/normal_text"
-		android:textSize="20sp"
+		android:textSize="15sp"
 		app:layout_constraintBottom_toTopOf="@id/file_list_cell_guideline_name"
 		app:layout_constraintLeft_toRightOf="@id/file_list_cell_guideline_icon"
 		app:layout_constraintRight_toLeftOf="@id/file_list_cell_guideline_option"
@@ -75,7 +73,7 @@
 		android:layout_height="wrap_content"
 		android:layout_marginStart="5dp"
 		android:gravity="start"
-		android:text="file_tip"
+		android:text="@string/app_name"
 		android:textColor="@color/normal_text"
 		android:textSize="11sp"
 		app:layout_constraintBottom_toBottomOf="parent"
