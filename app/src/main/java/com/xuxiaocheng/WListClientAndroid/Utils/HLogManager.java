@@ -25,13 +25,13 @@ public final class HLogManager {
         super();
     }
 
-    @NonNull private static final Collection<String> loggers = Set.of("DefaultLogger", "NetworkLogger", "ServerLogger", "ClientLogger", "DriverLogger", "DriverLogger/123pan");
+    @NonNull private static final Collection<String> loggers = Set.of("DefaultLogger", "NetworkLogger", "ServerLogger", "ClientLogger", "DriverLogger", "DriverLogger/lanzou");
     static {
         HLog.setLogTimeFLength(3);
         for (final String name: HLogManager.loggers)
             HLogManager.buildInstance(name, "ServerLogger".equals(name) ? HLogLevel.DEBUG.getLevel() : Integer.MIN_VALUE);
-        HUncaughtExceptionHelper.disableUncaughtExceptionListener("default"); // Application Killer
-        HUncaughtExceptionHelper.setUncaughtExceptionListener("listener", (t, e) ->
+        HUncaughtExceptionHelper.disableUncaughtExceptionListener(HUncaughtExceptionHelper.defaultKey); // Application Killer
+        HUncaughtExceptionHelper.setUncaughtExceptionListener(HUncaughtExceptionHelper.listenerKey, (t, e) ->
                 HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Uncaught exception listened by WList Android.", ParametersMap.create().add("thread", t.getName()).add("pid", Process.myPid()), e));
     }
 

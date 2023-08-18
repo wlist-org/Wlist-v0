@@ -82,9 +82,9 @@ public class FilePage implements MainTab.MainTabPage {
             // TODO: directory not exists.
             return;
         }
-        final int allPage = MiscellaneousUtil.calculatePartCount(list.getB().intValue(), 20);
+        final int allPage = MiscellaneousUtil.calculatePartCount( list.getB().intValue(), 20);
         final boolean isRoot = SpecialDriverName.RootDriver.getIdentifier().equals(FileLocationSupporter.driver(directoryLocation));
-        final ListAdapter adapter = new FileListAdapter(list.getC(), this.activity.getLayoutInflater());
+        final ListAdapter adapter = new FileListAdapter(isRoot, list.getC(), this.activity.getLayoutInflater());
         final int nonclickableColor = this.activity.getResources().getColor(R.color.nonclickable, this.activity.getTheme());
         final int clickableColor = this.activity.getResources().getColor(R.color.normal_text, this.activity.getTheme());
         this.activity.runOnUiThread(() -> {
