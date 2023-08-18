@@ -151,7 +151,7 @@ public final class DriverHelper_lanzou {
         return json;
     }
 
-    private static final @NotNull Pattern passwordSignPattern = Pattern.compile("&sign=([^'&]+)");
+    private static final @NotNull Pattern passwordSignPattern = Pattern.compile("skdklds = '([^']+)");
     private static final @NotNull Pattern srcPattern = Pattern.compile("src=\"/fn?([^\"]+)");
     private static final @NotNull Pattern signPattern = Pattern.compile("'sign':'([^']+)");
     private static final @NotNull Pattern filePattern = Pattern.compile("'file':'([^']+)");
@@ -167,17 +167,17 @@ public final class DriverHelper_lanzou {
             final Matcher signMatcher = DriverHelper_lanzou.passwordSignPattern.matcher(sharePage);
             if (!signMatcher.find())
                 throw new WrongResponseException("No sign matched.", sharePage, ParametersMap.create().add("configuration", configuration).add("domin", domin).add("identifier", identifier).add("pwd", pwd));
-            sign = signMatcher.group().substring("&sign=".length());
+            sign = signMatcher.group(1);
         } else {
             final Matcher srcMatcher = DriverHelper_lanzou.srcPattern.matcher(sharePage);
             if (!srcMatcher.find())
                 throw new WrongResponseException("No src matched.", sharePage, ParametersMap.create().add("configuration", configuration).add("domin", domin).add("identifier", identifier));
-            final String src = srcMatcher.group().substring("src=\"/".length());
+            final String src = srcMatcher.group(1);
             final String loadingPage = DriverHelper_lanzou.requestHtml(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin + src, "GET"));
             final Matcher signMatcher = DriverHelper_lanzou.signPattern.matcher(loadingPage);
             if (!signMatcher.find())
                 throw new WrongResponseException("No sign matched.", loadingPage, ParametersMap.create().add("configuration", configuration).add("domin", domin).add("identifier", identifier));
-            sign = signMatcher.group().substring("'sign':'".length());
+            sign = signMatcher.group(1);
         }
         final FormBody.Builder builder = new FormBody.Builder()
                 .add("action", "downprocess")
@@ -204,11 +204,11 @@ HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Ru
         final Matcher redirectFileMatcher = DriverHelper_lanzou.filePattern.matcher(redirectPage);
         if (!redirectFileMatcher.find())
             throw new WrongResponseException("No redirect file matched.", redirectPage, ParametersMap.create().add("configuration", configuration).add("domin", domin).add("identifier", identifier).add("displayUrl", displayUrl).add("pwd", pwd));
-        final String redirectFile = redirectFileMatcher.group().substring("'file':'".length());
+        final String redirectFile = redirectFileMatcher.group(1);
         final Matcher redirectSignMatcher = DriverHelper_lanzou.signPattern.matcher(redirectPage);
         if (!redirectSignMatcher.find())
             throw new WrongResponseException("No redirect sign matched.", redirectPage, ParametersMap.create().add("configuration", configuration).add("domin", domin).add("identifier", identifier).add("displayUrl", displayUrl).add("pwd", pwd));
-        final String redirectSign = redirectSignMatcher.group().substring("'sign':'".length());
+        final String redirectSign = redirectSignMatcher.group(1);
         final FormBody.Builder redirectBuilder = new FormBody.Builder()
                 .add("file", redirectFile)
                 .add("sign", redirectSign)
