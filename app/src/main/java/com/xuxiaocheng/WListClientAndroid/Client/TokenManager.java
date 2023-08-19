@@ -36,7 +36,8 @@ public final class TokenManager {
         if (token == null) return false;
         final String payload = token.substring(token.indexOf('.') + 1, token.lastIndexOf('.'));
         final long exp = JSON.parseObject(Base64.getDecoder().decode(payload.getBytes(StandardCharsets.UTF_8))).getLongValue("exp");
-        final Duration duration = Duration.between(LocalDateTime.ofEpochSecond(exp, 0, ZoneOffset.UTC).minusMinutes(3), LocalDateTime.now());
+        final Duration duration = Duration.between(LocalDateTime.now(), LocalDateTime.ofEpochSecond(exp, 0, ZoneOffset.UTC).minusMinutes(3));
+        if (duration.isNegative()) return true;
         Main.AndroidExecutors.schedule(HExceptionWrapper.wrapRunnable(() -> TokenManager.setToken(address, username, password)),
                 duration.toMillis(), TimeUnit.MILLISECONDS).addListener(MiscellaneousUtil.exceptionListener());
         return true; // Truth server.
