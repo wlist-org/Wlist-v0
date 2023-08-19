@@ -14,7 +14,6 @@ import com.xuxiaocheng.WListClientAndroid.Activities.LoginActivity;
 import com.xuxiaocheng.WListClientAndroid.Activities.MainActivity;
 import com.xuxiaocheng.WListClientAndroid.Client.TokenManager;
 import com.xuxiaocheng.WListClientAndroid.Main;
-import com.xuxiaocheng.WListClientAndroid.R;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageUserContentBinding;
 
 import java.net.InetSocketAddress;
@@ -35,9 +34,10 @@ public class UserPage implements MainTab.MainTabPage {
     @NonNull public View onChange() {
         final ConstraintLayout cache = this.pageCache.get();
         if (cache != null) return cache;
-        final ConstraintLayout page = PageUserContentBinding.inflate(this.activity.getLayoutInflater()).getRoot();
-        final TextView close = (TextView) page.getViewById(R.id.page_user_content_close_server);
-        final TextView disconnection = (TextView) page.getViewById(R.id.page_user_content_disconnect);
+        final PageUserContentBinding page = PageUserContentBinding.inflate(this.activity.getLayoutInflater());
+        this.pageCache.set(page.getRoot());
+        final TextView close = page.pageUserContentCloseServer;
+        final TextView disconnection = page.pageUserContentDisconnect;
         // TODO
         final AtomicBoolean clickable = new AtomicBoolean(true);
         close.setOnClickListener(v -> {
@@ -62,12 +62,19 @@ public class UserPage implements MainTab.MainTabPage {
                 clickable.set(true);
             }
         });
-        this.pageCache.set(page);
-        return page;
+        return page.getRoot();
     }
 
     @Override
     public boolean onBackPressed() {
         return false;
+    }
+
+    @Override
+    @NonNull public String toString() {
+        return "UserPage{" +
+                "address=" + this.address +
+                ", pageCache=" + this.pageCache +
+                '}';
     }
 }

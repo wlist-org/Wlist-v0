@@ -69,7 +69,7 @@ public class LoginActivity extends AppCompatActivity {
                             return;
                         }
                         final InetSocketAddress address = InternalServerService.getAddress(iService);
-                        logger.log(HLogLevel.INFO, "Connecting to: ", address);
+                        logger.log(HLogLevel.INFO, "Connecting to service: ", address);
                         LoginActivity.this.runOnUiThread(() -> internalServer.setText(R.string.activity_login_loading_connecting));
                         assert !LoginActivity.internalServerAddress.isInitialized() || LoginActivity.internalServerAddress.getInstance().equals(address);
                         LoginActivity.internalServerAddress.initializeIfNot(() -> address);
@@ -108,7 +108,7 @@ public class LoginActivity extends AppCompatActivity {
                     Main.AndroidExecutors.submit(() -> {
                         final InetSocketAddress address = LoginActivity.internalServerAddress.uninitialize();
                         if (address != null) {
-                            logger.log(HLogLevel.INFO, "Disconnecting to: ", address);
+                            logger.log(HLogLevel.INFO, "Disconnecting to service: ", address);
                             WListClientManager.quicklyUninitialize(address);
                         }
                         synchronized (LoginActivity.internalServerAddress) {

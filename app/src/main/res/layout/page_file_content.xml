@@ -25,7 +25,7 @@
 		android:layout_height="0dp"
 		android:autoSizeTextType="uniform"
 		android:gravity="center"
-		android:text="@string/file_content_left_page"
+		android:text="\u003c"
 		android:textColor="@color/normal_text"
 		app:layout_constraintBottom_toTopOf="@id/page_file_content_guideline_header"
 		app:layout_constraintLeft_toLeftOf="parent"
