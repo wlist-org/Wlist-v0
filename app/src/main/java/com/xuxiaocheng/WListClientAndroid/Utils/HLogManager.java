@@ -10,6 +10,7 @@ import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
+import com.xuxiaocheng.WListClient.Client.OperationHelpers.OperateHelper;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -30,7 +31,8 @@ public final class HLogManager {
     static {
         HLog.setLogTimeFLength(3);
         for (final String name: HLogManager.loggers)
-            HLogManager.buildInstance(name, "ServerLogger".equals(name) ? HLogLevel.DEBUG.getLevel() : Integer.MIN_VALUE);
+            HLogManager.buildInstance(name, "DefaultLogger".equals(name) ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1);
+        OperateHelper.logOperation.set(false);
         HUncaughtExceptionHelper.disableUncaughtExceptionListener(HUncaughtExceptionHelper.defaultKey); // Application Killer
         HUncaughtExceptionHelper.setUncaughtExceptionListener(HUncaughtExceptionHelper.listenerKey, (t, e) ->
                 HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Uncaught exception listened by WList Android.", ParametersMap.create().add("thread", t.getName()).add("pid", Process.myPid()), e));
@@ -67,7 +69,7 @@ public final class HLogManager {
     }
 
     public static void buildInstance(@NonNull final String name, final int level) {
-        HLog.createInstance(name, level, false, false, new OutputStream() {
+        HLog.createInstance(name, level, true, false, new OutputStream() {
             private final ByteArrayOutputStream cache = new ByteArrayOutputStream(256);
             private int lastPriority = Log.INFO;
 

@@ -11,6 +11,7 @@
 	<string name="toast_fatal_application_initialization">Failed to initialize application.</string>
 	<string name="toast_press_again_to_exit">Press again to exit the app.</string>
 	<string name="toast_directory_not_available">Current directory is not available.</string>
+	<string name="toast_server_closed">Server has been closed. Please connect again.</string>
 	<string name="main_tab_file">File</string>
 	<string name="main_tab_user">User</string>
 	<string name="file_content_left_page" translatable="false">\u003c</string>

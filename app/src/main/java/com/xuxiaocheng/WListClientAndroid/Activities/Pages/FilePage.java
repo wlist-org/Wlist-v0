@@ -3,6 +3,7 @@ package com.xuxiaocheng.WListClientAndroid.Activities.Pages;
 import android.app.Activity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AbsListView;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -31,7 +32,7 @@ import com.xuxiaocheng.WListClientAndroid.Client.TokenManager;
 import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.R;
 import com.xuxiaocheng.WListClientAndroid.Utils.RecyclerViewHeadersAndTailorsAdapterWrapper;
-import com.xuxiaocheng.WListClientAndroid.databinding.FileListContentBinding;
+import com.xuxiaocheng.WListClientAndroid.databinding.PageFileContentBinding;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -61,7 +62,7 @@ public class FilePage implements MainTab.MainTabPage {
     @NonNull public ConstraintLayout onChange() {
         final ConstraintLayout cache = this.pageCache.getInstanceNullable();
         if (cache != null) return cache;
-        final ConstraintLayout page = FileListContentBinding.inflate(this.activity.getLayoutInflater()).getRoot();
+        final ConstraintLayout page = PageFileContentBinding.inflate(this.activity.getLayoutInflater()).getRoot();
         this.pageCache.initialize(page);
         ((TextView) page.getViewById(R.id.file_list_name)).setText(R.string.app_name);
         Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() ->
@@ -97,7 +98,7 @@ public class FilePage implements MainTab.MainTabPage {
         final RecyclerViewHeadersAndTailorsAdapterWrapper<CellViewHolder> adapterWrapper = new RecyclerViewHeadersAndTailorsAdapterWrapper<>(new RecyclerView.Adapter<>() {
             @Override
             @NonNull public CellViewHolder onCreateViewHolder(@NonNull final ViewGroup parent, final int viewType) {
-                return new CellViewHolder((ConstraintLayout) FilePage.this.activity.getLayoutInflater().inflate(R.layout.file_list_cell, parent, false), information -> {
+                return new CellViewHolder((ConstraintLayout) FilePage.this.activity.getLayoutInflater().inflate(R.layout.page_file_cell, parent, false), information -> {
                     if (FilePage.this.clickable.compareAndSet(true, false)) {
                         FilePage.this.fileListStack.push(Pair.ImmutablePair.makeImmutablePair(directoryLocation, name.getText()));
                         final AtomicBoolean failure = new AtomicBoolean(true);
@@ -129,6 +130,41 @@ public class FilePage implements MainTab.MainTabPage {
                 return list.size();
             }
         });
+        // TODO: register broadcast listener.
+        final RecyclerView.OnScrollListener scrollListener = new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(@NonNull final RecyclerView recyclerView, final int newState) {
+                super.onScrollStateChanged(recyclerView, newState);
+                // TODO: Remove the pages on the top.
+                if (!recyclerView.canScrollVertically(1) && FilePage.this.clickable.compareAndSet(true, false)) {
+                    Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
+                        final int nextPage = currentPage.incrementAndGet();
+                        if (nextPage >= allPage) {
+                            currentPage.decrementAndGet();
+                            return;
+                        }
+                        final Triad.ImmutableTriad<Long, Long, List<VisibleFileInformation>> l;
+                        try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
+                            l = OperateFileHelper.listFiles(client, TokenManager.getToken(address), directoryLocation,
+                                    Options.DirectoriesOrFiles.Both, 1, nextPage, Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false);
+                        }
+                        if (l == null) {
+                            FilePage.this.activity.runOnUiThread(() -> {
+                                FilePage.this.onBackPressed();
+                                Toast.makeText(FilePage.this.activity, R.string.toast_directory_not_available, Toast.LENGTH_SHORT).show();
+                            });
+                            return;
+                        }
+                        final int pos = list.size();
+                        list.addAll(l.getC());
+                        FilePage.this.activity.runOnUiThread(() -> {
+                            adapterWrapper.notifyItemRangeInserted(adapterWrapper.headersSize() + pos, l.getC().size());
+                            this.onScrollStateChanged(recyclerView, newState);
+                        });
+                    }, () -> FilePage.this.clickable.set(true))).addListener(Main.exceptionListenerWithToast(FilePage.this.activity));
+                }
+            }
+        };
         this.activity.runOnUiThread(() -> {
             if (isRoot) {
                 backer.setTextColor(this.activity.getResources().getColor(R.color.nonclickable, this.activity.getTheme()));
@@ -143,38 +179,9 @@ public class FilePage implements MainTab.MainTabPage {
             final LinearLayoutManager layoutManager = new LinearLayoutManager(this.activity);
             content.setLayoutManager(layoutManager);
             content.setAdapter(adapterWrapper);
-            // TODO: register broadcast listener.
-            content.addOnScrollListener(new RecyclerView.OnScrollListener() {
-                @Override
-                public void onScrollStateChanged(@NonNull final RecyclerView recyclerView, final int newState) {
-                    super.onScrollStateChanged(recyclerView, newState);
-                    // TODO: Remove the pages on the top.
-                    if (!recyclerView.canScrollVertically(1) && FilePage.this.clickable.compareAndSet(true, false)) {
-                        Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
-                            final int nextPage = currentPage.incrementAndGet();
-                            if (nextPage >= allPage) {
-                                currentPage.decrementAndGet();
-                                return;
-                            }
-                            final Triad.ImmutableTriad<Long, Long, List<VisibleFileInformation>> l;
-                            try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
-                                l = OperateFileHelper.listFiles(client, TokenManager.getToken(address), directoryLocation,
-                                        Options.DirectoriesOrFiles.Both, 1, nextPage, Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false);
-                            }
-                            if (l == null)
-                                FilePage.this.activity.runOnUiThread(() -> {
-                                    FilePage.this.onBackPressed();
-                                    Toast.makeText(FilePage.this.activity, R.string.toast_directory_not_available, Toast.LENGTH_SHORT).show();
-                                });
-                            else {
-                                final int pos = list.size();
-                                list.addAll(l.getC());
-                                FilePage.this.activity.runOnUiThread(() -> adapterWrapper.notifyItemRangeInserted(adapterWrapper.headersSize() + pos, l.getC().size()));
-                            }
-                        }, () -> FilePage.this.clickable.set(true))).addListener(Main.exceptionListenerWithToast(FilePage.this.activity));
-                    }
-                }
-            });
+            content.clearOnScrollListeners();
+            content.addOnScrollListener(scrollListener);
+            scrollListener.onScrollStateChanged(content, AbsListView.OnScrollListener.SCROLL_STATE_IDLE);
         });
     }
 
@@ -219,7 +226,6 @@ public class FilePage implements MainTab.MainTabPage {
 
         public void setItem(@NonNull final VisibleFileInformation information, final boolean isRoot) {
             this.itemView.setOnClickListener(v -> this.clicker.accept(information)); // TODO: select on long click.
-
             CellViewHolder.setFileImage(this.image, information);
             this.name.setText(isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information));
             final LocalDateTime update = FileInformationGetter.updateTime(information);
@@ -264,6 +270,7 @@ public class FilePage implements MainTab.MainTabPage {
                 case "doc", "docx" -> R.mipmap.page_file_image_docx;
                 case "ppt", "pptx" -> R.mipmap.page_file_image_pptx;
                 case "xls", "xlsx" -> R.mipmap.page_file_image_xlsx;
+                case "zip", "7z", "rar", "gz" -> R.mipmap.page_file_image_zip;
                 default -> R.mipmap.page_file_image_file;
             });
         }

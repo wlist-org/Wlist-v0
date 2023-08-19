@@ -1,7 +1,6 @@
 package com.xuxiaocheng.WListClientAndroid.Activities;
 
 import android.app.Activity;
-import android.app.ActivityOptions;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
@@ -12,8 +11,10 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
+import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WListClient.Client.WListClientManager;
 import com.xuxiaocheng.WListClientAndroid.Activities.CustomViews.MainTab;
 import com.xuxiaocheng.WListClientAndroid.Activities.Pages.FilePage;
 import com.xuxiaocheng.WListClientAndroid.Activities.Pages.UserPage;
@@ -31,7 +32,7 @@ public class MainActivity extends AppCompatActivity {
     public static void start(@NonNull final Activity activity, @NonNull final InetSocketAddress address) {
         final Intent intent = new Intent(activity, MainActivity.class);
         intent.putExtra("host", address.getHostName()).putExtra("port", address.getPort());
-        activity.runOnUiThread(() -> activity.startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(activity).toBundle()));
+        activity.runOnUiThread(() -> activity.startActivity(intent));
     }
 
     @Nullable protected InetSocketAddress extraAddress() {
@@ -44,6 +45,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @NonNull protected final AtomicReference<MainTab.TabChoice> minTabChoice = new AtomicReference<>();
+    @NonNull protected final HInitializer<InetSocketAddress> address = new HInitializer<>("MainActivityAddress");
     @NonNull protected final Map<MainTab.TabChoice, MainTab.MainTabPage> pages = new EnumMap<>(MainTab.TabChoice.class);
 
     @Override
@@ -52,13 +54,14 @@ public class MainActivity extends AppCompatActivity {
         HLogManager.initialize(this, "Activities");
         final HLog logger = HLogManager.getInstance("DefaultLogger");
         logger.log(HLogLevel.VERBOSE, "Creating MainActivity.");
-        this.setContentView(R.layout.main_activity);
+        this.setContentView(R.layout.activity_main);
         final InetSocketAddress address = this.extraAddress();
         if (address == null) {
             HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), new IllegalStateException("No address received."));
             this.finish();
             return;
         }
+        this.address.initialize(address);
         final MainTab mainTab = new MainTab(
             new MainTab.ButtonGroup(this, R.id.main_tab_file, R.id.main_tab_file_button, R.id.main_tab_file_text,
                     R.mipmap.main_tab_file, R.mipmap.main_tab_file_chose, R.color.normal_text, R.color.red),
@@ -115,6 +118,20 @@ public class MainActivity extends AppCompatActivity {
         }
         Toast.makeText(this, R.string.toast_press_again_to_exit, Toast.LENGTH_SHORT).show();
         this.lastBackPressedTime = now;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (WListClientManager.instances.isNotInitialized(this.address.getInstance())) {
+            Toast.makeText(this, R.string.toast_server_closed, Toast.LENGTH_SHORT).show();
+            this.close();
+        }
+    }
+
+    public void close() {
+        this.startActivity(new Intent(this, LoginActivity.class));
+        this.finish();
     }
 
     @Override

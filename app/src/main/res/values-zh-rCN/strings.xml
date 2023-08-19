@@ -10,6 +10,7 @@
 	<string name="toast_fatal_application_initialization">初始化应用失败</string>
 	<string name="toast_press_again_to_exit">再按一次退出应用</string>
 	<string name="toast_directory_not_available">当前文件夹不可用</string>
+	<string name="toast_server_closed">服务端已关闭，请重新连接</string>
 	<string name="login_activity_login">登录</string>
 	<string name="login_activity_exit">退出应用</string>
 	<string name="main_tab_file">文件</string>

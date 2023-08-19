@@ -1,6 +1,5 @@
 package com.xuxiaocheng.WListClientAndroid.Activities.Pages;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.view.View;
 import android.widget.TextView;
@@ -12,20 +11,21 @@ import com.xuxiaocheng.WListClient.Client.WListClientInterface;
 import com.xuxiaocheng.WListClient.Client.WListClientManager;
 import com.xuxiaocheng.WListClientAndroid.Activities.CustomViews.MainTab;
 import com.xuxiaocheng.WListClientAndroid.Activities.LoginActivity;
+import com.xuxiaocheng.WListClientAndroid.Activities.MainActivity;
 import com.xuxiaocheng.WListClientAndroid.Client.TokenManager;
 import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.R;
-import com.xuxiaocheng.WListClientAndroid.databinding.UserListContentBinding;
+import com.xuxiaocheng.WListClientAndroid.databinding.PageUserContentBinding;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class UserPage implements MainTab.MainTabPage {
-    @NonNull protected final Activity activity;
+    @NonNull protected final MainActivity activity;
     @NonNull protected final InetSocketAddress address;
 
-    public UserPage(@NonNull final Activity activity, @NonNull final InetSocketAddress address) {
+    public UserPage(@NonNull final MainActivity activity, @NonNull final InetSocketAddress address) {
         super();
         this.activity = activity;
         this.address = address;
@@ -35,7 +35,7 @@ public class UserPage implements MainTab.MainTabPage {
     @NonNull public View onChange() {
         final ConstraintLayout cache = this.pageCache.get();
         if (cache != null) return cache;
-        final ConstraintLayout page = UserListContentBinding.inflate(this.activity.getLayoutInflater()).getRoot();
+        final ConstraintLayout page = PageUserContentBinding.inflate(this.activity.getLayoutInflater()).getRoot();
         final TextView close = (TextView) page.getViewById(R.id.user_content_close_server);
         final TextView disconnection = (TextView) page.getViewById(R.id.user_content_disconnect);
         // TODO
@@ -48,10 +48,8 @@ public class UserPage implements MainTab.MainTabPage {
                 try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address)) {
                     success = OperateServerHelper.closeServer(client, TokenManager.getToken(this.address));
                 }
-                if (success) {
-                    this.activity.runOnUiThread(() -> this.activity.startActivity(new Intent(this.activity, LoginActivity.class)));
-                    this.activity.finish();
-                }
+                if (success)
+                    this.activity.runOnUiThread(this.activity::close);
             }, () -> clickable.set(true))).addListener(Main.exceptionListenerWithToast(this.activity));
         });
         disconnection.setOnClickListener(v -> {

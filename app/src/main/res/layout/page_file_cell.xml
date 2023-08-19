@@ -12,24 +12,34 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:orientation="vertical"
-		app:layout_constraintGuide_percent="0.15" />
+		app:layout_constraintGuide_begin="50dp" />
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/file_list_cell_guideline_image"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="horizontal"
+		app:layout_constraintGuide_percent="0.5" />
 
 	<androidx.constraintlayout.widget.Guideline
 		android:id="@+id/file_list_cell_guideline_option"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:orientation="vertical"
-		app:layout_constraintGuide_percent="0.85" />
+		app:layout_constraintGuide_end="40dp" />
 
 	<androidx.appcompat.widget.AppCompatImageView
 		android:id="@+id/file_list_cell_image"
 		android:layout_width="0dp"
-		android:layout_height="0dp"
+		android:layout_height="wrap_content"
+		android:layout_marginStart="10dp"
+		android:layout_marginEnd="10dp"
 		android:scaleType="centerInside"
-		app:layout_constraintBottom_toBottomOf="parent"
+		android:src="@mipmap/page_file_image_directory"
+		app:layout_constraintBottom_toBottomOf="@id/file_list_cell_guideline_image"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toLeftOf="@id/file_list_cell_guideline_icon"
-		app:layout_constraintTop_toTopOf="parent" />
+		app:layout_constraintTop_toTopOf="@id/file_list_cell_guideline_image" />
 
 	<androidx.appcompat.widget.AppCompatImageView
 		android:id="@+id/file_list_cell_option"
@@ -37,6 +47,8 @@
 		android:layout_height="0dp"
 		android:autoSizeTextType="uniform"
 		android:gravity="center"
+		android:paddingStart="10dp"
+		android:paddingEnd="10dp"
 		android:src="@mipmap/page_file_ellipsis"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toRightOf="@id/file_list_cell_guideline_option"
@@ -48,15 +60,13 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:orientation="horizontal"
-		app:layout_constraintGuide_percent="0.65" />
+		app:layout_constraintGuide_percent="0.6" />
 
 	<androidx.appcompat.widget.AppCompatTextView
 		android:id="@+id/file_list_cell_name"
 		android:layout_width="0dp"
 		android:layout_height="wrap_content"
-		android:layout_marginStart="5dp"
 		android:layout_marginTop="5dp"
-		android:layout_marginBottom="5dp"
 		android:ellipsize="end"
 		android:gravity="start"
 		android:text="@string/app_name"
@@ -71,7 +81,7 @@
 		android:id="@+id/file_list_cell_tip"
 		android:layout_width="0dp"
 		android:layout_height="wrap_content"
-		android:layout_marginStart="5dp"
+		android:layout_marginBottom="5dp"
 		android:gravity="start"
 		android:text="@string/app_name"
 		android:textColor="@color/normal_text"

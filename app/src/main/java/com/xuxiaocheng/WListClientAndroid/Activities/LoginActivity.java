@@ -38,7 +38,7 @@ public class LoginActivity extends AppCompatActivity {
         HLogManager.initialize(this, "Activities");
         final HLog logger = HLogManager.getInstance("DefaultLogger");
         logger.log(HLogLevel.VERBOSE, "Creating LoginActivity.");
-        this.setContentView(R.layout.login_activity);
+        this.setContentView(R.layout.activity_login);
         final TextView internalServer = this.findViewById(R.id.login_internal_server);
         final View exit = this.findViewById(R.id.login_exit);
         internalServer.setOnClickListener(v -> {
