@@ -72,11 +72,11 @@ public class MainActivity extends AppCompatActivity {
         this.pages.clear();
         this.pages.put(MainTab.TabChoice.File, new FilePage(this, address));
         this.pages.put(MainTab.TabChoice.User, new UserPage(this, address));
-        final ConstraintLayout activity = this.findViewById(R.id.main_activity);
+        final ConstraintLayout activity = this.findViewById(R.id.activity_main);
         final ConstraintLayout.LayoutParams contentParams = new ConstraintLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ConstraintLayout.LayoutParams.MATCH_CONSTRAINT);
         contentParams.bottomToTop = R.id.activity_main_guideline_tab;
-        contentParams.leftToLeft = R.id.main_activity;
-        contentParams.rightToRight = R.id.main_activity;
+        contentParams.leftToLeft = R.id.activity_main;
+        contentParams.rightToRight = R.id.activity_main;
         contentParams.topToBottom = R.id.activity_main_guideline_title;
         mainTab.setOnChangeListener(choice -> {
             logger.log(HLogLevel.DEBUG, "Choosing main tab: ", choice);

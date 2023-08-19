@@ -27,24 +27,19 @@ public final class TokenManager {
 
     @NonNull public static final HMultiInitializers<InetSocketAddress, String> tokens = new HMultiInitializers<>("TokenManager");
 
-    public static void setToken(@NonNull final InetSocketAddress address, @NonNull final String username, @NonNull final String password) throws InterruptedException, IOException, WrongStateException {
+    public static boolean setToken(@NonNull final InetSocketAddress address, @NonNull final String username, @NonNull final String password) throws InterruptedException, IOException, WrongStateException {
         final String token;
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
             token = OperateUserHelper.login(client, username, password);
         }
         TokenManager.tokens.reinitializeNullable(address, token);
-        if (token == null) return;
-        final int a = token.indexOf('.');
-        final int b = token.lastIndexOf('.');
-        if (a == b) return;
-        final String payload = token.substring(a + 1, b);
-        final Long exp = JSON.parseObject(Base64.getDecoder().decode(payload.getBytes(StandardCharsets.UTF_8))).getLong("exp");
-        if (exp == null)
-            return;
-        final Duration duration = Duration.between(LocalDateTime.ofEpochSecond(exp.longValue(), 0, ZoneOffset.UTC).minusMinutes(3), LocalDateTime.now());
-        if (duration.isNegative()) return;
+        if (token == null) return false;
+        final String payload = token.substring(token.indexOf('.') + 1, token.lastIndexOf('.'));
+        final long exp = JSON.parseObject(Base64.getDecoder().decode(payload.getBytes(StandardCharsets.UTF_8))).getLongValue("exp");
+        final Duration duration = Duration.between(LocalDateTime.ofEpochSecond(exp, 0, ZoneOffset.UTC).minusMinutes(3), LocalDateTime.now());
         Main.AndroidExecutors.schedule(HExceptionWrapper.wrapRunnable(() -> TokenManager.setToken(address, username, password)),
                 duration.toMillis(), TimeUnit.MILLISECONDS).addListener(MiscellaneousUtil.exceptionListener());
+        return true; // Truth server.
     }
 
     @NonNull public static String getToken(@NonNull final InetSocketAddress address) {
