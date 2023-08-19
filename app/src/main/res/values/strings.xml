@@ -1,23 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
 	<string name="app_name">WList</string>
-	<string name="login_activity_welcome">Welcome to wlist</string>
-	<string name="login_activity_enter_passport">Please enter phone number.</string>
-	<string name="login_activity_enter_password">Please enter password</string>
-	<string name="login_activity_login">Login!</string>
-	<string name="login_activity_exit">Exit app</string>
-	<string name="loading_page_starting_internal_server">Starting internal server…</string>
-	<string name="loading_page_connecting">Connecting to server…</string>
-	<string name="loading_page_logging_in">Connected to server. Logging in…</string>
 	<string name="toast_fatal_application_initialization">Failed to initialize application.</string>
 	<string name="toast_press_again_to_exit">Press again to exit the app.</string>
-	<string name="toast_directory_not_available">Current directory is not available.</string>
-	<string name="toast_server_closed">Server has been closed. Please connect again.</string>
-	<string name="main_tab_file">File</string>
-	<string name="main_tab_user">User</string>
-	<string name="file_content_left_page" translatable="false">\u003c</string>
-	<string name="file_content_right_page" translatable="false">\u003e</string>
-	<string name="file_content_slash_page" translatable="false">/</string>
-	<string name="file_content_counter">items</string>
-	<string name="user_content_close_server">Close server</string>
-	<string name="user_content_disconnect">Disconnection</string>
+	<string name="activity_login_welcome">Welcome to wlist</string>
+	<string name="activity_login_enter_passport">Please enter phone number.</string>
+	<string name="activity_login_enter_password">Please enter password</string>
+	<string name="activity_login_login_internal_server">Login!</string>
+	<string name="activity_login_exit">Exit app</string>
+	<string name="activity_login_loading_starting_internal_server">Starting internal server…</string>
+	<string name="activity_login_loading_connecting">Connecting to server…</string>
+	<string name="activity_login_loading_logging_in">Connected to server. Logging in…</string>
+	<string name="activity_main_server_closed">Server has been closed. Please connect again.</string>
+	<string name="activity_main_tab_file">File</string>
+	<string name="activity_main_tab_user">User</string>
+	<string name="page_file_unavailable_directory">Current directory is not available.</string>
+	<string name="page_file_counter">items</string>
+	<string name="page_file_loading">Loading more…</string>
+	<string name="page_user_disconnect">Disconnection</string>
+	<string name="page_user_close_server">Close server</string>
 </resources>

@@ -63,9 +63,9 @@ public class MainActivity extends AppCompatActivity {
         }
         this.address.initialize(address);
         final MainTab mainTab = new MainTab(
-            new MainTab.ButtonGroup(this, R.id.main_tab_file, R.id.main_tab_file_button, R.id.main_tab_file_text,
+            new MainTab.ButtonGroup(this, R.id.activity_main_tab_file, R.id.activity_main_tab_file_button, R.id.activity_main_tab_file_text,
                     R.mipmap.main_tab_file, R.mipmap.main_tab_file_chose, R.color.normal_text, R.color.red),
-            new MainTab.ButtonGroup(this, R.id.main_tab_user, R.id.main_tab_user_button, R.id.main_tab_user_text,
+            new MainTab.ButtonGroup(this, R.id.activity_main_tab_user, R.id.activity_main_tab_user_button, R.id.activity_main_tab_user_text,
                     R.mipmap.main_tab_user, R.mipmap.main_tab_user_chose, R.color.normal_text, R.color.red)
         );
         final AtomicReference<View> currentView = new AtomicReference<>(null);
@@ -74,10 +74,10 @@ public class MainActivity extends AppCompatActivity {
         this.pages.put(MainTab.TabChoice.User, new UserPage(this, address));
         final ConstraintLayout activity = this.findViewById(R.id.main_activity);
         final ConstraintLayout.LayoutParams contentParams = new ConstraintLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ConstraintLayout.LayoutParams.MATCH_CONSTRAINT);
-        contentParams.bottomToTop = R.id.main_tab_guideline;
+        contentParams.bottomToTop = R.id.activity_main_guideline_tab;
         contentParams.leftToLeft = R.id.main_activity;
         contentParams.rightToRight = R.id.main_activity;
-        contentParams.topToBottom = R.id.main_title_guideline;
+        contentParams.topToBottom = R.id.activity_main_guideline_title;
         mainTab.setOnChangeListener(choice -> {
             logger.log(HLogLevel.DEBUG, "Choosing main tab: ", choice);
             final View oldView;
@@ -130,14 +130,14 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         if (WListClientManager.instances.isNotInitialized(this.address.getInstance())) {
-            Toast.makeText(this, R.string.toast_server_closed, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.activity_main_server_closed, Toast.LENGTH_SHORT).show();
             this.close();
             return;
         }
         WListClientManager.addListener(this.address.getInstance(), i -> {
             if (!i.booleanValue()) {
                 this.runOnUiThread(() -> {
-                    Toast.makeText(this, R.string.toast_server_closed, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, R.string.activity_main_server_closed, Toast.LENGTH_SHORT).show();
                     this.close();
                 });
                 WListClientManager.removeAllListeners(this.address.getInstance());

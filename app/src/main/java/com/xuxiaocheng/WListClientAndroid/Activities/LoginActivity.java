@@ -39,12 +39,12 @@ public class LoginActivity extends AppCompatActivity {
         final HLog logger = HLogManager.getInstance("DefaultLogger");
         logger.log(HLogLevel.VERBOSE, "Creating LoginActivity.");
         this.setContentView(R.layout.activity_login);
-        final TextView internalServer = this.findViewById(R.id.login_internal_server);
-        final View exit = this.findViewById(R.id.login_exit);
+        final TextView internalServer = this.findViewById(R.id.activity_login_login_internal_server);
+        final View exit = this.findViewById(R.id.activity_login_exit);
         internalServer.setOnClickListener(v -> {
             final Intent serverIntent = new Intent(this, InternalServerService.class);
             logger.log(HLogLevel.LESS, "Starting internal server...");
-            internalServer.setText(R.string.loading_page_starting_internal_server);
+            internalServer.setText(R.string.activity_login_loading_starting_internal_server);
             this.startService(serverIntent);
             this.bindService(serverIntent, new ServiceConnection() {
                 @Override
@@ -67,7 +67,7 @@ public class LoginActivity extends AppCompatActivity {
                         }
                         final InetSocketAddress address = InternalServerService.getAddress(iService);
                         logger.log(HLogLevel.INFO, "Connecting to: ", address);
-                        LoginActivity.this.runOnUiThread(() -> internalServer.setText(R.string.loading_page_connecting));
+                        LoginActivity.this.runOnUiThread(() -> internalServer.setText(R.string.activity_login_loading_connecting));
                         assert !LoginActivity.internalServerAddress.isInitialized() || LoginActivity.internalServerAddress.getInstance().equals(address);
                         LoginActivity.internalServerAddress.initializeIfNot(() -> address);
                         WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
@@ -78,7 +78,7 @@ public class LoginActivity extends AppCompatActivity {
                             PasswordManager.registerInternalPassword(UserManager.ADMIN, initPassword);
                         final String password = PasswordManager.getInternalPassword(UserManager.ADMIN);
                         logger.log(HLogLevel.ENHANCED, "Got server password.", ParametersMap.create().add("init", initPassword != null).add("password", password));
-                        LoginActivity.this.runOnUiThread(() -> internalServer.setText(R.string.loading_page_logging_in));
+                        LoginActivity.this.runOnUiThread(() -> internalServer.setText(R.string.activity_login_loading_logging_in));
                         if (password != null) {
                             TokenManager.setToken(address, UserManager.ADMIN, password);
                         } else {

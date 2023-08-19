@@ -36,8 +36,8 @@ public class UserPage implements MainTab.MainTabPage {
         final ConstraintLayout cache = this.pageCache.get();
         if (cache != null) return cache;
         final ConstraintLayout page = PageUserContentBinding.inflate(this.activity.getLayoutInflater()).getRoot();
-        final TextView close = (TextView) page.getViewById(R.id.user_content_close_server);
-        final TextView disconnection = (TextView) page.getViewById(R.id.user_content_disconnect);
+        final TextView close = (TextView) page.getViewById(R.id.page_user_content_close_server);
+        final TextView disconnection = (TextView) page.getViewById(R.id.page_user_content_disconnect);
         // TODO
         final AtomicBoolean clickable = new AtomicBoolean(true);
         close.setOnClickListener(v -> {

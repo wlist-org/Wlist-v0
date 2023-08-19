@@ -2,135 +2,125 @@
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
                                                    xmlns:app="http://schemas.android.com/apk/res-auto"
                                                    xmlns:tools="http://schemas.android.com/tools"
-                                                   android:id="@+id/main_activity"
                                                    android:layout_width="match_parent"
                                                    android:layout_height="match_parent"
                                                    android:background="@color/differ_background"
                                                    android:orientation="vertical">
 
 	<androidx.constraintlayout.widget.Guideline
-		android:id="@+id/main_title_guideline"
+		android:id="@+id/activity_main_guideline_title"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:orientation="horizontal"
-		app:layout_constraintGuide_percent="0.07" />
-
-	<androidx.constraintlayout.widget.Guideline
-		android:id="@+id/main_tab_guideline"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:orientation="horizontal"
-		app:layout_constraintGuide_percent="0.93" />
+		app:layout_constraintGuide_begin="60dp" />
 
 	<androidx.appcompat.widget.LinearLayoutCompat
-		android:id="@+id/main_title"
+		android:id="@+id/activity_main_title"
 		android:layout_width="match_parent"
 		android:layout_height="0dp"
 		android:background="@color/normal_background"
 		android:orientation="horizontal"
-		app:layout_constraintBottom_toBottomOf="@id/main_title_guideline"
+		app:layout_constraintBottom_toBottomOf="@id/activity_main_guideline_title"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toTopOf="parent" />
+	<!--	TODO: title-->
 
 	<androidx.constraintlayout.widget.Guideline
-		android:id="@+id/main_tab_guideline_top"
+		android:id="@+id/activity_main_guideline_tab"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:orientation="horizontal"
-		app:layout_constraintGuide_percent="0.935" />
-
-	<androidx.constraintlayout.widget.Guideline
-		android:id="@+id/main_tab_guideline_bottom"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:orientation="horizontal"
-		app:layout_constraintGuide_percent="0.995" />
+		app:layout_constraintGuide_end="60dp" />
 
 	<View
-		android:id="@+id/main_tab_file"
+		android:id="@+id/activity_main_tab_file"
 		android:layout_width="0dp"
 		android:layout_height="0dp"
 		android:background="@color/normal_background"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toLeftOf="@id/main_tab_user"
-		app:layout_constraintTop_toBottomOf="@id/main_tab_guideline" />
+		app:layout_constraintRight_toLeftOf="@id/activity_main_tab_user"
+		app:layout_constraintTop_toBottomOf="@id/activity_main_guideline_tab" />
 
 	<androidx.constraintlayout.widget.Guideline
-		android:id="@+id/main_tab_guideline_file"
+		android:id="@+id/activity_main_tab_guideline_file"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:orientation="vertical"
 		app:layout_constraintGuide_percent="0.3" />
 
 	<androidx.appcompat.widget.AppCompatImageView
-		android:id="@+id/main_tab_file_button"
+		android:id="@+id/activity_main_tab_file_button"
 		android:layout_width="wrap_content"
 		android:layout_height="0dp"
+		android:layout_marginTop="5dp"
 		android:adjustViewBounds="true"
 		android:background="@color/normal_background"
 		android:scaleType="centerInside"
 		android:src="@mipmap/main_tab_file"
-		app:layout_constraintBottom_toTopOf="@id/main_tab_file_text"
-		app:layout_constraintLeft_toLeftOf="@id/main_tab_guideline_file"
-		app:layout_constraintRight_toRightOf="@id/main_tab_guideline_file"
-		app:layout_constraintTop_toBottomOf="@id/main_tab_guideline_top"
+		app:layout_constraintBottom_toTopOf="@id/activity_main_tab_file_text"
+		app:layout_constraintLeft_toLeftOf="@id/activity_main_tab_guideline_file"
+		app:layout_constraintRight_toRightOf="@id/activity_main_tab_guideline_file"
+		app:layout_constraintTop_toBottomOf="@id/activity_main_guideline_tab"
 		tools:ignore="TouchTargetSizeCheck,SpeakableTextPresentCheck" />
 
 	<androidx.appcompat.widget.AppCompatTextView
-		android:id="@+id/main_tab_file_text"
+		android:id="@+id/activity_main_tab_file_text"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
+		android:layout_marginBottom="5dp"
 		android:autoSizeTextType="uniform"
-		android:text="@string/main_tab_file"
+		android:text="@string/activity_main_tab_file"
 		android:textColor="@color/normal_text"
-		app:layout_constraintBottom_toTopOf="@id/main_tab_guideline_bottom"
-		app:layout_constraintLeft_toLeftOf="@id/main_tab_guideline_file"
-		app:layout_constraintRight_toRightOf="@id/main_tab_guideline_file"
-		app:layout_constraintTop_toBottomOf="@id/main_tab_file_button" />
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toLeftOf="@id/activity_main_tab_guideline_file"
+		app:layout_constraintRight_toRightOf="@id/activity_main_tab_guideline_file"
+		app:layout_constraintTop_toBottomOf="@id/activity_main_tab_file_button" />
 
 	<View
-		android:id="@+id/main_tab_user"
+		android:id="@+id/activity_main_tab_user"
 		android:layout_width="0dp"
 		android:layout_height="0dp"
 		android:background="@color/normal_background"
 		app:layout_constraintBottom_toBottomOf="parent"
-		app:layout_constraintLeft_toRightOf="@id/main_tab_file"
+		app:layout_constraintLeft_toRightOf="@id/activity_main_tab_file"
 		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/main_tab_guideline" />
+		app:layout_constraintTop_toBottomOf="@id/activity_main_guideline_tab" />
 
 	<androidx.constraintlayout.widget.Guideline
-		android:id="@+id/main_tab_guideline_user"
+		android:id="@+id/activity_main_tab_guideline_user"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:orientation="vertical"
 		app:layout_constraintGuide_percent="0.7" />
 
 	<androidx.appcompat.widget.AppCompatImageView
-		android:id="@+id/main_tab_user_button"
+		android:id="@+id/activity_main_tab_user_button"
 		android:layout_width="wrap_content"
 		android:layout_height="0dp"
+		android:layout_marginTop="5dp"
 		android:adjustViewBounds="true"
 		android:background="@color/normal_background"
 		android:scaleType="fitCenter"
 		android:src="@mipmap/main_tab_user"
-		app:layout_constraintBottom_toTopOf="@id/main_tab_user_text"
-		app:layout_constraintLeft_toLeftOf="@id/main_tab_guideline_user"
-		app:layout_constraintRight_toRightOf="@id/main_tab_guideline_user"
-		app:layout_constraintTop_toBottomOf="@id/main_tab_guideline_top"
+		app:layout_constraintBottom_toTopOf="@id/activity_main_tab_user_text"
+		app:layout_constraintLeft_toLeftOf="@id/activity_main_tab_guideline_user"
+		app:layout_constraintRight_toRightOf="@id/activity_main_tab_guideline_user"
+		app:layout_constraintTop_toBottomOf="@id/activity_main_guideline_tab"
 		tools:ignore="TouchTargetSizeCheck,SpeakableTextPresentCheck" />
 
 	<androidx.appcompat.widget.AppCompatTextView
-		android:id="@+id/main_tab_user_text"
+		android:id="@+id/activity_main_tab_user_text"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
+		android:layout_marginBottom="5dp"
 		android:autoSizeTextType="uniform"
-		android:text="@string/main_tab_user"
+		android:text="@string/activity_main_tab_user"
 		android:textColor="@color/normal_text"
-		app:layout_constraintBottom_toTopOf="@id/main_tab_guideline_bottom"
-		app:layout_constraintLeft_toLeftOf="@id/main_tab_guideline_user"
-		app:layout_constraintRight_toRightOf="@id/main_tab_guideline_user"
-		app:layout_constraintTop_toBottomOf="@id/main_tab_user_button" />
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toLeftOf="@id/activity_main_tab_guideline_user"
+		app:layout_constraintRight_toRightOf="@id/activity_main_tab_guideline_user"
+		app:layout_constraintTop_toBottomOf="@id/activity_main_tab_user_button" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

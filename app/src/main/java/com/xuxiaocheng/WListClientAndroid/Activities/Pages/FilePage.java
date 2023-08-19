@@ -64,7 +64,7 @@ public class FilePage implements MainTab.MainTabPage {
         if (cache != null) return cache;
         final ConstraintLayout page = PageFileContentBinding.inflate(this.activity.getLayoutInflater()).getRoot();
         this.pageCache.initialize(page);
-        ((TextView) page.getViewById(R.id.file_list_name)).setText(R.string.app_name);
+        ((TextView) page.getViewById(R.id.page_file_content_name)).setText(R.string.app_name);
         Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() ->
                         this.setFileList(this.address, new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), 0))))
                 .addListener(Main.exceptionListenerWithToast(this.activity));
@@ -76,17 +76,17 @@ public class FilePage implements MainTab.MainTabPage {
 
     protected void setFileList(@NonNull final InetSocketAddress address, @NonNull final FileLocation directoryLocation) throws WrongStateException, IOException, InterruptedException {
         final ConstraintLayout page = this.onChange();
-        final TextView backer = (TextView) page.getViewById(R.id.file_list_backer);
-        final TextView name = (TextView) page.getViewById(R.id.file_list_name);
-        final TextView counter = (TextView) page.getViewById(R.id.file_list_counter);
-        final RecyclerView content = (RecyclerView) page.getViewById(R.id.file_list_content);
+        final TextView backer = (TextView) page.getViewById(R.id.page_file_content_backer);
+        final TextView name = (TextView) page.getViewById(R.id.page_file_content_name);
+        final TextView counter = (TextView) page.getViewById(R.id.page_file_content_counter);
+        final RecyclerView content = (RecyclerView) page.getViewById(R.id.page_file_content_list);
         final AtomicInteger currentPage = new AtomicInteger(0);
         final Triad.ImmutableTriad<Long, Long, List<VisibleFileInformation>> lists;
         // TODO loading anim
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
             // TODO: more configurable params.
             lists = OperateFileHelper.listFiles(client, TokenManager.getToken(address), directoryLocation,
-                    Options.DirectoriesOrFiles.Both, 1, currentPage.get(), Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false);
+                    Options.DirectoriesOrFiles.Both, 50, currentPage.get(), Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false);
         }
         if (lists == null) {
             // TODO: directory not exists.
@@ -94,7 +94,7 @@ public class FilePage implements MainTab.MainTabPage {
         }
         final boolean isRoot = SpecialDriverName.RootDriver.getIdentifier().equals(FileLocationSupporter.driver(directoryLocation));
         final List<VisibleFileInformation> list = new ArrayList<>(lists.getC());
-        final int allPage = MiscellaneousUtil.calculatePartCount( lists.getB().intValue(), 1);
+        final int allPage = MiscellaneousUtil.calculatePartCount( lists.getB().intValue(), 50);
         final RecyclerViewHeadersAndTailorsAdapterWrapper<CellViewHolder> adapterWrapper = new RecyclerViewHeadersAndTailorsAdapterWrapper<>(new RecyclerView.Adapter<>() {
             @Override
             @NonNull public CellViewHolder onCreateViewHolder(@NonNull final ViewGroup parent, final int viewType) {
@@ -151,7 +151,7 @@ public class FilePage implements MainTab.MainTabPage {
                         if (l == null) {
                             FilePage.this.activity.runOnUiThread(() -> {
                                 FilePage.this.onBackPressed();
-                                Toast.makeText(FilePage.this.activity, R.string.toast_directory_not_available, Toast.LENGTH_SHORT).show();
+                                Toast.makeText(FilePage.this.activity, R.string.page_file_unavailable_directory, Toast.LENGTH_SHORT).show();
                             });
                             return;
                         }
@@ -192,7 +192,7 @@ public class FilePage implements MainTab.MainTabPage {
         if (this.clickable.compareAndSet(true, false))
             Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
                 this.setFileList(this.address, p.getFirst());
-                this.activity.runOnUiThread(() -> ((TextView) this.onChange().getViewById(R.id.file_list_name)).setText(p.getSecond()));
+                this.activity.runOnUiThread(() -> ((TextView) this.onChange().getViewById(R.id.page_file_content_name)).setText(p.getSecond()));
             }, () -> this.clickable.set(true))).addListener(Main.exceptionListenerWithToast(this.activity));
         return true;
     }
@@ -212,16 +212,16 @@ public class FilePage implements MainTab.MainTabPage {
         @NonNull protected final Consumer<VisibleFileInformation> clicker;
         @NonNull protected final ImageView image;
         @NonNull protected final TextView name;
-        @NonNull protected final TextView tip;
+        @NonNull protected final TextView tips;
         @NonNull protected final View option;
 
         protected CellViewHolder(@NonNull final ConstraintLayout cell, @NonNull final Consumer<VisibleFileInformation> clicker) {
             super(cell);
             this.clicker = clicker;
-            this.image = (ImageView) cell.getViewById(R.id.file_list_cell_image);
-            this.name = (TextView) cell.getViewById(R.id.file_list_cell_name);
-            this.tip = (TextView) cell.getViewById(R.id.file_list_cell_tip);
-            this.option = cell.getViewById(R.id.file_list_cell_option);
+            this.image = (ImageView) cell.getViewById(R.id.page_file_cell_image);
+            this.name = (TextView) cell.getViewById(R.id.page_file_cell_name);
+            this.tips = (TextView) cell.getViewById(R.id.page_file_cell_tips);
+            this.option = cell.getViewById(R.id.page_file_cell_option);
         }
 
         public void setItem(@NonNull final VisibleFileInformation information, final boolean isRoot) {
@@ -229,7 +229,7 @@ public class FilePage implements MainTab.MainTabPage {
             CellViewHolder.setFileImage(this.image, information);
             this.name.setText(isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information));
             final LocalDateTime update = FileInformationGetter.updateTime(information);
-            this.tip.setText(update == null ? "unknown" : update.format(DateTimeFormatter.ISO_DATE_TIME).replace('T', ' '));
+            this.tips.setText(update == null ? "unknown" : update.format(DateTimeFormatter.ISO_DATE_TIME).replace('T', ' '));
 //            this.option.setOnClickListener(v -> {
 //                // TODO
 //            });
@@ -239,12 +239,12 @@ public class FilePage implements MainTab.MainTabPage {
         public boolean equals(@Nullable final Object o) {
             if (this == o) return true;
             if (!(o instanceof CellViewHolder holder)) return false;
-            return this.image.equals(holder.image) && this.name.equals(holder.name) && this.tip.equals(holder.tip) && this.option.equals(holder.option);
+            return this.image.equals(holder.image) && this.name.equals(holder.name) && this.tips.equals(holder.tips) && this.option.equals(holder.option);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(this.image, this.name, this.tip, this.option);
+            return Objects.hash(this.image, this.name, this.tips, this.option);
         }
 
         @Override
@@ -253,7 +253,7 @@ public class FilePage implements MainTab.MainTabPage {
                     "clicker=" + this.clicker +
                     ", image=" + this.image +
                     ", name=" + this.name +
-                    ", tip=" + this.tip +
+                    ", tips=" + this.tips +
                     ", option=" + this.option +
                     '}';
         }
