@@ -119,13 +119,16 @@ public class WListClient implements WListClientInterface {
                 throw new IOException(throwable);
             }
         }
+        final ByteBuf r;
         synchronized (this.receiveLock) {
             while (this.receive == null && this.isActive())
                 this.receiveLock.wait(TimeUnit.SECONDS.toMillis(1));
-            final ByteBuf r = this.receive;
+            r = this.receive;
             this.receive = null;
-            return r;
         }
+        if (r == null)
+            throw new IOException("Closed client.");
+        return r;
     }
 
     @Override
