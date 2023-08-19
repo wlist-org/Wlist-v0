@@ -99,6 +99,15 @@ public class MainActivity extends AppCompatActivity {
                 activity.addView(newView, contentParams);
         });
         mainTab.click(MainTab.TabChoice.File);
+        WListClientManager.addListener(address, i -> {
+            if (!i.booleanValue()) {
+                this.runOnUiThread(() -> {
+                    Toast.makeText(this, R.string.toast_server_closed, Toast.LENGTH_SHORT).show();
+                    this.close();
+                });
+                WListClientManager.removeAllListeners(address);
+            }
+        });
     }
 
     @Nullable protected LocalDateTime lastBackPressedTime;

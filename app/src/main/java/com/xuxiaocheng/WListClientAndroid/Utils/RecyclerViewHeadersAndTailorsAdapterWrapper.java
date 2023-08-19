@@ -3,7 +3,9 @@ package com.xuxiaocheng.WListClientAndroid.Utils;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.StaggeredGridLayoutManager;
 import org.jetbrains.annotations.UnmodifiableView;
 
 import java.util.ArrayList;
@@ -94,6 +96,27 @@ public class RecyclerViewHeadersAndTailorsAdapterWrapper<VH extends RecyclerView
 
     public int tailorsSize() {
         return this.tailors.size();
+    }
+
+    @Override
+    public void onAttachedToRecyclerView(@NonNull final RecyclerView recyclerView) {
+        super.onAttachedToRecyclerView(recyclerView);
+        final RecyclerView.LayoutManager layoutManager = recyclerView.getLayoutManager();
+        if (layoutManager instanceof GridLayoutManager gridLayoutManager)
+            gridLayoutManager.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
+                @Override
+                public int getSpanSize(final int position) {
+                    return RecyclerViewHeadersAndTailorsAdapterWrapper.this.getItemViewType(position) == 0 ? 1 : gridLayoutManager.getSpanCount();
+                }
+            });
+    }
+
+    @Override
+    public void onViewAttachedToWindow(@NonNull final WrappedViewHolder<?> holder) {
+        super.onViewAttachedToWindow(holder);
+        final ViewGroup.LayoutParams params = holder.itemView.getLayoutParams();
+        if (params instanceof StaggeredGridLayoutManager.LayoutParams layoutParams)
+            layoutParams.setFullSpan(this.getItemViewType(holder.getLayoutPosition()) != 0);
     }
 
     @Override
