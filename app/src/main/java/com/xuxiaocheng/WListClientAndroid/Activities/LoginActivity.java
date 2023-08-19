@@ -41,7 +41,10 @@ public class LoginActivity extends AppCompatActivity {
         this.setContentView(R.layout.activity_login);
         final TextView internalServer = this.findViewById(R.id.activity_login_login_internal_server);
         final View exit = this.findViewById(R.id.activity_login_exit);
+        final AtomicBoolean nonclickable = new AtomicBoolean(false);
         internalServer.setOnClickListener(v -> {
+            if (!nonclickable.compareAndSet(false, true))
+                return;
             final Intent serverIntent = new Intent(this, InternalServerService.class);
             logger.log(HLogLevel.LESS, "Starting internal server...");
             internalServer.setText(R.string.activity_login_loading_starting_internal_server);
@@ -82,9 +85,10 @@ public class LoginActivity extends AppCompatActivity {
                         boolean success = password != null;
                         if (success)
                             success = TokenManager.setToken(address, UserManager.ADMIN, password);
-                        if (success) {
+                        if (!success) {
                             // TODO get password from user.
                             LoginActivity.this.runOnUiThread(() -> Toast.makeText(LoginActivity.this, "No password!!!", Toast.LENGTH_SHORT).show());
+                            return;
                         }
                         MainActivity.start(LoginActivity.this, address);
                         LoginActivity.this.finish();
@@ -92,6 +96,9 @@ public class LoginActivity extends AppCompatActivity {
                         if (e != null) {
                             logger.log(HLogLevel.FAULT, "Failed to initialize wlist clients.", e.getLocalizedMessage());
                             LoginActivity.this.runOnUiThread(() -> Toast.makeText(LoginActivity.this.getApplicationContext(), R.string.toast_fatal_application_initialization, Toast.LENGTH_LONG).show());
+                            LoginActivity.this.unbindService(this);
+                            internalServer.setText(R.string.activity_login_login_internal_server);
+                            nonclickable.set(false);
                         }
                     }, false)).addListener(Main.exceptionListenerWithToast(LoginActivity.this));
                 }
