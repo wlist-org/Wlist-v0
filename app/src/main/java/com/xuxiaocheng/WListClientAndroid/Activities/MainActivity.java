@@ -99,15 +99,6 @@ public class MainActivity extends AppCompatActivity {
                 activity.addView(newView, contentParams);
         });
         mainTab.click(MainTab.TabChoice.File);
-        WListClientManager.addListener(address, i -> {
-            if (!i.booleanValue()) {
-                this.runOnUiThread(() -> {
-                    Toast.makeText(this, R.string.toast_server_closed, Toast.LENGTH_SHORT).show();
-                    this.close();
-                });
-                WListClientManager.removeAllListeners(address);
-            }
-        });
     }
 
     @Nullable protected LocalDateTime lastBackPressedTime;
@@ -130,12 +121,28 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        WListClientManager.removeAllListeners(this.address.getInstance());
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
         if (WListClientManager.instances.isNotInitialized(this.address.getInstance())) {
             Toast.makeText(this, R.string.toast_server_closed, Toast.LENGTH_SHORT).show();
             this.close();
+            return;
         }
+        WListClientManager.addListener(this.address.getInstance(), i -> {
+            if (!i.booleanValue()) {
+                this.runOnUiThread(() -> {
+                    Toast.makeText(this, R.string.toast_server_closed, Toast.LENGTH_SHORT).show();
+                    this.close();
+                });
+                WListClientManager.removeAllListeners(this.address.getInstance());
+            }
+        });
     }
 
     public void close() {
@@ -153,6 +160,8 @@ public class MainActivity extends AppCompatActivity {
     @NonNull public String toString() {
         return "MainActivity{" +
                 "minTabChoice=" + this.minTabChoice +
+                ", address=" + this.address +
+                ", pages=" + this.pages +
                 ", lastBackPressedTime=" + this.lastBackPressedTime +
                 ", super=" + super.toString() +
                 '}';
