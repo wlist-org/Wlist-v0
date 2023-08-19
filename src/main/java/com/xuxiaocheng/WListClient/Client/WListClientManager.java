@@ -1,8 +1,11 @@
 package com.xuxiaocheng.WListClient.Client;
 
 import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
+import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Initializers.HMultiInitializers;
+import com.xuxiaocheng.WListClient.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.PooledObjectFactory;
@@ -15,17 +18,38 @@ import org.jetbrains.annotations.Nullable;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 public class WListClientManager implements Closeable {
-    public static final @NotNull HMultiInitializers<@NotNull SocketAddress, @NotNull WListClientManager> instances = new HMultiInitializers<>("WListClientManagers");
+    public static final @NotNull HMultiInitializers<@NotNull SocketAddress, @NotNull WListClientManager> instances = new HMultiInitializers<>("WListClientManager");
+    protected static final @NotNull Map<@NotNull SocketAddress, @NotNull List<@NotNull Consumer<@NotNull Boolean>>> listeners = new ConcurrentHashMap<>();
+
+    public static void addListener(final @NotNull SocketAddress address, final @NotNull ConsumerE<? super @NotNull Boolean> listener) {
+        WListClientManager.listeners.compute(address, (k, v) -> Objects.requireNonNullElseGet(v, LinkedList::new)).add(
+                HExceptionWrapper.wrapConsumer(listener, MiscellaneousUtil.exceptionCallback, true));
+    }
+
+    public static void removeAllListeners(final @NotNull SocketAddress address) {
+        WListClientManager.listeners.remove(address);
+    }
 
     public static void quicklyInitialize(final @NotNull WListClientManager manager) {
-        WListClientManager.instances.initializeIfNot(manager.clientConfig.address, () -> {
+        if (WListClientManager.instances.initializeIfNot(manager.clientConfig.address, () -> {
             manager.open();
             return manager;
-        });
+        })) {
+            final List<Consumer<Boolean>> list = WListClientManager.listeners.get(manager.clientConfig.address);
+            if (list != null)
+                for (final Consumer<Boolean> listener : new ArrayList<>(list))
+                    listener.accept(true);
+        }
     }
 
     public static void quicklyUninitialize(final @NotNull SocketAddress address) {
@@ -37,6 +61,10 @@ public class WListClientManager implements Closeable {
             for (final WrappedClient client: manager.activeClients)
                 client.closePool();
             assert manager.activeClients.isEmpty();
+            final List<Consumer<Boolean>> list = WListClientManager.listeners.get(address);
+            if (list != null)
+                for (final Consumer<Boolean> listener : new ArrayList<>(list))
+                    listener.accept(false);
         }
     }
 

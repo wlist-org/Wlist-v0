@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WListClient.Utils;
 
+import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import io.netty.util.concurrent.FutureListener;
 import io.netty.util.concurrent.GenericFutureListener;
@@ -37,6 +38,11 @@ public final class MiscellaneousUtil {
     private static final @NotNull FutureListener<?> exceptionListenerInstance = f -> {
         if (!f.isSuccess())
             HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), f.cause());
+    };
+
+    public static final @NotNull ConsumerE<@Nullable Throwable> exceptionCallback = e -> {
+        if (e != null)
+            HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), e);
     };
 
     public static <K, V> @NotNull K randomKeyAndPut(final @NotNull Map<? super @NotNull K, V> map, final @NotNull Supplier<? extends @NotNull K> randomKey, final V value) {
