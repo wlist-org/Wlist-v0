@@ -39,9 +39,9 @@ public class UserPage implements MainTab.MainTabPage {
         final TextView close = (TextView) page.getViewById(R.id.user_content_close_server);
         final TextView disconnection = (TextView) page.getViewById(R.id.user_content_disconnect);
         // TODO
-        final AtomicBoolean closed = new AtomicBoolean(false);
+        final AtomicBoolean clickable = new AtomicBoolean(true);
         close.setOnClickListener(v -> {
-            if (!closed.compareAndSet(false, true))
+            if (!clickable.compareAndSet(true, false))
                 return;
             Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
                 final boolean success;
@@ -51,15 +51,18 @@ public class UserPage implements MainTab.MainTabPage {
                 if (success) {
                     this.activity.runOnUiThread(() -> this.activity.startActivity(new Intent(this.activity, LoginActivity.class)));
                     this.activity.finish();
-                } else
-                    closed.set(false);
-            })).addListener(Main.exceptionListenerWithToast(this.activity));
+                }
+            }, () -> clickable.set(true))).addListener(Main.exceptionListenerWithToast(this.activity));
         });
         disconnection.setOnClickListener(v -> {
-            if (!closed.compareAndSet(false, true))
+            if (!clickable.compareAndSet(true, false))
                 return;
-            this.activity.startActivity(new Intent(this.activity, LoginActivity.class));
-            this.activity.finish();
+            try {
+                this.activity.startActivity(new Intent(this.activity, LoginActivity.class));
+                this.activity.finish();
+            } finally {
+                clickable.set(true);
+            }
         });
         this.pageCache.set(page);
         return page;
