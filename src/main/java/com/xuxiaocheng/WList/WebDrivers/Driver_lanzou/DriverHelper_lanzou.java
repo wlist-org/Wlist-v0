@@ -8,6 +8,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
@@ -22,7 +23,6 @@ import com.xuxiaocheng.WList.Exceptions.IllegalResponseCodeException;
 import com.xuxiaocheng.WList.Exceptions.WrongResponseException;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.JavaScriptUtil;
-import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
 import okhttp3.Cookie;
 import okhttp3.FormBody;
@@ -53,12 +53,13 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @SuppressWarnings("SpellCheckingInspection")
-public final class DriverHelper_lanzou {
+final class DriverHelper_lanzou {
     private DriverHelper_lanzou() {
         super();
     }
@@ -155,50 +156,43 @@ public final class DriverHelper_lanzou {
         return json;
     }
 
-    private static final @NotNull Pattern passwordSignPattern = Pattern.compile("skdklds = '([^']+)");
     private static final @NotNull Pattern srcPattern = Pattern.compile("src=\"(/fn?[^\"]+)");
     private static final @NotNull Pattern signPattern = Pattern.compile("'sign':'([^']+)");
     private static final @NotNull Pattern filePattern = Pattern.compile("'file':'([^']+)");
-    public static @Nullable String getSingleShareFileDownloadUrl(final @NotNull DriverConfiguration_lanzou configuration, final @NotNull String domin, final @NotNull String identifier, final @Nullable String pwd) throws IOException, IllegalParametersException {
+    static @Nullable String getSingleShareFileDownloadUrl(final @NotNull DriverConfiguration_lanzou configuration, final @NotNull String domin, final @NotNull String identifier, final @Nullable String pwd) throws IOException, IllegalParametersException {
         final String sharePage = DriverHelper_lanzou.requestHtml(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin + '/' + identifier, "GET"));
         if (sharePage.contains("\u6587\u4EF6\u53D6\u6D88\u5206\u4EAB\u4E86") || sharePage.contains("\u6587\u4EF6\u5730\u5740\u9519\u8BEF"))
             return null;
         final ParametersMap parametersMap = ParametersMap.create().add("configuration", configuration).add("domin", domin).add("identifier", identifier);
-        final Triad<String, String, Map<String, String>> ajax;
-        final boolean noPwd = sharePage.contains("<iframe");
-        if (noPwd) {
+        final String js;
+        if (sharePage.contains("<iframe")) {
             final Matcher srcMatcher = DriverHelper_lanzou.srcPattern.matcher(sharePage);
             if (!srcMatcher.find())
                 throw new WrongResponseException("No src matched.", sharePage, parametersMap);
             final String src = srcMatcher.group(1);
             final String loadingPage = DriverHelper_lanzou.requestHtml(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin + src, "GET"));
-            try {
-                final String js = JavaScriptUtil.Ajax.getOnlyAjaxScripts(JavaScriptUtil.findScripts(loadingPage));
-                if (js == null)
-                    throw new ScriptException("Null script.");
-                ajax = JavaScriptUtil.Ajax.extraOnlyAjaxData(js);
-                if (ajax == null)
-                    throw new ServerException("Null ajax");
-            } catch (final ScriptException exception) {
-                throw new IOException("Failed to run loading page java script." + parametersMap, exception);
-            }
+            js = JavaScriptUtil.Ajax.getOnlyAjaxScripts(JavaScriptUtil.findScripts(loadingPage));
         } else {
             parametersMap.add("pwd", pwd);
             if (pwd == null)
                 throw new IllegalParametersException("Require password.", ParametersMap.create().add("domin", domin).add("identifier", identifier));
-            try {
-                String javaScript = JavaScriptUtil.Ajax.getOnlyAjaxScripts(JavaScriptUtil.findScripts(sharePage));
-                if (javaScript == null)
-                    throw new ScriptException("Null script.");
+            String javaScript = JavaScriptUtil.Ajax.getOnlyAjaxScripts(JavaScriptUtil.findScripts(sharePage));
+            if (javaScript != null) {
                 javaScript = javaScript.replace("$(document)", "$$()");
                 final int endIndex = javaScript.indexOf("document.getElementById('rpt')");
                 javaScript = "function $$(){return{keyup:function(f){f({keyCode:13});}};}" + javaScript.substring(0, endIndex);
-                ajax = JavaScriptUtil.Ajax.extraOnlyAjaxData(javaScript.replace("document.getElementById('pwd').value", String.format("'%s'", pwd)));
-                if (ajax == null)
-                    throw new ServerException("Null ajax");
-            } catch (final ScriptException exception) {
-                throw new IOException("Failed to run loading page java script." + parametersMap, exception);
-            }
+                js = javaScript.replace("document.getElementById('pwd').value", String.format("'%s'", pwd));
+            } else js = null;
+        }
+        final Triad<String, String, Map<String, String>> ajax;
+        try {
+            if (js == null)
+                throw new ScriptException("Null script.");
+            ajax = JavaScriptUtil.Ajax.extraOnlyAjaxData(js);
+            if (ajax == null)
+                throw new ServerException("Null ajax");
+        } catch (final ScriptException exception) {
+            throw new IOException("Failed to run share page java script." + parametersMap, exception);
         }
         assert "post".equals(ajax.getA());
         final FormBody.Builder builder = new FormBody.Builder();
@@ -207,7 +201,7 @@ public final class DriverHelper_lanzou {
         final JSONObject json = DriverHelper_lanzou.requestJson(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin + ajax.getB(), "POST"), builder);
         final int code = json.getIntValue("zt", -1);
         if (code != 1)
-            throw new IllegalResponseCodeException(code, json.getString("inf"), ParametersMap.create().add("configuration", configuration).add("json", json));
+            throw new IllegalResponseCodeException(code, json.getString("inf"), parametersMap.add("json", json));
         final String dom = json.getString("dom");
         final String para = json.getString("url");
         if (dom == null || para == null)
@@ -219,15 +213,16 @@ public final class DriverHelper_lanzou {
                 return response.header("Location");
             redirectPage = DriverUtil.removeHtmlComments(DriverNetworkHelper.extraResponseBody(response).string());
         }
+        parametersMap.add("displayUrl", displayUrl);
         // TODO: Unchecked.
 HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Running in redirect mode: ", redirectPage);
         final Matcher redirectFileMatcher = DriverHelper_lanzou.filePattern.matcher(redirectPage);
         if (!redirectFileMatcher.find())
-            throw new WrongResponseException("No redirect file matched.", redirectPage, parametersMap.add("displayUrl", displayUrl));
+            throw new WrongResponseException("No redirect file matched.", redirectPage, parametersMap);
         final String redirectFile = redirectFileMatcher.group(1);
         final Matcher redirectSignMatcher = DriverHelper_lanzou.signPattern.matcher(redirectPage);
         if (!redirectSignMatcher.find())
-            throw new WrongResponseException("No redirect sign matched.", redirectPage, parametersMap.add("displayUrl", displayUrl));
+            throw new WrongResponseException("No redirect sign matched.", redirectPage, parametersMap);
         final String redirectSign = redirectSignMatcher.group(1);
         final FormBody.Builder redirectBuilder = new FormBody.Builder()
                 .add("file", redirectFile)
@@ -237,7 +232,7 @@ HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Ru
 HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Finally getting redirected download url: ", redirectJson);
         final String finalUrl = redirectJson.getString("url");
         if (finalUrl == null)
-            throw new WrongResponseException("Getting single shared file download url. Final URL.", redirectJson, ParametersMap.create().add("configuration", configuration).add("domin", domin).add("identifier", identifier).add("displayUrl", displayUrl).add("pwd", pwd));
+            throw new WrongResponseException("Getting single shared file download url. Final URL.", redirectJson, parametersMap);
         return finalUrl;
     }
 
@@ -328,6 +323,7 @@ HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Fi
         if (infos.isEmpty())
             return Set.of();
         final Set<FileSqlInformation> set = ConcurrentHashMap.newKeySet();
+        final AtomicReference<Throwable> throwable = new AtomicReference<>(null);
         final CountDownLatch latch = new CountDownLatch(infos.size());
         for (final JSONObject info: infos.toList(JSONObject.class)) {
             final String name = info.getString("name");
@@ -345,7 +341,11 @@ HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Fi
                 } finally {
                     latch.countDown();
                 }
-            }), WListServer.IOExecutors).exceptionally(MiscellaneousUtil.exceptionHandler());
+            }), WListServer.IOExecutors).exceptionally(t -> {
+                if (!throwable.compareAndSet(null, t))
+                    HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), t);
+                return null;
+            });
         }
         try {
             latch.await();
@@ -353,6 +353,8 @@ HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Fi
             interrupttedFlag.set(true);
             throw exception;
         }
+        if (throwable.get() != null)
+            throw new IOException(HExceptionWrapper.unwrapException(throwable.get(), IOException.class));
         return set;
     }
 
