@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Map;
 
-final class DriverConfiguration_lanzou extends DriverConfiguration<
+public final class DriverConfiguration_lanzou extends DriverConfiguration<
         DriverConfiguration_lanzou.LocalSide,
         DriverConfiguration_lanzou.WebSide,
         DriverConfiguration_lanzou.CacheSide> {

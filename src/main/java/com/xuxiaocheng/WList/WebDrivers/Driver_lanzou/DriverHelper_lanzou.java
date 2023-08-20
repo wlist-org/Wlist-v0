@@ -5,6 +5,7 @@ import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.HeadLibs.DataStructures.OptionalNullable;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -20,6 +21,7 @@ import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Exceptions.IllegalResponseCodeException;
 import com.xuxiaocheng.WList.Exceptions.WrongResponseException;
 import com.xuxiaocheng.WList.Server.WListServer;
+import com.xuxiaocheng.WList.Utils.JavaScriptUtil;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
 import okhttp3.Cookie;
@@ -34,7 +36,9 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 import org.jetbrains.annotations.UnmodifiableView;
 
+import javax.script.ScriptException;
 import java.io.IOException;
+import java.rmi.ServerException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -156,42 +160,58 @@ public final class DriverHelper_lanzou {
     private static final @NotNull Pattern signPattern = Pattern.compile("'sign':'([^']+)");
     private static final @NotNull Pattern filePattern = Pattern.compile("'file':'([^']+)");
     public static @Nullable String getSingleShareFileDownloadUrl(final @NotNull DriverConfiguration_lanzou configuration, final @NotNull String domin, final @NotNull String identifier, final @Nullable String pwd) throws IOException, IllegalParametersException {
-        final String sharePage = DriverHelper_lanzou.requestHtml(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin + identifier, "GET"));
+        final String sharePage = DriverHelper_lanzou.requestHtml(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin + '/' + identifier, "GET"));
         if (sharePage.contains("\u6587\u4EF6\u53D6\u6D88\u5206\u4EAB\u4E86") || sharePage.contains("\u6587\u4EF6\u5730\u5740\u9519\u8BEF"))
             return null;
-        final String sign;
-        final boolean hasPwd = sharePage.contains("\u8F93\u5165\u5BC6\u7801");
-        if (hasPwd) {
-            if (pwd == null)
-                throw new IllegalParametersException("Require password.", ParametersMap.create().add("domin", domin).add("identifier", identifier));
-            final Matcher signMatcher = DriverHelper_lanzou.passwordSignPattern.matcher(sharePage);
-            if (!signMatcher.find())
-                throw new WrongResponseException("No sign matched.", sharePage, ParametersMap.create().add("configuration", configuration).add("domin", domin).add("identifier", identifier).add("pwd", pwd));
-            sign = signMatcher.group(1);
-        } else {
+        final ParametersMap parametersMap = ParametersMap.create().add("configuration", configuration).add("domin", domin).add("identifier", identifier);
+        final Triad<String, String, Map<String, String>> ajax;
+        final boolean noPwd = sharePage.contains("<iframe");
+        if (noPwd) {
             final Matcher srcMatcher = DriverHelper_lanzou.srcPattern.matcher(sharePage);
             if (!srcMatcher.find())
-                throw new WrongResponseException("No src matched.", sharePage, ParametersMap.create().add("configuration", configuration).add("domin", domin).add("identifier", identifier));
+                throw new WrongResponseException("No src matched.", sharePage, parametersMap);
             final String src = srcMatcher.group(1);
             final String loadingPage = DriverHelper_lanzou.requestHtml(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin + src, "GET"));
-            final Matcher signMatcher = DriverHelper_lanzou.signPattern.matcher(loadingPage);
-            if (!signMatcher.find())
-                throw new WrongResponseException("No sign matched.", loadingPage, ParametersMap.create().add("configuration", configuration).add("domin", domin).add("identifier", identifier));
-            sign = signMatcher.group(1);
+            try {
+                final String js = JavaScriptUtil.Ajax.getOnlyAjaxScripts(JavaScriptUtil.findScripts(loadingPage));
+                if (js == null)
+                    throw new ScriptException("Null script.");
+                ajax = JavaScriptUtil.Ajax.extraOnlyAjaxData(js);
+                if (ajax == null)
+                    throw new ServerException("Null ajax");
+            } catch (final ScriptException exception) {
+                throw new IOException("Failed to run loading page java script." + parametersMap, exception);
+            }
+        } else {
+            parametersMap.add("pwd", pwd);
+            if (pwd == null)
+                throw new IllegalParametersException("Require password.", ParametersMap.create().add("domin", domin).add("identifier", identifier));
+            try {
+                String javaScript = JavaScriptUtil.Ajax.getOnlyAjaxScripts(JavaScriptUtil.findScripts(sharePage));
+                if (javaScript == null)
+                    throw new ScriptException("Null script.");
+                javaScript = javaScript.replace("$(document)", "$$()");
+                final int endIndex = javaScript.indexOf("document.getElementById('rpt')");
+                javaScript = "function $$(){return{keyup:function(f){f({keyCode:13});}};}" + javaScript.substring(0, endIndex);
+                ajax = JavaScriptUtil.Ajax.extraOnlyAjaxData(javaScript.replace("document.getElementById('pwd').value", String.format("'%s'", pwd)));
+                if (ajax == null)
+                    throw new ServerException("Null ajax");
+            } catch (final ScriptException exception) {
+                throw new IOException("Failed to run loading page java script." + parametersMap, exception);
+            }
         }
-        final FormBody.Builder builder = new FormBody.Builder()
-                .add("action", "downprocess")
-                .add("sign", sign);
-        if (hasPwd)
-            builder.add("p", pwd);
-        final JSONObject json = DriverHelper_lanzou.requestJson(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin + "ajaxm.php", "POST"), builder);
+        assert "post".equals(ajax.getA());
+        final FormBody.Builder builder = new FormBody.Builder();
+        for (final Map.Entry<String, String> entry: ajax.getC().entrySet())
+            builder.add(entry.getKey(), entry.getValue());
+        final JSONObject json = DriverHelper_lanzou.requestJson(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin + ajax.getB(), "POST"), builder);
         final int code = json.getIntValue("zt", -1);
         if (code != 1)
             throw new IllegalResponseCodeException(code, json.getString("inf"), ParametersMap.create().add("configuration", configuration).add("json", json));
         final String dom = json.getString("dom");
         final String para = json.getString("url");
         if (dom == null || para == null)
-            throw new WrongResponseException("Getting single shared file download url.", json, ParametersMap.create().add("configuration", configuration).add("domin", domin).add("identifier", identifier).add("pwd", pwd));
+            throw new WrongResponseException("Getting single shared file download url.", json, parametersMap);
         final String displayUrl = dom + "/file/" + para;
         final String redirectPage;
         try (final Response response = DriverNetworkHelper.getWithParameters(DriverNetworkHelper.noRedirectHttpClient, Pair.ImmutablePair.makeImmutablePair(displayUrl, "GET"), DriverHelper_lanzou.headers, null).execute()) {
@@ -203,17 +223,17 @@ public final class DriverHelper_lanzou {
 HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Running in redirect mode: ", redirectPage);
         final Matcher redirectFileMatcher = DriverHelper_lanzou.filePattern.matcher(redirectPage);
         if (!redirectFileMatcher.find())
-            throw new WrongResponseException("No redirect file matched.", redirectPage, ParametersMap.create().add("configuration", configuration).add("domin", domin).add("identifier", identifier).add("displayUrl", displayUrl).add("pwd", pwd));
+            throw new WrongResponseException("No redirect file matched.", redirectPage, parametersMap.add("displayUrl", displayUrl));
         final String redirectFile = redirectFileMatcher.group(1);
         final Matcher redirectSignMatcher = DriverHelper_lanzou.signPattern.matcher(redirectPage);
         if (!redirectSignMatcher.find())
-            throw new WrongResponseException("No redirect sign matched.", redirectPage, ParametersMap.create().add("configuration", configuration).add("domin", domin).add("identifier", identifier).add("displayUrl", displayUrl).add("pwd", pwd));
+            throw new WrongResponseException("No redirect sign matched.", redirectPage, parametersMap.add("displayUrl", displayUrl));
         final String redirectSign = redirectSignMatcher.group(1);
         final FormBody.Builder redirectBuilder = new FormBody.Builder()
                 .add("file", redirectFile)
                 .add("sign", redirectSign)
                 .add("el", "2");
-        final JSONObject redirectJson = DriverHelper_lanzou.requestJson(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin + "ajax.php", "POST"), redirectBuilder);
+        final JSONObject redirectJson = DriverHelper_lanzou.requestJson(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin + "/ajax.php", "POST"), redirectBuilder);
 HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Finally getting redirected download url: ", redirectJson);
         final String finalUrl = redirectJson.getString("url");
         if (finalUrl == null)
@@ -236,7 +256,7 @@ HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Fi
         if (domin == null || identifier == null || hasPwd == null || (hasPwd.booleanValue() && pwd == null))
             throw new WrongResponseException("Getting download url.", json, ParametersMap.create().add("configuration", configuration).add("fileId", fileId));
         try {
-            return DriverHelper_lanzou.getSingleShareFileDownloadUrl(configuration, domin + "/", identifier, hasPwd.booleanValue() ? pwd : null);
+            return DriverHelper_lanzou.getSingleShareFileDownloadUrl(configuration, domin, identifier, hasPwd.booleanValue() ? pwd : null);
         } catch (final IllegalParametersException exception) {
             throw new RuntimeException("Unreachable!", exception);
         }
