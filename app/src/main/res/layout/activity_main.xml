@@ -13,7 +13,7 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:orientation="horizontal"
-		app:layout_constraintGuide_begin="60dp" />
+		app:layout_constraintGuide_begin="50dp" />
 
 	<androidx.appcompat.widget.LinearLayoutCompat
 		android:id="@+id/activity_main_title"
@@ -32,7 +32,7 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:orientation="horizontal"
-		app:layout_constraintGuide_end="60dp" />
+		app:layout_constraintGuide_end="50dp" />
 
 	<View
 		android:id="@+id/activity_main_tab_file"

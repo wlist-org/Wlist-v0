@@ -42,7 +42,6 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -81,7 +80,7 @@ public class FilePage implements MainTab.MainTabPage {
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
             // TODO: more configurable params.
             lists = OperateFileHelper.listFiles(client, TokenManager.getToken(address), directoryLocation,
-                    Options.DirectoriesOrFiles.Both, 1, currentPage.get(), Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false);
+                    Options.DirectoriesOrFiles.Both, 50, currentPage.get(), Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false);
         }
         if (lists == null) {
             Main.runOnUiThread(FilePage.this.activity, () -> {
@@ -91,7 +90,7 @@ public class FilePage implements MainTab.MainTabPage {
             return;
         }
         final boolean isRoot = SpecialDriverName.RootDriver.getIdentifier().equals(FileLocationSupporter.driver(directoryLocation));
-        final int allPage = MiscellaneousUtil.calculatePartCount(lists.getB().intValue(), 1);
+        final int allPage = MiscellaneousUtil.calculatePartCount(lists.getB().intValue(), 50);
         final RecyclerViewAdapterWrapper<VisibleFileInformation, CellViewHolder> adapterWrapper = new RecyclerViewAdapterWrapper<>() {
             @Override
             @NonNull protected CellViewHolder createViewHolder(@NonNull final ViewGroup parent) {
@@ -139,9 +138,8 @@ public class FilePage implements MainTab.MainTabPage {
                         final Triad.ImmutableTriad<Long, Long, List<VisibleFileInformation>> list;
                         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
                             list = OperateFileHelper.listFiles(client, TokenManager.getToken(address), directoryLocation,
-                                    Options.DirectoriesOrFiles.Both, 1, currentPage.incrementAndGet(), Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false);
+                                    Options.DirectoriesOrFiles.Both, 50, currentPage.incrementAndGet(), Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false);
                         }
-                        TimeUnit.MILLISECONDS.sleep(500);
                         if (list == null) {
                             Main.showToast(FilePage.this.activity, R.string.page_file_unavailable_directory);
                             FilePage.this.onBackPressed();
@@ -165,13 +163,13 @@ public class FilePage implements MainTab.MainTabPage {
             }
         };
         Main.runOnUiThread(this.activity, () -> {
-            final TextView backer = page.pageFileContentBacker;
+            final ImageView backer = page.pageFileContentBacker;
             if (isRoot) {
-                backer.setTextColor(this.activity.getResources().getColor(R.color.nonclickable, this.activity.getTheme()));
+                backer.setImageResource(R.mipmap.page_file_backer_nonclickable);
                 backer.setOnClickListener(null);
                 backer.setClickable(false);
             } else {
-                backer.setTextColor(this.activity.getResources().getColor(R.color.normal_text, this.activity.getTheme()));
+                backer.setImageResource(R.mipmap.page_file_backer);
                 backer.setOnClickListener(v -> this.onBackPressed());
                 backer.setClickable(true);
             }
@@ -266,14 +264,19 @@ public class FilePage implements MainTab.MainTabPage {
                 image.setImageResource(R.mipmap.page_file_image_directory);
                 return;
             }
-            final String name = FileInformationGetter.name(information).toLowerCase(Locale.ROOT);
+            final String name = FileInformationGetter.name(information);
             final int index = name.lastIndexOf('.');
             // TODO: cached Drawable.
-            image.setImageResource(switch (index < 0 ? "" : name.substring(index + 1)) {
+            image.setImageResource(switch (index < 0 ? "" : name.substring(index + 1).toLowerCase(Locale.ROOT)) {
+                case "bat", "cmd", "sh", "run" -> R.mipmap.page_file_image_bat;
                 case "doc", "docx" -> R.mipmap.page_file_image_docx;
+                case "exe", "bin" -> R.mipmap.page_file_image_exe;
+                case "jpg", "jpeg", "png", "bmp", "psd", "tga" -> R.mipmap.page_file_image_jpg;
+                case "mp3", "flac", "wav", "wma", "aac", "ape" -> R.mipmap.page_file_image_mp3;
                 case "ppt", "pptx" -> R.mipmap.page_file_image_pptx;
+                case "txt", "log" -> R.mipmap.page_file_image_txt;
                 case "xls", "xlsx" -> R.mipmap.page_file_image_xlsx;
-                case "zip", "7z", "rar", "gz" -> R.mipmap.page_file_image_zip;
+                case "zip", "7z", "rar", "gz", "tar" -> R.mipmap.page_file_image_zip;
                 default -> R.mipmap.page_file_image_file;
             });
         }
