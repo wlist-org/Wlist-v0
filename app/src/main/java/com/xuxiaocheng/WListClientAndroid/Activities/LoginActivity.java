@@ -53,10 +53,10 @@ public class LoginActivity extends AppCompatActivity {
                 @Override
                 public void onServiceConnected(final ComponentName name, @NonNull final IBinder iService) {
                     final AtomicBoolean finishActivity = new AtomicBoolean(true);
-                    Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
+                    Main.runOnBackgroundThread(LoginActivity.this, HExceptionWrapper.wrapRunnable(() -> {
                         logger.log(HLogLevel.INFO, "Waiting for server start completely...");
                         if (LoginActivity.internalServerAddress.isInitialized() && InternalServerService.getMainStage(iService) > 1) {
-                            Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
+                            Main.runOnNewBackgroundThread(LoginActivity.this, HExceptionWrapper.wrapRunnable(() -> {
                                 LoginActivity.this.unbindService(this);
                                 synchronized (LoginActivity.internalServerAddress) {
                                     while (LoginActivity.internalServerAddress.isInitialized())
@@ -64,13 +64,13 @@ public class LoginActivity extends AppCompatActivity {
                                 }
                                 LoginActivity.this.startService(serverIntent);
                                 LoginActivity.this.bindService(serverIntent, this, Context.BIND_AUTO_CREATE);
-                            })).addListener(Main.exceptionListenerWithToast(LoginActivity.this));
+                            }));
                             finishActivity.set(false);
                             return;
                         }
                         final InetSocketAddress address = InternalServerService.getAddress(iService);
                         logger.log(HLogLevel.INFO, "Connecting to service: ", address);
-                        LoginActivity.this.runOnUiThread(() -> internalServer.setText(R.string.activity_login_loading_connecting));
+                        Main.runOnUiThread(LoginActivity.this, () -> internalServer.setText(R.string.activity_login_loading_connecting));
                         assert !LoginActivity.internalServerAddress.isInitialized() || LoginActivity.internalServerAddress.getInstance().equals(address);
                         LoginActivity.internalServerAddress.initializeIfNot(() -> address);
                         WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
@@ -81,13 +81,13 @@ public class LoginActivity extends AppCompatActivity {
                             PasswordManager.registerInternalPassword(UserManager.ADMIN, initPassword);
                         final String password = PasswordManager.getInternalPassword(UserManager.ADMIN);
                         logger.log(HLogLevel.ENHANCED, "Got server password.", ParametersMap.create().add("init", initPassword != null).add("password", password));
-                        LoginActivity.this.runOnUiThread(() -> internalServer.setText(R.string.activity_login_loading_logging_in));
+                        Main.runOnUiThread(LoginActivity.this, () -> internalServer.setText(R.string.activity_login_loading_logging_in));
                         boolean success = password != null;
                         if (success)
                             success = TokenManager.setToken(address, UserManager.ADMIN, password);
                         if (!success) {
                             // TODO get password from user.
-                            LoginActivity.this.runOnUiThread(() -> Toast.makeText(LoginActivity.this, "No password!!!", Toast.LENGTH_SHORT).show());
+                            Main.runOnUiThread(LoginActivity.this, () -> Toast.makeText(LoginActivity.this, "No password!!!", Toast.LENGTH_SHORT).show());
                             return;
                         }
                         MainActivity.start(LoginActivity.this, address);
@@ -95,27 +95,27 @@ public class LoginActivity extends AppCompatActivity {
                     }, e -> {
                         if (e != null) {
                             logger.log(HLogLevel.FAULT, "Failed to initialize wlist clients.", e.getLocalizedMessage());
-                            LoginActivity.this.runOnUiThread(() -> Toast.makeText(LoginActivity.this.getApplicationContext(), R.string.toast_fatal_application_initialization, Toast.LENGTH_LONG).show());
+                            Main.runOnUiThread(LoginActivity.this, () -> Toast.makeText(LoginActivity.this.getApplicationContext(), R.string.toast_fatal_application_initialization, Toast.LENGTH_LONG).show());
                             LoginActivity.this.unbindService(this);
                             internalServer.setText(R.string.activity_login_login_internal_server);
                             nonclickable.set(false);
                         }
-                    }, false)).addListener(Main.exceptionListenerWithToast(LoginActivity.this));
+                    }, false));
                 }
 
                 @Override
                 public void onServiceDisconnected(final ComponentName name) {
-                    Main.AndroidExecutors.submit(() -> {
-                        final InetSocketAddress address = LoginActivity.internalServerAddress.uninitialize();
+                    Main.runOnBackgroundThread(LoginActivity.this, () -> {
+                        final InetSocketAddress address = LoginActivity.internalServerAddress.getInstanceNullable();
                         if (address != null) {
                             logger.log(HLogLevel.INFO, "Disconnecting to service: ", address);
                             WListClientManager.quicklyUninitialize(address);
                         }
                         synchronized (LoginActivity.internalServerAddress) {
-                            LoginActivity.internalServerAddress.uninitialize(); // assert == null;
+                            LoginActivity.internalServerAddress.uninitialize();
                             LoginActivity.internalServerAddress.notifyAll();
                         }
-                    }).addListener(Main.exceptionListenerWithToast(LoginActivity.this));
+                    });
                 }
             }, Context.BIND_AUTO_CREATE);
         });

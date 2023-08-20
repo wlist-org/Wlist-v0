@@ -18,6 +18,7 @@ import com.xuxiaocheng.WListClient.Client.WListClientManager;
 import com.xuxiaocheng.WListClientAndroid.Activities.CustomViews.MainTab;
 import com.xuxiaocheng.WListClientAndroid.Activities.Pages.FilePage;
 import com.xuxiaocheng.WListClientAndroid.Activities.Pages.UserPage;
+import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.R;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
 
@@ -32,7 +33,7 @@ public class MainActivity extends AppCompatActivity {
     public static void start(@NonNull final Activity activity, @NonNull final InetSocketAddress address) {
         final Intent intent = new Intent(activity, MainActivity.class);
         intent.putExtra("host", address.getHostName()).putExtra("port", address.getPort());
-        activity.runOnUiThread(() -> activity.startActivity(intent));
+        Main.runOnUiThread(activity, () -> activity.startActivity(intent));
     }
 
     @Nullable protected InetSocketAddress extraAddress() {
@@ -136,7 +137,7 @@ public class MainActivity extends AppCompatActivity {
         }
         WListClientManager.addListener(this.address.getInstance(), i -> {
             if (!i.booleanValue()) {
-                this.runOnUiThread(() -> {
+                Main.runOnUiThread(this, () -> {
                     Toast.makeText(this, R.string.activity_main_server_closed, Toast.LENGTH_SHORT).show();
                     this.close();
                 });

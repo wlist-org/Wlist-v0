@@ -43,14 +43,14 @@ public class UserPage implements MainTab.MainTabPage {
         close.setOnClickListener(v -> {
             if (!clickable.compareAndSet(true, false))
                 return;
-            Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
+            Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
                 final boolean success;
                 try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address)) {
                     success = OperateServerHelper.closeServer(client, TokenManager.getToken(this.address));
                 }
                 if (success)
-                    this.activity.runOnUiThread(this.activity::close);
-            }, () -> clickable.set(true))).addListener(Main.exceptionListenerWithToast(this.activity));
+                    Main.runOnUiThread(this.activity, this.activity::close);
+            }, () -> clickable.set(true)));
         });
         disconnection.setOnClickListener(v -> {
             if (!clickable.compareAndSet(true, false))

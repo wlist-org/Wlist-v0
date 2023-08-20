@@ -44,7 +44,6 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -66,9 +65,9 @@ public class FilePage implements MainTab.MainTabPage {
         final PageFileContentBinding page = PageFileContentBinding.inflate(this.activity.getLayoutInflater());
         this.pageCache.initialize(page);
         page.pageFileContentName.setText(R.string.app_name);
-        Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() ->
-                        this.setFileList(this.address, new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), 0))))
-                .addListener(Main.exceptionListenerWithToast(this.activity));
+        page.pageFileContentList.setLayoutManager(new LinearLayoutManager(this.activity));
+        Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() ->
+                        this.setFileList(this.address, new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), 0))));
         return page.getRoot();
     }
 
@@ -86,7 +85,7 @@ public class FilePage implements MainTab.MainTabPage {
                     Options.DirectoriesOrFiles.Both, 1, currentPage.get(), Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false);
         }
         if (lists == null) {
-            FilePage.this.activity.runOnUiThread(() -> {
+            Main.runOnUiThread(FilePage.this.activity, () -> {
                 FilePage.this.onBackPressed();
                 Toast.makeText(FilePage.this.activity, R.string.page_file_unavailable_directory, Toast.LENGTH_SHORT).show();
             });
@@ -102,10 +101,10 @@ public class FilePage implements MainTab.MainTabPage {
                     if (FilePage.this.clickable.compareAndSet(true, false)) {
                         FilePage.this.fileListStack.push(Pair.ImmutablePair.makeImmutablePair(directoryLocation, ((TextView) page.pageFileContentName).getText()));
                         final AtomicBoolean failure = new AtomicBoolean(true);
-                        Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
+                        Main.runOnBackgroundThread(FilePage.this.activity, HExceptionWrapper.wrapRunnable(() -> {
                             if (FileInformationGetter.isDirectory(information)) {
                                 FilePage.this.setFileList(address, FileLocationSupporter.create(isRoot ? FileInformationGetter.name(information) : FileLocationSupporter.driver(directoryLocation), FileInformationGetter.id(information)));
-                                FilePage.this.activity.runOnUiThread(() -> page.pageFileContentName.setText(isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information)));
+                                Main.runOnUiThread(FilePage.this.activity, () -> page.pageFileContentName.setText(isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information)));
                             } else {
                                 // TODO: show file.
                                 throw new UnsupportedOperationException("Show file is unsupported now!");
@@ -115,7 +114,7 @@ public class FilePage implements MainTab.MainTabPage {
                             FilePage.this.clickable.set(true);
                             if (failure.get())
                                 FilePage.this.fileListStack.pop();
-                        })).addListener(Main.exceptionListenerWithToast(FilePage.this.activity));
+                        }));
                     }
                 });
             }
@@ -138,7 +137,7 @@ public class FilePage implements MainTab.MainTabPage {
                 // TODO: Remove the pages on the top.
                 if (!recyclerView.canScrollVertically(1) && FilePage.this.clickable.compareAndSet(true, false)) {
                     adapterWrapper.addTailor(FilePage.this.activity.getLayoutInflater().inflate(R.layout.page_file_tailor_loading, page.pageFileContentList, false));
-                    Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
+                    Main.runOnBackgroundThread(FilePage.this.activity, HExceptionWrapper.wrapRunnable(() -> {
                         final int nextPage = currentPage.incrementAndGet();
                         if (nextPage >= allPage) {
                             currentPage.decrementAndGet();
@@ -149,9 +148,8 @@ public class FilePage implements MainTab.MainTabPage {
                             l = OperateFileHelper.listFiles(client, TokenManager.getToken(address), directoryLocation,
                                     Options.DirectoriesOrFiles.Both, 1, nextPage, Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false);
                         }
-                        TimeUnit.SECONDS.sleep(1);
                         if (l == null) {
-                            FilePage.this.activity.runOnUiThread(() -> {
+                            Main.runOnUiThread(FilePage.this.activity, () -> {
                                 FilePage.this.onBackPressed();
                                 Toast.makeText(FilePage.this.activity, R.string.page_file_unavailable_directory, Toast.LENGTH_SHORT).show();
                             });
@@ -159,18 +157,18 @@ public class FilePage implements MainTab.MainTabPage {
                         }
                         final int pos = list.size();
                         list.addAll(l.getC());
-                        FilePage.this.activity.runOnUiThread(() -> {
+                        Main.runOnUiThread(FilePage.this.activity, () -> {
                             adapterWrapper.notifyItemRangeInserted(adapterWrapper.headersSize() + pos, l.getC().size());
                             this.onScrollStateChanged(recyclerView, newState);
                         });
                     }, () -> {
                         FilePage.this.clickable.set(true);
-                        FilePage.this.activity.runOnUiThread(() -> adapterWrapper.removeTailor(0));
-                    })).addListener(Main.exceptionListenerWithToast(FilePage.this.activity));
+                        Main.runOnUiThread(FilePage.this.activity, () -> adapterWrapper.removeTailor(0));
+                    }));
                 }
             }
         };
-        this.activity.runOnUiThread(() -> {
+        Main.runOnUiThread(this.activity, () -> {
             final TextView backer = page.pageFileContentBacker;
             if (isRoot) {
                 backer.setTextColor(this.activity.getResources().getColor(R.color.nonclickable, this.activity.getTheme()));
@@ -183,8 +181,6 @@ public class FilePage implements MainTab.MainTabPage {
             }
             page.pageFileContentCounter.setText(String.valueOf(lists.getB()));
             final RecyclerView content = page.pageFileContentList;
-            final LinearLayoutManager layoutManager = new LinearLayoutManager(this.activity);
-            content.setLayoutManager(layoutManager);
             content.setAdapter(adapterWrapper);
             content.clearOnScrollListeners();
             content.addOnScrollListener(scrollListener);
@@ -197,10 +193,10 @@ public class FilePage implements MainTab.MainTabPage {
         final Pair.ImmutablePair<FileLocation, CharSequence> p = this.fileListStack.poll();
         if (p == null) return false;
         if (this.clickable.compareAndSet(true, false))
-            Main.AndroidExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
+            Main.runOnBackgroundThread(this.activity,HExceptionWrapper.wrapRunnable(() -> {
                 this.setFileList(this.address, p.getFirst());
-                this.activity.runOnUiThread(() -> ((TextView) this.onChange().getViewById(R.id.page_file_content_name)).setText(p.getSecond()));
-            }, () -> this.clickable.set(true))).addListener(Main.exceptionListenerWithToast(this.activity));
+                Main.runOnUiThread(this.activity, () -> ((TextView) this.onChange().getViewById(R.id.page_file_content_name)).setText(p.getSecond()));
+            }, () -> this.clickable.set(true)));
         return true;
     }
 

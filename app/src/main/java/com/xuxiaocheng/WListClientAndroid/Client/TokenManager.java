@@ -10,7 +10,6 @@ import com.xuxiaocheng.WListClient.Client.Exceptions.WrongStateException;
 import com.xuxiaocheng.WListClient.Client.OperationHelpers.OperateUserHelper;
 import com.xuxiaocheng.WListClient.Client.WListClientInterface;
 import com.xuxiaocheng.WListClient.Client.WListClientManager;
-import com.xuxiaocheng.WListClient.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
 
@@ -41,11 +40,11 @@ public final class TokenManager {
         final long exp = JSON.parseObject(Base64.getDecoder().decode(payload.getBytes(StandardCharsets.UTF_8))).getLongValue("exp");
         final Duration duration = Duration.between(LocalDateTime.now(), LocalDateTime.ofEpochSecond(exp, 0, ZoneOffset.UTC).minusMinutes(3));
         if (duration.isNegative()) return true;
-        Main.AndroidExecutors.schedule(HExceptionWrapper.wrapRunnable(() -> {
+        Main.runOnBackgroundThread(null, HExceptionWrapper.wrapRunnable(() -> {
                     HLogManager.getInstance("ClientLogger").log(HLogLevel.FINE, "Automatically refreshing token.", ParametersMap.create().add("address", address).add("passport", passport));
                     TokenManager.setToken(address, passport, password);
-                }), duration.toMillis(), TimeUnit.MILLISECONDS).addListener(MiscellaneousUtil.exceptionListener());
-        return true; // Truth server.
+                }), duration.toMillis(), TimeUnit.MILLISECONDS);
+        return true;
     }
 
     @NonNull public static String getToken(@NonNull final InetSocketAddress address) {
