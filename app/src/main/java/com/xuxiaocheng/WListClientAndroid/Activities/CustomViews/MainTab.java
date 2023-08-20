@@ -71,7 +71,7 @@ public final class MainTab {
     }
 
     public interface MainTabPage {
-        @NonNull View onChange();
+        @NonNull View onShow();
         boolean onBackPressed();
     }
 

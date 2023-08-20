@@ -89,7 +89,7 @@ public class MainActivity extends AppCompatActivity {
                 activity.removeView(oldView);
             final MainTab.MainTabPage page = this.pages.get(choice);
             assert page != null;
-            final View newView = page.onChange();
+            final View newView = page.onShow();
             final boolean ok;
             synchronized (currentView) {
                 ok = currentView.compareAndSet(null, newView);

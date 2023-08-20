@@ -35,6 +35,15 @@ android {
     }
 }
 
+//buildTypes {
+//    release {
+//        minifyEnabled
+//        shrinkResources
+//        zipAlignEnabled
+//        proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+//    }
+//}
+
 dependencies {
     implementation 'org.jetbrains:annotations:24.0.1'
     implementation files('libs/HeadLibs.main.jar')

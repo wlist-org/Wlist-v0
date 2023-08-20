@@ -31,7 +31,8 @@ public class UserPage implements MainTab.MainTabPage {
     }
 
     @NonNull private final AtomicReference<ConstraintLayout> pageCache = new AtomicReference<>();
-    @NonNull public View onChange() {
+    @Override
+    @NonNull public View onShow() {
         final ConstraintLayout cache = this.pageCache.get();
         if (cache != null) return cache;
         final PageUserContentBinding page = PageUserContentBinding.inflate(this.activity.getLayoutInflater());

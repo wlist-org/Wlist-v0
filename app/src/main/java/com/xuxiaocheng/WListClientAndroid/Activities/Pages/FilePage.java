@@ -1,6 +1,11 @@
 package com.xuxiaocheng.WListClientAndroid.Activities.Pages;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.util.DisplayMetrics;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AbsListView;
@@ -14,6 +19,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.HeadLibs.Helpers.HMathHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WListClient.AndroidSupports.FileInformationGetter;
 import com.xuxiaocheng.WListClient.AndroidSupports.FileLocationSupporter;
@@ -30,6 +36,7 @@ import com.xuxiaocheng.WListClientAndroid.Activities.CustomViews.MainTab;
 import com.xuxiaocheng.WListClientAndroid.Client.TokenManager;
 import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.R;
+import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
 import com.xuxiaocheng.WListClientAndroid.Utils.RecyclerViewAdapterWrapper;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileContentBinding;
 
@@ -42,6 +49,7 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -57,15 +65,56 @@ public class FilePage implements MainTab.MainTabPage {
     }
 
     @NonNull protected final HInitializer<PageFileContentBinding> pageCache = new HInitializer<>("FilePage");
-    @NonNull public ConstraintLayout onChange() {
+    @SuppressLint("ClickableViewAccessibility")
+    @Override
+    @NonNull public ConstraintLayout onShow() {
         final PageFileContentBinding cache = this.pageCache.getInstanceNullable();
-        if (cache != null) return cache.getRoot();
+        if (cache != null) {
+            if (!cache.pageFileContentUploader.isShown())
+                cache.pageFileContentUploader.setVisibility(View.VISIBLE);
+            return cache.getRoot();
+        }
         final PageFileContentBinding page = PageFileContentBinding.inflate(this.activity.getLayoutInflater());
         this.pageCache.initialize(page);
         page.pageFileContentName.setText(R.string.app_name);
         page.pageFileContentList.setLayoutManager(new LinearLayoutManager(this.activity));
         Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() ->
                         this.setFileList(this.address, new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), 0))));
+        final DisplayMetrics displayMetrics = this.activity.getResources().getDisplayMetrics();
+        final int screenWidth = displayMetrics.widthPixels;
+        final int screenHeight = displayMetrics.heightPixels;
+        final AtomicBoolean scrolling = new AtomicBoolean();
+        page.pageFileContentUploader.setOnTouchListener((v, e) -> {
+            switch (e.getAction()) {
+                case MotionEvent.ACTION_DOWN -> scrolling.set(false);
+                case MotionEvent.ACTION_MOVE -> {
+                    if (scrolling.get()) {
+                        final int halfWidth = v.getWidth() / 2, halfHeight = v.getHeight() / 2;
+                        v.setX(HMathHelper.clamp(v.getX() + e.getX() - halfWidth, halfWidth, screenWidth - halfWidth));
+                        v.setY(HMathHelper.clamp(v.getY() + e.getY() - halfHeight, 50 + halfHeight, screenHeight - 50 - halfHeight));
+                    } else scrolling.set(true);
+                }
+                case MotionEvent.ACTION_UP -> {
+                    if (scrolling.get()) {
+                        final int[] location = new int[2];
+                        v.getLocationOnScreen(location);
+                        FilePage.this.activity.getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE).edit()
+                                .putInt("x", location[0]).putInt("y", location[1]).apply();
+                    } else return v.performClick();
+                }
+            }
+            return true;
+        });
+        page.pageFileContentUploader.setOnClickListener(v -> {
+            HLogManager.getInstance("DefaultLogger").log("", "Ok");
+            v.setVisibility(View.GONE); // TODO
+        });
+        Main.runOnUiThread(this.activity, () -> {
+            final SharedPreferences preferences = this.activity.getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE);
+            page.pageFileContentUploader.setX(preferences.getInt("x", screenWidth - page.pageFileContentUploader.getWidth()));
+            //noinspection NumericCastThatLosesPrecision
+            page.pageFileContentUploader.setY(preferences.getInt("y", (int) (screenHeight * 0.6)));
+        }, 100, TimeUnit.MILLISECONDS);
         return page.getRoot();
     }
 
@@ -192,7 +241,7 @@ public class FilePage implements MainTab.MainTabPage {
         if (this.clickable.compareAndSet(true, false))
             Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
                 this.setFileList(this.address, p.getFirst());
-                Main.runOnUiThread(this.activity, () -> ((TextView) this.onChange().getViewById(R.id.page_file_content_name)).setText(p.getSecond()));
+                Main.runOnUiThread(this.activity, () -> this.pageCache.getInstance().pageFileContentName.setText(p.getSecond()));
             }, () -> this.clickable.set(true)));
         return true;
     }
