@@ -17,6 +17,7 @@
 	<string name="page_file_unavailable_directory">当前文件夹不可用</string>
 	<string name="page_file_counter">项</string>
 	<string name="page_file_loading">正在加载更多……</string>
+	<string name="page_file_no_more">没有更多了</string>
 	<string name="page_user_disconnect">断开连接</string>
 	<string name="page_user_close_server">关闭服务端</string>
 </resources>

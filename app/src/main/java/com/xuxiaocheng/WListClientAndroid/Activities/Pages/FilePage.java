@@ -30,7 +30,7 @@ import com.xuxiaocheng.WListClientAndroid.Activities.CustomViews.MainTab;
 import com.xuxiaocheng.WListClientAndroid.Client.TokenManager;
 import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.R;
-import com.xuxiaocheng.WListClientAndroid.Utils.RecyclerViewHeadersAndTailorsAdapterWrapper;
+import com.xuxiaocheng.WListClientAndroid.Utils.RecyclerViewAdapterWrapper;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileContentBinding;
 
 import java.io.IOException;
@@ -38,11 +38,11 @@ import java.net.InetSocketAddress;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -91,12 +91,11 @@ public class FilePage implements MainTab.MainTabPage {
             return;
         }
         final boolean isRoot = SpecialDriverName.RootDriver.getIdentifier().equals(FileLocationSupporter.driver(directoryLocation));
-        final List<VisibleFileInformation> list = new ArrayList<>(lists.getC());
-        final int allPage = MiscellaneousUtil.calculatePartCount( lists.getB().intValue(), 1);
-        final RecyclerViewHeadersAndTailorsAdapterWrapper<CellViewHolder> adapterWrapper = new RecyclerViewHeadersAndTailorsAdapterWrapper<>(new RecyclerView.Adapter<>() {
+        final int allPage = MiscellaneousUtil.calculatePartCount(lists.getB().intValue(), 1);
+        final RecyclerViewAdapterWrapper<VisibleFileInformation, CellViewHolder> adapterWrapper = new RecyclerViewAdapterWrapper<>() {
             @Override
-            @NonNull public CellViewHolder onCreateViewHolder(@NonNull final ViewGroup parent, final int viewType) {
-                return new CellViewHolder((ConstraintLayout) FilePage.this.activity.getLayoutInflater().inflate(R.layout.page_file_cell, parent, false), information -> {
+            @NonNull protected CellViewHolder createViewHolder(@NonNull final ViewGroup parent) {
+                return new CellViewHolder(RecyclerViewAdapterWrapper.buildView(FilePage.this.activity.getLayoutInflater(), R.layout.page_file_cell, page.pageFileContentList), information -> {
                     if (FilePage.this.clickable.compareAndSet(true, false)) {
                         FilePage.this.fileListStack.push(Pair.ImmutablePair.makeImmutablePair(directoryLocation, ((TextView) page.pageFileContentName).getText()));
                         final AtomicBoolean failure = new AtomicBoolean(true);
@@ -115,54 +114,52 @@ public class FilePage implements MainTab.MainTabPage {
                                 FilePage.this.fileListStack.pop();
                         }));
                     }
-                });
+                }, isRoot);
             }
 
             @Override
-            public void onBindViewHolder(@NonNull final CellViewHolder holder, final int position) {
-                holder.setItem(list.get(position), isRoot);
+            protected void bindViewHolder(@NonNull final CellViewHolder holder, @NonNull final VisibleFileInformation information) {
+                holder.onBind(information);
             }
-
-            @Override
-            public int getItemCount() {
-                return list.size();
-            }
-        });
+        };
+        adapterWrapper.addDataRange(lists.getC());
+        if (allPage == 1)
+            adapterWrapper.addTailor(RecyclerViewAdapterWrapper.buildView(FilePage.this.activity.getLayoutInflater(), R.layout.page_file_tailor_no_more, page.pageFileContentList));
         // TODO: register broadcast listener.
         final RecyclerView.OnScrollListener scrollListener = new RecyclerView.OnScrollListener() {
+            @NonNull private final AtomicBoolean onLoading = new AtomicBoolean(false);
+            @NonNull private final AtomicBoolean noMore = new AtomicBoolean(false);
             @Override
             public void onScrollStateChanged(@NonNull final RecyclerView recyclerView, final int newState) {
                 super.onScrollStateChanged(recyclerView, newState);
                 // TODO: Remove the pages on the top.
-                if (!recyclerView.canScrollVertically(1) && FilePage.this.clickable.compareAndSet(true, false)) {
-                    adapterWrapper.addTailor(FilePage.this.activity.getLayoutInflater().inflate(R.layout.page_file_tailor_loading, page.pageFileContentList, false));
+                if (!recyclerView.canScrollVertically(1) && !this.noMore.get() && this.onLoading.compareAndSet(false, true)) {
+                    adapterWrapper.addTailor(RecyclerViewAdapterWrapper.buildView(FilePage.this.activity.getLayoutInflater(), R.layout.page_file_tailor_loading, page.pageFileContentList));
                     Main.runOnBackgroundThread(FilePage.this.activity, HExceptionWrapper.wrapRunnable(() -> {
-                        final int nextPage = currentPage.incrementAndGet();
-                        if (nextPage >= allPage) {
-                            currentPage.decrementAndGet();
-                            return;
-                        }
-                        final Triad.ImmutableTriad<Long, Long, List<VisibleFileInformation>> l;
+                        final Triad.ImmutableTriad<Long, Long, List<VisibleFileInformation>> list;
                         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
-                            l = OperateFileHelper.listFiles(client, TokenManager.getToken(address), directoryLocation,
-                                    Options.DirectoriesOrFiles.Both, 1, nextPage, Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false);
+                            list = OperateFileHelper.listFiles(client, TokenManager.getToken(address), directoryLocation,
+                                    Options.DirectoriesOrFiles.Both, 1, currentPage.incrementAndGet(), Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false);
                         }
-                        if (l == null) {
-                            Main.runOnUiThread(FilePage.this.activity, () -> {
-                                FilePage.this.onBackPressed();
-                                Main.showToast(FilePage.this.activity, R.string.page_file_unavailable_directory);
-                            });
+                        TimeUnit.MILLISECONDS.sleep(500);
+                        if (list == null) {
+                            Main.showToast(FilePage.this.activity, R.string.page_file_unavailable_directory);
+                            FilePage.this.onBackPressed();
                             return;
                         }
-                        final int pos = list.size();
-                        list.addAll(l.getC());
-                        Main.runOnUiThread(FilePage.this.activity, () -> {
-                            adapterWrapper.notifyItemRangeInserted(adapterWrapper.headersSize() + pos, l.getC().size());
-                            this.onScrollStateChanged(recyclerView, newState);
-                        });
+                        Main.runOnUiThread(FilePage.this.activity, () -> adapterWrapper.addDataRange(list.getC()));
                     }, () -> {
-                        FilePage.this.clickable.set(true);
-                        Main.runOnUiThread(FilePage.this.activity, () -> adapterWrapper.removeTailor(0));
+                        this.onLoading.set(false);
+                        Main.runOnUiThread(FilePage.this.activity, () -> {
+                            adapterWrapper.removeTailor(0);
+                            if (currentPage.get() >= allPage - 1) {
+                                adapterWrapper.addTailor(RecyclerViewAdapterWrapper.buildView(FilePage.this.activity.getLayoutInflater(), R.layout.page_file_tailor_no_more, page.pageFileContentList));
+                                this.noMore.set(true);
+                                if (page.pageFileContentList.getAdapter() == adapterWrapper) // Confuse: Why must call setAdapter?
+                                    page.pageFileContentList.setAdapter(adapterWrapper);
+                            } else
+                               this.onScrollStateChanged(recyclerView, newState);
+                        });
                     }));
                 }
             }
@@ -181,9 +178,12 @@ public class FilePage implements MainTab.MainTabPage {
             page.pageFileContentCounter.setText(String.valueOf(lists.getB()));
             final RecyclerView content = page.pageFileContentList;
             content.setAdapter(adapterWrapper);
+            content.setHasFixedSize(true);
             content.clearOnScrollListeners();
-            content.addOnScrollListener(scrollListener);
-            scrollListener.onScrollStateChanged(content, AbsListView.OnScrollListener.SCROLL_STATE_IDLE);
+            if (allPage > 1) {
+                content.addOnScrollListener(scrollListener);
+                scrollListener.onScrollStateChanged(content, AbsListView.OnScrollListener.SCROLL_STATE_IDLE);
+            }
         });
     }
 
@@ -192,7 +192,7 @@ public class FilePage implements MainTab.MainTabPage {
         final Pair.ImmutablePair<FileLocation, CharSequence> p = this.fileListStack.poll();
         if (p == null) return false;
         if (this.clickable.compareAndSet(true, false))
-            Main.runOnBackgroundThread(this.activity,HExceptionWrapper.wrapRunnable(() -> {
+            Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
                 this.setFileList(this.address, p.getFirst());
                 Main.runOnUiThread(this.activity, () -> ((TextView) this.onChange().getViewById(R.id.page_file_content_name)).setText(p.getSecond()));
             }, () -> this.clickable.set(true)));
@@ -209,26 +209,28 @@ public class FilePage implements MainTab.MainTabPage {
                 '}';
     }
 
-    protected static class CellViewHolder extends RecyclerViewHeadersAndTailorsAdapterWrapper.WrappedViewHolder<ConstraintLayout> {
+    protected static class CellViewHolder extends RecyclerViewAdapterWrapper.WrappedViewHolder<VisibleFileInformation, ConstraintLayout> {
         @NonNull protected final Consumer<VisibleFileInformation> clicker;
+        protected final boolean isRoot;
         @NonNull protected final ImageView image;
         @NonNull protected final TextView name;
         @NonNull protected final TextView tips;
         @NonNull protected final View option;
 
-        protected CellViewHolder(@NonNull final ConstraintLayout cell, @NonNull final Consumer<VisibleFileInformation> clicker) {
+        protected CellViewHolder(@NonNull final ConstraintLayout cell, @NonNull final Consumer<VisibleFileInformation> clicker, final boolean isRoot) {
             super(cell);
             this.clicker = clicker;
+            this.isRoot = isRoot;
             this.image = (ImageView) cell.getViewById(R.id.page_file_cell_image);
             this.name = (TextView) cell.getViewById(R.id.page_file_cell_name);
             this.tips = (TextView) cell.getViewById(R.id.page_file_cell_tips);
             this.option = cell.getViewById(R.id.page_file_cell_option);
         }
 
-        public void setItem(@NonNull final VisibleFileInformation information, final boolean isRoot) {
+        public void onBind(@NonNull final VisibleFileInformation information) {
             this.itemView.setOnClickListener(v -> this.clicker.accept(information)); // TODO: select on long click.
             CellViewHolder.setFileImage(this.image, information);
-            this.name.setText(isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information));
+            this.name.setText(this.isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information));
             final LocalDateTime update = FileInformationGetter.updateTime(information);
             this.tips.setText(update == null ? "unknown" : update.format(DateTimeFormatter.ISO_DATE_TIME).replace('T', ' '));
 //            this.option.setOnClickListener(v -> {
