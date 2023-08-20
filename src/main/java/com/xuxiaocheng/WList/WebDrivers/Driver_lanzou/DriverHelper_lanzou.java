@@ -36,7 +36,6 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 import org.jetbrains.annotations.UnmodifiableView;
 
-import javax.script.ScriptException;
 import java.io.IOException;
 import java.rmi.ServerException;
 import java.time.Instant;
@@ -187,11 +186,11 @@ final class DriverHelper_lanzou {
         final Triad<String, String, Map<String, String>> ajax;
         try {
             if (js == null)
-                throw new ScriptException("Null script.");
+                throw new JavaScriptUtil.ScriptException("Null script.");
             ajax = JavaScriptUtil.Ajax.extraOnlyAjaxData(js);
             if (ajax == null)
                 throw new ServerException("Null ajax");
-        } catch (final ScriptException exception) {
+        } catch (final JavaScriptUtil.ScriptException exception) {
             throw new IOException("Failed to run share page java script." + parametersMap, exception);
         }
         assert "post".equals(ajax.getA());
