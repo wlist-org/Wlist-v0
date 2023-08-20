@@ -95,7 +95,7 @@ public class LoginActivity extends AppCompatActivity {
                     }, e -> {
                         if (e != null) {
                             logger.log(HLogLevel.FAULT, "Failed to initialize wlist clients.", e.getLocalizedMessage());
-                            Main.runOnUiThread(LoginActivity.this, () -> Toast.makeText(LoginActivity.this.getApplicationContext(), R.string.toast_fatal_application_initialization, Toast.LENGTH_LONG).show());
+                            Main.showToast(LoginActivity.this, R.string.toast_fatal_application_initialization);
                             LoginActivity.this.unbindService(this);
                             internalServer.setText(R.string.activity_login_login_internal_server);
                             nonclickable.set(false);

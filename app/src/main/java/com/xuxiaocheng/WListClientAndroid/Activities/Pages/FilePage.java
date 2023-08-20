@@ -6,7 +6,6 @@ import android.view.ViewGroup;
 import android.widget.AbsListView;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.constraintlayout.widget.ConstraintLayout;
@@ -87,7 +86,7 @@ public class FilePage implements MainTab.MainTabPage {
         if (lists == null) {
             Main.runOnUiThread(FilePage.this.activity, () -> {
                 FilePage.this.onBackPressed();
-                Toast.makeText(FilePage.this.activity, R.string.page_file_unavailable_directory, Toast.LENGTH_SHORT).show();
+                Main.showToast(FilePage.this.activity, R.string.page_file_unavailable_directory);
             });
             return;
         }
@@ -151,7 +150,7 @@ public class FilePage implements MainTab.MainTabPage {
                         if (l == null) {
                             Main.runOnUiThread(FilePage.this.activity, () -> {
                                 FilePage.this.onBackPressed();
-                                Toast.makeText(FilePage.this.activity, R.string.page_file_unavailable_directory, Toast.LENGTH_SHORT).show();
+                                Main.showToast(FilePage.this.activity, R.string.page_file_unavailable_directory);
                             });
                             return;
                         }

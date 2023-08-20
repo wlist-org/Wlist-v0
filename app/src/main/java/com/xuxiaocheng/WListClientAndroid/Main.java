@@ -9,6 +9,7 @@ import android.util.Log;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.WListClient.Utils.MiscellaneousUtil;
@@ -20,10 +21,20 @@ import io.netty.util.concurrent.FutureListener;
 import java.util.concurrent.TimeUnit;
 
 public final class Main extends Application {
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        Log.i("HLog", "Hello WList (Android v0.1.0)!" + ParametersMap.create().add("pid", Process.myPid()));
+    }
+
     @NonNull private static final EventExecutorGroup AndroidExecutors =
             new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 1, new DefaultThreadFactory("AndroidExecutors"));
 
     @NonNull private static final Handler mainHandler = new Handler(Looper.getMainLooper());
+
+    public static void showToast(@NonNull final Activity activity, @StringRes final int message) {
+        activity.runOnUiThread(() -> Toast.makeText(activity.getApplicationContext(), message, Toast.LENGTH_SHORT).show());
+    }
 
     @NonNull public static FutureListener<? super Object> exceptionListenerWithToast(@NonNull final Activity activity) {
         return f -> {
@@ -32,12 +43,6 @@ public final class Main extends Application {
             activity.runOnUiThread(() -> Toast.makeText(activity.getApplicationContext(), cause.getLocalizedMessage(), Toast.LENGTH_SHORT).show());
             HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), cause);
         };
-    }
-
-    @Override
-    public void onCreate() {
-        super.onCreate();
-        Log.i("HLog", "Hello WList (Android v0.1.0)!" + ParametersMap.create().add("pid", Process.myPid()));
     }
 
     @NonNull private static Runnable wrapRunnable(@Nullable final Activity activity, @NonNull final Runnable runnable) {

@@ -5,7 +5,6 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -117,7 +116,7 @@ public class MainActivity extends AppCompatActivity {
             super.onBackPressed(); // this.finish();
             return;
         }
-        Toast.makeText(this, R.string.toast_press_again_to_exit, Toast.LENGTH_SHORT).show();
+        Main.showToast(this, R.string.toast_press_again_to_exit);
         this.lastBackPressedTime = now;
     }
 
@@ -131,14 +130,14 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         if (WListClientManager.instances.isNotInitialized(this.address.getInstance())) {
-            Toast.makeText(this, R.string.activity_main_server_closed, Toast.LENGTH_SHORT).show();
+            Main.showToast(this, R.string.activity_main_server_closed);
             this.close();
             return;
         }
         WListClientManager.addListener(this.address.getInstance(), i -> {
             if (!i.booleanValue()) {
                 Main.runOnUiThread(this, () -> {
-                    Toast.makeText(this, R.string.activity_main_server_closed, Toast.LENGTH_SHORT).show();
+                    Main.showToast(this, R.string.activity_main_server_closed);
                     this.close();
                 });
                 WListClientManager.removeAllListeners(this.address.getInstance());
