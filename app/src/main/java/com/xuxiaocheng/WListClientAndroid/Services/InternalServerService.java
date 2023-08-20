@@ -15,8 +15,10 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.WListServer;
+import com.xuxiaocheng.WList.Utils.JavaScriptUtil;
 import com.xuxiaocheng.WList.WList;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
+import org.mozilla.javascript.Context;
 
 import java.net.InetSocketAddress;
 import java.util.function.Consumer;
@@ -25,6 +27,14 @@ import java.util.function.Consumer;
 public final class InternalServerService extends Service {
     @NonNull private final Thread ServerMainThread = new Thread(() -> {
         try {
+            JavaScriptUtil.jsEngineCore.initializeIfNot(() -> s -> {
+                try (final Context context = Context.enter()) {
+                    context.setOptimizationLevel(-1);
+                    return context.evaluateString(context.initStandardObjects(), s, "<cmd>", 1, null);
+                } catch (final Throwable throwable) {
+                    throw new JavaScriptUtil.ScriptException(throwable);
+                }
+            });
             WList.main("-path:" + this.getExternalFilesDir("server"));
         } finally {
             this.stopSelf();
@@ -174,9 +184,7 @@ public final class InternalServerService extends Service {
                         reply.writeString(password);
                     }
                 }
-                case GetMainStage -> {
-                    reply.writeInt(WList.getMainStageAPI());
-                }
+                case GetMainStage -> reply.writeInt(WList.getMainStageAPI());
                 case WaitMainStage -> {
                     final int stage = data.readInt();
                     final boolean mayNotBoot = data.readInt() == 1;
