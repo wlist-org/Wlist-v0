@@ -2,10 +2,11 @@ package com.xuxiaocheng.WList.Utils;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
+import com.xuxiaocheng.HeadLibs.Functions.FunctionE;
+import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import java.util.ArrayList;
@@ -18,10 +19,19 @@ public final class JavaScriptUtil {
         super();
     }
 
-    private static final @NotNull ScriptEngineManager manager = new ScriptEngineManager();
+    @FunctionalInterface
+    public interface EngineCore extends FunctionE<@NotNull String, @Nullable Object> {
+        @Override
+        @Nullable Object apply(final @NotNull String script) throws ScriptException;
+    }
 
-    public static @NotNull ScriptEngine getScriptEngine() {
-        return JavaScriptUtil.manager.getEngineByName("JavaScript");
+    public static final @NotNull HInitializer<EngineCore> jsEngineCore = new HInitializer<>("JavaScriptEngineCore");
+
+    static {
+        JavaScriptUtil.jsEngineCore.initializeIfNot(() -> {
+            final @NotNull ScriptEngineManager manager = new ScriptEngineManager();
+            return s -> manager.getEngineByName("JavaScript").eval(s);
+        });
     }
 
     private static final @NotNull String scriptStartTag = "<script type=\"text/javascript\">";
@@ -41,12 +51,11 @@ public final class JavaScriptUtil {
     }
 
     @SuppressWarnings("unchecked")
-    public static <V> @Nullable V execute(final @NotNull String script, final @Nullable String functionName, final @NotNull Object... args) throws ScriptException {
-        final ScriptEngine engine = JavaScriptUtil.manager.getEngineByName("JavaScript");
+    public static <V> @Nullable V execute(final @NotNull String script, final @Nullable String functionName) throws ScriptException {
+        final EngineCore engine = JavaScriptUtil.jsEngineCore.getInstance();
         if (functionName == null)
-            return (V) engine.eval(script);
-        engine.put("args", args);
-        return (V) engine.eval(String.format("%s\n%s(args)", script, functionName));
+            return (V) engine.apply(script);
+        return (V) engine.apply(String.format("%s\n%s()", script, functionName));
     }
 
     public static final class Ajax {
@@ -68,10 +77,8 @@ public final class JavaScriptUtil {
 
         @SuppressWarnings("unchecked")
         public static @Nullable Triad<@NotNull String, @NotNull String, @NotNull Map<String, String>> extraOnlyAjaxData(final @NotNull String script) throws ScriptException {
-            final ScriptEngine engine = JavaScriptUtil.getScriptEngine();
-            engine.eval("var ajaxObj;var $={ajax:function(o){if(ajaxObj===undefined)ajaxObj=o;else throw 'Multiple ajax requests.';}};");
-            engine.eval(script);
-            final Map<String, Object> ajax = (Map<String, Object>) engine.get("ajaxObj");
+            final EngineCore engine = JavaScriptUtil.jsEngineCore.getInstance();
+            final Map<String, Object> ajax = (Map<String, Object>) engine.apply("var ajaxObj;var $={ajax:function(o){if(ajaxObj===undefined)ajaxObj=o;else throw 'Multiple ajax requests.';}};" + script + ";ajaxObj;");
             if (ajax == null) return null;
             final Object type = ajax.get("type");
             final Object path = ajax.get("url");
