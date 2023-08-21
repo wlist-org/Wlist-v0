@@ -8,6 +8,9 @@ import android.util.DisplayMetrics;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.LinearInterpolator;
+import android.view.animation.RotateAnimation;
 import android.widget.AbsListView;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -206,7 +209,15 @@ public class FilePage implements MainTab.MainTabPage {
                 super.onScrollStateChanged(recyclerView, newState);
                 // TODO: Remove the pages on the top.
                 if (!recyclerView.canScrollVertically(1) && !this.noMore.get() && this.onLoading.compareAndSet(false, true)) {
-                    adapterWrapper.addTailor(RecyclerViewAdapterWrapper.buildView(FilePage.this.activity.getLayoutInflater(), R.layout.page_file_tailor_loading, page.pageFileContentList));
+                    final ConstraintLayout loadingTailor = RecyclerViewAdapterWrapper.buildView(FilePage.this.activity.getLayoutInflater(), R.layout.page_file_tailor_loading, page.pageFileContentList);
+                    final ImageView loading = (ImageView) loadingTailor.getViewById(R.id.page_file_tailor_loading_image);
+                    final Animation loadingAnimation = new RotateAnimation(0, 360, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
+                    loadingAnimation.setDuration(800);
+                    loadingAnimation.setFillAfter(true);
+                    loadingAnimation.setRepeatCount(Animation.INFINITE);
+                    loadingAnimation.setInterpolator(new LinearInterpolator());
+                    loading.startAnimation(loadingAnimation);
+                    adapterWrapper.addTailor(loadingTailor);
                     Main.runOnBackgroundThread(FilePage.this.activity, HExceptionWrapper.wrapRunnable(() -> {
                         final Triad.ImmutableTriad<Long, Long, List<VisibleFileInformation>> list;
                         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
