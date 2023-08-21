@@ -64,9 +64,9 @@ public class MainActivity extends AppCompatActivity {
         this.address.initialize(address);
         final MainTab mainTab = new MainTab(
             new MainTab.ButtonGroup(this, R.id.activity_main_tab_file, R.id.activity_main_tab_file_button, R.id.activity_main_tab_file_text,
-                    R.mipmap.main_tab_file, R.mipmap.main_tab_file_chose, R.color.normal_text, R.color.red),
+                    R.mipmap.main_tab_file, R.mipmap.main_tab_file_chose, R.color.text_normal, R.color.red),
             new MainTab.ButtonGroup(this, R.id.activity_main_tab_user, R.id.activity_main_tab_user_button, R.id.activity_main_tab_user_text,
-                    R.mipmap.main_tab_user, R.mipmap.main_tab_user_chose, R.color.normal_text, R.color.red)
+                    R.mipmap.main_tab_user, R.mipmap.main_tab_user_chose, R.color.text_normal, R.color.red)
         );
         final AtomicReference<View> currentView = new AtomicReference<>(null);
         this.pages.clear();

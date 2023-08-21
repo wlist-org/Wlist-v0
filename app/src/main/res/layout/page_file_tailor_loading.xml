@@ -4,33 +4,34 @@
                                                    android:layout_width="match_parent"
                                                    android:layout_height="50dp">
 
-	<androidx.constraintlayout.widget.Guideline
-		android:id="@+id/page_file_tailor_loading_guideline"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:orientation="vertical"
-		app:layout_constraintGuide_percent="0.3" />
-
 	<androidx.appcompat.widget.AppCompatImageView
 		android:id="@+id/page_file_tailor_loading_image"
-		android:layout_width="0dp"
+		android:layout_width="wrap_content"
 		android:layout_height="0dp"
-		android:scaleType="center"
+		android:layout_marginTop="10dp"
+		android:layout_marginBottom="10dp"
+		android:scaleType="centerInside"
 		android:src="@mipmap/page_file_loading"
 		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintHorizontal_chainStyle="packed"
 		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toLeftOf="@id/page_file_tailor_loading_guideline"
+		app:layout_constraintRight_toLeftOf="@id/page_file_tailor_no_more_text"
 		app:layout_constraintTop_toTopOf="parent" />
 
 	<androidx.appcompat.widget.AppCompatTextView
-		android:id="@+id/page_file_tailor_loading_text"
+		android:id="@+id/page_file_tailor_no_more_text"
 		android:layout_width="wrap_content"
 		android:layout_height="0dp"
+		android:layout_marginStart="10dp"
+		android:layout_marginTop="10dp"
+		android:layout_marginBottom="10dp"
+		android:autoSizeTextType="uniform"
 		android:gravity="center"
+		android:lines="1"
 		android:text="@string/page_file_loading"
-		android:textColor="@color/normal_text"
+		android:textColor="@color/text_normal"
 		app:layout_constraintBottom_toBottomOf="parent"
-		app:layout_constraintLeft_toRightOf="@id/page_file_tailor_loading_guideline"
+		app:layout_constraintLeft_toRightOf="@id/page_file_tailor_loading_image"
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toTopOf="parent" />
 

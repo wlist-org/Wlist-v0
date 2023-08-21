@@ -4,7 +4,7 @@
 	<item>
 		<shape>
 			<corners android:radius="1dp" />
-			<solid android:color="@color/differ_background" />
+			<solid android:color="@color/background_differ" />
 		</shape>
 	</item>
 </ripple>

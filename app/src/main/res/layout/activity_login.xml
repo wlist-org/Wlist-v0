@@ -3,7 +3,7 @@
                                                    xmlns:app="http://schemas.android.com/apk/res-auto"
                                                    android:layout_width="match_parent"
                                                    android:layout_height="match_parent"
-                                                   android:background="@color/normal_background">
+                                                   android:background="@color/background_normal">
 
 	<androidx.constraintlayout.widget.Guideline
 		android:id="@+id/activity_login_guideline_header"
@@ -21,8 +21,9 @@
 
 	<androidx.appcompat.widget.AppCompatImageView
 		android:id="@+id/activity_login_icon"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:scaleType="centerInside"
 		android:src="@mipmap/app_logo_round"
 		app:layout_constraintBottom_toTopOf="@id/activity_login_guideline_icon"
 		app:layout_constraintLeft_toLeftOf="parent"
@@ -58,77 +59,91 @@
 		android:gravity="center"
 		android:lines="1"
 		android:text="@string/activity_login_welcome"
-		android:textColor="@color/normal_text"
+		android:textColor="@color/text_normal"
 		app:layout_constraintBottom_toTopOf="@id/activity_login_guideline_welcome"
 		app:layout_constraintLeft_toRightOf="@id/activity_login_guideline_welcome_left"
 		app:layout_constraintRight_toLeftOf="@id/activity_login_guideline_welcome_right"
 		app:layout_constraintTop_toBottomOf="@id/activity_login_guideline_icon" />
 
 	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/activity_login_guideline_edit_left"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		app:layout_constraintGuide_percent="0.05" />
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/activity_login_guideline_edit_right"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		app:layout_constraintGuide_percent="0.95" />
+
+	<androidx.constraintlayout.widget.Guideline
 		android:id="@+id/activity_login_guideline_passport_top"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:orientation="horizontal"
-		app:layout_constraintGuide_percent="0.4" />
+		app:layout_constraintGuide_percent="0.45" />
 
 	<androidx.constraintlayout.widget.Guideline
 		android:id="@+id/activity_login_guideline_passport_bottom"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:orientation="horizontal"
-		app:layout_constraintGuide_percent="0.55" />
-
-	<androidx.constraintlayout.widget.Guideline
-		android:id="@+id/activity_login_guideline_passport_left"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:orientation="vertical"
-		app:layout_constraintGuide_begin="15dp" />
-
-	<androidx.constraintlayout.widget.Guideline
-		android:id="@+id/activity_login_guideline_passport_right"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:orientation="vertical"
-		app:layout_constraintGuide_end="15dp" />
+		app:layout_constraintGuide_percent="0.5" />
 
 	<androidx.appcompat.widget.AppCompatEditText
 		android:id="@+id/activity_login_passport"
 		android:layout_width="0dp"
 		android:layout_height="0dp"
 		android:hint="@string/activity_login_enter_passport"
-		android:textColor="@color/edit_text"
-		android:textColorHint="@color/hint_text"
-		app:layout_constraintBottom_toTopOf="@id/activity_login_password"
-		app:layout_constraintLeft_toRightOf="@id/activity_login_guideline_passport_left"
-		app:layout_constraintRight_toLeftOf="@id/activity_login_guideline_passport_right"
+		android:textColor="@color/text_edited"
+		android:textColorHint="@color/text_hint"
+		app:layout_constraintBottom_toTopOf="@id/activity_login_guideline_passport_bottom"
+		app:layout_constraintLeft_toRightOf="@id/activity_login_guideline_edit_left"
+		app:layout_constraintRight_toLeftOf="@id/activity_login_guideline_edit_right"
 		app:layout_constraintTop_toBottomOf="@id/activity_login_guideline_passport_top" />
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/activity_login_guideline_password_top"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="horizontal"
+		app:layout_constraintGuide_percent="0.53" />
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/activity_login_guideline_password_bottom"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="horizontal"
+		app:layout_constraintGuide_percent="0.58" />
 
 	<androidx.appcompat.widget.AppCompatEditText
 		android:id="@+id/activity_login_password"
 		android:layout_width="0dp"
 		android:layout_height="0dp"
 		android:hint="@string/activity_login_enter_password"
-		android:textColor="@color/edit_text"
-		android:textColorHint="@color/hint_text"
-		app:layout_constraintBottom_toTopOf="@id/activity_login_guideline_passport_bottom"
-		app:layout_constraintLeft_toRightOf="@id/activity_login_guideline_passport_left"
-		app:layout_constraintRight_toLeftOf="@id/activity_login_guideline_passport_right"
-		app:layout_constraintTop_toBottomOf="@id/activity_login_passport" />
+		android:textColor="@color/text_edited"
+		android:textColorHint="@color/text_hint"
+		app:layout_constraintBottom_toTopOf="@id/activity_login_guideline_password_bottom"
+		app:layout_constraintLeft_toRightOf="@id/activity_login_guideline_edit_left"
+		app:layout_constraintRight_toLeftOf="@id/activity_login_guideline_edit_right"
+		app:layout_constraintTop_toBottomOf="@id/activity_login_guideline_password_top" />
 
 	<androidx.constraintlayout.widget.Guideline
 		android:id="@+id/activity_login_guideline_login_top"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:orientation="horizontal"
-		app:layout_constraintGuide_percent="0.6" />
+		app:layout_constraintGuide_percent="0.64" />
 
 	<androidx.constraintlayout.widget.Guideline
 		android:id="@+id/activity_login_guideline_login_bottom"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:orientation="horizontal"
-		app:layout_constraintGuide_percent="0.65" />
+		app:layout_constraintGuide_percent="0.7" />
 
 	<androidx.appcompat.widget.AppCompatTextView
 		android:id="@+id/activity_login_login_internal_server"
@@ -140,31 +155,10 @@
 		android:paddingTop="5dp"
 		android:paddingBottom="5dp"
 		android:text="@string/activity_login_login_internal_server"
-		android:textColor="@color/normal_background"
+		android:textColor="@color/background_normal"
 		app:layout_constraintBottom_toTopOf="@id/activity_login_guideline_login_bottom"
-		app:layout_constraintLeft_toRightOf="@id/activity_login_guideline_passport_left"
-		app:layout_constraintRight_toRightOf="@id/activity_login_guideline_passport_right"
+		app:layout_constraintLeft_toRightOf="@id/activity_login_guideline_edit_left"
+		app:layout_constraintRight_toRightOf="@id/activity_login_guideline_edit_right"
 		app:layout_constraintTop_toBottomOf="@id/activity_login_guideline_login_top" />
-
-	<androidx.constraintlayout.widget.Guideline
-		android:id="@+id/activity_login_guideline_exit"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:orientation="horizontal"
-		app:layout_constraintGuide_percent="0.925" />
-
-	<androidx.appcompat.widget.AppCompatTextView
-		android:id="@+id/activity_login_exit"
-		android:layout_width="0dp"
-		android:layout_height="0dp"
-		android:background="@color/differ_background"
-		android:gravity="center"
-		android:text="@string/activity_login_exit"
-		android:textColor="@color/normal_text"
-		android:textSize="20sp"
-		app:layout_constraintBottom_toBottomOf="parent"
-		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/activity_login_guideline_exit" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
