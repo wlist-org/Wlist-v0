@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 	<string name="app_name">智存系统</string>
+	<string name="confirm">确认</string>
+	<string name="cancel">取消</string>
 	<string name="toast_fatal_application_initialization">初始化应用失败</string>
 	<string name="toast_press_again_to_exit">再按一次退出应用</string>
 	<string name="activity_login_welcome">欢迎登录智存，畅想云盘</string>
@@ -23,7 +25,8 @@
 	<string name="page_file_upload_file">上传文件</string>
 	<string name="page_file_upload_picture">上传图片</string>
 	<string name="page_file_upload_video">上传视频</string>
-	<string name="page_file_upload_cancel">取消</string>
+	<string name="page_file_upload_directory_name">新建文件夹</string>
+	<string name="page_file_upload_directory_hint">请输入文件夹名称</string>
 	<string name="page_user_disconnect">断开连接</string>
 	<string name="page_user_close_server">关闭服务端</string>
 </resources>

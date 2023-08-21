@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 	<string name="app_name">WList</string>
+	<string name="confirm">Confirm</string>
+	<string name="cancel">Cancel</string>
 	<string name="toast_fatal_application_initialization">Failed to initialize application.</string>
 	<string name="toast_press_again_to_exit">Press again to exit the app.</string>
 	<string name="activity_login_welcome">Welcome to wlist</string>
@@ -23,7 +25,8 @@
 	<string name="page_file_upload_file">File</string>
 	<string name="page_file_upload_picture">Picture</string>
 	<string name="page_file_upload_video">Video</string>
-	<string name="page_file_upload_cancel">Cancel</string>
+	<string name="page_file_upload_directory_name">New directory</string>
+	<string name="page_file_upload_directory_hint">Directory Name.</string>
 	<string name="page_user_disconnect">Disconnection</string>
 	<string name="page_user_close_server">Close server</string>
 </resources>

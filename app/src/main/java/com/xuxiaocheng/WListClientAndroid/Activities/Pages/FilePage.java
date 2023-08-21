@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.text.Editable;
 import android.util.DisplayMetrics;
 import android.view.MotionEvent;
 import android.view.View;
@@ -21,10 +22,12 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMathHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
+import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WListClient.AndroidSupports.FileInformationGetter;
 import com.xuxiaocheng.WListClient.AndroidSupports.FileLocationSupporter;
 import com.xuxiaocheng.WListClient.Client.OperationHelpers.OperateFileHelper;
@@ -42,6 +45,7 @@ import com.xuxiaocheng.WListClientAndroid.Utils.EnhancedRecyclerViewAdapter;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileContentBinding;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileUploadBinding;
+import com.xuxiaocheng.WListClientAndroid.databinding.PageFileUploadDirectoryBinding;
 
 import java.net.InetSocketAddress;
 import java.time.LocalDateTime;
@@ -87,16 +91,18 @@ public class FilePage implements MainTab.MainTabPage {
         protected final boolean isRoot;
         @NonNull protected final CharSequence name;
         @NonNull protected final AtomicLong counter;
+        @NonNull protected final FileLocation location;
         @NonNull protected final EnhancedRecyclerViewAdapter<VisibleFileInformation, CellViewHolder> adapter;
         @NonNull protected final RecyclerView.OnScrollListener listener;
 
-        protected LocationStackRecord(final boolean isRoot, @NonNull final CharSequence name, @NonNull final AtomicLong counter,
+        protected LocationStackRecord(final boolean isRoot, @NonNull final CharSequence name, @NonNull final AtomicLong counter, @NonNull final FileLocation location,
                                       @NonNull final EnhancedRecyclerViewAdapter<VisibleFileInformation, CellViewHolder> adapter,
                                       @NonNull final RecyclerView.OnScrollListener listener) {
             super();
             this.isRoot = isRoot;
             this.name = name;
             this.counter = counter;
+            this.location = location;
             this.adapter = adapter;
             this.listener = listener;
         }
@@ -107,6 +113,7 @@ public class FilePage implements MainTab.MainTabPage {
                     "isRoot=" + this.isRoot +
                     ", name=" + this.name +
                     ", counter=" + this.counter +
+                    ", location=" + this.location +
                     ", adapter=" + this.adapter +
                     ", listener=" + this.listener +
                     '}';
@@ -207,7 +214,7 @@ public class FilePage implements MainTab.MainTabPage {
                 }
             }
         };
-        FilePage.this.locationStack.push(new LocationStackRecord(isRoot, name, counter, adapterWrapper, listener));
+        FilePage.this.locationStack.push(new LocationStackRecord(isRoot, name, counter, location, adapterWrapper, listener));
         Main.runOnUiThread(this.activity, () -> {
             this.setBacker(isRoot);
             page.pageFileContentName.setText(name);
@@ -282,19 +289,40 @@ public class FilePage implements MainTab.MainTabPage {
             });
         });
         page.pageFileContentUploader.setOnClickListener(u -> {
+            final LocationStackRecord record = this.locationStack.peek();
+            if (record == null) return;
+            final FileLocation location = record.location;
             final PageFileUploadBinding upload = PageFileUploadBinding.inflate(this.activity.getLayoutInflater());
             final AlertDialog uploader = new AlertDialog.Builder(this.activity)
                     .setTitle(R.string.page_file_upload).setView(upload.getRoot())
-                    .setPositiveButton(R.string.page_file_upload_cancel, (d, v) -> {}).create();
-            final AtomicBoolean nonclickable = new AtomicBoolean(false);
+                    .setPositiveButton(R.string.cancel, (d, w) -> {}).create();
+            final AtomicBoolean clickable = new AtomicBoolean(true);
             upload.pageFileUploadDirectory.setOnClickListener(v -> {
-                if (!nonclickable.compareAndSet(false, true)) return;
-                HLogManager.getInstance("DefaultLogger").log("", "On directory.");
+                if (!clickable.compareAndSet(true, false)) return;
                 uploader.cancel();
+                final PageFileUploadDirectoryBinding uploadDirectory = PageFileUploadDirectoryBinding.inflate(this.activity.getLayoutInflater());
+                uploadDirectory.pageFileUploadDirectoryName.setSelectAllOnFocus(true);
+                if (uploadDirectory.pageFileUploadDirectoryName.requestFocus())
+                    uploadDirectory.pageFileUploadDirectoryName.setSelection(Objects.requireNonNull(uploadDirectory.pageFileUploadDirectoryName.getText()).length());
+                new AlertDialog.Builder(this.activity).setTitle(R.string.page_file_upload_directory)
+                        .setIcon(R.mipmap.page_file_upload_directory).setView(uploadDirectory.getRoot())
+                        .setNegativeButton(R.string.cancel, (d, w) -> {})
+                        .setPositiveButton(R.string.confirm, (d, w) -> {
+                            final Editable editable = uploadDirectory.pageFileUploadDirectoryName.getText();
+                            final String name = editable == null ? "" : editable.toString();
+                            Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
+                                HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Creating directory.",
+                                        ParametersMap.create().add("address", this.address).add("location", location).add("name", name));
+                                // TODO: loading animation
+                                try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address)) {
+                                    OperateFileHelper.makeDirectory(client, TokenManager.getToken(this.address), location, name, Options.DuplicatePolicy.ERROR);
+                                }
+                            }));
+                        }).show();
             });
             upload.pageFileUploadDirectoryText.setOnClickListener(v -> upload.pageFileUploadDirectory.performClick());
             upload.pageFileUploadFile.setOnClickListener(v -> {
-                if (!nonclickable.compareAndSet(false, true)) return;
+                if (!clickable.compareAndSet(true, false)) return;
                 HLogManager.getInstance("DefaultLogger").log("", "On file.");
                 uploader.cancel();
             });

@@ -39,9 +39,9 @@ public class LoginActivity extends AppCompatActivity {
         logger.log(HLogLevel.VERBOSE, "Creating LoginActivity.");
         this.setContentView(R.layout.activity_login);
         final TextView internalServer = this.findViewById(R.id.activity_login_login_internal_server);
-        final AtomicBoolean nonclickable = new AtomicBoolean(false);
-        internalServer.setOnClickListener(v -> {
-            if (!nonclickable.compareAndSet(false, true))
+        final AtomicBoolean clickable = new AtomicBoolean(true);
+        internalServer.setOnClickListener(v -> { // TODO: Rationalize code.
+            if (!clickable.compareAndSet(true, false))
                 return;
             final Intent serverIntent = new Intent(this, InternalServerService.class);
             logger.log(HLogLevel.LESS, "Starting internal server...");
@@ -92,7 +92,7 @@ public class LoginActivity extends AppCompatActivity {
                         LoginActivity.this.finish();
                     }, e -> {
                         Main.runOnUiThread(LoginActivity.this, () -> internalServer.setText(R.string.activity_login_login_internal_server));
-                        nonclickable.set(false);
+                        clickable.set(true);
                         if (e != null) {
                             logger.log(HLogLevel.FAULT, "Failed to initialize wlist clients.", e.getLocalizedMessage());
                             Main.showToast(LoginActivity.this, R.string.toast_fatal_application_initialization);
