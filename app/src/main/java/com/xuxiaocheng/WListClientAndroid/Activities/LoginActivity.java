@@ -6,7 +6,6 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
@@ -40,7 +39,6 @@ public class LoginActivity extends AppCompatActivity {
         logger.log(HLogLevel.VERBOSE, "Creating LoginActivity.");
         this.setContentView(R.layout.activity_login);
         final TextView internalServer = this.findViewById(R.id.activity_login_login_internal_server);
-        final View exit = this.findViewById(R.id.activity_login_exit);
         final AtomicBoolean nonclickable = new AtomicBoolean(false);
         internalServer.setOnClickListener(v -> {
             if (!nonclickable.compareAndSet(false, true))
@@ -119,7 +117,6 @@ public class LoginActivity extends AppCompatActivity {
                 }
             }, Context.BIND_AUTO_CREATE);
         });
-        exit.setOnClickListener(v -> this.finish());
     }
 
     @Override
