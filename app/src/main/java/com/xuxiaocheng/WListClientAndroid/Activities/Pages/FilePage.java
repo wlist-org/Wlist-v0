@@ -16,18 +16,17 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.UiThread;
 import androidx.appcompat.app.AlertDialog;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMathHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WListClient.AndroidSupports.FileInformationGetter;
 import com.xuxiaocheng.WListClient.AndroidSupports.FileLocationSupporter;
-import com.xuxiaocheng.WListClient.Client.Exceptions.WrongStateException;
 import com.xuxiaocheng.WListClient.Client.OperationHelpers.OperateFileHelper;
 import com.xuxiaocheng.WListClient.Client.WListClientInterface;
 import com.xuxiaocheng.WListClient.Client.WListClientManager;
@@ -35,17 +34,15 @@ import com.xuxiaocheng.WListClient.Server.FileLocation;
 import com.xuxiaocheng.WListClient.Server.Options;
 import com.xuxiaocheng.WListClient.Server.SpecialDriverName;
 import com.xuxiaocheng.WListClient.Server.VisibleFileInformation;
-import com.xuxiaocheng.WListClient.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WListClientAndroid.Activities.CustomViews.MainTab;
 import com.xuxiaocheng.WListClientAndroid.Client.TokenManager;
 import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.R;
+import com.xuxiaocheng.WListClientAndroid.Utils.EnhancedRecyclerViewAdapter;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
-import com.xuxiaocheng.WListClientAndroid.Utils.RecyclerViewAdapterWrapper;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileContentBinding;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileUploadBinding;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -57,6 +54,7 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 public class FilePage implements MainTab.MainTabPage {
@@ -79,8 +77,9 @@ public class FilePage implements MainTab.MainTabPage {
         this.pageCache.initialize(page);
         page.pageFileContentName.setText(R.string.app_name);
         page.pageFileContentList.setLayoutManager(new LinearLayoutManager(this.activity));
+        page.pageFileContentList.setHasFixedSize(true);
         Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() ->
-                        this.setFileList(this.address, new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), 0))));
+                        this.pushFileList(page.pageFileContentName.getText(), new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), 0))));
         final AtomicBoolean scrolling = new AtomicBoolean();
         final AtomicInteger startX = new AtomicInteger(), startY = new AtomicInteger();
         page.pageFileContentUploader.setOnTouchListener((v, e) -> {
@@ -145,49 +144,65 @@ public class FilePage implements MainTab.MainTabPage {
         return page.getRoot();
     }
 
-    @NonNull protected final AtomicBoolean clickable = new AtomicBoolean(true);
-    @NonNull protected final Deque<Pair.ImmutablePair<FileLocation, CharSequence>> fileListStack = new ArrayDeque<>(); // TODO: save adapter.
+    @NonNull protected final Deque<LocationStackRecord> locationStack = new ArrayDeque<>();
+    protected static class LocationStackRecord {
+        protected final boolean isRoot;
+        @NonNull protected final CharSequence name;
+        @NonNull protected final AtomicLong counter;
+        @NonNull protected final EnhancedRecyclerViewAdapter<VisibleFileInformation, CellViewHolder> adapter;
+        @NonNull protected final RecyclerView.OnScrollListener listener;
 
-    protected void setFileList(@NonNull final InetSocketAddress address, @NonNull final FileLocation directoryLocation) throws WrongStateException, IOException, InterruptedException {
+        protected LocationStackRecord(final boolean isRoot, @NonNull final CharSequence name, @NonNull final AtomicLong counter,
+                                      @NonNull final EnhancedRecyclerViewAdapter<VisibleFileInformation, CellViewHolder> adapter,
+                                      @NonNull final RecyclerView.OnScrollListener listener) {
+            super();
+            this.isRoot = isRoot;
+            this.name = name;
+            this.counter = counter;
+            this.adapter = adapter;
+            this.listener = listener;
+        }
+
+        @Override
+        @NonNull public String toString() {
+            return "LocationStackRecord{" +
+                    "isRoot=" + this.isRoot +
+                    ", name=" + this.name +
+                    ", counter=" + this.counter +
+                    ", adapter=" + this.adapter +
+                    ", listener=" + this.listener +
+                    '}';
+        }
+    }
+
+    private void setBacker(final boolean isRoot) {
+        final ImageView backer = this.pageCache.getInstance().pageFileContentBacker;
+        if (isRoot) {
+            backer.setImageResource(R.mipmap.page_file_backer_nonclickable);
+            backer.setOnClickListener(null);
+            backer.setClickable(false);
+        } else {
+            backer.setImageResource(R.mipmap.page_file_backer);
+            backer.setOnClickListener(v -> this.popFileList());
+            backer.setClickable(true);
+        }
+    }
+
+    protected void pushFileList(@NonNull final CharSequence name, @NonNull final FileLocation location) {
         final PageFileContentBinding page = this.pageCache.getInstance();
+        final boolean isRoot = SpecialDriverName.RootDriver.getIdentifier().equals(FileLocationSupporter.driver(location));
         final AtomicInteger currentPage = new AtomicInteger(0);
-        final Triad.ImmutableTriad<Long, Long, List<VisibleFileInformation>> lists;
-        // TODO loading anim
-        try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
-            // TODO: more configurable params.
-            lists = OperateFileHelper.listFiles(client, TokenManager.getToken(address), directoryLocation,
-                    Options.DirectoriesOrFiles.Both, 50, currentPage.get(), Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false);
-        }
-        if (lists == null) {
-            Main.runOnUiThread(FilePage.this.activity, () -> {
-                FilePage.this.onBackPressed();
-                Main.showToast(FilePage.this.activity, R.string.page_file_unavailable_directory);
-            });
-            return;
-        }
-        final boolean isRoot = SpecialDriverName.RootDriver.getIdentifier().equals(FileLocationSupporter.driver(directoryLocation));
-        final int allPage = MiscellaneousUtil.calculatePartCount(lists.getB().intValue(), 50);
-        final RecyclerViewAdapterWrapper<VisibleFileInformation, CellViewHolder> adapterWrapper = new RecyclerViewAdapterWrapper<>() {
+        final AtomicLong counter = new AtomicLong(0);
+        final EnhancedRecyclerViewAdapter<VisibleFileInformation, CellViewHolder> adapterWrapper = new EnhancedRecyclerViewAdapter<>() {
             @Override
             @NonNull protected CellViewHolder createViewHolder(@NonNull final ViewGroup parent) {
-                return new CellViewHolder(RecyclerViewAdapterWrapper.buildView(FilePage.this.activity.getLayoutInflater(), R.layout.page_file_cell, page.pageFileContentList), information -> {
-                    if (FilePage.this.clickable.compareAndSet(true, false)) {
-                        FilePage.this.fileListStack.push(Pair.ImmutablePair.makeImmutablePair(directoryLocation, ((TextView) page.pageFileContentName).getText()));
-                        final AtomicBoolean failure = new AtomicBoolean(true);
-                        Main.runOnBackgroundThread(FilePage.this.activity, HExceptionWrapper.wrapRunnable(() -> {
-                            if (FileInformationGetter.isDirectory(information)) {
-                                FilePage.this.setFileList(address, FileLocationSupporter.create(isRoot ? FileInformationGetter.name(information) : FileLocationSupporter.driver(directoryLocation), FileInformationGetter.id(information)));
-                                Main.runOnUiThread(FilePage.this.activity, () -> page.pageFileContentName.setText(isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information)));
-                            } else {
-                                // TODO: show file.
-                                throw new UnsupportedOperationException("Show file is unsupported now!");
-                            }
-                            failure.set(false);
-                        }, () -> {
-                            FilePage.this.clickable.set(true);
-                            if (failure.get())
-                                FilePage.this.fileListStack.pop();
-                        }));
+                return new CellViewHolder(EnhancedRecyclerViewAdapter.buildView(FilePage.this.activity.getLayoutInflater(), R.layout.page_file_cell, page.pageFileContentList), information -> {
+                   if (FileInformationGetter.isDirectory(information))
+                        FilePage.this.pushFileList(isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information),
+                                FileLocationSupporter.create(isRoot ? FileInformationGetter.name(information) : FileLocationSupporter.driver(location), FileInformationGetter.id(information)));
+                    else {
+                        // TODO: show file.
+                        throw new UnsupportedOperationException("Show file is unsupported now!");
                     }
                 }, isRoot);
             }
@@ -197,19 +212,16 @@ public class FilePage implements MainTab.MainTabPage {
                 holder.onBind(information);
             }
         };
-        adapterWrapper.addDataRange(lists.getC());
-        if (allPage == 1)
-            adapterWrapper.addTailor(RecyclerViewAdapterWrapper.buildView(FilePage.this.activity.getLayoutInflater(), R.layout.page_file_tailor_no_more, page.pageFileContentList));
-        // TODO: register broadcast listener.
-        final RecyclerView.OnScrollListener scrollListener = new RecyclerView.OnScrollListener() {
+        final RecyclerView.OnScrollListener listener = new RecyclerView.OnScrollListener() {
             @NonNull private final AtomicBoolean onLoading = new AtomicBoolean(false);
             @NonNull private final AtomicBoolean noMore = new AtomicBoolean(false);
             @Override
             public void onScrollStateChanged(@NonNull final RecyclerView recyclerView, final int newState) {
                 super.onScrollStateChanged(recyclerView, newState);
                 // TODO: Remove the pages on the top.
+                // TODO: register broadcast listener.
                 if (!recyclerView.canScrollVertically(1) && !this.noMore.get() && this.onLoading.compareAndSet(false, true)) {
-                    final ConstraintLayout loadingTailor = RecyclerViewAdapterWrapper.buildView(FilePage.this.activity.getLayoutInflater(), R.layout.page_file_tailor_loading, page.pageFileContentList);
+                    final ConstraintLayout loadingTailor = EnhancedRecyclerViewAdapter.buildView(FilePage.this.activity.getLayoutInflater(), R.layout.page_file_tailor_loading, page.pageFileContentList);
                     final ImageView loading = (ImageView) loadingTailor.getViewById(R.id.page_file_tailor_loading_image);
                     final Animation loadingAnimation = new RotateAnimation(0, 360, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
                     loadingAnimation.setDuration(800);
@@ -220,65 +232,72 @@ public class FilePage implements MainTab.MainTabPage {
                     adapterWrapper.addTailor(loadingTailor);
                     Main.runOnBackgroundThread(FilePage.this.activity, HExceptionWrapper.wrapRunnable(() -> {
                         final Triad.ImmutableTriad<Long, Long, List<VisibleFileInformation>> list;
-                        try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
-                            list = OperateFileHelper.listFiles(client, TokenManager.getToken(address), directoryLocation,
-                                    Options.DirectoriesOrFiles.Both, 50, currentPage.incrementAndGet(), Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false);
+                        // TODO: loading progress.
+                        try (final WListClientInterface client = WListClientManager.quicklyGetClient(FilePage.this.address)) {
+                            // TODO: more configurable params.
+                            list = OperateFileHelper.listFiles(client, TokenManager.getToken(FilePage.this.address), location,
+                                    Options.DirectoriesOrFiles.Both, 50, currentPage.getAndIncrement(), Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false);
                         }
                         if (list == null) {
-                            Main.showToast(FilePage.this.activity, R.string.page_file_unavailable_directory);
-                            FilePage.this.onBackPressed();
+                            Main.runOnUiThread(FilePage.this.activity, () -> {
+                                Main.showToast(FilePage.this.activity, R.string.page_file_unavailable_directory);
+                                FilePage.this.popFileList();
+                            });
                             return;
                         }
-                        Main.runOnUiThread(FilePage.this.activity, () -> adapterWrapper.addDataRange(list.getC()));
+                        this.noMore.set(list.getC().isEmpty());
+                        counter.set(list.getA().longValue());
+                        Main.runOnUiThread(FilePage.this.activity, () -> {
+                            page.pageFileContentCounter.setText(String.valueOf(list.getA()));
+                            adapterWrapper.addDataRange(list.getC());
+                        });
                     }, () -> {
                         this.onLoading.set(false);
                         Main.runOnUiThread(FilePage.this.activity, () -> {
-                            adapterWrapper.removeTailor(0);
-                            if (currentPage.get() >= allPage - 1) {
-                                adapterWrapper.addTailor(RecyclerViewAdapterWrapper.buildView(FilePage.this.activity.getLayoutInflater(), R.layout.page_file_tailor_no_more, page.pageFileContentList));
-                                this.noMore.set(true);
-                                if (page.pageFileContentList.getAdapter() == adapterWrapper) // Confuse: Why must call setAdapter?
+                            loading.clearAnimation();
+                            if (this.noMore.get()) {
+                                adapterWrapper.setTailor(0, EnhancedRecyclerViewAdapter.buildView(FilePage.this.activity.getLayoutInflater(), R.layout.page_file_tailor_no_more, page.pageFileContentList));
+                                if (page.pageFileContentList.getAdapter() == adapterWrapper) // Confuse: Why must call 'setAdapter' again?
                                     page.pageFileContentList.setAdapter(adapterWrapper);
-                            } else
-                               this.onScrollStateChanged(recyclerView, newState);
+                            } else {
+                                adapterWrapper.removeTailor(0);
+                                this.onScrollStateChanged(recyclerView, newState);
+                            }
                         });
                     }));
                 }
             }
         };
+        FilePage.this.locationStack.push(new LocationStackRecord(isRoot, name, counter, adapterWrapper, listener));
         Main.runOnUiThread(this.activity, () -> {
-            final ImageView backer = page.pageFileContentBacker;
-            if (isRoot) {
-                backer.setImageResource(R.mipmap.page_file_backer_nonclickable);
-                backer.setOnClickListener(null);
-                backer.setClickable(false);
-            } else {
-                backer.setImageResource(R.mipmap.page_file_backer);
-                backer.setOnClickListener(v -> this.onBackPressed());
-                backer.setClickable(true);
-            }
-            page.pageFileContentCounter.setText(String.valueOf(lists.getB()));
+            this.setBacker(isRoot);
+            page.pageFileContentName.setText(name);
             final RecyclerView content = page.pageFileContentList;
             content.setAdapter(adapterWrapper);
-            content.setHasFixedSize(true);
             content.clearOnScrollListeners();
-            if (allPage > 1) {
-                content.addOnScrollListener(scrollListener);
-                scrollListener.onScrollStateChanged(content, AbsListView.OnScrollListener.SCROLL_STATE_IDLE);
-            }
+            content.addOnScrollListener(listener);
+            listener.onScrollStateChanged(content, AbsListView.OnScrollListener.SCROLL_STATE_IDLE);
         });
+    }
+
+    @UiThread
+    protected boolean popFileList() {
+        final PageFileContentBinding page = this.pageCache.getInstanceNullable();
+        if (page == null) return false;
+        final LocationStackRecord record = this.locationStack.poll();
+        if (record == null) return false;
+        this.setBacker(record.isRoot);
+        page.pageFileContentName.setText(record.name);
+        page.pageFileContentCounter.setText(String.valueOf(record.counter));
+        page.pageFileContentList.setAdapter(record.adapter);
+        page.pageFileContentList.clearOnScrollListeners();
+        page.pageFileContentList.addOnScrollListener(record.listener);
+        return true;
     }
 
     @Override
     public boolean onBackPressed() {
-        final Pair.ImmutablePair<FileLocation, CharSequence> p = this.fileListStack.poll();
-        if (p == null) return false;
-        if (this.clickable.compareAndSet(true, false))
-            Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
-                this.setFileList(this.address, p.getFirst());
-                Main.runOnUiThread(this.activity, () -> this.pageCache.getInstance().pageFileContentName.setText(p.getSecond()));
-            }, () -> this.clickable.set(true)));
-        return true;
+        return this.popFileList();
     }
 
     @Override
@@ -286,12 +305,11 @@ public class FilePage implements MainTab.MainTabPage {
         return "FilePage{" +
                 "address=" + this.address +
                 ", pageCache=" + this.pageCache +
-                ", clickable=" + this.clickable +
-                ", fileListStack=" + this.fileListStack +
+                ", locationStack=" + this.locationStack +
                 '}';
     }
 
-    protected static class CellViewHolder extends RecyclerViewAdapterWrapper.WrappedViewHolder<VisibleFileInformation, ConstraintLayout> {
+    protected static class CellViewHolder extends EnhancedRecyclerViewAdapter.WrappedViewHolder<VisibleFileInformation, ConstraintLayout> {
         @NonNull protected final Consumer<VisibleFileInformation> clicker;
         protected final boolean isRoot;
         @NonNull protected final ImageView image;

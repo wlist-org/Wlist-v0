@@ -16,7 +16,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-public abstract class RecyclerViewAdapterWrapper<T, VH extends RecyclerViewAdapterWrapper.WrappedViewHolder<T, ?>> extends RecyclerView.Adapter<RecyclerViewAdapterWrapper.WrappedViewHolder<T, ?>> {
+public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecyclerViewAdapter.WrappedViewHolder<T, ?>> extends RecyclerView.Adapter<EnhancedRecyclerViewAdapter.WrappedViewHolder<T, ?>> {
     @NonNull protected final List<View> headers = new ArrayList<>();
     @NonNull protected final List<View> tailors = new ArrayList<>();
     @NonNull protected final List<T> data = new ArrayList<>();
@@ -138,7 +138,7 @@ public abstract class RecyclerViewAdapterWrapper<T, VH extends RecyclerViewAdapt
             gridLayoutManager.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
                 @Override
                 public int getSpanSize(final int position) {
-                    return RecyclerViewAdapterWrapper.this.getItemViewType(position) == 0 ? 1 : gridLayoutManager.getSpanCount();
+                    return EnhancedRecyclerViewAdapter.this.getItemViewType(position) == 0 ? 1 : gridLayoutManager.getSpanCount();
                 }
             });
     }
@@ -153,7 +153,7 @@ public abstract class RecyclerViewAdapterWrapper<T, VH extends RecyclerViewAdapt
 
     @Override
     @NonNull public String toString() {
-        return "RecyclerViewAdapterWrapper{" +
+        return "EnhancedRecyclerViewAdapter{" +
                 "headers=" + this.headers +
                 ", tailors=" + this.tailors +
                 ", data=" + this.data +
