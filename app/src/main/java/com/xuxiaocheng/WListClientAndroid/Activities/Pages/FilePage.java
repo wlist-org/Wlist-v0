@@ -51,7 +51,6 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -68,7 +67,6 @@ public class FilePage implements MainTab.MainTabPage {
     }
 
     @NonNull protected final HInitializer<PageFileContentBinding> pageCache = new HInitializer<>("FilePage");
-    @SuppressLint("ClickableViewAccessibility")
     @Override
     @NonNull public ConstraintLayout onShow() {
         final PageFileContentBinding cache = this.pageCache.getInstanceNullable();
@@ -80,67 +78,7 @@ public class FilePage implements MainTab.MainTabPage {
         page.pageFileContentList.setHasFixedSize(true);
         Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() ->
                         this.pushFileList(page.pageFileContentName.getText(), new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), 0))));
-        final AtomicBoolean scrolling = new AtomicBoolean();
-        final AtomicInteger startX = new AtomicInteger(), startY = new AtomicInteger();
-        page.pageFileContentUploader.setOnTouchListener((v, e) -> {
-            switch (e.getAction()) {
-                case MotionEvent.ACTION_DOWN -> {
-                    scrolling.set(false);
-                    startX.set(Float.floatToIntBits(v.getX()));
-                    startY.set(Float.floatToIntBits(v.getY()));
-                }
-                case MotionEvent.ACTION_MOVE -> {
-                    if (scrolling.get()) {
-                        final float parentX = page.pageFileContentList.getX(), parentY = page.pageFileContentList.getY();
-                        v.setX(HMathHelper.clamp(v.getX() + e.getX() - parentX, 0, page.pageFileContentList.getWidth()) + parentX - v.getWidth() / 2.0f);
-                        v.setY(HMathHelper.clamp(v.getY() + e.getY() - parentY, -50, page.pageFileContentList.getHeight()) + parentY - v.getHeight() / 2.0f);
-                    } else if (Math.abs(v.getX() + e.getX() - Float.intBitsToFloat(startX.get())) > v.getWidth() / 2.0f || Math.abs(v.getY() + e.getY() - Float.intBitsToFloat(startY.get())) > v.getHeight() / 2.0f)
-                        scrolling.set(true);
-                }
-                case MotionEvent.ACTION_UP -> {
-                    if (scrolling.get())
-                        FilePage.this.activity.getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE).edit()
-                                .putFloat("x", v.getX()).putFloat("y", v.getY()).apply();
-                    else return v.performClick();
-                }
-            }
-            return true;
-        });
-        Main.runOnUiThread(this.activity, () -> {
-            final float x, y;
-            final SharedPreferences preferences = this.activity.getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE);
-            if (preferences.contains("x") && preferences.contains("y")) {
-                x = preferences.getFloat("x", 0);
-                y = preferences.getFloat("y", 0);
-            } else {
-                final DisplayMetrics displayMetrics = this.activity.getResources().getDisplayMetrics();
-                x = preferences.getFloat("x", (displayMetrics.widthPixels - page.pageFileContentUploader.getWidth()) * 0.9f);
-                y = preferences.getFloat("y", displayMetrics.heightPixels * 0.6f);
-                preferences.edit().putFloat("x", x).putFloat("y", y).apply();
-            }
-            page.pageFileContentUploader.setX(x);
-            page.pageFileContentUploader.setY(y);
-        }, 100, TimeUnit.MILLISECONDS);
-        page.pageFileContentUploader.setOnClickListener(u -> {
-            final PageFileUploadBinding upload = PageFileUploadBinding.inflate(this.activity.getLayoutInflater());
-            final AlertDialog uploader = new AlertDialog.Builder(this.activity)
-                    .setTitle(R.string.page_file_upload).setView(upload.getRoot())
-                    .setPositiveButton(R.string.page_file_upload_cancel, (d, v) -> {}).create();
-            final AtomicBoolean nonclickable = new AtomicBoolean(false);
-            upload.pageFileUploadDirectory.setOnClickListener(v -> {
-                if (!nonclickable.compareAndSet(false, true)) return;
-                HLogManager.getInstance("DefaultLogger").log("", "On directory.");
-                uploader.cancel();
-            });
-            upload.pageFileUploadDirectoryText.setOnClickListener(v -> upload.pageFileUploadDirectory.performClick());
-            upload.pageFileUploadFile.setOnClickListener(v -> {
-                if (!nonclickable.compareAndSet(false, true)) return;
-                HLogManager.getInstance("DefaultLogger").log("", "On file.");
-                uploader.cancel();
-            });
-            upload.pageFileUploadFileText.setOnClickListener(v -> upload.pageFileUploadFile.performClick());
-            uploader.show();
-        });
+        this.buildUploader();
         return page.getRoot();
     }
 
@@ -261,7 +199,8 @@ public class FilePage implements MainTab.MainTabPage {
                                     page.pageFileContentList.setAdapter(adapterWrapper);
                             } else {
                                 adapterWrapper.removeTailor(0);
-                                this.onScrollStateChanged(recyclerView, newState);
+                                if (page.pageFileContentList.getAdapter() == adapterWrapper) // Autoload more if still in this list page.
+                                    this.onScrollStateChanged(recyclerView, newState);
                             }
                         });
                     }));
@@ -283,9 +222,10 @@ public class FilePage implements MainTab.MainTabPage {
     @UiThread
     protected boolean popFileList() {
         final PageFileContentBinding page = this.pageCache.getInstanceNullable();
-        if (page == null) return false;
-        final LocationStackRecord record = this.locationStack.poll();
-        if (record == null) return false;
+        if (page == null || this.locationStack.size() < 2) return false;
+        this.locationStack.pop();
+        final LocationStackRecord record = this.locationStack.peek();
+        assert record != null;
         this.setBacker(record.isRoot);
         page.pageFileContentName.setText(record.name);
         page.pageFileContentCounter.setText(String.valueOf(record.counter));
@@ -293,6 +233,74 @@ public class FilePage implements MainTab.MainTabPage {
         page.pageFileContentList.clearOnScrollListeners();
         page.pageFileContentList.addOnScrollListener(record.listener);
         return true;
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    protected void buildUploader() {
+        final PageFileContentBinding page = this.pageCache.getInstance();
+        final AtomicBoolean scrolling = new AtomicBoolean();
+        final AtomicInteger startX = new AtomicInteger(), startY = new AtomicInteger();
+        page.pageFileContentUploader.setOnTouchListener((v, e) -> {
+            switch (e.getAction()) {
+                case MotionEvent.ACTION_DOWN -> {
+                    scrolling.set(false);
+                    startX.set(Float.floatToIntBits(v.getX()));
+                    startY.set(Float.floatToIntBits(v.getY()));
+                }
+                case MotionEvent.ACTION_MOVE -> {
+                    if (scrolling.get()) {
+                        final float parentX = page.pageFileContentList.getX(), parentY = page.pageFileContentList.getY();
+                        v.setX(HMathHelper.clamp(v.getX() + e.getX() - parentX, 0, page.pageFileContentList.getWidth()) + parentX - v.getWidth() / 2.0f);
+                        v.setY(HMathHelper.clamp(v.getY() + e.getY() - parentY, -50, page.pageFileContentList.getHeight()) + parentY - v.getHeight() / 2.0f);
+                    } else if (Math.abs(v.getX() + e.getX() - Float.intBitsToFloat(startX.get())) > v.getWidth() / 2.0f || Math.abs(v.getY() + e.getY() - Float.intBitsToFloat(startY.get())) > v.getHeight() / 2.0f)
+                        scrolling.set(true);
+                }
+                case MotionEvent.ACTION_UP -> {
+                    if (scrolling.get())
+                        FilePage.this.activity.getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE).edit()
+                                .putFloat("x", v.getX()).putFloat("y", v.getY()).apply();
+                    else return v.performClick();
+                }
+            }
+            return true;
+        });
+        Main.runOnBackgroundThread(this.activity, () -> {
+            final float x, y;
+            final SharedPreferences preferences = this.activity.getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE);
+            if (preferences.contains("x") && preferences.contains("y")) {
+                x = preferences.getFloat("x", 0);
+                y = preferences.getFloat("y", 0);
+            } else {
+                final DisplayMetrics displayMetrics = this.activity.getResources().getDisplayMetrics();
+                x = preferences.getFloat("x", (displayMetrics.widthPixels - page.pageFileContentUploader.getWidth()) * 0.9f);
+                y = preferences.getFloat("y", displayMetrics.heightPixels * 0.6f);
+                preferences.edit().putFloat("x", x).putFloat("y", y).apply();
+            }
+            Main.runOnUiThread(this.activity, () -> {
+                page.pageFileContentUploader.setX(x);
+                page.pageFileContentUploader.setY(y);
+            });
+        });
+        page.pageFileContentUploader.setOnClickListener(u -> {
+            final PageFileUploadBinding upload = PageFileUploadBinding.inflate(this.activity.getLayoutInflater());
+            final AlertDialog uploader = new AlertDialog.Builder(this.activity)
+                    .setTitle(R.string.page_file_upload).setView(upload.getRoot())
+                    .setPositiveButton(R.string.page_file_upload_cancel, (d, v) -> {}).create();
+            final AtomicBoolean nonclickable = new AtomicBoolean(false);
+            upload.pageFileUploadDirectory.setOnClickListener(v -> {
+                if (!nonclickable.compareAndSet(false, true)) return;
+                HLogManager.getInstance("DefaultLogger").log("", "On directory.");
+                uploader.cancel();
+            });
+            upload.pageFileUploadDirectoryText.setOnClickListener(v -> upload.pageFileUploadDirectory.performClick());
+            upload.pageFileUploadFile.setOnClickListener(v -> {
+                if (!nonclickable.compareAndSet(false, true)) return;
+                HLogManager.getInstance("DefaultLogger").log("", "On file.");
+                uploader.cancel();
+            });
+            upload.pageFileUploadFileText.setOnClickListener(v -> upload.pageFileUploadFile.performClick());
+            uploader.show();
+        });
     }
 
     @Override
