@@ -13,6 +13,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -39,6 +40,7 @@ import com.xuxiaocheng.WListClientAndroid.R;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
 import com.xuxiaocheng.WListClientAndroid.Utils.RecyclerViewAdapterWrapper;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileContentBinding;
+import com.xuxiaocheng.WListClientAndroid.databinding.PageFileUploadBinding;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -77,15 +79,21 @@ public class FilePage implements MainTab.MainTabPage {
         Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() ->
                         this.setFileList(this.address, new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), 0))));
         final AtomicBoolean scrolling = new AtomicBoolean();
+        final AtomicInteger startX = new AtomicInteger(), startY = new AtomicInteger();
         page.pageFileContentUploader.setOnTouchListener((v, e) -> {
             switch (e.getAction()) {
-                case MotionEvent.ACTION_DOWN -> scrolling.set(false);
+                case MotionEvent.ACTION_DOWN -> {
+                    scrolling.set(false);
+                    startX.set(Float.floatToIntBits(v.getX()));
+                    startY.set(Float.floatToIntBits(v.getY()));
+                }
                 case MotionEvent.ACTION_MOVE -> {
                     if (scrolling.get()) {
                         final float parentX = page.pageFileContentList.getX(), parentY = page.pageFileContentList.getY();
                         v.setX(HMathHelper.clamp(v.getX() + e.getX() - parentX, 0, page.pageFileContentList.getWidth()) + parentX - v.getWidth() / 2.0f);
                         v.setY(HMathHelper.clamp(v.getY() + e.getY() - parentY, -50, page.pageFileContentList.getHeight()) + parentY - v.getHeight() / 2.0f);
-                    } else scrolling.set(true);
+                    } else if (Math.abs(v.getX() + e.getX() - Float.intBitsToFloat(startX.get())) > v.getWidth() / 2.0f || Math.abs(v.getY() + e.getY() - Float.intBitsToFloat(startY.get())) > v.getHeight() / 2.0f)
+                        scrolling.set(true);
                 }
                 case MotionEvent.ACTION_UP -> {
                     if (scrolling.get())
@@ -104,16 +112,32 @@ public class FilePage implements MainTab.MainTabPage {
                 y = preferences.getFloat("y", 0);
             } else {
                 final DisplayMetrics displayMetrics = this.activity.getResources().getDisplayMetrics();
-                x = preferences.getFloat("x", displayMetrics.widthPixels - page.pageFileContentUploader.getWidth());
+                x = preferences.getFloat("x", (displayMetrics.widthPixels - page.pageFileContentUploader.getWidth()) * 0.9f);
                 y = preferences.getFloat("y", displayMetrics.heightPixels * 0.6f);
                 preferences.edit().putFloat("x", x).putFloat("y", y).apply();
             }
             page.pageFileContentUploader.setX(x);
             page.pageFileContentUploader.setY(y);
         }, 100, TimeUnit.MILLISECONDS);
-        page.pageFileContentUploader.setOnClickListener(v -> {
-            HLogManager.getInstance("DefaultLogger").log("", "Ok");
-            v.setVisibility(View.GONE); // TODO
+        page.pageFileContentUploader.setOnClickListener(u -> {
+            final PageFileUploadBinding upload = PageFileUploadBinding.inflate(this.activity.getLayoutInflater());
+            final AlertDialog uploader = new AlertDialog.Builder(this.activity)
+                    .setTitle(R.string.page_file_upload).setView(upload.getRoot())
+                    .setPositiveButton(R.string.page_file_upload_cancel, (d, v) -> {}).create();
+            final AtomicBoolean nonclickable = new AtomicBoolean(false);
+            upload.pageFileUploadDirectory.setOnClickListener(v -> {
+                if (!nonclickable.compareAndSet(false, true)) return;
+                HLogManager.getInstance("DefaultLogger").log("", "On directory.");
+                uploader.cancel();
+            });
+            upload.pageFileUploadDirectoryText.setOnClickListener(v -> upload.pageFileUploadDirectory.performClick());
+            upload.pageFileUploadFile.setOnClickListener(v -> {
+                if (!nonclickable.compareAndSet(false, true)) return;
+                HLogManager.getInstance("DefaultLogger").log("", "On file.");
+                uploader.cancel();
+            });
+            upload.pageFileUploadFileText.setOnClickListener(v -> upload.pageFileUploadFile.performClick());
+            uploader.show();
         });
         return page.getRoot();
     }

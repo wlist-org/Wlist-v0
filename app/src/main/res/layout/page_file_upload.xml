@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                                                   xmlns:app="http://schemas.android.com/apk/res-auto"
+                                                   android:layout_width="wrap_content"
+                                                   android:layout_height="wrap_content">
+
+	<androidx.constraintlayout.widget.Guideline
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="horizontal"
+		app:layout_constraintGuide_begin="250dp" />
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/page_file_upload_guideline_left_left"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		app:layout_constraintGuide_percent="0.2" />
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/page_file_upload_guideline_left_right"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		app:layout_constraintGuide_percent="0.4" />
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/page_file_upload_guideline_right_left"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		app:layout_constraintGuide_percent="0.6" />
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/page_file_upload_guideline_right_right"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		app:layout_constraintGuide_percent="0.8" />
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/page_file_upload_guideline_top_top"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="horizontal"
+		app:layout_constraintGuide_percent="0.2" />
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/page_file_upload_guideline_top_bottom"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="horizontal"
+		app:layout_constraintGuide_percent="0.4" />
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/page_file_upload_guideline_bottom_top"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="horizontal"
+		app:layout_constraintGuide_percent="0.6" />
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/page_file_upload_guideline_bottom_bottom"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="horizontal"
+		app:layout_constraintGuide_percent="0.8" />
+
+	<androidx.appcompat.widget.AppCompatImageView
+		android:id="@+id/page_file_upload_directory"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:scaleType="centerInside"
+		android:src="@mipmap/page_file_upload_directory"
+		app:layout_constraintBottom_toTopOf="@id/page_file_upload_guideline_top_bottom"
+		app:layout_constraintLeft_toRightOf="@id/page_file_upload_guideline_left_left"
+		app:layout_constraintRight_toLeftOf="@id/page_file_upload_guideline_left_right"
+		app:layout_constraintTop_toBottomOf="@id/page_file_upload_guideline_top_top" />
+
+	<androidx.appcompat.widget.AppCompatImageView
+		android:id="@+id/page_file_upload_file"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:scaleType="centerInside"
+		android:src="@mipmap/page_file_upload_file"
+		app:layout_constraintBottom_toTopOf="@id/page_file_upload_guideline_top_bottom"
+		app:layout_constraintLeft_toRightOf="@id/page_file_upload_guideline_right_left"
+		app:layout_constraintRight_toLeftOf="@id/page_file_upload_guideline_right_right"
+		app:layout_constraintTop_toBottomOf="@id/page_file_upload_guideline_top_top" />
+
+	<androidx.appcompat.widget.AppCompatImageView
+		android:id="@+id/page_file_upload_picture"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:scaleType="centerInside"
+		android:src="@mipmap/page_file_upload_picture"
+		app:layout_constraintBottom_toTopOf="@id/page_file_upload_guideline_bottom_bottom"
+		app:layout_constraintLeft_toRightOf="@id/page_file_upload_guideline_left_left"
+		app:layout_constraintRight_toLeftOf="@id/page_file_upload_guideline_left_right"
+		app:layout_constraintTop_toBottomOf="@id/page_file_upload_guideline_bottom_top" />
+
+	<androidx.appcompat.widget.AppCompatImageView
+		android:id="@+id/page_file_upload_video"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:scaleType="centerInside"
+		android:src="@mipmap/page_file_upload_video"
+		app:layout_constraintBottom_toTopOf="@id/page_file_upload_guideline_bottom_bottom"
+		app:layout_constraintLeft_toRightOf="@id/page_file_upload_guideline_right_left"
+		app:layout_constraintRight_toLeftOf="@id/page_file_upload_guideline_right_right"
+		app:layout_constraintTop_toBottomOf="@id/page_file_upload_guideline_bottom_top" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_file_upload_directory_text"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:gravity="center"
+		android:text="@string/page_file_upload_directory"
+		android:textColor="@color/normal_text"
+		android:textSize="15sp"
+		app:layout_constraintLeft_toLeftOf="@id/page_file_upload_directory"
+		app:layout_constraintRight_toRightOf="@id/page_file_upload_directory"
+		app:layout_constraintTop_toBottomOf="@id/page_file_upload_directory" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_file_upload_file_text"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:gravity="center"
+		android:text="@string/page_file_upload_file"
+		android:textColor="@color/normal_text"
+		android:textSize="15sp"
+		app:layout_constraintLeft_toLeftOf="@id/page_file_upload_file"
+		app:layout_constraintRight_toRightOf="@id/page_file_upload_file"
+		app:layout_constraintTop_toBottomOf="@id/page_file_upload_file" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_file_upload_picture_text"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:gravity="center"
+		android:text="@string/page_file_upload_picture"
+		android:textColor="@color/normal_text"
+		android:textSize="15sp"
+		app:layout_constraintLeft_toLeftOf="@id/page_file_upload_picture"
+		app:layout_constraintRight_toRightOf="@id/page_file_upload_picture"
+		app:layout_constraintTop_toBottomOf="@id/page_file_upload_picture" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_file_upload_video_text"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:gravity="center"
+		android:text="@string/page_file_upload_video"
+		android:textColor="@color/normal_text"
+		android:textSize="15sp"
+		app:layout_constraintLeft_toLeftOf="@id/page_file_upload_video"
+		app:layout_constraintRight_toRightOf="@id/page_file_upload_video"
+		app:layout_constraintTop_toBottomOf="@id/page_file_upload_video" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -18,6 +18,12 @@
 	<string name="page_file_counter">items</string>
 	<string name="page_file_loading">Loading more…</string>
 	<string name="page_file_no_more">No more file.</string>
+	<string name="page_file_upload">Upload</string>
+	<string name="page_file_upload_directory">Directory</string>
+	<string name="page_file_upload_file">File</string>
+	<string name="page_file_upload_picture">Picture</string>
+	<string name="page_file_upload_video">Video</string>
+	<string name="page_file_upload_cancel">Cancel</string>
 	<string name="page_user_disconnect">Disconnection</string>
 	<string name="page_user_close_server">Close server</string>
 </resources>

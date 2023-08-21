@@ -93,12 +93,12 @@ public class LoginActivity extends AppCompatActivity {
                         MainActivity.start(LoginActivity.this, address);
                         LoginActivity.this.finish();
                     }, e -> {
+                        Main.runOnUiThread(LoginActivity.this, () -> internalServer.setText(R.string.activity_login_login_internal_server));
+                        nonclickable.set(false);
                         if (e != null) {
                             logger.log(HLogLevel.FAULT, "Failed to initialize wlist clients.", e.getLocalizedMessage());
                             Main.showToast(LoginActivity.this, R.string.toast_fatal_application_initialization);
                             LoginActivity.this.unbindService(this);
-                            internalServer.setText(R.string.activity_login_login_internal_server);
-                            nonclickable.set(false);
                         }
                     }, false));
                 }

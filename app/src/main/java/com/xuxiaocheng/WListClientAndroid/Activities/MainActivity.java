@@ -79,7 +79,6 @@ public class MainActivity extends AppCompatActivity {
         contentParams.rightToRight = R.id.activity_main;
         contentParams.topToBottom = R.id.activity_main_guideline_title;
         mainTab.setOnChangeListener(choice -> {
-            logger.log(HLogLevel.DEBUG, "Choosing main tab: ", choice);
             final View oldView;
             synchronized (currentView) {
                 oldView = currentView.getAndSet(null);

@@ -18,6 +18,12 @@
 	<string name="page_file_counter">项</string>
 	<string name="page_file_loading">正在加载更多……</string>
 	<string name="page_file_no_more">没有更多了</string>
+	<string name="page_file_upload">上传</string>
+	<string name="page_file_upload_directory">创建文件夹</string>
+	<string name="page_file_upload_file">上传文件</string>
+	<string name="page_file_upload_picture">上传图片</string>
+	<string name="page_file_upload_video">上传视频</string>
+	<string name="page_file_upload_cancel">取消</string>
 	<string name="page_user_disconnect">断开连接</string>
 	<string name="page_user_close_server">关闭服务端</string>
 </resources>
