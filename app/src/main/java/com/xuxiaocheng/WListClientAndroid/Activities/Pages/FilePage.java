@@ -69,52 +69,52 @@ public class FilePage implements MainTab.MainTabPage {
     @Override
     @NonNull public ConstraintLayout onShow() {
         final PageFileContentBinding cache = this.pageCache.getInstanceNullable();
-        if (cache != null) {
-            if (!cache.pageFileContentUploader.isShown())
-                cache.pageFileContentUploader.setVisibility(View.VISIBLE);
-            return cache.getRoot();
-        }
+        if (cache != null) return cache.getRoot();
         final PageFileContentBinding page = PageFileContentBinding.inflate(this.activity.getLayoutInflater());
         this.pageCache.initialize(page);
         page.pageFileContentName.setText(R.string.app_name);
         page.pageFileContentList.setLayoutManager(new LinearLayoutManager(this.activity));
         Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() ->
                         this.setFileList(this.address, new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), 0))));
-        final DisplayMetrics displayMetrics = this.activity.getResources().getDisplayMetrics();
-        final int screenWidth = displayMetrics.widthPixels;
-        final int screenHeight = displayMetrics.heightPixels;
         final AtomicBoolean scrolling = new AtomicBoolean();
         page.pageFileContentUploader.setOnTouchListener((v, e) -> {
             switch (e.getAction()) {
                 case MotionEvent.ACTION_DOWN -> scrolling.set(false);
                 case MotionEvent.ACTION_MOVE -> {
                     if (scrolling.get()) {
-                        final int halfWidth = v.getWidth() / 2, halfHeight = v.getHeight() / 2;
-                        v.setX(HMathHelper.clamp(v.getX() + e.getX() - halfWidth, halfWidth, screenWidth - halfWidth));
-                        v.setY(HMathHelper.clamp(v.getY() + e.getY() - halfHeight, 50 + halfHeight, screenHeight - 50 - halfHeight));
+                        final float parentX = page.pageFileContentList.getX(), parentY = page.pageFileContentList.getY();
+                        v.setX(HMathHelper.clamp(v.getX() + e.getX() - parentX, 0, page.pageFileContentList.getWidth()) + parentX - v.getWidth() / 2.0f);
+                        v.setY(HMathHelper.clamp(v.getY() + e.getY() - parentY, -50, page.pageFileContentList.getHeight()) + parentY - v.getHeight() / 2.0f);
                     } else scrolling.set(true);
                 }
                 case MotionEvent.ACTION_UP -> {
-                    if (scrolling.get()) {
-                        final int[] location = new int[2];
-                        v.getLocationOnScreen(location);
+                    if (scrolling.get())
                         FilePage.this.activity.getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE).edit()
-                                .putInt("x", location[0]).putInt("y", location[1]).apply();
-                    } else return v.performClick();
+                                .putFloat("x", v.getX()).putFloat("y", v.getY()).apply();
+                    else return v.performClick();
                 }
             }
             return true;
         });
+        Main.runOnUiThread(this.activity, () -> {
+            final float x, y;
+            final SharedPreferences preferences = this.activity.getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE);
+            if (preferences.contains("x") && preferences.contains("y")) {
+                x = preferences.getFloat("x", 0);
+                y = preferences.getFloat("y", 0);
+            } else {
+                final DisplayMetrics displayMetrics = this.activity.getResources().getDisplayMetrics();
+                x = preferences.getFloat("x", displayMetrics.widthPixels - page.pageFileContentUploader.getWidth());
+                y = preferences.getFloat("y", displayMetrics.heightPixels * 0.6f);
+                preferences.edit().putFloat("x", x).putFloat("y", y).apply();
+            }
+            page.pageFileContentUploader.setX(x);
+            page.pageFileContentUploader.setY(y);
+        }, 100, TimeUnit.MILLISECONDS);
         page.pageFileContentUploader.setOnClickListener(v -> {
             HLogManager.getInstance("DefaultLogger").log("", "Ok");
             v.setVisibility(View.GONE); // TODO
         });
-        Main.runOnUiThread(this.activity, () -> {
-            final SharedPreferences preferences = this.activity.getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE);
-            page.pageFileContentUploader.setX(preferences.getInt("x", screenWidth - page.pageFileContentUploader.getWidth()));
-            //noinspection NumericCastThatLosesPrecision
-            page.pageFileContentUploader.setY(preferences.getInt("y", (int) (screenHeight * 0.6)));
-        }, 100, TimeUnit.MILLISECONDS);
         return page.getRoot();
     }
 
