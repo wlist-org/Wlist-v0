@@ -70,23 +70,23 @@ public final class OperateFileHelper {
         }
     }
 
-    public static @NotNull UnionPair<@NotNull VisibleFileInformation, @NotNull FailureReason> makeDirectory(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
-        final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.MakeDirectories, token);
+    public static @NotNull UnionPair<@NotNull VisibleFileInformation, @NotNull FailureReason> createDirectory(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.CreateDirectory, token);
         FileLocation.dump(send, parentLocation);
         ByteBufIOUtil.writeUTF(send, directoryName);
         ByteBufIOUtil.writeUTF(send, policy.name());
-        OperateHelper.logOperating(Operation.Type.MakeDirectories, () -> ParametersMap.create().add("tokenHash", token.hashCode())
+        OperateHelper.logOperating(Operation.Type.CreateDirectory, () -> ParametersMap.create().add("tokenHash", token.hashCode())
                 .add("parentLocation", parentLocation).add("directoryName", directoryName).add("policy", policy));
         final ByteBuf receive = client.send(send);
         try {
             if (OperateHelper.handleState(receive)) {
                 final VisibleFileInformation information = VisibleFileInformation.parse(receive);
-                OperateHelper.logOperated(Operation.Type.MakeDirectories, () -> ParametersMap.create().add("success", true)
+                OperateHelper.logOperated(Operation.Type.CreateDirectory, () -> ParametersMap.create().add("success", true)
                         .add("information", information));
                 return UnionPair.ok(information);
             }
             final String reason = ByteBufIOUtil.readUTF(receive);
-            OperateHelper.logOperated(Operation.Type.MakeDirectories, () -> ParametersMap.create().add("success", false).add("reason", reason));
+            OperateHelper.logOperated(Operation.Type.CreateDirectory, () -> ParametersMap.create().add("success", false).add("reason", reason));
             return UnionPair.fail(OperateFileHelper.handleFailureReason(reason));
         } finally {
             receive.release();

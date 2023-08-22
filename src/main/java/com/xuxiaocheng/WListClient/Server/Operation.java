@@ -32,7 +32,7 @@ public final class Operation {
         RemovePermission,
         BuildIndex,
         ListFiles,
-        MakeDirectories,
+        CreateDirectory,
         DeleteFile,
         RenameFile,
         RequestDownloadFile,
