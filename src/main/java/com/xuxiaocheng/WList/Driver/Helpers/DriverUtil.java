@@ -220,8 +220,18 @@ public final class DriverUtil {
         if (from >= size || total < 0)
             return new DownloadMethods(0, List.of(), RunnableE.EmptyRunnable, null);
         final Headers headers;
-        try (final Response response = DriverNetworkHelper.getWithParameters(DriverNetworkHelper.defaultHttpClient, Pair.ImmutablePair.makeImmutablePair(url.getFirst(), "HEAD"), Objects.requireNonNullElseGet(builder, Headers.Builder::new).build(), null).execute()) {
-            headers = response.headers();
+        String head = url.getFirst();
+        while (true) {
+            try (final Response response = DriverNetworkHelper.getWithParameters(DriverNetworkHelper.defaultHttpClient, Pair.ImmutablePair.makeImmutablePair(head, "HEAD"), Objects.requireNonNullElseGet(builder, Headers.Builder::new).build(), null).execute()) {
+                if (response.code() == 302) {
+                    head = response.header("Location");
+                    if (head == null)
+                        throw new IOException("No redirect location." + ParametersMap.create().add("url", url));
+                } else {
+                    headers = response.headers();
+                    break;
+                }
+            }
         }
         final Instant instant = headers.getInstant("Expires");
         if (!Objects.requireNonNullElse(headers.get("Accept-Ranges"), "").contains("bytes") || instant == null)

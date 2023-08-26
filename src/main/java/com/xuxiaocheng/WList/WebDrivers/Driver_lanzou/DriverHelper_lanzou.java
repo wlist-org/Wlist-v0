@@ -155,50 +155,54 @@ final class DriverHelper_lanzou {
     }
 
     private static final @NotNull Pattern srcPattern = Pattern.compile("src=\"(/fn?[^\"]+)");
-    private static final @NotNull Pattern signPattern = Pattern.compile("'sign':'([^']+)");
-    private static final @NotNull Pattern filePattern = Pattern.compile("'file':'([^']+)");
+    @SuppressWarnings("unchecked")
     static @Nullable String getSingleShareFileDownloadUrl(final @NotNull DriverConfiguration_lanzou configuration, final @NotNull String domin, final @NotNull String identifier, final @Nullable String pwd) throws IOException, IllegalParametersException {
         final String sharePage = DriverHelper_lanzou.requestHtml(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin + '/' + identifier, "GET"));
         if (sharePage.contains("\u6587\u4EF6\u53D6\u6D88\u5206\u4EAB\u4E86") || sharePage.contains("\u6587\u4EF6\u5730\u5740\u9519\u8BEF"))
             return null;
         final ParametersMap parametersMap = ParametersMap.create().add("configuration", configuration).add("domin", domin).add("identifier", identifier);
-        final String js;
+        final List<String> javaScript;
         if (sharePage.contains("<iframe")) {
             final Matcher srcMatcher = DriverHelper_lanzou.srcPattern.matcher(sharePage);
             if (!srcMatcher.find())
                 throw new WrongResponseException("No src matched.", sharePage, parametersMap);
             final String src = srcMatcher.group(1);
             final String loadingPage = DriverHelper_lanzou.requestHtml(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin + src, "GET"));
-            js = JavaScriptUtil.Ajax.getOnlyAjaxScripts(DriverUtil.findScripts(loadingPage));
+            javaScript = DriverUtil.findScripts(loadingPage);
         } else {
             parametersMap.add("pwd", pwd);
             if (pwd == null)
                 throw new IllegalParametersException("Require password.", ParametersMap.create().add("domin", domin).add("identifier", identifier));
-            String javaScript = JavaScriptUtil.Ajax.getOnlyAjaxScripts(DriverUtil.findScripts(sharePage));
-            if (javaScript != null) {
-                javaScript = javaScript.replace("$(document)", "$$()");
-                final int endIndex = javaScript.indexOf("document.getElementById('rpt')");
-                javaScript = "function $$(){return{keyup:function(f){f({keyCode:13});}};}" + javaScript.substring(0, endIndex);
-                js = javaScript.replace("document.getElementById('pwd').value", String.format("'%s'", pwd));
-            } else js = null;
+            final List<String> scripts = DriverUtil.findScripts(sharePage);
+            javaScript = new ArrayList<>(scripts.size());
+            for (final String script: scripts) {
+                //noinspection ReassignedVariable,NonConstantStringShouldBeStringBuffer
+                String js = script.replace("document.getElementById('pwd').value", String.format("'%s'", pwd));
+                if (js.contains("$(document).keyup(")) {
+                    js = js.replace("$(document)", "$$()");
+                    js = "function $$(){return{keyup:function(f){f({keyCode:13});}};}" + js;
+                }
+                final int endIndex = js.indexOf("document.getElementById('rpt')");
+                if (endIndex > 0)
+                    js = js.substring(0, endIndex);
+                javaScript.add(js);
+            }
         }
         final String ajaxUrl;
-        final Map<String, String> ajaxData;
+        final Map<String, Object> ajaxData;
         try {
-            if (js == null)
-                throw new JavaScriptUtil.ScriptException("Null script.");
-            final Map<String, Object> ajax = JavaScriptUtil.Ajax.extraOnlyAjaxData(js);
+            final Map<String, Object> ajax = JavaScriptUtil.extraOnlyAjaxData(javaScript);
             if (ajax == null)
-                throw new ServerException("Null ajax");
+                throw new ServerException("Null ajax.");
             assert "post".equals(ajax.get("type"));
             ajaxUrl = (String) ajax.get("url");
-            ajaxData = (Map<String, String>) ajax.get("data");
+            ajaxData = (Map<String, Object>) ajax.get("data");
         } catch (final JavaScriptUtil.ScriptException exception) {
-            throw new IOException("Failed to run share page java script." + parametersMap, exception);
+            throw new IOException("Failed to run share page java scripts." + parametersMap, exception);
         }
         final FormBody.Builder builder = new FormBody.Builder();
-        for (final Map.Entry<String, String> entry: ajaxData.entrySet())
-            builder.add(entry.getKey(), entry.getValue());
+        for (final Map.Entry<String, Object> entry: ajaxData.entrySet())
+            builder.add(entry.getKey(), entry.getValue().toString());
         final JSONObject json = DriverHelper_lanzou.requestJson(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin + ajaxUrl, "POST"), builder);
         final int code = json.getIntValue("zt", -1);
         if (code != 1)
@@ -207,34 +211,7 @@ final class DriverHelper_lanzou {
         final String para = json.getString("url");
         if (dom == null || para == null)
             throw new WrongResponseException("Getting single shared file download url.", json, parametersMap);
-        final String displayUrl = dom + "/file/" + para;
-        final String redirectPage;
-        try (final Response response = DriverNetworkHelper.getWithParameters(DriverNetworkHelper.noRedirectHttpClient, Pair.ImmutablePair.makeImmutablePair(displayUrl, "GET"), DriverHelper_lanzou.headers, null).execute()) {
-            if (response.code() == 302)
-                return response.header("Location");
-            redirectPage = DriverUtil.removeHtmlComments(DriverNetworkHelper.extraResponseBody(response).string());
-        }
-        parametersMap.add("displayUrl", displayUrl);
-        // TODO: Unchecked.
-HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Running in redirect mode: ", redirectPage);
-        final Matcher redirectFileMatcher = DriverHelper_lanzou.filePattern.matcher(redirectPage);
-        if (!redirectFileMatcher.find())
-            throw new WrongResponseException("No redirect file matched.", redirectPage, parametersMap);
-        final String redirectFile = redirectFileMatcher.group(1);
-        final Matcher redirectSignMatcher = DriverHelper_lanzou.signPattern.matcher(redirectPage);
-        if (!redirectSignMatcher.find())
-            throw new WrongResponseException("No redirect sign matched.", redirectPage, parametersMap);
-        final String redirectSign = redirectSignMatcher.group(1);
-        final FormBody.Builder redirectBuilder = new FormBody.Builder()
-                .add("file", redirectFile)
-                .add("sign", redirectSign)
-                .add("el", "2");
-        final JSONObject redirectJson = DriverHelper_lanzou.requestJson(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin + "/ajax.php", "POST"), redirectBuilder);
-HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Finally getting redirected download url: ", redirectJson);
-        final String finalUrl = redirectJson.getString("url");
-        if (finalUrl == null)
-            throw new WrongResponseException("Getting single shared file download url. Final URL.", redirectJson, parametersMap);
-        return finalUrl;
+        return dom + "/file/" + para;
     }
 
     static @Nullable String getFileDownloadUrl(final @NotNull DriverConfiguration_lanzou configuration, final long fileId) throws IOException {
@@ -343,6 +320,7 @@ HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Fi
                     latch.countDown();
                 }
             }), WListServer.IOExecutors).exceptionally(t -> {
+                interrupttedFlag.set(true);
                 if (!throwable.compareAndSet(null, t))
                     HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), t);
                 return null;

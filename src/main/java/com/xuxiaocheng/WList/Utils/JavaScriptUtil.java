@@ -1,7 +1,6 @@
 package com.xuxiaocheng.WList.Utils;
 
 import com.xuxiaocheng.HeadLibs.AndroidSupport.ARandomHelper;
-import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.FunctionE;
 import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
@@ -15,6 +14,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 public final class JavaScriptUtil {
     private JavaScriptUtil() {
@@ -154,34 +154,26 @@ public final class JavaScriptUtil {
         return JavaScriptUtil.jsEngineCore.getInstance().apply(script);
     }
 
-
-    public static final class Ajax {
-        private Ajax() {
-            super();
-        }
-
-        public static @Nullable String getOnlyAjaxScripts(final @NotNull Iterable<@NotNull String> scripts) {
-            String res = null;
+    // TODO: more ajax support.
+    @SuppressWarnings("SpellCheckingInspection")
+    public static @Nullable Map<@NotNull String, @Nullable Object> extraOnlyAjaxData(final @NotNull Iterable<@NotNull String> scripts) throws ScriptException {
+        JavaScriptUtil.checkEngine();
+        final String ajaxObjName = "ajaxObj_" + ARandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 256, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_");
+        final String ajaxFlagName = "ajaxFlag_" + ARandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 256, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_");
+        try (final IEngine engine = JavaScriptUtil.jsEngineCore.getInstance().newEngineBuilder().build()) {
+            engine.execute("var obj,flag=true,$={ajax:function(o){if(obj===undefined&&flag){obj=o;flag=false;}else{obj=undefined;throw'Multiple ajax requests.';}}};"
+                    .replace("obj", ajaxObjName).replace("flag", ajaxFlagName));
+            final AtomicReference<ScriptException> exception = new AtomicReference<>(null);
             for (final String script: scripts)
-                if (script.contains("$.ajax")) {
-                    //noinspection VariableNotUsedInsideIf
-                    if (res != null)
-                        throw new IllegalStateException("Multiple ajax requests." + ParametersMap.create().add("scripts", scripts));
-                    res = script;
+                try {
+                    engine.execute(script);
+                } catch (final ScriptException e) {
+                    exception.compareAndSet(null, e);
                 }
-            return res;
-        }
-
-        // TODO: more ajax support.
-        public static @Nullable Map<@NotNull String, @Nullable Object> extraOnlyAjaxData(final @NotNull String script) throws ScriptException {
-            JavaScriptUtil.checkEngine();
-            //noinspection SpellCheckingInspection
-            final String ajaxObjName = "ajaxObj_" + ARandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 256, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_");
-            try (final IEngine engine = JavaScriptUtil.jsEngineCore.getInstance().newEngineBuilder().build()) {
-                engine.execute("var obj;var $={ajax:function(o){if(obj===undefined)obj=o;else throw 'Multiple ajax requests.';}};".replace("obj", ajaxObjName));
-                engine.execute(script);
-                return engine.eval(ajaxObjName);
-            }
+            final Map<String, Object> eval = engine.eval(ajaxObjName);
+            if (eval == null && exception.get() != null)
+                throw exception.get();
+            return eval;
         }
     }
 }
