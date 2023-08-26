@@ -5,7 +5,6 @@ import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.HeadLibs.DataStructures.OptionalNullable;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
-import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
@@ -170,12 +169,12 @@ final class DriverHelper_lanzou {
                 throw new WrongResponseException("No src matched.", sharePage, parametersMap);
             final String src = srcMatcher.group(1);
             final String loadingPage = DriverHelper_lanzou.requestHtml(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin + src, "GET"));
-            js = JavaScriptUtil.Ajax.getOnlyAjaxScripts(JavaScriptUtil.findScripts(loadingPage));
+            js = JavaScriptUtil.Ajax.getOnlyAjaxScripts(DriverUtil.findScripts(loadingPage));
         } else {
             parametersMap.add("pwd", pwd);
             if (pwd == null)
                 throw new IllegalParametersException("Require password.", ParametersMap.create().add("domin", domin).add("identifier", identifier));
-            String javaScript = JavaScriptUtil.Ajax.getOnlyAjaxScripts(JavaScriptUtil.findScripts(sharePage));
+            String javaScript = JavaScriptUtil.Ajax.getOnlyAjaxScripts(DriverUtil.findScripts(sharePage));
             if (javaScript != null) {
                 javaScript = javaScript.replace("$(document)", "$$()");
                 final int endIndex = javaScript.indexOf("document.getElementById('rpt')");
@@ -183,21 +182,24 @@ final class DriverHelper_lanzou {
                 js = javaScript.replace("document.getElementById('pwd').value", String.format("'%s'", pwd));
             } else js = null;
         }
-        final Triad<String, String, Map<String, String>> ajax;
+        final String ajaxUrl;
+        final Map<String, String> ajaxData;
         try {
             if (js == null)
                 throw new JavaScriptUtil.ScriptException("Null script.");
-            ajax = JavaScriptUtil.Ajax.extraOnlyAjaxData(js);
+            final Map<String, Object> ajax = JavaScriptUtil.Ajax.extraOnlyAjaxData(js);
             if (ajax == null)
                 throw new ServerException("Null ajax");
+            assert "post".equals(ajax.get("type"));
+            ajaxUrl = (String) ajax.get("url");
+            ajaxData = (Map<String, String>) ajax.get("data");
         } catch (final JavaScriptUtil.ScriptException exception) {
             throw new IOException("Failed to run share page java script." + parametersMap, exception);
         }
-        assert "post".equals(ajax.getA());
         final FormBody.Builder builder = new FormBody.Builder();
-        for (final Map.Entry<String, String> entry: ajax.getC().entrySet())
+        for (final Map.Entry<String, String> entry: ajaxData.entrySet())
             builder.add(entry.getKey(), entry.getValue());
-        final JSONObject json = DriverHelper_lanzou.requestJson(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin + ajax.getB(), "POST"), builder);
+        final JSONObject json = DriverHelper_lanzou.requestJson(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin + ajaxUrl, "POST"), builder);
         final int code = json.getIntValue("zt", -1);
         if (code != 1)
             throw new IllegalResponseCodeException(code, json.getString("inf"), parametersMap.add("json", json));

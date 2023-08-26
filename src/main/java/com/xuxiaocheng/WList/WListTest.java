@@ -1,7 +1,6 @@
 package com.xuxiaocheng.WList;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
-import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -14,33 +13,37 @@ import com.xuxiaocheng.WList.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Databases.User.UserSqlHelper;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupSqlHelper;
-import com.xuxiaocheng.WList.Driver.DriverInterface;
-import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Server.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.WListServer;
+import com.xuxiaocheng.WList.Utils.JavaScriptUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.util.Map;
-import java.util.Objects;
 
 public final class WListTest {
     private WListTest() {
         super();
     }
 
-    @SuppressWarnings("OverlyBroadThrowsClause")
-    private static void _main() throws Exception {
-//        if (true) return;
-        WListTest.wrapServerInitialize(() -> {
-            final DriverInterface<?> lanzou = Objects.requireNonNull(DriverManager.getDriver("test"));
-            lanzou.forceRefreshDirectory(new FileLocation("test", -1));
-        });
-    }
+    private static final boolean initializeServer = false;
+    private static final @NotNull SupplierE<Object> _main = () -> {
+        return JavaScriptUtil.Ajax.extraOnlyAjaxData("""
+                $.ajax({
+               success: function() {
+               throw '123';
+               },
+               type: 'post'
+                })
+                """);
+//        final DriverInterface<?> lanzou = Objects.requireNonNull(DriverManager.getDriver("test"));
+//        lanzou.forceRefreshDirectory(new FileLocation("test", -1));
+//return null;
+    };
 
     static {
         HUncaughtExceptionHelper.setUncaughtExceptionListener(HUncaughtExceptionHelper.listenerKey, (t, e) ->
@@ -49,7 +52,7 @@ public final class WListTest {
     }
 
     @SuppressWarnings("OverlyBroadThrowsClause")
-    private static void wrapServerInitialize(final @NotNull SupplierE<@Nullable Object> runnable) throws Exception {
+    private static @Nullable Object wrapServerInitialize() throws Exception {
         GlobalConfiguration.initialize(new File("server.yaml"));
 //        GlobalConfiguration.initialize(null);
         PooledDatabase.quicklyInitialize(PooledDatabaseHelper.getDefault(new File("data.db")));
@@ -61,27 +64,20 @@ public final class WListTest {
             final Map<String, Exception> failures = DriverManager.getFailedDriversAPI();
             if (!failures.isEmpty()) {
                 HLog.DefaultLogger.log(HLogLevel.FAULT, failures);
-                return;
+                return null;
             }
-            final Object obj = runnable.get();
-            if (obj != null)
-                HLog.DefaultLogger.log(HLogLevel.DEBUG, obj);
+            return WListTest._main.get();
         } finally {
             for (final Map.Entry<String, Exception> exception: DriverManager.operateAllDrivers(d -> DriverManager.dumpConfigurationIfModified(d.getConfiguration())).entrySet())
                 HLog.DefaultLogger.log(HLogLevel.ERROR, "Failed to dump driver configuration.", ParametersMap.create().add("name", exception.getKey()), exception.getValue());
         }
     }
 
-    private static void wrapServerInitialize(final @NotNull RunnableE runnable) throws Exception {
-        WListTest.wrapServerInitialize(() -> {
-            runnable.run();
-            return null;
-        });
-    }
-
     public static void main(final String @NotNull [] args) {
         try {
-            WListTest._main();
+            final Object obj = WListTest.initializeServer ? WListTest.wrapServerInitialize() : WListTest._main.get();
+            if (obj != null)
+                HLog.DefaultLogger.log(HLogLevel.DEBUG, obj);
         } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable throwable) {
             HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), throwable);
         } finally {

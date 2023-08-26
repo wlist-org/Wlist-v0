@@ -60,7 +60,7 @@ public final class DriverUtil {
     public static final Options.@NotNull OrderPolicy DefaultOrderPolicy = Options.OrderPolicy.FileName;
     public static final Options.@NotNull OrderDirection DefaultOrderDirection = Options.OrderDirection.ASCEND;
 
-    private static final @NotNull Iterable<@NotNull Pattern> HtmlCommentsTags = List.of(Pattern.compile("[^:]//.*"), Pattern.compile("<!--.*?-->"), Pattern.compile("/\\*.*?\\*/"));
+    private static final @NotNull Iterable<@NotNull Pattern> HtmlCommentsTags = List.of(Pattern.compile("<!--.*?-->"));
     public static @NotNull String removeHtmlComments(final @Nullable String html) {
         if (html == null)
             return "";
@@ -69,6 +69,22 @@ public final class DriverUtil {
             res = pattern.matcher(res).replaceAll("");
         }
         return res;
+    }
+
+    private static final @NotNull String scriptStartTag = "<script type=\"text/javascript\">";
+    private static final @NotNull String scriptEndTag = "</script>";
+    public static @NotNull List<@NotNull String> findScripts(final @NotNull String html) {
+        final List<String> scripts = new ArrayList<>();
+        int index = 0;
+        while (true) {
+            index = html.indexOf(DriverUtil.scriptStartTag, index);
+            if (index == -1) break;
+            final int endIndex = html.indexOf(DriverUtil.scriptEndTag, index);
+            if (endIndex == -1) break;
+            scripts.add(html.substring(index + DriverUtil.scriptStartTag.length(), endIndex));
+            index = endIndex;
+        }
+        return scripts;
     }
 
     /**
