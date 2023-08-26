@@ -3,6 +3,7 @@
 	<string name="app_name">WList</string>
 	<string name="confirm">Confirm</string>
 	<string name="cancel">Cancel</string>
+	<string name="toast_no_permissions">No permissions granted. Something may go wrong.</string>
 	<string name="toast_fatal_application_initialization">Failed to initialize application.</string>
 	<string name="toast_press_again_to_exit">Press again to exit the app.</string>
 	<string name="activity_login_welcome">Welcome to wlist</string>

@@ -3,6 +3,7 @@
 	<string name="app_name">智存系统</string>
 	<string name="confirm">确认</string>
 	<string name="cancel">取消</string>
+	<string name="toast_no_permissions">未授予权限，部分功能可能无法使用</string>
 	<string name="toast_fatal_application_initialization">初始化应用失败</string>
 	<string name="toast_press_again_to_exit">再按一次退出应用</string>
 	<string name="activity_login_welcome">欢迎登录智存，畅想云盘</string>
