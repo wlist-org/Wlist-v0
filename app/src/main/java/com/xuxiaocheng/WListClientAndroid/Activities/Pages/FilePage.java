@@ -6,7 +6,9 @@ import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.net.Uri;
+import android.provider.OpenableColumns;
 import android.text.Editable;
 import android.util.DisplayMetrics;
 import android.view.MotionEvent;
@@ -27,15 +29,19 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
+import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMathHelper;
+import com.xuxiaocheng.HeadLibs.Helpers.HMessageDigestHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WListClient.AndroidSupports.FileInformationGetter;
 import com.xuxiaocheng.WListClient.AndroidSupports.FileLocationSupporter;
 import com.xuxiaocheng.WListClient.Client.OperationHelpers.OperateFileHelper;
+import com.xuxiaocheng.WListClient.Client.WListClient;
 import com.xuxiaocheng.WListClient.Client.WListClientInterface;
 import com.xuxiaocheng.WListClient.Client.WListClientManager;
+import com.xuxiaocheng.WListClient.Server.FailureReason;
 import com.xuxiaocheng.WListClient.Server.FileLocation;
 import com.xuxiaocheng.WListClient.Server.Options;
 import com.xuxiaocheng.WListClient.Server.SpecialDriverName;
@@ -46,13 +52,16 @@ import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.R;
 import com.xuxiaocheng.WListClientAndroid.Utils.EnhancedRecyclerViewAdapter;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
-import com.xuxiaocheng.WListClientAndroid.Utils.UriHelper;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileContentBinding;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileUploadBinding;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileUploadDirectoryBinding;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 
-import java.io.File;
+import java.io.BufferedInputStream;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
+import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
@@ -234,8 +243,7 @@ public class FilePage implements MainTab.MainTabPage {
         final PageFileContentBinding page = this.pageCache.getInstanceNullable();
         if (page == null || this.locationStack.size() < 2) return false;
         this.locationStack.pop();
-        final LocationStackRecord record = this.locationStack.peek();
-        assert record != null;
+        final LocationStackRecord record = this.locationStack.getFirst(); // .peek();
         this.setBacker(record.isRoot);
         page.pageFileContentName.setText(record.name);
         page.pageFileContentCounter.setText(String.valueOf(record.counter));
@@ -374,16 +382,55 @@ public class FilePage implements MainTab.MainTabPage {
                 final CountDownLatch latch = new CountDownLatch(uris.size());
                 for (final Uri uri: uris)
                     Main.runOnNewBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
-                        final File file = UriHelper.uri2File(this.activity, uri);
-                        HLogManager.getInstance("DefaultLogger").log("", file);
-                    }, latch::countDown));
+                        // TODO: serialize uploading task.
+                        final String filename;
+                        final long size;
+                        try (final Cursor cursor = this.activity.getContentResolver().query(uri, new String[] {OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE}, null, null, null)) {
+                            if (cursor == null || !cursor.moveToFirst())
+                                return;
+                            filename = cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME));
+                            size = cursor.getLong(cursor.getColumnIndexOrThrow(OpenableColumns.SIZE));
+                        }
+                        final MessageDigest digester = HMessageDigestHelper.MD5.getDigester();
+                        try (final InputStream stream = new BufferedInputStream(this.activity.getContentResolver().openInputStream(uri))) {
+                            HMessageDigestHelper.updateMessageDigest(digester, stream);
+                        }
+                        final String md5 = HMessageDigestHelper.MD5.digest(digester);
+                        final LocationStackRecord record = this.locationStack.getFirst(); // .peek();
+                        HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Uploading file.",
+                                ParametersMap.create().add("address", this.address).add("location", record.location).add("uri", uri)
+                                        .add("filename", filename).add("size", size).add("md5", md5));
+                        final UnionPair<UnionPair<VisibleFileInformation, String>, FailureReason> request;
+                        try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address)) {
+                            request = OperateFileHelper.requestUploadFile(client, TokenManager.getToken(this.address), record.location, filename, size, md5, Options.DuplicatePolicy.KEEP);
+                            if (request.isFailure()) // TODO
+                                throw new RuntimeException(FailureReason.handleFailureReason(request.getE()));
+                            if (request.getT().isFailure()) {
+                                final String id = request.getT().getE();
+                                final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(WListClient.FileTransferBufferSize, WListClient.FileTransferBufferSize);
+                                try (final InputStream stream = new BufferedInputStream(this.activity.getContentResolver().openInputStream(uri))) {
+                                    int chunk = 0;
+                                    while (true) {
+                                        buffer.writeBytes(stream, WListClient.FileTransferBufferSize);
+                                        final UnionPair<VisibleFileInformation, Boolean> result = OperateFileHelper.uploadFile(client, TokenManager.getToken(this.address), id, chunk++, buffer.retain());
+                                        if (result == null || result.isSuccess() || !result.getE().booleanValue() || stream.available() == 0)
+                                            break;
+                                        buffer.clear();
+                                    }
+                                } finally {
+                                    buffer.release();
+                                }
+                            }
+                        }
+            }, latch::countDown));
                 latch.await();
                 Main.runOnUiThread(this.activity, () -> {
                     loading.clearAnimation();
                     dialog.cancel();
                     // TODO: auto add.
-//                    this.popFileList();
-//                    this.pushFileList(name, location);
+                    final LocationStackRecord record = this.locationStack.getFirst(); // .peek();
+                    this.popFileList();
+                    this.pushFileList(record.name, record.location);
                 });
             }));
             return true;
