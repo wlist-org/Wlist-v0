@@ -18,6 +18,7 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.EventExecutorGroup;
 import io.netty.util.concurrent.FutureListener;
 
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 public final class Main extends Application {
@@ -50,8 +51,10 @@ public final class Main extends Application {
             try {
                 runnable.run();
             } catch (final Throwable throwable) {
-                if (activity != null)
-                    activity.runOnUiThread(() -> Toast.makeText(activity.getApplicationContext(), throwable.getLocalizedMessage(), Toast.LENGTH_SHORT).show());
+                if (activity != null) {
+                    final String message = Objects.requireNonNullElse(throwable.getLocalizedMessage(), "");
+                    activity.runOnUiThread(() -> Toast.makeText(activity.getApplicationContext(), message.length() < 8 ? throwable.toString() : message, Toast.LENGTH_SHORT).show());
+                }
                 HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), throwable);
             }
         };

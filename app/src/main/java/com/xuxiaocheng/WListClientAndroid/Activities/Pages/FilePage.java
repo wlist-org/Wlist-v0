@@ -2,8 +2,11 @@ package com.xuxiaocheng.WListClientAndroid.Activities.Pages;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.ClipData;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.text.Editable;
 import android.util.DisplayMetrics;
 import android.view.MotionEvent;
@@ -43,18 +46,23 @@ import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.R;
 import com.xuxiaocheng.WListClientAndroid.Utils.EnhancedRecyclerViewAdapter;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
+import com.xuxiaocheng.WListClientAndroid.Utils.UriHelper;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileContentBinding;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileUploadBinding;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileUploadDirectoryBinding;
 
+import java.io.File;
 import java.net.InetSocketAddress;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Deque;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -168,12 +176,7 @@ public class FilePage implements MainTab.MainTabPage {
                 if (!recyclerView.canScrollVertically(1) && !this.noMore.get() && this.onLoading.compareAndSet(false, true)) {
                     final ConstraintLayout loadingTailor = EnhancedRecyclerViewAdapter.buildView(FilePage.this.activity.getLayoutInflater(), R.layout.page_file_tailor_loading, page.pageFileContentList);
                     final ImageView loading = (ImageView) loadingTailor.getViewById(R.id.page_file_tailor_loading_image);
-                    final Animation loadingAnimation = new RotateAnimation(0, 360, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
-                    loadingAnimation.setDuration(800);
-                    loadingAnimation.setFillAfter(true);
-                    loadingAnimation.setRepeatCount(Animation.INFINITE);
-                    loadingAnimation.setInterpolator(new LinearInterpolator());
-                    loading.startAnimation(loadingAnimation);
+                    FilePage.this.setLoading(loading);
                     adapterWrapper.addTailor(loadingTailor);
                     Main.runOnBackgroundThread(FilePage.this.activity, HExceptionWrapper.wrapRunnable(() -> {
                         final Triad.ImmutableTriad<Long, Long, List<VisibleFileInformation>> list;
@@ -310,30 +313,96 @@ public class FilePage implements MainTab.MainTabPage {
                         .setPositiveButton(R.string.confirm, (d, w) -> {
                             final Editable editable = uploadDirectory.pageFileUploadDirectoryName.getText();
                             final String name = editable == null ? "" : editable.toString();
+                            final ImageView loading = new ImageView(this.activity);
+                            loading.setImageResource(R.mipmap.page_file_loading);
+                            this.setLoading(loading);
+                            final AlertDialog dialog = new AlertDialog.Builder(this.activity)
+                                    .setTitle(R.string.page_file_upload_directory).setView(loading).setCancelable(false).show();
                             Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
                                 HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Creating directory.",
                                         ParametersMap.create().add("address", this.address).add("location", location).add("name", name));
                                 // TODO: loading animation
                                 try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address)) {
-                                    OperateFileHelper.makeDirectory(client, TokenManager.getToken(this.address), location, name, Options.DuplicatePolicy.ERROR);
+                                    OperateFileHelper.createDirectory(client, TokenManager.getToken(this.address), location, name, Options.DuplicatePolicy.ERROR);
                                 }
+                                Main.runOnUiThread(this.activity, () -> {
+                                    loading.clearAnimation();
+                                    dialog.cancel();
+                                    // TODO: auto add.
+                                    this.popFileList();
+                                    this.pushFileList(name, location);
+                                });
                             }));
                         }).show();
             });
             upload.pageFileUploadDirectoryText.setOnClickListener(v -> upload.pageFileUploadDirectory.performClick());
-            upload.pageFileUploadFile.setOnClickListener(v -> {
+            final Consumer<String> uploadFile = type -> {
                 if (!clickable.compareAndSet(true, false)) return;
-                HLogManager.getInstance("DefaultLogger").log("", "On file.");
                 uploader.cancel();
-            });
+                final Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.setType(type);
+                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                this.activity.startActivityForResult(intent, "SelectFiles".hashCode());
+            };
+            upload.pageFileUploadFile.setOnClickListener(v -> uploadFile.accept("*/*"));
             upload.pageFileUploadFileText.setOnClickListener(v -> upload.pageFileUploadFile.performClick());
+            upload.pageFileUploadPicture.setOnClickListener(v -> uploadFile.accept("image/*"));
+            upload.pageFileUploadPictureText.setOnClickListener(v -> upload.pageFileUploadPicture.performClick());
+            upload.pageFileUploadVideo.setOnClickListener(v -> uploadFile.accept("video/*"));
+            upload.pageFileUploadVideoText.setOnClickListener(v -> upload.pageFileUploadVideo.performClick());
             uploader.show();
         });
     }
 
     @Override
+    public boolean onActivityResult(final int requestCode, final int resultCode, @Nullable final Intent data) {
+        if (resultCode == Activity.RESULT_OK && requestCode == "SelectFiles".hashCode() && data != null) {
+            final Collection<Uri> uris = new ArrayList<>();
+            if (data.getData() != null)
+                uris.add(data.getData());
+            else {
+                final ClipData clipData = data.getClipData();
+                for (int i = 0; i < clipData.getItemCount(); ++i)
+                    uris.add(clipData.getItemAt(i).getUri());
+            }
+            final ImageView loading = new ImageView(this.activity);
+            loading.setImageResource(R.mipmap.page_file_loading);
+            this.setLoading(loading);
+            final AlertDialog dialog = new AlertDialog.Builder(this.activity)
+                    .setTitle(R.string.page_file_upload_file).setView(loading).setCancelable(false).show();
+            Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
+                final CountDownLatch latch = new CountDownLatch(uris.size());
+                for (final Uri uri: uris)
+                    Main.runOnNewBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
+                        final File file = UriHelper.uri2File(this.activity, uri);
+                        HLogManager.getInstance("DefaultLogger").log("", file);
+                    }, latch::countDown));
+                latch.await();
+                Main.runOnUiThread(this.activity, () -> {
+                    loading.clearAnimation();
+                    dialog.cancel();
+                    // TODO: auto add.
+//                    this.popFileList();
+//                    this.pushFileList(name, location);
+                });
+            }));
+            return true;
+        }
+        return false;
+    }
+
+    @Override
     public boolean onBackPressed() {
         return this.popFileList();
+    }
+
+    private void setLoading(@NonNull final ImageView loading) {
+        final Animation loadingAnimation = new RotateAnimation(0, 360, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
+        loadingAnimation.setDuration(800);
+        loadingAnimation.setFillAfter(true);
+        loadingAnimation.setRepeatCount(Animation.INFINITE);
+        loadingAnimation.setInterpolator(new LinearInterpolator());
+        loading.startAnimation(loadingAnimation);
     }
 
     @Override

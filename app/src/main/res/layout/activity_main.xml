@@ -32,7 +32,7 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:orientation="horizontal"
-		app:layout_constraintGuide_end="50dp" />
+		app:layout_constraintGuide_end="60dp" />
 
 	<View
 		android:id="@+id/activity_main_tab_file"

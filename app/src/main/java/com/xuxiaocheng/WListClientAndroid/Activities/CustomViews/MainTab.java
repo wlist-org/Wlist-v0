@@ -1,6 +1,7 @@
 package com.xuxiaocheng.WListClientAndroid.Activities.CustomViews;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -73,6 +74,9 @@ public final class MainTab {
     public interface MainTabPage {
         @NonNull View onShow();
         boolean onBackPressed();
+        default boolean onActivityResult(final int requestCode, final int resultCode, @Nullable final Intent data) {
+            return false;
+        }
     }
 
     @NonNull private final ButtonGroup fileButton;

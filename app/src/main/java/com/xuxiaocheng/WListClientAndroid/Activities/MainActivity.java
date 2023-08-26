@@ -120,6 +120,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onActivityResult(final int requestCode, final int resultCode, @Nullable final Intent data) {
+        final MainTab.TabChoice choice = this.minTabChoice.get();
+        if (choice != null) {
+            final MainTab.MainTabPage page = this.pages.get(choice);
+            assert page != null;
+            if (page.onActivityResult(requestCode, resultCode, data))
+                return;
+        }
+        super.onActivityResult(requestCode, resultCode, data);
+    }
+
+    @Override
     protected void onPause() {
         super.onPause();
         WListClientManager.removeAllListeners(this.address.getInstance());
