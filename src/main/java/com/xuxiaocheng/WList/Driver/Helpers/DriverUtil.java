@@ -18,7 +18,6 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.CompositeByteBuf;
 import okhttp3.Headers;
 import okhttp3.OkHttpClient;
-import okhttp3.Response;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -219,20 +218,7 @@ public final class DriverUtil {
         final long total = end - from;
         if (from >= size || total < 0)
             return new DownloadMethods(0, List.of(), RunnableE.EmptyRunnable, null);
-        final Headers headers;
-        String head = url.getFirst();
-        while (true) {
-            try (final Response response = DriverNetworkHelper.getWithParameters(DriverNetworkHelper.defaultHttpClient, Pair.ImmutablePair.makeImmutablePair(head, "HEAD"), Objects.requireNonNullElseGet(builder, Headers.Builder::new).build(), null).execute()) {
-                if (response.code() == 302) {
-                    head = response.header("Location");
-                    if (head == null)
-                        throw new IOException("No redirect location." + ParametersMap.create().add("url", url));
-                } else {
-                    headers = response.headers();
-                    break;
-                }
-            }
-        }
+        final Headers headers = DriverNetworkHelper.getRealHeader(DriverNetworkHelper.defaultHttpClient, url.getFirst(), Objects.requireNonNullElseGet(builder, Headers.Builder::new).build(), null);
         final Instant instant = headers.getInstant("Expires");
         if (!Objects.requireNonNullElse(headers.get("Accept-Ranges"), "").contains("bytes") || instant == null)
             throw new IllegalStateException("File cannot download by range header." + ParametersMap.create().add("url", url).add("size", size).add("from", from).add("to", to).add("headers", headers.toMultimap()));

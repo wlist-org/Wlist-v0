@@ -3,6 +3,7 @@ package com.xuxiaocheng.WList.Driver.Helpers;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
@@ -264,6 +265,19 @@ public final class DriverNetworkHelper {
                 DriverNetworkHelper.postWithBody(client, url, headers, DriverNetworkHelper.createJsonRequestBody(body)) :
                 DriverNetworkHelper.getWithParameters(client, url, headers, body == null ? null : body.entrySet().stream()
                         .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().toString())));
+    }
+
+    public static @NotNull Headers getRealHeader(final @NotNull OkHttpClient client, final @NotNull String url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull String> parameters) throws IOException {
+        String head = url;
+        while (true) {
+            try (final Response response = DriverNetworkHelper.getWithParameters(client, Pair.ImmutablePair.makeImmutablePair(head, "HEAD"), headers, parameters).execute()) {
+                if (response.code() != 302)
+                    return response.headers();
+                head = response.header("Location");
+                if (head == null)
+                    throw new IOException("No redirect location." + ParametersMap.create().add("url", url));
+            }
+        }
     }
 
     public static @NotNull ResponseBody extraResponseBody(final @NotNull Response response) throws NetworkException {

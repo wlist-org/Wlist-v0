@@ -236,10 +236,7 @@ final class DriverHelper_lanzou {
     }
 
     static Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull LocalDateTime> testRealSizeAndData(final @NotNull DriverConfiguration_lanzou configuration, final @NotNull String downloadUrl) throws IOException {
-        final Headers headers;
-        try (final Response response = DriverNetworkHelper.getWithParameters(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(downloadUrl, "HEAD"), DriverHelper_lanzou.headers, null).execute()) {
-            headers = response.headers();
-        }
+        final Headers headers = DriverNetworkHelper.getRealHeader(configuration.getFileClient(), downloadUrl, DriverHelper_lanzou.headers, null);
         final String sizeS = headers.get("Content-Length");
         final String dataS = headers.get("Last-Modified");
         if (sizeS == null || dataS == null)
