@@ -13,19 +13,18 @@ import com.xuxiaocheng.WList.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Databases.User.UserSqlHelper;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupSqlHelper;
-import com.xuxiaocheng.WList.Driver.DriverInterface;
 import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Server.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
+import com.xuxiaocheng.WList.Server.InternalDrivers.RootDriver;
 import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.util.Map;
-import java.util.Objects;
 
 public final class WListTest {
     private WListTest() {
@@ -34,8 +33,8 @@ public final class WListTest {
 
     private static final boolean initializeServer = true;
     private static final @NotNull SupplierE<@Nullable Object> _main = () -> {
-        final DriverInterface<?> lanzou = Objects.requireNonNull(DriverManager.getDriver("test"));
-        lanzou.forceRefreshDirectory(new FileLocation("test", -1));
+//        final DriverInterface<?> lanzou = Objects.requireNonNull(DriverManager.getDriver("test"));
+        RootDriver.getInstance().forceRefreshDirectory(new FileLocation("test", -1));
         return null;
     };
 

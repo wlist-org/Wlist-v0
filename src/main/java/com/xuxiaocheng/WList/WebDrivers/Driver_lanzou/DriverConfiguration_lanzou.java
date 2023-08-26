@@ -12,6 +12,7 @@ import org.jetbrains.annotations.UnmodifiableView;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 final class DriverConfiguration_lanzou extends DriverConfiguration<
         DriverConfiguration_lanzou.LocalSide,
@@ -23,7 +24,7 @@ final class DriverConfiguration_lanzou extends DriverConfiguration<
 
     private final @NotNull OkHttpClient httpClient = DriverNetworkHelper.newHttpClientBuilder()
             .addNetworkInterceptor(new DriverNetworkHelper.FrequencyControlInterceptor(
-                    DriverNetworkHelper.defaultFrequencyControlPolicyPerSecond(),
+                    new DriverNetworkHelper.FrequencyControlPolicy(3, 1, TimeUnit.SECONDS),
                     DriverNetworkHelper.defaultFrequencyControlPolicyPerMinute())).build();
 
     @Override

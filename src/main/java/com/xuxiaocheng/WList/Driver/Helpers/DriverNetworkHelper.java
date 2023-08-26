@@ -191,7 +191,6 @@ public final class DriverNetworkHelper {
         @Override
         public @NotNull Response intercept(final Interceptor.@NotNull Chain chain) throws IOException {
             final Collection<FrequencyControlPolicy> locked = new LinkedList<>();
-            boolean interrupted = true;
             try {
                 synchronized (this.policies) {
                     for (final FrequencyControlPolicy policy: this.policies) {
@@ -199,20 +198,12 @@ public final class DriverNetworkHelper {
                         locked.add(policy);
                     }
                 }
-                interrupted = false;
+                return chain.proceed(chain.request());
             } catch (final InterruptedException exception) {
                 throw new IOException(exception);
             } finally {
-                if (interrupted)
-                    locked.forEach(FrequencyControlPolicy::release);
-            }
-            final Response response;
-            try {
-                response = chain.proceed(chain.request());
-            } finally {
                 locked.forEach(FrequencyControlPolicy::release);
             }
-            return response;
         }
 
         @Override
