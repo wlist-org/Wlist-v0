@@ -1,0 +1,20 @@
+/*
+
+### Gradle ###
+!/gradle
+!/build.gradle
+!/gradlew
+!/gradlew.bat
+!/settings.gradle
+
+### IntelliJ IDEA ###
+!/.idea/artifacts
+!/.idea/runConfigurations
+!/.gitignore
+
+### WList ###
+!/libs
+!/META-INF
+!/src
+
+!/srcTODO
