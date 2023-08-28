@@ -8,6 +8,8 @@
 !/settings.gradle
 
 ### IntelliJ IDEA ###
+!/.idea
+/.idea/*
 !/.idea/artifacts
 !/.idea/runConfigurations
 !/.gitignore
