@@ -163,8 +163,10 @@ public class FilePage implements MainTab.MainTabPage {
                         FilePage.this.pushFileList(isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information),
                                 FileLocationSupporter.create(isRoot ? FileInformationGetter.name(information) : FileLocationSupporter.driver(location), FileInformationGetter.id(information)));
                     else {
-                        // TODO: show file.
-                        throw new UnsupportedOperationException("Show file is unsupported now!");
+                        Main.runOnBackgroundThread(FilePage.this.activity, () -> { // Prevent exit.
+                            // TODO: show file.
+                            throw new UnsupportedOperationException("Show file is unsupported now!");
+                        });
                     }
                 }, isRoot);
             }
@@ -181,7 +183,7 @@ public class FilePage implements MainTab.MainTabPage {
             public void onScrollStateChanged(@NonNull final RecyclerView recyclerView, final int newState) {
                 super.onScrollStateChanged(recyclerView, newState);
                 // TODO: Remove the pages on the top.
-                // TODO: register broadcast listener.
+                // TODO: register broadcast listener. (auto add)
                 if (!recyclerView.canScrollVertically(1) && !this.noMore.get() && this.onLoading.compareAndSet(false, true)) {
                     final ConstraintLayout loadingTailor = EnhancedRecyclerViewAdapter.buildView(FilePage.this.activity.getLayoutInflater(), R.layout.page_file_tailor_loading, page.pageFileContentList);
                     final ImageView loading = (ImageView) loadingTailor.getViewById(R.id.page_file_tailor_loading_image);
@@ -329,18 +331,15 @@ public class FilePage implements MainTab.MainTabPage {
                             Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
                                 HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Creating directory.",
                                         ParametersMap.create().add("address", this.address).add("location", location).add("name", name));
-                                // TODO: loading animation
                                 try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address)) {
                                     OperateFileHelper.createDirectory(client, TokenManager.getToken(this.address), location, name, Options.DuplicatePolicy.ERROR);
                                 }
                                 Main.runOnUiThread(this.activity, () -> {
-                                    loading.clearAnimation();
-                                    dialog.cancel();
                                     // TODO: auto add.
                                     this.popFileList();
                                     this.pushFileList(name, location);
                                 });
-                            }));
+                            }, () -> Main.runOnUiThread(this.activity, dialog::cancel)));
                         }).show();
             });
             upload.pageFileUploadDirectoryText.setOnClickListener(v -> upload.pageFileUploadDirectory.performClick());

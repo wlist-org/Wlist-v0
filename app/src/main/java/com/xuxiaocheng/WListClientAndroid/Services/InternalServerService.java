@@ -18,28 +18,73 @@ import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.JavaScriptUtil;
 import com.xuxiaocheng.WList.WList;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
+import org.jetbrains.annotations.NotNull;
 import org.mozilla.javascript.Context;
+import org.mozilla.javascript.RhinoException;
+import org.mozilla.javascript.Scriptable;
 
 import java.net.InetSocketAddress;
+import java.util.Map;
 import java.util.function.Consumer;
 
 @SuppressWarnings("ClassHasNoToStringMethod")
 public final class InternalServerService extends Service {
     @NonNull private final Thread ServerMainThread = new Thread(() -> {
         try {
-            JavaScriptUtil.jsEngineCore.initializeIfNot(() -> s -> {
-                try (final Context context = Context.enter()) {
-                    context.setOptimizationLevel(-1);
-                    return context.evaluateString(context.initStandardObjects(), s, "<cmd>", 1, null);
-                } catch (final Throwable throwable) {
-                    throw new JavaScriptUtil.ScriptException(throwable);
-                }
-            });
+            JavaScriptUtil.jsEngineCore.initializeIfNot(() -> RhinoScriptEngineBuilder::new);
             WList.main("-path:" + this.getExternalFilesDir("server"));
         } finally {
             this.stopSelf();
         }
     }, "ServerMain");
+
+    public static class RhinoScriptEngineBuilder extends JavaScriptUtil.IEngineBuilder {
+        @Override
+        @NonNull public RhinoScriptEngineBuilder allowJavaMethod(@NotNull final Class<?> clazz) throws JavaScriptUtil.ScriptException {
+            return (RhinoScriptEngineBuilder) super.allowJavaMethod(clazz); // TODO
+        }
+
+        @Override
+        public JavaScriptUtil.@NotNull IEngine build() {
+            return new RhinoScriptEngine(Context.enter());
+        }
+    }
+
+    public static class RhinoScriptEngine extends JavaScriptUtil.IEngine {
+        @NonNull protected final Context context;
+        @NonNull protected final Scriptable scope;
+
+        public RhinoScriptEngine(@NonNull final Context context) {
+            super();
+            this.context = context;
+            context.setOptimizationLevel(-1);
+            this.scope = this.context.initSafeStandardObjects();
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        @Nullable public Map<String, Object> eval(@NonNull final String script) throws JavaScriptUtil.ScriptException {
+            try {
+                return (Map<String, Object>) this.context.evaluateString(this.scope, script, "<eval>", 1, null);
+            } catch (final RhinoException exception) {
+                throw new JavaScriptUtil.ScriptException(exception);
+            }
+        }
+
+        @Override
+        public void execute(@NotNull final String script) throws JavaScriptUtil.ScriptException {
+            try {
+                this.context.evaluateString(this.scope, script, "<eval>", 1, null);
+            } catch (final RhinoException exception) {
+                throw new JavaScriptUtil.ScriptException(exception);
+            }
+        }
+
+        @Override
+        public void close() {
+            this.context.close();
+        }
+    }
 
     @Override
     public void onCreate() {
