@@ -120,6 +120,14 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
                 throw new RuntimeException("Unreachable!", exception);
             }
         }
+
+        @Override
+        public @NotNull String toString() {
+            return "PooledConnectionFactory{" +
+                    "source=" + this.source +
+                    ", configuration=" + this.configuration +
+                    '}';
+        }
     }
 
     protected final @NotNull Map<@NotNull String, @NotNull ReferencedConnection> activeConnections = new ConcurrentHashMap<>();

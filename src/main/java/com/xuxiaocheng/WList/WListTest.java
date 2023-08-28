@@ -15,6 +15,7 @@ import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupSqlHelper;
 import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
+import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Server.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
@@ -34,8 +35,9 @@ public final class WListTest {
     private static final boolean initializeServer = true;
     private static final @NotNull SupplierE<@Nullable Object> _main = () -> {
 //        final DriverInterface<?> lanzou = Objects.requireNonNull(DriverManager.getDriver("test"));
-        RootDriver.getInstance().forceRefreshDirectory(new FileLocation("test", -1));
-        return null;
+        return RootDriver.getInstance().createDirectory(new FileLocation("test", -1), "a", Options.DuplicatePolicy.ERROR);
+//        return RootDriver.getInstance().copy(new FileLocation("test", 131325697), new FileLocation("test", 8439644), "0.txt", Options.DuplicatePolicy.ERROR);
+//        return null;
     };
 
     static {
