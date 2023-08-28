@@ -46,23 +46,23 @@ android {
 
 dependencies {
     implementation 'org.jetbrains:annotations:24.0.1'
-    implementation files('libs/HeadLibs.main.jar')
+    implementation files('libs/head_libs.main.jar')
     implementation 'org.snakeyaml:snakeyaml-engine:2.6'
     implementation 'io.netty:netty-all:4.1.90.Final'
     implementation 'org.apache.commons:commons-pool2:2.11.1'
-    implementation files('libs/WListClientJava.main.jar')
+    implementation files('libs/wlist_client.main.jar')
     implementation 'com.squareup.okhttp3:okhttp:4.10.0'
     implementation 'com.alibaba.fastjson2:fastjson2:2.0.25'
     implementation 'com.auth0:java-jwt:4.3.0'
     implementation 'org.xerial:sqlite-jdbc:3.42.0.0'
     implementation 'org.mozilla:rhino:1.7.14'
-    implementation files('libs/WList.main.jar')
-
+    implementation files('libs/wlist.main.jar')
     implementation 'androidx.appcompat:appcompat:1.4.1'
     implementation 'com.google.android.material:material:1.4.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.navigation:navigation-fragment:2.5.2'
     implementation 'androidx.navigation:navigation-ui:2.5.2'
+
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'

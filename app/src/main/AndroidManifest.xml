@@ -17,7 +17,7 @@
 		android:roundIcon="@mipmap/app_logo_round"
 		android:supportsRtl="true"
 		android:theme="@style/Theme.WListClientAndroid"
-		tools:targetApi="31">
+		tools:targetApi="s">
 
 		<activity
 			android:name=".Activities.LoginActivity"
