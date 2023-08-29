@@ -15,7 +15,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
-import android.view.animation.LinearInterpolator;
 import android.view.animation.RotateAnimation;
 import android.widget.AbsListView;
 import android.widget.ImageView;
@@ -168,7 +167,7 @@ public class FilePage implements MainTab.MainTabPage {
                             throw new UnsupportedOperationException("Show file is unsupported now!");
                         });
                     }
-                }, isRoot);
+                }, isRoot, FilePage.this.activity);
             }
 
             @Override
@@ -192,6 +191,7 @@ public class FilePage implements MainTab.MainTabPage {
                     Main.runOnBackgroundThread(FilePage.this.activity, HExceptionWrapper.wrapRunnable(() -> {
                         final Triad.ImmutableTriad<Long, Long, List<VisibleFileInformation>> list;
                         // TODO: loading progress.
+                        this.noMore.set(false); // prevent retry forever when server error.
                         try (final WListClientInterface client = WListClientManager.quicklyGetClient(FilePage.this.address)) {
                             // TODO: more configurable params.
                             list = OperateFileHelper.listFiles(client, TokenManager.getToken(FilePage.this.address), location,
@@ -245,13 +245,8 @@ public class FilePage implements MainTab.MainTabPage {
         final PageFileContentBinding page = this.pageCache.getInstanceNullable();
         if (page == null || this.locationStack.size() < 2) return false;
         this.locationStack.pop();
-        final LocationStackRecord record = this.locationStack.getFirst(); // .peek();
-        this.setBacker(record.isRoot);
-        page.pageFileContentName.setText(record.name);
-        page.pageFileContentCounter.setText(String.valueOf(record.counter));
-        page.pageFileContentList.setAdapter(record.adapter);
-        page.pageFileContentList.clearOnScrollListeners();
-        page.pageFileContentList.addOnScrollListener(record.listener);
+        final LocationStackRecord record = this.locationStack.pop();
+        this.pushFileList(record.name, record.location);
         return true;
     }
 
@@ -302,8 +297,13 @@ public class FilePage implements MainTab.MainTabPage {
             });
         });
         page.pageFileContentUploader.setOnClickListener(u -> {
-            final LocationStackRecord record = this.locationStack.peek();
-            if (record == null) return;
+            if (this.locationStack.isEmpty()) return;
+            if (this.locationStack.size() < 2) { // Root driver
+                // TODO: add driver.
+                Main.showToast(this.activity, R.string.page_file_upload_root);
+                return;
+            }
+            final LocationStackRecord record = this.locationStack.getFirst();
             final FileLocation location = record.location;
             final PageFileUploadBinding upload = PageFileUploadBinding.inflate(this.activity.getLayoutInflater());
             final AlertDialog uploader = new AlertDialog.Builder(this.activity)
@@ -424,7 +424,6 @@ public class FilePage implements MainTab.MainTabPage {
             }, latch::countDown));
                 latch.await();
                 Main.runOnUiThread(this.activity, () -> {
-                    loading.clearAnimation();
                     dialog.cancel();
                     // TODO: auto add.
                     final LocationStackRecord record = this.locationStack.getFirst(); // .peek();
@@ -443,11 +442,11 @@ public class FilePage implements MainTab.MainTabPage {
     }
 
     private void setLoading(@NonNull final ImageView loading) {
-        final Animation loadingAnimation = new RotateAnimation(0, 360, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
-        loadingAnimation.setDuration(800);
+        final Animation loadingAnimation = new RotateAnimation(0, 45, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
+        loadingAnimation.setDuration(0);
+        loadingAnimation.setStartOffset(100);
         loadingAnimation.setFillAfter(true);
         loadingAnimation.setRepeatCount(Animation.INFINITE);
-        loadingAnimation.setInterpolator(new LinearInterpolator());
         loading.startAnimation(loadingAnimation);
     }
 
@@ -463,15 +462,17 @@ public class FilePage implements MainTab.MainTabPage {
     protected static class CellViewHolder extends EnhancedRecyclerViewAdapter.WrappedViewHolder<VisibleFileInformation, ConstraintLayout> {
         @NonNull protected final Consumer<VisibleFileInformation> clicker;
         protected final boolean isRoot;
+        @NonNull protected final Activity activity;
         @NonNull protected final ImageView image;
         @NonNull protected final TextView name;
         @NonNull protected final TextView tips;
         @NonNull protected final View option;
 
-        protected CellViewHolder(@NonNull final ConstraintLayout cell, @NonNull final Consumer<VisibleFileInformation> clicker, final boolean isRoot) {
+        protected CellViewHolder(@NonNull final ConstraintLayout cell, @NonNull final Consumer<VisibleFileInformation> clicker, final boolean isRoot, @NonNull final Activity activity) {
             super(cell);
             this.clicker = clicker;
             this.isRoot = isRoot;
+            this.activity = activity;
             this.image = (ImageView) cell.getViewById(R.id.page_file_cell_image);
             this.name = (TextView) cell.getViewById(R.id.page_file_cell_name);
             this.tips = (TextView) cell.getViewById(R.id.page_file_cell_tips);
@@ -484,9 +485,10 @@ public class FilePage implements MainTab.MainTabPage {
             this.name.setText(this.isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information));
             final LocalDateTime update = FileInformationGetter.updateTime(information);
             this.tips.setText(update == null ? "unknown" : update.format(DateTimeFormatter.ISO_DATE_TIME).replace('T', ' '));
-//            this.option.setOnClickListener(v -> {
-//                // TODO
-//            });
+            this.option.setOnClickListener(v -> {
+                new AlertDialog.Builder(this.activity).setPositiveButton(R.string.cancel, (d, w) -> {});
+
+            });
         }
 
         @Override

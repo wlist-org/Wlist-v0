@@ -22,6 +22,7 @@
 	<string name="page_file_loading">正在加载更多……</string>
 	<string name="page_file_no_more">没有更多了</string>
 	<string name="page_file_upload">上传</string>
+	<string name="page_file_upload_root">无法在根目录创建文件或文件夹</string>
 	<string name="page_file_upload_directory">创建文件夹</string>
 	<string name="page_file_upload_file">上传文件</string>
 	<string name="page_file_upload_picture">上传图片</string>

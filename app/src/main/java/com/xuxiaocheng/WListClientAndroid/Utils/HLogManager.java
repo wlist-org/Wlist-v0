@@ -31,7 +31,7 @@ public final class HLogManager {
     static {
         HLog.setLogTimeFLength(3);
         for (final String name: HLogManager.loggers)
-            HLogManager.buildInstance(name, "DefaultLogger".equals(name) ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1);
+            HLogManager.buildInstance(name, "DefaultLogger".equals(name) || "ClientLogger".equals(name) ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1);
         OperateHelper.logOperation.set(false);
         HUncaughtExceptionHelper.disableUncaughtExceptionListener(HUncaughtExceptionHelper.defaultKey); // Application Killer
         HUncaughtExceptionHelper.setUncaughtExceptionListener(HUncaughtExceptionHelper.listenerKey, (t, e) ->
