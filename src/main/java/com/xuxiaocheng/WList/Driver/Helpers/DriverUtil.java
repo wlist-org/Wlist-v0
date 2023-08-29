@@ -302,7 +302,7 @@ public final class DriverUtil {
      * @see WListServer#FileTransferBufferSize
      */
     public static Pair.@NotNull ImmutablePair<@NotNull List<@NotNull ConsumerE<@NotNull ByteBuf>>, @NotNull Runnable> splitUploadMethodEveryFileTransferBufferSize(final @NotNull ConsumerE<@NotNull ByteBuf> sourceMethod, final int totalSize) {
-        assert totalSize > 0;
+        assert totalSize >= 0;
         if (totalSize < WListServer.FileTransferBufferSize)
             return Pair.ImmutablePair.makeImmutablePair(List.of(sourceMethod), RunnableE.EmptyRunnable);
         final int mod = totalSize % WListServer.FileTransferBufferSize;

@@ -26,6 +26,7 @@ import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.UploadMethods;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -305,7 +306,12 @@ public final class DriverManager_lanzou {
         if (duplicate.isFailure()) return UnionPair.fail(duplicate.getE());
         final String realName = duplicate.getT().getT();
         final AtomicReference<UnionPair<FileSqlInformation, FailureReason>> reference = new AtomicReference<>(null);
-        final Pair.ImmutablePair<List<ConsumerE<ByteBuf>>, Runnable> methods = DriverUtil.splitUploadMethodEveryFileTransferBufferSize(b ->
+        final Pair.ImmutablePair<List<ConsumerE<ByteBuf>>, Runnable> methods;
+        if (size == 0) {
+            reference.set(DriverHelper_lanzou.uploadFile(configuration, realName, parentId, Unpooled.EMPTY_BUFFER, md5));
+            methods = Pair.ImmutablePair.makeImmutablePair(List.of(), RunnableE.EmptyRunnable);
+        } else
+            methods = DriverUtil.splitUploadMethodEveryFileTransferBufferSize(b ->
                 reference.set(DriverHelper_lanzou.uploadFile(configuration, realName, parentId, b, md5)), intSize);
         return UnionPair.ok(new UploadMethods(methods.getFirst(), () -> {
             final UnionPair<FileSqlInformation, FailureReason> result = reference.get();
