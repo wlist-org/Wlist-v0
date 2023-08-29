@@ -391,6 +391,7 @@ final class DriverHelper_lanzou {
         DriverManager_lanzou.ensureLoggedIn(configuration);
         final MultipartBody body = new MultipartBody.Builder().setType(MultipartBody.FORM)
                 .addFormDataPart("task", "1")
+                .addFormDataPart("ve", "2")
                 .addFormDataPart("folder_id_bb_n", String.valueOf(parentId))
                 .addFormDataPart("upload_file", name, DriverNetworkHelper.createOctetStreamRequestBody(content))
                 .build();
