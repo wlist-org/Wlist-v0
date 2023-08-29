@@ -131,7 +131,7 @@ public final class DriverNetworkHelper {
                 boolean first = true;
                 while (this.accepted.get() > this.limit) {
                     if (first) {
-                        HLog.DefaultLogger.log(HLogLevel.NETWORK, "At frequency control: ", this.limit, " every ", this.unit.toMillis(this.amount), " ms.");
+                        HLog.DefaultLogger.log(HLogLevel.NETWORK, "At frequency control: ", this.limit, " requests every ", this.unit.toMillis(this.amount), " ms.");
                         first = false;
                     }
                     this.accepted.wait();

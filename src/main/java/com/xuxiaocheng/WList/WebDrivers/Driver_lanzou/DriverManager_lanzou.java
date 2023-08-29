@@ -77,6 +77,7 @@ public final class DriverManager_lanzou {
             final Set<FileSqlInformation> filesInformation = DriverHelper_lanzou.listFilesInPage(configuration, directoryId, 0);
             if (directoriesInformation.isEmpty() && filesInformation.isEmpty()) {
                 FileManager.deleteFileRecursively(configuration.getName(), directoryId, connectionId.get());
+                FileManager.insertFileForce(configuration.getName(), directoryInformation, connectionId.get()); // TODO: Only delete children.
                 if (directoryInformation.type() == FileSqlInterface.FileSqlType.Directory)
                     FileManager.updateDirectoryType(configuration.getName(), directoryId, true, connectionId.get());
                 connection.commit();
@@ -197,7 +198,7 @@ public final class DriverManager_lanzou {
         if (info == null || info.isDirectory()) return UnionPair.fail(FailureReason.byNoSuchFile("Downloading.", new FileLocation(configuration.getName(), fileId)));
         final String url = DriverHelper_lanzou.getFileDownloadUrl(configuration, fileId);
         if (url == null) return UnionPair.fail(FailureReason.byNoSuchFile("Downloading.", new FileLocation(configuration.getName(), fileId)));
-        return UnionPair.ok(DriverUtil.toCachedDownloadMethods(DriverUtil.getDownloadMethodsByUrlWithRangeHeader(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(url, "GET"), info.size(), from, to, DriverHelper_lanzou.headers.newBuilder())));
+        return UnionPair.ok(DriverUtil.toCachedDownloadMethods(DriverUtil.getDownloadMethodsByUrlWithRangeHeader(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(url, "GET"), null, info.size(), from, to, DriverHelper_lanzou.headers.newBuilder())));
     }
 
     // File Writer
@@ -248,7 +249,7 @@ public final class DriverManager_lanzou {
             final FileSqlInformation parentInformation = DriverManager_lanzou.getFileInformation(configuration, parentId, null, connectionId.get());
             if (parentInformation == null || !parentInformation.isDirectory())
                 return UnionPair.fail(FailureReason.byNoSuchFile(duplicateErrorMessage + " Getting duplicate policy name (parent).", new FileLocation(configuration.getName(), parentId)));
-            if (FileManager.selectFileCountByParentId(configuration.getName(), parentId, connectionId.get()) == 0) {
+            if (parentInformation.type() == FileSqlInterface.FileSqlType.Directory && FileManager.selectFileCountByParentId(configuration.getName(), parentId, connectionId.get()) == 0) {
                 DriverManager_lanzou.waitSyncComplete(DriverManager_lanzou.syncFilesList(configuration, parentId, connectionId.get()));
                 connection.commit();
             }

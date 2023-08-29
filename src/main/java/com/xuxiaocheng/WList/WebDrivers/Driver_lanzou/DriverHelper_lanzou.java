@@ -211,7 +211,12 @@ final class DriverHelper_lanzou {
         final String para = json.getString("url");
         if (dom == null || para == null)
             throw new WrongResponseException("Getting single shared file download url.", json, parametersMap);
-        return dom + "/file/" + para;
+        final String displayUrl = dom + "/file/" + para;
+//        try (final Response response = DriverNetworkHelper.getWithParameters(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(displayUrl, "GET"),
+//                DriverHelper_lanzou.headers.newBuilder().add("Range", "bytes=0-0").build(), null).execute()) {
+//
+//        }
+        return displayUrl;
     }
 
     static @Nullable String getFileDownloadUrl(final @NotNull DriverConfiguration_lanzou configuration, final long fileId) throws IOException {
