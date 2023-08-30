@@ -21,6 +21,16 @@
 	<string name="page_file_counter">项</string>
 	<string name="page_file_loading">正在加载更多……</string>
 	<string name="page_file_no_more">没有更多了</string>
+	<string name="page_file_option">详情</string>
+	<string name="page_file_option_name">名称：</string>
+	<string name="page_file_option_size">大小：</string>
+	<string name="page_file_option_create">创建时间：</string>
+	<string name="page_file_option_update">修改时间：</string>
+	<string name="page_file_option_rename">重命名</string>
+	<string name="page_file_option_move">移动</string>
+	<string name="page_file_option_copy">复制</string>
+	<string name="page_file_option_delete">删除</string>
+	<string name="page_file_option_download">下载</string>
 	<string name="page_file_upload">上传</string>
 	<string name="page_file_upload_root">无法在根目录创建文件或文件夹</string>
 	<string name="page_file_upload_directory">创建文件夹</string>

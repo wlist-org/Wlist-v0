@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Environment;
 import android.provider.OpenableColumns;
 import android.text.Editable;
 import android.util.DisplayMetrics;
@@ -26,10 +27,13 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.xuxiaocheng.HeadLibs.AndroidSupport.AIOStream;
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMathHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMessageDigestHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
@@ -52,16 +56,21 @@ import com.xuxiaocheng.WListClientAndroid.R;
 import com.xuxiaocheng.WListClientAndroid.Utils.EnhancedRecyclerViewAdapter;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileContentBinding;
+import com.xuxiaocheng.WListClientAndroid.databinding.PageFileEditorBinding;
+import com.xuxiaocheng.WListClientAndroid.databinding.PageFileOptionBinding;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileUploadBinding;
-import com.xuxiaocheng.WListClientAndroid.databinding.PageFileUploadDirectoryBinding;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.ByteBufInputStream;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.security.MessageDigest;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -167,7 +176,7 @@ public class FilePage implements MainTab.MainTabPage {
                             throw new UnsupportedOperationException("Show file is unsupported now!");
                         });
                     }
-                }, isRoot, FilePage.this.activity);
+                }, isRoot, FilePage.this);
             }
 
             @Override
@@ -178,6 +187,7 @@ public class FilePage implements MainTab.MainTabPage {
         final RecyclerView.OnScrollListener listener = new RecyclerView.OnScrollListener() {
             @NonNull private final AtomicBoolean onLoading = new AtomicBoolean(false);
             @NonNull private final AtomicBoolean noMore = new AtomicBoolean(false);
+            @UiThread
             @Override
             public void onScrollStateChanged(@NonNull final RecyclerView recyclerView, final int newState) {
                 super.onScrollStateChanged(recyclerView, newState);
@@ -186,7 +196,7 @@ public class FilePage implements MainTab.MainTabPage {
                 if (!recyclerView.canScrollVertically(1) && !this.noMore.get() && this.onLoading.compareAndSet(false, true)) {
                     final ConstraintLayout loadingTailor = EnhancedRecyclerViewAdapter.buildView(FilePage.this.activity.getLayoutInflater(), R.layout.page_file_tailor_loading, page.pageFileContentList);
                     final ImageView loading = (ImageView) loadingTailor.getViewById(R.id.page_file_tailor_loading_image);
-                    FilePage.this.setLoading(loading);
+                    FilePage.setLoading(loading);
                     adapterWrapper.addTailor(loadingTailor);
                     Main.runOnBackgroundThread(FilePage.this.activity, HExceptionWrapper.wrapRunnable(() -> {
                         final Triad.ImmutableTriad<Long, Long, List<VisibleFileInformation>> list;
@@ -208,6 +218,8 @@ public class FilePage implements MainTab.MainTabPage {
                         counter.set(list.getA().longValue());
                         Main.runOnUiThread(FilePage.this.activity, () -> {
                             page.pageFileContentCounter.setText(String.valueOf(list.getA()));
+                            page.pageFileContentCounter.setVisibility(View.VISIBLE);
+                            page.pageFileContentCounterText.setVisibility(View.VISIBLE);
                             adapterWrapper.addDataRange(list.getC());
                         });
                     }, () -> {
@@ -232,6 +244,8 @@ public class FilePage implements MainTab.MainTabPage {
         Main.runOnUiThread(this.activity, () -> {
             this.setBacker(isRoot);
             page.pageFileContentName.setText(name);
+            page.pageFileContentCounter.setVisibility(View.GONE);
+            page.pageFileContentCounterText.setVisibility(View.GONE);
             final RecyclerView content = page.pageFileContentList;
             content.setAdapter(adapterWrapper);
             content.clearOnScrollListeners();
@@ -313,19 +327,22 @@ public class FilePage implements MainTab.MainTabPage {
             upload.pageFileUploadDirectory.setOnClickListener(v -> {
                 if (!clickable.compareAndSet(true, false)) return;
                 uploader.cancel();
-                final PageFileUploadDirectoryBinding uploadDirectory = PageFileUploadDirectoryBinding.inflate(this.activity.getLayoutInflater());
-                uploadDirectory.pageFileUploadDirectoryName.setSelectAllOnFocus(true);
-                if (uploadDirectory.pageFileUploadDirectoryName.requestFocus())
-                    uploadDirectory.pageFileUploadDirectoryName.setSelection(Objects.requireNonNull(uploadDirectory.pageFileUploadDirectoryName.getText()).length());
+                final PageFileEditorBinding editor = PageFileEditorBinding.inflate(this.activity.getLayoutInflater());
+                editor.pageFileEditor.setText(R.string.page_file_upload_directory_name);
+                editor.pageFileEditor.setHint(R.string.page_file_upload_directory_hint);
+                if (editor.pageFileEditor.requestFocus()) {
+                    editor.pageFileEditor.setSelectAllOnFocus(true);
+                    editor.pageFileEditor.setSelection(Objects.requireNonNull(editor.pageFileEditor.getText()).length());
+                }
                 new AlertDialog.Builder(this.activity).setTitle(R.string.page_file_upload_directory)
-                        .setIcon(R.mipmap.page_file_upload_directory).setView(uploadDirectory.getRoot())
+                        .setIcon(R.mipmap.page_file_upload_directory).setView(editor.getRoot())
                         .setNegativeButton(R.string.cancel, (d, w) -> {})
                         .setPositiveButton(R.string.confirm, (d, w) -> {
-                            final Editable editable = uploadDirectory.pageFileUploadDirectoryName.getText();
+                            final Editable editable = editor.pageFileEditor.getText();
                             final String name = editable == null ? "" : editable.toString();
                             final ImageView loading = new ImageView(this.activity);
                             loading.setImageResource(R.mipmap.page_file_loading);
-                            this.setLoading(loading);
+                            FilePage.setLoading(loading);
                             final AlertDialog dialog = new AlertDialog.Builder(this.activity)
                                     .setTitle(R.string.page_file_upload_directory).setView(loading).setCancelable(false).show();
                             Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
@@ -374,7 +391,7 @@ public class FilePage implements MainTab.MainTabPage {
             }
             final ImageView loading = new ImageView(this.activity);
             loading.setImageResource(R.mipmap.page_file_loading);
-            this.setLoading(loading);
+            FilePage.setLoading(loading);
             final AlertDialog dialog = new AlertDialog.Builder(this.activity)
                     .setTitle(R.string.page_file_upload_file).setView(loading).setCancelable(false).show();
             Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
@@ -441,7 +458,7 @@ public class FilePage implements MainTab.MainTabPage {
         return this.popFileList();
     }
 
-    private void setLoading(@NonNull final ImageView loading) {
+    private static void setLoading(@NonNull final ImageView loading) {
         final Animation loadingAnimation = new RotateAnimation(0, 45, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
         loadingAnimation.setDuration(0);
         loadingAnimation.setStartOffset(100);
@@ -462,17 +479,17 @@ public class FilePage implements MainTab.MainTabPage {
     protected static class CellViewHolder extends EnhancedRecyclerViewAdapter.WrappedViewHolder<VisibleFileInformation, ConstraintLayout> {
         @NonNull protected final Consumer<VisibleFileInformation> clicker;
         protected final boolean isRoot;
-        @NonNull protected final Activity activity;
+        @NonNull protected final FilePage page;
         @NonNull protected final ImageView image;
         @NonNull protected final TextView name;
         @NonNull protected final TextView tips;
         @NonNull protected final View option;
 
-        protected CellViewHolder(@NonNull final ConstraintLayout cell, @NonNull final Consumer<VisibleFileInformation> clicker, final boolean isRoot, @NonNull final Activity activity) {
+        protected CellViewHolder(@NonNull final ConstraintLayout cell, @NonNull final Consumer<VisibleFileInformation> clicker, final boolean isRoot, @NonNull final FilePage page) {
             super(cell);
             this.clicker = clicker;
             this.isRoot = isRoot;
-            this.activity = activity;
+            this.page = page;
             this.image = (ImageView) cell.getViewById(R.id.page_file_cell_image);
             this.name = (TextView) cell.getViewById(R.id.page_file_cell_name);
             this.tips = (TextView) cell.getViewById(R.id.page_file_cell_tips);
@@ -483,11 +500,125 @@ public class FilePage implements MainTab.MainTabPage {
             this.itemView.setOnClickListener(v -> this.clicker.accept(information)); // TODO: select on long click.
             CellViewHolder.setFileImage(this.image, information);
             this.name.setText(this.isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information));
-            final LocalDateTime update = FileInformationGetter.updateTime(information);
-            this.tips.setText(update == null ? "unknown" : update.format(DateTimeFormatter.ISO_DATE_TIME).replace('T', ' '));
+            this.tips.setText(FileInformationGetter.updateTimeString(information, DateTimeFormatter.ISO_DATE_TIME, "unknown").replace('T', ' '));
             this.option.setOnClickListener(v -> {
-                new AlertDialog.Builder(this.activity).setPositiveButton(R.string.cancel, (d, w) -> {});
-
+                final PageFileOptionBinding optionBinding = PageFileOptionBinding.inflate(this.page.activity.getLayoutInflater());
+                optionBinding.pageFileOptionName.setText(FileInformationGetter.name(information));
+                final long size = FileInformationGetter.size(information);
+                optionBinding.pageFileOptionSize.setText(size < 1 ? "unknown" : String.valueOf(size));
+                optionBinding.pageFileOptionCreate.setText(FileInformationGetter.createTimeString(information, DateTimeFormatter.ISO_DATE_TIME, "unknown"));
+                optionBinding.pageFileOptionUpdate.setText(FileInformationGetter.updateTimeString(information, DateTimeFormatter.ISO_DATE_TIME, "unknown"));
+                final AlertDialog modifier = new AlertDialog.Builder(this.page.activity)
+                        .setTitle(R.string.page_file_option).setView(optionBinding.getRoot())
+                        .setPositiveButton(R.string.cancel, (d, w) -> {}).create();
+                final LocationStackRecord record = this.page.locationStack.getFirst(); // TODO: optimize
+                final FileLocation location = new FileLocation(FileLocationSupporter.driver(record.location), FileInformationGetter.id(information));
+                final AtomicBoolean clickable = new AtomicBoolean(true);
+                optionBinding.pageFileOptionRename.setOnClickListener(u -> {
+                    if (!clickable.compareAndSet(true, false)) return;
+                    modifier.cancel();
+                    final PageFileEditorBinding editor = PageFileEditorBinding.inflate(this.page.activity.getLayoutInflater());
+                    editor.pageFileEditor.setText(FileInformationGetter.name(information));
+                    if (editor.pageFileEditor.requestFocus()) {
+                        editor.pageFileEditor.setSelectAllOnFocus(true);
+                        editor.pageFileEditor.setSelection(Objects.requireNonNull(editor.pageFileEditor.getText()).length());
+                    }
+                    new AlertDialog.Builder(this.page.activity).setTitle(R.string.page_file_option_rename).setView(editor.getRoot())
+                            .setNegativeButton(R.string.cancel, (d, w) -> {})
+                            .setPositiveButton(R.string.confirm, (d, w) -> {
+                                final Editable editable = editor.pageFileEditor.getText();
+                                final String name = editable == null ? "" : editable.toString();
+                                if (FileInformationGetter.name(information).equals(name)) return;
+                                final ImageView loading = new ImageView(this.page.activity);
+                                loading.setImageResource(R.mipmap.page_file_loading);
+                                FilePage.setLoading(loading);
+                                final AlertDialog dialog = new AlertDialog.Builder(this.page.activity)
+                                        .setTitle(R.string.page_file_option_rename).setView(loading).setCancelable(false).show();
+                                Main.runOnBackgroundThread(this.page.activity, HExceptionWrapper.wrapRunnable(() -> {
+                                    HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Renaming.",
+                                            ParametersMap.create().add("address", this.page.address).add("location", location).add("name", name));
+                                    try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.page.address)) {
+                                        OperateFileHelper.renameFile(client, TokenManager.getToken(this.page.address), location, name, Options.DuplicatePolicy.ERROR);
+                                    }
+                                    Main.runOnUiThread(this.page.activity, () -> {
+                                        // TODO: auto refresh.
+                                        this.page.popFileList();
+                                        this.page.pushFileList(name, record.location);
+                                    });
+                                }, () -> Main.runOnUiThread(this.page.activity, dialog::cancel)));
+                            }).show();
+                });
+                optionBinding.pageFileOptionMove.setOnClickListener(u -> {
+                    if (!clickable.compareAndSet(true, false)) return;
+                    modifier.cancel();
+                    Main.runOnBackgroundThread(this.page.activity, () -> {
+                        // TODO: move file.
+                        throw new UnsupportedOperationException("Move file is unsupported now!");
+                    });
+//                    final EnhancedRecyclerViewAdapter<VisibleFileInformation, CellViewHolder> adapter = new EnhancedRecyclerViewAdapter<>() {
+//                        @Override
+//                        @NonNull protected CellViewHolder createViewHolder(@NonNull final ViewGroup parent) {
+//                            final CellViewHolder holder = new CellViewHolder(EnhancedRecyclerViewAdapter.buildView(CellViewHolder.this.page.activity.getLayoutInflater(), R.layout.page_file_cell, (RecyclerView) parent), information -> {
+////                                FilePage.this.pushFileList(isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information),
+////                                        FileLocationSupporter.create(isRoot ? FileInformationGetter.name(information) : FileLocationSupporter.driver(location), FileInformationGetter.id(information)));
+//                            }, isRoot, CellViewHolder.this.page);
+//                            holder.option.setVisibility(View.GONE);
+//                            return holder;
+//                        }
+//
+//                        @Override
+//                        protected void bindViewHolder(@NonNull final CellViewHolder holder, @NonNull final VisibleFileInformation information) {
+//                            holder.itemView.setOnClickListener(v -> holder.clicker.accept(information));
+//                            CellViewHolder.setFileImage(holder.image, information);
+//                            holder.name.setText(holder.isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information));
+//                            holder.tips.setText(FileInformationGetter.updateTimeString(information, DateTimeFormatter.ISO_DATE_TIME, "unknown").replace('T', ' '));
+//                            // TODO: same as 'onBind' except 'option'.
+//                        }
+//                    };
+//                    final AlertDialog.Builder chooser = new AlertDialog.Builder(this.page.activity).setTitle(R.string.page_file_option_move)
+//                            .setView()
+                });
+                optionBinding.pageFileOptionCopy.setOnClickListener(u -> {
+                    if (!clickable.compareAndSet(true, false)) return;
+                    modifier.cancel();
+                    Main.runOnBackgroundThread(this.page.activity, () -> {
+                        // TODO: copy file.
+                        throw new UnsupportedOperationException("Copy file is unsupported now!");
+                    });
+                });
+                optionBinding.pageFileOptionDownload.setOnClickListener(u -> {
+                    if (!clickable.compareAndSet(true, false)) return;
+                    modifier.cancel();
+                    final ImageView loading = new ImageView(this.page.activity);
+                    loading.setImageResource(R.mipmap.page_file_loading);
+                    FilePage.setLoading(loading);
+                    final AlertDialog dialog = new AlertDialog.Builder(this.page.activity)
+                            .setTitle(R.string.page_file_option_download).setView(loading).setCancelable(false).show();
+                    Main.runOnBackgroundThread(this.page.activity, HExceptionWrapper.wrapRunnable(() -> {
+                        HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Downloading.",
+                                ParametersMap.create().add("address", this.page.address).add("location", location));
+                        try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.page.address)) {
+                            final Pair.ImmutablePair<Long, String> id = OperateFileHelper.requestDownloadFile(client, TokenManager.getToken(this.page.address), location, 0, Long.MAX_VALUE);
+                            if (id == null)
+                                throw new IllegalStateException("File not exist.");
+                            final File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "wlist/" + FileInformationGetter.name(information));
+                            HFileHelper.ensureFileExist(file.toPath(), false);
+                            try (final OutputStream stream = new BufferedOutputStream(new FileOutputStream(file))) {
+                                int chunk = 0;
+                                while (true) {
+                                    final ByteBuf buffer = OperateFileHelper.downloadFile(client, TokenManager.getToken(this.page.address), id.getSecond(), chunk++);
+                                    if (buffer == null) break;
+                                    try (final InputStream buf = new ByteBufInputStream(buffer)) {
+                                        AIOStream.transferTo(buf, stream);
+                                    } finally {
+                                        buffer.release();
+                                    }
+                                }
+                            }
+                        }
+                    }, () -> Main.runOnUiThread(this.page.activity, dialog::cancel)));
+                });
+                modifier.show();
             });
         }
 

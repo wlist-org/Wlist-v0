@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                                                   xmlns:app="http://schemas.android.com/apk/res-auto"
+                                                   xmlns:tools="http://schemas.android.com/tools"
+                                                   android:layout_width="wrap_content"
+                                                   android:layout_height="wrap_content">
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/page_file_option_guideline_hint"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		app:layout_constraintGuide_percent="0.3" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_file_option_name_text"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:lines="1"
+		android:text="@string/page_file_option_name"
+		android:textColor="@color/text_normal"
+		android:textSize="20sp"
+		app:layout_constraintBottom_toTopOf="@id/page_file_option_size_text"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toLeftOf="@id/page_file_option_guideline_hint"
+		app:layout_constraintTop_toTopOf="parent" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_file_option_name"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:lines="1"
+		android:text="name"
+		android:textColor="@color/text_normal"
+		android:textSize="20sp"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_option_name_text"
+		app:layout_constraintLeft_toRightOf="@id/page_file_option_guideline_hint"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toTopOf="@id/page_file_option_name_text"
+		tools:ignore="HardcodedText" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_file_option_size_text"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:lines="1"
+		android:text="@string/page_file_option_size"
+		android:textColor="@color/text_normal"
+		android:textSize="20sp"
+		app:layout_constraintBottom_toTopOf="@id/page_file_option_create_text"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toLeftOf="@id/page_file_option_guideline_hint"
+		app:layout_constraintTop_toBottomOf="@id/page_file_option_name_text" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_file_option_size"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:lines="1"
+		android:text="0"
+		android:textColor="@color/text_normal"
+		android:textSize="20sp"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_option_size_text"
+		app:layout_constraintLeft_toRightOf="@id/page_file_option_guideline_hint"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toTopOf="@id/page_file_option_size_text"
+		tools:ignore="HardcodedText" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_file_option_create_text"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:lines="1"
+		android:text="@string/page_file_option_create"
+		android:textColor="@color/text_normal"
+		android:textSize="20sp"
+		app:layout_constraintBottom_toTopOf="@id/page_file_option_update_text"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toLeftOf="@id/page_file_option_guideline_hint"
+		app:layout_constraintTop_toBottomOf="@id/page_file_option_size_text" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_file_option_create"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:lines="1"
+		android:text="unknown"
+		android:textColor="@color/text_normal"
+		android:textSize="20sp"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_option_create_text"
+		app:layout_constraintLeft_toRightOf="@id/page_file_option_guideline_hint"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toTopOf="@id/page_file_option_create_text"
+		tools:ignore="HardcodedText" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_file_option_update_text"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:lines="1"
+		android:text="@string/page_file_option_update"
+		android:textColor="@color/text_normal"
+		android:textSize="20sp"
+		app:layout_constraintBottom_toTopOf="@id/page_file_option_rename"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toLeftOf="@id/page_file_option_guideline_hint"
+		app:layout_constraintTop_toBottomOf="@id/page_file_option_create_text" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_file_option_update"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:lines="1"
+		android:text="unknown"
+		android:textColor="@color/text_normal"
+		android:textSize="20sp"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_option_update_text"
+		app:layout_constraintLeft_toRightOf="@id/page_file_option_guideline_hint"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toTopOf="@id/page_file_option_update_text"
+		tools:ignore="HardcodedText" />
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/page_file_option_guideline_icon"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		app:layout_constraintGuide_percent="0.2" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_file_option_rename"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:lines="1"
+		android:text="@string/page_file_option_rename"
+		android:textColor="@color/text_normal"
+		android:textSize="20sp"
+		app:layout_constraintBottom_toTopOf="@id/page_file_option_move"
+		app:layout_constraintLeft_toRightOf="@id/page_file_option_guideline_icon"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/page_file_option_update_text" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_file_option_move"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:lines="1"
+		android:text="@string/page_file_option_move"
+		android:textColor="@color/text_normal"
+		android:textSize="20sp"
+		app:layout_constraintBottom_toTopOf="@id/page_file_option_copy"
+		app:layout_constraintLeft_toRightOf="@id/page_file_option_guideline_icon"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/page_file_option_rename" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_file_option_copy"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:lines="1"
+		android:text="@string/page_file_option_copy"
+		android:textColor="@color/text_normal"
+		android:textSize="20sp"
+		app:layout_constraintBottom_toTopOf="@id/page_file_option_delete"
+		app:layout_constraintLeft_toRightOf="@id/page_file_option_guideline_icon"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/page_file_option_move" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_file_option_delete"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:lines="1"
+		android:text="@string/page_file_option_delete"
+		android:textColor="@color/text_warning"
+		android:textSize="20sp"
+		app:layout_constraintBottom_toTopOf="@id/page_file_option_download"
+		app:layout_constraintLeft_toRightOf="@id/page_file_option_guideline_icon"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/page_file_option_copy" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_file_option_download"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:lines="1"
+		android:text="@string/page_file_option_download"
+		android:textColor="@color/text_normal"
+		android:textSize="20sp"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toRightOf="@id/page_file_option_guideline_icon"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/page_file_option_delete" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
