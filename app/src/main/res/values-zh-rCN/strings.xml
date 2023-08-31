@@ -31,6 +31,11 @@
 	<string name="page_file_option_copy">复制</string>
 	<string name="page_file_option_delete">删除</string>
 	<string name="page_file_option_download">下载</string>
+	<string name="page_file_option_rename_success">重命名成功</string>
+	<string name="page_file_option_move_success">移动成功</string>
+	<string name="page_file_option_copy_success">复制成功</string>
+	<string name="page_file_option_delete_success">删除成功</string>
+	<string name="page_file_option_download_success">下载成功</string>
 	<string name="page_file_upload">上传</string>
 	<string name="page_file_upload_root">无法在根目录创建文件或文件夹</string>
 	<string name="page_file_upload_directory">创建文件夹</string>
@@ -39,6 +44,8 @@
 	<string name="page_file_upload_video">上传视频</string>
 	<string name="page_file_upload_directory_name">新建文件夹</string>
 	<string name="page_file_upload_directory_hint">请输入文件夹名称</string>
+	<string name="page_file_upload_success_directory">创建文件夹成功</string>
+	<string name="page_file_upload_success_file">上传文件成功</string>
 	<string name="page_user_disconnect">断开连接</string>
 	<string name="page_user_close_server">关闭服务端</string>
 </resources>

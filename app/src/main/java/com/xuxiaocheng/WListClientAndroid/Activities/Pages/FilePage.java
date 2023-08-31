@@ -16,6 +16,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
+import android.view.animation.LinearInterpolator;
 import android.view.animation.RotateAnimation;
 import android.widget.AbsListView;
 import android.widget.ImageView;
@@ -352,6 +353,7 @@ public class FilePage implements MainTab.MainTabPage {
                                     OperateFileHelper.createDirectory(client, TokenManager.getToken(this.address), location, name, Options.DuplicatePolicy.ERROR);
                                 }
                                 Main.runOnUiThread(this.activity, () -> {
+                                    Main.showToast(this.activity, R.string.page_file_upload_success_directory);
                                     // TODO: auto add.
                                     this.popFileList();
                                     this.pushFileList(name, location);
@@ -442,6 +444,7 @@ public class FilePage implements MainTab.MainTabPage {
                 latch.await();
                 Main.runOnUiThread(this.activity, () -> {
                     dialog.cancel();
+                    Main.showToast(this.activity, R.string.page_file_upload_success_file);
                     // TODO: auto add.
                     final LocationStackRecord record = this.locationStack.getFirst(); // .peek();
                     this.popFileList();
@@ -459,10 +462,9 @@ public class FilePage implements MainTab.MainTabPage {
     }
 
     private static void setLoading(@NonNull final ImageView loading) {
-        final Animation loadingAnimation = new RotateAnimation(0, 45, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
-        loadingAnimation.setDuration(0);
-        loadingAnimation.setStartOffset(100);
-        loadingAnimation.setFillAfter(true);
+        final Animation loadingAnimation = new RotateAnimation(0, 360 << 10, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
+        loadingAnimation.setDuration(500 << 10);
+        loadingAnimation.setInterpolator(new LinearInterpolator());
         loadingAnimation.setRepeatCount(Animation.INFINITE);
         loading.startAnimation(loadingAnimation);
     }
@@ -541,9 +543,10 @@ public class FilePage implements MainTab.MainTabPage {
                                         OperateFileHelper.renameFile(client, TokenManager.getToken(this.page.address), location, name, Options.DuplicatePolicy.ERROR);
                                     }
                                     Main.runOnUiThread(this.page.activity, () -> {
+                                        Main.showToast(this.page.activity, R.string.page_file_option_rename_success);
                                         // TODO: auto refresh.
                                         this.page.popFileList();
-                                        this.page.pushFileList(name, record.location);
+                                        this.page.pushFileList(record.name, record.location);
                                     });
                                 }, () -> Main.runOnUiThread(this.page.activity, dialog::cancel)));
                             }).show();
@@ -586,6 +589,28 @@ public class FilePage implements MainTab.MainTabPage {
                         throw new UnsupportedOperationException("Copy file is unsupported now!");
                     });
                 });
+                optionBinding.pageFileOptionDelete.setOnClickListener(u -> {
+                    if (!clickable.compareAndSet(true, false)) return;
+                    modifier.cancel();
+                    final ImageView loading = new ImageView(this.page.activity);
+                    loading.setImageResource(R.mipmap.page_file_loading);
+                    FilePage.setLoading(loading);
+                    final AlertDialog dialog = new AlertDialog.Builder(this.page.activity)
+                            .setTitle(R.string.page_file_option_delete).setView(loading).setCancelable(false).show();
+                    Main.runOnBackgroundThread(this.page.activity, HExceptionWrapper.wrapRunnable(() -> {
+                        HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Deleting.",
+                                ParametersMap.create().add("address", this.page.address).add("location", location));
+                        try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.page.address)) {
+                            OperateFileHelper.deleteFile(client, TokenManager.getToken(this.page.address), location);
+                        }
+                        Main.runOnUiThread(this.page.activity, () -> {
+                            Main.showToast(this.page.activity, R.string.page_file_option_delete_success);
+                            // TODO: auto remove
+                            this.page.popFileList();
+                            this.page.pushFileList(record.name, record.location);
+                        });
+                    }, () -> Main.runOnUiThread(this.page.activity, dialog::cancel)));
+                });
                 optionBinding.pageFileOptionDownload.setOnClickListener(u -> {
                     if (!clickable.compareAndSet(true, false)) return;
                     modifier.cancel();
@@ -616,6 +641,7 @@ public class FilePage implements MainTab.MainTabPage {
                                 }
                             }
                         }
+                        Main.showToast(this.page.activity, R.string.page_file_option_download_success);
                     }, () -> Main.runOnUiThread(this.page.activity, dialog::cancel)));
                 });
                 modifier.show();

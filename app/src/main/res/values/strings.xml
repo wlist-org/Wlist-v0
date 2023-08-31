@@ -31,6 +31,11 @@
 	<string name="page_file_option_copy">Copy</string>
 	<string name="page_file_option_delete">Delete</string>
 	<string name="page_file_option_download">Download</string>
+	<string name="page_file_option_rename_success">Renamed.</string>
+	<string name="page_file_option_move_success">Moved.</string>
+	<string name="page_file_option_copy_success">Copied.</string>
+	<string name="page_file_option_delete_success">Deleted.</string>
+	<string name="page_file_option_download_success">Downloaded.</string>
 	<string name="page_file_upload">Upload</string>
 	<string name="page_file_upload_root">Cannot upload file to root directory.</string>
 	<string name="page_file_upload_directory">Directory</string>
@@ -39,6 +44,8 @@
 	<string name="page_file_upload_video">Video</string>
 	<string name="page_file_upload_directory_name">New directory</string>
 	<string name="page_file_upload_directory_hint">Directory Name.</string>
+	<string name="page_file_upload_success_directory">Created directory.</string>
+	<string name="page_file_upload_success_file">Uploaded file.</string>
 	<string name="page_user_disconnect">Disconnection</string>
 	<string name="page_user_close_server">Close server</string>
 </resources>
