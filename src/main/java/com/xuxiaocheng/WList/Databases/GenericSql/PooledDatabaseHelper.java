@@ -155,7 +155,7 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
         }
 
         @Override
-        public synchronized @Nullable Object invoke(final @NotNull Object proxy, final @NotNull Method method, final Object @Nullable [] args) throws SQLException {
+        public @Nullable Object invoke(final @NotNull Object proxy, final @NotNull Method method, final Object @Nullable [] args) throws SQLException {
             if (this.referenceCounter < 0)
                 throw new IllegalReferenceCountException(this.referenceCounter);
             switch (method.getName()) {
@@ -194,7 +194,9 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
             if (this.allow != null)
                 throw new SQLWarning("Something went wrong on this connection (" + this.rawConnection + "). Usually caused in other threads.", this.allow);
             try {
-                return method.invoke(this.rawConnection, args);
+                synchronized (ReferencedConnectionProxy.class) {
+                    return method.invoke(this.rawConnection, args);
+                }
             } catch (final IllegalAccessException exception) {
                 throw new RuntimeException(exception);
             } catch (final InvocationTargetException exception) {
@@ -207,7 +209,7 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
         }
 
         @Override
-        public synchronized @NotNull String toString() {
+        public @NotNull String toString() {
             return "ReferencedConnectionProxy{" +
                     "id='" + this.id + '\'' +
                     ", rawConnection=" + this.rawConnection +

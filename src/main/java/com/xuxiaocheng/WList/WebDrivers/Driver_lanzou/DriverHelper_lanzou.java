@@ -156,7 +156,7 @@ final class DriverHelper_lanzou {
 
     private static final @NotNull Pattern srcPattern = Pattern.compile("src=\"(/fn?[^\"]+)");
     @SuppressWarnings("unchecked")
-    static @Nullable String getSingleShareFileDownloadUrl(final @NotNull DriverConfiguration_lanzou configuration, final @NotNull String domin, final @NotNull String identifier, final @Nullable String pwd) throws IOException, IllegalParametersException {
+    static @Nullable Pair.ImmutablePair<@NotNull String, @Nullable Headers> getSingleShareFileDownloadUrl(final @NotNull DriverConfiguration_lanzou configuration, final @NotNull String domin, final @NotNull String identifier, final @Nullable String pwd) throws IOException, IllegalParametersException {
         final String sharePage = DriverHelper_lanzou.requestHtml(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin + '/' + identifier, "GET"));
         if (sharePage.contains("\u6587\u4EF6\u53D6\u6D88\u5206\u4EAB\u4E86") || sharePage.contains("\u6587\u4EF6\u5730\u5740\u9519\u8BEF"))
             return null;
@@ -212,14 +212,22 @@ final class DriverHelper_lanzou {
         if (dom == null || para == null)
             throw new WrongResponseException("Getting single shared file download url.", json, parametersMap);
         final String displayUrl = dom + "/file/" + para;
-//        try (final Response response = DriverNetworkHelper.getWithParameters(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(displayUrl, "GET"),
-//                DriverHelper_lanzou.headers.newBuilder().add("Range", "bytes=0-0").build(), null).execute()) {
-//
-//        }
-        return displayUrl;
+        final String redirectPage;
+        try (final Response response = DriverNetworkHelper.getWithParameters(DriverNetworkHelper.noRedirectHttpClient, Pair.ImmutablePair.makeImmutablePair(displayUrl, "GET"),
+                DriverHelper_lanzou.headers, null).execute()) {
+            if (response.code() == 302) {
+                final String finalUrl = response.header("Location");
+                assert finalUrl != null;
+                return Pair.ImmutablePair.makeImmutablePair(finalUrl, null); // Allow range.
+            }
+            redirectPage = DriverUtil.removeHtmlComments(DriverNetworkHelper.extraResponseBody(response).string());
+        }
+        // TODO: el
+        DriverHelper_lanzou.logger.log(HLogLevel.WARN, "Find el: " + redirectPage);
+        return Pair.ImmutablePair.makeImmutablePair(displayUrl, null);
     }
 
-    static @Nullable String getFileDownloadUrl(final @NotNull DriverConfiguration_lanzou configuration, final long fileId) throws IOException {
+    static @Nullable Pair.ImmutablePair<@NotNull String, @Nullable Headers> getFileDownloadUrl(final @NotNull DriverConfiguration_lanzou configuration, final long fileId) throws IOException {
         // TODO: get by FileSalInformation.others
         final FormBody.Builder sharerBuilder = new FormBody.Builder()
                 .add("file_id", String.valueOf(fileId));
@@ -240,8 +248,13 @@ final class DriverHelper_lanzou {
         }
     }
 
-    static Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull LocalDateTime> testRealSizeAndData(final @NotNull DriverConfiguration_lanzou configuration, final @NotNull String downloadUrl) throws IOException {
-        final Headers headers = DriverNetworkHelper.getRealHeader(configuration.getFileClient(), downloadUrl, DriverHelper_lanzou.headers, null);
+    static Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull LocalDateTime> testRealSizeAndData(final @NotNull DriverConfiguration_lanzou configuration, final @NotNull Pair.ImmutablePair<@NotNull String, @Nullable Headers> downloadUrl) throws IOException {
+        final Headers headers;
+        if (downloadUrl.getSecond() == null)
+            try (final Response response = DriverNetworkHelper.getWithParameters(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(downloadUrl.getFirst(), "HEAD"), DriverHelper_lanzou.headers, null).execute()) {
+                headers = response.headers();
+            }
+        else headers = downloadUrl.getSecond();
         final String sizeS = headers.get("Content-Length");
         final String dataS = headers.get("Last-Modified");
         if (sizeS == null || dataS == null)
@@ -311,7 +324,7 @@ final class DriverHelper_lanzou {
             if (name == null || id == null) continue;
             CompletableFuture.runAsync(HExceptionWrapper.wrapRunnable(() -> {
                 try {
-                    final String url = DriverHelper_lanzou.getFileDownloadUrl(configuration, id.longValue());
+                    final Pair.ImmutablePair<String, Headers> url = DriverHelper_lanzou.getFileDownloadUrl(configuration, id.longValue());
                     if (url == null || interrupttedFlag.get()) return;
                     final Pair<Long, LocalDateTime> fixed = DriverHelper_lanzou.testRealSizeAndData(configuration, url);
                     if (fixed == null || interrupttedFlag.get()) return;

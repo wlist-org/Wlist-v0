@@ -18,6 +18,7 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.CompositeByteBuf;
 import okhttp3.Headers;
 import okhttp3.OkHttpClient;
+import okhttp3.Response;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -218,7 +219,12 @@ public final class DriverUtil {
         final long total = end - from;
         if (from >= size || total < 0)
             return new DownloadMethods(0, List.of(), RunnableE.EmptyRunnable, null);
-        final Headers urlHeaders = urlHeader == null ? DriverNetworkHelper.getRealHeader(DriverNetworkHelper.defaultHttpClient, url.getFirst(), Objects.requireNonNullElseGet(builder, Headers.Builder::new).build(), null) : urlHeader;
+        final Headers urlHeaders;
+        if (urlHeader == null)
+            try (final Response response = DriverNetworkHelper.getWithParameters(client, Pair.ImmutablePair.makeImmutablePair(url.getFirst(), "HEAD"), builder == null ? null : builder.build(), null).execute()) {
+                urlHeaders = response.headers();
+            }
+        else urlHeaders = urlHeader;
         final Instant instant = urlHeaders.getInstant("Expires");
         if (!Objects.requireNonNullElse(urlHeaders.get("Accept-Ranges"), "").contains("bytes"))
             throw new IllegalStateException("File cannot download by range header." + ParametersMap.create().add("url", url).add("size", size).add("from", from).add("to", to).add("urlHeaders", urlHeaders.toMultimap()));

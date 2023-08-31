@@ -258,19 +258,6 @@ public final class DriverNetworkHelper {
                         .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().toString())));
     }
 
-    public static @NotNull Headers getRealHeader(final @NotNull OkHttpClient client, final @NotNull String url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull String> parameters) throws IOException {
-        String head = url;
-        while (true) {
-            try (final Response response = DriverNetworkHelper.getWithParameters(client, Pair.ImmutablePair.makeImmutablePair(head, "HEAD"), headers, parameters).execute()) {
-                if (response.code() != 302)
-                    return response.headers();
-                head = response.header("Location");
-                if (head == null)
-                    throw new IOException("No redirect location." + ParametersMap.create().add("url", url));
-            }
-        }
-    }
-
     public static @NotNull ResponseBody extraResponseBody(final @NotNull Response response) throws NetworkException {
         if (!response.isSuccessful())
             throw new NetworkException(response.code(), response.message());

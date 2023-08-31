@@ -1,29 +1,26 @@
 package com.xuxiaocheng.WList;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
-import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Databases.Constant.ConstantSqlHelper;
-import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Databases.GenericSql.PooledDatabase;
 import com.xuxiaocheng.WList.Databases.GenericSql.PooledDatabaseHelper;
 import com.xuxiaocheng.WList.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Databases.User.UserSqlHelper;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Databases.UserGroup.UserGroupSqlHelper;
-import com.xuxiaocheng.WList.Driver.FailureReason;
-import com.xuxiaocheng.WList.Driver.FileLocation;
 import com.xuxiaocheng.WList.Driver.Helpers.DriverNetworkHelper;
-import com.xuxiaocheng.WList.Driver.Options;
+import com.xuxiaocheng.WList.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Server.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
-import com.xuxiaocheng.WList.Server.InternalDrivers.RootDriver;
 import com.xuxiaocheng.WList.Server.WListServer;
+import okhttp3.Headers;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -37,11 +34,8 @@ public final class WListTest {
 
     private static final boolean initializeServer = true;
     private static final @NotNull SupplierE<@Nullable Object> _main = () -> {
-        final UnionPair<FileSqlInformation, FailureReason> directory = RootDriver.getInstance().createDirectory(new FileLocation("test", -1), "a", Options.DuplicatePolicy.ERROR);
-        if (directory.isFailure()) return directory;
-        final UnionPair<FileSqlInformation, FailureReason> file = RootDriver.getInstance().copy(new FileLocation("test", 131325697), new FileLocation("test", directory.getT().id()), "0.txt", Options.DuplicatePolicy.ERROR);
-        if (file.isFailure()) return file;
-        return RootDriver.getInstance().list(new FileLocation("test", directory.getT().id()), Options.DirectoriesOrFiles.Both, 20, 0, Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND);
+        return DriverUtil.getDownloadMethodsByUrlWithRangeHeader(DriverNetworkHelper.defaultHttpClient, Pair.ImmutablePair.makeImmutablePair("", "GET"),
+                null, 10, 0, Long.MAX_VALUE, new Headers.Builder().set("accept-language", "zh-CN"));
 //        return null;
     };
 
