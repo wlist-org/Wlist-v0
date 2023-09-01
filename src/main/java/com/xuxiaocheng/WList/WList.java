@@ -3,6 +3,7 @@ package com.xuxiaocheng.WList;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
+import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
@@ -73,6 +74,8 @@ public final class WList {
         }
     }
 
+    public static final @NotNull HInitializer<File> RuntimePath = new HInitializer<>("RuntimePath");
+
     public static void main(final String @NotNull ... args) {
         if (!WList.mainStageAPI.compareAndSet(-1, 0)) return;
         File runtimePath = new File("").getAbsoluteFile();
@@ -93,6 +96,7 @@ public final class WList {
         HUncaughtExceptionHelper.setUncaughtExceptionListener("listener", (t, e) -> logger.log(HLogLevel.FAULT, "Uncaught exception listened by WList. thread: ", t.getName(), e));
         try {
             logger.log(HLogLevel.FINE, "Hello WList (Server v0.2.3)! Loading...");
+            WList.RuntimePath.initialize(runtimePath);
             final File configurationPath = new File(runtimePath, "server.yaml");
             logger.log(HLogLevel.LESS, "Initializing global configuration.", ParametersMap.create().add("file", configurationPath));
             GlobalConfiguration.initialize(configurationPath);

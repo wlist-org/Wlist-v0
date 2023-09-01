@@ -8,6 +8,7 @@ import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
+import com.xuxiaocheng.WList.WList;
 import io.netty.util.IllegalReferenceCountException;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.PooledObjectFactory;
@@ -50,12 +51,16 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
         this.connectionConfig = connectionConfig;
     }
 
+    public static @NotNull File getDriverFile(final @NotNull String driverName) {
+        return new File(WList.RuntimePath.getInstance(), "cache/" + driverName + ".db");
+    }
+
     public static @NotNull PooledDatabaseHelper getDefault(final @NotNull File database) {
         final GenericObjectPoolConfig<Connection> poolConfig = new GenericObjectPoolConfig<>();
         poolConfig.setJmxEnabled(AndroidSupporter.jmxEnable); // default: true
         poolConfig.setTestOnBorrow(true);
         return new PooledDatabaseHelper(poolConfig, new PooledDatabaseHelper.PooledDatabaseConfig(database,
-                SQLiteConfig.JournalMode.WAL, Connection.TRANSACTION_READ_COMMITTED));
+                SQLiteConfig.JournalMode.PERSIST, Connection.TRANSACTION_SERIALIZABLE));
     }
 
     @Override

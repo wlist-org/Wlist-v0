@@ -7,7 +7,8 @@ import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.WList.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Databases.File.FileSqlHelper;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
-import com.xuxiaocheng.WList.Databases.GenericSql.PooledDatabase;
+import com.xuxiaocheng.WList.Databases.GenericSql.PooledDatabaseHelper;
+import com.xuxiaocheng.WList.Databases.GenericSql.PooledDatabaseInterface;
 import com.xuxiaocheng.WList.Databases.TrashedFile.TrashedFileManager;
 import com.xuxiaocheng.WList.Databases.TrashedFile.TrashedSqlHelper;
 import com.xuxiaocheng.WList.Driver.DriverInterface;
@@ -43,11 +44,13 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
 
     @Override
     public void initialize(final @NotNull DriverConfiguration_lanzou configuration) throws SQLException {
-        FileManager.quicklyInitialize(new FileSqlHelper(PooledDatabase.instance.getInstance(), configuration.getName(), configuration.getWebSide().getRootDirectoryId()), null);
+        final PooledDatabaseInterface database = PooledDatabaseHelper.getDefault(PooledDatabaseHelper.getDriverFile(configuration.getName()));
+        database.open();
+        FileManager.quicklyInitialize(new FileSqlHelper(database, configuration.getName(), configuration.getWebSide().getRootDirectoryId()), null);
         this.configuration = configuration;
         FileManager.mergeFile(this.configuration.getName(), RootDriver.getDatabaseDriverInformation(this.configuration), null);
 
-        TrashedFileManager.quicklyInitialize(new TrashedSqlHelper(PooledDatabase.instance.getInstance(), configuration.getName()), null);
+        TrashedFileManager.quicklyInitialize(new TrashedSqlHelper(database, configuration.getName()), null);
     }
 
     @Override
