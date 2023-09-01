@@ -21,6 +21,7 @@ import android.view.animation.RotateAnimation;
 import android.widget.AbsListView;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.UiThread;
@@ -29,6 +30,8 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.xuxiaocheng.HeadLibs.AndroidSupport.AIOStream;
+import com.xuxiaocheng.HeadLibs.AndroidSupport.ARandomHelper;
+import com.xuxiaocheng.HeadLibs.AndroidSupport.AStreams;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
@@ -37,11 +40,14 @@ import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMathHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMessageDigestHelper;
+import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
 import com.xuxiaocheng.WListClient.AndroidSupports.FileInformationGetter;
 import com.xuxiaocheng.WListClient.AndroidSupports.FileLocationSupporter;
 import com.xuxiaocheng.WListClient.Client.OperationHelpers.OperateFileHelper;
+import com.xuxiaocheng.WListClient.Client.OperationHelpers.OperateServerHelper;
 import com.xuxiaocheng.WListClient.Client.WListClient;
 import com.xuxiaocheng.WListClient.Client.WListClientInterface;
 import com.xuxiaocheng.WListClient.Client.WListClientManager;
@@ -51,30 +57,36 @@ import com.xuxiaocheng.WListClient.Server.Options;
 import com.xuxiaocheng.WListClient.Server.SpecialDriverName;
 import com.xuxiaocheng.WListClient.Server.VisibleFileInformation;
 import com.xuxiaocheng.WListClientAndroid.Activities.CustomViews.MainTab;
+import com.xuxiaocheng.WListClientAndroid.Activities.LoginActivity;
 import com.xuxiaocheng.WListClientAndroid.Client.TokenManager;
 import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.R;
 import com.xuxiaocheng.WListClientAndroid.Utils.EnhancedRecyclerViewAdapter;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileContentBinding;
+import com.xuxiaocheng.WListClientAndroid.databinding.PageFileDriverBinding;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileEditorBinding;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileOptionBinding;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileUploadBinding;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufInputStream;
+import io.netty.buffer.ByteBufOutputStream;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.List;
@@ -302,7 +314,7 @@ public class FilePage implements MainTab.MainTabPage {
                 y = preferences.getFloat("y", 0);
             } else {
                 final DisplayMetrics displayMetrics = this.activity.getResources().getDisplayMetrics();
-                x = preferences.getFloat("x", (displayMetrics.widthPixels - page.pageFileContentUploader.getWidth()) * 0.9f);
+                x = preferences.getFloat("x", (displayMetrics.widthPixels - page.pageFileContentUploader.getWidth()) * 0.7f);
                 y = preferences.getFloat("y", displayMetrics.heightPixels * 0.6f);
                 preferences.edit().putFloat("x", x).putFloat("y", y).apply();
             }
@@ -314,8 +326,67 @@ public class FilePage implements MainTab.MainTabPage {
         page.pageFileContentUploader.setOnClickListener(u -> {
             if (this.locationStack.isEmpty()) return;
             if (this.locationStack.size() < 2) { // Root driver
-                // TODO: add driver.
-                Main.showToast(this.activity, R.string.page_file_upload_root);
+                if (!this.address.equals(LoginActivity.internalServerAddress.getInstanceNullable())) {
+                    Main.showToast(this.activity, R.string.page_file_upload_root);
+                    return;
+                }
+                final String[] drivers = AStreams.streamToList(Arrays.stream(WebDriversType.values()).map(WebDriversType::getIdentifier))
+                        .toArray(new String[WebDriversType.values().length]);
+                final AtomicInteger choice = new AtomicInteger(-1);
+                new AlertDialog.Builder(this.activity).setTitle(R.string.page_file_driver_add)
+                        .setSingleChoiceItems(drivers, -1, (d, w) -> choice.set(w))
+                        .setNegativeButton(R.string.cancel, (d, w) -> {})
+                        .setPositiveButton(R.string.confirm, (d, w) -> {
+                            final String identifier = drivers[choice.get()];
+                            final PageFileDriverBinding driverBinding = PageFileDriverBinding.inflate(this.activity.getLayoutInflater());
+                            driverBinding.pageFileDriverName.setText(identifier);
+                            new AlertDialog.Builder(this.activity).setTitle(identifier).setView(driverBinding.getRoot())
+                                    .setNegativeButton(R.string.cancel, (b, h) -> {})
+                                    .setPositiveButton(R.string.confirm, (b, h) -> {
+                                        final Editable name_e = driverBinding.pageFileDriverName.getText();
+                                        final Editable passport_e = driverBinding.pageFileDriverPassport.getText();
+                                        final Editable password_e = driverBinding.pageFileDriverPassword.getText();
+                                        final String name = name_e == null ? "" : name_e.toString();
+                                        final String passport = passport_e == null ? "" : passport_e.toString();
+                                        final String password = password_e == null ? "" : password_e.toString();
+                                        final ImageView loading = new ImageView(this.activity);
+                                        loading.setImageResource(R.mipmap.page_file_loading);
+                                        FilePage.setLoading(loading);
+                                        final AlertDialog dialog = new AlertDialog.Builder(this.activity)
+                                                .setTitle(R.string.page_file_driver_add).setView(loading).setCancelable(false).show();
+                                        Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
+                                            if (name.isEmpty() || passport.isEmpty() || password.isEmpty())
+                                                throw new IllegalStateException("Empty input."); // TODO input checker
+                                            // TODO add driver. (WIP)
+                                            final String n = ARandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 32, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_");
+                                            final File file = new File(this.activity.getExternalFilesDir("server"), "configs/" + n + ".yaml");
+                                            HFileHelper.ensureFileExist(file.toPath(), false);
+                                            try (final OutputStream stream = new BufferedOutputStream(new FileOutputStream(file))) {
+                                                stream.write(String.format("local:\n  display_name: %s\nweb:\n  passport: '%s'\n  password: '%s'\n", name, passport, password).getBytes());
+                                            }
+                                            final String configuration;
+                                            try (final InputStream stream = new BufferedInputStream(new FileInputStream(new File(this.activity.getExternalFilesDir("server"), "server.yaml")))) {
+                                                final ByteBuf buf = ByteBufAllocator.DEFAULT.heapBuffer();
+                                                try (final OutputStream os = new ByteBufOutputStream(buf)) {
+                                                    AIOStream.transferTo(stream, os);
+                                                    configuration = buf.toString(StandardCharsets.UTF_8);
+                                                } finally {
+                                                    buf.release();
+                                                }
+                                            }
+                                            try (final OutputStream stream = new BufferedOutputStream(new FileOutputStream(new File(this.activity.getExternalFilesDir("server"), "server.yaml")))) {
+                                                stream.write(configuration.replace(" {}", "").getBytes(StandardCharsets.UTF_8));
+                                                stream.write(String.format("  %s: %s\n", n, identifier).getBytes());
+                                            }
+                                            Main.runOnUiThread(this.activity, () -> {
+                                                Toast.makeText(this.activity, "Server needs to be restarted to adapt to changes.", Toast.LENGTH_SHORT).show();
+                                            });
+                                            try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address)) {
+                                               OperateServerHelper.closeServer(client, TokenManager.getToken(this.address));
+                                            }
+                                        }, () -> Main.runOnUiThread(this.activity, dialog::cancel)));
+                                    }).show();
+                        }).show();
                 return;
             }
             final LocationStackRecord record = this.locationStack.getFirst();
@@ -461,6 +532,7 @@ public class FilePage implements MainTab.MainTabPage {
         return this.popFileList();
     }
 
+    @UiThread
     private static void setLoading(@NonNull final ImageView loading) {
         final Animation loadingAnimation = new RotateAnimation(0, 360 << 10, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
         loadingAnimation.setDuration(500 << 10);

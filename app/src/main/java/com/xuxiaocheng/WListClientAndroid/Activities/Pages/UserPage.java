@@ -49,8 +49,8 @@ public class UserPage implements MainTab.MainTabPage {
                 try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address)) {
                     success = OperateServerHelper.closeServer(client, TokenManager.getToken(this.address));
                 }
-                if (success)
-                    Main.runOnUiThread(this.activity, this.activity::close);
+//                if (success)
+//                    Main.runOnUiThread(this.activity, this.activity::close);
             }, () -> clickable.set(true)));
         });
         disconnection.setOnClickListener(v -> {

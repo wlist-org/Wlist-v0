@@ -33,7 +33,7 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class LoginActivity extends AppCompatActivity {
-    @NonNull private static final HInitializer<InetSocketAddress> internalServerAddress = new HInitializer<>("InternalServerAddress");
+    @NonNull public static final HInitializer<InetSocketAddress> internalServerAddress = new HInitializer<>("InternalServerAddress");
 
     @Override
     protected void onCreate(@Nullable final Bundle savedInstanceState) {
@@ -121,16 +121,15 @@ public class LoginActivity extends AppCompatActivity {
                 }
             }, Context.BIND_AUTO_CREATE);
         });
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, "EXTERNAL_STORAGE".hashCode());
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, "EXTERNAL_STORAGE".hashCode());
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
+                || ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, "EXTERNAL_STORAGE".hashCode());
     }
 
     @Override
     public void onRequestPermissionsResult(final int requestCode, @NonNull final String[] permissions, @NonNull final int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == "EXTERNAL_STORAGE".hashCode() && grantResults[0] != PackageManager.PERMISSION_GRANTED)
+        if (requestCode == "EXTERNAL_STORAGE".hashCode() && grantResults.length == 2 && (grantResults[0] != PackageManager.PERMISSION_GRANTED || grantResults[1] != PackageManager.PERMISSION_GRANTED))
             Main.showToast(this, R.string.toast_no_permissions);
     }
 

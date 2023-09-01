@@ -46,6 +46,10 @@
 	<string name="page_file_upload_directory_hint">请输入文件夹名称</string>
 	<string name="page_file_upload_success_directory">创建文件夹成功</string>
 	<string name="page_file_upload_success_file">上传文件成功</string>
+	<string name="page_file_driver_name">目录名称：</string>
+	<string name="page_file_driver_passport">网盘账号：</string>
+	<string name="page_file_driver_password">网盘密码：</string>
+	<string name="page_file_driver_add">添加网盘</string>
 	<string name="page_user_disconnect">断开连接</string>
 	<string name="page_user_close_server">关闭服务端</string>
 </resources>
