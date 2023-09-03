@@ -296,10 +296,11 @@ public final class DriverNetworkHelper {
 
             @Override
             public void writeTo(final @NotNull BufferedSink bufferedSink) throws IOException {
-                final ByteBuffer nio;
-                try {
-                    nio = this.content.nioBuffer(this.content.readerIndex(), this.content.readableBytes());
-                } catch (final RuntimeException exception) {
+                if (this.content.readableBytes() == 0)
+                    return;
+                if (this.content.nioBufferCount() < 0) {
+                    HLog.getInstance("NetworkLogger").log(HLogLevel.MISTAKE, "Rewrite data from netty to okhttp by default algorithm.",
+                            ParametersMap.create().add("content", this.content)); // Reachable?
                     final int bufferSize = Math.min(this.length, 2 << 20);
                     for (final byte[] buffer = new byte[bufferSize]; this.content.readableBytes() > 0; ) {
                         final int len = Math.min(bufferSize, this.content.readableBytes());
@@ -308,7 +309,9 @@ public final class DriverNetworkHelper {
                     }
                     return;
                 }
-                bufferedSink.write(nio);
+                final ByteBuffer[] buffers = this.content.nioBuffers();
+                for (final ByteBuffer buffer: buffers)
+                    bufferedSink.write(buffer);
             }
 
             @Override

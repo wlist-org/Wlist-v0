@@ -18,7 +18,7 @@ dependencies {
     implementation 'com.auth0:java-jwt:4.3.0'
     implementation 'io.netty:netty-all:4.1.90.Final'
     implementation 'org.apache.commons:commons-pool2:2.11.1'
-    implementation 'org.xerial:sqlite-jdbc:3.42.0.0'
+    implementation 'org.xerial:sqlite-jdbc:3.43.0.0'
     implementation 'org.openjdk.nashorn:nashorn-core:15.4'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.2'

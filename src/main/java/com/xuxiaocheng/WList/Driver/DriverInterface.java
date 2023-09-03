@@ -1,6 +1,5 @@
 package com.xuxiaocheng.WList.Driver;
 
-import com.xuxiaocheng.HeadLibs.Annotations.Range.LongRange;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
@@ -10,6 +9,7 @@ import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.HeadLibs.Ranges.LongRange;
 import com.xuxiaocheng.WList.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInterface;
@@ -107,7 +107,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @param from The stream start byte.
      * @param to The stream stop byte.
      * @return Download methods for every 4MB ({@link com.xuxiaocheng.WList.Server.WListServer#FileTransferBufferSize}) chunks of file.
-     * @see com.xuxiaocheng.WList.Driver.Helpers.DriverUtil#getDownloadMethodsByUrlWithRangeHeader(OkHttpClient, Pair.ImmutablePair, long, long, long, Headers.Builder)
+     * @see com.xuxiaocheng.WList.Driver.Helpers.DriverUtil#getDownloadMethodsByUrlWithRangeHeader(OkHttpClient, Pair.ImmutablePair, Headers, long, long, long, Headers.Builder)
      * @see com.xuxiaocheng.WList.Driver.Helpers.DriverUtil#toCachedDownloadMethods(DownloadMethods) (Suggest)
      * @throws Exception Something went wrong.
      */
