@@ -623,6 +623,7 @@ public class FilePage implements MainTab.MainTabPage {
                                 }, () -> Main.runOnUiThread(this.page.activity, dialog::cancel)));
                             }).show();
                 });
+                optionBinding.pageFileOptionRenameIcon.setOnClickListener(u -> optionBinding.pageFileOptionRename.performClick());
                 optionBinding.pageFileOptionMove.setOnClickListener(u -> {
                     if (!clickable.compareAndSet(true, false)) return;
                     modifier.cancel();
@@ -653,6 +654,7 @@ public class FilePage implements MainTab.MainTabPage {
 //                    final AlertDialog.Builder chooser = new AlertDialog.Builder(this.page.activity).setTitle(R.string.page_file_option_move)
 //                            .setView()
                 });
+                optionBinding.pageFileOptionMoveIcon.setOnClickListener(u -> optionBinding.pageFileOptionMove.performClick());
                 optionBinding.pageFileOptionCopy.setOnClickListener(u -> {
                     if (!clickable.compareAndSet(true, false)) return;
                     modifier.cancel();
@@ -661,6 +663,7 @@ public class FilePage implements MainTab.MainTabPage {
                         throw new UnsupportedOperationException("Copy file is unsupported now!");
                     });
                 });
+                optionBinding.pageFileOptionCopyIcon.setOnClickListener(u -> optionBinding.pageFileOptionCopy.performClick());
                 optionBinding.pageFileOptionDelete.setOnClickListener(u -> {
                     if (!clickable.compareAndSet(true, false)) return;
                     modifier.cancel();
@@ -683,6 +686,7 @@ public class FilePage implements MainTab.MainTabPage {
                         });
                     }, () -> Main.runOnUiThread(this.page.activity, dialog::cancel)));
                 });
+                optionBinding.pageFileOptionDeleteIcon.setOnClickListener(u -> optionBinding.pageFileOptionDelete.performClick());
                 optionBinding.pageFileOptionDownload.setOnClickListener(u -> {
                     if (!clickable.compareAndSet(true, false)) return;
                     modifier.cancel();
@@ -716,6 +720,7 @@ public class FilePage implements MainTab.MainTabPage {
                         Main.showToast(this.page.activity, R.string.page_file_option_download_success);
                     }, () -> Main.runOnUiThread(this.page.activity, dialog::cancel)));
                 });
+                optionBinding.pageFileOptionDownloadIcon.setOnClickListener(u -> optionBinding.pageFileOptionDownload.performClick());
                 modifier.show();
             });
         }

@@ -33,12 +33,12 @@ public final class HLogManager {
         for (final String name: HLogManager.loggers)
             HLogManager.buildInstance(name, "DefaultLogger".equals(name) || "ClientLogger".equals(name) ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1);
         OperateHelper.logOperation.set(false);
-        HUncaughtExceptionHelper.disableUncaughtExceptionListener(HUncaughtExceptionHelper.defaultKey); // Application Killer
-        HUncaughtExceptionHelper.setUncaughtExceptionListener(HUncaughtExceptionHelper.listenerKey, (t, e) ->
+        HUncaughtExceptionHelper.disableUncaughtExceptionListener(HUncaughtExceptionHelper.DefaultKey); // Application Killer
+        HUncaughtExceptionHelper.setUncaughtExceptionListener(HUncaughtExceptionHelper.ListenerKey, (t, e) ->
                 HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Uncaught exception listened by WList Android.", ParametersMap.create().add("thread", t.getName()).add("pid", Process.myPid()), e));
-        final Thread.UncaughtExceptionHandler defaulter = HUncaughtExceptionHelper.getUncaughtExceptionListener(HUncaughtExceptionHelper.defaultKey);
-        final Thread.UncaughtExceptionHandler killer = HUncaughtExceptionHelper.getUncaughtExceptionListener(HUncaughtExceptionHelper.killerKey);
-        HUncaughtExceptionHelper.replaceUncaughtExceptionListener(HUncaughtExceptionHelper.killerKey, (t, e) -> {
+        final Thread.UncaughtExceptionHandler defaulter = HUncaughtExceptionHelper.getUncaughtExceptionListener(HUncaughtExceptionHelper.DefaultKey);
+        final Thread.UncaughtExceptionHandler killer = HUncaughtExceptionHelper.getUncaughtExceptionListener(HUncaughtExceptionHelper.KillerKey);
+        HUncaughtExceptionHelper.replaceUncaughtExceptionListener(HUncaughtExceptionHelper.KillerKey, (t, e) -> {
             if (Looper.getMainLooper().getThread() == t) {
                 if (defaulter != null) defaulter.uncaughtException(t, e);
                 if (killer != null) killer.uncaughtException(t, e);

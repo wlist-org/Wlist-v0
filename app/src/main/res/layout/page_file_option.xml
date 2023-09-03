@@ -17,6 +17,8 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:lines="1"
+		android:paddingTop="5dp"
+		android:paddingBottom="5dp"
 		android:text="@string/page_file_option_name"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
@@ -44,6 +46,8 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:lines="1"
+		android:paddingTop="5dp"
+		android:paddingBottom="5dp"
 		android:text="@string/page_file_option_size"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
@@ -71,6 +75,8 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:lines="1"
+		android:paddingTop="5dp"
+		android:paddingBottom="5dp"
 		android:text="@string/page_file_option_create"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
@@ -98,6 +104,8 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:lines="1"
+		android:paddingTop="5dp"
+		android:paddingBottom="5dp"
 		android:text="@string/page_file_option_update"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
@@ -132,6 +140,8 @@
 		android:layout_width="0dp"
 		android:layout_height="wrap_content"
 		android:lines="1"
+		android:paddingTop="5dp"
+		android:paddingBottom="5dp"
 		android:text="@string/page_file_option_rename"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
@@ -140,11 +150,26 @@
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toBottomOf="@id/page_file_option_update_text" />
 
+	<androidx.appcompat.widget.AppCompatImageView
+		android:id="@+id/page_file_option_rename_icon"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:paddingTop="5dp"
+		android:paddingBottom="5dp"
+		android:scaleType="centerInside"
+		android:src="@mipmap/page_file_option_rename"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_option_rename"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toLeftOf="@id/page_file_option_guideline_icon"
+		app:layout_constraintTop_toTopOf="@id/page_file_option_rename" />
+
 	<androidx.appcompat.widget.AppCompatTextView
 		android:id="@+id/page_file_option_move"
 		android:layout_width="0dp"
 		android:layout_height="wrap_content"
 		android:lines="1"
+		android:paddingTop="5dp"
+		android:paddingBottom="5dp"
 		android:text="@string/page_file_option_move"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
@@ -153,11 +178,26 @@
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toBottomOf="@id/page_file_option_rename" />
 
+	<androidx.appcompat.widget.AppCompatImageView
+		android:id="@+id/page_file_option_move_icon"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:paddingTop="5dp"
+		android:paddingBottom="5dp"
+		android:scaleType="centerInside"
+		android:src="@mipmap/page_file_option_move"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_option_move"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toLeftOf="@id/page_file_option_guideline_icon"
+		app:layout_constraintTop_toTopOf="@id/page_file_option_move" />
+
 	<androidx.appcompat.widget.AppCompatTextView
 		android:id="@+id/page_file_option_copy"
 		android:layout_width="0dp"
 		android:layout_height="wrap_content"
 		android:lines="1"
+		android:paddingTop="5dp"
+		android:paddingBottom="5dp"
 		android:text="@string/page_file_option_copy"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
@@ -166,11 +206,26 @@
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toBottomOf="@id/page_file_option_move" />
 
+	<androidx.appcompat.widget.AppCompatImageView
+		android:id="@+id/page_file_option_copy_icon"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:paddingTop="5dp"
+		android:paddingBottom="5dp"
+		android:scaleType="centerInside"
+		android:src="@mipmap/page_file_option_copy"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_option_copy"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toLeftOf="@id/page_file_option_guideline_icon"
+		app:layout_constraintTop_toTopOf="@id/page_file_option_copy" />
+
 	<androidx.appcompat.widget.AppCompatTextView
 		android:id="@+id/page_file_option_delete"
 		android:layout_width="0dp"
 		android:layout_height="wrap_content"
 		android:lines="1"
+		android:paddingTop="5dp"
+		android:paddingBottom="5dp"
 		android:text="@string/page_file_option_delete"
 		android:textColor="@color/text_warning"
 		android:textSize="20sp"
@@ -179,11 +234,26 @@
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toBottomOf="@id/page_file_option_copy" />
 
+	<androidx.appcompat.widget.AppCompatImageView
+		android:id="@+id/page_file_option_delete_icon"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:paddingTop="5dp"
+		android:paddingBottom="5dp"
+		android:scaleType="centerInside"
+		android:src="@mipmap/page_file_option_delete"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_option_delete"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toLeftOf="@id/page_file_option_guideline_icon"
+		app:layout_constraintTop_toTopOf="@id/page_file_option_delete" />
+
 	<androidx.appcompat.widget.AppCompatTextView
 		android:id="@+id/page_file_option_download"
 		android:layout_width="0dp"
 		android:layout_height="wrap_content"
 		android:lines="1"
+		android:paddingTop="5dp"
+		android:paddingBottom="5dp"
 		android:text="@string/page_file_option_download"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
@@ -191,5 +261,18 @@
 		app:layout_constraintLeft_toRightOf="@id/page_file_option_guideline_icon"
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toBottomOf="@id/page_file_option_delete" />
+
+	<androidx.appcompat.widget.AppCompatImageView
+		android:id="@+id/page_file_option_download_icon"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:paddingTop="5dp"
+		android:paddingBottom="5dp"
+		android:scaleType="centerInside"
+		android:src="@mipmap/page_file_option_download"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_option_download"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toLeftOf="@id/page_file_option_guideline_icon"
+		app:layout_constraintTop_toTopOf="@id/page_file_option_download" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
