@@ -29,20 +29,21 @@ public final class UserTokenHelper {
             () -> ARandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 128, ConstantManager.DefaultRandomChars), "initialize")).get());
     private static final JWTCreator.Builder builder = JWT.create().withIssuer("WList");
     private static final JWTVerifier verifier = JWT.require(UserTokenHelper.sign).withIssuer("WList").build();
+    private static final @NotNull String constPrefix = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.";
 
     public static @NotNull String encodeToken(final long id, final @NotNull LocalDateTime modifyTime) {
         return UserTokenHelper.builder.withAudience(Long.toString(id, Character.MAX_RADIX))
                 .withJWTId(String.valueOf(modifyTime.toEpochSecond(ZoneOffset.UTC)))
                 .withSubject(String.valueOf(modifyTime.getNano()))
                 .withExpiresAt(LocalDateTime.now().plusSeconds(GlobalConfiguration.getInstance().tokenExpireTime()).toInstant(ZoneOffset.UTC))
-                .sign(UserTokenHelper.sign);
+                .sign(UserTokenHelper.sign).substring(UserTokenHelper.constPrefix.length());
     }
 
     public static @Nullable UserSqlInformation decodeToken(final @NotNull String token) throws SQLException {
         final long id;
         final LocalDateTime modifyTime;
         try {
-            final Payload payload = UserTokenHelper.verifier.verify(token);
+            final Payload payload = UserTokenHelper.verifier.verify(UserTokenHelper.constPrefix + token);
             if (LocalDateTime.now().isAfter(LocalDateTime.ofInstant(payload.getExpiresAtAsInstant(), ZoneOffset.UTC)))
                 return null;
             id = Long.valueOf(payload.getAudience().get(0), Character.MAX_RADIX).longValue();
