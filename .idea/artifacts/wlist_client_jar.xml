@@ -44,6 +44,7 @@
       <element id="extracted-dir" path="$PROJECT_DIR$/../../AppData/JetBrains/GradleHome/caches/modules-2/files-2.1/io.netty/netty-codec-xml/4.1.90.Final/512dbd4c80e9a80ee60e851e69c6296a7d7cafb/netty-codec-xml-4.1.90.Final.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/../../AppData/JetBrains/GradleHome/caches/modules-2/files-2.1/io.netty/netty-codec-stomp/4.1.90.Final/9f777f47582b272a48bab08a4151a41f9a486305/netty-codec-stomp-4.1.90.Final.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/../../AppData/JetBrains/GradleHome/caches/modules-2/files-2.1/io.netty/netty-codec-mqtt/4.1.90.Final/5c0e386a806e8846f4f33eccb6a8631e5ef55c09/netty-codec-mqtt-4.1.90.Final.jar" path-in-jar="/" />
+      <element id="dir-copy" path="$PROJECT_DIR$/src/main/resources" />
     </root>
   </artifact>
 </component>

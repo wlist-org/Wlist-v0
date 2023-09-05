@@ -3,6 +3,7 @@ package com.xuxiaocheng.WListClient.Client;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.Rust.NetworkTransmission;
 import com.xuxiaocheng.WListClient.Main;
 import com.xuxiaocheng.WListClient.Server.MessageClientCiphers;
 import io.netty.bootstrap.Bootstrap;
@@ -34,11 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class WListClient implements WListClientInterface {
-    public static final int FileTransferBufferSize = 4 << 20;
-    public static final int MaxSizePerPacket = (64 << 10) + WListClient.FileTransferBufferSize;
-    private static final @NotNull HLog logger = HLog.createInstance("ClientLogger",
-            Main.DebugMode ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1,
-            true);
+    private static final @NotNull HLog logger = HLog.createInstance("ClientLogger", Main.DebugMode ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, true);
 
     protected final @NotNull EventLoopGroup clientEventLoop = new NioEventLoopGroup(1, new DefaultThreadFactory("ClientEventLoop"));
     protected final @NotNull SocketAddress address;
@@ -60,14 +57,15 @@ public class WListClient implements WListClientInterface {
         bootstrap.channel(NioSocketChannel.class);
         bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
         bootstrap.option(ChannelOption.SO_REUSEADDR, true);
-        final AtomicBoolean uninitialized = new AtomicBoolean(true);
+        final AtomicBoolean initialized = new AtomicBoolean(false);
+        final AtomicReference<Throwable> error = new AtomicReference<>(null);
         bootstrap.handler(new ChannelInitializer<SocketChannel>() {
             @Override
             protected void initChannel(final @NotNull SocketChannel ch) throws NoSuchPaddingException, NoSuchAlgorithmException {
                 final ChannelPipeline pipeline = ch.pipeline();
-                pipeline.addLast("LengthDecoder", new LengthFieldBasedFrameDecoder(WListClient.MaxSizePerPacket, 0, 4, 0, 4));
+                pipeline.addLast("LengthDecoder", new LengthFieldBasedFrameDecoder(NetworkTransmission.MaxSizePerPacket, 0, 4, 0, 4));
                 pipeline.addLast("LengthEncoder", new LengthFieldPrepender(4));
-                pipeline.addLast("Cipher", new MessageClientCiphers(WListClient.MaxSizePerPacket, uninitialized));
+                pipeline.addLast("Cipher", new MessageClientCiphers(initialized, error));
                 pipeline.addLast("ClientHandler", new ClientChannelInboundHandler(WListClient.this));
             }
         });
@@ -85,10 +83,12 @@ public class WListClient implements WListClientInterface {
             throw new IOException(throwable);
         }
         this.channel.initialize(future.channel());
-        synchronized (uninitialized) {
-            while (uninitialized.get())
-                uninitialized.wait();
+        synchronized (initialized) {
+            while (!initialized.get())
+                initialized.wait();
         }
+        if (error.get() != null)
+            throw new IOException(error.get()); // TODO
     }
 
     @Override
@@ -104,7 +104,6 @@ public class WListClient implements WListClientInterface {
         if (!this.isActive())
             throw new IOException("Closed client.");
         if (msg != null) {
-            WListClient.logger.log(HLogLevel.VERBOSE, "Write len: ", msg.readableBytes());
             final CountDownLatch latch = new CountDownLatch(1);
             final AtomicReference<Throwable> exception = new AtomicReference<>();
             this.channel.getInstance().writeAndFlush(msg).addListener(f -> {
@@ -154,7 +153,6 @@ public class WListClient implements WListClientInterface {
 
         @Override
         protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) {
-            WListClient.logger.log(HLogLevel.VERBOSE, "Read len: ", msg.readableBytes());
             synchronized (this.client.receiveLock) {
                 if (this.client.receive != null)
                     this.client.receive.release();

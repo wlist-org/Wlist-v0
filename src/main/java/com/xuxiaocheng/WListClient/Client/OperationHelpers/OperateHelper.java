@@ -5,7 +5,6 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WListClient.Client.Exceptions.NoPermissionException;
 import com.xuxiaocheng.WListClient.Client.Exceptions.WrongStateException;
-import com.xuxiaocheng.WListClient.Server.MessageCiphers;
 import com.xuxiaocheng.WListClient.Server.Operation;
 import com.xuxiaocheng.WListClient.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
@@ -23,7 +22,6 @@ public final class OperateHelper {
     }
 
     static boolean handleState(final @NotNull ByteBuf receive) throws IOException, WrongStateException {
-        final byte ignoredCipher = ByteBufIOUtil.readByte(receive);
         final Operation.State state = Operation.valueOfState(ByteBufIOUtil.readUTF(receive));
         return switch (state) {
             case Undefined, Broadcast -> throw new WrongStateException(state, receive.toString());
@@ -49,7 +47,6 @@ public final class OperateHelper {
 
     static @NotNull ByteBuf operate(final Operation.@NotNull Type type) throws IOException {
         final ByteBuf send = ByteBufAllocator.DEFAULT.buffer();
-        ByteBufIOUtil.writeByte(send, MessageCiphers.defaultCipher);
         ByteBufIOUtil.writeUTF(send, type.name());
         return send;
     }
