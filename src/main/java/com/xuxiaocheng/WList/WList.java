@@ -23,7 +23,6 @@ import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.ServerHandlers.ServerHandlerManager;
 import com.xuxiaocheng.WList.Server.WListServer;
 import io.netty.util.concurrent.Future;
-import io.netty.util.internal.PlatformDependent;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -103,8 +102,7 @@ public final class WList {
             logger.log(HLogLevel.LESS, "Initializing global configuration.", ParametersMap.create().add("file", configurationPath));
             GlobalConfiguration.initialize(configurationPath);
             logger.log(HLogLevel.VERBOSE, "Initialized global configuration.");
-            if (PlatformDependent.isWindows()) // TODO
-                NetworkTransmission.load();
+            NetworkTransmission.load(); // Preload to check environment is supported.
             final File databasePath = new File(runtimePath, "data.db");
             logger.log(HLogLevel.LESS, "Initializing databases.", ParametersMap.create().add("file", databasePath));
             PooledDatabase.quicklyInitialize(PooledDatabaseHelper.getDefault(databasePath));

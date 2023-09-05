@@ -62,6 +62,7 @@
       <element id="extracted-dir" path="$PROJECT_DIR$/../../AppData/JetBrains/GradleHome/caches/modules-2/files-2.1/com.squareup.okhttp3/okhttp/4.10.0/cd63657ac15770ed1420647154c9f44645533bef/okhttp-4.10.0.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/../../AppData/JetBrains/GradleHome/caches/modules-2/files-2.1/io.netty/netty-codec-mqtt/4.1.90.Final/5c0e386a806e8846f4f33eccb6a8631e5ef55c09/netty-codec-mqtt-4.1.90.Final.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/libs/head_libs.main.jar" path-in-jar="/" />
+      <element id="dir-copy" path="$PROJECT_DIR$/src/main/resources" />
     </root>
   </artifact>
 </component>
