@@ -13,11 +13,13 @@ import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.Rust.NativeUtil;
 import com.xuxiaocheng.WList.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.JavaScriptUtil;
 import com.xuxiaocheng.WList.WList;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
+import io.netty.util.internal.PlatformDependent;
 import org.jetbrains.annotations.NotNull;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.RhinoException;
@@ -31,7 +33,11 @@ import java.util.function.Consumer;
 public final class InternalServerService extends Service {
     @NonNull private final Thread ServerMainThread = new Thread(() -> {
         try {
-            JavaScriptUtil.jsEngineCore.initializeIfNot(() -> RhinoScriptEngineBuilder::new);
+            NativeUtil.ExtraPathGetterCore.reinitialize(l -> {
+                final String arch = PlatformDependent.normalizedArch();
+                throw new IllegalStateException("Unknown architecture: " + ("unknown".equals(arch) ? System.getProperty("os.arch") : arch));
+            }); // Normally is unreachable.
+            JavaScriptUtil.JavaScriptEngineCore.reinitialize(RhinoScriptEngineBuilder::new);
             WList.main("-path:" + this.getExternalFilesDir("server"));
         } finally {
             this.stopSelf();
