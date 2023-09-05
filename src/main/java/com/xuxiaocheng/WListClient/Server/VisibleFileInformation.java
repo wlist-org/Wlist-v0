@@ -8,6 +8,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Objects;
 
 public record VisibleFileInformation(long id, long parentId, @NotNull String name, boolean isDirectory, long size,
                                      @Nullable LocalDateTime createTime, @Nullable LocalDateTime updateTime,
@@ -24,5 +25,13 @@ public record VisibleFileInformation(long id, long parentId, @NotNull String nam
                 LocalDateTime.parse(ByteBufIOUtil.readUTF(b), DateTimeFormatter.ISO_DATE_TIME));
         final String md5 = ByteBufIOUtil.readUTF(buffer);
         return new VisibleFileInformation(id, parentId, name, isDirectory, size, createTime, updateTime, md5);
+    }
+
+    public @NotNull String createTimeString(final @NotNull DateTimeFormatter formatter, final @Nullable String unknown) {
+        return this.createTime == null ? Objects.requireNonNullElse(unknown, "unknown") : this.createTime.format(formatter);
+    }
+
+    public @NotNull String updateTimeString(final @NotNull DateTimeFormatter formatter, final @Nullable String unknown) {
+        return this.updateTime == null ? Objects.requireNonNullElse(unknown, "unknown") : this.updateTime.format(formatter);
     }
 }
