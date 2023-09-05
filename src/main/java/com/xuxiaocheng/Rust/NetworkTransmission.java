@@ -2,6 +2,7 @@ package com.xuxiaocheng.Rust;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.WList.Utils.NativeUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
@@ -19,8 +20,11 @@ public final class NetworkTransmission {
 
     private static native void initialize();
     static {
-        System.loadLibrary("network_transmission");
+        NativeUtil.load("network_transmission");
         NetworkTransmission.initialize();
+    }
+
+    public static void load() { // Just call and load native library.
     }
 
     @SuppressWarnings("ClassHasNoToStringMethod")
