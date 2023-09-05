@@ -1,101 +1,145 @@
 package com.xuxiaocheng.WList.Server.ServerCodecs;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
-import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
-import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
+import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.Logger.HLog;
+import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.Rust.NetworkTransmission;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.MessageToMessageCodec;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-import javax.crypto.BadPaddingException;
-import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
-import java.io.IOException;
-import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
-import java.security.Key;
-import java.security.KeyFactory;
-import java.security.NoSuchAlgorithmException;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.RSAPublicKeySpec;
-import java.util.IllegalFormatFlagsException;
+import java.io.Serial;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
-public class MessageClientCiphers extends MessageCiphers {
-    protected final @NotNull AtomicBoolean initializingStage;
+public class MessageClientCiphers extends MessageToMessageCodec<ByteBuf, ByteBuf> {
+    private static final @NotNull String application = "WList@operation=0.2";
 
-    public MessageClientCiphers(final int maxSize, final @NotNull AtomicBoolean initializingStage) throws NoSuchPaddingException, NoSuchAlgorithmException {
-        super(maxSize);
-        this.initializingStage = initializingStage;
-        assert this.initializingStage.get();
+    protected NetworkTransmission.RsaPrivateKey rsaPrivateKey;
+    protected NetworkTransmission.AesKeyPair aesKeyPair;
+    protected final @NotNull AtomicBoolean initialized;
+    protected final @NotNull AtomicReference<Throwable> error;
+
+    public MessageClientCiphers(final @NotNull AtomicBoolean initialized, final @NotNull AtomicReference<@Nullable Throwable> error) {
+        super();
+        this.initialized = initialized;
+        assert !this.initialized.get();
+        this.error = error;
+        assert this.error.get() == null;
     }
 
     @Override
-    protected void encode(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg, final @NotNull List<Object> out) throws IOException {
-        if (this.initializingStage.get())
+    public void channelActive(final @NotNull ChannelHandlerContext ctx) {
+        final Pair.ImmutablePair<NetworkTransmission.RsaPrivateKey, ByteBuf> pair = NetworkTransmission.clientStart();
+        this.rsaPrivateKey = pair.getFirst();
+        ctx.writeAndFlush(pair.getSecond());
+    }
+
+    @Override
+    protected void encode(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg, final @NotNull List<@NotNull Object> out) {
+        if (!this.initialized.get())
             throw new IllegalStateException("Uninitialized. Please wait.");
-        super.encode(ctx, msg, out);
+        assert this.aesKeyPair != null;
+        final ByteBuf encrypted = NetworkTransmission.clientEncrypt(this.aesKeyPair, msg);
+        if (encrypted == null)
+            throw new IllegalStateException("Something went wrong when client encrypted message.");
+        HLog.getInstance("ClientLogger").log(HLogLevel.VERBOSE, "Write.",
+                ParametersMap.create().add("length", msg.readableBytes()).add("network", encrypted.readableBytes()));
+        out.add(encrypted);
     }
 
     @Override
-    protected void decode(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg, final @NotNull List<Object> out) throws IOException {
-        if (this.initializingStage.get()) {
-            final String header = ByteBufIOUtil.readUTF(msg);
-            if (!MessageCiphers.defaultHeader.equals(header))
-                throw new IllegalFormatFlagsException("Invalid header." + ParametersMap.create().add("excepted", MessageCiphers.defaultHeader).add("real", header));
-            final Cipher rsaEncryptCipher;
+    protected void decode(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg, final @NotNull List<@NotNull Object> out) {
+        if (!this.initialized.get()) {
             try {
-                final byte[] rsaModulus = ByteBufIOUtil.readByteArray(msg);
-                final byte[] rsaExponent = ByteBufIOUtil.readByteArray(msg);
-                final Key rsaPublicKey = KeyFactory.getInstance("RSA").generatePublic(new RSAPublicKeySpec(
-                        new BigInteger(rsaModulus), new BigInteger(rsaExponent)
-                ));
-                rsaEncryptCipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-                rsaEncryptCipher.init(Cipher.ENCRYPT_MODE, rsaPublicKey);
-            } catch (final InvalidKeySpecException exception) {
-                throw new IllegalStateException(exception);
-            } catch (final NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException exception) {
-                throw new RuntimeException("Unreachable!", exception);
+                assert this.rsaPrivateKey != null;
+                final UnionPair<NetworkTransmission.AesKeyPair, UnionPair<String, String>> pair = NetworkTransmission.clientCheck(this.rsaPrivateKey, msg, MessageClientCiphers.application);
+                if (pair == null)
+                    throw new IllegalTargetServerException();
+                if (pair.isFailure())
+                    if (pair.getE().isFailure())
+                        throw new IllegalServerVersionException(NetworkTransmission.CipherVersion, pair.getE().getE());
+                    else
+                        throw new IllegalServerApplicationException(MessageClientCiphers.application, pair.getE().getT());
+                this.rsaPrivateKey = null;
+                this.aesKeyPair = pair.getT();
+            } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable throwable) {
+                this.error.set(throwable);
+                ctx.close();
             }
-            final byte[] tempKey = new byte[this.keyArray.length >> 1];
-            msg.readBytes(tempKey);
-            for (int i = 0; i < this.keyArray.length >> 1; ++i)
-                this.keyArray[i << 1] = tempKey[i];
-            HRandomHelper.DefaultSecureRandom.nextBytes(tempKey);
-            for (int i = 0; i < this.keyArray.length >> 1; ++i)
-                this.keyArray[(i << 1) + 1] = tempKey[i];
-            this.reinitializeAesCiphers(false);
-            final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
-            try {
-                ByteBufIOUtil.writeByteArray(buffer, rsaEncryptCipher.doFinal(tempKey, 0, 117));
-                ByteBufIOUtil.writeByteArray(buffer, rsaEncryptCipher.doFinal(tempKey, 117, 117));
-                ByteBufIOUtil.writeByteArray(buffer, rsaEncryptCipher.doFinal(tempKey, 117 << 1, 117));
-                ByteBufIOUtil.writeByteArray(buffer, this.aesEncryptCipher.doFinal(tempKey, 117 * 3, tempKey.length - 117 * 3));
-                this.vectorPosition += this.keyArray.length >> 1;
-                this.reinitializeAesCiphers(false);
-                ByteBufIOUtil.writeByteArray(buffer, this.aesEncryptCipher.doFinal(MessageCiphers.defaultTailor.getBytes(StandardCharsets.UTF_8)));
-            } catch (final IllegalBlockSizeException | BadPaddingException exception) {
-                throw new RuntimeException("Unreachable!", exception);
-            }
-            ctx.writeAndFlush(buffer);
-            synchronized (this.initializingStage) {
-                this.initializingStage.set(false);
+            synchronized (this.initialized) {
+                this.initialized.set(true);
                 //noinspection NotifyWithoutCorrespondingWait
-                this.initializingStage.notifyAll();
+                this.initialized.notifyAll();
             }
+            if (this.error.get() != null)
+                throw new RuntimeException("Illegal target server.", this.error.get());
             return;
         }
-        super.decode(ctx, msg, out);
+        assert this.aesKeyPair != null;
+        final ByteBuf decrypted = NetworkTransmission.clientDecrypt(this.aesKeyPair, msg);
+        if (decrypted == null)
+            throw new IllegalStateException("Something went wrong when client decrypted message.");
+        HLog.getInstance("ClientLogger").log(HLogLevel.VERBOSE, "Read.",
+                ParametersMap.create().add("length", decrypted.readableBytes()).add("network", msg.readableBytes()));
+        out.add(decrypted);
     }
 
     @Override
     public @NotNull String toString() {
         return "MessageClientCiphers{" +
-                "super=" + super.toString() +
+                "rsaPrivateKey=" + this.rsaPrivateKey +
+                ", aesKeyPair=" + this.aesKeyPair +
+                ", initialized=" + this.initialized +
+                ", error=" + this.error +
                 '}';
+    }
+
+    public static class IllegalTargetServerException extends Exception {
+        @Serial
+        private static final long serialVersionUID = -8608659258952829017L;
+
+        public IllegalTargetServerException() {
+            super("Illegal target server.");
+        }
+
+        public IllegalTargetServerException(final @NotNull String message) {
+            super(message);
+        }
+    }
+
+    @SuppressWarnings("ClassHasNoToStringMethod")
+    public static class IllegalServerVersionException extends IllegalTargetServerException {
+        @Serial
+        private static final long serialVersionUID = -6809923542159147535L;
+
+        protected final @NotNull String excepted;
+        protected final @NotNull String received;
+
+        public IllegalServerVersionException(final @NotNull String excepted, final @NotNull String received) {
+            super("Illegal server cipher version." + ParametersMap.create().add("excepted", excepted).add("received", received));
+            this.excepted = excepted;
+            this.received = received;
+        }
+    }
+
+    @SuppressWarnings("ClassHasNoToStringMethod")
+    public static class IllegalServerApplicationException extends IllegalTargetServerException {
+        @Serial
+        private static final long serialVersionUID = 1933643231812966622L;
+
+        protected final @NotNull String excepted;
+        protected final @NotNull String received;
+
+        public IllegalServerApplicationException(final @NotNull String excepted, final @NotNull String received) {
+            super("Illegal server application." + ParametersMap.create().add("excepted", excepted).add("received", received));
+            this.excepted = excepted;
+            this.received = received;
+        }
     }
 }

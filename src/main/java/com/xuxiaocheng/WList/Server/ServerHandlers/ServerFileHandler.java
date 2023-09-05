@@ -6,6 +6,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Helpers.HMessageDigestHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.Rust.NetworkTransmission;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Databases.User.UserSqlInformation;
 import com.xuxiaocheng.WList.Driver.FailureReason;
@@ -20,7 +21,6 @@ import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadIdHelper;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.UploadIdHelper;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.UploadMethods;
-import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
@@ -239,7 +239,7 @@ public final class ServerFileHandler {
         }
         if (file == null)
             return ServerFileHandler.InvalidId;
-        return new MessageProto(ServerHandler.defaultFileCipher, Operation.State.Success, buf ->
+        return new MessageProto(Operation.State.Success, buf ->
                 ByteBufAllocator.DEFAULT.compositeBuffer(2).addComponents(true, buf, file));
     };
 
@@ -301,7 +301,7 @@ public final class ServerFileHandler {
                 return buf;
             });
         }
-        assert methods.getT().methods().size() == MiscellaneousUtil.calculatePartCount(size, WListServer.FileTransferBufferSize);
+        assert methods.getT().methods().size() == MiscellaneousUtil.calculatePartCount(size, NetworkTransmission.FileTransferBufferSize);
         final String id = UploadIdHelper.generateId(methods.getT(), size, user.getT().username());
         HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Signed upload id for user: '", user.getT().username(), "' parent: ", parentLocation, ", name: '", filename, "' (", size, "B) id: ", id);
         return ServerHandler.successMessage(buf -> {

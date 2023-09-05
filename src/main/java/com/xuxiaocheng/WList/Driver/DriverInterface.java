@@ -106,7 +106,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @param location The file location to download.
      * @param from The stream start byte.
      * @param to The stream stop byte.
-     * @return Download methods for every 4MB ({@link com.xuxiaocheng.WList.Server.WListServer#FileTransferBufferSize}) chunks of file.
+     * @return Download methods for every 4MB ({@link com.xuxiaocheng.Rust.NetworkTransmission#FileTransferBufferSize}) chunks of file.
      * @see com.xuxiaocheng.WList.Driver.Helpers.DriverUtil#getDownloadMethodsByUrlWithRangeHeader(OkHttpClient, Pair.ImmutablePair, Headers, long, long, long, Headers.Builder)
      * @see com.xuxiaocheng.WList.Driver.Helpers.DriverUtil#toCachedDownloadMethods(DownloadMethods) (Suggest)
      * @throws Exception Something went wrong.
@@ -131,7 +131,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @param size File size.
      * @param md5  File md5.
      * @param policy Duplicate policy.
-     * @return Upload methods for every 4MB ({@link com.xuxiaocheng.WList.Server.WListServer#FileTransferBufferSize}) chunks of file.
+     * @return Upload methods for every 4MB ({@link com.xuxiaocheng.Rust.NetworkTransmission#FileTransferBufferSize}) chunks of file.
      * @see com.xuxiaocheng.WList.Driver.Helpers.DriverUtil#getRetryWrapper(String)
      * @see DriverNetworkHelper#createOctetStreamRequestBody
      * @see com.xuxiaocheng.WList.Driver.Helpers.DriverUtil#splitUploadMethodEveryFileTransferBufferSize(ConsumerE, int)

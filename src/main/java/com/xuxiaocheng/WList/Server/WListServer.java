@@ -1,12 +1,12 @@
 package com.xuxiaocheng.WList.Server;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
-import com.xuxiaocheng.HeadLibs.Helpers.HBinaryStringHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
 import com.xuxiaocheng.HeadLibs.Ranges.IntRange;
+import com.xuxiaocheng.Rust.NetworkTransmission;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
 import com.xuxiaocheng.WList.Server.ServerCodecs.MessageServerCiphers;
 import com.xuxiaocheng.WList.Server.ServerHandlers.ServerHandler;
@@ -45,8 +45,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 public class WListServer {
-    public static final int FileTransferBufferSize = 4 << 20; // const
-    public static final int MaxSizePerPacket = (64 << 10) + WListServer.FileTransferBufferSize;
     public static final @NotNull EventExecutorGroup CodecExecutors =
             new DefaultEventExecutorGroup(Math.max(1, Runtime.getRuntime().availableProcessors() >>> 1), new DefaultThreadFactory("CodecExecutors"));
     public static final @NotNull EventExecutorGroup ServerExecutors =
@@ -97,9 +95,9 @@ public class WListServer {
             @Override
             protected void initChannel(final @NotNull SocketChannel ch) throws NoSuchPaddingException, NoSuchAlgorithmException {
                 final ChannelPipeline pipeline = ch.pipeline();
-                pipeline.addLast(WListServer.CodecExecutors, "LengthDecoder", new LengthFieldBasedFrameDecoder(WListServer.MaxSizePerPacket, 0, 4, 0, 4));
+                pipeline.addLast(WListServer.CodecExecutors, "LengthDecoder", new LengthFieldBasedFrameDecoder(NetworkTransmission.MaxSizePerPacket, 0, 4, 0, 4));
                 pipeline.addLast(WListServer.CodecExecutors, "LengthEncoder", new LengthFieldPrepender(4));
-                pipeline.addLast(WListServer.CodecExecutors, "Cipher", new MessageServerCiphers(WListServer.MaxSizePerPacket));
+                pipeline.addLast(WListServer.CodecExecutors, "Cipher", new MessageServerCiphers());
                 pipeline.addLast(WListServer.ServerExecutors, "ServerHandler", WListServer.handlerInstance);
             }
         });
@@ -155,17 +153,14 @@ public class WListServer {
 
         protected static void write(final @NotNull Channel channel, final @NotNull MessageProto message) throws IOException {
             final ByteBuf prefix = ByteBufAllocator.DEFAULT.buffer();
-            prefix.writeByte(message.cipher());
             ByteBufIOUtil.writeUTF(prefix, message.state().name());
             final ByteBuf buffer = message.appender().apply(prefix);
-            WListServer.logger.log(HLogLevel.VERBOSE, "Write: ", channel.remoteAddress(), " len: ", buffer.readableBytes(), " cipher: ", HBinaryStringHelper.bin(message.cipher()));
             channel.writeAndFlush(buffer);
         }
 
         @Override
         protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) throws ServerException, IOException {
             final Channel channel = ctx.channel();
-            WListServer.logger.log(HLogLevel.VERBOSE, "Read: ", channel.remoteAddress(), " len: ", msg.readableBytes(), " cipher: ", HBinaryStringHelper.bin(msg.readByte()));
             try {
                 msg.markReaderIndex();
                 final Operation.Type type = Operation.valueOfType(ByteBufIOUtil.readUTF(msg));

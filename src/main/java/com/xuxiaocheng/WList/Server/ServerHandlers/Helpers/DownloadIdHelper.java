@@ -3,9 +3,9 @@ package com.xuxiaocheng.WList.Server.ServerHandlers.Helpers;
 import com.xuxiaocheng.HeadLibs.AndroidSupport.ARandomHelper;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
+import com.xuxiaocheng.Rust.NetworkTransmission;
 import com.xuxiaocheng.WList.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
-import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
@@ -74,8 +74,8 @@ public final class DownloadIdHelper {
             this.methods = methods;
             this.count = methods.methods().size();
             this.username = username;
-            final int mod = (int) (methods.total() % WListServer.FileTransferBufferSize);
-            this.rest = mod == 0 ? WListServer.FileTransferBufferSize : mod;
+            final int mod = (int) (methods.total() % NetworkTransmission.FileTransferBufferSize);
+            this.rest = mod == 0 ? NetworkTransmission.FileTransferBufferSize : mod;
             this.id = MiscellaneousUtil.randomKeyAndPut(DownloadIdHelper.buffers,
                     () -> ARandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, ConstantManager.DefaultRandomChars), this);
             if (methods.expireTime() != null)
@@ -112,10 +112,10 @@ public final class DownloadIdHelper {
                 }
                 final ByteBuf buffer = this.methods.methods().get(chunk).get();
                 final int readableBytes = buffer.readableBytes();
-                if (readableBytes != (chunk + 1 == this.count ? this.rest : WListServer.FileTransferBufferSize)) {
+                if (readableBytes != (chunk + 1 == this.count ? this.rest : NetworkTransmission.FileTransferBufferSize)) {
                     buffer.release();
                     throw new IllegalStateException("Invalid buffer size. readableBytes: " + readableBytes +
-                            ", require: " + (chunk + 1 == this.count ? this.rest : WListServer.FileTransferBufferSize));
+                            ", require: " + (chunk + 1 == this.count ? this.rest : NetworkTransmission.FileTransferBufferSize));
                 }
                 return buffer;
             } finally {

@@ -4,10 +4,10 @@ import com.xuxiaocheng.HeadLibs.AndroidSupport.ARandomHelper;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
+import com.xuxiaocheng.Rust.NetworkTransmission;
 import com.xuxiaocheng.WList.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
-import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
@@ -74,8 +74,8 @@ public final class UploadIdHelper {
             this.methods = methods;
             this.count = methods.methods().size();
             this.username = username;
-            final int mod = (int) (size % WListServer.FileTransferBufferSize);
-            this.rest = mod == 0 ? WListServer.FileTransferBufferSize : mod;
+            final int mod = (int) (size % NetworkTransmission.FileTransferBufferSize);
+            this.rest = mod == 0 ? NetworkTransmission.FileTransferBufferSize : mod;
             this.id = MiscellaneousUtil.randomKeyAndPut(UploadIdHelper.buffers,
                     () -> ARandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, ConstantManager.DefaultRandomChars), this);
             this.appendExpireTime();
@@ -100,7 +100,7 @@ public final class UploadIdHelper {
                 if (this.closed.get() || chunk >= this.count || chunk < 0)
                     return false;
                 this.appendExpireTime();
-                if (buf.readableBytes() != (chunk + 1 == this.count ? this.rest : WListServer.FileTransferBufferSize))
+                if (buf.readableBytes() != (chunk + 1 == this.count ? this.rest : NetworkTransmission.FileTransferBufferSize))
                     return false;
                 synchronized (this.calledSet) {
                     if (this.calledSet.contains(chunk))

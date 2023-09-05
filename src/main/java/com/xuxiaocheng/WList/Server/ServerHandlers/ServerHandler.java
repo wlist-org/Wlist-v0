@@ -8,7 +8,6 @@ import com.xuxiaocheng.WList.Databases.User.UserSqlInformation;
 import com.xuxiaocheng.WList.Exceptions.ServerException;
 import com.xuxiaocheng.WList.Server.MessageProto;
 import com.xuxiaocheng.WList.Server.Operation;
-import com.xuxiaocheng.WList.Server.ServerCodecs.MessageCiphers;
 import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
@@ -24,11 +23,8 @@ import java.util.function.Supplier;
 public interface ServerHandler {
     @NotNull MessageProto handle(final @NotNull Channel channel, final @NotNull ByteBuf buffer) throws IOException, ServerException;
 
-    byte defaultCipher = MessageCiphers.doAes | MessageCiphers.doGZip;
-    byte defaultFileCipher = MessageCiphers.doAes | MessageCiphers.doGZip;
-
     static @NotNull MessageProto composeMessage(final Operation.@NotNull State state, final @Nullable String message) {
-        return new MessageProto(ServerHandler.defaultCipher, state, buf -> {
+        return new MessageProto(state, buf -> {
             if (message != null)
                 ByteBufIOUtil.writeUTF(buf, message);
             return buf;
@@ -36,7 +32,7 @@ public interface ServerHandler {
     }
 
     static @NotNull MessageProto successMessage(final MessageProto.@NotNull Appender appender) {
-        return new MessageProto(ServerHandler.defaultCipher, Operation.State.Success, appender);
+        return new MessageProto(Operation.State.Success, appender);
     }
 
     @NotNull MessageProto Success = ServerHandler.composeMessage(Operation.State.Success, null);

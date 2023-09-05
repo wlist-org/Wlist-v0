@@ -8,6 +8,7 @@ import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Ranges.LongRange;
+import com.xuxiaocheng.Rust.NetworkTransmission;
 import com.xuxiaocheng.WList.Driver.Options;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.ServerHandlers.Helpers.DownloadMethods;
@@ -229,11 +230,11 @@ public final class DriverUtil {
         if (!Objects.requireNonNullElse(urlHeaders.get("Accept-Ranges"), "").contains("bytes"))
             throw new IllegalStateException("File cannot download by range header." + ParametersMap.create().add("url", url).add("size", size).add("from", from).add("to", to).add("urlHeaders", urlHeaders.toMultimap()));
         final LocalDateTime expires = instant == null ? null : LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
-        final int count = MiscellaneousUtil.calculatePartCount(total, WListServer.FileTransferBufferSize);
+        final int count = MiscellaneousUtil.calculatePartCount(total, NetworkTransmission.FileTransferBufferSize);
         final List<SupplierE<ByteBuf>> list = new ArrayList<>(count);
-        for (long i = from; i < end; i += WListServer.FileTransferBufferSize) {
+        for (long i = from; i < end; i += NetworkTransmission.FileTransferBufferSize) {
             final long b = i;
-            final long e = Math.min(end, i + WListServer.FileTransferBufferSize);
+            final long e = Math.min(end, i + NetworkTransmission.FileTransferBufferSize);
             list.add(() -> {
                 //noinspection NumericCastThatLosesPrecision
                 final int length = (int) (e - b);
@@ -305,15 +306,15 @@ public final class DriverUtil {
     }
 
     /**
-     * @see WListServer#FileTransferBufferSize
+     * @see NetworkTransmission#FileTransferBufferSize
      */
     public static Pair.@NotNull ImmutablePair<@NotNull List<@NotNull ConsumerE<@NotNull ByteBuf>>, @NotNull Runnable> splitUploadMethodEveryFileTransferBufferSize(final @NotNull ConsumerE<@NotNull ByteBuf> sourceMethod, final int totalSize) {
         assert totalSize >= 0;
-        if (totalSize < WListServer.FileTransferBufferSize)
+        if (totalSize < NetworkTransmission.FileTransferBufferSize)
             return Pair.ImmutablePair.makeImmutablePair(List.of(sourceMethod), RunnableE.EmptyRunnable);
-        final int mod = totalSize % WListServer.FileTransferBufferSize;
-        final int count = totalSize / WListServer.FileTransferBufferSize - (mod == 0 ? 1 : 0);
-        final int rest = mod == 0 ? WListServer.FileTransferBufferSize : mod;
+        final int mod = totalSize % NetworkTransmission.FileTransferBufferSize;
+        final int count = totalSize / NetworkTransmission.FileTransferBufferSize - (mod == 0 ? 1 : 0);
+        final int rest = mod == 0 ? NetworkTransmission.FileTransferBufferSize : mod;
         final List<ConsumerE<ByteBuf>> list = new ArrayList<>(count + 1);
         final AtomicBoolean leaked = new AtomicBoolean(true);
         final ByteBuf[] cacher = new ByteBuf[count + 1];
@@ -321,7 +322,7 @@ public final class DriverUtil {
         for (int i = 0; i < count + 1; ++i) {
             final int c = i;
             list.add(b -> {
-                assert b.readableBytes() == (c == count ? rest : WListServer.FileTransferBufferSize);
+                assert b.readableBytes() == (c == count ? rest : NetworkTransmission.FileTransferBufferSize);
                 cacher[c] = b;
                 if (countDown.getAndDecrement() == 0) {
                     leaked.set(false);
