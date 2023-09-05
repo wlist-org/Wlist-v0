@@ -26,10 +26,15 @@ public final class NetworkTransmission {
     public static void load() { // Just call and load native library.
     }
 
+    private static native String getCipherVersion();
+    public static final @NotNull String CipherVersion = NetworkTransmission.getCipherVersion();
+    public static final int FileTransferBufferSize = 4 << 20;
+    public static final int MaxSizePerPacket = (1 << 10) + NetworkTransmission.FileTransferBufferSize;
+
     @SuppressWarnings("ClassHasNoToStringMethod")
-    public static final class ClientRsaPrivateKey {
+    public static final class RsaPrivateKey {
         private final ByteBuffer[] keys;
-        private ClientRsaPrivateKey(final ByteBuffer[] keys) {
+        private RsaPrivateKey(final ByteBuffer[] keys) {
             super();
             this.keys = keys;
         }
@@ -47,11 +52,11 @@ public final class NetworkTransmission {
     }
 
     private static native Object[] clientStart0();
-    public static Pair.@NotNull ImmutablePair<@NotNull ClientRsaPrivateKey, @NotNull ByteBuf> clientStart() {
+    public static Pair.@NotNull ImmutablePair<@NotNull RsaPrivateKey, @NotNull ByteBuf> clientStart() {
         final Object[] array = NetworkTransmission.clientStart0();
         assert array.length == 2; // (key, request)
         assert array[1] instanceof ByteBuffer;
-        return Pair.ImmutablePair.makeImmutablePair(new ClientRsaPrivateKey((ByteBuffer[]) array[0]), Unpooled.wrappedBuffer((ByteBuffer) array[1]));
+        return Pair.ImmutablePair.makeImmutablePair(new RsaPrivateKey((ByteBuffer[]) array[0]), Unpooled.wrappedBuffer((ByteBuffer) array[1]));
     }
 
     private static native ByteBuffer[] serverStart0(final @NotNull ByteBuffer request, final @NotNull String application);
@@ -73,7 +78,7 @@ public final class NetworkTransmission {
     }
 
     private static native Object[] clientCheck0(final @NotNull ByteBuffer[] key, final @NotNull ByteBuffer response, final @NotNull String application);
-    public static @Nullable UnionPair<AesKeyPair, UnionPair<String, String>> clientCheck(final @NotNull ClientRsaPrivateKey key, final @NotNull ByteBuf response, final @NotNull String application) {
+    public static @Nullable UnionPair<AesKeyPair, UnionPair<String, String>> clientCheck(final NetworkTransmission.@NotNull RsaPrivateKey key, final @NotNull ByteBuf response, final @NotNull String application) {
         final Pair.ImmutablePair<ByteBuffer, ByteBuf> directByteBuffer = NetworkTransmission.toDirectByteBuffer(response);
         final Object[] array;
         try {

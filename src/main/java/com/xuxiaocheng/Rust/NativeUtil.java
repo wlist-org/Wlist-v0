@@ -1,5 +1,6 @@
 package com.xuxiaocheng.Rust;
 
+import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
@@ -12,6 +13,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.function.UnaryOperator;
 
 @SuppressWarnings("ErrorNotRethrown")
 public final class NativeUtil {
@@ -36,12 +38,14 @@ public final class NativeUtil {
         }
     }
 
+    public static final @NotNull HInitializer<UnaryOperator<@NotNull String>> ExtraPathGetterCore = new HInitializer<>("NativeUtil.ExtraPathGetterCore", l -> "rust/" + l);
+
     private static void tryLoad(final @NotNull String name) {
         try {
             System.loadLibrary(name);
         } catch (final UnsatisfiedLinkError error) {
             final String library = System.mapLibraryName(name);
-            final String path = "rust/" + library;
+            final String path = NativeUtil.ExtraPathGetterCore.getInstance().apply(library);
             try (final InputStream stream = NativeUtil.class.getClassLoader().getResourceAsStream(path)) {
                 if (stream == null)
                     throw new FileNotFoundException(path);
