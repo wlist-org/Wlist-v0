@@ -78,7 +78,7 @@ public final class NetworkTransmission {
     }
 
     private static native Object[] clientCheck0(final @NotNull ByteBuffer[] key, final @NotNull ByteBuffer response, final @NotNull String application);
-    public static @Nullable UnionPair<AesKeyPair, UnionPair<String, String>> clientCheck(final NetworkTransmission.@NotNull RsaPrivateKey key, final @NotNull ByteBuf response, final @NotNull String application) {
+    public static @Nullable UnionPair<AesKeyPair, UnionPair<String, String>> clientCheck(final @NotNull RsaPrivateKey key, final @NotNull ByteBuf response, final @NotNull String application) {
         final Pair.ImmutablePair<ByteBuffer, ByteBuf> directByteBuffer = NetworkTransmission.toDirectByteBuffer(response);
         final Object[] array;
         try {
