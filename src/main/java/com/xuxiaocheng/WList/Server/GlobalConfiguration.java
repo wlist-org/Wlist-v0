@@ -6,8 +6,8 @@ import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.WList.Utils.YamlHelper;
-import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
+import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
+import com.xuxiaocheng.WList.Server.Driver.WebDrivers.WebDriversType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

@@ -1,17 +1,19 @@
 package com.xuxiaocheng.WList.Server;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
 import com.xuxiaocheng.HeadLibs.Ranges.IntRange;
 import com.xuxiaocheng.Rust.NetworkTransmission;
-import com.xuxiaocheng.WList.Exceptions.ServerException;
-import com.xuxiaocheng.WList.Server.ServerCodecs.MessageServerCiphers;
-import com.xuxiaocheng.WList.Server.ServerHandlers.ServerHandler;
-import com.xuxiaocheng.WList.Server.ServerHandlers.ServerHandlerManager;
-import com.xuxiaocheng.WList.Utils.ByteBufIOUtil;
+import com.xuxiaocheng.WList.Commons.Codecs.MessageServerCiphers;
+import com.xuxiaocheng.WList.Commons.Operation;
+import com.xuxiaocheng.WList.Server.Handlers.ServerHandler;
+import com.xuxiaocheng.WList.Server.Handlers.ServerHandlerManager;
+import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -36,11 +38,10 @@ import io.netty.util.concurrent.EventExecutorGroup;
 import io.netty.util.concurrent.Future;
 import org.jetbrains.annotations.NotNull;
 
-import javax.crypto.NoSuchPaddingException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
-import java.security.NoSuchAlgorithmException;
+import java.sql.SQLException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -61,7 +62,7 @@ public class WListServer {
 
     protected static final WListServer.@NotNull ServerChannelHandler handlerInstance = new ServerChannelHandler();
 
-    protected final @NotNull EventExecutorGroup bossGroup = new NioEventLoopGroup(Math.max(2, Runtime.getRuntime().availableProcessors() >>> 1));
+    protected final @NotNull EventExecutorGroup bossGroup = new NioEventLoopGroup(Math.max(1, Runtime.getRuntime().availableProcessors() >>> 1));
     protected final @NotNull EventLoopGroup workerGroup = new NioEventLoopGroup(Runtime.getRuntime().availableProcessors() << 1);
     protected final @NotNull CountDownLatch latch = new CountDownLatch(1);
     protected final @NotNull HInitializer<InetSocketAddress> address = new HInitializer<>("WListServerAddress");
@@ -93,7 +94,7 @@ public class WListServer {
         serverBootstrap.childOption(ChannelOption.SO_KEEPALIVE, true);
         serverBootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
             @Override
-            protected void initChannel(final @NotNull SocketChannel ch) throws NoSuchPaddingException, NoSuchAlgorithmException {
+            protected void initChannel(final @NotNull SocketChannel ch) {
                 final ChannelPipeline pipeline = ch.pipeline();
                 pipeline.addLast(WListServer.CodecExecutors, "LengthDecoder", new LengthFieldBasedFrameDecoder(NetworkTransmission.MaxSizePerPacket, 0, 4, 0, 4));
                 pipeline.addLast(WListServer.CodecExecutors, "LengthEncoder", new LengthFieldPrepender(4));
@@ -101,19 +102,16 @@ public class WListServer {
                 pipeline.addLast(WListServer.ServerExecutors, "ServerHandler", WListServer.handlerInstance);
             }
         });
-        final CountDownLatch latch = new CountDownLatch(1);
-        final boolean[] flag = new boolean[] {false};
         ChannelFuture future = null;
+        boolean flag = false;
         if (defaultPort != 0) {
-            future = serverBootstrap.bind(defaultPort).addListener(f -> {
-                flag[0] = !f.isSuccess();
-                if (flag[0])
-                    WListServer.logger.log(HLogLevel.WARN, "Failed to bind default port.", ParametersMap.create().add("defaultPort", defaultPort), f.cause());
-                latch.countDown();
-            }).await();
-            latch.await();
+            future = serverBootstrap.bind(defaultPort).await();
+            if (future.cause() != null) {
+                flag = true;
+                WListServer.logger.log(HLogLevel.WARN, "Failed to bind default port.", ParametersMap.create().add("defaultPort", defaultPort), future.cause());
+            }
         }
-        if (defaultPort == 0 || flag[0])
+        if (defaultPort == 0 || flag)
             future = serverBootstrap.bind(0).sync();
         final InetSocketAddress address = (InetSocketAddress) future.channel().localAddress();
         this.address.initialize(address);
@@ -135,7 +133,8 @@ public class WListServer {
     @Override
     public @NotNull String toString() {
         return "WListServer(TcpServer){" +
-                "address=" + this.address +
+                "latch=" + this.latch +
+                ", address=" + this.address +
                 '}';
     }
 
@@ -151,48 +150,56 @@ public class WListServer {
             WListServer.logger.log(HLogLevel.DEBUG, "Inactive: ", ctx.channel().remoteAddress(), " (", ctx.channel().id().asLongText(), ')');
         }
 
-        protected static void write(final @NotNull Channel channel, final @NotNull MessageProto message) throws IOException {
+        public static void write(final @NotNull Channel channel, final @NotNull MessageProto message) {
             final ByteBuf prefix = ByteBufAllocator.DEFAULT.buffer();
-            ByteBufIOUtil.writeUTF(prefix, message.state().name());
-            final ByteBuf buffer = message.appender().apply(prefix);
-            channel.writeAndFlush(buffer);
+            try {
+                ByteBufIOUtil.writeUTF(prefix, message.state().name());
+                channel.writeAndFlush(message.appender().apply(prefix).retain());
+            } catch (final CodecException | SocketException exception) {
+                channel.close();
+            } catch (final IOException exception) {
+                WListServer.logger.log(HLogLevel.ERROR, exception);
+                channel.close();
+            } finally {
+                prefix.release();
+            }
         }
 
         @Override
-        protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) throws ServerException, IOException {
+        protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) throws SQLException {
             final Channel channel = ctx.channel();
+            final RunnableE core;
             try {
-                msg.markReaderIndex();
-                final Operation.Type type = Operation.valueOfType(ByteBufIOUtil.readUTF(msg));
-                final ServerHandler handler = ServerHandlerManager.getHandler(type);
-                final MessageProto res = handler.handle(channel, msg);
+                final String rawType = ByteBufIOUtil.readUTF(msg);
+                final Operation.Type type = Operation.valueOfType(rawType);
+                if (type == Operation.Type.Undefined) {
+                    ServerHandler.logOperation(channel, Operation.Type.Undefined, null, () -> ParametersMap.create().add("type", rawType));
+                    ServerChannelHandler.write(channel, MessageProto.Undefined);
+                    return;
+                }
+                core = ServerHandlerManager.getHandler(type).extra(channel, msg);
                 if (msg.readableBytes() != 0)
-                    WListServer.logger.log(HLogLevel.MISTAKE, "Unexpected discarded bytes: ", channel.id().asLongText(), " len: ", msg.readableBytes());
-                ServerChannelHandler.write(channel, res);
-            } catch (final IOException exception) {
-                assert exception.getCause() instanceof IndexOutOfBoundsException;
-                assert ByteBufIOUtil.class.getName().equals(exception.getStackTrace()[0].getClassName());
-                ServerChannelHandler.write(channel, ServerHandler.composeMessage(Operation.State.FormatError, null));
+                    WListServer.logger.log(HLogLevel.MISTAKE, "Unexpected discarded bytes: ", channel.remoteAddress(), ParametersMap.create().add("len", msg.readableBytes()));
+                if (core != null)
+                    WListServer.ServerExecutors.submit(HExceptionWrapper.wrapRunnable(core, e -> {
+                    if (e != null) ctx.fireExceptionCaught(e);
+                }, true));
+            } catch (final IOException exception) { // Read from msg.
+                ServerChannelHandler.write(channel, MessageProto.FormatError);
                 channel.close();
             }
         }
 
         @Override
         public void exceptionCaught(final @NotNull ChannelHandlerContext ctx, final @NotNull Throwable cause) {
+            final Channel channel = ctx.channel();
             if (cause instanceof CodecException || cause instanceof SocketException) {
-                WListServer.logger.log(HLogLevel.MISTAKE, "Codec/Socket Exception at ", ctx.channel().remoteAddress(), ": ", cause.getLocalizedMessage());
-                ctx.close();
+                WListServer.logger.log(HLogLevel.MISTAKE, "Codec/Socket Exception at ", channel.remoteAddress(), ": ", cause.getLocalizedMessage());
+                channel.close();
                 return;
             }
-            WListServer.logger.log(HLogLevel.ERROR, "Exception at ", ctx.channel().remoteAddress(), ": ", cause);
-            try {
-                ServerChannelHandler.write(ctx.channel(), ServerHandler.composeMessage(Operation.State.ServerError, null));
-            } catch (final CodecException | SocketException exception) {
-                ctx.close();
-            } catch (final IOException exception) {
-                WListServer.logger.log(HLogLevel.ERROR, exception);
-                ctx.close();
-            }
+            WListServer.logger.log(HLogLevel.ERROR, "Exception at ", channel.remoteAddress(), ": ", cause);
+            ServerChannelHandler.write(channel, MessageProto.ServerError);
         }
     }
 }
