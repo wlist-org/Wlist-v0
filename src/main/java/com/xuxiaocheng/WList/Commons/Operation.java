@@ -19,7 +19,7 @@ public final class Operation {
         Logoff,
         ChangeUsername,
         ChangePassword,
-        GetPermissions,
+        GetGroup,
 
         CloseServer,
         Broadcast,

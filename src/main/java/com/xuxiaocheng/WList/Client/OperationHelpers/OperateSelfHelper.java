@@ -2,6 +2,7 @@ package com.xuxiaocheng.WList.Client.OperationHelpers;
 
 import com.xuxiaocheng.WList.Client.Exceptions.WrongStateException;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation;
 import com.xuxiaocheng.WList.Commons.Operation;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
@@ -92,18 +93,17 @@ public final class OperateSelfHelper {
         }
     }
 
-//    public static @Nullable VisibleUserGroupInformation getPermissions(final @NotNull WListClientInterface client, final @NotNull String token) throws IOException, InterruptedException, WrongStateException {
-//        final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.GetPermissions, token);
-//        OperateHelper.logOperating(Operation.Type.GetPermissions, () -> ParametersMap.create().add("tokenHash", token.hashCode()));
-//        final ByteBuf receive = client.send(send);
-//        try {
-//            final boolean success = OperateHelper.handleState(receive);
-//            final VisibleUserGroupInformation group = success ? VisibleUserGroupInformation.parse(receive) : null;
-//            OperateHelper.logOperated(Operation.Type.GetPermissions, () -> ParametersMap.create().add("success", success)
-//                    .optionallyAdd(success, "group", group));
-//            return group;
-//        } finally {
-//            receive.release();
-//        }
-//    }
+    public static @Nullable VisibleUserGroupInformation getGroup(final @NotNull WListClientInterface client, final @NotNull String token) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(Operation.Type.GetGroup, token);
+        OperateHelper.logOperating(Operation.Type.GetGroup, token, null);
+        final ByteBuf receive = client.send(send);
+        try {
+            final boolean success = OperateHelper.handleState(receive);
+            final VisibleUserGroupInformation group = success ? VisibleUserGroupInformation.parse(receive) : null;
+            OperateHelper.logOperated(Operation.Type.GetGroup, p -> p.add("success", success).optionallyAdd(success, "group", group));
+            return group;
+        } finally {
+            receive.release();
+        }
+    }
 }

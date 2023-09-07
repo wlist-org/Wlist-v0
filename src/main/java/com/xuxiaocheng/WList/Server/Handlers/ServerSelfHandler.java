@@ -9,6 +9,7 @@ import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.Server.Databases.User.PasswordGuard;
 import com.xuxiaocheng.WList.Server.Databases.User.UserInformation;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
+import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupInformation;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.UserTokenHelper;
 import com.xuxiaocheng.WList.Server.MessageProto;
@@ -73,7 +74,7 @@ public final class ServerSelfHandler {
         ServerHandlerManager.register(Operation.Type.Logoff, ServerSelfHandler.doLogoff);
         ServerHandlerManager.register(Operation.Type.ChangeUsername, ServerSelfHandler.doChangeUsername);
         ServerHandlerManager.register(Operation.Type.ChangePassword, ServerSelfHandler.doChangePassword);
-//        ServerHandlerManager.register(Operation.Type.GetPermissions, ServerSelfHandler.doGetPermissions);
+        ServerHandlerManager.register(Operation.Type.GetGroup, ServerSelfHandler.doGetGroup);
     }
 
     private static final @NotNull ServerHandler doLogon = (channel, buffer) -> {
@@ -174,17 +175,17 @@ public final class ServerSelfHandler {
         };
     };
 
-//    private static final @NotNull ServerHandler doGetPermissions = (channel, buffer) -> { TODO
-//        final String token = ByteBufIOUtil.readUTF(buffer);
-//        final UnionPair<UserInformation, MessageProto> user = ServerSelfHandler.checkToken(token);
-//        ServerHandler.logOperation(channel, Operation.Type.GetPermissions, user, null);
-//        if (user.isFailure()) {
-//            WListServer.ServerChannelHandler.write(channel, user.getE());
-//            return null;
-//        }
-//        return () -> WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> {
-//            UserGroupInformation.dumpVisible(buf, user.getT().group());
-//            return buf;
-//        }));
-//    };
+    private static final @NotNull ServerHandler doGetGroup = (channel, buffer) -> {
+        final String token = ByteBufIOUtil.readUTF(buffer);
+        final UnionPair<UserInformation, MessageProto> user = ServerSelfHandler.checkToken(token);
+        ServerHandler.logOperation(channel, Operation.Type.GetGroup, user, null);
+        if (user.isFailure()) {
+            WListServer.ServerChannelHandler.write(channel, user.getE());
+            return null;
+        }
+        return () -> WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> {
+            UserGroupInformation.dumpVisible(buf, user.getT().group());
+            return buf;
+        }));
+    };
 }

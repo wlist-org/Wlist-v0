@@ -8,8 +8,8 @@ import org.jetbrains.annotations.NotNull;
 import java.io.IOException;
 import java.util.EnumSet;
 
-public record UserGroupInformation(long id, @NotNull String name, @NotNull EnumSet<Operation.Permission> permissions) {
-    public record Inserter(@NotNull String name, @NotNull EnumSet<Operation.Permission> permissions) {
+public record UserGroupInformation(long id, @NotNull String name, @NotNull EnumSet<Operation.@NotNull Permission> permissions) {
+    public record Inserter(@NotNull String name, @NotNull EnumSet<Operation.@NotNull Permission> permissions) {
     }
 
     /**
