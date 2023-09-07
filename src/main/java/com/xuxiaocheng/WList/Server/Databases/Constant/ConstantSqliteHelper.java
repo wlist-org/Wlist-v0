@@ -12,10 +12,10 @@ import java.sql.Statement;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
-public final class ConstantSqlHelper implements ConstantSqlInterface {
+public final class ConstantSqliteHelper implements ConstantSqlInterface {
     private final @NotNull DatabaseInterface database;
 
-    public ConstantSqlHelper(final @NotNull DatabaseInterface database) {
+    public ConstantSqliteHelper(final @NotNull DatabaseInterface database) {
         super();
         this.database = database;
     }
@@ -81,7 +81,7 @@ public final class ConstantSqlHelper implements ConstantSqlInterface {
 
     @Override
     public @NotNull String toString() {
-        return "ConstantSqlHelper{" +
+        return "ConstantSqliteHelper{" +
                 "database=" + this.database +
                 '}';
     }

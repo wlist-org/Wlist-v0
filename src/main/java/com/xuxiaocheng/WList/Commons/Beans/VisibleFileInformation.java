@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Client.Server;
+package com.xuxiaocheng.WList.Commons.Beans;
 
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
@@ -10,7 +10,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
-@Deprecated
 public record VisibleFileInformation(long id, long parentId, @NotNull String name, boolean isDirectory, long size,
                                      @Nullable LocalDateTime createTime, @Nullable LocalDateTime updateTime,
                                      @NotNull String md5) {

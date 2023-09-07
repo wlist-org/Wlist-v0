@@ -4,14 +4,14 @@ import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Ranges.LongRange;
-import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
+import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInterface;
 import com.xuxiaocheng.WList.Server.Driver.WebDrivers.DriverConfiguration;
 import com.xuxiaocheng.WList.Server.Driver.WebDrivers.DriverInterface;
 import com.xuxiaocheng.WList.Server.Driver.WebDrivers.DriverTrashInterface;
 import com.xuxiaocheng.WList.Server.Driver.FailureReason;
-import com.xuxiaocheng.WList.Server.Driver.FileLocation;
-import com.xuxiaocheng.WList.Server.Driver.Options;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
+import com.xuxiaocheng.WList.Commons.Options;
 import com.xuxiaocheng.WList.Server.Driver.SpecialDriverName;
 import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.DownloadMethods;
@@ -38,15 +38,15 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
         return RootDriver.instance;
     }
 
-    public static @NotNull FileSqlInformation getDriverInformation(final @NotNull DriverConfiguration<?, ?, ?> configuration) {
-        return new FileSqlInformation(new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), configuration.getWebSide().getRootDirectoryId()),
+    public static @NotNull FileInformation getDriverInformation(final @NotNull DriverConfiguration<?, ?, ?> configuration) {
+        return new FileInformation(new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), configuration.getWebSide().getRootDirectoryId()),
                 0, configuration.getName(), FileSqlInterface.FileSqlType.Directory, configuration.getWebSide().getSpaceUsed(),
                 configuration.getLocalSide().getCreateTime(), configuration.getLocalSide().getUpdateTime(),
                 configuration.getLocalSide().getDisplayName(), null);
     }
 
-    public static @NotNull FileSqlInformation getDatabaseDriverInformation(final @NotNull DriverConfiguration<?, ?, ?> configuration) {
-        return new FileSqlInformation(new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), configuration.getWebSide().getRootDirectoryId()),
+    public static @NotNull FileInformation getDatabaseDriverInformation(final @NotNull DriverConfiguration<?, ?, ?> configuration) {
+        return new FileInformation(new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), configuration.getWebSide().getRootDirectoryId()),
                 configuration.getWebSide().getRootDirectoryId(), configuration.getName(),
                 FileSqlInterface.FileSqlType.Directory, configuration.getWebSide().getSpaceUsed(),
                 configuration.getLocalSide().getCreateTime(), configuration.getLocalSide().getUpdateTime(), "", null);
@@ -138,7 +138,7 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
     }
 
     @Override
-    public Triad.@Nullable ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(final @NotNull FileLocation location, final Options.@NotNull DirectoriesOrFiles filter, final @LongRange(minimum = 0) int limit, final @LongRange(minimum = 0) int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws Exception {
+    public Triad.@Nullable ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileInformation>> list(final @NotNull FileLocation location, final Options.@NotNull DirectoriesOrFiles filter, final @LongRange(minimum = 0) int limit, final @LongRange(minimum = 0) int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws Exception {
         if (SpecialDriverName.RootDriver.getIdentifier().equals(location.driver())) {
             if (filter == Options.DirectoriesOrFiles.OnlyFiles)
                 return Triad.ImmutableTriad.makeImmutableTriad((long) DriverManager.getDriverCount(), 0L, List.of());
@@ -153,14 +153,14 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
             });
             DriverManager.operateAllDrivers(d -> all.add(d.getConfiguration()));
             final Iterator<DriverConfiguration<?, ?, ?>> iterator = all.stream().skip((long) limit * page).iterator();
-            final List<FileSqlInformation> list = new ArrayList<>(limit);
+            final List<FileInformation> list = new ArrayList<>(limit);
             while (list.size() < limit && iterator.hasNext())
                 list.add(RootDriver.getDriverInformation(iterator.next()));
             return Triad.ImmutableTriad.makeImmutableTriad((long) all.size(), (long) all.size(), list);
         }
         final DriverInterface<?> real = DriverManager.getDriver(location.driver());
         if (real == null) return null;
-        final Triad.ImmutableTriad<Long, Long, List<FileSqlInformation>> list;
+        final Triad.ImmutableTriad<Long, Long, List<FileInformation>> list;
         try {
             list = real.list(location, filter, limit, page, policy, direction);
         } finally {
@@ -170,12 +170,12 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
     }
 
     @Override
-    public @Nullable FileSqlInformation info(final @NotNull FileLocation location) throws Exception {
+    public @Nullable FileInformation info(final @NotNull FileLocation location) throws Exception {
         if (SpecialDriverName.RootDriver.getIdentifier().equals(location.driver()))
             throw new UnsupportedOperationException("Cannot get root info.");
         final DriverInterface<?> real = DriverManager.getDriver(location.driver());
         if (real == null) return null;
-        final FileSqlInformation info;
+        final FileInformation info;
         try {
             info = real.info(location);
         } finally {
@@ -198,12 +198,12 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
     }
 
     @Override
-    public @NotNull UnionPair<FileSqlInformation, FailureReason> createDirectory(final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+    public @NotNull UnionPair<FileInformation, FailureReason> createDirectory(final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws Exception {
         if (SpecialDriverName.RootDriver.getIdentifier().equals(parentLocation.driver()))
             throw new UnsupportedOperationException("Cannot create root directory.");
         final DriverInterface<?> real = DriverManager.getDriver(parentLocation.driver());
         if (real == null) return UnionPair.fail(FailureReason.byNoSuchFile("Creating directories.", parentLocation));
-        final UnionPair<FileSqlInformation, FailureReason> directory;
+        final UnionPair<FileInformation, FailureReason> directory;
         try {
             directory = real.createDirectory(parentLocation, directoryName, policy);
         } finally {
@@ -244,7 +244,7 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
     }
 
     @Override
-    public @NotNull UnionPair<FileSqlInformation, FailureReason> copy(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final @NotNull String targetFilename, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+    public @NotNull UnionPair<FileInformation, FailureReason> copy(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final @NotNull String targetFilename, final Options.@NotNull DuplicatePolicy policy) throws Exception {
         if (SpecialDriverName.RootDriver.getIdentifier().equals(sourceLocation.driver()))
             throw new UnsupportedOperationException("Cannot copy from root driver.");
         if (SpecialDriverName.RootDriver.getIdentifier().equals(targetParentLocation.driver()))
@@ -262,7 +262,7 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
     }
 
     @Override
-    public @NotNull UnionPair<FileSqlInformation, FailureReason> move(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+    public @NotNull UnionPair<FileInformation, FailureReason> move(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final Options.@NotNull DuplicatePolicy policy) throws Exception {
         if (SpecialDriverName.RootDriver.getIdentifier().equals(sourceLocation.driver()))
             throw new UnsupportedOperationException("Cannot move from root driver.");
         if (SpecialDriverName.RootDriver.getIdentifier().equals(targetParentLocation.driver()))
@@ -280,7 +280,7 @@ public final class RootDriver implements DriverInterface<RootDriver.RootDriverCo
     }
 
     @Override
-    public @NotNull UnionPair<FileSqlInformation, FailureReason> rename(final @NotNull FileLocation sourceLocation, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+    public @NotNull UnionPair<FileInformation, FailureReason> rename(final @NotNull FileLocation sourceLocation, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
         if (SpecialDriverName.RootDriver.getIdentifier().equals(sourceLocation.driver()))
             throw new UnsupportedOperationException("Cannot rename root driver.");
         final DriverInterface<?> real = DriverManager.getDriver(sourceLocation.driver());

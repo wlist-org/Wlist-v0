@@ -1,9 +1,9 @@
 package com.xuxiaocheng.WList.Server.Databases.TrashedFile;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.WList.Server.Databases.PooledDatabase;
-import com.xuxiaocheng.WList.Server.Driver.FileLocation;
-import com.xuxiaocheng.WList.Server.Driver.Options;
+import com.xuxiaocheng.WList.Server.Databases.PooledSqlDatabase;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
+import com.xuxiaocheng.WList.Commons.Options;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -28,7 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
-public final class TrashedSqlHelper implements TrashedSqlInterface {
+public final class TrashedSqliteHelper implements TrashedSqlInterface {
     @Contract(pure = true) private static @NotNull String getTableName(final @NotNull String name) {
         return "driver_" + Base64.getEncoder().encodeToString(name.getBytes(StandardCharsets.UTF_8)).replace('=', '_') + "_trash";
     }
@@ -50,15 +50,15 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
 
     private static final @NotNull DateTimeFormatter DefaultFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
-    private final @NotNull PooledDatabase.PooledDatabaseInterface database;
+    private final @NotNull PooledSqlDatabase.PooledDatabaseInterface database;
     private final @NotNull String driverName;
     private final @NotNull String tableName;
 
-    public TrashedSqlHelper(final @NotNull PooledDatabase.PooledDatabaseInterface database, final @NotNull String driverName) {
+    public TrashedSqliteHelper(final @NotNull PooledSqlDatabase.PooledDatabaseInterface database, final @NotNull String driverName) {
         super();
         this.database = database;
         this.driverName = driverName;
-        this.tableName = TrashedSqlHelper.getTableName(driverName);
+        this.tableName = TrashedSqliteHelper.getTableName(driverName);
     }
 
     @Override
@@ -110,22 +110,22 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
         return this.driverName;
     }
 
-    private static @Nullable TrashedSqlInformation createNextFileInfo(final @NotNull String driverName, final @NotNull ResultSet result) throws SQLException {
+    private static @Nullable TrashedFileInformation createNextFileInfo(final @NotNull String driverName, final @NotNull ResultSet result) throws SQLException {
         final @NotNull String createTime = result.getString("create_time");
         final @NotNull String trashedTime = result.getString("trashed_time");
         final @NotNull String expire_time = result.getString("expire_time");
-        return result.next() ? new TrashedSqlInformation(new FileLocation(driverName, result.getLong("id")), result.getString("name"),
+        return result.next() ? new TrashedFileInformation(new FileLocation(driverName, result.getLong("id")), result.getString("name"),
                 result.getBoolean("is_directory"), result.getLong("size"),
-                createTime.isEmpty() ? null : LocalDateTime.parse(createTime, TrashedSqlHelper.DefaultFormatter),
-                trashedTime.isEmpty() ? null : LocalDateTime.parse(trashedTime, TrashedSqlHelper.DefaultFormatter),
-                expire_time.isEmpty() ? null : LocalDateTime.parse(expire_time, TrashedSqlHelper.DefaultFormatter),
+                createTime.isEmpty() ? null : LocalDateTime.parse(createTime, TrashedSqliteHelper.DefaultFormatter),
+                trashedTime.isEmpty() ? null : LocalDateTime.parse(trashedTime, TrashedSqliteHelper.DefaultFormatter),
+                expire_time.isEmpty() ? null : LocalDateTime.parse(expire_time, TrashedSqliteHelper.DefaultFormatter),
                 result.getString("md5"), result.getString("others")) : null;
     }
 
-    private static @NotNull @UnmodifiableView List<@NotNull TrashedSqlInformation> createFilesInfo(final @NotNull String driverName, final @NotNull ResultSet result) throws SQLException {
-        final List<TrashedSqlInformation> list = new LinkedList<>();
+    private static @NotNull @UnmodifiableView List<@NotNull TrashedFileInformation> createFilesInfo(final @NotNull String driverName, final @NotNull ResultSet result) throws SQLException {
+        final List<TrashedFileInformation> list = new LinkedList<>();
         while (true) {
-            final TrashedSqlInformation info = TrashedSqlHelper.createNextFileInfo(driverName, result);
+            final TrashedFileInformation info = TrashedSqliteHelper.createNextFileInfo(driverName, result);
             if (info == null)
                 break;
             list.add(info);
@@ -134,7 +134,7 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
     }
 
     @Override
-    public void insertOrUpdateFiles(final @NotNull Collection<@NotNull TrashedSqlInformation> inserters, final @Nullable String _connectionId) throws SQLException {
+    public void insertOrUpdateFiles(final @NotNull Collection<@NotNull TrashedFileInformation> inserters, final @Nullable String _connectionId) throws SQLException {
         if (inserters.isEmpty())
             return;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
@@ -147,14 +147,14 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
                         trashed_time = excluded.trashed_time, expire_time = excluded.expire_time,
                         md5 = excluded.md5, others = excluded.others;
                 """, this.tableName))) {
-                for (final TrashedSqlInformation inserter: inserters) {
+                for (final TrashedFileInformation inserter: inserters) {
                     statement.setLong(1, inserter.id());
                     statement.setString(2, inserter.name());
                     statement.setBoolean(3, inserter.isDirectory());
                     statement.setLong(4, inserter.size());
-                    statement.setString(5, inserter.createTime() == null ? "" : inserter.createTime().format(TrashedSqlHelper.DefaultFormatter));
-                    statement.setString(6, inserter.trashedTime() == null ? "" : inserter.trashedTime().format(TrashedSqlHelper.DefaultFormatter));
-                    statement.setString(7, inserter.expireTime() == null ? "" : inserter.expireTime().format(TrashedSqlHelper.DefaultFormatter));
+                    statement.setString(5, inserter.createTime() == null ? "" : inserter.createTime().format(TrashedSqliteHelper.DefaultFormatter));
+                    statement.setString(6, inserter.trashedTime() == null ? "" : inserter.trashedTime().format(TrashedSqliteHelper.DefaultFormatter));
+                    statement.setString(7, inserter.expireTime() == null ? "" : inserter.expireTime().format(TrashedSqliteHelper.DefaultFormatter));
                     statement.setString(8, inserter.md5());
                     statement.setString(9, inserter.others());
                     statement.executeUpdate();
@@ -165,18 +165,18 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
     }
 
     @Override
-    public @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull TrashedSqlInformation> selectFiles(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
+    public @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull TrashedFileInformation> selectFiles(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
         if (idList.isEmpty())
             return Map.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            final Map<Long, TrashedSqlInformation> map = new HashMap<>();
+            final Map<Long, TrashedFileInformation> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT * FROM %s WHERE id == ? LIMIT 1;
                 """, this.tableName))) {
                 for (final Long id: idList) {
                     statement.setLong(1, id.longValue());
                     try (final ResultSet result = statement.executeQuery()) {
-                        map.put(id, TrashedSqlHelper.createNextFileInfo(this.driverName, result));
+                        map.put(id, TrashedSqliteHelper.createNextFileInfo(this.driverName, result));
                     }
                 }
             }
@@ -185,18 +185,18 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
     }
 
     @Override
-    public @NotNull @UnmodifiableView Map<@NotNull String, @NotNull List<@NotNull TrashedSqlInformation>> selectFilesByName(final @NotNull Collection<@NotNull String> nameList, final @Nullable String _connectionId) throws SQLException {
+    public @NotNull @UnmodifiableView Map<@NotNull String, @NotNull List<@NotNull TrashedFileInformation>> selectFilesByName(final @NotNull Collection<@NotNull String> nameList, final @Nullable String _connectionId) throws SQLException {
         if (nameList.isEmpty())
             return Map.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            final Map<String, List<TrashedSqlInformation>> map = new HashMap<>();
+            final Map<String, List<TrashedFileInformation>> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT * FROM %s WHERE name == ?;
                 """, this.tableName))) {
                 for (final String name: nameList) {
                     statement.setString(1, name);
                     try (final ResultSet result = statement.executeQuery()) {
-                        map.put(name, TrashedSqlHelper.createFilesInfo(this.driverName, result));
+                        map.put(name, TrashedSqliteHelper.createFilesInfo(this.driverName, result));
                     }
                 }
             }
@@ -205,18 +205,18 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
     }
 
     @Override
-    public @NotNull @UnmodifiableView Map<@NotNull String, @NotNull @UnmodifiableView List<@NotNull TrashedSqlInformation>> selectFilesByMd5(final @NotNull Collection<@NotNull String> md5List, final @Nullable String _connectionId) throws SQLException {
+    public @NotNull @UnmodifiableView Map<@NotNull String, @NotNull @UnmodifiableView List<@NotNull TrashedFileInformation>> selectFilesByMd5(final @NotNull Collection<@NotNull String> md5List, final @Nullable String _connectionId) throws SQLException {
         if (md5List.isEmpty())
             return Map.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            final Map<String, List<TrashedSqlInformation>> map = new HashMap<>();
+            final Map<String, List<TrashedFileInformation>> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT * FROM %s WHERE md5 == ? LIMIT 1;
                 """, this.tableName))) {
                 for (final String md5: md5List) {
                     statement.setString(1, md5);
                     try (final ResultSet result = statement.executeQuery()) {
-                        map.put(md5, TrashedSqlHelper.createFilesInfo(this.driverName, result));
+                        map.put(md5, TrashedSqliteHelper.createFilesInfo(this.driverName, result));
                     }
                 }
             }
@@ -255,21 +255,21 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
     }
 
     @Override
-    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull TrashedSqlInformation>> selectFilesInPage(final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final @Nullable String _connectionId) throws SQLException {
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull TrashedFileInformation>> selectFilesInPage(final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final @Nullable String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
             final long count = this.selectFileCount(connectionId.get());
             if (offset >= count)
                 return Pair.ImmutablePair.makeImmutablePair(count, List.of());
-            final List<TrashedSqlInformation> list;
+            final List<TrashedFileInformation> list;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT * FROM %s ORDER BY ? %s LIMIT ? OFFSET ?;
-                """, this.tableName, TrashedSqlHelper.getOrderDirection(direction)))) {
-                statement.setString(1, TrashedSqlHelper.getOrderPolicy(policy));
+                """, this.tableName, TrashedSqliteHelper.getOrderDirection(direction)))) {
+                statement.setString(1, TrashedSqliteHelper.getOrderPolicy(policy));
                 statement.setInt(2, limit);
                 statement.setLong(3, offset);
                 try (final ResultSet result = statement.executeQuery()) {
-                    list = TrashedSqlHelper.createFilesInfo(this.driverName, result);
+                    list = TrashedSqliteHelper.createFilesInfo(this.driverName, result);
                 }
             }
             return Pair.ImmutablePair.makeImmutablePair(count, list);
@@ -342,11 +342,11 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
     }
 
     @Override
-    public @NotNull @UnmodifiableView List<@Nullable TrashedSqlInformation> searchFilesByNameLimited(final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
+    public @NotNull @UnmodifiableView List<@Nullable TrashedFileInformation> searchFilesByNameLimited(final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
         if (limit <= 0)
             return List.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            final List<TrashedSqlInformation> list;
+            final List<TrashedFileInformation> list;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT * FROM %s WHERE name %s ? ORDER BY abs(length(name) - ?) ASC, id DESC LIMIT ?;
                 """, this.tableName, caseSensitive ? "GLOB" : "LIKE"))) {
@@ -354,7 +354,7 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
                 statement.setInt(2, rule.length());
                 statement.setInt(3, limit);
                 try (final ResultSet result = statement.executeQuery()) {
-                    list = TrashedSqlHelper.createFilesInfo(this.driverName, result);
+                    list = TrashedSqliteHelper.createFilesInfo(this.driverName, result);
                 }
             }
             return list;
@@ -363,7 +363,7 @@ public final class TrashedSqlHelper implements TrashedSqlInterface {
 
     @Override
     public @NotNull String toString() {
-        return "TrashedSqlHelper{" +
+        return "TrashedSqliteHelper{" +
                 "database=" + this.database +
                 ", driverName='" + this.driverName + '\'' +
                 ", tableName='" + this.tableName + '\'' +

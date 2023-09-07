@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Client.Server;
+package com.xuxiaocheng.WList.Commons.Beans;
 
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
@@ -10,7 +10,6 @@ import java.io.IOException;
  * @param driver Driver name. For database.
  * @param id File id. Primary key.
  */
-@Deprecated
 public record FileLocation(@NotNull String driver, long id) {
     public static void dump(final @NotNull ByteBuf buffer, final @NotNull FileLocation location) throws IOException {
         ByteBufIOUtil.writeUTF(buffer, location.driver);

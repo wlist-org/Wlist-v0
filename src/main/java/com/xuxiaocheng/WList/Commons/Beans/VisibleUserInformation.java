@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Client.Server;
+package com.xuxiaocheng.WList.Commons.Beans;
 
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
@@ -6,7 +6,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 
-@Deprecated
 public record VisibleUserInformation(long id, @NotNull String username, @NotNull String group) {
      public static @NotNull VisibleUserInformation parse(final @NotNull ByteBuf buffer) throws IOException {
          final long id = ByteBufIOUtil.readVariableLenLong(buffer);

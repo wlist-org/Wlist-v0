@@ -10,14 +10,14 @@ import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Ranges.LongRange;
+import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
-import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInterface;
 import com.xuxiaocheng.WList.Server.Driver.FailureReason;
-import com.xuxiaocheng.WList.Server.Driver.FileLocation;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Server.Driver.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Server.Driver.Helpers.DriverUtil;
-import com.xuxiaocheng.WList.Server.Driver.Options;
+import com.xuxiaocheng.WList.Commons.Options;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.UploadMethods;
 import com.xuxiaocheng.WList.Server.WListServer;
@@ -94,7 +94,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @return The A {@code long} is files count in directory. The B {@code long} is files count after applied filter. The C {@code list} is the files list. Null means directory is not available.
      * @throws Exception Something went wrong.
      */
-    Triad.@Nullable ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(final @NotNull FileLocation location, final Options.@NotNull DirectoriesOrFiles filter, final @LongRange(minimum = 0) int limit, final @LongRange(minimum = 0) int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws Exception;
+    Triad.@Nullable ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileInformation>> list(final @NotNull FileLocation location, final Options.@NotNull DirectoriesOrFiles filter, final @LongRange(minimum = 0) int limit, final @LongRange(minimum = 0) int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws Exception;
 
     /**
      * Get the file information of a specific file.
@@ -102,7 +102,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @return The file information. Null means not existed.
      * @throws Exception Something went wrong.
      */
-    @Nullable FileSqlInformation info(final @NotNull FileLocation location) throws Exception;
+    @Nullable FileInformation info(final @NotNull FileLocation location) throws Exception;
 
     /**
      * Get download methods of a specific file.
@@ -125,7 +125,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @see DriverUtil#getRetryWrapper(String)
      * @throws Exception Something went wrong.
      */
-    @NotNull UnionPair<FileSqlInformation, FailureReason> createDirectory(final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws Exception;
+    @NotNull UnionPair<FileInformation, FailureReason> createDirectory(final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws Exception;
 
     /**
      * Upload file.
@@ -159,9 +159,9 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @throws Exception Something went wrong.
      */
     @SuppressWarnings("OverlyBroadThrowsClause")
-    default @NotNull UnionPair<FileSqlInformation, FailureReason> copy(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final @NotNull String targetFilename, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+    default @NotNull UnionPair<FileInformation, FailureReason> copy(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final @NotNull String targetFilename, final Options.@NotNull DuplicatePolicy policy) throws Exception {
         HLog.getInstance("ServerLogger").log(HLogLevel.WARN, "Copying by default algorithm.", ParametersMap.create().add("sourceLocation", sourceLocation).add("targetParentLocation", targetParentLocation).add("targetFilename", targetFilename).add("policy", policy));
-        final FileSqlInformation source = this.info(sourceLocation);
+        final FileInformation source = this.info(sourceLocation);
         if (source == null || source.isDirectory())
             return UnionPair.fail(FailureReason.byNoSuchFile("Copying.", sourceLocation));
         Runnable uploadFinisher = null;
@@ -188,7 +188,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
                     uploadIterator.next().accept(downloadIterator.next().get());
                 assert !uploadIterator.hasNext() && !downloadIterator.hasNext();
             }
-            final FileSqlInformation information = upload.getT().supplier().get();
+            final FileInformation information = upload.getT().supplier().get();
             if (information == null)
                 throw new IllegalStateException("Failed to copy file. Failed to get target file information." + ParametersMap.create()
                         .add("sourceLocation", sourceLocation).add("sourceInfo", source).add("targetParentLocation", targetParentLocation).add(targetFilename, "targetFilename").add("policy", policy));
@@ -210,21 +210,21 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @throws Exception Something went wrong.
      */
     @SuppressWarnings("OverlyBroadThrowsClause")
-    default @NotNull UnionPair<FileSqlInformation, FailureReason> move(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+    default @NotNull UnionPair<FileInformation, FailureReason> move(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final Options.@NotNull DuplicatePolicy policy) throws Exception {
         HLog.getInstance("ServerLogger").log(HLogLevel.WARN, "Moving by default algorithm.", ParametersMap.create().add("sourceLocation", sourceLocation).add("targetParentLocation", targetParentLocation).add("policy", policy));
-        final FileSqlInformation source = this.info(sourceLocation);
+        final FileInformation source = this.info(sourceLocation);
         if (source == null)
             return UnionPair.fail(FailureReason.byNoSuchFile("Moving.", sourceLocation));
         if (source.isDirectory()) {
-            final UnionPair<FileSqlInformation, FailureReason> directory = this.createDirectory(targetParentLocation, source.name(), policy);
+            final UnionPair<FileInformation, FailureReason> directory = this.createDirectory(targetParentLocation, source.name(), policy);
             if (directory.isFailure())
                 return UnionPair.fail(directory.getE());
-            Triad.ImmutableTriad<Long, Long, List<FileSqlInformation>> list;
+            Triad.ImmutableTriad<Long, Long, List<FileInformation>> list;
             do {
                 list = this.list(sourceLocation, Options.DirectoriesOrFiles.OnlyDirectories, DriverUtil.DefaultLimitPerRequestPage, 0, DriverUtil.DefaultOrderPolicy, DriverUtil.DefaultOrderDirection);
                 if (list == null)
                     return directory;
-                for (final FileSqlInformation f: list.getC())
+                for (final FileInformation f: list.getC())
                     this.move(f.location(), directory.getT().location(), policy);
             } while (list.getB().longValue() > 0);
             this.moveFilesInDirectory(sourceLocation, policy, directory);
@@ -232,7 +232,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
         }
         if (source.location().equals(targetParentLocation))
             return UnionPair.ok(source);
-        final UnionPair<FileSqlInformation, FailureReason> information = this.copy(sourceLocation, targetParentLocation, source.name(), policy);
+        final UnionPair<FileInformation, FailureReason> information = this.copy(sourceLocation, targetParentLocation, source.name(), policy);
         if (information.isFailure())
             return UnionPair.fail(information.getE());
         try {
@@ -258,13 +258,13 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * @throws Exception Something went wrong.
      */
     @SuppressWarnings("OverlyBroadThrowsClause")
-    default @NotNull UnionPair<FileSqlInformation, FailureReason> rename(final @NotNull FileLocation sourceLocation, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+    default @NotNull UnionPair<FileInformation, FailureReason> rename(final @NotNull FileLocation sourceLocation, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
         HLog.getInstance("ServerLogger").log(HLogLevel.WARN, "Renaming by default algorithm.", ParametersMap.create().add("sourceLocation", sourceLocation).add("name", name).add("policy", policy));
-        final FileSqlInformation source = this.info(sourceLocation);
+        final FileInformation source = this.info(sourceLocation);
         if (source == null)
             return UnionPair.fail(FailureReason.byNoSuchFile("Renaming.", sourceLocation));
         if (source.isDirectory()) {
-            final UnionPair<FileSqlInformation, FailureReason> directory = this.createDirectory(new FileLocation(sourceLocation.driver(), source.parentId()), name, policy);
+            final UnionPair<FileInformation, FailureReason> directory = this.createDirectory(new FileLocation(sourceLocation.driver(), source.parentId()), name, policy);
             if (directory.isFailure())
                 return UnionPair.fail(directory.getE());
             this.moveFilesInDirectory(sourceLocation, policy, directory);
@@ -273,7 +273,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
         }
         if (source.name().equals(name))
             return UnionPair.ok(source);
-        final UnionPair<FileSqlInformation, FailureReason> information = this.copy(sourceLocation, sourceLocation, name, policy);
+        final UnionPair<FileInformation, FailureReason> information = this.copy(sourceLocation, sourceLocation, name, policy);
         if (information.isFailure())
             return UnionPair.fail(information.getE());
         try {
@@ -291,14 +291,14 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     }
 
     @SuppressWarnings("OverlyBroadThrowsClause")
-    private void moveFilesInDirectory(final @NotNull FileLocation sourceLocation, final Options.@NotNull DuplicatePolicy policy, final @NotNull UnionPair<FileSqlInformation, FailureReason> directory) throws Exception {
-        Triad.ImmutableTriad<Long, Long, List<FileSqlInformation>> list;
+    private void moveFilesInDirectory(final @NotNull FileLocation sourceLocation, final Options.@NotNull DuplicatePolicy policy, final @NotNull UnionPair<FileInformation, FailureReason> directory) throws Exception {
+        Triad.ImmutableTriad<Long, Long, List<FileInformation>> list;
         do {
             list = this.list(sourceLocation, Options.DirectoriesOrFiles.Both, 10, 0, DriverUtil.DefaultOrderPolicy, DriverUtil.DefaultOrderDirection);
             if (list == null)
                 break;
             final CountDownLatch latch = new CountDownLatch(list.getC().size());
-            for (final FileSqlInformation f: list.getC())
+            for (final FileInformation f: list.getC())
                 CompletableFuture.runAsync(HExceptionWrapper.wrapRunnable(() -> this.move(f.location(), directory.getT().location(), policy),
                         latch::countDown), WListServer.ServerExecutors).exceptionally(MiscellaneousUtil.exceptionHandler());
             latch.await();

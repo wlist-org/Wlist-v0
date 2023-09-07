@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Client.Server;
+package com.xuxiaocheng.WList.Client;
 
 import org.jetbrains.annotations.NotNull;
 

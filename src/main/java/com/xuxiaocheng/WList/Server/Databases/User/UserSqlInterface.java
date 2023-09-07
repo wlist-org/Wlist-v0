@@ -2,7 +2,7 @@ package com.xuxiaocheng.WList.Server.Databases.User;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
-import com.xuxiaocheng.WList.Server.Driver.Options;
+import com.xuxiaocheng.WList.Commons.Options;
 import com.xuxiaocheng.WList.Server.Databases.DatabaseInterface;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -20,14 +20,14 @@ public interface UserSqlInterface extends DatabaseInterface {
     @Contract(pure = true) long getAdminId();
     @NotNull HInitializer<String> getDefaultAdminPassword();
 
-    @NotNull @UnmodifiableView Map<UserSqlInformation.@NotNull Inserter, @Nullable Long> insertUsers(final @NotNull Collection<UserSqlInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException;
-    void updateUsers(final @NotNull Collection<UserSqlInformation.@NotNull Updater> updaters, final @Nullable String _connectionId) throws SQLException;
-    void updateUsersByName(final @NotNull Collection<UserSqlInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException;
+    @NotNull @UnmodifiableView Map<UserInformation.@NotNull Inserter, @Nullable Long> insertUsers(final @NotNull Collection<UserInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException;
+    void updateUsers(final @NotNull Collection<UserInformation.@NotNull Updater> updaters, final @Nullable String _connectionId) throws SQLException;
+    void updateUsersByName(final @NotNull Collection<UserInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException;
     void deleteUsers(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException;
     void deleteUsersByName(final @NotNull Collection<@NotNull String> usernameList, final @Nullable String _connectionId) throws SQLException;
-    @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull UserSqlInformation> selectUsers(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException;
-    @NotNull @UnmodifiableView Map<@NotNull String, @NotNull UserSqlInformation> selectUsersByName(final @NotNull Collection<@NotNull String> usernameList, final @Nullable String _connectionId) throws SQLException;
+    @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull UserInformation> selectUsers(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException;
+    @NotNull @UnmodifiableView Map<@NotNull String, @NotNull UserInformation> selectUsersByName(final @NotNull Collection<@NotNull String> usernameList, final @Nullable String _connectionId) throws SQLException;
     @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull Long> selectUsersCountByGroup(final @NotNull Collection<@NotNull Long> groupIdList, final @Nullable String _connectionId) throws SQLException;
-    Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull UserSqlInformation>> selectAllUsersInPage(final int limit, final long offset, final Options.@NotNull OrderDirection direction, final @Nullable String _connectionId) throws SQLException;
-    @NotNull @UnmodifiableView List<@Nullable UserSqlInformation> searchUsersByNameLimited(final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException;
+    Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull UserInformation>> selectAllUsersInPage(final int limit, final long offset, final Options.@NotNull OrderDirection direction, final @Nullable String _connectionId) throws SQLException;
+    @NotNull @UnmodifiableView List<@Nullable UserInformation> searchUsersByNameLimited(final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException;
 }

@@ -20,7 +20,7 @@ public final class ServerStateHandler {
     }
 
 //    private static final @NotNull ServerHandler doCloseServer = (channel, buffer) -> {
-//        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.ServerOperate);
+//        final UnionPair<UserInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.ServerOperate);
 //        ServerHandler.logOperation(channel, Operation.Type.CloseServer, user, null);
 //        if (user.isFailure())
 //            return user.getE();
@@ -29,7 +29,7 @@ public final class ServerStateHandler {
 //    };
 //
 //    private static final @NotNull ServerHandler doBroadcast = (channel, buffer) -> {
-//        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.Broadcast);
+//        final UnionPair<UserInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.Broadcast);
 //        ServerHandler.logOperation(channel, Operation.Type.Broadcast, user, () -> ParametersMap.create()
 //                .add("len", buffer.readableBytes()));
 //        if (user.isFailure())

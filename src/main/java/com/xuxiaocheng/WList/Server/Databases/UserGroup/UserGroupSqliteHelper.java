@@ -2,7 +2,7 @@ package com.xuxiaocheng.WList.Server.Databases.UserGroup;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
-import com.xuxiaocheng.WList.Server.Driver.Options;
+import com.xuxiaocheng.WList.Commons.Options;
 import com.xuxiaocheng.WList.Commons.Operation;
 import com.xuxiaocheng.WList.Server.Databases.DatabaseInterface;
 import org.jetbrains.annotations.NotNull;
@@ -23,12 +23,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
-public final class UserGroupSqlHelper implements UserGroupSqlInterface {
+public final class UserGroupSqliteHelper implements UserGroupSqlInterface {
     private final @NotNull DatabaseInterface database;
     private final @NotNull HInitializer<Long> adminId = new HInitializer<>("UserGroupAdminId");
     private final @NotNull HInitializer<Long> defaultId = new HInitializer<>("UserGroupDefaultId");
 
-    public UserGroupSqlHelper(final @NotNull DatabaseInterface database) {
+    public UserGroupSqliteHelper(final @NotNull DatabaseInterface database) {
         super();
         this.database = database;
     }
@@ -132,15 +132,15 @@ public final class UserGroupSqlHelper implements UserGroupSqlInterface {
         return this.defaultId.getInstance().longValue();
     }
 
-    private static @Nullable UserGroupSqlInformation createNextUserGroupInfo(final @NotNull ResultSet result) throws SQLException {
-        return result.next() ? new UserGroupSqlInformation(result.getLong("group_id"), result.getString("name"),
+    private static @Nullable UserGroupInformation createNextUserGroupInfo(final @NotNull ResultSet result) throws SQLException {
+        return result.next() ? new UserGroupInformation(result.getLong("group_id"), result.getString("name"),
                 Operation.parsePermissionsNotNull(result.getString("permissions"))) : null;
     }
 
-    private static @NotNull @UnmodifiableView List<@NotNull UserGroupSqlInformation> createUserGroupsInfo(final @NotNull ResultSet result) throws SQLException {
-        final List<UserGroupSqlInformation> list = new LinkedList<>();
+    private static @NotNull @UnmodifiableView List<@NotNull UserGroupInformation> createUserGroupsInfo(final @NotNull ResultSet result) throws SQLException {
+        final List<UserGroupInformation> list = new LinkedList<>();
         while (true) {
-            final UserGroupSqlInformation info = UserGroupSqlHelper.createNextUserGroupInfo(result);
+            final UserGroupInformation info = UserGroupSqliteHelper.createNextUserGroupInfo(result);
             if (info == null)
                 break;
             list.add(info);
@@ -149,16 +149,16 @@ public final class UserGroupSqlHelper implements UserGroupSqlInterface {
     }
 
     @Override
-    public @NotNull @UnmodifiableView Map<UserGroupSqlInformation.@NotNull Inserter, @Nullable Long> insertGroups(final @NotNull Collection<UserGroupSqlInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException {
+    public @NotNull @UnmodifiableView Map<UserGroupInformation.@NotNull Inserter, @Nullable Long> insertGroups(final @NotNull Collection<UserGroupInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException {
         if (inserters.isEmpty())
             return Map.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            final Map<UserGroupSqlInformation.Inserter, Long> map = new HashMap<>(inserters.size());
-            final Collection<UserGroupSqlInformation.Inserter> inserted = new HashSet<>();
+            final Map<UserGroupInformation.Inserter, Long> map = new HashMap<>(inserters.size());
+            final Collection<UserGroupInformation.Inserter> inserted = new HashSet<>();
             try (final PreparedStatement statement = connection.prepareStatement("""
                     INSERT OR IGNORE INTO groups (name, permissions) VALUES (?, ?);
                 """)) {
-                for (final UserGroupSqlInformation.Inserter inserter: inserters) {
+                for (final UserGroupInformation.Inserter inserter: inserters) {
                     statement.setString(1, inserter.name());
                     statement.setString(2, Operation.dumpPermissions(inserter.permissions()));
                     if (statement.executeUpdate() > 0)
@@ -171,7 +171,7 @@ public final class UserGroupSqlHelper implements UserGroupSqlInterface {
                 try (final PreparedStatement statement = connection.prepareStatement("""
                         SELECT group_id from groups WHERE name == ?;
                         """)) {
-                    for (final UserGroupSqlInformation.Inserter inserter: inserted) {
+                    for (final UserGroupInformation.Inserter inserter: inserted) {
                         statement.setString(1, inserter.name());
                         try (final ResultSet resultSet = statement.executeQuery()) {
                             resultSet.next();
@@ -186,14 +186,14 @@ public final class UserGroupSqlHelper implements UserGroupSqlInterface {
     }
 
     @Override
-    public void updateGroups(final @NotNull Collection<@NotNull UserGroupSqlInformation> infoList, final @Nullable String _connectionId) throws SQLException {
+    public void updateGroups(final @NotNull Collection<@NotNull UserGroupInformation> infoList, final @Nullable String _connectionId) throws SQLException {
         if (infoList.isEmpty())
             return;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             try (final PreparedStatement statement = connection.prepareStatement("""
                     UPDATE groups SET name = ?, permissions = ? WHERE group_id == ?;
                 """)) {
-                for (final UserGroupSqlInformation info: infoList) {
+                for (final UserGroupInformation info: infoList) {
                     statement.setString(1, info.name());
                     statement.setString(2, Operation.dumpPermissions(info.permissions()));
                     statement.setLong(3, info.id());
@@ -205,14 +205,14 @@ public final class UserGroupSqlHelper implements UserGroupSqlInterface {
     }
 
     @Override
-    public void updateGroupsByName(final @NotNull Collection<UserGroupSqlInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException {
+    public void updateGroupsByName(final @NotNull Collection<UserGroupInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException {
         if (inserters.isEmpty())
             return;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             try (final PreparedStatement statement = connection.prepareStatement("""
                     UPDATE groups SET permissions = ? WHERE name == ?;
                 """)) {
-                for (final UserGroupSqlInformation.Inserter inserter: inserters) {
+                for (final UserGroupInformation.Inserter inserter: inserters) {
                     statement.setString(1, Operation.dumpPermissions(inserter.permissions()));
                     statement.setString(2, inserter.name());
                     statement.executeUpdate();
@@ -257,18 +257,18 @@ public final class UserGroupSqlHelper implements UserGroupSqlInterface {
     }
 
     @Override
-    public @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull UserGroupSqlInformation> selectGroups(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
+    public @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull UserGroupInformation> selectGroups(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
         if (idList.isEmpty())
             return Map.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            final Map<Long, UserGroupSqlInformation> map = new HashMap<>();
+            final Map<Long, UserGroupInformation> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement("""
                     SELECT * FROM groups WHERE group_id == ? LIMIT 1;
                 """)) {
                 for (final Long id: idList) {
                     statement.setLong(1, id.longValue());
                     try (final ResultSet result = statement.executeQuery()) {
-                        final UserGroupSqlInformation information = UserGroupSqlHelper.createNextUserGroupInfo(result);
+                        final UserGroupInformation information = UserGroupSqliteHelper.createNextUserGroupInfo(result);
                         if (information != null)
                             map.put(id, information);
                     }
@@ -279,18 +279,18 @@ public final class UserGroupSqlHelper implements UserGroupSqlInterface {
     }
 
     @Override
-    public @NotNull @UnmodifiableView Map<@NotNull String, @NotNull UserGroupSqlInformation> selectGroupsByName(final @NotNull Collection<@NotNull String> nameList, final @Nullable String _connectionId) throws SQLException {
+    public @NotNull @UnmodifiableView Map<@NotNull String, @NotNull UserGroupInformation> selectGroupsByName(final @NotNull Collection<@NotNull String> nameList, final @Nullable String _connectionId) throws SQLException {
         if (nameList.isEmpty())
             return Map.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            final Map<String, UserGroupSqlInformation> map = new HashMap<>();
+            final Map<String, UserGroupInformation> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement("""
                         SELECT * FROM groups WHERE name == ? LIMIT 1;
                         """)) {
                 for (final String name: nameList) {
                     statement.setString(1, name);
                     try (final ResultSet result = statement.executeQuery()) {
-                        final UserGroupSqlInformation information = UserGroupSqlHelper.createNextUserGroupInfo(result);
+                        final UserGroupInformation information = UserGroupSqliteHelper.createNextUserGroupInfo(result);
                         if (information != null)
                             map.put(name, information);
                     }
@@ -301,7 +301,7 @@ public final class UserGroupSqlHelper implements UserGroupSqlInterface {
     }
 
     @Override
-    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull UserGroupSqlInformation>> selectAllUserGroupsInPage(final int limit, final long offset, final Options.@NotNull OrderDirection direction, final @Nullable String _connectionId) throws SQLException {
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull UserGroupInformation>> selectAllUserGroupsInPage(final int limit, final long offset, final Options.@NotNull OrderDirection direction, final @Nullable String _connectionId) throws SQLException {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             final long count;
             try (final Statement statement = connection.createStatement()) {
@@ -312,14 +312,14 @@ public final class UserGroupSqlHelper implements UserGroupSqlInterface {
             }
             if (offset >= count)
                 return Pair.ImmutablePair.makeImmutablePair(count, List.of());
-            final List<UserGroupSqlInformation> list;
+            final List<UserGroupInformation> list;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT * FROM groups ORDER BY group_id %s LIMIT ? OFFSET ?;
                 """, switch (direction) {case ASCEND -> "ASC";case DESCEND -> "DESC";}))) {
                 statement.setInt(1, limit);
                 statement.setLong(2, offset);
                 try (final ResultSet result = statement.executeQuery()) {
-                    list = UserGroupSqlHelper.createUserGroupsInfo(result);
+                    list = UserGroupSqliteHelper.createUserGroupsInfo(result);
                 }
             }
             return Pair.ImmutablePair.makeImmutablePair(count, list);
@@ -327,11 +327,11 @@ public final class UserGroupSqlHelper implements UserGroupSqlInterface {
     }
 
     @Override
-    public @NotNull @UnmodifiableView List<@Nullable UserGroupSqlInformation> searchUserGroupsByNameLimited(final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
+    public @NotNull @UnmodifiableView List<@Nullable UserGroupInformation> searchUserGroupsByNameLimited(final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
         if (limit <= 0)
             return List.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            final List<UserGroupSqlInformation> list;
+            final List<UserGroupInformation> list;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT * FROM groups WHERE name %s ?
                     ORDER BY abs(length(name) - ?) ASC, id DESC LIMIT ?;
@@ -340,7 +340,7 @@ public final class UserGroupSqlHelper implements UserGroupSqlInterface {
                 statement.setInt(2, rule.length());
                 statement.setInt(3, limit);
                 try (final ResultSet result = statement.executeQuery()) {
-                    list = UserGroupSqlHelper.createUserGroupsInfo(result);
+                    list = UserGroupSqliteHelper.createUserGroupsInfo(result);
                 }
             }
             return list;
@@ -349,7 +349,7 @@ public final class UserGroupSqlHelper implements UserGroupSqlInterface {
 
     @Override
     public @NotNull String toString() {
-        return "UserGroupSqlHelper{" +
+        return "UserGroupSqliteHelper{" +
                 "database=" + this.database +
                 ", adminId=" + this.adminId +
                 ", defaultId=" + this.defaultId +

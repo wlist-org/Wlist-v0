@@ -1,6 +1,6 @@
 package com.xuxiaocheng.WList.AndroidSupports;
 
-import com.xuxiaocheng.WList.Client.Server.FileLocation;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import org.jetbrains.annotations.NotNull;
 
 public final class FileLocationSupporter {

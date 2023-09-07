@@ -3,7 +3,7 @@ package com.xuxiaocheng.WList.Server.Databases.TrashedFile;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HMultiInitializers;
-import com.xuxiaocheng.WList.Server.Driver.Options;
+import com.xuxiaocheng.WList.Commons.Options;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -35,49 +35,51 @@ public final class TrashedFileManager {
     }
 
     public static boolean quicklyUninitializeReserveTable(final @NotNull String driverName) {
-        return TrashedFileManager.sqlInstances.uninitialize(driverName) != null;
+        return TrashedFileManager.sqlInstances.uninitializeNullable(driverName) != null;
     }
 
     @SuppressWarnings("UnusedReturnValue")
     public static boolean quicklyUninitialize(final @NotNull String driverName, final @Nullable String _connectionId) throws SQLException {
-        final TrashedSqlInterface sqlInstance = TrashedFileManager.sqlInstances.uninitialize(driverName);
-        if (sqlInstance != null) sqlInstance.deleteTable(_connectionId);
-        return sqlInstance != null;
+        final TrashedSqlInterface sqlInstance = TrashedFileManager.sqlInstances.uninitializeNullable(driverName);
+        if (sqlInstance == null)
+            return false;
+        sqlInstance.deleteTable(_connectionId);
+        return true;
     }
 
     public static @NotNull Connection getConnection(final @NotNull String driverName, final @Nullable String _connectionId, final @Nullable AtomicReference<? super String> connectionId) throws SQLException {
         return TrashedFileManager.sqlInstances.getInstance(driverName).getConnection(_connectionId, connectionId);
     }
 
-    public static void insertOrUpdateFiles(final @NotNull String driverName, final @NotNull Collection<@NotNull TrashedSqlInformation> inserters, final @Nullable String _connectionId) throws SQLException {
+    public static void insertOrUpdateFiles(final @NotNull String driverName, final @NotNull Collection<@NotNull TrashedFileInformation> inserters, final @Nullable String _connectionId) throws SQLException {
         TrashedFileManager.sqlInstances.getInstance(driverName).insertOrUpdateFiles(inserters, _connectionId);
     }
 
-    public static void insertOrUpdateFile(final @NotNull String driverName, final @NotNull TrashedSqlInformation inserter, final @Nullable String _connectionId) throws SQLException {
+    public static void insertOrUpdateFile(final @NotNull String driverName, final @NotNull TrashedFileInformation inserter, final @Nullable String _connectionId) throws SQLException {
         TrashedFileManager.insertOrUpdateFiles(driverName, List.of(inserter), _connectionId);
     }
 
-    public static @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull TrashedSqlInformation> selectFiles(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
+    public static @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull TrashedFileInformation> selectFiles(final @NotNull String driverName, final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
         return TrashedFileManager.sqlInstances.getInstance(driverName).selectFiles(idList, _connectionId);
     }
 
-    public static @Nullable TrashedSqlInformation selectFile(final @NotNull String driverName, final long id, final @Nullable String _connectionId) throws SQLException {
+    public static @Nullable TrashedFileInformation selectFile(final @NotNull String driverName, final long id, final @Nullable String _connectionId) throws SQLException {
         return TrashedFileManager.selectFiles(driverName, List.of(id), _connectionId).get(id);
     }
 
-    public static @NotNull @UnmodifiableView Map<@NotNull String, @NotNull List<@NotNull TrashedSqlInformation>> selectFilesByName(final @NotNull String driverName, final @NotNull Collection<@NotNull String> nameList, final @Nullable String _connectionId) throws SQLException {
+    public static @NotNull @UnmodifiableView Map<@NotNull String, @NotNull List<@NotNull TrashedFileInformation>> selectFilesByName(final @NotNull String driverName, final @NotNull Collection<@NotNull String> nameList, final @Nullable String _connectionId) throws SQLException {
         return TrashedFileManager.sqlInstances.getInstance(driverName).selectFilesByName(nameList, _connectionId);
     }
 
-    public static @NotNull List<@NotNull TrashedSqlInformation> selectFileByName(final @NotNull String driverName, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
+    public static @NotNull List<@NotNull TrashedFileInformation> selectFileByName(final @NotNull String driverName, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
         return TrashedFileManager.selectFilesByName(driverName, List.of(name), _connectionId).get(name);
     }
 
-    public static @NotNull @UnmodifiableView Map<@NotNull String, @NotNull @UnmodifiableView List<@NotNull TrashedSqlInformation>> selectFilesByMd5(final @NotNull String driverName, final @NotNull Collection<@NotNull String> md5List, final @Nullable String _connectionId) throws SQLException {
+    public static @NotNull @UnmodifiableView Map<@NotNull String, @NotNull @UnmodifiableView List<@NotNull TrashedFileInformation>> selectFilesByMd5(final @NotNull String driverName, final @NotNull Collection<@NotNull String> md5List, final @Nullable String _connectionId) throws SQLException {
         return TrashedFileManager.sqlInstances.getInstance(driverName).selectFilesByMd5(md5List, _connectionId);
     }
 
-    public static @NotNull @UnmodifiableView List<@NotNull TrashedSqlInformation> selectFilesByMd5(final @NotNull String driverName, final @NotNull String md5, final @Nullable String _connectionId) throws SQLException {
+    public static @NotNull @UnmodifiableView List<@NotNull TrashedFileInformation> selectFilesByMd5(final @NotNull String driverName, final @NotNull String md5, final @Nullable String _connectionId) throws SQLException {
         return TrashedFileManager.selectFilesByMd5(driverName, List.of(md5), _connectionId).get(md5);
     }
 
@@ -89,7 +91,7 @@ public final class TrashedFileManager {
         return TrashedFileManager.sqlInstances.getInstance(driverName).selectFileCount(_connectionId);
     }
 
-    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull TrashedSqlInformation>> selectFilesInPage(final @NotNull String driverName, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final @Nullable String _connectionId) throws SQLException {
+    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull TrashedFileInformation>> selectFilesInPage(final @NotNull String driverName, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final @Nullable String _connectionId) throws SQLException {
         return TrashedFileManager.sqlInstances.getInstance(driverName).selectFilesInPage(limit, offset, direction, policy, _connectionId);
     }
 
@@ -121,7 +123,7 @@ public final class TrashedFileManager {
         TrashedFileManager.sqlInstances.getInstance(driverName).clear(_connectionId);
     }
 
-    public static @NotNull @UnmodifiableView List<@Nullable TrashedSqlInformation> searchFilesByNameLimited(final @NotNull String driverName, final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
+    public static @NotNull @UnmodifiableView List<@Nullable TrashedFileInformation> searchFilesByNameLimited(final @NotNull String driverName, final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
         return TrashedFileManager.sqlInstances.getInstance(driverName).searchFilesByNameLimited(rule, caseSensitive, limit, _connectionId);
     }
 }

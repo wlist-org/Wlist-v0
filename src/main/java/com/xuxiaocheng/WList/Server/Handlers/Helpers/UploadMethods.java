@@ -2,7 +2,7 @@ package com.xuxiaocheng.WList.Server.Handlers.Helpers;
 
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
-import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
+import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -16,6 +16,6 @@ import java.util.List;
  * Finally, whether the upload is cancelled or completed, {@code finisher} will be called.
  */
 public record UploadMethods(@NotNull List<@NotNull ConsumerE<@NotNull ByteBuf>> methods,
-                            @NotNull SupplierE<@Nullable FileSqlInformation> supplier,
+                            @NotNull SupplierE<@Nullable FileInformation> supplier,
                             @NotNull Runnable finisher) {
 }

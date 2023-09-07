@@ -29,14 +29,16 @@ public final class ConstantManager {
     }
 
     public static boolean quicklyUninitializeReserveTable() {
-        return ConstantManager.sqlInstance.uninitialize() != null;
+        return ConstantManager.sqlInstance.uninitializeNullable() != null;
     }
 
     @SuppressWarnings("UnusedReturnValue")
     public static boolean quicklyUninitialize(final @Nullable String _connectionId) throws SQLException {
-        final ConstantSqlInterface sqlInstance = ConstantManager.sqlInstance.uninitialize();
-        if (sqlInstance != null) sqlInstance.deleteTable(_connectionId);
-        return sqlInstance != null;
+        final ConstantSqlInterface sqlInstance = ConstantManager.sqlInstance.uninitializeNullable();
+        if (sqlInstance == null)
+            return false;
+        sqlInstance.deleteTable(_connectionId);
+        return true;
     }
 
     public static @NotNull Connection getConnection(final @Nullable String _connectionId, final @Nullable AtomicReference<? super String> connectionId) throws SQLException {

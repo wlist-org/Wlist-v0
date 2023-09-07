@@ -1,6 +1,6 @@
 package com.xuxiaocheng.WList.AndroidSupports;
 
-import com.xuxiaocheng.WList.Client.Server.VisibleUserGroupInformation;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation;
 import com.xuxiaocheng.WList.Commons.Operation;
 import org.jetbrains.annotations.NotNull;
 

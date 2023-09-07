@@ -4,18 +4,17 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
+import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
-import com.xuxiaocheng.WList.Server.Databases.File.FileSqlHelper;
-import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
-import com.xuxiaocheng.WList.Server.Databases.PooledDatabase;
-import com.xuxiaocheng.WList.Server.Databases.SqlitePooledDatabaseHelper;
+import com.xuxiaocheng.WList.Server.Databases.File.FileSqliteHelper;
+import com.xuxiaocheng.WList.Server.Databases.PooledSqlDatabase;
 import com.xuxiaocheng.WList.Server.Databases.TrashedFile.TrashedFileManager;
-import com.xuxiaocheng.WList.Server.Databases.TrashedFile.TrashedSqlHelper;
-import com.xuxiaocheng.WList.Server.Driver.WebDrivers.DriverInterface;
+import com.xuxiaocheng.WList.Server.Databases.TrashedFile.TrashedSqliteHelper;
 import com.xuxiaocheng.WList.Server.Driver.FailureReason;
-import com.xuxiaocheng.WList.Server.Driver.FileLocation;
-import com.xuxiaocheng.WList.Server.Driver.Options;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Server.Driver.InternalDrivers.RootDriver;
+import com.xuxiaocheng.WList.Commons.Options;
+import com.xuxiaocheng.WList.Server.Driver.WebDrivers.DriverInterface;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.UploadMethods;
 import org.jetbrains.annotations.NotNull;
@@ -44,13 +43,12 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
 
     @Override
     public void initialize(final @NotNull DriverConfiguration_lanzou configuration) throws SQLException {
-        final PooledDatabase.PooledDatabaseInterface database = SqlitePooledDatabaseHelper.getDefault(PooledDatabase.getDriverDatabasePath(configuration.getName()));
-        database.openIfNot();
-        FileManager.quicklyInitialize(new FileSqlHelper(database, configuration.getName(), configuration.getWebSide().getRootDirectoryId()), null);
+        final PooledSqlDatabase.PooledDatabaseInterface database = PooledSqlDatabase.quicklyOpen(PooledSqlDatabase.getDriverDatabasePath(configuration.getName()));
+        FileManager.quicklyInitialize(new FileSqliteHelper(database, configuration.getName(), configuration.getWebSide().getRootDirectoryId()), null);
         this.configuration = configuration;
         FileManager.mergeFile(this.configuration.getName(), RootDriver.getDatabaseDriverInformation(this.configuration), null);
 
-        TrashedFileManager.quicklyInitialize(new TrashedSqlHelper(database, configuration.getName()), null);
+        TrashedFileManager.quicklyInitialize(new TrashedSqliteHelper(database, configuration.getName()), null);
     }
 
     @Override
@@ -95,7 +93,7 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
                 }
                 HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), throwable);
             }
-        final FileSqlInformation root = FileManager.selectFile(this.configuration.getName(), this.configuration.getWebSide().getRootDirectoryId(), null);
+        final FileInformation root = FileManager.selectFile(this.configuration.getName(), this.configuration.getWebSide().getRootDirectoryId(), null);
         if (root != null)
             this.configuration.getWebSide().setSpaceUsed(root.size());
         this.configuration.getCacheSide().setLastFileIndexBuildTime(LocalDateTime.now());
@@ -108,12 +106,12 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
     }
 
     @Override
-    public Triad.@Nullable ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> list(final @NotNull FileLocation location, final Options.@NotNull DirectoriesOrFiles filter, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws IOException, SQLException, InterruptedException {
+    public Triad.@Nullable ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileInformation>> list(final @NotNull FileLocation location, final Options.@NotNull DirectoriesOrFiles filter, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws IOException, SQLException, InterruptedException {
         return DriverManager_lanzou.listFiles(this.configuration, location.id(), filter, limit, page, policy, direction, null);
     }
 
     @Override
-    public @Nullable FileSqlInformation info(final @NotNull FileLocation location) throws IOException, SQLException, InterruptedException {
+    public @Nullable FileInformation info(final @NotNull FileLocation location) throws IOException, SQLException, InterruptedException {
         return DriverManager_lanzou.getFileInformation(this.configuration, location.id(), null, null);
     }
 
@@ -123,7 +121,7 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
     }
 
     @Override
-    public @NotNull UnionPair<FileSqlInformation, FailureReason> createDirectory(final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws IOException, SQLException, InterruptedException {
+    public @NotNull UnionPair<FileInformation, FailureReason> createDirectory(final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws IOException, SQLException, InterruptedException {
         return DriverManager_lanzou.createDirectory(this.configuration, parentLocation.id(), directoryName, policy, null);
     }
 
@@ -134,7 +132,7 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
 
     @Override
     public void delete(final @NotNull FileLocation location) throws IOException, SQLException, InterruptedException {
-        final FileSqlInformation information = DriverManager_lanzou.getFileInformation(this.configuration, location.id(), null, null);
+        final FileInformation information = DriverManager_lanzou.getFileInformation(this.configuration, location.id(), null, null);
         if (information != null)
             DriverManager_lanzou.trash(this.configuration, information, null, null);
     }
@@ -142,14 +140,14 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
     // Default copy method.
 
     @Override
-    public @NotNull UnionPair<FileSqlInformation, FailureReason> move(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final Options.@NotNull DuplicatePolicy policy) throws IOException, SQLException, InterruptedException {
-        final FileSqlInformation information = DriverManager_lanzou.getFileInformation(this.configuration, sourceLocation.id(), null, null);
+    public @NotNull UnionPair<FileInformation, FailureReason> move(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final Options.@NotNull DuplicatePolicy policy) throws IOException, SQLException, InterruptedException {
+        final FileInformation information = DriverManager_lanzou.getFileInformation(this.configuration, sourceLocation.id(), null, null);
         if (information == null) return UnionPair.fail(FailureReason.byNoSuchFile("Moving (source).", sourceLocation));
         return DriverManager_lanzou.move(this.configuration, information, targetParentLocation.id(), policy, null);
     }
 
     @Override
-    public @NotNull UnionPair<FileSqlInformation, FailureReason> rename(final @NotNull FileLocation sourceLocation, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws IOException, SQLException {
+    public @NotNull UnionPair<FileInformation, FailureReason> rename(final @NotNull FileLocation sourceLocation, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws IOException, SQLException {
         return DriverManager_lanzou.rename(this.configuration, sourceLocation.id(), name, policy, null);
     }
 

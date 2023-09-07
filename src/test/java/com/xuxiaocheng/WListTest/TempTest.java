@@ -6,12 +6,12 @@ import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
-import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantSqlHelper;
-import com.xuxiaocheng.WList.Server.Databases.PooledDatabase;
+import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantSqliteHelper;
+import com.xuxiaocheng.WList.Server.Databases.PooledSqlDatabase;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
-import com.xuxiaocheng.WList.Server.Databases.User.UserSqlHelper;
+import com.xuxiaocheng.WList.Server.Databases.User.UserSqliteHelper;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
-import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupSqlHelper;
+import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupSqliteHelper;
 import com.xuxiaocheng.WList.Server.Driver.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
@@ -43,9 +43,9 @@ public class TempTest {
             GlobalConfiguration.initialize(new File("server.yaml"));
 //            GlobalConfiguration.initialize(null);
             final File path = new File("data.db");
-            ConstantManager.quicklyInitialize(new ConstantSqlHelper(PooledDatabase.quicklyOpen(path)), "initialize");
-            UserGroupManager.quicklyInitialize(new UserGroupSqlHelper(PooledDatabase.quicklyOpen(path)), "initialize");
-            UserManager.quicklyInitialize(new UserSqlHelper(PooledDatabase.quicklyOpen(path)), "initialize");
+            ConstantManager.quicklyInitialize(new ConstantSqliteHelper(PooledSqlDatabase.quicklyOpen(path)), "initialize");
+            UserGroupManager.quicklyInitialize(new UserGroupSqliteHelper(PooledSqlDatabase.quicklyOpen(path)), "initialize");
+            UserManager.quicklyInitialize(new UserSqliteHelper(PooledSqlDatabase.quicklyOpen(path)), "initialize");
             DriverManager.initialize(new File("configs"));
         }
     }

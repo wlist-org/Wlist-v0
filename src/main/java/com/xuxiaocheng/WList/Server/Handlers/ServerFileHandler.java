@@ -32,7 +32,7 @@ public final class ServerFileHandler {
     }
 
 //    public static final @NotNull ServerHandler doListFiles = (channel, buffer) -> {
-//        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList);
+//        final UnionPair<UserInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList);
 //        final FileLocation location = FileLocation.parse(buffer);
 //        final Options.DirectoriesOrFiles filter = Options.valueOfDirectoriesOrFiles(ByteBufIOUtil.readByte(buffer));
 //        final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
@@ -51,7 +51,7 @@ public final class ServerFileHandler {
 //            return MessageProto.WrongParameters;
 //        if (refresh && !user.getT().group().permissions().contains(Operation.Permission.FilesBuildIndex))
 //            return MessageProto.NoPermission.apply(Operation.Permission.FilesBuildIndex);
-//        final Triad.ImmutableTriad<Long, Long, List<FileSqlInformation>> list;
+//        final Triad.ImmutableTriad<Long, Long, List<FileInformation>> list;
 //        try {
 //            if (refresh)
 //                RootDriver.getInstance().forceRefreshDirectory(location);
@@ -68,14 +68,14 @@ public final class ServerFileHandler {
 //            ByteBufIOUtil.writeVariableLenLong(buf, list.getA().longValue());
 //            ByteBufIOUtil.writeVariableLenLong(buf, list.getB().longValue());
 //            ByteBufIOUtil.writeVariableLenInt(buf, list.getC().size());
-//            for (final FileSqlInformation information: list.getC())
-//                FileSqlInformation.dumpVisible(buf, information);
+//            for (final FileInformation information: list.getC())
+//                FileInformation.dumpVisible(buf, information);
 //            return buf;
 //        });
 //    };
 //
 //    public static final @NotNull ServerHandler doCreateDirectory = (channel, buffer) -> {
-//        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload);
+//        final UnionPair<UserInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload);
 //        final FileLocation parentLocation = FileLocation.parse(buffer);
 //        final String directoryName = ByteBufIOUtil.readUTF(buffer);
 //        final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
@@ -88,7 +88,7 @@ public final class ServerFileHandler {
 //            return MessageProto.WrongParameters;
 //        if (duplicatePolicy == Options.DuplicatePolicy.OVER && !user.getT().group().permissions().contains(Operation.Permission.FileDelete))
 //            return MessageProto.NoPermission.apply(Operation.Permission.FileDelete);
-//        final UnionPair<FileSqlInformation, FailureReason> directory;
+//        final UnionPair<FileInformation, FailureReason> directory;
 //        try {
 //            directory = RootDriver.getInstance().createDirectory(parentLocation, directoryName, duplicatePolicy);
 //        } catch (final UnsupportedOperationException exception) {
@@ -105,13 +105,13 @@ public final class ServerFileHandler {
 //        HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Created directory.", ServerHandler.buildUserString(user.getT().id(), user.getT().username()),
 //                ParametersMap.create().add("directory", directory.getT()));
 //        return MessageProto.successMessage(buf -> {
-//            FileSqlInformation.dumpVisible(buf, directory.getT());
+//            FileInformation.dumpVisible(buf, directory.getT());
 //            return buf;
 //        });
 //    };
 //
 //    public static final @NotNull ServerHandler doDeleteFile = (channel, buffer) -> {
-//        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDelete);
+//        final UnionPair<UserInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDelete);
 //        final FileLocation location = FileLocation.parse(buffer);
 //        ServerHandler.logOperation(channel, Operation.Type.DeleteFile, user, () -> ParametersMap.create()
 //                .add("location", location));
@@ -130,7 +130,7 @@ public final class ServerFileHandler {
 //    };
 //
 //    public static final @NotNull ServerHandler doRenameFile = (channel, buffer) -> {
-//        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDownload, Operation.Permission.FileUpload, Operation.Permission.FileDelete);
+//        final UnionPair<UserInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDownload, Operation.Permission.FileUpload, Operation.Permission.FileDelete);
 //        final FileLocation location = FileLocation.parse(buffer);
 //        final String name = ByteBufIOUtil.readUTF(buffer);
 //        final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
@@ -140,7 +140,7 @@ public final class ServerFileHandler {
 //            return user.getE();
 //        if (duplicatePolicy == null)
 //            return MessageProto.WrongParameters;
-//        final UnionPair<FileSqlInformation, FailureReason> file;
+//        final UnionPair<FileInformation, FailureReason> file;
 //        try {
 //            file = RootDriver.getInstance().rename(location, name, duplicatePolicy);
 //        } catch (final UnsupportedOperationException exception) {
@@ -158,13 +158,13 @@ public final class ServerFileHandler {
 //        HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Renamed.", ServerHandler.buildUserString(user.getT().id(), user.getT().username()),
 //                ParametersMap.create().add("location", location).add("name", name));
 //        return MessageProto.successMessage(buf -> {
-//            FileSqlInformation.dumpVisible(buf, file.getT());
+//            FileInformation.dumpVisible(buf, file.getT());
 //            return buf;
 //        });
 //    };
 //
 //    public static final @NotNull ServerHandler doRequestDownloadFile = (channel, buffer) -> {
-//        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDownload);
+//        final UnionPair<UserInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDownload);
 //        final FileLocation location = FileLocation.parse(buffer);
 //        final long from = ByteBufIOUtil.readVariableLenLong(buffer);
 //        final long to = ByteBufIOUtil.readVariable2LenLong(buffer);
@@ -197,7 +197,7 @@ public final class ServerFileHandler {
 //    };
 //
 //    public static final @NotNull ServerHandler doDownloadFile = (channel, buffer) -> {
-//        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FileDownload);
+//        final UnionPair<UserInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FileDownload);
 //        final String id = ByteBufIOUtil.readUTF(buffer);
 //        final int chunk = ByteBufIOUtil.readVariableLenInt(buffer);
 //        ServerHandler.logOperation(channel, Operation.Type.DownloadFile, user, () -> ParametersMap.create()
@@ -219,7 +219,7 @@ public final class ServerFileHandler {
 //    };
 //
 //    public static final @NotNull ServerHandler doCancelDownloadFile = (channel, buffer) -> {
-//        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FileDownload);
+//        final UnionPair<UserInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FileDownload);
 //        final String id = ByteBufIOUtil.readUTF(buffer);
 //        ServerHandler.logOperation(channel, Operation.Type.CancelDownloadFile, user, () -> ParametersMap.create()
 //                .add("id", id));
@@ -229,7 +229,7 @@ public final class ServerFileHandler {
 //    };
 //
 //    public static final @NotNull ServerHandler doRequestUploadFile = (channel, buffer) -> {
-//        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload);
+//        final UnionPair<UserInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload);
 //        final FileLocation parentLocation = FileLocation.parse(buffer);
 //        final String filename = ByteBufIOUtil.readUTF(buffer);
 //        final long size = ByteBufIOUtil.readVariable2LenLong(buffer);
@@ -260,7 +260,7 @@ public final class ServerFileHandler {
 //                default -> throw new ServerException("Unknown failure reason. " + methods.getE(), methods.getE().throwable());
 //            };
 //        if (methods.getT().methods().isEmpty()) { // (reuse / empty file)
-//            final FileSqlInformation file;
+//            final FileInformation file;
 //            try {
 //                file = methods.getT().supplier().get();
 //            } catch (final Exception exception) {
@@ -272,7 +272,7 @@ public final class ServerFileHandler {
 //                return ServerFileHandler.FileNotFound;
 //            return MessageProto.successMessage(buf -> {
 //                ByteBufIOUtil.writeBoolean(buf, true);
-//                FileSqlInformation.dumpVisible(buf, file);
+//                FileInformation.dumpVisible(buf, file);
 //                return buf;
 //            });
 //        }
@@ -287,14 +287,14 @@ public final class ServerFileHandler {
 //    };
 //
 //    public static final @NotNull ServerHandler doUploadFile = (channel, buffer) -> {
-//        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FileUpload);
+//        final UnionPair<UserInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FileUpload);
 //        final String id = ByteBufIOUtil.readUTF(buffer);
 //        final int chunk = ByteBufIOUtil.readVariableLenInt(buffer);
 //        ServerHandler.logOperation(channel, Operation.Type.UploadFile, user, () -> ParametersMap.create()
 //                .add("id", id).add("chunk", chunk));
 //        if (user.isFailure())
 //            return user.getE();
-//        final UnionPair<FileSqlInformation, Boolean> information;
+//        final UnionPair<FileInformation, Boolean> information;
 //        try {
 //            information = UploadIdHelper.upload(id, user.getT().username(), buffer.duplicate(), chunk);
 //        } catch (final ServerException exception) {
@@ -307,20 +307,20 @@ public final class ServerFileHandler {
 //        if (information.isFailure() && information.getE().booleanValue())
 //            return ServerFileHandler.InvalidFile;
 //        buffer.readerIndex(buffer.writerIndex());
-//        final FileSqlInformation file = information.isSuccess() ? information.getT() : null;
+//        final FileInformation file = information.isSuccess() ? information.getT() : null;
 //        if (file != null)
 //            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Uploaded.", ServerHandler.buildUserString(user.getT().id(), user.getT().username()),
 //                    ParametersMap.create().add("file", file));
 //        return MessageProto.successMessage(buf -> {
 //            ByteBufIOUtil.writeBoolean(buf, file == null);
 //            if (file != null)
-//                FileSqlInformation.dumpVisible(buf, file);
+//                FileInformation.dumpVisible(buf, file);
 //            return buf;
 //        });
 //    };
 //
 //    public static final @NotNull ServerHandler doCancelUploadFile = (channel, buffer) -> {
-//        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FileUpload);
+//        final UnionPair<UserInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FileUpload);
 //        final String id = ByteBufIOUtil.readUTF(buffer);
 //        ServerHandler.logOperation(channel, Operation.Type.CancelUploadFile, user, () -> ParametersMap.create()
 //                .add("id", id));
@@ -330,7 +330,7 @@ public final class ServerFileHandler {
 //    };
 //
 //    public static final @NotNull ServerHandler doCopyFile = (channel, buffer) -> {
-//        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload, Operation.Permission.FileDownload);
+//        final UnionPair<UserInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload, Operation.Permission.FileDownload);
 //        final FileLocation source = FileLocation.parse(buffer);
 //        final FileLocation targetParent = FileLocation.parse(buffer);
 //        final String filename = ByteBufIOUtil.readUTF(buffer);
@@ -344,7 +344,7 @@ public final class ServerFileHandler {
 //            return MessageProto.WrongParameters;
 //        if (duplicatePolicy == Options.DuplicatePolicy.OVER && !user.getT().group().permissions().contains(Operation.Permission.FileDelete))
 //            return MessageProto.NoPermission.apply(Operation.Permission.FileDelete);
-//        final UnionPair<FileSqlInformation, FailureReason> file;
+//        final UnionPair<FileInformation, FailureReason> file;
 //        try {
 //            file = RootDriver.getInstance().copy(source, targetParent, filename, duplicatePolicy);
 //        } catch (final UnsupportedOperationException exception) {
@@ -362,13 +362,13 @@ public final class ServerFileHandler {
 //        HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Copied.", ServerHandler.buildUserString(user.getT().id(), user.getT().username()),
 //                ParametersMap.create().add("source", source).add("file", file));
 //        return MessageProto.successMessage(buf -> {
-//            FileSqlInformation.dumpVisible(buf, file.getT());
+//            FileInformation.dumpVisible(buf, file.getT());
 //            return buf;
 //        });
 //    };
 //
 //    public static final @NotNull ServerHandler doMoveFile = (channel, buffer) -> {
-//        final UnionPair<UserSqlInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDownload, Operation.Permission.FileUpload, Operation.Permission.FileDelete);
+//        final UnionPair<UserInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDownload, Operation.Permission.FileUpload, Operation.Permission.FileDelete);
 //        final FileLocation source = FileLocation.parse(buffer);
 //        final FileLocation target = FileLocation.parse(buffer);
 //        final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
@@ -378,7 +378,7 @@ public final class ServerFileHandler {
 //            return user.getE();
 //        if (duplicatePolicy == null)
 //            return MessageProto.WrongParameters;
-//        final UnionPair<FileSqlInformation, FailureReason> file;
+//        final UnionPair<FileInformation, FailureReason> file;
 //        try {
 //            file = RootDriver.getInstance().move(source, target, duplicatePolicy);
 //        } catch (final UnsupportedOperationException exception) {
@@ -396,7 +396,7 @@ public final class ServerFileHandler {
 //        HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Moved.", ServerHandler.buildUserString(user.getT().id(), user.getT().username()),
 //                ParametersMap.create().add("source", source).add("file", file));
 //        return MessageProto.successMessage(buf -> {
-//            FileSqlInformation.dumpVisible(buf, file.getT());
+//            FileInformation.dumpVisible(buf, file.getT());
 //            return buf;
 //        });
 //    };

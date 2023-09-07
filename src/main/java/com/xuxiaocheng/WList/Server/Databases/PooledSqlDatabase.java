@@ -15,33 +15,41 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-public final class PooledDatabase {
-    private PooledDatabase() {
+public final class PooledSqlDatabase {
+    private PooledSqlDatabase() {
         super();
     }
 
     private static final @NotNull HInitializer<Function<@NotNull PooledDatabaseIConfiguration, @NotNull PooledDatabaseInterface>> instance = new HInitializer<>("PooledDatabaseInstance"); static {
-        PooledDatabase.reinitialize(c -> SqlitePooledDatabaseHelper.getDefault(c.path()));
+        PooledSqlDatabase.reinitialize(c -> PooledSqliteDatabase.getDefault(c.path()));
     }
 
     private static final @NotNull Map<@NotNull File, @NotNull PooledDatabaseInterface> databases = new ConcurrentHashMap<>();
 
     // Hooker
     public static void reinitialize(final @NotNull Function<? super @NotNull PooledDatabaseIConfiguration, ? extends @NotNull PooledDatabaseInterface> creator) {
-        PooledDatabase.instance.reinitialize(configuration -> {
+        PooledSqlDatabase.instance.reinitialize(configuration -> {
             final File path = configuration.path().getAbsoluteFile();
-            final PooledDatabaseInterface created = PooledDatabase.databases.get(path);
+            final PooledDatabaseInterface created = PooledSqlDatabase.databases.get(path);
             if (created != null)
                 return created;
             final PooledDatabaseInterface instance = creator.apply(configuration);
-            return Objects.requireNonNullElse(PooledDatabase.databases.putIfAbsent(path, instance), instance);
+            return Objects.requireNonNullElse(PooledSqlDatabase.databases.putIfAbsent(path, instance), instance);
         });
     }
 
     public static @NotNull PooledDatabaseInterface quicklyOpen(final @NotNull File path) throws SQLException {
-        final PooledDatabaseInterface instance = PooledDatabase.instance.getInstance().apply(new PooledDatabaseConfiguration(path));
+        final PooledDatabaseInterface instance = PooledSqlDatabase.instance.getInstance().apply(new PooledDatabaseConfiguration(path));
         instance.openIfNot();
         return instance;
+    }
+
+    public static boolean quicklyClose(final @NotNull File path) throws SQLException {
+        final PooledDatabaseInterface instance = PooledSqlDatabase.databases.remove(path);
+        if (instance == null)
+            return false;
+        instance.close();
+        return true;
     }
 
     public static @NotNull File getDriverDatabasePath(final @NotNull String driverName) {

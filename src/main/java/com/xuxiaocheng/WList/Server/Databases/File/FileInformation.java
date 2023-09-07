@@ -1,6 +1,6 @@
 package com.xuxiaocheng.WList.Server.Databases.File;
 
-import com.xuxiaocheng.WList.Server.Driver.FileLocation;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
@@ -21,9 +21,9 @@ import java.util.Objects;
  * @param md5 File md5.
  * @param others Something extra for driver.
  */
-public record FileSqlInformation(@NotNull FileLocation location, long parentId, @NotNull String name, FileSqlInterface.@NotNull FileSqlType type, long size,
-                                 @Nullable LocalDateTime createTime, @Nullable LocalDateTime updateTime,
-                                 @NotNull String md5, @Nullable String others) {
+public record FileInformation(@NotNull FileLocation location, long parentId, @NotNull String name, FileSqlInterface.@NotNull FileSqlType type, long size,
+                              @Nullable LocalDateTime createTime, @Nullable LocalDateTime updateTime,
+                              @NotNull String md5, @Nullable String others) {
     public long id() {
         return this.location.id();
     }
@@ -35,7 +35,7 @@ public record FileSqlInformation(@NotNull FileLocation location, long parentId, 
     @Override
     public boolean equals(final @Nullable Object o) {
         if (this == o) return true;
-        if (!(o instanceof FileSqlInformation that)) return false;
+        if (!(o instanceof FileInformation that)) return false;
         return this.parentId == that.parentId && this.size == that.size && this.location.equals(that.location) && this.name.equals(that.name) &&
                 ((this.type == FileSqlInterface.FileSqlType.RegularFile) == (that.type == FileSqlInterface.FileSqlType.RegularFile)) &&
                 Objects.equals(this.createTime, that.createTime) && Objects.equals(this.updateTime, that.updateTime) &&
@@ -53,7 +53,7 @@ public record FileSqlInformation(@NotNull FileLocation location, long parentId, 
                                          @NotNull String md5) {
     }
 
-    public static void dumpVisible(final @NotNull ByteBuf buffer, final @NotNull FileSqlInformation information) throws IOException {
+    public static void dumpVisible(final @NotNull ByteBuf buffer, final @NotNull FileInformation information) throws IOException {
         ByteBufIOUtil.writeVariableLenLong(buffer, information.location.id());
         ByteBufIOUtil.writeVariableLenLong(buffer, information.parentId);
         ByteBufIOUtil.writeUTF(buffer, information.name);

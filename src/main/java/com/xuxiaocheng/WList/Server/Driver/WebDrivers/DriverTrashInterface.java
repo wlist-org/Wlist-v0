@@ -2,12 +2,12 @@ package com.xuxiaocheng.WList.Server.Driver.WebDrivers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
-import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
-import com.xuxiaocheng.WList.Server.Databases.TrashedFile.TrashedSqlInformation;
+import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
+import com.xuxiaocheng.WList.Server.Databases.TrashedFile.TrashedFileInformation;
 import com.xuxiaocheng.WList.Server.Driver.FailureReason;
-import com.xuxiaocheng.WList.Server.Driver.FileLocation;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Server.Driver.Helpers.DriverUtil;
-import com.xuxiaocheng.WList.Server.Driver.Options;
+import com.xuxiaocheng.WList.Commons.Options;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -25,18 +25,18 @@ public interface DriverTrashInterface<D extends DriverInterface<?>> {
 
     void buildIndex() throws Exception;
 
-    Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull TrashedSqlInformation>> list(final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws Exception;
+    Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull TrashedFileInformation>> list(final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws Exception;
 
-    @Nullable TrashedSqlInformation info(final @NotNull FileLocation location) throws Exception;
+    @Nullable TrashedFileInformation info(final @NotNull FileLocation location) throws Exception;
 
-    @NotNull UnionPair<FileSqlInformation, FailureReason> restore(final @NotNull FileLocation location, final long targetParentId, final Options.@NotNull DuplicatePolicy policy) throws Exception;
+    @NotNull UnionPair<FileInformation, FailureReason> restore(final @NotNull FileLocation location, final long targetParentId, final Options.@NotNull DuplicatePolicy policy) throws Exception;
 
     void delete(final @NotNull FileLocation location) throws Exception;
 
     default void deleteAll() throws Exception {
         while (true) {
-            final Pair.ImmutablePair<Long, List<TrashedSqlInformation>> page = this.list(DriverUtil.DefaultLimitPerRequestPage, 0, DriverUtil.DefaultOrderPolicy, DriverUtil.DefaultOrderDirection);
-            for (final TrashedSqlInformation information: page.getSecond())
+            final Pair.ImmutablePair<Long, List<TrashedFileInformation>> page = this.list(DriverUtil.DefaultLimitPerRequestPage, 0, DriverUtil.DefaultOrderPolicy, DriverUtil.DefaultOrderDirection);
+            for (final TrashedFileInformation information: page.getSecond())
                 this.delete(information.location());
             if (page.getFirst().longValue() == page.getSecond().size() || page.getSecond().isEmpty())
                 break;
@@ -44,7 +44,7 @@ public interface DriverTrashInterface<D extends DriverInterface<?>> {
     }
 
     @SuppressWarnings("OverlyBroadThrowsClause")
-    default @NotNull UnionPair<TrashedSqlInformation, FailureReason> rename(final @NotNull FileLocation location, final @NotNull String name) throws Exception {
+    default @NotNull UnionPair<TrashedFileInformation, FailureReason> rename(final @NotNull FileLocation location, final @NotNull String name) throws Exception {
         throw new UnsupportedOperationException("Renaming file in trash is unsupported.");
     }
 }

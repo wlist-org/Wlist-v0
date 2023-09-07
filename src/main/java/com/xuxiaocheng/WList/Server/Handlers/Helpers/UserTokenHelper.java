@@ -9,8 +9,8 @@ import com.auth0.jwt.interfaces.Payload;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
+import com.xuxiaocheng.WList.Server.Databases.User.UserInformation;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
-import com.xuxiaocheng.WList.Server.Databases.User.UserSqlInformation;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -38,7 +38,7 @@ public final class UserTokenHelper {
                 .sign(UserTokenHelper.sign).substring(UserTokenHelper.constPrefix.length());
     }
 
-    public static @Nullable UserSqlInformation decodeToken(final @NotNull String token) throws SQLException {
+    public static @Nullable UserInformation decodeToken(final @NotNull String token) throws SQLException {
         final long id;
         final LocalDateTime modifyTime;
         try {
@@ -51,7 +51,7 @@ public final class UserTokenHelper {
         } catch (final JWTVerificationException | NumberFormatException ignore) {
             return null;
         }
-        final UserSqlInformation user = UserManager.selectUser(id, "token_decoder");
+        final UserInformation user = UserManager.selectUser(id, "token_decoder");
         if (user == null || !user.modifyTime().equals(modifyTime))
             return null;
         return user;

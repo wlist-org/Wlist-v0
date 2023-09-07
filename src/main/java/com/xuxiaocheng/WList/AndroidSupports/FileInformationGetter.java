@@ -1,6 +1,6 @@
 package com.xuxiaocheng.WList.AndroidSupports;
 
-import com.xuxiaocheng.WList.Client.Server.VisibleFileInformation;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

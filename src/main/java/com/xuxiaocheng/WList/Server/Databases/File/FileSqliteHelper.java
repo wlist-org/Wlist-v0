@@ -2,9 +2,9 @@ package com.xuxiaocheng.WList.Server.Databases.File;
 
 import com.xuxiaocheng.HeadLibs.AndroidSupport.AStreams;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
-import com.xuxiaocheng.WList.Server.Databases.PooledDatabase;
-import com.xuxiaocheng.WList.Server.Driver.FileLocation;
-import com.xuxiaocheng.WList.Server.Driver.Options;
+import com.xuxiaocheng.WList.Server.Databases.PooledSqlDatabase;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
+import com.xuxiaocheng.WList.Commons.Options;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -32,7 +32,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
-public final class FileSqlHelper implements FileSqlInterface {
+public final class FileSqliteHelper implements FileSqlInterface {
     @Contract(pure = true) private static @NotNull String getTableName(final @NotNull String name) {
         return "driver_" + Base64.getEncoder().encodeToString(name.getBytes(StandardCharsets.UTF_8)).replace('=', '_');
     }
@@ -54,16 +54,16 @@ public final class FileSqlHelper implements FileSqlInterface {
 
     private static final @NotNull DateTimeFormatter DefaultFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
-    private final @NotNull PooledDatabase.PooledDatabaseInterface database;
+    private final @NotNull PooledSqlDatabase.PooledDatabaseInterface database;
     private final @NotNull String driverName;
     private final @NotNull String tableName;
     private final long rootId;
 
-    public FileSqlHelper(final @NotNull PooledDatabase.PooledDatabaseInterface database, final @NotNull String driverName, final long rootId) {
+    public FileSqliteHelper(final @NotNull PooledSqlDatabase.PooledDatabaseInterface database, final @NotNull String driverName, final long rootId) {
         super();
         this.database = database;
         this.driverName = driverName;
-        this.tableName = FileSqlHelper.getTableName(driverName);
+        this.tableName = FileSqliteHelper.getTableName(driverName);
         this.rootId = rootId;
     }
 
@@ -132,21 +132,21 @@ public final class FileSqlHelper implements FileSqlInterface {
         return this.rootId;
     }
 
-    private static @Nullable FileSqlInformation createNextFileInfo(final @NotNull String driver, final @NotNull ResultSet result) throws SQLException {
+    private static @Nullable FileInformation createNextFileInfo(final @NotNull String driver, final @NotNull ResultSet result) throws SQLException {
         final @NotNull String createTime = result.getString("create_time");
         final @NotNull String updateTime = result.getString("update_time");
-        return result.next() ? new FileSqlInformation(new FileLocation(driver, result.getLong("id")),
+        return result.next() ? new FileInformation(new FileLocation(driver, result.getLong("id")),
                 result.getLong("parent_id"), result.getString("name"),
                 FileSqlInterface.FileSqlType.values()[result.getInt("type")], result.getLong("size"),
-                createTime.isEmpty() ? null : LocalDateTime.parse(createTime, FileSqlHelper.DefaultFormatter),
-                updateTime.isEmpty() ? null : LocalDateTime.parse(updateTime, FileSqlHelper.DefaultFormatter),
+                createTime.isEmpty() ? null : LocalDateTime.parse(createTime, FileSqliteHelper.DefaultFormatter),
+                updateTime.isEmpty() ? null : LocalDateTime.parse(updateTime, FileSqliteHelper.DefaultFormatter),
                 result.getString("md5"), result.getString("others")) : null;
     }
 
-    private static @NotNull @UnmodifiableView Set<@NotNull FileSqlInformation> createFilesInfo(final @NotNull String driver, final @NotNull ResultSet result) throws SQLException {
-        final Set<FileSqlInformation> set = new HashSet<>();
+    private static @NotNull @UnmodifiableView Set<@NotNull FileInformation> createFilesInfo(final @NotNull String driver, final @NotNull ResultSet result) throws SQLException {
+        final Set<FileInformation> set = new HashSet<>();
         while (true) {
-            final FileSqlInformation info = FileSqlHelper.createNextFileInfo(driver, result);
+            final FileInformation info = FileSqliteHelper.createNextFileInfo(driver, result);
             if (info == null)
                 break;
             set.add(info);
@@ -154,10 +154,10 @@ public final class FileSqlHelper implements FileSqlInterface {
         return Collections.unmodifiableSet(set);
     }
 
-    private static @NotNull @UnmodifiableView List<@NotNull FileSqlInformation> createFilesInfoInOrder(final @NotNull String driver, final @NotNull ResultSet result) throws SQLException {
-        final List<FileSqlInformation> list = new LinkedList<>();
+    private static @NotNull @UnmodifiableView List<@NotNull FileInformation> createFilesInfoInOrder(final @NotNull String driver, final @NotNull ResultSet result) throws SQLException {
+        final List<FileInformation> list = new LinkedList<>();
         while (true) {
-            final FileSqlInformation info = FileSqlHelper.createNextFileInfo(driver, result);
+            final FileInformation info = FileSqliteHelper.createNextFileInfo(driver, result);
             if (info == null)
                 break;
             list.add(info);
@@ -166,7 +166,7 @@ public final class FileSqlHelper implements FileSqlInterface {
     }
 
     @Override
-    public void insertFilesForce(final @NotNull Collection<@NotNull FileSqlInformation> inserters, final @Nullable String _connectionId) throws SQLException {
+    public void insertFilesForce(final @NotNull Collection<@NotNull FileInformation> inserters, final @Nullable String _connectionId) throws SQLException {
         if (inserters.isEmpty())
             return;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
@@ -179,7 +179,7 @@ public final class FileSqlHelper implements FileSqlInterface {
                         create_time = excluded.create_time, update_time = excluded.update_time,
                         md5 = excluded.md5, others = excluded.others;
                 """, this.tableName))) {
-                for (final FileSqlInformation inserter: inserters) {
+                for (final FileInformation inserter: inserters) {
                     statement.setLong(1, inserter.id());
                     statement.setLong(2, inserter.parentId());
                     statement.setString(3, inserter.name());
@@ -187,8 +187,8 @@ public final class FileSqlHelper implements FileSqlInterface {
                             inserter.name()).toLowerCase(Locale.ROOT).getBytes(Charset.forName("GBK")));
                     statement.setInt(5, inserter.type().ordinal());
                     statement.setLong(6, inserter.size());
-                    statement.setString(7, inserter.createTime() == null ? "" : inserter.createTime().format(FileSqlHelper.DefaultFormatter));
-                    statement.setString(8, inserter.updateTime() == null ? "" : inserter.updateTime().format(FileSqlHelper.DefaultFormatter));
+                    statement.setString(7, inserter.createTime() == null ? "" : inserter.createTime().format(FileSqliteHelper.DefaultFormatter));
+                    statement.setString(8, inserter.updateTime() == null ? "" : inserter.updateTime().format(FileSqliteHelper.DefaultFormatter));
                     statement.setString(9, inserter.md5());
                     statement.setString(10, inserter.others());
                     statement.executeUpdate();
@@ -215,18 +215,18 @@ public final class FileSqlHelper implements FileSqlInterface {
     }
 
     @Override
-    public @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull FileSqlInformation> selectFiles(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
+    public @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull FileInformation> selectFiles(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
         if (idList.isEmpty())
             return Map.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            final Map<Long, FileSqlInformation> map = new HashMap<>();
+            final Map<Long, FileInformation> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT * FROM %s WHERE id == ? LIMIT 1;
                 """, this.tableName))) {
                 for (final Long id: idList) {
                     statement.setLong(1, id.longValue());
                     try (final ResultSet result = statement.executeQuery()) {
-                        map.put(id, FileSqlHelper.createNextFileInfo(this.driverName, result));
+                        map.put(id, FileSqliteHelper.createNextFileInfo(this.driverName, result));
                     }
                 }
             }
@@ -235,16 +235,16 @@ public final class FileSqlHelper implements FileSqlInterface {
     }
 
     @Override
-    public @Nullable FileSqlInformation selectFileInDirectory(final long parentId, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
+    public @Nullable FileInformation selectFileInDirectory(final long parentId, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            final FileSqlInformation information;
+            final FileInformation information;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT * FROM %s WHERE parent_id == ? AND name == ? AND parent_id != id LIMIT 1;
                 """, this.tableName))) {
                 statement.setLong(1, parentId);
                 statement.setString(2, name);
                 try (final ResultSet result = statement.executeQuery()) {
-                    information = FileSqlHelper.createNextFileInfo(this.driverName, result);
+                    information = FileSqliteHelper.createNextFileInfo(this.driverName, result);
                 }
             }
             return information;
@@ -252,18 +252,18 @@ public final class FileSqlHelper implements FileSqlInterface {
     }
 
     @Override
-    public @NotNull @UnmodifiableView Map<@NotNull String, @Nullable @UnmodifiableView Set<@NotNull FileSqlInformation>> selectFilesByMd5(final @NotNull Collection<@NotNull String> md5List, final @Nullable String _connectionId) throws SQLException {
+    public @NotNull @UnmodifiableView Map<@NotNull String, @Nullable @UnmodifiableView Set<@NotNull FileInformation>> selectFilesByMd5(final @NotNull Collection<@NotNull String> md5List, final @Nullable String _connectionId) throws SQLException {
         if (md5List.isEmpty())
             return Map.of();
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            final Map<String, Set<FileSqlInformation>> map = new HashMap<>();
+            final Map<String, Set<FileInformation>> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT * FROM %s WHERE md5 == ?;
                 """, this.tableName))) {
                 for (final String md5: md5List) {
                     statement.setString(1, md5);
                     try (final ResultSet result = statement.executeQuery()) {
-                        map.put(md5, FileSqlHelper.createFilesInfo(this.driverName, result));
+                        map.put(md5, FileSqliteHelper.createFilesInfo(this.driverName, result));
                     }
                 }
             }
@@ -316,7 +316,7 @@ public final class FileSqlHelper implements FileSqlInterface {
     }
 
     @Override
-    public Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileSqlInformation>> selectFilesByParentIdInPage(final long parentId, final Options.@NotNull DirectoriesOrFiles filter, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final @Nullable String _connectionId) throws SQLException {
+    public Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileInformation>> selectFilesByParentIdInPage(final long parentId, final Options.@NotNull DirectoriesOrFiles filter, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final @Nullable String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
             final long count = this.selectFilesCountByParentId(List.of(parentId), connectionId.get()).get(parentId).longValue();
@@ -339,22 +339,22 @@ public final class FileSqlHelper implements FileSqlInterface {
             }
             if (offset >= filterCount || limit <= 0)
                 return Triad.ImmutableTriad.makeImmutableTriad(count, filterCount, List.of());
-            final List<FileSqlInformation> list;
+            final List<FileInformation> list;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
                     SELECT * FROM %s WHERE parent_id == ? AND parent_id != id""" + switch (filter) {
                         case OnlyDirectories -> " AND (type == 1 OR type == 2) ";
                         case OnlyFiles -> " AND type == 0 ";
                         case Both -> " ";
-                    } + "ORDER BY " + FileSqlHelper.getOrderPolicy(policy) + " " + FileSqlHelper.getOrderDirection(direction) +
-                    (policy == Options.OrderPolicy.FileName ? "" : ", " + FileSqlHelper.getOrderPolicy(Options.OrderPolicy.FileName) + " " +
-                            FileSqlHelper.getOrderDirection(Options.OrderDirection.ASCEND)) + """
+                    } + "ORDER BY " + FileSqliteHelper.getOrderPolicy(policy) + " " + FileSqliteHelper.getOrderDirection(direction) +
+                    (policy == Options.OrderPolicy.FileName ? "" : ", " + FileSqliteHelper.getOrderPolicy(Options.OrderPolicy.FileName) + " " +
+                            FileSqliteHelper.getOrderDirection(Options.OrderDirection.ASCEND)) + """
                     LIMIT ? OFFSET ?;
                 """, this.tableName))) {
                 statement.setLong(1, parentId);
                 statement.setInt(2, limit);
                 statement.setLong(3, offset);
                 try (final ResultSet result = statement.executeQuery()) {
-                    list = FileSqlHelper.createFilesInfoInOrder(this.driverName, result);
+                    list = FileSqliteHelper.createFilesInfoInOrder(this.driverName, result);
                 }
             }
             return Triad.ImmutableTriad.makeImmutableTriad(count, filterCount, list);
@@ -362,23 +362,23 @@ public final class FileSqlHelper implements FileSqlInterface {
     }
 
     @Override
-    public void mergeFiles(final @NotNull Collection<@NotNull FileSqlInformation> inserters, final @Nullable Collection<@NotNull Long> mergingUniverse, final @Nullable String _connectionId) throws SQLException {
+    public void mergeFiles(final @NotNull Collection<@NotNull FileInformation> inserters, final @Nullable Collection<@NotNull Long> mergingUniverse, final @Nullable String _connectionId) throws SQLException {
         if (inserters.isEmpty())
             return;
-        final Collection<Long> ids = mergingUniverse == null ? AStreams.streamToList(inserters.stream().map(FileSqlInformation::id)) : mergingUniverse;
+        final Collection<Long> ids = mergingUniverse == null ? AStreams.streamToList(inserters.stream().map(FileInformation::id)) : mergingUniverse;
         if (ids.isEmpty()) {
             this.insertFilesForce(inserters, _connectionId);
             return;
         }
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
-            final Map<Long, FileSqlInformation> cached = this.selectFiles(ids, connectionId.get());
+            final Map<Long, FileInformation> cached = this.selectFiles(ids, connectionId.get());
             this.insertFilesForce(AStreams.streamToList(inserters.stream().map(d -> {
-                @Nullable final FileSqlInformation cached1 = cached.get(d.id());
+                @Nullable final FileInformation cached1 = cached.get(d.id());
                 if (cached1 == null || (cached1.createTime() == null && cached1.updateTime() == null && cached1.md5().isEmpty())
                         || (d.createTime() != null && d.updateTime() != null && !d.md5().isEmpty()))
                     return d;
-                return new FileSqlInformation(d.location(), d.parentId(), d.name(), d.type(), d.size(),
+                return new FileInformation(d.location(), d.parentId(), d.name(), d.type(), d.size(),
                         d.createTime() == null ? cached1.createTime() : d.createTime(),
                         d.updateTime() == null ? cached1.updateTime() : d.updateTime(),
                         d.md5().isEmpty() ? cached1.md5() : d.md5(), d.others());
@@ -426,7 +426,7 @@ public final class FileSqlHelper implements FileSqlInterface {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
             this.deleteFilesRecursively(AStreams.streamToList(this.selectFilesByMd5(md5List, connectionId.get()).values().stream()
-                    .filter(Objects::nonNull).flatMap(Set::stream).map(FileSqlInformation::id)), connectionId.get());
+                    .filter(Objects::nonNull).flatMap(Set::stream).map(FileInformation::id)), connectionId.get());
             connection.commit();
         }
     }
@@ -435,7 +435,7 @@ public final class FileSqlHelper implements FileSqlInterface {
     public synchronized @Nullable Long updateDirectorySize(final long directoryId, final long delta, final @Nullable String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
-            final FileSqlInformation directory = this.selectFiles(List.of(directoryId), connectionId.get()).get(directoryId);
+            final FileInformation directory = this.selectFiles(List.of(directoryId), connectionId.get()).get(directoryId);
             if (directory == null || directory.type() != FileSqlType.Directory)
                 return null;
             if (directory.size() < 0)
@@ -452,7 +452,7 @@ public final class FileSqlHelper implements FileSqlInterface {
     public synchronized @Nullable Long calculateDirectorySizeRecursively(final long directoryId, final @Nullable String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
-            final FileSqlInformation directory = this.selectFiles(List.of(directoryId), connectionId.get()).get(directoryId);
+            final FileInformation directory = this.selectFiles(List.of(directoryId), connectionId.get()).get(directoryId);
             if (directory == null || !directory.isDirectory())
                 return null;
             long realSize = 0;
@@ -495,7 +495,7 @@ public final class FileSqlHelper implements FileSqlInterface {
         }
     }
 
-    private void updateParentsSize(final long directoryId, final @NotNull FileSqlInformation directory, final long realSize, final @Nullable String _connectionId) throws SQLException {
+    private void updateParentsSize(final long directoryId, final @NotNull FileInformation directory, final long realSize, final @Nullable String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
@@ -516,7 +516,7 @@ public final class FileSqlHelper implements FileSqlInterface {
 
     @Override
     public @NotNull String toString() {
-        return "FileSqlHelper{" +
+        return "FileSqliteHelper{" +
                 "database=" + this.database +
                 ", driverName='" + this.driverName + '\'' +
                 ", tableName='" + this.tableName + '\'' +

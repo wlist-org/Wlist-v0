@@ -5,7 +5,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.Rust.NetworkTransmission;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
-import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
+import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
@@ -44,7 +44,7 @@ public final class UploadIdHelper {
         return true;
     }
 
-    public static @Nullable UnionPair<FileSqlInformation, Boolean> upload(final @NotNull String id, final @NotNull String username, final @NotNull ByteBuf buf, final int chunk) throws Exception {
+    public static @Nullable UnionPair<FileInformation, Boolean> upload(final @NotNull String id, final @NotNull String username, final @NotNull ByteBuf buf, final int chunk) throws Exception {
         final UploaderData data = UploadIdHelper.buffers.get(id);
         if (data == null || !data.username.equals(username))
             return null;
@@ -112,7 +112,7 @@ public final class UploadIdHelper {
             }
         }
 
-        public @Nullable FileSqlInformation finish() throws Exception {
+        public @Nullable FileInformation finish() throws Exception {
             this.closerLock.writeLock().lock();
             try {
                 if (!this.closed.compareAndSet(false, true))
@@ -124,7 +124,7 @@ public final class UploadIdHelper {
             }
         }
 
-        public @NotNull UnionPair<FileSqlInformation, Boolean> tryGet() throws Exception {
+        public @NotNull UnionPair<FileInformation, Boolean> tryGet() throws Exception {
             this.closerLock.readLock().lock();
             try {
                 if (this.closed.get() || this.calledSet.size() < this.count)
@@ -132,7 +132,7 @@ public final class UploadIdHelper {
             } finally {
                 this.closerLock.readLock().unlock();
             }
-            final FileSqlInformation information = this.finish();
+            final FileInformation information = this.finish();
             return information == null ? UnionPair.fail(true) : UnionPair.ok(information);
         }
 

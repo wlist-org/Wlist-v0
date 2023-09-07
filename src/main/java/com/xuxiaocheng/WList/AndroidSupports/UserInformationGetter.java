@@ -1,6 +1,6 @@
 package com.xuxiaocheng.WList.AndroidSupports;
 
-import com.xuxiaocheng.WList.Client.Server.VisibleUserInformation;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleUserInformation;
 import org.jetbrains.annotations.NotNull;
 
 public final class UserInformationGetter {

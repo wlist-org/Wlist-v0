@@ -7,16 +7,14 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
-import com.xuxiaocheng.HeadLibs.HeadLibs;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
 import com.xuxiaocheng.WList.Commons.Utils.JavaScriptUtil;
-import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
+import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInterface;
 import com.xuxiaocheng.WList.Server.Driver.FailureReason;
-import com.xuxiaocheng.WList.Server.Driver.FileLocation;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Server.Driver.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Server.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Server.Exceptions.IllegalParametersException;
@@ -271,7 +269,7 @@ final class DriverHelper_lanzou {
         return Pair.ImmutablePair.makeImmutablePair(size, time);
     }
 
-    static @Nullable @UnmodifiableView List<@NotNull FileSqlInformation> listAllDirectory(final @NotNull DriverConfiguration_lanzou configuration, final long directoryId) throws IOException {
+    static @Nullable @UnmodifiableView List<@NotNull FileInformation> listAllDirectory(final @NotNull DriverConfiguration_lanzou configuration, final long directoryId) throws IOException {
         final FormBody.Builder filesBuilder = new FormBody.Builder()
                 .add("folder_id", String.valueOf(directoryId));
         final JSONObject json = DriverHelper_lanzou.task(configuration, 47, filesBuilder, null);
@@ -293,18 +291,18 @@ final class DriverHelper_lanzou {
         if (filesInfos == null)
             throw new WrongResponseException("Listing directories.", json, ParametersMap.create()
                     .add("configuration", configuration).add("directoryId", directoryId));
-        final List<FileSqlInformation> list = new ArrayList<>(filesInfos.size());
+        final List<FileInformation> list = new ArrayList<>(filesInfos.size());
         for (final JSONObject info: filesInfos.toList(JSONObject.class)) {
             final String name = info.getString("name");
             final Long id = info.getLong("fol_id");
             if (name == null || id == null) continue;
-            list.add(new FileSqlInformation(new FileLocation(configuration.getName(), id.longValue()),
+            list.add(new FileInformation(new FileLocation(configuration.getName(), id.longValue()),
                     directoryId, name, FileSqlInterface.FileSqlType.Directory, -1, null, null, "", null));
         }
         return list;
     }
 
-    static @NotNull @UnmodifiableView Set<@NotNull FileSqlInformation> listFilesInPage(final @NotNull DriverConfiguration_lanzou configuration, final long directoryId, final int page) throws IOException, InterruptedException {
+    static @NotNull @UnmodifiableView Set<@NotNull FileInformation> listFilesInPage(final @NotNull DriverConfiguration_lanzou configuration, final long directoryId, final int page) throws IOException, InterruptedException {
         final AtomicBoolean interrupttedFlag = new AtomicBoolean(false);
         final FormBody.Builder builder = new FormBody.Builder()
                 .add("folder_id", String.valueOf(directoryId))
@@ -316,7 +314,7 @@ final class DriverHelper_lanzou {
                     .add("configuration", configuration).add("directoryId", directoryId).add("page", page));
         if (infos.isEmpty())
             return Set.of();
-        final Set<FileSqlInformation> set = ConcurrentHashMap.newKeySet();
+        final Set<FileInformation> set = ConcurrentHashMap.newKeySet();
         final AtomicReference<Throwable> throwable = new AtomicReference<>(null);
         final CountDownLatch latch = new CountDownLatch(infos.size());
         for (final JSONObject info: infos.toList(JSONObject.class)) {
@@ -329,7 +327,7 @@ final class DriverHelper_lanzou {
                     if (url == null || interrupttedFlag.get()) return;
                     final Pair<Long, LocalDateTime> fixed = DriverHelper_lanzou.testRealSizeAndData(configuration, url);
                     if (fixed == null || interrupttedFlag.get()) return;
-                    set.add(new FileSqlInformation(new FileLocation(configuration.getName(), id.longValue()),
+                    set.add(new FileInformation(new FileLocation(configuration.getName(), id.longValue()),
                             directoryId, name, FileSqlInterface.FileSqlType.RegularFile, fixed.getFirst().longValue(),
                             fixed.getSecond(), fixed.getSecond(), "", null));
                 } finally {
@@ -373,7 +371,7 @@ final class DriverHelper_lanzou {
                     .add("configuration", configuration).add("directoryId", directoryId).add("json", json));
     }
 
-    static @NotNull UnionPair<FileSqlInformation, FailureReason> createDirectory(final @NotNull DriverConfiguration_lanzou configuration, final String name, final long parentId) throws IOException {
+    static @NotNull UnionPair<FileInformation, FailureReason> createDirectory(final @NotNull DriverConfiguration_lanzou configuration, final String name, final long parentId) throws IOException {
         final FormBody.Builder builder = new FormBody.Builder()
                 .add("parent_id", String.valueOf(parentId))
                 .add("folder_name", name);
@@ -392,11 +390,11 @@ final class DriverHelper_lanzou {
         if (id == null || !"\u521B\u5EFA\u6210\u529F".equals(message))
             throw new WrongResponseException("Creating directories.", message, ParametersMap.create()
                     .add("configuration", configuration).add("name", name).add("parentId", parentId).add("json", json));
-        return UnionPair.ok(new FileSqlInformation(new FileLocation(configuration.getName(), id.longValue()), parentId, name,
+        return UnionPair.ok(new FileInformation(new FileLocation(configuration.getName(), id.longValue()), parentId, name,
                 FileSqlInterface.FileSqlType.EmptyDirectory, 0, now, now, "", null));
     }
 
-    static @NotNull UnionPair<FileSqlInformation, FailureReason> uploadFile(final @NotNull DriverConfiguration_lanzou configuration, final String name, final long parentId, final @NotNull ByteBuf content, final @NotNull String md5) throws IOException {
+    static @NotNull UnionPair<FileInformation, FailureReason> uploadFile(final @NotNull DriverConfiguration_lanzou configuration, final String name, final long parentId, final @NotNull ByteBuf content, final @NotNull String md5) throws IOException {
         if (!DriverHelper_lanzou.filenamePredication.test(name))
             return UnionPair.fail(FailureReason.byInvalidName("Uploading.", new FileLocation(configuration.getName(), parentId), name));
         final int size = content.readableBytes();
@@ -425,7 +423,7 @@ final class DriverHelper_lanzou {
         if (info == null || info.getLong("id") == null)
             throw new WrongResponseException("Uploading.", message, ParametersMap.create().add("configuration", configuration)
                     .add("name", name).add("parentId", parentId).add("json", json));
-        return UnionPair.ok(new FileSqlInformation(new FileLocation(configuration.getName(), info.getLongValue("id")),
+        return UnionPair.ok(new FileInformation(new FileLocation(configuration.getName(), info.getLongValue("id")),
                 parentId, name, FileSqlInterface.FileSqlType.RegularFile, size, now, now, md5, null));
     }
 
