@@ -1,6 +1,5 @@
-package com.xuxiaocheng.WList.Server.Databases.GenericSql;
+package com.xuxiaocheng.WList.Server.Databases;
 
-import com.xuxiaocheng.HeadLibs.AndroidSupport.ARandomHelper;
 import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
@@ -8,7 +7,6 @@ import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
-import com.xuxiaocheng.WList.WList;
 import io.netty.util.IllegalReferenceCountException;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.PooledObjectFactory;
@@ -36,36 +34,33 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-// TODO SQLCipher
-public class PooledDatabaseHelper implements PooledDatabaseInterface {
+// TODO SQLCipher (io.github.willena:sqlite-jdbc)
+public class SqlitePooledDatabaseHelper implements PooledDatabase.PooledDatabaseInterface {
     protected final @NotNull GenericObjectPoolConfig<Connection> poolConfig;
     protected final @NotNull PooledDatabaseConfig connectionConfig;
     protected final @NotNull HInitializer<GenericObjectPool<@NotNull Connection>> connectionPool = new HInitializer<>("ConnectionPool");
 
-    public record PooledDatabaseConfig(@NotNull File source, SQLiteConfig.@NotNull JournalMode journalMode, int transactionIsolationLevel) {
+    public static @NotNull SqlitePooledDatabaseHelper getDefault(final @NotNull File database) {
+        final GenericObjectPoolConfig<Connection> poolConfig = new GenericObjectPoolConfig<>();
+        poolConfig.setJmxEnabled(AndroidSupporter.jmxEnable); // default: true
+        poolConfig.setTestOnBorrow(true);
+        return new SqlitePooledDatabaseHelper(poolConfig, new SqlitePooledDatabaseHelper.PooledDatabaseConfig(database,
+                SQLiteConfig.JournalMode.PERSIST, Connection.TRANSACTION_SERIALIZABLE));
     }
 
-    public PooledDatabaseHelper(final @NotNull GenericObjectPoolConfig<Connection> poolConfig, final @NotNull PooledDatabaseHelper.PooledDatabaseConfig connectionConfig) {
+    public record PooledDatabaseConfig(@NotNull File path, SQLiteConfig.@NotNull JournalMode journalMode, int transactionIsolationLevel) implements PooledDatabase.PooledDatabaseIConfiguration {
+    }
+
+    public SqlitePooledDatabaseHelper(final @NotNull GenericObjectPoolConfig<Connection> poolConfig, final SqlitePooledDatabaseHelper.@NotNull PooledDatabaseConfig connectionConfig) {
         super();
         this.poolConfig = poolConfig;
         this.connectionConfig = connectionConfig;
     }
 
-    public static @NotNull File getDriverFile(final @NotNull String driverName) {
-        return new File(WList.RuntimePath.getInstance(), "cache/" + driverName + ".db");
-    }
-
-    public static @NotNull PooledDatabaseHelper getDefault(final @NotNull File database) {
-        final GenericObjectPoolConfig<Connection> poolConfig = new GenericObjectPoolConfig<>();
-        poolConfig.setJmxEnabled(AndroidSupporter.jmxEnable); // default: true
-        poolConfig.setTestOnBorrow(true);
-        return new PooledDatabaseHelper(poolConfig, new PooledDatabaseHelper.PooledDatabaseConfig(database,
-                SQLiteConfig.JournalMode.PERSIST, Connection.TRANSACTION_SERIALIZABLE));
-    }
-
     @Override
-    public void open() throws SQLException {
-        final File path = this.connectionConfig.source();
+    public void openIfNot() throws SQLException {
+        if (this.connectionPool.isInitialized()) return;
+        final File path = this.connectionConfig.path();
         try {
             HFileHelper.ensureFileExist(path.toPath(), true);
         } catch (final IOException exception) {
@@ -79,7 +74,7 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
 
     @Override
     public void close() throws SQLException {
-        final GenericObjectPool<Connection> pool = this.connectionPool.uninitialize();
+        final GenericObjectPool<Connection> pool = this.connectionPool.uninitializeNullable();
         if (pool != null)
             pool.close();
         for (final ReferencedConnection connection: this.activeConnections.values())
@@ -87,7 +82,7 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
         assert this.activeConnections.isEmpty();
     }
 
-    protected record PooledConnectionFactory(@NotNull DataSource source, @NotNull PooledDatabaseConfig configuration, @NotNull PooledDatabaseHelper database) implements PooledObjectFactory<Connection> {
+    protected record PooledConnectionFactory(@NotNull DataSource source, @NotNull PooledDatabaseConfig configuration, @NotNull SqlitePooledDatabaseHelper database) implements PooledObjectFactory<Connection> {
         @Override
         public @NotNull PooledObject<@NotNull Connection> makeObject() throws SQLException {
             final Connection connection = this.source.getConnection();
@@ -113,8 +108,7 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
 
         @Override
         public void passivateObject(final @NotNull PooledObject<@NotNull Connection> p) throws SQLException {
-            final Connection connection = p.getObject();
-            connection.rollback();
+            p.getObject().rollback();
         }
 
         @Override
@@ -147,12 +141,12 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
     protected static final class ReferencedConnectionProxy implements InvocationHandler {
         private @Nullable String id;
         private final @NotNull Connection rawConnection;
-        private final @NotNull PooledDatabaseHelper databaseHelper;
+        private final @NotNull SqlitePooledDatabaseHelper databaseHelper;
 
         private int referenceCounter = 0;
         private @Nullable String allow = null;
 
-        private ReferencedConnectionProxy(final @Nullable String id, final @NotNull Connection rawConnection, final @NotNull PooledDatabaseHelper databaseHelper) {
+        private ReferencedConnectionProxy(final @Nullable String id, final @NotNull Connection rawConnection, final @NotNull SqlitePooledDatabaseHelper databaseHelper) {
             super();
             this.id = id;
             this.rawConnection = rawConnection;
@@ -160,7 +154,7 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
         }
 
         @Override
-        public @Nullable Object invoke(final @NotNull Object proxy, final @NotNull Method method, final Object @Nullable [] args) throws SQLException {
+        public synchronized @Nullable Object invoke(final @NotNull Object proxy, final @NotNull Method method, final Object @Nullable [] args) throws SQLException {
             if (this.referenceCounter < 0)
                 throw new IllegalReferenceCountException(this.referenceCounter);
             switch (method.getName()) {
@@ -199,9 +193,7 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
             if (this.allow != null)
                 throw new SQLWarning("Something went wrong on this connection (" + this.rawConnection + "). Usually caused in other threads.", this.allow);
             try {
-                synchronized (ReferencedConnectionProxy.class) {
-                    return method.invoke(this.rawConnection, args);
-                }
+                return method.invoke(this.rawConnection, args);
             } catch (final IllegalAccessException exception) {
                 throw new RuntimeException(exception);
             } catch (final InvocationTargetException exception) {
@@ -214,7 +206,7 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
         }
 
         @Override
-        public @NotNull String toString() {
+        public synchronized @NotNull String toString() {
             return "ReferencedConnectionProxy{" +
                     "id='" + this.id + '\'' +
                     ", rawConnection=" + this.rawConnection +
@@ -233,7 +225,7 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
             throw new RuntimeException(HExceptionWrapper.unwrapException(exception, SQLException.class));
         }
         return (ReferencedConnection) Proxy.newProxyInstance(rawConnection.getClass().getClassLoader(),
-                PooledDatabaseHelper.ConnectionProxy, new ReferencedConnectionProxy(id, rawConnection, this));
+                SqlitePooledDatabaseHelper.ConnectionProxy, new ReferencedConnectionProxy(id, rawConnection, this));
     }
 
     @Override
@@ -257,7 +249,7 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
         final ReferencedConnection connection = this.createNewConnection(null);
         connection.retain();
         final String id = MiscellaneousUtil.randomKeyAndPut(this.activeConnections,
-                () -> ARandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, HRandomHelper.DefaultWords),
+                () -> HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 32, HRandomHelper.AnyWords),
                 connection);
         connection.setId(id);
         if (idSaver != null)
@@ -278,11 +270,11 @@ public class PooledDatabaseHelper implements PooledDatabaseInterface {
 
     @Override
     public @NotNull String toString() {
-        return "PooledDatabaseHelper{" +
+        return "SqlitePooledDatabaseHelper{" +
                 "poolConfig=" + this.poolConfig +
                 ", connectionConfig=" + this.connectionConfig +
                 ", connectionPool=" + this.connectionPool +
-                ", activeConnections=" + this.activeConnections +
+                ", activeConnections=" + this.activeConnections.size() +
                 '}';
     }
 }

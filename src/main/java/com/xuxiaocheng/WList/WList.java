@@ -1,32 +1,29 @@
 package com.xuxiaocheng.WList;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
-import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.HeadLibs.HeadLibs;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
 import com.xuxiaocheng.Rust.NetworkTransmission;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantSqlHelper;
-import com.xuxiaocheng.WList.Server.Databases.GenericSql.PooledDatabase;
-import com.xuxiaocheng.WList.Server.Databases.GenericSql.PooledDatabaseHelper;
+import com.xuxiaocheng.WList.Server.Databases.PooledDatabase;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.User.UserSqlHelper;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupSqlHelper;
 import com.xuxiaocheng.WList.Server.Driver.Helpers.DriverNetworkHelper;
-import com.xuxiaocheng.WList.Server.Handlers.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.Server.GlobalConfiguration;
+import com.xuxiaocheng.WList.Server.Handlers.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Handlers.ServerHandlerManager;
 import com.xuxiaocheng.WList.Server.WListServer;
 import io.netty.util.concurrent.Future;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
-import java.sql.SQLException;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -82,9 +79,9 @@ public final class WList {
         File runtimePath = new File("").getAbsoluteFile();
         for (final String arg: args) {
             if ("-Debug".equalsIgnoreCase(arg))
-                HLog.setDebugMode(true);
+                HeadLibs.setDebugMode(true);
             if ("-NoDebug".equalsIgnoreCase(arg))
-                HLog.setDebugMode(false);
+                HeadLibs.setDebugMode(false);
             if (arg.startsWith("-path:"))
                 runtimePath = new File(arg.substring("-path:".length())).getAbsoluteFile();
             if ("/?".equals(arg)) {
@@ -92,8 +89,9 @@ public final class WList {
                 return;
             }
         }
-        if (HLog.isDebugMode()) System.setProperty("io.netty.leakDetectionLevel", "ADVANCED");
-        final HLog logger = HLog.createInstance("DefaultLogger", HLog.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, false, true, HMergedStreams.getFileOutputStreamNoException(null));
+        if (HeadLibs.isDebugMode()) System.setProperty("io.netty.leakDetectionLevel", "ADVANCED");
+        //noinspection resource
+        final HLog logger = HLog.create("DefaultLogger");
         HUncaughtExceptionHelper.setUncaughtExceptionListener("listener", (t, e) -> logger.log(HLogLevel.FAULT, "Uncaught exception listened by WList. thread: ", t.getName(), e));
         try {
             logger.log(HLogLevel.FINE, "Hello WList (Server v0.2.3)! Loading...");
@@ -108,14 +106,9 @@ public final class WList {
             logger.log(HLogLevel.VERBOSE, "Initialized WList server environment.");
             final File databasePath = new File(runtimePath, "data.db");
             logger.log(HLogLevel.LESS, "Initializing databases.", ParametersMap.create().add("file", databasePath));
-            PooledDatabase.quicklyInitialize(PooledDatabaseHelper.getDefault(databasePath));
-            try {
-                ConstantManager.quicklyInitialize(new ConstantSqlHelper(PooledDatabase.instance.getInstance()), "initialize");
-                UserGroupManager.quicklyInitialize(new UserGroupSqlHelper(PooledDatabase.instance.getInstance()), "initialize");
-                UserManager.quicklyInitialize(new UserSqlHelper(PooledDatabase.instance.getInstance()), "initialize");
-            } catch (final RuntimeException exception) {
-                throw HExceptionWrapper.unwrapException(exception, SQLException.class);
-            }
+            ConstantManager.quicklyInitialize(new ConstantSqlHelper(PooledDatabase.quicklyOpen(databasePath)), "initialize");
+            UserGroupManager.quicklyInitialize(new UserGroupSqlHelper(PooledDatabase.quicklyOpen(databasePath)), "initialize");
+            UserManager.quicklyInitialize(new UserSqlHelper(PooledDatabase.quicklyOpen(databasePath)), "initialize");
             logger.log(HLogLevel.VERBOSE, "Initialized databases.");
             final File driversPath = new File(runtimePath, "configs");
             logger.log(HLogLevel.LESS, "Initializing driver manager.", ParametersMap.create().add("directory", driversPath));

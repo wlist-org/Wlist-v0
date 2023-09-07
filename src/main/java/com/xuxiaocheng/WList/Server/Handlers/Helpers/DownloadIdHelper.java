@@ -1,12 +1,10 @@
 package com.xuxiaocheng.WList.Server.Handlers.Helpers;
 
-import com.xuxiaocheng.HeadLibs.AndroidSupport.ARandomHelper;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.Rust.NetworkTransmission;
-import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
-import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
+import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -77,7 +75,7 @@ public final class DownloadIdHelper {
             final int mod = (int) (methods.total() % NetworkTransmission.FileTransferBufferSize);
             this.rest = mod == 0 ? NetworkTransmission.FileTransferBufferSize : mod;
             this.id = MiscellaneousUtil.randomKeyAndPut(DownloadIdHelper.buffers,
-                    () -> ARandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, ConstantManager.DefaultRandomChars), this);
+                    () -> HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, HRandomHelper.AnyWords), this);
             if (methods.expireTime() != null)
                 DownloadIdHelper.checkTime.add(Pair.ImmutablePair.makeImmutablePair(methods.expireTime(), this));
             this.appendExpireTime();

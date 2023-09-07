@@ -1,6 +1,5 @@
 package com.xuxiaocheng.WList.Commons.Utils;
 
-import com.xuxiaocheng.HeadLibs.AndroidSupport.ARandomHelper;
 import com.xuxiaocheng.HeadLibs.Functions.FunctionE;
 import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
@@ -151,12 +150,11 @@ public final class JavaScriptUtil {
     }
 
     // TODO: more ajax support.
-    @SuppressWarnings("SpellCheckingInspection")
     public static @Nullable Map<@NotNull String, @Nullable Object> extraOnlyAjaxData(final @NotNull Iterable<@NotNull String> scripts) throws ScriptException {
-        final String ajaxObjName = "ajaxObj_" + ARandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 256, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_");
-        final String ajaxFlagName = "ajaxFlag_" + ARandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 256, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_");
+        final String ajaxObjName = "ajaxObj_" + HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 128, null);
+        final String ajaxFlagName = "ajaxFlag_" + HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 128, null);
         try (final IEngine engine = JavaScriptUtil.JavaScriptEngineCore.getInstance().newEngineBuilder().build()) {
-            engine.execute("var obj,flag=true,$={ajax:function(o){if(obj===undefined&&flag){obj=o;flag=false;}else{obj=undefined;throw'Multiple ajax requests.';}}};"
+            engine.execute("var obj,flag=true,$={ajax:function(o){if(obj===undefined&&flag){obj=o;flag=false;}else{obj=undefined;throw 'Multiple ajax requests.';}}};"
                     .replace("obj", ajaxObjName).replace("flag", ajaxFlagName));
             final AtomicReference<ScriptException> exception = new AtomicReference<>(null);
             for (final String script: scripts)

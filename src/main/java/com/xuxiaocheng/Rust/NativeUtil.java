@@ -3,7 +3,6 @@ package com.xuxiaocheng.Rust;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
 import io.netty.util.internal.PlatformDependent;
 import org.jetbrains.annotations.NotNull;
 
@@ -21,7 +20,7 @@ public final class NativeUtil {
         super();
     }
 
-    private static final @NotNull HLog logger = HLog.createInstance("SystemLogger", HLog.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, false, true, HMergedStreams.getFileOutputStreamNoException(null));
+    private static final @NotNull HLog logger = HLog.create("SystemLogger");
 
     public static void load(final @NotNull String name) {
         NativeUtil.logger.log(HLogLevel.VERBOSE, "Loading native library: ", name);

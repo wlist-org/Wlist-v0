@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class WListClient implements WListClientInterface {
-    private static final @NotNull HLog logger = HLog.createInstance("ClientLogger", HLog.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, true);
+    private static final @NotNull HLog logger = HLog.create("ClientLogger");
 
     protected final @NotNull EventLoopGroup clientEventLoop = new NioEventLoopGroup(1, new DefaultThreadFactory("ClientEventLoop"));
     protected final @NotNull SocketAddress address;

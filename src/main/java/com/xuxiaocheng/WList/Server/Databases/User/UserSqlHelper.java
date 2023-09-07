@@ -1,16 +1,15 @@
 package com.xuxiaocheng.WList.Server.Databases.User;
 
-import com.xuxiaocheng.HeadLibs.AndroidSupport.ARandomHelper;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.Commons.Operation;
 import com.xuxiaocheng.WList.Server.Databases.DatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupSqlInformation;
 import com.xuxiaocheng.WList.Server.Driver.Options;
-import com.xuxiaocheng.WList.Commons.Operation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -131,8 +130,7 @@ public final class UserSqlHelper implements UserSqlInterface {
     private static final @NotNull DateTimeFormatter DefaultFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     private static @NotNull String generateRandomPassword() {
-        //noinspection SpellCheckingInspection
-        return ARandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 8, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_");
+        return HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 8, HRandomHelper.DefaultWords + HRandomHelper.NumberWords);
     }
 
     private static @NotNull UserGroupSqlInformation getUserGroupInformation(final @NotNull ResultSet result) throws SQLException {

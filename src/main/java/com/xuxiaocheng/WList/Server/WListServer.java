@@ -3,6 +3,7 @@ package com.xuxiaocheng.WList.Server;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
+import com.xuxiaocheng.HeadLibs.HeadLibs;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
@@ -11,9 +12,9 @@ import com.xuxiaocheng.HeadLibs.Ranges.IntRange;
 import com.xuxiaocheng.Rust.NetworkTransmission;
 import com.xuxiaocheng.WList.Commons.Codecs.MessageServerCiphers;
 import com.xuxiaocheng.WList.Commons.Operation;
+import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.Server.Handlers.ServerHandler;
 import com.xuxiaocheng.WList.Server.Handlers.ServerHandlerManager;
-import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -53,7 +54,7 @@ public class WListServer {
     public static final @NotNull EventExecutorGroup IOExecutors =
             new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 3, new DefaultThreadFactory("IOExecutors"));
 
-    private static final @NotNull HLog logger = HLog.createInstance("ServerLogger", HLog.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, true, HMergedStreams.getFileOutputStreamNoException(null));
+    private static final @NotNull HLog logger = HLog.create("ServerLogger");
 
     protected static @NotNull WListServer instance = new WListServer();
     public static synchronized @NotNull WListServer getInstance() {
@@ -119,7 +120,7 @@ public class WListServer {
     }
 
     public synchronized void stop() {
-        if (this.address.uninitialize() == null) return;
+        if (this.address.uninitializeNullable() == null) return;
         WListServer.logger.log(HLogLevel.ENHANCED, "WListServer is stopping...");
         final Future<?>[] futures = new Future<?>[2];
         futures[0] = this.bossGroup.shutdownGracefully();

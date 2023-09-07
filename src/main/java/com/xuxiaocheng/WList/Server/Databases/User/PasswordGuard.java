@@ -1,6 +1,5 @@
 package com.xuxiaocheng.WList.Server.Databases.User;
 
-import com.xuxiaocheng.HeadLibs.AndroidSupport.ARandomHelper;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMessageDigestHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
@@ -14,7 +13,7 @@ public final class PasswordGuard {
 
     // Due to the salt being stored in the database, additional salt needs to be added to prevent password leakage.
     private static final @NotNull String ServerPasswordSlat = "WList/PasswordGuard/AdditionalSlat: " + HExceptionWrapper.wrapSupplier(() -> ConstantManager.get("PasswordSlat",
-            () -> ARandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 256, ConstantManager.DefaultRandomChars), "initialize")).get();
+            () -> HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 256, HRandomHelper.AnyWords), "initialize")).get();
 
     public static @NotNull String encryptPassword(final @NotNull String password) {
         final String sha256 = HMessageDigestHelper.SHA256.get(password);

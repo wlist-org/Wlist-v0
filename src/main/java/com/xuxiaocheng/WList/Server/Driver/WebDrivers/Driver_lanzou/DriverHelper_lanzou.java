@@ -7,10 +7,12 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.HeadLibs.HeadLibs;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
+import com.xuxiaocheng.WList.Commons.Utils.JavaScriptUtil;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInformation;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInterface;
 import com.xuxiaocheng.WList.Server.Driver.FailureReason;
@@ -21,7 +23,6 @@ import com.xuxiaocheng.WList.Server.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.Exceptions.IllegalResponseCodeException;
 import com.xuxiaocheng.WList.Server.Exceptions.WrongResponseException;
 import com.xuxiaocheng.WList.Server.WListServer;
-import com.xuxiaocheng.WList.Commons.Utils.JavaScriptUtil;
 import io.netty.buffer.ByteBuf;
 import okhttp3.Cookie;
 import okhttp3.FormBody;
@@ -62,7 +63,7 @@ final class DriverHelper_lanzou {
         super();
     }
 
-    private static final @NotNull HLog logger = HLog.createInstance("DriverLogger/lanzou", HLog.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, true, HMergedStreams.getFileOutputStreamNoException(null));
+    private static final @NotNull HLog logger = HLog.create("DriverLogger/lanzou");
 
     static final @NotNull DateTimeFormatter dataTimeFormatter = DateTimeFormatter.RFC_1123_DATE_TIME;
     static final @NotNull Headers headers = new Headers.Builder().set("referer", "https://up.woozooo.com/u").set("accept-language", "zh-CN")

@@ -55,7 +55,7 @@ public class WListClientManager implements Closeable {
     public static void quicklyUninitialize(final @NotNull SocketAddress address) {
         final WListClientManager manager = WListClientManager.instances.uninitialize(address);
         if (manager != null) {
-            final GenericObjectPool<WListClient> pool = manager.clientPool.uninitialize();
+            final GenericObjectPool<WListClient> pool = manager.clientPool.uninitializeNullable();
             if (pool != null)
                 pool.close();
             for (final WrappedClient client: manager.activeClients)

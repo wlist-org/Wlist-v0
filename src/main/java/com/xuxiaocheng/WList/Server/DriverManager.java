@@ -4,20 +4,21 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
+import com.xuxiaocheng.HeadLibs.HeadLibs;
 import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
+import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
+import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
+import com.xuxiaocheng.WList.Server.Driver.SpecialDriverName;
 import com.xuxiaocheng.WList.Server.Driver.WebDrivers.DriverConfiguration;
 import com.xuxiaocheng.WList.Server.Driver.WebDrivers.DriverInterface;
 import com.xuxiaocheng.WList.Server.Driver.WebDrivers.DriverTrashInterface;
-import com.xuxiaocheng.WList.Server.Driver.SpecialDriverName;
-import com.xuxiaocheng.WList.Server.Exceptions.IllegalParametersException;
-import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
-import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
 import com.xuxiaocheng.WList.Server.Driver.WebDrivers.WebDriversType;
+import com.xuxiaocheng.WList.Server.Exceptions.IllegalParametersException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -49,7 +50,11 @@ public final class DriverManager {
         super();
     }
 
-    private static final @NotNull HLog logger = HLog.createInstance("DriverLogger", HLog.isDebugMode() ? Integer.MIN_VALUE : HLogLevel.DEBUG.getLevel() + 1, false, true, HMergedStreams.getFileOutputStreamNoException(null));
+    public static boolean isDriverNameValid(final @NotNull String driverName) {
+        return true;
+    }
+
+    private static final @NotNull HLog logger = HLog.create("DriverLogger");
     private static final @NotNull HInitializer<File> configurationsPath = new HInitializer<>("DriverConfigurationsDirectory");
     private static final @NotNull Map<@NotNull String, @NotNull Pair<@NotNull WebDriversType, Pair.@NotNull ImmutablePair<@NotNull DriverInterface<?>, @Nullable DriverTrashInterface<?>>>> drivers = new ConcurrentHashMap<>();
     private static final Pair.@NotNull ImmutablePair<@NotNull DriverInterface<?>, @Nullable DriverTrashInterface<?>> DriverPlaceholder = new Pair.ImmutablePair<>() {

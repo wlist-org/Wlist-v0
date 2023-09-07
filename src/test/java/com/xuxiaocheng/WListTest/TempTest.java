@@ -7,8 +7,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantSqlHelper;
-import com.xuxiaocheng.WList.Server.Databases.GenericSql.PooledDatabase;
-import com.xuxiaocheng.WList.Server.Databases.GenericSql.PooledDatabaseHelper;
+import com.xuxiaocheng.WList.Server.Databases.PooledDatabase;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.User.UserSqlHelper;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
@@ -43,10 +42,10 @@ public class TempTest {
         if (TempTest.initializeServer) {
             GlobalConfiguration.initialize(new File("server.yaml"));
 //            GlobalConfiguration.initialize(null);
-            PooledDatabase.quicklyInitialize(PooledDatabaseHelper.getDefault(new File("data.db")));
-            ConstantManager.quicklyInitialize(new ConstantSqlHelper(PooledDatabase.instance.getInstance()), "initialize");
-            UserGroupManager.quicklyInitialize(new UserGroupSqlHelper(PooledDatabase.instance.getInstance()), "initialize");
-            UserManager.quicklyInitialize(new UserSqlHelper(PooledDatabase.instance.getInstance()), "initialize");
+            final File path = new File("data.db");
+            ConstantManager.quicklyInitialize(new ConstantSqlHelper(PooledDatabase.quicklyOpen(path)), "initialize");
+            UserGroupManager.quicklyInitialize(new UserGroupSqlHelper(PooledDatabase.quicklyOpen(path)), "initialize");
+            UserManager.quicklyInitialize(new UserSqlHelper(PooledDatabase.quicklyOpen(path)), "initialize");
             DriverManager.initialize(new File("configs"));
         }
     }
