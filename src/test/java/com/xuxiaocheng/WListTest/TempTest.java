@@ -34,15 +34,15 @@ public class TempTest {
         return null;
     };
 
+    private static final @NotNull File runtimeDirectory = new File("./run");
     @BeforeAll
     public static void initialize() throws IOException, SQLException {
         HUncaughtExceptionHelper.setUncaughtExceptionListener(HUncaughtExceptionHelper.ListenerKey, (t, e) ->
                 HLog.DefaultLogger.log(HLogLevel.FAULT, "Uncaught exception listened by WListTester. thread: ", t.getName(), e));
         System.setProperty("io.netty.leakDetectionLevel", "ADVANCED");
         if (TempTest.initializeServer) {
-            GlobalConfiguration.initialize(new File("server.yaml"));
-//            GlobalConfiguration.initialize(null);
-            final File path = new File("data.db");
+            GlobalConfiguration.initialize(new File(TempTest.runtimeDirectory, "server.yaml"));
+            final File path = new File(TempTest.runtimeDirectory, "data.db");
             ConstantManager.quicklyInitialize(new ConstantSqliteHelper(PooledSqlDatabase.quicklyOpen(path)), "initialize");
             UserGroupManager.quicklyInitialize(new UserGroupSqliteHelper(PooledSqlDatabase.quicklyOpen(path)), "initialize");
             UserManager.quicklyInitialize(new UserSqliteHelper(PooledSqlDatabase.quicklyOpen(path)), "initialize");

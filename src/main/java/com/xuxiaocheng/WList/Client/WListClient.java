@@ -29,7 +29,6 @@ import javax.crypto.NoSuchPaddingException;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.security.NoSuchAlgorithmException;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -98,14 +97,8 @@ public class WListClient implements WListClientInterface {
         if (!this.isActive())
             throw new IOException("Closed client.");
         if (msg != null) {
-            final CountDownLatch latch = new CountDownLatch(1);
-            final AtomicReference<Throwable> exception = new AtomicReference<>();
-            this.channel.getInstance().writeAndFlush(msg).addListener(f -> {
-                exception.set(f.cause());
-                latch.countDown();
-            }).await();
-            latch.await();
-            final Throwable throwable = exception.get();
+            final ChannelFuture future = this.channel.getInstance().writeAndFlush(msg).await();
+            final Throwable throwable = future.cause();
             if (throwable != null) {
                 if (throwable instanceof IOException ioException)
                     throw ioException;
