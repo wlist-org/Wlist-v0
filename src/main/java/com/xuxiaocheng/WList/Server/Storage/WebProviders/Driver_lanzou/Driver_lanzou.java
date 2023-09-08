@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server.Driver.WebDrivers.Driver_lanzou;
+package com.xuxiaocheng.WList.Server.Storage.WebProviders.Driver_lanzou;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
@@ -10,11 +10,11 @@ import com.xuxiaocheng.WList.Server.Databases.File.FileSqliteHelper;
 import com.xuxiaocheng.WList.Server.Databases.PooledSqlDatabase;
 import com.xuxiaocheng.WList.Server.Databases.TrashedFile.TrashedFileManager;
 import com.xuxiaocheng.WList.Server.Databases.TrashedFile.TrashedSqliteHelper;
-import com.xuxiaocheng.WList.Server.Driver.FailureReason;
+import com.xuxiaocheng.WList.Server.Storage.FailureReason;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
-import com.xuxiaocheng.WList.Server.Driver.InternalDrivers.RootDriver;
+import com.xuxiaocheng.WList.Server.Storage.Selectors.RootSelector;
 import com.xuxiaocheng.WList.Commons.Options;
-import com.xuxiaocheng.WList.Server.Driver.WebDrivers.DriverInterface;
+import com.xuxiaocheng.WList.Server.Storage.WebProviders.ProviderInterface;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.UploadMethods;
 import org.jetbrains.annotations.NotNull;
@@ -33,7 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou> {
+public class Driver_lanzou implements ProviderInterface<DriverConfiguration_lanzou> {
     protected @NotNull DriverConfiguration_lanzou configuration = new DriverConfiguration_lanzou();
 
     @Override
@@ -46,7 +46,7 @@ public class Driver_lanzou implements DriverInterface<DriverConfiguration_lanzou
         final PooledSqlDatabase.PooledDatabaseInterface database = PooledSqlDatabase.quicklyOpen(PooledSqlDatabase.getDriverDatabasePath(configuration.getName()));
         FileManager.quicklyInitialize(new FileSqliteHelper(database, configuration.getName(), configuration.getWebSide().getRootDirectoryId()), null);
         this.configuration = configuration;
-        FileManager.mergeFile(this.configuration.getName(), RootDriver.getDatabaseDriverInformation(this.configuration), null);
+        FileManager.mergeFile(this.configuration.getName(), RootSelector.getDatabaseDriverInformation(this.configuration), null);
 
         TrashedFileManager.quicklyInitialize(new TrashedSqliteHelper(database, configuration.getName()), null);
     }

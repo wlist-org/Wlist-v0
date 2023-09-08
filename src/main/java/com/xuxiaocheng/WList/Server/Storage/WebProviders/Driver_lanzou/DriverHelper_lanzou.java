@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server.Driver.WebDrivers.Driver_lanzou;
+package com.xuxiaocheng.WList.Server.Storage.WebProviders.Driver_lanzou;
 
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
@@ -13,10 +13,10 @@ import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Commons.Utils.JavaScriptUtil;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInterface;
-import com.xuxiaocheng.WList.Server.Driver.FailureReason;
+import com.xuxiaocheng.WList.Server.Storage.FailureReason;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
-import com.xuxiaocheng.WList.Server.Driver.Helpers.DriverNetworkHelper;
-import com.xuxiaocheng.WList.Server.Driver.Helpers.DriverUtil;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.DriverNetworkHelper;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Server.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.Exceptions.IllegalResponseCodeException;
 import com.xuxiaocheng.WList.Server.Exceptions.WrongResponseException;

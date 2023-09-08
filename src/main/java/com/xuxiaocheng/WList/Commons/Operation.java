@@ -63,6 +63,7 @@ public final class Operation {
         FileDelete,
     }
 
+    // assert State.name().length() > 1 (Differ from broadcast which start with boolean.)
     public enum State {
         Undefined,
         Success,

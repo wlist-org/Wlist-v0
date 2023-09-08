@@ -1,8 +1,8 @@
-package com.xuxiaocheng.WList.Server.Driver.WebDrivers.Driver_lanzou;
+package com.xuxiaocheng.WList.Server.Storage.WebProviders.Driver_lanzou;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.WList.Server.Driver.WebDrivers.DriverConfiguration;
-import com.xuxiaocheng.WList.Server.Driver.Helpers.DriverNetworkHelper;
+import com.xuxiaocheng.WList.Server.Storage.WebProviders.ProviderConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
 import okhttp3.OkHttpClient;
 import org.jetbrains.annotations.NotNull;
@@ -14,7 +14,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-final class DriverConfiguration_lanzou extends DriverConfiguration<
+final class DriverConfiguration_lanzou extends ProviderConfiguration<
         DriverConfiguration_lanzou.LocalSide,
         DriverConfiguration_lanzou.WebSide,
         DriverConfiguration_lanzou.CacheSide> {
@@ -101,7 +101,7 @@ final class DriverConfiguration_lanzou extends DriverConfiguration<
             this.identifier = YamlHelper.getConfigNullable(cache, "identifier",
                     o -> YamlHelper.transferString(o, errors, prefix + "identifier"));
             this.tokenExpire = YamlHelper.getConfigNullable(cache, "token_expire",
-                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "token_expire", DriverConfiguration.TimeFormatter));
+                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "token_expire", ProviderConfiguration.TimeFormatter));
         }
 
         @Override
@@ -109,7 +109,7 @@ final class DriverConfiguration_lanzou extends DriverConfiguration<
             final Map<String, Object> cache = super.dump();
             cache.put("uid", this.uid);
             cache.put("identifier", this.identifier);
-            cache.put("token_expire", this.tokenExpire == null ? null : DriverConfiguration.TimeFormatter.format(this.tokenExpire));
+            cache.put("token_expire", this.tokenExpire == null ? null : ProviderConfiguration.TimeFormatter.format(this.tokenExpire));
             return cache;
         }
 

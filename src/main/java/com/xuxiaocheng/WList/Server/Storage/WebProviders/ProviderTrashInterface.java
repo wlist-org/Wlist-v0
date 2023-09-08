@@ -1,12 +1,12 @@
-package com.xuxiaocheng.WList.Server.Driver.WebDrivers;
+package com.xuxiaocheng.WList.Server.Storage.WebProviders;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.TrashedFile.TrashedFileInformation;
-import com.xuxiaocheng.WList.Server.Driver.FailureReason;
+import com.xuxiaocheng.WList.Server.Storage.FailureReason;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
-import com.xuxiaocheng.WList.Server.Driver.Helpers.DriverUtil;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Commons.Options;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -14,7 +14,7 @@ import org.jetbrains.annotations.UnmodifiableView;
 
 import java.util.List;
 
-public interface DriverTrashInterface<D extends DriverInterface<?>> {
+public interface ProviderTrashInterface<D extends ProviderInterface<?>> {
     @NotNull D getDriver();
 
     void initialize(final @NotNull D driver) throws Exception;

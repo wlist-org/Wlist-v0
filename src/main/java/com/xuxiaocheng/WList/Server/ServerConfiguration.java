@@ -7,7 +7,7 @@ import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
-import com.xuxiaocheng.WList.Server.Driver.WebDrivers.WebProviderType;
+import com.xuxiaocheng.WList.Server.Storage.WebProviders.WebProviderType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -86,8 +86,7 @@ public record ServerConfiguration(int port, int maxServerBacklog,
         return configuration;
     }
 
-    public static void dump(final @NotNull OutputStream stream) throws IOException {
-        final ServerConfiguration configuration = ServerConfiguration.instance.getInstance();
+    public static void dump(final @NotNull ServerConfiguration configuration, final @NotNull OutputStream stream) throws IOException {
         final Map<String, Object> config = new LinkedHashMap<>();
         config.put("port", configuration.port);
         config.put("max_server_backlog", configuration.maxServerBacklog);
@@ -115,9 +114,10 @@ public record ServerConfiguration(int port, int maxServerBacklog,
     public static synchronized void dumpToFile() throws IOException {
         final File file = ServerConfiguration.Location.getInstanceNullable();
         if (file == null) return;
+        final ServerConfiguration configuration = ServerConfiguration.instance.getInstance();
         HFileHelper.ensureFileAccessible(file, true);
         try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(file))) {
-            ServerConfiguration.dump(outputStream);
+            ServerConfiguration.dump(configuration, outputStream);
         }
     }
 }

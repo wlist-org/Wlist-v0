@@ -1,7 +1,7 @@
-package com.xuxiaocheng.WList.Server.Driver.WebDrivers;
+package com.xuxiaocheng.WList.Server.Storage.WebProviders;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.WList.Server.Driver.Helpers.DriverNetworkHelper;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
 import okhttp3.OkHttpClient;
 import org.jetbrains.annotations.NotNull;
@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 // TODO: thread safe.
-public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSideDriverConfiguration, W extends DriverConfiguration.WebSideDriverConfiguration, C extends DriverConfiguration.CacheSideDriverConfiguration> {
+public abstract class ProviderConfiguration<L extends ProviderConfiguration.LocalSideDriverConfiguration, W extends ProviderConfiguration.WebSideDriverConfiguration, C extends ProviderConfiguration.CacheSideDriverConfiguration> {
     public static final @NotNull DateTimeFormatter TimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     protected @NotNull String name;
@@ -26,7 +26,7 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
     protected final @NotNull W webSide;
     protected final @NotNull C cacheSide;
 
-    protected DriverConfiguration(final @NotNull String name, final @NotNull Supplier<? extends L> local, final @NotNull Supplier<? extends W> web, final @NotNull Supplier<? extends C> cache) {
+    protected ProviderConfiguration(final @NotNull String name, final @NotNull Supplier<? extends L> local, final @NotNull Supplier<? extends W> web, final @NotNull Supplier<? extends C> cache) {
         super();
         this.name = name;
         this.localSide = local.get();
@@ -86,7 +86,7 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
 
     @Override
     public @NotNull String toString() {
-        return "DriverConfiguration{" +
+        return "ProviderConfiguration{" +
                 "name='" + this.name + '\'' +
                 ", localSide=" + this.localSide +
                 ", webSide=" + this.webSide +
@@ -104,16 +104,16 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
             this.displayName = YamlHelper.getConfig(local, "display_name", this.displayName,
                     o -> YamlHelper.transferString(o, errors, prefix + "priority"));
             this.createTime = YamlHelper.getConfig(local, "create_time", this.createTime,
-                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "priority", DriverConfiguration.TimeFormatter));
+                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "priority", ProviderConfiguration.TimeFormatter));
             this.updateTime = YamlHelper.getConfig(local, "update_time", this.updateTime,
-                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "priority", DriverConfiguration.TimeFormatter));
+                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "priority", ProviderConfiguration.TimeFormatter));
         }
 
         protected @NotNull Map<@NotNull String, @NotNull Object> dump() {
             final Map<String, Object> local = new LinkedHashMap<>();
             local.put("display_name", this.displayName);
-            local.put("create_time", this.createTime.format(DriverConfiguration.TimeFormatter));
-            local.put("update_time", this.updateTime.format(DriverConfiguration.TimeFormatter));
+            local.put("create_time", this.createTime.format(ProviderConfiguration.TimeFormatter));
+            local.put("update_time", this.updateTime.format(ProviderConfiguration.TimeFormatter));
             return local;
         }
 
@@ -240,11 +240,11 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
             this.fileCount = YamlHelper.getConfig(cache, "file_count", this.fileCount,
                     o -> YamlHelper.transferIntegerFromStr(o, errors, prefix + "file_count", BigInteger.valueOf(-1), BigInteger.valueOf(Long.MAX_VALUE))).longValue();
             this.lastFileCacheBuildTime = YamlHelper.getConfigNullable(cache, "last_file_cache_build_time",
-                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "last_file_cache_build_time", DriverConfiguration.TimeFormatter));
+                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "last_file_cache_build_time", ProviderConfiguration.TimeFormatter));
             this.lastFileIndexBuildTime = YamlHelper.getConfigNullable(cache, "last_file_index_build_time",
-                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "last_file_index_build_time", DriverConfiguration.TimeFormatter));
+                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "last_file_index_build_time", ProviderConfiguration.TimeFormatter));
             this.lastTrashIndexBuildTime = YamlHelper.getConfigNullable(cache, "last_trash_index_build_time",
-                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "last_trash_index_build_time", DriverConfiguration.TimeFormatter));
+                    o -> YamlHelper.transferDateTimeFromStr(o, errors, prefix + "last_trash_index_build_time", ProviderConfiguration.TimeFormatter));
         }
 
         protected @NotNull Map<@NotNull String, @NotNull Object> dump() {
@@ -253,9 +253,9 @@ public abstract class DriverConfiguration<L extends DriverConfiguration.LocalSid
             cache.put("image_link", this.imageLink);
             cache.put("vip", this.vip);
             cache.put("file_count", this.fileCount);
-            cache.put("last_file_cache_build_time", this.lastFileCacheBuildTime == null ? null : this.lastFileCacheBuildTime.format(DriverConfiguration.TimeFormatter));
-            cache.put("last_file_index_build_time", this.lastFileIndexBuildTime == null ? null : this.lastFileIndexBuildTime.format(DriverConfiguration.TimeFormatter));
-            cache.put("last_trash_index_build_time", this.lastTrashIndexBuildTime == null ? null : this.lastTrashIndexBuildTime.format(DriverConfiguration.TimeFormatter));
+            cache.put("last_file_cache_build_time", this.lastFileCacheBuildTime == null ? null : this.lastFileCacheBuildTime.format(ProviderConfiguration.TimeFormatter));
+            cache.put("last_file_index_build_time", this.lastFileIndexBuildTime == null ? null : this.lastFileIndexBuildTime.format(ProviderConfiguration.TimeFormatter));
+            cache.put("last_trash_index_build_time", this.lastTrashIndexBuildTime == null ? null : this.lastTrashIndexBuildTime.format(ProviderConfiguration.TimeFormatter));
             return cache;
         }
 

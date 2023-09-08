@@ -22,6 +22,8 @@ public final class OperateHelper {
     }
 
     static boolean handleState(final @NotNull ByteBuf receive) throws IOException, WrongStateException {
+        if (receive.readableBytes() <= 0) throw new WrongStateException(Operation.State.Undefined, receive.toString());
+        if (receive.getByte(receive.readerIndex()) <= 1) throw new WrongStateException(Operation.State.Success); // Prevent broadcast.
         final Operation.State state = Operation.valueOfState(ByteBufIOUtil.readUTF(receive));
         return switch (state) {
             case Undefined -> throw new WrongStateException(state, receive.toString());
@@ -38,18 +40,6 @@ public final class OperateHelper {
             case DataError -> false;
         };
     }
-
-//    static void handleBroadcastState(final @NotNull ByteBuf receive) throws IOException, WrongStateException {
-//        final byte ignoredCipher = ByteBufIOUtil.readByte(receive);
-//        final Operation.State state = Operation.valueOfState(ByteBufIOUtil.readUTF(receive));
-//        switch (state) {
-//            case Undefined, Success, DataError -> throw new WrongStateException(state, receive.toString());
-//            case ServerError, FormatError -> throw new WrongStateException(state);
-//            case Unsupported -> throw new UnsupportedOperationException(ByteBufIOUtil.readUTF(receive));
-//            case NoPermission -> throw new NoPermissionException(Operation.valueOfPermission(ByteBufIOUtil.readUTF(receive)));
-//            case Broadcast -> {}
-//        }
-//    }
 
     static @NotNull ByteBuf operate(final Operation.@NotNull Type type) throws IOException {
         final ByteBuf send = ByteBufAllocator.DEFAULT.buffer();

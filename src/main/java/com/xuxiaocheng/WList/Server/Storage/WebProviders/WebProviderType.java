@@ -1,6 +1,6 @@
-package com.xuxiaocheng.WList.Server.Driver.WebDrivers;
+package com.xuxiaocheng.WList.Server.Storage.WebProviders;
 
-import com.xuxiaocheng.WList.Server.Driver.WebDrivers.Driver_lanzou.Driver_lanzou;
+import com.xuxiaocheng.WList.Server.Storage.WebProviders.Driver_lanzou.Driver_lanzou;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -22,10 +22,10 @@ public enum WebProviderType {
     }
 
     private final @NotNull String identifier;
-    private final @NotNull Supplier<@NotNull DriverInterface<?>> driver;
-    private final @Nullable Supplier<@NotNull DriverTrashInterface<?>> trash;
+    private final @NotNull Supplier<@NotNull ProviderInterface<?>> driver;
+    private final @Nullable Supplier<@NotNull ProviderTrashInterface<?>> trash;
 
-    WebProviderType(final @NotNull String identifier, final @NotNull Supplier<@NotNull DriverInterface<?>> driver, final @Nullable Supplier<@NotNull DriverTrashInterface<?>> trash) {
+    WebProviderType(final @NotNull String identifier, final @NotNull Supplier<@NotNull ProviderInterface<?>> driver, final @Nullable Supplier<@NotNull ProviderTrashInterface<?>> trash) {
         this.identifier = identifier;
         this.driver = driver;
         this.trash = trash;
@@ -35,11 +35,11 @@ public enum WebProviderType {
         return this.identifier;
     }
 
-    public @NotNull Supplier<@NotNull DriverInterface<?>> getDriver() {
+    public @NotNull Supplier<@NotNull ProviderInterface<?>> getDriver() {
         return this.driver;
     }
 
-    public @Nullable Supplier<@NotNull DriverTrashInterface<?>> getTrash() {
+    public @Nullable Supplier<@NotNull ProviderTrashInterface<?>> getTrash() {
         return this.trash;
     }
 

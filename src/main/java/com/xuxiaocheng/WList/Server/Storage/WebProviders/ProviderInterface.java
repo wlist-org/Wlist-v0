@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server.Driver.WebDrivers;
+package com.xuxiaocheng.WList.Server.Storage.WebProviders;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
@@ -13,10 +13,10 @@ import com.xuxiaocheng.HeadLibs.Ranges.LongRange;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInterface;
-import com.xuxiaocheng.WList.Server.Driver.FailureReason;
+import com.xuxiaocheng.WList.Server.Storage.FailureReason;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
-import com.xuxiaocheng.WList.Server.Driver.Helpers.DriverNetworkHelper;
-import com.xuxiaocheng.WList.Server.Driver.Helpers.DriverUtil;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.DriverNetworkHelper;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Commons.Options;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.UploadMethods;
@@ -36,7 +36,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 
-public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
+public interface ProviderInterface<C extends ProviderConfiguration<?, ?, ?>> {
     /**
      * Get default configuration instance to initialize.
      * Also be used to serialize.
@@ -63,7 +63,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
     /**
      * Login the web server. Check token etc.
      * @throws Exception Something went wrong.
-     * @see DriverConfiguration.CacheSideDriverConfiguration#setLastFileCacheBuildTime(LocalDateTime)
+     * @see ProviderConfiguration.CacheSideDriverConfiguration#setLastFileCacheBuildTime(LocalDateTime)
      */
     void buildCache() throws Exception;
 
@@ -71,7 +71,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
      * Build file index into sql database.
      * @throws Exception Something went wrong.
      * @see FileManager
-     * @see DriverConfiguration.CacheSideDriverConfiguration#setLastFileIndexBuildTime(LocalDateTime)
+     * @see ProviderConfiguration.CacheSideDriverConfiguration#setLastFileIndexBuildTime(LocalDateTime)
      */
     void buildIndex() throws Exception;
 

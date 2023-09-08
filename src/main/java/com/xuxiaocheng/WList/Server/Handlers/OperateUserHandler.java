@@ -4,8 +4,8 @@ import com.xuxiaocheng.WList.Server.MessageProto;
 import com.xuxiaocheng.WList.Commons.Operation;
 import org.jetbrains.annotations.NotNull;
 
-public final class ServerUserHandler {
-    private ServerUserHandler() {
+public final class OperateUserHandler {
+    private OperateUserHandler() {
         super();
     }
 
@@ -15,18 +15,18 @@ public final class ServerUserHandler {
     public static final @NotNull MessageProto PermissionsDataError = MessageProto.composeMessage(Operation.State.DataError, "Permissions");
 
     public static void initialize() {
-//        ServerHandlerManager.register(Operation.Type.ListUsers, ServerUserHandler.doListUsers);
-//        ServerHandlerManager.register(Operation.Type.DeleteUser, ServerUserHandler.doDeleteUser);
-//        ServerHandlerManager.register(Operation.Type.ListGroups, ServerUserHandler.doListGroups);
-//        ServerHandlerManager.register(Operation.Type.AddGroup, ServerUserHandler.doAddGroup);
-//        ServerHandlerManager.register(Operation.Type.DeleteGroup, ServerUserHandler.doDeleteGroup);
-//        ServerHandlerManager.register(Operation.Type.ChangeGroup, ServerUserHandler.doChangeGroup);
-//        ServerHandlerManager.register(Operation.Type.AddPermission, (channel, buffer) -> ServerUserHandler.doChangePermission(channel, buffer, true));
-//        ServerHandlerManager.register(Operation.Type.RemovePermission, (channel, buffer) -> ServerUserHandler.doChangePermission(channel, buffer, false));
+//        ServerHandlerManager.register(Operation.Type.ListUsers, OperateUserHandler.doListUsers);
+//        ServerHandlerManager.register(Operation.Type.DeleteUser, OperateUserHandler.doDeleteUser);
+//        ServerHandlerManager.register(Operation.Type.ListGroups, OperateUserHandler.doListGroups);
+//        ServerHandlerManager.register(Operation.Type.AddGroup, OperateUserHandler.doAddGroup);
+//        ServerHandlerManager.register(Operation.Type.DeleteGroup, OperateUserHandler.doDeleteGroup);
+//        ServerHandlerManager.register(Operation.Type.ChangeGroup, OperateUserHandler.doChangeGroup);
+//        ServerHandlerManager.register(Operation.Type.AddPermission, (channel, buffer) -> OperateUserHandler.doChangePermission(channel, buffer, true));
+//        ServerHandlerManager.register(Operation.Type.RemovePermission, (channel, buffer) -> OperateUserHandler.doChangePermission(channel, buffer, false));
     }
 
 //    private static final @NotNull ServerHandler doListUsers = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.UsersList);
+//        final UnionPair<UserInformation, MessageProto> user = OperateUserHandler.checkToken(buffer, Operation.Permission.UsersList);
 //        final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
 //        final int page = ByteBufIOUtil.readVariableLenInt(buffer);
 //        final Options.OrderDirection orderDirection = Options.valueOfOrderDirection(ByteBufIOUtil.readUTF(buffer));
@@ -52,14 +52,14 @@ public final class ServerUserHandler {
 //    };
 //
 //    private static final @NotNull ServerHandler doDeleteUser = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> changer = ServerUserHandler.checkToken(buffer, Operation.Permission.UsersOperate);
+//        final UnionPair<UserInformation, MessageProto> changer = OperateUserHandler.checkToken(buffer, Operation.Permission.UsersOperate);
 //        final String username = ByteBufIOUtil.readUTF(buffer);
 //        ServerHandler.logOperation(channel, Operation.Type.DeleteUser, changer, () -> ParametersMap.create()
 //                .add("username", username).add("denied", UserManager.ADMIN.equals(username)));
 //        if (changer.isFailure())
 //            return changer.getE();
 //        if (UserManager.ADMIN.equals(username))
-//            return ServerUserHandler.UserDataError;
+//            return OperateUserHandler.UserDataError;
 //        final long id;
 //        final AtomicReference<String> connectionId = new AtomicReference<>();
 //        try (final Connection connection = UserManager.getConnection(null, connectionId)) {
@@ -68,7 +68,7 @@ public final class ServerUserHandler {
 //            else {
 //                final UserInformation user = UserManager.selectUserByName(username, connectionId.get());
 //                if (user == null)
-//                    return ServerUserHandler.UserDataError;
+//                    return OperateUserHandler.UserDataError;
 //                id = user.id();
 //            }
 //            UserManager.deleteUser(id, connectionId.get());
@@ -81,7 +81,7 @@ public final class ServerUserHandler {
 //    };
 //
 //    private static final @NotNull ServerHandler doListGroups = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> user = ServerUserHandler.checkToken(buffer, Operation.Permission.UsersList);
+//        final UnionPair<UserInformation, MessageProto> user = OperateUserHandler.checkToken(buffer, Operation.Permission.UsersList);
 //        final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
 //        final int page = ByteBufIOUtil.readVariableLenInt(buffer);
 //        final Options.OrderDirection orderDirection = Options.valueOfOrderDirection(ByteBufIOUtil.readUTF(buffer));
@@ -107,7 +107,7 @@ public final class ServerUserHandler {
 //    };
 //
 //    private static final @NotNull ServerHandler doAddGroup = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> changer = ServerUserHandler.checkToken(buffer, Operation.Permission.UsersOperate);
+//        final UnionPair<UserInformation, MessageProto> changer = OperateUserHandler.checkToken(buffer, Operation.Permission.UsersOperate);
 //        final String groupName = ByteBufIOUtil.readUTF(buffer);
 //        ServerHandler.logOperation(channel, Operation.Type.AddGroup, changer, () -> ParametersMap.create()
 //                .add("groupName", groupName));
@@ -126,23 +126,23 @@ public final class ServerUserHandler {
 //    };
 //
 //    private static final @NotNull ServerHandler doDeleteGroup = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> changer = ServerUserHandler.checkToken(buffer, Operation.Permission.UsersOperate);
+//        final UnionPair<UserInformation, MessageProto> changer = OperateUserHandler.checkToken(buffer, Operation.Permission.UsersOperate);
 //        final String groupName = ByteBufIOUtil.readUTF(buffer);
 //        ServerHandler.logOperation(channel, Operation.Type.DeleteGroup, changer, () -> ParametersMap.create()
 //                .add("groupName", groupName).add("denied", UserGroupManager.ADMIN.equals(groupName) || UserGroupManager.DEFAULT.equals(groupName)));
 //        if (changer.isFailure())
 //            return changer.getE();
 //        if (UserGroupManager.ADMIN.equals(groupName) || UserGroupManager.DEFAULT.equals(groupName))
-//            return ServerUserHandler.GroupDataError;
+//            return OperateUserHandler.GroupDataError;
 //        final UserGroupInformation group;
 //        final AtomicReference<String> connectionId = new AtomicReference<>();
 //        try (final Connection connection = UserManager.getConnection(null, connectionId)) {
 //            group = UserGroupManager.selectGroupByName(groupName, connectionId.get());
 //            if (group == null)
-//                return ServerUserHandler.GroupDataError;
+//                return OperateUserHandler.GroupDataError;
 //            final long count = UserManager.selectUserCountByGroup(group.id(), connectionId.get());
 //            if (count > 0)
-//                return ServerUserHandler.UsersDataError;
+//                return OperateUserHandler.UsersDataError;
 //            UserGroupManager.deleteGroup(group.id(), connectionId.get());
 //            connection.commit();
 //        } catch (final SQLException exception) {
@@ -153,7 +153,7 @@ public final class ServerUserHandler {
 //    };
 //
 //    private static final @NotNull ServerHandler doChangeGroup = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> changer = ServerUserHandler.checkToken(buffer, Operation.Permission.UsersOperate);
+//        final UnionPair<UserInformation, MessageProto> changer = OperateUserHandler.checkToken(buffer, Operation.Permission.UsersOperate);
 //        final String username = ByteBufIOUtil.readUTF(buffer);
 //        final String groupName = ByteBufIOUtil.readUTF(buffer);
 //        ServerHandler.logOperation(channel, Operation.Type.ChangeGroup, changer, () -> ParametersMap.create()
@@ -161,17 +161,17 @@ public final class ServerUserHandler {
 //        if (changer.isFailure())
 //            return changer.getE();
 //        if (UserManager.ADMIN.equals(username))
-//            return ServerUserHandler.UserDataError;
+//            return OperateUserHandler.UserDataError;
 //        final UserInformation user;
 //        final UserGroupInformation group;
 //        final AtomicReference<String> connectionId = new AtomicReference<>();
 //        try (final Connection connection = UserManager.getConnection(null, connectionId)) {
 //            user = UserManager.selectUserByName(username, connectionId.get());
 //            if (user == null)
-//                return ServerUserHandler.UserDataError;
+//                return OperateUserHandler.UserDataError;
 //            group = UserGroupManager.selectGroupByName(groupName, connectionId.get());
 //            if (group == null)
-//                return ServerUserHandler.GroupDataError;
+//                return OperateUserHandler.GroupDataError;
 //            UserManager.updateUser(new UserInformation.Updater(user.id(), user.username(),
 //                    user.password(), group.id(), null), connectionId.get());
 //            connection.commit();
@@ -185,7 +185,7 @@ public final class ServerUserHandler {
 //    };
 //
 //    private static @NotNull MessageProto doChangePermission(final @NotNull Channel channel, final @NotNull ByteBuf buffer, final boolean add) throws IOException, ServerException {
-//        final UnionPair<UserInformation, MessageProto> changer = ServerUserHandler.checkToken(buffer, Operation.Permission.UsersOperate);
+//        final UnionPair<UserInformation, MessageProto> changer = OperateUserHandler.checkToken(buffer, Operation.Permission.UsersOperate);
 //        final String groupName = ByteBufIOUtil.readUTF(buffer);
 //        final EnumSet<Operation.Permission> permissions = Operation.parsePermissions(ByteBufIOUtil.readUTF(buffer));
 //        ServerHandler.logOperation(channel, add ? Operation.Type.AddPermission : Operation.Type.RemovePermission, changer, () -> ParametersMap.create()
@@ -193,15 +193,15 @@ public final class ServerUserHandler {
 //        if (changer.isFailure())
 //            return changer.getE();
 //        if (UserGroupManager.ADMIN.equals(groupName))
-//            return ServerUserHandler.GroupDataError;
+//            return OperateUserHandler.GroupDataError;
 //        if (permissions == null)
-//            return ServerUserHandler.PermissionsDataError;
+//            return OperateUserHandler.PermissionsDataError;
 //        final UserGroupInformation group;
 //        final AtomicReference<String> connectionId = new AtomicReference<>();
 //        try (final Connection connection = UserManager.getConnection(null, connectionId)) {
 //            group = UserGroupManager.selectGroupByName(groupName, connectionId.get());
 //            if (group == null)
-//                return ServerUserHandler.GroupDataError;
+//                return OperateUserHandler.GroupDataError;
 //            final EnumSet<Operation.Permission> p = group.permissions();
 //            if (add)
 //                p.addAll(permissions);

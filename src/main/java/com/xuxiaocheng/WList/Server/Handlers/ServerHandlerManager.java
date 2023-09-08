@@ -19,12 +19,12 @@ public final class ServerHandlerManager {
 
     public static void load() {
     } static {
-        ServerSelfHandler.initialize();
-        ServerStateHandler.initialize();
-        ServerUserHandler.initialize();
-        ServerDriverHandler.initialize();
-        ServerFileHandler.initialize();
-        ServerProgressHandler.initialize();
+        OperateSelfHandler.initialize();
+        OperateServerHandler.initialize();
+        OperateUserHandler.initialize();
+        OperateDriverHandler.initialize();
+        OperateFileHandler.initialize();
+        OperateProgressHandler.initialize();
     }
 
 

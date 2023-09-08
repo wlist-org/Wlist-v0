@@ -9,13 +9,13 @@ import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
-import com.xuxiaocheng.WList.Server.Driver.SpecialDriverName;
-import com.xuxiaocheng.WList.Server.Driver.WebDrivers.DriverConfiguration;
-import com.xuxiaocheng.WList.Server.Driver.WebDrivers.DriverInterface;
-import com.xuxiaocheng.WList.Server.Driver.WebDrivers.DriverTrashInterface;
-import com.xuxiaocheng.WList.Server.Driver.WebDrivers.WebProviderType;
+import com.xuxiaocheng.WList.Server.Storage.WebProviders.ProviderConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.WebProviders.ProviderInterface;
+import com.xuxiaocheng.WList.Server.Storage.WebProviders.ProviderTrashInterface;
+import com.xuxiaocheng.WList.Server.Storage.WebProviders.WebProviderType;
 import com.xuxiaocheng.WList.Server.Exceptions.IllegalParametersException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -54,18 +54,18 @@ public final class DriverManager {
 
     private static final @NotNull HLog logger = HLog.create("DriverLogger");
     private static final @NotNull HInitializer<File> configurationsPath = new HInitializer<>("DriverConfigurationsDirectory");
-    private static final @NotNull Map<@NotNull String, @NotNull Pair<@NotNull WebProviderType, Pair.@NotNull ImmutablePair<@NotNull DriverInterface<?>, @Nullable DriverTrashInterface<?>>>> drivers = new ConcurrentHashMap<>();
-    private static final Pair.@NotNull ImmutablePair<@NotNull DriverInterface<?>, @Nullable DriverTrashInterface<?>> DriverPlaceholder = new Pair.ImmutablePair<>() {
+    private static final @NotNull Map<@NotNull String, @NotNull Pair<@NotNull WebProviderType, Pair.@NotNull ImmutablePair<@NotNull ProviderInterface<?>, @Nullable ProviderTrashInterface<?>>>> drivers = new ConcurrentHashMap<>();
+    private static final Pair.@NotNull ImmutablePair<@NotNull ProviderInterface<?>, @Nullable ProviderTrashInterface<?>> DriverPlaceholder = new Pair.ImmutablePair<>() {
         @Serial
         private static final long serialVersionUID = -2237568953583714961L;
 
         @Override
-        public @NotNull DriverInterface<?> getFirst() {
+        public @NotNull ProviderInterface<?> getFirst() {
             throw new IllegalStateException("Unreachable!");
         }
 
         @Override
-        public @Nullable DriverTrashInterface<?> getSecond() {
+        public @Nullable ProviderTrashInterface<?> getSecond() {
             throw new IllegalStateException("Unreachable!");
         }
     };
@@ -104,21 +104,21 @@ public final class DriverManager {
     }
 
     @SuppressWarnings("unchecked")
-    private static <C extends DriverConfiguration<?, ?, ?>> boolean initializeDriver0(final @NotNull String name, final @NotNull WebProviderType type) {
+    private static <C extends ProviderConfiguration<?, ?, ?>> boolean initializeDriver0(final @NotNull String name, final @NotNull WebProviderType type) {
         DriverManager.logger.log(HLogLevel.INFO, "Loading driver.", ParametersMap.create().add("name", name).add("type", type));
         try {
-            for (final SpecialDriverName specialDriverName: SpecialDriverName.values())
-                if (specialDriverName.getIdentifier().equals(name))
-                    throw new IllegalParametersException("Invalid name.", ParametersMap.create().add("name", name).add("type", type).add("specialDriverName", specialDriverName));
-            final Pair<WebProviderType, Pair.ImmutablePair<DriverInterface<?>, DriverTrashInterface<?>>> driverTriad = Pair.makePair(type, DriverManager.DriverPlaceholder);
+            for (final IdentifierNames.SelectorProviderName selectorProviderName: IdentifierNames.SelectorProviderName.values())
+                if (selectorProviderName.getIdentifier().equals(name))
+                    throw new IllegalParametersException("Invalid name.", ParametersMap.create().add("name", name).add("type", type).add("selectorProviderName", selectorProviderName));
+            final Pair<WebProviderType, Pair.ImmutablePair<ProviderInterface<?>, ProviderTrashInterface<?>>> driverTriad = Pair.makePair(type, DriverManager.DriverPlaceholder);
             if (DriverManager.drivers.putIfAbsent(name, driverTriad) != null)
                 throw new IllegalParametersException("Conflict driver name.", ParametersMap.create().add("name", name).add("type", type));
             try {
                 final File configurationPath = DriverManager.getConfigurationFile(name);
-                final Supplier<DriverTrashInterface<?>> trashSupplier = type.getTrash();
-                final DriverTrashInterface<DriverInterface<C>> trash = trashSupplier == null ? null : (DriverTrashInterface<DriverInterface<C>>) trashSupplier.get();
-                final DriverInterface<C> driver = trash == null ? (DriverInterface<C>) type.getDriver().get() : trash.getDriver();
-                final Pair.ImmutablePair<DriverInterface<?>, DriverTrashInterface<?>> driverPair = Pair.ImmutablePair.makeImmutablePair(driver, trash);
+                final Supplier<ProviderTrashInterface<?>> trashSupplier = type.getTrash();
+                final ProviderTrashInterface<ProviderInterface<C>> trash = trashSupplier == null ? null : (ProviderTrashInterface<ProviderInterface<C>>) trashSupplier.get();
+                final ProviderInterface<C> driver = trash == null ? (ProviderInterface<C>) type.getDriver().get() : trash.getDriver();
+                final Pair.ImmutablePair<ProviderInterface<?>, ProviderTrashInterface<?>> driverPair = Pair.ImmutablePair.makeImmutablePair(driver, trash);
                 final C configuration = driver.getConfiguration();
                 final Map<String, Object> config;
                 try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(configurationPath))) {
@@ -170,7 +170,7 @@ public final class DriverManager {
         DriverManager.logger.log(HLogLevel.INFO, "Unloading driver.", ParametersMap.create().add("name", name));
         try {
             DriverManager.failedDrivers.remove(name);
-            final Pair<@NotNull WebProviderType, Pair.@NotNull ImmutablePair<@NotNull DriverInterface<?>, @Nullable DriverTrashInterface<?>>> driver = DriverManager.drivers.remove(name);
+            final Pair<@NotNull WebProviderType, Pair.@NotNull ImmutablePair<@NotNull ProviderInterface<?>, @Nullable ProviderTrashInterface<?>>> driver = DriverManager.drivers.remove(name);
             if (driver == null || driver.getSecond() == DriverManager.DriverPlaceholder) return false;
             if (canDelete && ServerConfiguration.get().deleteCacheAfterUninitializeProvider())
                 try {
@@ -191,7 +191,7 @@ public final class DriverManager {
         return false;
     }
 
-    public static void dumpConfigurationIfModified(final @NotNull DriverConfiguration<?, ?, ?> configuration) throws IOException {
+    public static void dumpConfigurationIfModified(final @NotNull ProviderConfiguration<?, ?, ?> configuration) throws IOException {
         synchronized (configuration) {
             if (configuration.getCacheSide().resetModified())
                 // TODO: -bak file. Prevent IOException.
@@ -224,20 +224,20 @@ public final class DriverManager {
         return DriverManager.addDriver(name, type);
     }
 
-    public static Triad.@Nullable ImmutableTriad<@NotNull WebProviderType, @NotNull DriverInterface<?>, @Nullable DriverTrashInterface<?>> get(final @NotNull String name) {
-        final Pair<WebProviderType, Pair.ImmutablePair<DriverInterface<?>, DriverTrashInterface<?>>> driver = DriverManager.drivers.get(name);
+    public static Triad.@Nullable ImmutableTriad<@NotNull WebProviderType, @NotNull ProviderInterface<?>, @Nullable ProviderTrashInterface<?>> get(final @NotNull String name) {
+        final Pair<WebProviderType, Pair.ImmutablePair<ProviderInterface<?>, ProviderTrashInterface<?>>> driver = DriverManager.drivers.get(name);
         if (driver == null) return null;
         return Triad.ImmutableTriad.makeImmutableTriad(driver.getFirst(), driver.getSecond().getFirst(), driver.getSecond().getSecond());
     }
 
-    public static @Nullable DriverInterface<?> getDriver(final @NotNull String name) {
-        final Pair<WebProviderType, Pair.ImmutablePair<DriverInterface<?>, DriverTrashInterface<?>>> driver = DriverManager.drivers.get(name);
+    public static @Nullable ProviderInterface<?> getDriver(final @NotNull String name) {
+        final Pair<WebProviderType, Pair.ImmutablePair<ProviderInterface<?>, ProviderTrashInterface<?>>> driver = DriverManager.drivers.get(name);
         if (driver == null) return null;
         return driver.getSecond().getFirst();
     }
 
-    public static @Nullable DriverTrashInterface<?> getTrash(final @NotNull String name) {
-        final Pair<WebProviderType, Pair.ImmutablePair<DriverInterface<?>, DriverTrashInterface<?>>> driver = DriverManager.drivers.get(name);
+    public static @Nullable ProviderTrashInterface<?> getTrash(final @NotNull String name) {
+        final Pair<WebProviderType, Pair.ImmutablePair<ProviderInterface<?>, ProviderTrashInterface<?>>> driver = DriverManager.drivers.get(name);
         if (driver == null) return null;
         return driver.getSecond().getSecond();
     }
@@ -246,10 +246,10 @@ public final class DriverManager {
         return DriverManager.drivers.size();
     }
 
-    public static @NotNull Map<@NotNull String, @NotNull Exception> operateAllDrivers(final @NotNull ConsumerE<? super @NotNull DriverInterface<?>> consumer) {
+    public static @NotNull Map<@NotNull String, @NotNull Exception> operateAllDrivers(final @NotNull ConsumerE<? super @NotNull ProviderInterface<?>> consumer) {
         final Map<String, Exception> exceptions = new ConcurrentHashMap<>();
         final Collection<CompletableFuture<?>> futures = new LinkedList<>();
-        for (final Map.Entry<String, Pair<WebProviderType, Pair.ImmutablePair<DriverInterface<?>, DriverTrashInterface<?>>>> driver: DriverManager.drivers.entrySet()) {
+        for (final Map.Entry<String, Pair<WebProviderType, Pair.ImmutablePair<ProviderInterface<?>, ProviderTrashInterface<?>>>> driver: DriverManager.drivers.entrySet()) {
             if (driver.getValue().getSecond() == DriverManager.DriverPlaceholder) continue;
             futures.add(CompletableFuture.runAsync(() -> {
                 try {
@@ -264,10 +264,10 @@ public final class DriverManager {
         return exceptions;
     }
 
-    public static @NotNull Map<@NotNull String, @NotNull Exception> operateAllTrashes(final @NotNull ConsumerE<? super @NotNull DriverTrashInterface<?>> consumer) {
+    public static @NotNull Map<@NotNull String, @NotNull Exception> operateAllTrashes(final @NotNull ConsumerE<? super @NotNull ProviderTrashInterface<?>> consumer) {
         final Map<String, Exception> exceptions = new ConcurrentHashMap<>();
         final Collection<CompletableFuture<?>> futures = new LinkedList<>();
-        for (final Map.Entry<String, Pair<WebProviderType, Pair.ImmutablePair<DriverInterface<?>, DriverTrashInterface<?>>>> driver: DriverManager.drivers.entrySet()) {
+        for (final Map.Entry<String, Pair<WebProviderType, Pair.ImmutablePair<ProviderInterface<?>, ProviderTrashInterface<?>>>> driver: DriverManager.drivers.entrySet()) {
             if (driver.getValue().getSecond() == DriverManager.DriverPlaceholder) continue;
             futures.add(CompletableFuture.runAsync(() -> {
                 try {

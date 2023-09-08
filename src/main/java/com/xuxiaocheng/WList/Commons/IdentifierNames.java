@@ -45,4 +45,23 @@ public final class IdentifierNames {
                     '}';
         }
     }
+
+    public enum SelectorProviderName {
+        RootSelector("WList#RootSelector"),
+        ;
+        private final @NotNull String identifier;
+        SelectorProviderName(final @NotNull String identifier) {
+            this.identifier = identifier;
+        }
+        public @NotNull String getIdentifier() {
+            return this.identifier;
+        }
+        @Override
+        public @NotNull String toString() {
+            return "SelectorProviderName{" +
+                    "name='" + this.name() + '\'' +
+                    ", identify='" + this.identifier + '\'' +
+                    '}';
+        }
+    }
 }

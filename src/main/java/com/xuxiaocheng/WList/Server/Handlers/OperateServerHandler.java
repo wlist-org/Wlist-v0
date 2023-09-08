@@ -14,29 +14,34 @@ import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.group.ChannelGroupFuture;
 import org.jetbrains.annotations.NotNull;
 
-public final class ServerStateHandler {
-    private ServerStateHandler() {
+public final class OperateServerHandler {
+    private OperateServerHandler() {
         super();
     }
 
     public static void initialize() {
-        ServerHandlerManager.register(Operation.Type.SetBroadcastMode, ServerStateHandler.doSetBroadcastMode);
-        ServerHandlerManager.register(Operation.Type.CloseServer, ServerStateHandler.doCloseServer);
-        ServerHandlerManager.register(Operation.Type.Broadcast, ServerStateHandler.doBroadcast);
-        ServerHandlerManager.register(Operation.Type.ResetConfiguration, ServerStateHandler.doResetConfiguration);
+        ServerHandlerManager.register(Operation.Type.SetBroadcastMode, OperateServerHandler.doSetBroadcastMode);
+        ServerHandlerManager.register(Operation.Type.CloseServer, OperateServerHandler.doCloseServer);
+        ServerHandlerManager.register(Operation.Type.Broadcast, OperateServerHandler.doBroadcast);
+        ServerHandlerManager.register(Operation.Type.ResetConfiguration, OperateServerHandler.doResetConfiguration);
     }
 
     private static final @NotNull ServerHandler doSetBroadcastMode = (channel, buffer) -> {
         final boolean receive = ByteBufIOUtil.readBoolean(buffer);
         return () -> {
-            BroadcastManager.setBroadcastMode(channel, receive);
-            WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
+            if (receive) {
+                WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
+                BroadcastManager.addBroadcast(channel);
+            } else {
+                BroadcastManager.removeBroadcast(channel);
+                WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
+            }
         };
     };
 
     private static final @NotNull ServerHandler doCloseServer = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
-        final UnionPair<UserInformation, MessageProto> user = ServerSelfHandler.checkToken(token, Operation.Permission.ServerOperate);
+        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, Operation.Permission.ServerOperate);
         ServerHandler.logOperation(channel, Operation.Type.CloseServer, user, null);
         if (user.isFailure()) {
             WListServer.ServerChannelHandler.write(channel, user.getE());
@@ -60,7 +65,7 @@ public final class ServerStateHandler {
 
     private static final @NotNull ServerHandler doBroadcast = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
-        final UnionPair<UserInformation, MessageProto> user = ServerSelfHandler.checkToken(token, Operation.Permission.Broadcast);
+        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, Operation.Permission.Broadcast);
         final String message = ByteBufIOUtil.readUTF(buffer);
         ServerHandler.logOperation(channel, Operation.Type.Broadcast, user, () -> ParametersMap.create()
                 .add("len", message.length()).add("hash", message.hashCode()));
@@ -76,7 +81,7 @@ public final class ServerStateHandler {
 
     private static final @NotNull ServerHandler doResetConfiguration = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
-        final UnionPair<UserInformation, MessageProto> user = ServerSelfHandler.checkToken(token, Operation.Permission.ServerOperate);
+        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, Operation.Permission.ServerOperate);
         final ServerConfiguration configuration = ServerConfiguration.parse(new ByteBufInputStream(buffer));
         ServerHandler.logOperation(channel, Operation.Type.ResetConfiguration, user, () -> ParametersMap.create()
                 .add("configuration", configuration).add("old", ServerConfiguration.get()));
@@ -85,8 +90,12 @@ public final class ServerStateHandler {
             return null;
         }
         return () -> {
-            ServerConfiguration.set(configuration);
-            WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
+            try {
+                ServerConfiguration.set(configuration);
+                WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
+            } catch (final IllegalStateException exception) {
+                WListServer.ServerChannelHandler.write(channel, MessageProto.DataError);
+            }
         };
     };
 }
