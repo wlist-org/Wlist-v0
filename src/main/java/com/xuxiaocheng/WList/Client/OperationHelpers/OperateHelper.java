@@ -24,7 +24,7 @@ public final class OperateHelper {
     static boolean handleState(final @NotNull ByteBuf receive) throws IOException, WrongStateException {
         final Operation.State state = Operation.valueOfState(ByteBufIOUtil.readUTF(receive));
         return switch (state) {
-            case Undefined, Broadcast -> throw new WrongStateException(state, receive.toString());
+            case Undefined -> throw new WrongStateException(state, receive.toString());
             case ServerError, FormatError -> throw new WrongStateException(state);
             case Unsupported -> throw new UnsupportedOperationException(ByteBufIOUtil.readUTF(receive));
             case NoPermission -> {

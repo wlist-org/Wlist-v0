@@ -5,8 +5,8 @@ import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WList.Client.Exceptions.WrongStateException;
 import com.xuxiaocheng.WList.Client.OperationHelpers.OperateSelfHelper;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation;
+import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WList.Commons.Operation;
-import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
@@ -81,13 +81,13 @@ public class OperateSelfTest extends ServerWrapper {
         @Order(1)
         public void _logon() throws WrongStateException, IOException, InterruptedException {
             final String password = HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 20, null);
-            Assertions.assertFalse(OperateSelfHelper.logon(OperateSelfTest.this.client.getInstance(), UserManager.ADMIN, password));
+            Assertions.assertFalse(OperateSelfHelper.logon(OperateSelfTest.this.client.getInstance(), IdentifierNames.UserName.Admin.getIdentifier(), password));
         }
 
         @Test
         @Order(1)
         public void login() throws WrongStateException, IOException, InterruptedException {
-            final String token = OperateSelfHelper.login(OperateSelfTest.this.client.getInstance(), UserManager.ADMIN, OperateSelfAdminTest.password.getInstance());
+            final String token = OperateSelfHelper.login(OperateSelfTest.this.client.getInstance(), IdentifierNames.UserName.Admin.getIdentifier(), OperateSelfAdminTest.password.getInstance());
             Assumptions.assumeTrue(token != null);
             OperateSelfAdminTest.token.reinitialize(token);
         }

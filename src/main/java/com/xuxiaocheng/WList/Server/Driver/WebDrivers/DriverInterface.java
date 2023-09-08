@@ -20,6 +20,7 @@ import com.xuxiaocheng.WList.Server.Driver.Helpers.DriverUtil;
 import com.xuxiaocheng.WList.Commons.Options;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.UploadMethods;
+import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
@@ -53,7 +54,7 @@ public interface DriverInterface<C extends DriverConfiguration<?, ?, ?>> {
 
     /**
      * Completely uninitialize this driver. (cleaner/deleter) Delete sql table in this method.
-     * Only be called when {@link com.xuxiaocheng.WList.Server.GlobalConfiguration#deleteDriver()} is true.
+     * Only be called when {@link ServerConfiguration#deleteCacheAfterUninitializeProvider()} is true.
      * @see FileManager#quicklyUninitialize(String, String)
      * @throws Exception Something went wrong.
      */

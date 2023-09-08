@@ -14,8 +14,8 @@ import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupSqliteHelper;
 import com.xuxiaocheng.WList.Server.Driver.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Server.DriverManager;
-import com.xuxiaocheng.WList.Server.GlobalConfiguration;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.BackgroundTaskManager;
+import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -41,7 +41,8 @@ public class TempTest {
                 HLog.DefaultLogger.log(HLogLevel.FAULT, "Uncaught exception listened by WListTester. thread: ", t.getName(), e));
         System.setProperty("io.netty.leakDetectionLevel", "ADVANCED");
         if (TempTest.initializeServer) {
-            GlobalConfiguration.initialize(new File(TempTest.runtimeDirectory, "server.yaml"));
+            ServerConfiguration.Location.initialize(new File(TempTest.runtimeDirectory, "server.yaml"));
+            ServerConfiguration.parseFromFile();
             final File path = new File(TempTest.runtimeDirectory, "data.db");
             ConstantManager.quicklyInitialize(new ConstantSqliteHelper(PooledSqlDatabase.quicklyOpen(path)), "initialize");
             UserGroupManager.quicklyInitialize(new UserGroupSqliteHelper(PooledSqlDatabase.quicklyOpen(path)), "initialize");

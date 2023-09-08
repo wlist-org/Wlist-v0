@@ -20,10 +20,12 @@ public final class Operation {
         ChangeUsername,
         ChangePassword,
         GetGroup,
-
+        // State
+        SetBroadcastMode,
         CloseServer,
         Broadcast,
-        SetBroadcastMode,
+        ResetConfiguration,
+
         ListUsers,
         DeleteUser,
         ListGroups,
@@ -64,7 +66,6 @@ public final class Operation {
     public enum State {
         Undefined,
         Success,
-        Broadcast,
         ServerError,
         Unsupported,
         NoPermission,

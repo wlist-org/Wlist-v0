@@ -2,6 +2,7 @@ package com.xuxiaocheng.WList.Commons.Utils;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -32,7 +33,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
- * @see com.xuxiaocheng.WList.Server.GlobalConfiguration#initialize(java.io.File) for example.
+ * @see ServerConfiguration#parse(InputStream)  for example.
  */
 public final class YamlHelper {
     private YamlHelper() {

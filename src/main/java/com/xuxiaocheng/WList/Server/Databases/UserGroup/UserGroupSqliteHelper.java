@@ -2,6 +2,7 @@ package com.xuxiaocheng.WList.Server.Databases.UserGroup;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
+import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WList.Commons.Options;
 import com.xuxiaocheng.WList.Commons.Operation;
 import com.xuxiaocheng.WList.Server.Databases.DatabaseInterface;
@@ -61,12 +62,12 @@ public final class UserGroupSqliteHelper implements UserGroupSqlInterface {
             try (final PreparedStatement statement = connection.prepareStatement("""
                         SELECT group_id FROM groups WHERE name == ? AND permissions == ? LIMIT 1;
                 """)) {
-                statement.setString(1, UserGroupManager.ADMIN);
+                statement.setString(1, IdentifierNames.UserGroupName.Admin.getIdentifier());
                 statement.setString(2, adminPermissions);
                 try (final ResultSet admins = statement.executeQuery()) {
                     adminId = admins.next() ? admins.getLong("group_id") : null;
                 }
-                statement.setString(1, UserGroupManager.DEFAULT);
+                statement.setString(1, IdentifierNames.UserGroupName.Default.getIdentifier());
                 statement.setString(2, defaultPermissions);
                 try (final ResultSet defaults = statement.executeQuery()) {
                     defaultId = defaults.next() ? defaults.getLong("group_id") : null;
@@ -79,10 +80,10 @@ public final class UserGroupSqliteHelper implements UserGroupSqlInterface {
                             group_id = excluded.group_id, permissions = excluded.permissions;
                     """)) {
                         if (adminId == null) {
-                            insertStatement.setString(1, UserGroupManager.ADMIN);
+                            insertStatement.setString(1, IdentifierNames.UserGroupName.Admin.getIdentifier());
                             insertStatement.setString(2, adminPermissions);
                             insertStatement.executeUpdate();
-                            statement.setString(1, UserGroupManager.ADMIN);
+                            statement.setString(1, IdentifierNames.UserGroupName.Admin.getIdentifier());
                             statement.setString(2, adminPermissions);
                             try (final ResultSet admins = statement.executeQuery()) {
                                 admins.next();
@@ -90,10 +91,10 @@ public final class UserGroupSqliteHelper implements UserGroupSqlInterface {
                             }
                         }
                         if (defaultId == null) {
-                            insertStatement.setString(1, UserGroupManager.DEFAULT);
+                            insertStatement.setString(1, IdentifierNames.UserGroupName.Default.getIdentifier());
                             insertStatement.setString(2, defaultPermissions);
                             insertStatement.executeUpdate();
-                            statement.setString(1, UserGroupManager.DEFAULT);
+                            statement.setString(1, IdentifierNames.UserGroupName.Default.getIdentifier());
                             statement.setString(2, defaultPermissions);
                             try (final ResultSet defaults = statement.executeQuery()) {
                                 defaults.next();

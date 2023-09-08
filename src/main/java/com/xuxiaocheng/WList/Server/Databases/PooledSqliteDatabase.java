@@ -60,14 +60,14 @@ public class PooledSqliteDatabase implements PooledSqlDatabase.PooledDatabaseInt
     @Override
     public void openIfNot() throws SQLException {
         if (this.connectionPool.isInitialized()) return;
-        final File path = this.connectionConfig.path();
+        final File file = this.connectionConfig.path();
         try {
-            HFileHelper.ensureFileExist(path.toPath(), true);
+            HFileHelper.ensureFileAccessible(file, true);
         } catch (final IOException exception) {
-            throw new SQLException("Cannot create database file." + ParametersMap.create().add("path", path), exception);
+            throw new SQLException("Cannot create database file." + ParametersMap.create().add("file", file), exception);
         }
         final SQLiteDataSource database = new SQLiteDataSource();
-        database.setUrl(JDBC.PREFIX + path.getPath());
+        database.setUrl(JDBC.PREFIX + file.getPath());
         database.setJournalMode(this.connectionConfig.journalMode().getValue());
         this.connectionPool.initialize(new GenericObjectPool<>(new PooledConnectionFactory(database, this.connectionConfig, this), this.poolConfig));
     }

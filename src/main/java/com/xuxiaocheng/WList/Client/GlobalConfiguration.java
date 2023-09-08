@@ -30,12 +30,10 @@ public record GlobalConfiguration(String host, int port, int limit, int threadCo
         final Map<String, Object> config;
         if (file != null) {
             try {
-                HFileHelper.ensureFileExist(file.toPath(), true);
+                HFileHelper.ensureFileAccessible(file, true);
             } catch (final IOException exception) {
                 throw new IOException("Failed to create global configuration file." + ParametersMap.create().add("file", file), exception);
             }
-            if (!file.canRead() || !file.canWrite())
-                throw new AccessDeniedException("No permissions to read or write global configuration file." + ParametersMap.create().add("file", file));
             try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(file))) {
                 config = YamlHelper.loadYaml(inputStream);
             }
@@ -82,15 +80,12 @@ public record GlobalConfiguration(String host, int port, int limit, int threadCo
     }
 
     public static synchronized void setPath(final @Nullable File file) throws IOException {
-        if (file != null) {
+        if (file != null)
             try {
-                HFileHelper.ensureFileExist(file.toPath(), true);
+                HFileHelper.ensureFileAccessible(file, true);
             } catch (final IOException exception) {
                 throw new IOException("Failed to create global configuration file." + ParametersMap.create().add("file", file), exception);
             }
-            if (!file.canWrite())
-                throw new AccessDeniedException("No permissions to write global configuration file." + ParametersMap.create().add("file", file));
-        }
         GlobalConfiguration.instance.getInstance().setSecond(file);
         GlobalConfiguration.dumpToFile();
     }

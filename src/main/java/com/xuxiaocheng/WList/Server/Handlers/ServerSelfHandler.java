@@ -4,6 +4,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WList.Commons.Operation;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.Server.Databases.User.PasswordGuard;
@@ -115,11 +116,11 @@ public final class ServerSelfHandler {
         final String verifyingPassword = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = ServerSelfHandler.checkTokenAndPassword(token, verifyingPassword);
         ServerHandler.logOperation(channel, Operation.Type.Logoff, user, () -> ParametersMap.create()
-                .optionallyAdd(user.isSuccess(), "denied", UserManager.ADMIN.equals(user.getT().username())));
+                .optionallyAdd(user.isSuccess(), "denied", IdentifierNames.UserName.Admin.equals(user.getT().username())));
         MessageProto message = null;
         if (user.isFailure())
             message = user.getE();
-        else if (UserManager.ADMIN.equals(user.getT().username()))
+        else if (IdentifierNames.UserName.Admin.equals(user.getT().username()))
             message = ServerSelfHandler.UserDataError;
         if (message != null) {
             WListServer.ServerChannelHandler.write(channel, message);
@@ -137,11 +138,11 @@ public final class ServerSelfHandler {
         final UnionPair<UserInformation, MessageProto> user = ServerSelfHandler.checkToken(token);
         final String newUsername = ByteBufIOUtil.readUTF(buffer);
         ServerHandler.logOperation(channel, Operation.Type.ChangeUsername, user, () -> ParametersMap.create()
-                .add("newUsername", newUsername).optionallyAdd(user.isSuccess(), "denied", UserManager.ADMIN.equals(user.getT().username())));
+                .add("newUsername", newUsername).optionallyAdd(user.isSuccess(), "denied", IdentifierNames.UserName.Admin.equals(user.getT().username())));
         MessageProto message = null;
         if (user.isFailure())
             message = user.getE();
-        else if (UserManager.ADMIN.equals(user.getT().username()))
+        else if (IdentifierNames.UserName.Admin.equals(user.getT().username()))
             message = ServerSelfHandler.UserDataError;
         if (message != null) {
             WListServer.ServerChannelHandler.write(channel, message);

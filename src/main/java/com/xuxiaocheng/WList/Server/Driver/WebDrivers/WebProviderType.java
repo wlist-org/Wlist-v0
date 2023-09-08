@@ -8,24 +8,24 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
-public enum WebDriversType {
+public enum WebProviderType {
 //    driver_123Pan("123pan", Driver_123pan::new, Trash_123pan::new),
     driver_lanzou("lanzou", Driver_lanzou::new, null),
     ;
-    private static final @NotNull Map<@NotNull String, @NotNull WebDriversType> drivers = new HashMap<>(); static {
-        for (final WebDriversType type: WebDriversType.values())
-            WebDriversType.drivers.put(type.identifier, type);
+    private static final @NotNull Map<@NotNull String, @NotNull WebProviderType> drivers = new HashMap<>(); static {
+        for (final WebProviderType type: WebProviderType.values())
+            WebProviderType.drivers.put(type.identifier, type);
     }
 
-    public static @Nullable WebDriversType get(final @Nullable String identifier) {
-        return WebDriversType.drivers.get(identifier);
+    public static @Nullable WebProviderType get(final @Nullable String identifier) {
+        return WebProviderType.drivers.get(identifier);
     }
 
     private final @NotNull String identifier;
     private final @NotNull Supplier<@NotNull DriverInterface<?>> driver;
     private final @Nullable Supplier<@NotNull DriverTrashInterface<?>> trash;
 
-    WebDriversType(final @NotNull String identifier, final @NotNull Supplier<@NotNull DriverInterface<?>> driver, final @Nullable Supplier<@NotNull DriverTrashInterface<?>> trash) {
+    WebProviderType(final @NotNull String identifier, final @NotNull Supplier<@NotNull DriverInterface<?>> driver, final @Nullable Supplier<@NotNull DriverTrashInterface<?>> trash) {
         this.identifier = identifier;
         this.driver = driver;
         this.trash = trash;
@@ -45,7 +45,7 @@ public enum WebDriversType {
 
     @Override
     public @NotNull String toString() {
-        return "WebDriversType{" +
+        return "WebProviderType{" +
                 "identifier='" + this.identifier + '\'' +
                 ", name='" + this.name() + '\'' +
                 '}';

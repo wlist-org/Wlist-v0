@@ -9,16 +9,15 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.util.function.Function;
 
-public record MessageProto(Operation.@NotNull State state, @NotNull Appender appender) {
+public record MessageProto(Operation.@NotNull State state, @Nullable Appender appender) {
     @FunctionalInterface
     public interface Appender {
         @NotNull ByteBuf apply(final @NotNull ByteBuf buffer) throws IOException;
     }
 
     public static @NotNull MessageProto composeMessage(final Operation.@NotNull State state, final @Nullable String message) {
-        return new MessageProto(state, buf -> {
-            if (message != null)
-                ByteBufIOUtil.writeUTF(buf, message);
+        return new MessageProto(state, message == null ? null : buf -> {
+            ByteBufIOUtil.writeUTF(buf, message);
             return buf;
         });
     }

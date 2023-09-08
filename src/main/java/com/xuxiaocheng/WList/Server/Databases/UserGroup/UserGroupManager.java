@@ -50,9 +50,6 @@ public final class UserGroupManager {
         return UserGroupManager.sqlInstance.getInstance().getConnection(_connectionId, connectionId);
     }
 
-    public static final @NotNull String ADMIN = "admin";
-    public static final @NotNull String DEFAULT = "default";
-
     public static long getAdminId() {
         return UserGroupManager.sqlInstance.getInstance().getAdminId();
     }

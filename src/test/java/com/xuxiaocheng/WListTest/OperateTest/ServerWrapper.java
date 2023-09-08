@@ -16,7 +16,7 @@ import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupSqliteHelper;
 import com.xuxiaocheng.WList.Server.Driver.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Server.DriverManager;
-import com.xuxiaocheng.WList.Server.GlobalConfiguration;
+import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
@@ -45,13 +45,14 @@ public class ServerWrapper {
     public static final @NotNull HInitializer<SocketAddress> address = new HInitializer<>("address");
     @BeforeAll
     public static void initialize() throws IOException, SQLException, InterruptedException {
-        GlobalConfiguration.initialize(new File(ServerWrapper.runtimeDirectory, "server.yaml"));
+        ServerConfiguration.Location.initialize(new File(ServerWrapper.runtimeDirectory, "server.yaml"));
+        ServerConfiguration.parseFromFile();
         final File path = new File(ServerWrapper.runtimeDirectory, "data.db");
         ConstantManager.quicklyInitialize(new ConstantSqliteHelper(PooledSqlDatabase.quicklyOpen(path)), "initialize");
         UserGroupManager.quicklyInitialize(new UserGroupSqliteHelper(PooledSqlDatabase.quicklyOpen(path)), "initialize");
         UserManager.quicklyInitialize(new UserSqliteHelper(PooledSqlDatabase.quicklyOpen(path)), "initialize");
         DriverManager.initialize(new File("configs"));
-        WListServer.getInstance().start(GlobalConfiguration.getInstance().port());
+        WListServer.getInstance().start(ServerConfiguration.get().port());
         final SocketAddress address = WListServer.getInstance().getAddress().getInstance();
 
         com.xuxiaocheng.WList.Client.GlobalConfiguration.initialize(null);

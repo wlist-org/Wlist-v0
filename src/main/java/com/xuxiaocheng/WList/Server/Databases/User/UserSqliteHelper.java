@@ -5,6 +5,7 @@ import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WList.Commons.Operation;
 import com.xuxiaocheng.WList.Server.Databases.DatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
@@ -83,7 +84,7 @@ public final class UserSqliteHelper implements UserSqlInterface {
                             id = excluded.id, password = excluded.password,
                             group_id = excluded.group_id, modify_time = excluded.modify_time;
                         """)) {
-                        insertStatement.setString(1, UserManager.ADMIN);
+                        insertStatement.setString(1, IdentifierNames.UserName.Admin.getIdentifier());
                         insertStatement.setString(2, PasswordGuard.encryptPassword(password));
                         insertStatement.setLong(3, UserGroupManager.getAdminId());
                         insertStatement.setString(4, LocalDateTime.now().format(UserSqliteHelper.DefaultFormatter));

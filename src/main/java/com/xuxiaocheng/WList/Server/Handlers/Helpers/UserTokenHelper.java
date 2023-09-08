@@ -11,7 +11,7 @@ import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Server.Databases.User.UserInformation;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
-import com.xuxiaocheng.WList.Server.GlobalConfiguration;
+import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -34,7 +34,7 @@ public final class UserTokenHelper {
         return UserTokenHelper.builder.withAudience(Long.toString(id, Character.MAX_RADIX))
                 .withJWTId(String.valueOf(modifyTime.toEpochSecond(ZoneOffset.UTC)))
                 .withSubject(String.valueOf(modifyTime.getNano()))
-                .withExpiresAt(LocalDateTime.now().plusSeconds(GlobalConfiguration.getInstance().tokenExpireTime()).toInstant(ZoneOffset.UTC))
+                .withExpiresAt(LocalDateTime.now().plusSeconds(ServerConfiguration.get().tokenExpireTime()).toInstant(ZoneOffset.UTC))
                 .sign(UserTokenHelper.sign).substring(UserTokenHelper.constPrefix.length());
     }
 

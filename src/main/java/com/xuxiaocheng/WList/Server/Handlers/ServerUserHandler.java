@@ -34,7 +34,7 @@ public final class ServerUserHandler {
 //                .add("limit", limit).add("page", page).add("orderDirection", orderDirection));
 //        if (user.isFailure())
 //            return user.getE();
-//        if (limit < 1 || limit > GlobalConfiguration.getInstance().maxLimitPerPage() || page < 0 || orderDirection == null)
+//        if (limit < 1 || limit > ServerConfiguration.getInstance().maxLimitPerPage() || page < 0 || orderDirection == null)
 //            return MessageProto.WrongParameters;
 //        final Pair.ImmutablePair<Long, List<UserInformation>> list;
 //        try {
@@ -89,7 +89,7 @@ public final class ServerUserHandler {
 //                .add("limit", limit).add("page", page).add("orderDirection", orderDirection));
 //        if (user.isFailure())
 //            return user.getE();
-//        if (limit < 1 || limit > GlobalConfiguration.getInstance().maxLimitPerPage() || page < 0 || orderDirection == null)
+//        if (limit < 1 || limit > ServerConfiguration.getInstance().maxLimitPerPage() || page < 0 || orderDirection == null)
 //            return MessageProto.WrongParameters;
 //        final Pair.ImmutablePair<Long, List<UserGroupInformation>> list;
 //        try {

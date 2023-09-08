@@ -3,11 +3,9 @@ package com.xuxiaocheng.WList.Server;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
-import com.xuxiaocheng.HeadLibs.HeadLibs;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
 import com.xuxiaocheng.HeadLibs.Ranges.IntRange;
 import com.xuxiaocheng.Rust.NetworkTransmission;
 import com.xuxiaocheng.WList.Commons.Codecs.MessageServerCiphers;
@@ -90,7 +88,7 @@ public class WListServer {
         final ServerBootstrap serverBootstrap = new ServerBootstrap();
         serverBootstrap.group(this.workerGroup, this.workerGroup);
         serverBootstrap.channel(NioServerSocketChannel.class);
-        serverBootstrap.option(ChannelOption.SO_BACKLOG, GlobalConfiguration.getInstance().maxConnection());
+        serverBootstrap.option(ChannelOption.SO_BACKLOG, ServerConfiguration.get().maxServerBacklog());
         serverBootstrap.option(ChannelOption.SO_REUSEADDR, true);
         serverBootstrap.childOption(ChannelOption.SO_KEEPALIVE, true);
         serverBootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
@@ -152,18 +150,27 @@ public class WListServer {
         }
 
         public static void write(final @NotNull Channel channel, final @NotNull MessageProto message) {
+            if (!channel.isOpen()) {
+                channel.close();
+                return;
+            }
+            final ByteBuf buffer;
             final ByteBuf prefix = ByteBufAllocator.DEFAULT.buffer();
             try {
                 ByteBufIOUtil.writeUTF(prefix, message.state().name());
-                channel.writeAndFlush(message.appender().apply(prefix).retain());
+                buffer = message.appender() == null ? prefix : message.appender().apply(prefix);
+                buffer.retain();
             } catch (final CodecException | SocketException exception) {
-                channel.close();
+                channel.pipeline().fireExceptionCaught(exception);
+                return;
             } catch (final IOException exception) {
                 WListServer.logger.log(HLogLevel.ERROR, exception);
                 channel.close();
+                return;
             } finally {
                 prefix.release();
             }
+            channel.writeAndFlush(buffer);
         }
 
         @Override

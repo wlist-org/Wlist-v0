@@ -10,7 +10,7 @@ import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Ranges.LongRange;
 import com.xuxiaocheng.Rust.NetworkTransmission;
 import com.xuxiaocheng.WList.Commons.Options;
-import com.xuxiaocheng.WList.Server.GlobalConfiguration;
+import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
@@ -264,7 +264,7 @@ public final class DriverUtil {
 
     public static @NotNull DownloadMethods toCachedDownloadMethods(final @NotNull DownloadMethods source) {
         final int count = source.methods().size();
-        final int forwardDownloadCacheCount = GlobalConfiguration.getInstance().forwardDownloadCacheCount();
+        final int forwardDownloadCacheCount = ServerConfiguration.get().forwardDownloadCacheCount();
         if (count < 1 || forwardDownloadCacheCount == 0)
             return source;
         final List<SupplierE<ByteBuf>> list = new ArrayList<>(count);

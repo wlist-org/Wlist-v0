@@ -46,7 +46,7 @@ public final class ServerFileHandler {
 //                .optionallyAddSupplier(refresh && user.isSuccess(), "allow", () -> user.getT().group().permissions().contains(Operation.Permission.FilesBuildIndex)));
 //        if (user.isFailure())
 //            return user.getE();
-//        if (limit < 1 || limit > GlobalConfiguration.getInstance().maxLimitPerPage()
+//        if (limit < 1 || limit > ServerConfiguration.getInstance().maxLimitPerPage()
 //                || page < 0 || orderPolicy == null || orderDirection == null || filter == null)
 //            return MessageProto.WrongParameters;
 //        if (refresh && !user.getT().group().permissions().contains(Operation.Permission.FilesBuildIndex))
