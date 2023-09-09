@@ -1,9 +1,11 @@
 package com.xuxiaocheng.WList.Server.Databases.UserGroup;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WList.Commons.Options;
+import com.xuxiaocheng.WList.Server.Databases.PooledSqlDatabaseInterface;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -14,19 +16,27 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 
 public final class UserGroupManager {
     private UserGroupManager() {
         super();
     }
 
-    private static final @NotNull HInitializer<UserGroupSqlInterface> sqlInstance = new HInitializer<>("UserGroupSqlInstance");
+    public static final @NotNull HInitializer<UserGroupSqlInterface> sqlInstance = new HInitializer<>("UserGroupSqlInstance");
 
-    public static void quicklyInitialize(final @NotNull UserGroupSqlInterface sqlInstance, final @Nullable String _connectionId) throws SQLException {
+    public static final @NotNull HInitializer<Function<@NotNull PooledSqlDatabaseInterface, @NotNull UserGroupSqlInterface>> Mapper = new HInitializer<>("UserGroupSqlInstanceMapper", d -> {
+        if (!"Sqlite".equals(d.sqlLanguage()))
+            throw new IllegalStateException("Invalid sql language when initializing UserGroupManager." + ParametersMap.create().add("require", "Sqlite").add("real", d.sqlLanguage()));
+        return new UserGroupSqliteHelper(d);
+    });
+
+    public static void quicklyInitialize(final @NotNull PooledSqlDatabaseInterface database, final @Nullable String _connectionId) throws SQLException {
         try {
             UserGroupManager.sqlInstance.initializeIfNot(HExceptionWrapper.wrapSupplier(() -> {
-                sqlInstance.createTable(_connectionId);
-                return sqlInstance;
+                final UserGroupSqlInterface instance = UserGroupManager.Mapper.getInstance().apply(database);
+                instance.createTable(_connectionId);
+                return instance;
             }));
         } catch (final RuntimeException exception) {
             throw HExceptionWrapper.unwrapException(exception, SQLException.class);

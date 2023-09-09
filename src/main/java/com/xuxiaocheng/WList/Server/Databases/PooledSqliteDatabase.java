@@ -13,6 +13,7 @@ import org.apache.commons.pool2.PooledObjectFactory;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.sqlite.JDBC;
@@ -35,7 +36,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 // TODO SQLCipher (io.github.willena:sqlite-jdbc)
-public class PooledSqliteDatabase implements PooledSqlDatabase.PooledDatabaseInterface {
+public class PooledSqliteDatabase implements PooledSqlDatabaseInterface {
     protected final @NotNull GenericObjectPoolConfig<Connection> poolConfig;
     protected final @NotNull PooledDatabaseConfig connectionConfig;
     protected final @NotNull HInitializer<GenericObjectPool<@NotNull Connection>> connectionPool = new HInitializer<>("ConnectionPool");
@@ -55,6 +56,12 @@ public class PooledSqliteDatabase implements PooledSqlDatabase.PooledDatabaseInt
         super();
         this.poolConfig = poolConfig;
         this.connectionConfig = connectionConfig;
+    }
+
+    @Override
+    @Contract(pure = true)
+    public @NotNull String sqlLanguage() {
+        return "Sqlite";
     }
 
     @Override

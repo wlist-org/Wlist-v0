@@ -9,17 +9,17 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.Rust.NetworkTransmission;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
-import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantSqliteHelper;
 import com.xuxiaocheng.WList.Server.Databases.PooledSqlDatabase;
+import com.xuxiaocheng.WList.Server.Databases.PooledSqlDatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.User.UserSqliteHelper;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupSqliteHelper;
-import com.xuxiaocheng.WList.Server.Storage.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Handlers.ServerHandlerManager;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 
@@ -150,10 +150,10 @@ public final class WList {
         final File file = new File(WList.RuntimePath.getInstance(), "data.db");
         WList.logger.log(HLogLevel.LESS, "Initializing server databases.", ParametersMap.create().add("file", file));
         HFileHelper.ensureFileAccessible(file, true);
-        final PooledSqlDatabase.PooledDatabaseInterface database = PooledSqlDatabase.quicklyOpen(file);
-        ConstantManager.quicklyInitialize(new ConstantSqliteHelper(database), "initialize"); // TODO
-        UserGroupManager.quicklyInitialize(new UserGroupSqliteHelper(database), "initialize");
-        UserManager.quicklyInitialize(new UserSqliteHelper(database), "initialize");
+        final PooledSqlDatabaseInterface database = PooledSqlDatabase.quicklyOpen(file);
+        ConstantManager.quicklyInitialize(database, "initialize");
+        UserGroupManager.quicklyInitialize(database, "initialize");
+        UserManager.quicklyInitialize(database, "initialize");
         WList.logger.log(HLogLevel.VERBOSE, "Initialized server databases.");
     }
 

@@ -2,7 +2,7 @@ package com.xuxiaocheng.WList.Server.Databases.File;
 
 import com.xuxiaocheng.HeadLibs.AndroidSupport.AStreams;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
-import com.xuxiaocheng.WList.Server.Databases.PooledSqlDatabase;
+import com.xuxiaocheng.WList.Server.Databases.PooledSqlDatabaseInterface;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Options;
 import org.jetbrains.annotations.Contract;
@@ -54,12 +54,12 @@ public final class FileSqliteHelper implements FileSqlInterface {
 
     private static final @NotNull DateTimeFormatter DefaultFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
-    private final @NotNull PooledSqlDatabase.PooledDatabaseInterface database;
+    private final @NotNull PooledSqlDatabaseInterface database;
     private final @NotNull String driverName;
     private final @NotNull String tableName;
     private final long rootId;
 
-    public FileSqliteHelper(final @NotNull PooledSqlDatabase.PooledDatabaseInterface database, final @NotNull String driverName, final long rootId) {
+    public FileSqliteHelper(final @NotNull PooledSqlDatabaseInterface database, final @NotNull String driverName, final long rootId) {
         super();
         this.database = database;
         this.driverName = driverName;

@@ -8,6 +8,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantSqliteHelper;
 import com.xuxiaocheng.WList.Server.Databases.PooledSqlDatabase;
+import com.xuxiaocheng.WList.Server.Databases.PooledSqlDatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.User.PasswordGuard;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.User.UserSqliteHelper;
@@ -44,10 +45,11 @@ public class TempTest {
         if (TempTest.initializeServer) {
             ServerConfiguration.Location.initialize(new File(TempTest.runtimeDirectory, "server.yaml"));
             ServerConfiguration.parseFromFile();
-            final File path = new File(TempTest.runtimeDirectory, "data.db");
-            ConstantManager.quicklyInitialize(new ConstantSqliteHelper(PooledSqlDatabase.quicklyOpen(path)), "initialize");
-            UserGroupManager.quicklyInitialize(new UserGroupSqliteHelper(PooledSqlDatabase.quicklyOpen(path)), "initialize");
-            UserManager.quicklyInitialize(new UserSqliteHelper(PooledSqlDatabase.quicklyOpen(path)), "initialize");
+            final File file = new File(TempTest.runtimeDirectory, "data.db");
+            final PooledSqlDatabaseInterface database = PooledSqlDatabase.quicklyOpen(file);
+            ConstantManager.quicklyInitialize(database, "initialize");
+            UserGroupManager.quicklyInitialize(database, "initialize");
+            UserManager.quicklyInitialize(database, "initialize");
             DriverManager.initialize(new File("configs"));
         }
     }
