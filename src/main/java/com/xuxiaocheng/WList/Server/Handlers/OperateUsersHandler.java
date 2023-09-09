@@ -1,14 +1,27 @@
 package com.xuxiaocheng.WList.Server.Handlers;
 
-import com.xuxiaocheng.WList.Server.MessageProto;
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation;
 import com.xuxiaocheng.WList.Commons.Operation;
+import com.xuxiaocheng.WList.Commons.Options;
+import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
+import com.xuxiaocheng.WList.Server.Databases.User.UserInformation;
+import com.xuxiaocheng.WList.Server.MessageProto;
+import com.xuxiaocheng.WList.Server.ServerConfiguration;
+import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.List;
 
 public final class OperateUsersHandler {
     private OperateUsersHandler() {
         super();
     }
 
+    public static final @NotNull MessageProto PoliciesLengthError = MessageProto.composeMessage(Operation.State.DataError, "PoliciesLength");
+    public static final @NotNull MessageProto PoliciesDataError = MessageProto.composeMessage(Operation.State.DataError, "PoliciesName");
     public static final @NotNull MessageProto UserDataError = MessageProto.composeMessage(Operation.State.DataError, "User");
     public static final @NotNull MessageProto UsersDataError = MessageProto.composeMessage(Operation.State.DataError, "Users");
     public static final @NotNull MessageProto GroupDataError = MessageProto.composeMessage(Operation.State.DataError, "Group");
@@ -26,17 +39,28 @@ public final class OperateUsersHandler {
     }
 
     private static final @NotNull ServerHandler doListGroups = (channel, buffer) -> {
-//        final String token = ByteBufIOUtil.readUTF(buffer);
-//        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, Operation.Permission.UsersList);
-//        final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
-//        final int page = ByteBufIOUtil.readVariableLenInt(buffer);
-//        final Options.OrderDirection orderDirection = Options.valueOfOrderDirection(ByteBufIOUtil.readUTF(buffer));
-//        ServerHandler.logOperation(channel, Operation.Type.ListGroups, user, () -> ParametersMap.create()
-//                .add("limit", limit).add("page", page).add("orderDirection", orderDirection));
-//        if (user.isFailure())
-//            return user.getE();
-//        if (limit < 1 || limit > ServerConfiguration.getInstance().maxLimitPerPage() || page < 0 || orderDirection == null)
-//            return MessageProto.WrongParameters;
+        final String token = ByteBufIOUtil.readUTF(buffer);
+        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, Operation.Permission.UsersList);
+        final UnionPair<List<Pair.ImmutablePair<VisibleUserGroupInformation.Order, Options.OrderDirection>>, String> policies =
+                Options.parseOrderPolicies(buffer, VisibleUserGroupInformation::orderBy, VisibleUserGroupInformation.Order.values().length);
+        final long position = ByteBufIOUtil.readVariableLenLong(buffer);
+        final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
+        ServerHandler.logOperation(channel, Operation.Type.ListGroups, user, () -> ParametersMap.create()
+                .add("policies", policies).add("position", position).add("limit", limit));
+        MessageProto message = null;
+        if (user.isFailure())
+            message = user.getE();
+        else if (policies == null)
+            message = OperateUsersHandler.PoliciesLengthError;
+        else if (policies.isFailure())
+            message = OperateUsersHandler.PoliciesDataError;
+        else if (position < 0 || limit < 1 || ServerConfiguration.get().maxLimitPerPage() < limit)
+            message = MessageProto.WrongParameters;
+        if (message != null) {
+            WListServer.ServerChannelHandler.write(channel, message);
+            return null;
+        }
+        return () -> { // TODO
 //        final Pair.ImmutablePair<Long, List<UserGroupInformation>> list;
 //        try {
 //            list = UserGroupManager.selectAllUserGroupsInPage(limit, (long) page * limit, orderDirection, null);
@@ -50,6 +74,7 @@ public final class OperateUsersHandler {
 //                UserGroupInformation.dumpVisible(buf, information);
 //            return buf;
 //        });
+        };
     };
 
 //    private static final @NotNull ServerHandler doAddGroup = (channel, buffer) -> {

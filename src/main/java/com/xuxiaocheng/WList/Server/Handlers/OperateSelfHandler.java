@@ -43,9 +43,6 @@ public final class OperateSelfHandler {
         });
     }
     public static final @NotNull MessageProto UserDataError = MessageProto.composeMessage(Operation.State.DataError, "User");
-    public static final @NotNull MessageProto UsersDataError = MessageProto.composeMessage(Operation.State.DataError, "Users");
-    public static final @NotNull MessageProto GroupDataError = MessageProto.composeMessage(Operation.State.DataError, "Group");
-    public static final @NotNull MessageProto PermissionsDataError = MessageProto.composeMessage(Operation.State.DataError, "Permissions");
 
     static @NotNull UnionPair<UserInformation, MessageProto> checkToken(final @NotNull String token, final Operation.@NotNull Permission... permissions) throws SQLException {
         final UserInformation user = UserTokenHelper.decodeToken(token);
