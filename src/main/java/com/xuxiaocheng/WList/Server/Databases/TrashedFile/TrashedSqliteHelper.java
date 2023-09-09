@@ -34,12 +34,13 @@ public final class TrashedSqliteHelper implements TrashedSqlInterface {
     }
 
     @Contract(pure = true) private static @NotNull String getOrderPolicy(final Options.@NotNull OrderPolicy policy) {
-        return switch (policy) {
-            case FileName -> "name";
-            case Size -> "size";
-            case CreateTime -> "create_time";
-            case UpdateTime -> "expire_time";
-        };
+        return "name";
+//        return switch (policy) {
+//            case FileName -> "name";
+//            case Size -> "size";
+//            case CreateTime -> "create_time";
+//            case UpdateTime -> "expire_time";
+//        };
     }
     @Contract(pure = true) private static @NotNull String getOrderDirection(final Options.@NotNull OrderDirection policy) {
         return switch (policy) {

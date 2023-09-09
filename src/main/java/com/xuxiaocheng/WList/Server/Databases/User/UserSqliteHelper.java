@@ -6,11 +6,10 @@ import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
-import com.xuxiaocheng.WList.Commons.Operation;
-import com.xuxiaocheng.WList.Server.Databases.DatabaseInterface;
-import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
-import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupInformation;
 import com.xuxiaocheng.WList.Commons.Options;
+import com.xuxiaocheng.WList.Server.Databases.DatabaseInterface;
+import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupInformation;
+import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -135,8 +134,9 @@ public final class UserSqliteHelper implements UserSqlInterface {
     }
 
     private static @NotNull UserGroupInformation getUserGroupInformation(final @NotNull ResultSet result) throws SQLException {
-        return new UserGroupInformation(result.getLong("group_id"), result.getString("name"),
-                Operation.parsePermissionsNotNull(result.getString("permissions")));
+        return null;
+//        return new UserGroupInformation(result.getLong("group_id"), result.getString("name"),
+//                Operation.parsePermissionsNotNull(result.getString("permissions")));
     }
 
     private static @Nullable UserInformation createNextUserInfo(final @NotNull ResultSet result) throws SQLException {

@@ -20,7 +20,7 @@ public final class ConstantManager {
 
     public static final @NotNull HInitializer<ConstantSqlInterface> sqlInstance = new HInitializer<>("ConstantSqlInstance");
 
-    public static final @NotNull HInitializer<Function<@NotNull SqlDatabaseInterface, @NotNull ConstantSqlInterface>> Mapper = new HInitializer<>("ConstantSqlInstanceMapper", d -> {
+    public static final @NotNull HInitializer<Function<@NotNull SqlDatabaseInterface, @NotNull ConstantSqlInterface>> SqlMapper = new HInitializer<>("ConstantSqlInstanceMapper", d -> {
         if (!"Sqlite".equals(d.sqlLanguage()))
             throw new IllegalStateException("Invalid sql language when initializing ConstantManager." + ParametersMap.create().add("require", "Sqlite").add("real", d.sqlLanguage()));
         return new ConstantSqliteHelper(d);
@@ -29,7 +29,7 @@ public final class ConstantManager {
     public static void quicklyInitialize(final @NotNull SqlDatabaseInterface database, final @Nullable String _connectionId) throws SQLException {
         try {
             ConstantManager.sqlInstance.initializeIfNot(HExceptionWrapper.wrapSupplier(() -> {
-                final ConstantSqlInterface instance = ConstantManager.Mapper.getInstance().apply(database);
+                final ConstantSqlInterface instance = ConstantManager.SqlMapper.getInstance().apply(database);
                 instance.createTable(_connectionId);
                 return instance;
             }));

@@ -7,12 +7,12 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.EnumSet;
 
-public record UserGroupInformation(long id, @NotNull String name, @NotNull EnumSet<Operation.@NotNull Permission> permissions) {
-    public record Inserter(@NotNull String name, @NotNull EnumSet<Operation.@NotNull Permission> permissions) {
-    }
-
+public record UserGroupInformation(long id, @NotNull String name, @NotNull EnumSet<Operation.@NotNull Permission> permissions,
+                                   @NotNull LocalDateTime createTime, @NotNull LocalDateTime updateTime) {
     /**
      * @see com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation
      */
@@ -21,6 +21,8 @@ public record UserGroupInformation(long id, @NotNull String name, @NotNull EnumS
         ByteBufIOUtil.writeVariableLenLong(buffer, this.id);
         ByteBufIOUtil.writeUTF(buffer, this.name);
         ByteBufIOUtil.writeUTF(buffer, Operation.dumpPermissions(this.permissions));
+        ByteBufIOUtil.writeUTF(buffer, this.createTime.format(DateTimeFormatter.ISO_DATE_TIME));
+        ByteBufIOUtil.writeUTF(buffer, this.updateTime.format(DateTimeFormatter.ISO_DATE_TIME));
         return buffer;
     }
 }

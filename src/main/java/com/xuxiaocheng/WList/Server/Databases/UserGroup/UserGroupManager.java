@@ -4,17 +4,20 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation;
+import com.xuxiaocheng.WList.Commons.Operation;
 import com.xuxiaocheng.WList.Commons.Options;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.annotations.UnmodifiableView;
+import org.jetbrains.annotations.Unmodifiable;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.Collection;
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
@@ -25,7 +28,7 @@ public final class UserGroupManager {
 
     public static final @NotNull HInitializer<UserGroupSqlInterface> sqlInstance = new HInitializer<>("UserGroupSqlInstance");
 
-    public static final @NotNull HInitializer<Function<@NotNull SqlDatabaseInterface, @NotNull UserGroupSqlInterface>> Mapper = new HInitializer<>("UserGroupSqlInstanceMapper", d -> {
+    public static final @NotNull HInitializer<Function<@NotNull SqlDatabaseInterface, @NotNull UserGroupSqlInterface>> SqlMapper = new HInitializer<>("UserGroupSqlInstanceMapper", d -> {
         if (!"Sqlite".equals(d.sqlLanguage()))
             throw new IllegalStateException("Invalid sql language when initializing UserGroupManager." + ParametersMap.create().add("require", "Sqlite").add("real", d.sqlLanguage()));
         return new UserGroupSqliteHelper(d);
@@ -34,7 +37,7 @@ public final class UserGroupManager {
     public static void quicklyInitialize(final @NotNull SqlDatabaseInterface database, final @Nullable String _connectionId) throws SQLException {
         try {
             UserGroupManager.sqlInstance.initializeIfNot(HExceptionWrapper.wrapSupplier(() -> {
-                final UserGroupSqlInterface instance = UserGroupManager.Mapper.getInstance().apply(database);
+                final UserGroupSqlInterface instance = UserGroupManager.SqlMapper.getInstance().apply(database);
                 instance.createTable(_connectionId);
                 return instance;
             }));
@@ -56,6 +59,7 @@ public final class UserGroupManager {
         return true;
     }
 
+
     public static @NotNull Connection getConnection(final @Nullable String _connectionId, final @Nullable AtomicReference<? super String> connectionId) throws SQLException {
         return UserGroupManager.sqlInstance.getInstance().getConnection(_connectionId, connectionId);
     }
@@ -68,67 +72,48 @@ public final class UserGroupManager {
         return UserGroupManager.sqlInstance.getInstance().getDefaultId();
     }
 
-    public static @NotNull @UnmodifiableView Map<UserGroupInformation.@NotNull Inserter, @Nullable Long> insertGroups(final @NotNull Collection<UserGroupInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException {
-        return UserGroupManager.sqlInstance.getInstance().insertGroups(inserters, _connectionId);
+
+    /* --- Insert --- */
+
+    public static @Nullable UserGroupInformation insertGroup(final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
+        return UserGroupManager.sqlInstance.getInstance().insertGroup(name, _connectionId);
     }
 
-    public static @Nullable Long insertGroup(final UserGroupInformation.@NotNull Inserter inserter, final @Nullable String _connectionId) throws SQLException {
-        return UserGroupManager.insertGroups(List.of(inserter), _connectionId).get(inserter);
+    /* --- Update --- */
+
+    public static boolean updateGroupName(final long id, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
+        return UserGroupManager.sqlInstance.getInstance().updateGroupName(id, name, _connectionId);
     }
 
-    public static void updateGroups(final @NotNull Collection<@NotNull UserGroupInformation> infoList, final @Nullable String _connectionId) throws SQLException {
-        UserGroupManager.sqlInstance.getInstance().updateGroups(infoList, _connectionId);
+    public static boolean updateGroupPermission(final long id, final @NotNull EnumSet<Operation.@NotNull Permission> permissions, final @Nullable String _connectionId) throws SQLException {
+        return UserGroupManager.sqlInstance.getInstance().updateGroupPermission(id, permissions, _connectionId);
     }
 
-    public static void updateGroup(final @NotNull UserGroupInformation info, final @Nullable String _connectionId) throws SQLException {
-        UserGroupManager.updateGroups(List.of(info), _connectionId);
-    }
-
-    public static void updateGroupsByName(final @NotNull Collection<UserGroupInformation.@NotNull Inserter> infoList, final @Nullable String _connectionId) throws SQLException {
-        UserGroupManager.sqlInstance.getInstance().updateGroupsByName(infoList, _connectionId);
-    }
-
-    public static void updateGroupByName(final UserGroupInformation.@NotNull Inserter info, final @Nullable String _connectionId) throws SQLException {
-        UserGroupManager.updateGroupsByName(List.of(info), _connectionId);
-    }
-
-    public static void deleteGroups(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
-        UserGroupManager.sqlInstance.getInstance().deleteGroups(idList, _connectionId);
-    }
-
-    public static void deleteGroup(final long id, final @Nullable String _connectionId) throws SQLException {
-        UserGroupManager.deleteGroups(List.of(id), _connectionId);
-    }
-
-    public static void deleteGroupsByName(final @NotNull Collection<@NotNull String> nameList, final @Nullable String _connectionId) throws SQLException {
-        UserGroupManager.sqlInstance.getInstance().deleteGroupsByName(nameList, _connectionId);
-    }
-
-    public static void deleteGroupByName(final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
-        UserGroupManager.deleteGroupsByName(List.of(name), _connectionId);
-    }
-
-    public static @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull UserGroupInformation> selectGroups(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
-        return UserGroupManager.sqlInstance.getInstance().selectGroups(idList, _connectionId);
-    }
+    /* --- Select --- */
 
     public static @Nullable UserGroupInformation selectGroup(final long id, final @Nullable String _connectionId) throws SQLException {
-        return UserGroupManager.selectGroups(List.of(id), _connectionId).get(id);
+        return UserGroupManager.sqlInstance.getInstance().selectGroup(id, _connectionId);
     }
 
-    public static @NotNull @UnmodifiableView Map<@NotNull String, @NotNull UserGroupInformation> selectGroupsByName(final @NotNull Collection<@NotNull String> nameList, final @Nullable String _connectionId) throws SQLException {
-        return UserGroupManager.sqlInstance.getInstance().selectGroupsByName(nameList, _connectionId);
+    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserGroupInformation>> selectGroups(final @NotNull LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+        return UserGroupManager.sqlInstance.getInstance().selectGroups(orders, position, limit, _connectionId);
     }
 
-    public static @Nullable UserGroupInformation selectGroupByName(final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
-        return UserGroupManager.selectGroupsByName(List.of(name), _connectionId).get(name);
+    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserGroupInformation>> selectGroupsByPermissions(final @NotNull EnumMap<Operation.@NotNull Permission, @Nullable Boolean> permissions, final @NotNull LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+        return UserGroupManager.sqlInstance.getInstance().selectGroupsByPermissions(permissions, orders, position, limit, _connectionId);
     }
 
-    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull UserGroupInformation>> selectAllUserGroupsInPage(final int limit, final long offset, final Options.@NotNull OrderDirection direction, final @Nullable String _connectionId) throws SQLException {
-        return UserGroupManager.sqlInstance.getInstance().selectAllUserGroupsInPage(limit, offset, direction, _connectionId);
+    /* --- Delete --- */
+
+    public static boolean deleteGroup(final long id, final @Nullable String _connectionId) throws SQLException {
+        return UserGroupManager.sqlInstance.getInstance().deleteGroup(id, _connectionId);
     }
 
-    public static @NotNull @UnmodifiableView List<@Nullable UserGroupInformation> searchUserGroupsByNameLimited(final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
-        return UserGroupManager.sqlInstance.getInstance().searchUserGroupsByNameLimited(rule, caseSensitive, limit, _connectionId);
+    public static long deleteGroupsByPermissions(@NotNull final EnumMap<Operation.@NotNull Permission, @Nullable Boolean> permissions, @Nullable final String _connectionId) throws SQLException {
+        return UserGroupManager.sqlInstance.getInstance().deleteGroupsByPermissions(permissions, _connectionId);
     }
+
+    /* --- Search --- */
+
+
 }

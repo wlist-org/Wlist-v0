@@ -68,7 +68,7 @@ public class OperateSelfTest extends ServerWrapper {
     public void getGroup() throws WrongStateException, IOException, InterruptedException {
         final VisibleUserGroupInformation information = OperateSelfHelper.getGroup(this.client.getInstance(), OperateSelfTest.token.getInstance());
         Assertions.assertNotNull(information);
-        Assertions.assertEquals(Operation.defaultPermissions(), information.permissions());
+        Assertions.assertEquals(Operation.DefaultPermissions, information.permissions());
     }
 
     @Nested
@@ -129,7 +129,7 @@ public class OperateSelfTest extends ServerWrapper {
         public void getGroup() throws WrongStateException, IOException, InterruptedException {
             final VisibleUserGroupInformation information = OperateSelfHelper.getGroup(OperateSelfTest.this.client.getInstance(), OperateSelfAdminTest.token.getInstance());
             Assertions.assertNotNull(information);
-            Assertions.assertEquals(Operation.allPermissions(), information.permissions());
+            Assertions.assertEquals(Operation.AllPermissions, information.permissions());
         }
     }
 }

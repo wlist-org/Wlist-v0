@@ -24,6 +24,9 @@ public final class IdentifierNames {
                     ", identifier='" + this.identifier + '\'' +
                     '}';
         }
+        public static boolean contains(final @NotNull String name) {
+            return "admin".equals(name);
+        }
     }
 
     public enum UserGroupName {
@@ -44,6 +47,9 @@ public final class IdentifierNames {
                     ", identifier='" + this.identifier + '\'' +
                     '}';
         }
+        public static boolean contains(final @NotNull String name) {
+            return "admin".equals(name) || "default".equals(name);
+        }
     }
 
     public enum SelectorProviderName {
@@ -62,6 +68,9 @@ public final class IdentifierNames {
                     "name='" + this.name() + '\'' +
                     ", identify='" + this.identifier + '\'' +
                     '}';
+        }
+        public static boolean contains(final @NotNull String name) {
+            return "WList#RootSelector".equals(name);
         }
     }
 }

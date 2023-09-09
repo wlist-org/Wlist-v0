@@ -4,31 +4,26 @@ import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Ranges.LongRange;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
+import com.xuxiaocheng.WList.Commons.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInterface;
-import com.xuxiaocheng.WList.Server.Storage.WebProviders.ProviderConfiguration;
-import com.xuxiaocheng.WList.Server.Storage.WebProviders.ProviderInterface;
-import com.xuxiaocheng.WList.Server.Storage.WebProviders.ProviderTrashInterface;
-import com.xuxiaocheng.WList.Server.Storage.FailureReason;
-import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
-import com.xuxiaocheng.WList.Commons.Options;
 import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.UploadMethods;
+import com.xuxiaocheng.WList.Server.Storage.FailureReason;
+import com.xuxiaocheng.WList.Server.Storage.WebProviders.ProviderConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.WebProviders.ProviderInterface;
+import com.xuxiaocheng.WList.Server.Storage.WebProviders.ProviderTrashInterface;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.SortedSet;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.TimeUnit;
 
 @SuppressWarnings("OverlyBroadThrowsClause")
@@ -140,23 +135,23 @@ public final class RootSelector implements ProviderInterface<RootSelector.RootDr
     @Override
     public Triad.@Nullable ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileInformation>> list(final @NotNull FileLocation location, final Options.@NotNull DirectoriesOrFiles filter, final @LongRange(minimum = 0) int limit, final @LongRange(minimum = 0) int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws Exception {
         if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(location.driver())) {
-            if (filter == Options.DirectoriesOrFiles.OnlyFiles)
+//            if (filter == Options.DirectoriesOrFiles.OnlyFiles)
                 return Triad.ImmutableTriad.makeImmutableTriad((long) DriverManager.getDriverCount(), 0L, List.of());
-            final Comparator<ProviderConfiguration<?, ?, ?>> comparator = switch (policy) {
-                case FileName -> Comparator.comparing((ProviderConfiguration<?, ?, ?> a) -> a.getLocalSide().getDisplayName());
-                case Size -> Comparator.comparing((ProviderConfiguration<?, ?, ?> a) -> a.getWebSide().getSpaceUsed(), Long::compareUnsigned);
-                case CreateTime -> Comparator.comparing((ProviderConfiguration<?, ?, ?> a) -> a.getLocalSide().getCreateTime());
-                case UpdateTime -> Comparator.comparing((ProviderConfiguration<?, ?, ?> a) -> a.getLocalSide().getUpdateTime());
-            };
-            final SortedSet<ProviderConfiguration<?, ?, ?>> all = new ConcurrentSkipListSet<>(switch (direction) {
-                case ASCEND -> comparator; case DESCEND -> comparator.reversed();
-            });
-            DriverManager.operateAllDrivers(d -> all.add(d.getConfiguration()));
-            final Iterator<ProviderConfiguration<?, ?, ?>> iterator = all.stream().skip((long) limit * page).iterator();
-            final List<FileInformation> list = new ArrayList<>(limit);
-            while (list.size() < limit && iterator.hasNext())
-                list.add(RootSelector.getDriverInformation(iterator.next()));
-            return Triad.ImmutableTriad.makeImmutableTriad((long) all.size(), (long) all.size(), list);
+//            final Comparator<ProviderConfiguration<?, ?, ?>> comparator = switch (policy) {
+//                case FileName -> Comparator.comparing((ProviderConfiguration<?, ?, ?> a) -> a.getLocalSide().getDisplayName());
+//                case Size -> Comparator.comparing((ProviderConfiguration<?, ?, ?> a) -> a.getWebSide().getSpaceUsed(), Long::compareUnsigned);
+//                case CreateTime -> Comparator.comparing((ProviderConfiguration<?, ?, ?> a) -> a.getLocalSide().getCreateTime());
+//                case UpdateTime -> Comparator.comparing((ProviderConfiguration<?, ?, ?> a) -> a.getLocalSide().getUpdateTime());
+//            };
+//            final SortedSet<ProviderConfiguration<?, ?, ?>> all = new ConcurrentSkipListSet<>(switch (direction) {
+//                case ASCEND -> comparator; case DESCEND -> comparator.reversed();
+//            });
+//            DriverManager.operateAllDrivers(d -> all.add(d.getConfiguration()));
+//            final Iterator<ProviderConfiguration<?, ?, ?>> iterator = all.stream().skip((long) limit * page).iterator();
+//            final List<FileInformation> list = new ArrayList<>(limit);
+//            while (list.size() < limit && iterator.hasNext())
+//                list.add(RootSelector.getDriverInformation(iterator.next()));
+//            return Triad.ImmutableTriad.makeImmutableTriad((long) all.size(), (long) all.size(), list);
         }
         final ProviderInterface<?> real = DriverManager.getDriver(location.driver());
         if (real == null) return null;

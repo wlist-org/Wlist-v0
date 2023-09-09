@@ -2,15 +2,15 @@ package com.xuxiaocheng.WList.Server.Databases.File;
 
 import com.xuxiaocheng.HeadLibs.AndroidSupport.AStreams;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
-import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Options;
+import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
+import com.xuxiaocheng.WList.Server.Databases.SqliteHelper;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -26,7 +26,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -38,12 +37,13 @@ public final class FileSqliteHelper implements FileSqlInterface {
     }
 
     @Contract(pure = true) private static @NotNull String getOrderPolicy(final Options.@NotNull OrderPolicy policy) {
-        return switch (policy) {
-            case FileName -> "name_ordered";
-            case Size -> "size";
-            case CreateTime -> "create_time";
-            case UpdateTime -> "update_time";
-        };
+        return "name_ordered";
+//        return switch (policy) {
+//            case FileName -> "name_ordered";
+//            case Size -> "size";
+//            case CreateTime -> "create_time";
+//            case UpdateTime -> "update_time";
+//        };
     }
     @Contract(pure = true) private static @NotNull String getOrderDirection(final Options.@NotNull OrderDirection policy) {
         return switch (policy) {
@@ -183,8 +183,7 @@ public final class FileSqliteHelper implements FileSqlInterface {
                     statement.setLong(1, inserter.id());
                     statement.setLong(2, inserter.parentId());
                     statement.setString(3, inserter.name());
-                    statement.setBytes(4, ((inserter.isDirectory() ? "d" : "f") +
-                            inserter.name()).toLowerCase(Locale.ROOT).getBytes(Charset.forName("GBK")));
+                    statement.setBytes(4, SqliteHelper.toOrdered((inserter.isDirectory() ? "d" : "f") + inserter.name()));
                     statement.setInt(5, inserter.type().ordinal());
                     statement.setLong(6, inserter.size());
                     statement.setString(7, inserter.createTime() == null ? "" : inserter.createTime().format(FileSqliteHelper.DefaultFormatter));
@@ -337,27 +336,27 @@ public final class FileSqliteHelper implements FileSqlInterface {
                     }
                 }
             }
-            if (offset >= filterCount || limit <= 0)
+//            if (offset >= filterCount || limit <= 0)
                 return Triad.ImmutableTriad.makeImmutableTriad(count, filterCount, List.of());
-            final List<FileInformation> list;
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM %s WHERE parent_id == ? AND parent_id != id""" + switch (filter) {
-                        case OnlyDirectories -> " AND (type == 1 OR type == 2) ";
-                        case OnlyFiles -> " AND type == 0 ";
-                        case Both -> " ";
-                    } + "ORDER BY " + FileSqliteHelper.getOrderPolicy(policy) + " " + FileSqliteHelper.getOrderDirection(direction) +
-                    (policy == Options.OrderPolicy.FileName ? "" : ", " + FileSqliteHelper.getOrderPolicy(Options.OrderPolicy.FileName) + " " +
-                            FileSqliteHelper.getOrderDirection(Options.OrderDirection.ASCEND)) + """
-                    LIMIT ? OFFSET ?;
-                """, this.tableName))) {
-                statement.setLong(1, parentId);
-                statement.setInt(2, limit);
-                statement.setLong(3, offset);
-                try (final ResultSet result = statement.executeQuery()) {
-                    list = FileSqliteHelper.createFilesInfoInOrder(this.driverName, result);
-                }
-            }
-            return Triad.ImmutableTriad.makeImmutableTriad(count, filterCount, list);
+//            final List<FileInformation> list;
+//            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+//                    SELECT * FROM %s WHERE parent_id == ? AND parent_id != id""" + switch (filter) {
+//                        case OnlyDirectories -> " AND (type == 1 OR type == 2) ";
+//                        case OnlyFiles -> " AND type == 0 ";
+//                        case Both -> " ";
+//                    } + "ORDER BY " + FileSqliteHelper.getOrderPolicy(policy) + " " + FileSqliteHelper.getOrderDirection(direction) +
+//                    (policy == Options.OrderPolicy.FileName ? "" : ", " + FileSqliteHelper.getOrderPolicy(Options.OrderPolicy.FileName) + " " +
+//                            FileSqliteHelper.getOrderDirection(Options.OrderDirection.ASCEND)) + """
+//                    LIMIT ? OFFSET ?;
+//                """, this.tableName))) {
+//                statement.setLong(1, parentId);
+//                statement.setInt(2, limit);
+//                statement.setLong(3, offset);
+//                try (final ResultSet result = statement.executeQuery()) {
+//                    list = FileSqliteHelper.createFilesInfoInOrder(this.driverName, result);
+//                }
+//            }
+//            return Triad.ImmutableTriad.makeImmutableTriad(count, filterCount, list);
         }
     }
 

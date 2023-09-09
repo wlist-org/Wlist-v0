@@ -3,8 +3,10 @@ package com.xuxiaocheng.WList.Commons;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Objects;
+import java.util.Set;
 
 public final class Operation {
     private Operation() {
@@ -50,6 +52,9 @@ public final class Operation {
         MoveFile,
     }
 
+    /**
+     * @see com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation.Order
+     */
     public enum Permission {
         Undefined,
         ServerOperate,
@@ -99,18 +104,12 @@ public final class Operation {
         }
     }
 
-    public static @NotNull EnumSet<Permission> emptyPermissions() {
-        return EnumSet.noneOf(Permission.class);
-    }
-
-    public static @NotNull EnumSet<Permission> defaultPermissions() {
-        return EnumSet.of(Permission.FilesList);
-    }
-
-    public static @NotNull EnumSet<Permission> allPermissions() {
+    public static final @NotNull Set<@NotNull Permission> EmptyPermissions = Set.of();//Collections.unmodifiableSet(EnumSet.noneOf(Permission.class));
+    public static final @NotNull Set<@NotNull Permission> DefaultPermissions = Collections.unmodifiableSet(EnumSet.of(Permission.FilesList));
+    public static final @NotNull Set<@NotNull Permission> AllPermissions; static {
         final EnumSet<Permission> permissions = EnumSet.allOf(Permission.class);
         permissions.remove(Permission.Undefined);
-        return permissions;
+        AllPermissions = Collections.unmodifiableSet(permissions);
     }
 
     public static @NotNull String dumpPermissions(final @NotNull Iterable<Permission> permissions) {
@@ -122,7 +121,7 @@ public final class Operation {
 
     public static @Nullable EnumSet<Permission> parsePermissions(final @NotNull String permissions) {
         try {
-            final EnumSet<Permission> permissionsSet = Operation.emptyPermissions();
+            final EnumSet<Permission> permissionsSet = EnumSet.noneOf(Permission.class);
             long p = Long.valueOf(permissions, 36).longValue();
             while (p != 0) {
                 final long current = p & -p;
@@ -136,6 +135,6 @@ public final class Operation {
     }
 
     public static @NotNull EnumSet<Permission> parsePermissionsNotNull(final @NotNull String permissions) {
-        return Objects.requireNonNullElseGet(Operation.parsePermissions(permissions), Operation::emptyPermissions);
+        return Objects.requireNonNullElseGet(Operation.parsePermissions(permissions), () -> EnumSet.noneOf(Permission.class));
     }
 }

@@ -1,6 +1,5 @@
 package com.xuxiaocheng.WList.Server.Handlers;
 
-import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation;
@@ -13,7 +12,7 @@ import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.List;
+import java.util.LinkedHashMap;
 
 public final class OperateUsersHandler {
     private OperateUsersHandler() {
@@ -41,7 +40,7 @@ public final class OperateUsersHandler {
     private static final @NotNull ServerHandler doListGroups = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, Operation.Permission.UsersList);
-        final UnionPair<List<Pair.ImmutablePair<VisibleUserGroupInformation.Order, Options.OrderDirection>>, String> policies =
+        final UnionPair<LinkedHashMap<VisibleUserGroupInformation.Order, Options.OrderDirection>, String> policies =
                 Options.parseOrderPolicies(buffer, VisibleUserGroupInformation::orderBy, VisibleUserGroupInformation.Order.values().length);
         final long position = ByteBufIOUtil.readVariableLenLong(buffer);
         final int limit = ByteBufIOUtil.readVariableLenInt(buffer);

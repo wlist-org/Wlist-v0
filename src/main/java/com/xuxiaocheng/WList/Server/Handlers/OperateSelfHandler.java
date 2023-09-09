@@ -48,6 +48,8 @@ public final class OperateSelfHandler {
         final UserInformation user = UserTokenHelper.decodeToken(token);
         if (user == null)
             return UnionPair.fail(OperateSelfHandler.NoSuchUser);
+        if (IdentifierNames.UserGroupName.Admin.getIdentifier().equals(user.group().name()))// || IdentifierNames.UserName.Admin.getIdentifier().equals(user.username()))
+            return UnionPair.ok(user);
         final Set<Operation.Permission> required = EnumSet.noneOf(Operation.Permission.class);
         required.addAll(List.of(permissions));
         required.removeAll(user.group().permissions());

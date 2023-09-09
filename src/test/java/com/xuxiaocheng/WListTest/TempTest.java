@@ -6,15 +6,14 @@ import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
-import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
-import com.xuxiaocheng.WList.Server.Databases.User.PasswordGuard;
+import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
-import com.xuxiaocheng.WList.Server.Storage.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -27,10 +26,10 @@ import java.sql.SQLException;
 import java.util.Map;
 
 public class TempTest {
-    private static final boolean initializeServer = false;
+    private static final boolean initializeServer = true;
     private static final @NotNull SupplierE<@Nullable Object> _main = () -> {
-        HLog.DefaultLogger.log("", PasswordGuard.encryptPassword(""));
-        return null;
+        return UserGroupManager.insertGroup("test", null);
+//        return null;
     };
 
     private static final @NotNull File runtimeDirectory = new File("./run");
