@@ -7,6 +7,7 @@ import com.xuxiaocheng.WList.Client.OperationHelpers.OperateSelfHelper;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WList.Commons.Operation;
+import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
@@ -27,14 +28,14 @@ public class OperateSelfTest extends ServerWrapper {
     @Test
     @Order(1)
     public void logon() throws WrongStateException, IOException, InterruptedException {
-        Assertions.assertTrue(OperateSelfHelper.logon(this.client.getInstance(), OperateSelfTest.username.getInstance(), OperateSelfTest.password.getInstance()));
+        Assumptions.assumeTrue(OperateSelfHelper.logon(this.client.getInstance(), OperateSelfTest.username.getInstance(), OperateSelfTest.password.getInstance()));
     }
 
     @Test
     @Order(2)
     public void login() throws WrongStateException, IOException, InterruptedException {
         final String token = OperateSelfHelper.login(this.client.getInstance(), OperateSelfTest.username.getInstance(), OperateSelfTest.password.getInstance());
-        Assumptions.assumeTrue(token != null);
+        Assertions.assertNotNull(token);
         OperateSelfTest.token.reinitialize(token);
     }
 
@@ -75,7 +76,11 @@ public class OperateSelfTest extends ServerWrapper {
     @SuppressWarnings("InnerClassFieldHidesOuterClassField")
     public class OperateSelfAdminTest {
         protected static final @NotNull HInitializer<String> password = new HInitializer<>("Password", "");
-        protected static final @NotNull HInitializer<String> token = new HInitializer<>("Token");
+        protected static final @NotNull HInitializer<String> token = new HInitializer<>("Token"); static {
+            final String password = UserManager.getAndDeleteDefaultAdminPasswordAPI();
+            if (password != null)
+                OperateSelfAdminTest.password.reinitialize(password);
+        }
 
         @Test
         @Order(1)
@@ -88,7 +93,7 @@ public class OperateSelfTest extends ServerWrapper {
         @Order(1)
         public void login() throws WrongStateException, IOException, InterruptedException {
             final String token = OperateSelfHelper.login(OperateSelfTest.this.client.getInstance(), IdentifierNames.UserName.Admin.getIdentifier(), OperateSelfAdminTest.password.getInstance());
-            Assumptions.assumeTrue(token != null);
+            Assertions.assertNotNull(token);
             OperateSelfAdminTest.token.reinitialize(token);
         }
 

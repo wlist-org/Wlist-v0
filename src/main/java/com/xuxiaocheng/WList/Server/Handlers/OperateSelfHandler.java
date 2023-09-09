@@ -116,11 +116,11 @@ public final class OperateSelfHandler {
         final String verifyingPassword = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkTokenAndPassword(token, verifyingPassword);
         ServerHandler.logOperation(channel, Operation.Type.Logoff, user, () -> ParametersMap.create()
-                .optionallyAdd(user.isSuccess(), "denied", IdentifierNames.UserName.Admin.equals(user.getT().username())));
+                .optionallyAdd(user.isSuccess(), "denied", IdentifierNames.UserName.Admin.getIdentifier().equals(user.getT().username())));
         MessageProto message = null;
         if (user.isFailure())
             message = user.getE();
-        else if (IdentifierNames.UserName.Admin.equals(user.getT().username()))
+        else if (IdentifierNames.UserName.Admin.getIdentifier().equals(user.getT().username()))
             message = OperateSelfHandler.UserDataError;
         if (message != null) {
             WListServer.ServerChannelHandler.write(channel, message);
@@ -138,11 +138,11 @@ public final class OperateSelfHandler {
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token);
         final String newUsername = ByteBufIOUtil.readUTF(buffer);
         ServerHandler.logOperation(channel, Operation.Type.ChangeUsername, user, () -> ParametersMap.create()
-                .add("newUsername", newUsername).optionallyAdd(user.isSuccess(), "denied", IdentifierNames.UserName.Admin.equals(user.getT().username())));
+                .add("newUsername", newUsername).optionallyAdd(user.isSuccess(), "denied", IdentifierNames.UserName.Admin.getIdentifier().equals(user.getT().username())));
         MessageProto message = null;
         if (user.isFailure())
             message = user.getE();
-        else if (IdentifierNames.UserName.Admin.equals(user.getT().username()))
+        else if (IdentifierNames.UserName.Admin.getIdentifier().equals(user.getT().username()))
             message = OperateSelfHandler.UserDataError;
         if (message != null) {
             WListServer.ServerChannelHandler.write(channel, message);

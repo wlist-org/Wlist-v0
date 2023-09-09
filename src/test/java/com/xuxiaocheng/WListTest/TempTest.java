@@ -8,6 +8,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantSqliteHelper;
 import com.xuxiaocheng.WList.Server.Databases.PooledSqlDatabase;
+import com.xuxiaocheng.WList.Server.Databases.User.PasswordGuard;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.User.UserSqliteHelper;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
@@ -30,7 +31,7 @@ import java.util.Map;
 public class TempTest {
     private static final boolean initializeServer = false;
     private static final @NotNull SupplierE<@Nullable Object> _main = () -> {
-
+        HLog.DefaultLogger.log("", PasswordGuard.encryptPassword(""));
         return null;
     };
 

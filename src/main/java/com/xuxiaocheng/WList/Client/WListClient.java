@@ -25,10 +25,8 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import javax.crypto.NoSuchPaddingException;
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -60,7 +58,7 @@ public class WListClient implements WListClientInterface {
         final AtomicReference<Throwable> error = new AtomicReference<>(null);
         bootstrap.handler(new ChannelInitializer<SocketChannel>() {
             @Override
-            protected void initChannel(final @NotNull SocketChannel ch) throws NoSuchPaddingException, NoSuchAlgorithmException {
+            protected void initChannel(final @NotNull SocketChannel ch) {
                 final ChannelPipeline pipeline = ch.pipeline();
                 pipeline.addLast("LengthDecoder", new LengthFieldBasedFrameDecoder(NetworkTransmission.MaxSizePerPacket, 0, 4, 0, 4));
                 pipeline.addLast("LengthEncoder", new LengthFieldPrepender(4));
@@ -119,10 +117,10 @@ public class WListClient implements WListClientInterface {
 
     @Override
     public void close() {
-        final Channel channel = this.channel.getInstanceNullable();
-        if (channel != null)
-            channel.close().syncUninterruptibly();
-        this.clientEventLoop.shutdownGracefully().syncUninterruptibly();
+        final Channel channel = this.channel.uninitializeNullable();
+        if (channel == null)
+            return;
+        channel.close().addListener(f -> this.clientEventLoop.shutdownGracefully());
     }
 
     @Override

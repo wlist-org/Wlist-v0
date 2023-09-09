@@ -185,6 +185,10 @@ public class WListServer {
                     ServerChannelHandler.write(channel, MessageProto.Undefined);
                     return;
                 }
+                if (type != Operation.Type.SetBroadcastMode && BroadcastManager.isBroadcast(channel)) {
+                    channel.close();
+                    return;
+                }
                 core = ServerHandlerManager.getHandler(type).extra(channel, msg);
                 if (msg.readableBytes() != 0)
                     WListServer.logger.log(HLogLevel.MISTAKE, "Unexpected discarded bytes: ", channel.remoteAddress(), ParametersMap.create().add("len", msg.readableBytes()));

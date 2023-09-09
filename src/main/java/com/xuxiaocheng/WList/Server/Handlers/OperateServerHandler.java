@@ -28,6 +28,7 @@ public final class OperateServerHandler {
 
     private static final @NotNull ServerHandler doSetBroadcastMode = (channel, buffer) -> {
         final boolean receive = ByteBufIOUtil.readBoolean(buffer);
+        ServerHandler.logOperation(channel, Operation.Type.SetBroadcastMode, null, () -> ParametersMap.create().add("receive", receive));
         return () -> {
             if (receive) {
                 WListServer.ServerChannelHandler.write(channel, MessageProto.Success);

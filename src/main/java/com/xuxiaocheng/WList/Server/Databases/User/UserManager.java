@@ -55,9 +55,7 @@ public final class UserManager {
     }
 
     public static @Nullable String getAndDeleteDefaultAdminPasswordAPI() {
-        final String password = UserManager.sqlInstance.getInstance().getDefaultAdminPassword().getInstanceNullable();
-        UserManager.sqlInstance.getInstance().getDefaultAdminPassword().uninitialize();
-        return password;
+        return UserManager.sqlInstance.getInstance().getDefaultAdminPassword().uninitializeNullable();
     }
 
     public static @NotNull @UnmodifiableView Map<UserInformation.@NotNull Inserter, @Nullable Long> insertUsers(final @NotNull Collection<UserInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException {

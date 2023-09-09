@@ -53,7 +53,7 @@ public class WListClientManager implements Closeable {
     }
 
     public static void quicklyUninitialize(final @NotNull SocketAddress address) {
-        final WListClientManager manager = WListClientManager.instances.uninitialize(address);
+        final WListClientManager manager = WListClientManager.instances.uninitializeNullable(address);
         if (manager != null) {
             final GenericObjectPool<WListClient> pool = manager.clientPool.uninitializeNullable();
             if (pool != null)
@@ -182,6 +182,7 @@ public class WListClientManager implements Closeable {
         }
 
         public void closePool() {
+            this.manager.activeClients.remove(this);
             this.client.close();
         }
 

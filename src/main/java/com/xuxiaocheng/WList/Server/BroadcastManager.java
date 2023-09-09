@@ -21,7 +21,6 @@ public final class BroadcastManager {
         super();
     }
 
-    @SuppressWarnings("MismatchedQueryAndUpdateOfCollection")
     private static final @NotNull ChannelGroup broadcastGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
 
     public static void addBroadcast(final @NotNull Channel channel) {
@@ -30,6 +29,10 @@ public final class BroadcastManager {
 
     public static void removeBroadcast(final @NotNull Channel channel) {
         BroadcastManager.broadcastGroup.remove(channel);
+    }
+
+    public static boolean isBroadcast(final @NotNull Channel channel) {
+        return BroadcastManager.broadcastGroup.contains(channel);
     }
 
     public static @Nullable ChannelGroupFuture broadcast(final Operation.@NotNull Type type, final MessageProto.@Nullable Appender message) {
