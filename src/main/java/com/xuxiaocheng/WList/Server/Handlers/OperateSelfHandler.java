@@ -184,9 +184,7 @@ public final class OperateSelfHandler {
             WListServer.ServerChannelHandler.write(channel, user.getE());
             return null;
         }
-        return () -> WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> {
-            UserGroupInformation.dumpVisible(buf, user.getT().group());
-            return buf;
-        }));
+        final UserGroupInformation information = user.getT().group();
+        return () -> WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(information::dumpVisible));
     };
 }

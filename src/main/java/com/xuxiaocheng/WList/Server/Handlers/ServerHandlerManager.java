@@ -21,7 +21,7 @@ public final class ServerHandlerManager {
     } static {
         OperateSelfHandler.initialize();
         OperateServerHandler.initialize();
-        OperateUserHandler.initialize();
+        OperateUsersHandler.initialize();
         OperateDriverHandler.initialize();
         OperateFileHandler.initialize();
         OperateProgressHandler.initialize();

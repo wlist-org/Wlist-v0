@@ -5,7 +5,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WList.Commons.Options;
-import com.xuxiaocheng.WList.Server.Databases.PooledSqlDatabaseInterface;
+import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -25,13 +25,13 @@ public final class UserManager {
 
     public static final @NotNull HInitializer<UserSqlInterface> sqlInstance = new HInitializer<>("UserSqlInstance");
 
-    public static final @NotNull HInitializer<Function<@NotNull PooledSqlDatabaseInterface, @NotNull UserSqlInterface>> Mapper = new HInitializer<>("UserGroupSqlInstanceMapper", d -> {
+    public static final @NotNull HInitializer<Function<@NotNull SqlDatabaseInterface, @NotNull UserSqlInterface>> Mapper = new HInitializer<>("UserGroupSqlInstanceMapper", d -> {
         if (!"Sqlite".equals(d.sqlLanguage()))
             throw new IllegalStateException("Invalid sql language when initializing UserManager." + ParametersMap.create().add("require", "Sqlite").add("real", d.sqlLanguage()));
         return new UserSqliteHelper(d);
     });
 
-    public static void quicklyInitialize(final @NotNull PooledSqlDatabaseInterface database, final @Nullable String _connectionId) throws SQLException {
+    public static void quicklyInitialize(final @NotNull SqlDatabaseInterface database, final @Nullable String _connectionId) throws SQLException {
         try {
             UserManager.sqlInstance.initializeIfNot(HExceptionWrapper.wrapSupplier(() -> {
                 final UserSqlInterface instance = UserManager.Mapper.getInstance().apply(database);

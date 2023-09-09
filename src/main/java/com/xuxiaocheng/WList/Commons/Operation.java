@@ -25,15 +25,16 @@ public final class Operation {
         CloseServer,
         Broadcast,
         ResetConfiguration,
-
-        ListUsers,
-        DeleteUser,
+        // Users
         ListGroups,
         AddGroup,
         DeleteGroup,
         ChangeGroup,
+        ListUsers,
+        DeleteUser,
         AddPermission,
         RemovePermission,
+        //
         BuildIndex,
         ListFiles,
         CreateDirectory,

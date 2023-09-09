@@ -32,7 +32,7 @@ public final class OperateFileHandler {
     }
 
 //    public static final @NotNull ServerHandler doListFiles = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> user = OperateUserHandler.checkToken(buffer, Operation.Permission.FilesList);
+//        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, Operation.Permission.FilesList);
 //        final FileLocation location = FileLocation.parse(buffer);
 //        final Options.DirectoriesOrFiles filter = Options.valueOfDirectoriesOrFiles(ByteBufIOUtil.readByte(buffer));
 //        final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
@@ -75,7 +75,7 @@ public final class OperateFileHandler {
 //    };
 //
 //    public static final @NotNull ServerHandler doCreateDirectory = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> user = OperateUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload);
+//        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload);
 //        final FileLocation parentLocation = FileLocation.parse(buffer);
 //        final String directoryName = ByteBufIOUtil.readUTF(buffer);
 //        final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
@@ -111,7 +111,7 @@ public final class OperateFileHandler {
 //    };
 //
 //    public static final @NotNull ServerHandler doDeleteFile = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> user = OperateUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDelete);
+//        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDelete);
 //        final FileLocation location = FileLocation.parse(buffer);
 //        ServerHandler.logOperation(channel, Operation.Type.DeleteFile, user, () -> ParametersMap.create()
 //                .add("location", location));
@@ -130,7 +130,7 @@ public final class OperateFileHandler {
 //    };
 //
 //    public static final @NotNull ServerHandler doRenameFile = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> user = OperateUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDownload, Operation.Permission.FileUpload, Operation.Permission.FileDelete);
+//        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDownload, Operation.Permission.FileUpload, Operation.Permission.FileDelete);
 //        final FileLocation location = FileLocation.parse(buffer);
 //        final String name = ByteBufIOUtil.readUTF(buffer);
 //        final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
@@ -164,7 +164,7 @@ public final class OperateFileHandler {
 //    };
 //
 //    public static final @NotNull ServerHandler doRequestDownloadFile = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> user = OperateUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDownload);
+//        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDownload);
 //        final FileLocation location = FileLocation.parse(buffer);
 //        final long from = ByteBufIOUtil.readVariableLenLong(buffer);
 //        final long to = ByteBufIOUtil.readVariable2LenLong(buffer);
@@ -197,7 +197,7 @@ public final class OperateFileHandler {
 //    };
 //
 //    public static final @NotNull ServerHandler doDownloadFile = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> user = OperateUserHandler.checkToken(buffer, Operation.Permission.FileDownload);
+//        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, Operation.Permission.FileDownload);
 //        final String id = ByteBufIOUtil.readUTF(buffer);
 //        final int chunk = ByteBufIOUtil.readVariableLenInt(buffer);
 //        ServerHandler.logOperation(channel, Operation.Type.DownloadFile, user, () -> ParametersMap.create()
@@ -219,7 +219,7 @@ public final class OperateFileHandler {
 //    };
 //
 //    public static final @NotNull ServerHandler doCancelDownloadFile = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> user = OperateUserHandler.checkToken(buffer, Operation.Permission.FileDownload);
+//        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, Operation.Permission.FileDownload);
 //        final String id = ByteBufIOUtil.readUTF(buffer);
 //        ServerHandler.logOperation(channel, Operation.Type.CancelDownloadFile, user, () -> ParametersMap.create()
 //                .add("id", id));
@@ -229,7 +229,7 @@ public final class OperateFileHandler {
 //    };
 //
 //    public static final @NotNull ServerHandler doRequestUploadFile = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> user = OperateUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload);
+//        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload);
 //        final FileLocation parentLocation = FileLocation.parse(buffer);
 //        final String filename = ByteBufIOUtil.readUTF(buffer);
 //        final long size = ByteBufIOUtil.readVariable2LenLong(buffer);
@@ -287,7 +287,7 @@ public final class OperateFileHandler {
 //    };
 //
 //    public static final @NotNull ServerHandler doUploadFile = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> user = OperateUserHandler.checkToken(buffer, Operation.Permission.FileUpload);
+//        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, Operation.Permission.FileUpload);
 //        final String id = ByteBufIOUtil.readUTF(buffer);
 //        final int chunk = ByteBufIOUtil.readVariableLenInt(buffer);
 //        ServerHandler.logOperation(channel, Operation.Type.UploadFile, user, () -> ParametersMap.create()
@@ -320,7 +320,7 @@ public final class OperateFileHandler {
 //    };
 //
 //    public static final @NotNull ServerHandler doCancelUploadFile = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> user = OperateUserHandler.checkToken(buffer, Operation.Permission.FileUpload);
+//        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, Operation.Permission.FileUpload);
 //        final String id = ByteBufIOUtil.readUTF(buffer);
 //        ServerHandler.logOperation(channel, Operation.Type.CancelUploadFile, user, () -> ParametersMap.create()
 //                .add("id", id));
@@ -330,7 +330,7 @@ public final class OperateFileHandler {
 //    };
 //
 //    public static final @NotNull ServerHandler doCopyFile = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> user = OperateUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload, Operation.Permission.FileDownload);
+//        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileUpload, Operation.Permission.FileDownload);
 //        final FileLocation source = FileLocation.parse(buffer);
 //        final FileLocation targetParent = FileLocation.parse(buffer);
 //        final String filename = ByteBufIOUtil.readUTF(buffer);
@@ -368,7 +368,7 @@ public final class OperateFileHandler {
 //    };
 //
 //    public static final @NotNull ServerHandler doMoveFile = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> user = OperateUserHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDownload, Operation.Permission.FileUpload, Operation.Permission.FileDelete);
+//        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, Operation.Permission.FilesList, Operation.Permission.FileDownload, Operation.Permission.FileUpload, Operation.Permission.FileDelete);
 //        final FileLocation source = FileLocation.parse(buffer);
 //        final FileLocation target = FileLocation.parse(buffer);
 //        final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));

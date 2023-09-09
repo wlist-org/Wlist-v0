@@ -10,7 +10,7 @@ public final class OperateDriverHandler {
     }
 
 //    public static final @NotNull ServerHandler doBuildIndex = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> user = OperateUserHandler.checkToken(buffer, Operation.Permission.FilesBuildIndex);
+//        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, Operation.Permission.FilesBuildIndex);
 //        final String driver = ByteBufIOUtil.readUTF(buffer);
 //        ServerHandler.logOperation(channel, Operation.Type.BuildIndex, user, () -> ParametersMap.create()
 //                .add("driver", driver));

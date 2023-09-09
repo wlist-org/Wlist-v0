@@ -1,7 +1,7 @@
 package com.xuxiaocheng.WList.Server.Databases.TrashedFile;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.WList.Server.Databases.PooledSqlDatabaseInterface;
+import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Options;
 import org.jetbrains.annotations.Contract;
@@ -50,11 +50,11 @@ public final class TrashedSqliteHelper implements TrashedSqlInterface {
 
     private static final @NotNull DateTimeFormatter DefaultFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
-    private final @NotNull PooledSqlDatabaseInterface database;
+    private final @NotNull SqlDatabaseInterface database;
     private final @NotNull String driverName;
     private final @NotNull String tableName;
 
-    public TrashedSqliteHelper(final @NotNull PooledSqlDatabaseInterface database, final @NotNull String driverName) {
+    public TrashedSqliteHelper(final @NotNull SqlDatabaseInterface database, final @NotNull String driverName) {
         super();
         this.database = database;
         this.driverName = driverName;

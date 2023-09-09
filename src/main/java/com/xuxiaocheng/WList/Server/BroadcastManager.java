@@ -4,6 +4,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Commons.Operation;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
+import com.xuxiaocheng.WList.Server.Databases.User.UserInformation;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
@@ -65,5 +66,9 @@ public final class BroadcastManager {
         } finally {
             buffer.release();
         }
+    }
+
+    public static void onUserLogon(final @NotNull UserInformation information) {
+        BroadcastManager.broadcast(Operation.Type.Logon, information::dumpVisible);
     }
 }

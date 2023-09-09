@@ -238,7 +238,7 @@ public final class DriverManager_lanzou {
             }
             FileManager.deleteFileRecursively(configuration.getName(), information.id(), connectionId.get());
             FileManager.calculateDirectorySizeRecursively(configuration.getName(), information.parentId(), connectionId.get());
-            final TrashedFileInformation trashed = TrashedFileInformation.fromFileSqlInformation(information, time, null);
+            final TrashedFileInformation trashed = TrashedFileInformation.fromFileInformation(information, time, null);
             TrashedFileManager.insertOrUpdateFile(configuration.getName(), trashed, trashConnectionId.get());
             trashConnection.commit();
             connection.commit();

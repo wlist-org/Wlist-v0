@@ -1,7 +1,7 @@
 package com.xuxiaocheng.WList.Client.OperationHelpers;
 
-public final class OperateUserHelper {
-    private OperateUserHelper() {
+public final class OperateUsersHelper {
+    private OperateUsersHelper() {
         super();
     }
 

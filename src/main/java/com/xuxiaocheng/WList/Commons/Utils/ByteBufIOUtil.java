@@ -12,6 +12,8 @@ import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.UUID;
 
@@ -276,6 +278,7 @@ public final class ByteBufIOUtil {
         return new UUID(ByteBufIOUtil.readVariable3LenLong(buffer), ByteBufIOUtil.readVariable3LenLong(buffer));
     }
 
+    @Deprecated
     @SuppressWarnings("unchecked")
     public static @Nullable <T extends Serializable> T readSerializable(final @NotNull ByteBuf buffer) throws IOException {
         try (final ObjectInputStream objectInputStream = new ObjectInputStream(new ByteBufInputStream(buffer))) {
@@ -283,6 +286,12 @@ public final class ByteBufIOUtil {
         } catch (final ClassNotFoundException | ClassCastException | IndexOutOfBoundsException exception) {
             throw new IOException(exception);
         }
+    }
+
+    public static @Nullable LocalDateTime readNullableDataTime(final @NotNull ByteBuf buffer, final @NotNull DateTimeFormatter formatter) throws IOException {
+        if (ByteBufIOUtil.readBoolean(buffer))
+            return null;
+        return LocalDateTime.parse(ByteBufIOUtil.readUTF(buffer), formatter);
     }
 
     public static <T> @Nullable T readObjectNullable(final @NotNull ByteBuf buffer, final @NotNull Deserializer<@NotNull T> deserializer) throws IOException {
@@ -483,12 +492,19 @@ public final class ByteBufIOUtil {
         ByteBufIOUtil.writeVariable3LenLong(buffer, id.getLeastSignificantBits());
     }
 
+    @Deprecated
     public static void writeSerializable(final @NotNull ByteBuf buffer, final @Nullable Serializable serializable) throws IOException {
         try (final ObjectOutput objectOutputStream = new ObjectOutputStream(new ByteBufOutputStream(buffer))) {
             objectOutputStream.writeObject(serializable);
         } catch (final IndexOutOfBoundsException exception) {
             throw new IOException(exception);
         }
+    }
+
+    public static void writeNullableDataTime(final @NotNull ByteBuf buffer, final @Nullable LocalDateTime time, final @NotNull DateTimeFormatter formatter) throws IOException {
+        ByteBufIOUtil.writeBoolean(buffer, time == null);
+        if (time != null)
+            ByteBufIOUtil.writeUTF(buffer, time.format(formatter));
     }
 
     public static <T> void writeObjectNullable(final @NotNull ByteBuf buffer, final @Nullable T object, final @NotNull Serializer<@NotNull T> serializer) throws IOException {

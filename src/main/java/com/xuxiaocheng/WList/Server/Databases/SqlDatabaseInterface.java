@@ -8,7 +8,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.function.Consumer;
 
-public interface PooledSqlDatabaseInterface extends DatabaseInterface, AutoCloseable {
+public interface SqlDatabaseInterface extends DatabaseInterface, AutoCloseable {
     @Contract(pure = true)
     @NotNull String sqlLanguage();
 
