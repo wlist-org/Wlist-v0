@@ -24,11 +24,12 @@ import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Map;
+import java.util.Set;
 
 public class TempTest {
     private static final boolean initializeServer = true;
     private static final @NotNull SupplierE<@Nullable Object> _main = () -> {
-        return UserGroupManager.insertGroup("test", null);
+        return UserGroupManager.searchGroupsByNames(Set.of("t"), 0, 5, null);
 //        return null;
     };
 

@@ -1,6 +1,6 @@
 package com.xuxiaocheng.WList.Server.Databases.UserGroup;
 
-import com.xuxiaocheng.WList.Commons.Operation;
+import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.Contract;
@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.EnumSet;
 
-public record UserGroupInformation(long id, @NotNull String name, @NotNull EnumSet<Operation.@NotNull Permission> permissions,
+public record UserGroupInformation(long id, @NotNull String name, @NotNull EnumSet<@NotNull UserPermission> permissions,
                                    @NotNull LocalDateTime createTime, @NotNull LocalDateTime updateTime) {
     /**
      * @see com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation
@@ -20,7 +20,7 @@ public record UserGroupInformation(long id, @NotNull String name, @NotNull EnumS
     public @NotNull ByteBuf dumpVisible(final @NotNull ByteBuf buffer) throws IOException {
         ByteBufIOUtil.writeVariableLenLong(buffer, this.id);
         ByteBufIOUtil.writeUTF(buffer, this.name);
-        ByteBufIOUtil.writeUTF(buffer, Operation.dumpPermissions(this.permissions));
+        ByteBufIOUtil.writeUTF(buffer, UserPermission.dump(this.permissions));
         ByteBufIOUtil.writeUTF(buffer, this.createTime.format(DateTimeFormatter.ISO_DATE_TIME));
         ByteBufIOUtil.writeUTF(buffer, this.updateTime.format(DateTimeFormatter.ISO_DATE_TIME));
         return buffer;

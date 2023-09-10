@@ -2,8 +2,8 @@ package com.xuxiaocheng.WList.Server.Databases.UserGroup;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation;
-import com.xuxiaocheng.WList.Commons.Operation;
-import com.xuxiaocheng.WList.Commons.Options;
+import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
 import com.xuxiaocheng.WList.Server.Databases.DatabaseInterface;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -11,10 +11,12 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 
 /**
  * @see com.xuxiaocheng.WList.Commons.IdentifierNames.UserGroupName
@@ -38,16 +40,16 @@ public interface UserGroupSqlInterface extends DatabaseInterface {
     /* --- Update --- */
 
     /**
-     * Update group name.
-     * @return false: name is conflict OR no such id. true: success.
+     * Update group name. (Do NOT update groups in {@link com.xuxiaocheng.WList.Commons.IdentifierNames.UserGroupName})
+     * @return null: name is conflict OR no such id. !null: operate time.
      */
-    boolean updateGroupName(final long id, final @NotNull String name, final @Nullable String _connectionId) throws SQLException;
+    @Nullable LocalDateTime updateGroupName(final long id, final @NotNull String name, final @Nullable String _connectionId) throws SQLException;
 
     /**
-     * Update group permissions.
-     * @return false: no such id. true: success.
+     * Update group permissions. (Do NOT update admin group {@link com.xuxiaocheng.WList.Commons.IdentifierNames.UserGroupName#Admin})
+     * @return null: no such id. !null: operate time.
      */
-    boolean updateGroupPermission(final long id, final @NotNull EnumSet<Operation.@NotNull Permission> permissions, final @Nullable String _connectionId) throws SQLException;
+    @Nullable LocalDateTime updateGroupPermission(final long id, final @NotNull EnumSet<@NotNull UserPermission> permissions, final @Nullable String _connectionId) throws SQLException;
 
 
     /* --- Select --- */
@@ -66,7 +68,7 @@ public interface UserGroupSqlInterface extends DatabaseInterface {
     /**
      * Select groups which has/hasn't the permissions.
      */
-    Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserGroupInformation>> selectGroupsByPermissions(final @NotNull EnumMap<Operation.@NotNull Permission, @Nullable Boolean> permissions, final @NotNull LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException;
+    Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserGroupInformation>> selectGroupsByPermissions(final @NotNull EnumMap<@NotNull UserPermission, @Nullable Boolean> chooser, final @NotNull LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException;
 
 
     /* --- Delete --- */
@@ -77,15 +79,16 @@ public interface UserGroupSqlInterface extends DatabaseInterface {
      */
     boolean deleteGroup(final long id, final @Nullable String _connectionId) throws SQLException;
 
-    /**
-     * Delete groups which has/hasn't the permissions. (Do NOT delete groups in {@link com.xuxiaocheng.WList.Commons.IdentifierNames.UserGroupName})
-     * @return deleted count.
-     */
-    long deleteGroupsByPermissions(final @NotNull EnumMap<Operation.@NotNull Permission, @Nullable Boolean> permissions, final @Nullable String _connectionId) throws SQLException;
-
 
     /* --- Search --- */
 
-    // TODO
-//    @NotNull @UnmodifiableView List<@Nullable UserGroupInformation> searchGroupsNameLimited(final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException;
+    /**
+     * Search groups whose name matches regex.
+     */
+    Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserGroupInformation>> searchGroupsByRegex(final @NotNull String regex, final @NotNull LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException;
+
+    /**
+     * Search groups which contains name.
+     */ // TODO: Multi name.
+    Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserGroupInformation>> searchGroupsByNames(final @NotNull Set<@NotNull String> names, final long position, final int limit, final @Nullable String _connectionId) throws SQLException;
 }

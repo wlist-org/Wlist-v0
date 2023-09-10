@@ -12,12 +12,16 @@ public final class SqliteHelper {
         super();
     }
 
-    public static @NotNull String now() {
-        return LocalDateTime.now().withNano(0).format(DateTimeFormatter.ISO_DATE_TIME);
+    public static @NotNull LocalDateTime now() {
+        return LocalDateTime.now().withNano(0);
     }
 
-    public static @NotNull LocalDateTime getTime(final @NotNull CharSequence time) {
-        return LocalDateTime.parse(time, DateTimeFormatter.ISO_DATE_TIME);
+    public static @NotNull String dumpTime(final @NotNull LocalDateTime time) {
+        return time.withNano(0).format(DateTimeFormatter.ISO_DATE_TIME);
+    }
+
+    public static @NotNull LocalDateTime parseTime(final @NotNull CharSequence time) {
+        return LocalDateTime.parse(time, DateTimeFormatter.ISO_DATE_TIME).withNano(0);
     }
 
     public static byte @NotNull [] toOrdered(final @NotNull String name) {

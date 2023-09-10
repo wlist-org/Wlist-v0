@@ -3,7 +3,7 @@ package com.xuxiaocheng.WList.Server.Databases.TrashedFile;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HMultiInitializers;
-import com.xuxiaocheng.WList.Commons.Options;
+import com.xuxiaocheng.WList.Commons.Options.Options;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;

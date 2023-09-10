@@ -2,7 +2,7 @@ package com.xuxiaocheng.WList.Server.Databases.File;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.WList.Server.Databases.DatabaseInterface;
-import com.xuxiaocheng.WList.Commons.Options;
+import com.xuxiaocheng.WList.Commons.Options.Options;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

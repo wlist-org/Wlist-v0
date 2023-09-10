@@ -1,6 +1,6 @@
 package com.xuxiaocheng.WList.Server.Handlers;
 
-import com.xuxiaocheng.WList.Commons.Operation;
+import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.EnumMap;
@@ -11,9 +11,9 @@ public final class ServerHandlerManager {
         super();
     }
 
-    private static final @NotNull Map<Operation.@NotNull Type, @NotNull ServerHandler> map = new EnumMap<>(Operation.Type.class);
+    private static final @NotNull Map<@NotNull OperationType, @NotNull ServerHandler> map = new EnumMap<>(OperationType.class);
 
-    static void register(final Operation.@NotNull Type operation, final @NotNull ServerHandler handler) {
+    static void register(final @NotNull OperationType operation, final @NotNull ServerHandler handler) {
         ServerHandlerManager.map.put(operation, handler);
     }
 
@@ -21,14 +21,16 @@ public final class ServerHandlerManager {
     } static {
         OperateSelfHandler.initialize();
         OperateServerHandler.initialize();
+        OperateGroupsHandler.initialize();
         OperateUsersHandler.initialize();
         OperateDriverHandler.initialize();
         OperateFileHandler.initialize();
         OperateProgressHandler.initialize();
+        assert ServerHandlerManager.map.size() == OperationType.values().length - 1; // #Undefined
     }
 
 
-    public static @NotNull ServerHandler getHandler(final Operation.@NotNull Type operation) {
+    public static @NotNull ServerHandler getHandler(final @NotNull OperationType operation) {
         return ServerHandlerManager.map.get(operation);
     }
 }

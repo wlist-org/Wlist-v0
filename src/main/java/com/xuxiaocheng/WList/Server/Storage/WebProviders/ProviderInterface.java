@@ -17,7 +17,7 @@ import com.xuxiaocheng.WList.Server.Storage.FailureReason;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.DriverUtil;
-import com.xuxiaocheng.WList.Commons.Options;
+import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.UploadMethods;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;

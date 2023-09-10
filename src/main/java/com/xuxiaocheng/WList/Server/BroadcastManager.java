@@ -2,9 +2,11 @@ package com.xuxiaocheng.WList.Server;
 
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.WList.Commons.Operation;
+import com.xuxiaocheng.WList.Commons.Operations.OperationType;
+import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.Server.Databases.User.UserInformation;
+import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupInformation;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
@@ -16,6 +18,9 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.EnumSet;
 
 public final class BroadcastManager {
     private BroadcastManager() {
@@ -36,7 +41,7 @@ public final class BroadcastManager {
         return BroadcastManager.broadcastGroup.contains(channel);
     }
 
-    public static @Nullable ChannelGroupFuture broadcast(final Operation.@NotNull Type type, final MessageProto.@Nullable Appender message) {
+    public static @Nullable ChannelGroupFuture broadcast(final @NotNull OperationType type, final MessageProto.@Nullable Appender message) {
         final ByteBuf buffer;
         final ByteBuf prefix = ByteBufAllocator.DEFAULT.buffer();
         try {
@@ -62,13 +67,67 @@ public final class BroadcastManager {
             BroadcastManager.broadcastGroup.writeAndFlush(buffer.retain());
         } catch (final IOException exception) {
             HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, exception);
-            return;
         } finally {
             buffer.release();
         }
     }
 
+
     public static void onUserLogon(final @NotNull UserInformation information) {
-        BroadcastManager.broadcast(Operation.Type.Logon, information::dumpVisible);
+        BroadcastManager.broadcast(OperationType.Logon, information::dumpVisible);
+    }
+
+    public static void onUserLogoff(final long id) {
+        BroadcastManager.broadcast(OperationType.Logoff, buf -> {
+            ByteBufIOUtil.writeVariableLenLong(buf, id);
+            return buf;
+        });
+    }
+
+    public static void onUserChangeName(final long id, final @NotNull String newName, final @NotNull LocalDateTime updateTime) {
+        BroadcastManager.broadcast(OperationType.ChangeUsername, buf -> {
+            ByteBufIOUtil.writeVariableLenLong(buf, id);
+            ByteBufIOUtil.writeUTF(buf, newName);
+            ByteBufIOUtil.writeUTF(buf, updateTime.format(DateTimeFormatter.ISO_DATE_TIME));
+            return buf;
+        });
+    }
+
+    public static void onUserChangePassword(final long id, final @NotNull LocalDateTime updateTime) {
+        BroadcastManager.broadcast(OperationType.ChangePassword, buf -> {
+            ByteBufIOUtil.writeVariableLenLong(buf, id);
+            ByteBufIOUtil.writeUTF(buf, updateTime.format(DateTimeFormatter.ISO_DATE_TIME));
+            return buf;
+        });
+    }
+
+
+    public static void onUserGroupAdded(final @NotNull UserGroupInformation information) {
+        BroadcastManager.broadcast(OperationType.AddGroup, information::dumpVisible);
+    }
+
+    public static void onUserGroupChangeName(final long id, final @NotNull String newName, final @NotNull LocalDateTime updateTime) {
+        BroadcastManager.broadcast(OperationType.ChangeGroupName, buf -> {
+            ByteBufIOUtil.writeVariableLenLong(buf, id);
+            ByteBufIOUtil.writeUTF(buf, newName);
+            ByteBufIOUtil.writeUTF(buf, updateTime.format(DateTimeFormatter.ISO_DATE_TIME));
+            return buf;
+        });
+    }
+
+    public static void onUserGroupChangePermissions(final long id, final @NotNull EnumSet<@NotNull UserPermission> newName, final @NotNull LocalDateTime updateTime) {
+        BroadcastManager.broadcast(OperationType.ChangeGroupName, buf -> {
+            ByteBufIOUtil.writeVariableLenLong(buf, id);
+            ByteBufIOUtil.writeUTF(buf, UserPermission.dump(newName));
+            ByteBufIOUtil.writeUTF(buf, updateTime.format(DateTimeFormatter.ISO_DATE_TIME));
+            return buf;
+        });
+    }
+
+    public static void onUserGroupDeleted(final long id) {
+        BroadcastManager.broadcast(OperationType.DeleteGroup, buf -> {
+            ByteBufIOUtil.writeVariableLenLong(buf, id);
+            return buf;
+        });
     }
 }

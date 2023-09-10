@@ -9,7 +9,7 @@ import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Ranges.LongRange;
 import com.xuxiaocheng.Rust.NetworkTransmission;
-import com.xuxiaocheng.WList.Commons.Options;
+import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.WListServer;

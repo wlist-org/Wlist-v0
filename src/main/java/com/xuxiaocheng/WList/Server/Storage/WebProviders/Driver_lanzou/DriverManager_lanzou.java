@@ -18,7 +18,7 @@ import com.xuxiaocheng.WList.Server.Databases.TrashedFile.TrashedFileInformation
 import com.xuxiaocheng.WList.Server.Storage.FailureReason;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.DriverUtil;
-import com.xuxiaocheng.WList.Commons.Options;
+import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Storage.Selectors.RootSelector;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.DownloadMethods;

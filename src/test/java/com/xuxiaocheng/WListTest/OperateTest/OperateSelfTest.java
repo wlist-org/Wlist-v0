@@ -6,7 +6,7 @@ import com.xuxiaocheng.WList.Client.Exceptions.WrongStateException;
 import com.xuxiaocheng.WList.Client.OperationHelpers.OperateSelfHelper;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
-import com.xuxiaocheng.WList.Commons.Operation;
+import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
@@ -66,9 +66,9 @@ public class OperateSelfTest extends ServerWrapper {
     @Test
     @Order(4)
     public void getGroup() throws WrongStateException, IOException, InterruptedException {
-        final VisibleUserGroupInformation information = OperateSelfHelper.getGroup(this.client.getInstance(), OperateSelfTest.token.getInstance());
+        final VisibleUserGroupInformation information = OperateSelfHelper.getSelfGroup(this.client.getInstance(), OperateSelfTest.token.getInstance());
         Assertions.assertNotNull(information);
-        Assertions.assertEquals(Operation.DefaultPermissions, information.permissions());
+        Assertions.assertEquals(UserPermission.Default, information.permissions());
     }
 
     @Nested
@@ -127,9 +127,9 @@ public class OperateSelfTest extends ServerWrapper {
         @Test
         @Order(2)
         public void getGroup() throws WrongStateException, IOException, InterruptedException {
-            final VisibleUserGroupInformation information = OperateSelfHelper.getGroup(OperateSelfTest.this.client.getInstance(), OperateSelfAdminTest.token.getInstance());
+            final VisibleUserGroupInformation information = OperateSelfHelper.getSelfGroup(OperateSelfTest.this.client.getInstance(), OperateSelfAdminTest.token.getInstance());
             Assertions.assertNotNull(information);
-            Assertions.assertEquals(Operation.AllPermissions, information.permissions());
+            Assertions.assertEquals(UserPermission.All, information.permissions());
         }
     }
 }

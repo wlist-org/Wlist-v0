@@ -5,7 +5,9 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Client.Exceptions.NoPermissionException;
 import com.xuxiaocheng.WList.Client.Exceptions.WrongStateException;
-import com.xuxiaocheng.WList.Commons.Operation;
+import com.xuxiaocheng.WList.Commons.Operations.OperationType;
+import com.xuxiaocheng.WList.Commons.Operations.ResponseState;
+import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -22,18 +24,18 @@ public final class OperateHelper {
     }
 
     static boolean handleState(final @NotNull ByteBuf receive) throws IOException, WrongStateException {
-        if (receive.readableBytes() <= 0) throw new WrongStateException(Operation.State.Undefined, receive.toString());
-        if (receive.getByte(receive.readerIndex()) <= 1) throw new WrongStateException(Operation.State.Success); // Prevent broadcast.
-        final Operation.State state = Operation.valueOfState(ByteBufIOUtil.readUTF(receive));
+        if (receive.readableBytes() <= 0) throw new WrongStateException(ResponseState.Undefined, receive.toString());
+        if (receive.getByte(receive.readerIndex()) <= 1) throw new WrongStateException(ResponseState.Success); // Prevent broadcast.
+        final ResponseState state = ResponseState.of(ByteBufIOUtil.readUTF(receive));
         return switch (state) {
             case Undefined -> throw new WrongStateException(state, receive.toString());
             case ServerError, FormatError -> throw new WrongStateException(state);
             case Unsupported -> throw new UnsupportedOperationException(ByteBufIOUtil.readUTF(receive));
             case NoPermission -> {
                 final int length = ByteBufIOUtil.readVariableLenInt(receive);
-                final Operation.Permission[] permissions = new Operation.Permission[length];
+                final UserPermission[] permissions = new UserPermission[length];
                 for (int i = 0; i < length; i++)
-                    permissions[i] = Operation.valueOfPermission(ByteBufIOUtil.readUTF(receive));
+                    permissions[i] = UserPermission.of(ByteBufIOUtil.readUTF(receive));
                 throw new NoPermissionException(permissions);
             }
             case Success -> true;
@@ -41,13 +43,13 @@ public final class OperateHelper {
         };
     }
 
-    static @NotNull ByteBuf operate(final Operation.@NotNull Type type) throws IOException {
+    static @NotNull ByteBuf operate(final @NotNull OperationType type) throws IOException {
         final ByteBuf send = ByteBufAllocator.DEFAULT.buffer();
         ByteBufIOUtil.writeUTF(send, type.name());
         return send;
     }
 
-    static @NotNull ByteBuf operateWithToken(final Operation.@NotNull Type type, final @NotNull String token) throws IOException {
+    static @NotNull ByteBuf operateWithToken(final @NotNull OperationType type, final @NotNull String token) throws IOException {
         final ByteBuf send = OperateHelper.operate(type);
         ByteBufIOUtil.writeUTF(send, token);
         return send;
@@ -55,7 +57,7 @@ public final class OperateHelper {
 
     public static final AtomicBoolean logOperation = new AtomicBoolean(true);
 
-    static void logOperating(final Operation.@NotNull Type operation, final @Nullable String token, final @Nullable Consumer<? super @NotNull ParametersMap> parameters) {
+    static void logOperating(final @NotNull OperationType operation, final @Nullable String token, final @Nullable Consumer<? super @NotNull ParametersMap> parameters) {
         if (OperateHelper.logOperation.get()) {
             final ParametersMap parametersMap = ParametersMap.create();
             if (token != null)
@@ -66,7 +68,7 @@ public final class OperateHelper {
         }
     }
 
-    static void logOperated(final Operation.@NotNull Type operation, final @Nullable Consumer<? super @NotNull ParametersMap> parameters) {
+    static void logOperated(final @NotNull OperationType operation, final @Nullable Consumer<? super @NotNull ParametersMap> parameters) {
         if (OperateHelper.logOperation.get()) {
             final ParametersMap parametersMap = ParametersMap.create();
             if (parameters != null)

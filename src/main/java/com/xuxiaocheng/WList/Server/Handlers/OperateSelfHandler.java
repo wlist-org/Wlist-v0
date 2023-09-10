@@ -5,8 +5,11 @@ import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
-import com.xuxiaocheng.WList.Commons.Operation;
+import com.xuxiaocheng.WList.Commons.Operations.OperationType;
+import com.xuxiaocheng.WList.Commons.Operations.ResponseState;
+import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
+import com.xuxiaocheng.WList.Server.BroadcastManager;
 import com.xuxiaocheng.WList.Server.Databases.User.PasswordGuard;
 import com.xuxiaocheng.WList.Server.Databases.User.UserInformation;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
@@ -28,29 +31,29 @@ public final class OperateSelfHandler {
         super();
     }
 
-    public static final @NotNull MessageProto NoSuchUser = new MessageProto(Operation.State.NoPermission, buf -> {
+    public static final @NotNull MessageProto NoSuchUser = new MessageProto(ResponseState.NoPermission, buf -> {
         ByteBufIOUtil.writeVariableLenInt(buf, 1);
-        ByteBufIOUtil.writeUTF(buf, Operation.Permission.Undefined.name());
+        ByteBufIOUtil.writeUTF(buf, UserPermission.Undefined.name());
         return buf;
     });
-    public static @NotNull MessageProto NoPermission(final @NotNull Collection<Operation.@NotNull Permission> permissions) {
+    public static @NotNull MessageProto NoPermission(final @NotNull Collection<@NotNull UserPermission> permissions) {
         assert !permissions.isEmpty();
-        return new MessageProto(Operation.State.NoPermission, buf -> {
+        return new MessageProto(ResponseState.NoPermission, buf -> {
             ByteBufIOUtil.writeVariableLenInt(buf, permissions.size());
-            for (final Operation.Permission permission: permissions)
+            for (final UserPermission permission: permissions)
                 ByteBufIOUtil.writeUTF(buf, permission.name());
             return buf;
         });
     }
-    public static final @NotNull MessageProto UserDataError = MessageProto.composeMessage(Operation.State.DataError, "User");
+    public static final @NotNull MessageProto UserDataError = MessageProto.composeMessage(ResponseState.DataError, "User");
 
-    static @NotNull UnionPair<UserInformation, MessageProto> checkToken(final @NotNull String token, final Operation.@NotNull Permission... permissions) throws SQLException {
+    static @NotNull UnionPair<UserInformation, MessageProto> checkToken(final @NotNull String token, final @NotNull UserPermission... permissions) throws SQLException {
         final UserInformation user = UserTokenHelper.decodeToken(token);
         if (user == null)
             return UnionPair.fail(OperateSelfHandler.NoSuchUser);
         if (IdentifierNames.UserGroupName.Admin.getIdentifier().equals(user.group().name()))// || IdentifierNames.UserName.Admin.getIdentifier().equals(user.username()))
             return UnionPair.ok(user);
-        final Set<Operation.Permission> required = EnumSet.noneOf(Operation.Permission.class);
+        final Set<UserPermission> required = EnumSet.noneOf(UserPermission.class);
         required.addAll(List.of(permissions));
         required.removeAll(user.group().permissions());
         if (!required.isEmpty())
@@ -58,37 +61,38 @@ public final class OperateSelfHandler {
         return UnionPair.ok(user);
     }
 
-    static @NotNull UnionPair<UserInformation, MessageProto> checkTokenAndPassword(final @NotNull String token, final @NotNull String verifyingPassword, final Operation.@NotNull Permission... permissions) throws SQLException {
+    static @NotNull UnionPair<UserInformation, MessageProto> checkTokenAndPassword(final @NotNull String token, final @NotNull String verifyingPassword, final @NotNull UserPermission... permissions) throws SQLException {
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, permissions);
         if (user.isFailure())
             return user;
         if (!PasswordGuard.encryptPassword(verifyingPassword).equals(user.getT().password()))
-            return UnionPair.fail(MessageProto.DataError);
+            return UnionPair.fail(OperateSelfHandler.NoSuchUser);
         return user;
     }
 
     public static void initialize() {
-        ServerHandlerManager.register(Operation.Type.Logon, OperateSelfHandler.doLogon);
-        ServerHandlerManager.register(Operation.Type.Login, OperateSelfHandler.doLogin);
-//        ServerHandlerManager.register(Operation.Type.Logout, OperateSelfHandler.doLogout); // Unsupported
-        ServerHandlerManager.register(Operation.Type.Logoff, OperateSelfHandler.doLogoff);
-        ServerHandlerManager.register(Operation.Type.ChangeUsername, OperateSelfHandler.doChangeUsername);
-        ServerHandlerManager.register(Operation.Type.ChangePassword, OperateSelfHandler.doChangePassword);
-        ServerHandlerManager.register(Operation.Type.GetGroup, OperateSelfHandler.doGetGroup);
+        ServerHandlerManager.register(OperationType.Logon, OperateSelfHandler.doLogon);
+        ServerHandlerManager.register(OperationType.Login, OperateSelfHandler.doLogin);
+//        ServerHandlerManager.register(OperationType.Logout, OperateSelfHandler.doLogout); // Unsupported
+        ServerHandlerManager.register(OperationType.Logoff, OperateSelfHandler.doLogoff);
+        ServerHandlerManager.register(OperationType.ChangeUsername, OperateSelfHandler.doChangeUsername);
+        ServerHandlerManager.register(OperationType.ChangePassword, OperateSelfHandler.doChangePassword);
+        ServerHandlerManager.register(OperationType.GetSelfGroup, OperateSelfHandler.doGetGroup);
     }
 
     private static final @NotNull ServerHandler doLogon = (channel, buffer) -> {
         final String username = ByteBufIOUtil.readUTF(buffer);
         final String password = ByteBufIOUtil.readUTF(buffer);
-        ServerHandler.logOperation(channel, Operation.Type.Logon, null, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, OperationType.Logon, null, () -> ParametersMap.create()
                 .add("username", username).add("password", password));
         return () -> {
             final Long id = UserManager.insertUser(new UserInformation.Inserter(username, password, UserGroupManager.getDefaultId()), null);
             if (id == null) {
-                WListServer.ServerChannelHandler.write(channel, MessageProto.DataError);
+                WListServer.ServerChannelHandler.write(channel, OperateSelfHandler.UserDataError);
                 return;
             }
-            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Logged on." + ServerHandler.user(null, id.longValue(), username));
+//            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Logged on.", ServerHandler.user(null, id.longValue(), username));
+//            BroadcastManager.onUserLogon(); // TODO
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
         };
     };
@@ -96,17 +100,17 @@ public final class OperateSelfHandler {
     private static final @NotNull ServerHandler doLogin = (channel, buffer) -> {
         final String username = ByteBufIOUtil.readUTF(buffer);
         final String password = ByteBufIOUtil.readUTF(buffer);
-        ServerHandler.logOperation(channel, Operation.Type.Login, null, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, OperationType.Login, null, () -> ParametersMap.create()
                 .add("username", username).add("password", password));
         return () -> {
             final UserInformation user = UserManager.selectUserByName(username, null);
             if (user == null || !PasswordGuard.encryptPassword(password).equals(user.password())) {
-                WListServer.ServerChannelHandler.write(channel, MessageProto.DataError);
+                WListServer.ServerChannelHandler.write(channel, OperateSelfHandler.NoSuchUser);
                 return;
             }
             final String token = UserTokenHelper.encodeToken(user.id(), user.modifyTime());
             HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Logged in.", ServerHandler.user(null, user), ParametersMap.create().add("token", token));
-            WListServer.ServerChannelHandler.write(channel, MessageProto.composeMessage(Operation.State.Success, token));
+            WListServer.ServerChannelHandler.write(channel, MessageProto.composeMessage(ResponseState.Success, token));
         };
     };
 
@@ -114,7 +118,7 @@ public final class OperateSelfHandler {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final String verifyingPassword = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkTokenAndPassword(token, verifyingPassword);
-        ServerHandler.logOperation(channel, Operation.Type.Logoff, user, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, OperationType.Logoff, user, () -> ParametersMap.create()
                 .optionallyAdd(user.isSuccess(), "denied", IdentifierNames.UserName.Admin.getIdentifier().equals(user.getT().username())));
         MessageProto message = null;
         if (user.isFailure())
@@ -128,6 +132,7 @@ public final class OperateSelfHandler {
         return () -> {
             UserManager.deleteUser(user.getT().id(), null);
             HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Logged off.", ServerHandler.user(null, user.getT()));
+            BroadcastManager.onUserLogoff(user.getT().id());
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
         };
     };
@@ -136,7 +141,7 @@ public final class OperateSelfHandler {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token);
         final String newUsername = ByteBufIOUtil.readUTF(buffer);
-        ServerHandler.logOperation(channel, Operation.Type.ChangeUsername, user, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, OperationType.ChangeUsername, user, () -> ParametersMap.create()
                 .add("newUsername", newUsername).optionallyAdd(user.isSuccess(), "denied", IdentifierNames.UserName.Admin.getIdentifier().equals(user.getT().username())));
         MessageProto message = null;
         if (user.isFailure())
@@ -152,6 +157,7 @@ public final class OperateSelfHandler {
                     user.getT().password(), user.getT().group().id(), user.getT().modifyTime()), null);
             HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Changed username.", ServerHandler.user(null, user.getT()),
                     ParametersMap.create().add("new", newUsername));
+//            BroadcastManager.onUserChangeName(user.getT(), newUsername); // TODO
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
         };
     };
@@ -161,7 +167,7 @@ public final class OperateSelfHandler {
         final String verifyingPassword = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkTokenAndPassword(token, verifyingPassword);
         final String newPassword = ByteBufIOUtil.readUTF(buffer);
-        ServerHandler.logOperation(channel, Operation.Type.ChangePassword, user, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, OperationType.ChangePassword, user, () -> ParametersMap.create()
                 .add("newPassword", newPassword));
         if (user.isFailure()) {
             WListServer.ServerChannelHandler.write(channel, user.getE());
@@ -171,6 +177,7 @@ public final class OperateSelfHandler {
             UserManager.updateUser(new UserInformation.Updater(user.getT().id(), user.getT().username(),
                     PasswordGuard.encryptPassword(newPassword), user.getT().group().id(), null), null);
             HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Changed password.", ServerHandler.user(null, user.getT()));
+//            BroadcastManager.onUserChangePassword(user.getT(), time); // TODO
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
         };
     };
@@ -178,7 +185,7 @@ public final class OperateSelfHandler {
     private static final @NotNull ServerHandler doGetGroup = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token);
-        ServerHandler.logOperation(channel, Operation.Type.GetGroup, user, null);
+        ServerHandler.logOperation(channel, OperationType.GetSelfGroup, user, null);
         if (user.isFailure()) {
             WListServer.ServerChannelHandler.write(channel, user.getE());
             return null;

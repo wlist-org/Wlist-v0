@@ -7,7 +7,7 @@ import com.xuxiaocheng.WList.Client.OperationHelpers.OperateSelfHelper;
 import com.xuxiaocheng.WList.Client.OperationHelpers.OperateServerHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Client.WListClientManager;
-import com.xuxiaocheng.WList.Commons.Operation;
+import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
@@ -69,9 +69,9 @@ public class OperateServerTest extends ServerWrapper {
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(ServerWrapper.address.getInstance())) {
             OperateServerHelper.setBroadcastMode(client, true);
             OperateServerHelper.closeServer(this.client.getInstance(), OperateServerTest.token.getInstance());
-            final Pair.ImmutablePair<Operation.Type, ByteBuf> pair = OperateServerHelper.waitBroadcast(client).getT();
+            final Pair.ImmutablePair<OperationType, ByteBuf> pair = OperateServerHelper.waitBroadcast(client).getT();
             pair.getSecond().release();
-            Assertions.assertEquals(Operation.Type.CloseServer, pair.getFirst());
+            Assertions.assertEquals(OperationType.CloseServer, pair.getFirst());
         } catch (final IOException exception) {
             if (!"Closed client.".equals(exception.getMessage()))
                 throw exception;

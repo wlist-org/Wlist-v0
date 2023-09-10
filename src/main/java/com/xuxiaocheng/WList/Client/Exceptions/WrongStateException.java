@@ -1,6 +1,6 @@
 package com.xuxiaocheng.WList.Client.Exceptions;
 
-import com.xuxiaocheng.WList.Commons.Operation;
+import com.xuxiaocheng.WList.Commons.Operations.ResponseState;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.Serial;
@@ -10,19 +10,19 @@ public class WrongStateException extends Exception {
     @Serial
     private static final long serialVersionUID = 1694259253430975849L;
 
-    protected final Operation.@NotNull State state;
+    protected final @NotNull ResponseState state;
 
-    public WrongStateException(final Operation.@NotNull State state) {
+    public WrongStateException(final @NotNull ResponseState state) {
         super(state.name());
         this.state = state;
     }
 
-    public WrongStateException(final Operation.@NotNull State state, final @NotNull String message) {
+    public WrongStateException(final @NotNull ResponseState state, final @NotNull String message) {
         super(state.name() + ": " + message);
         this.state = state;
     }
 
-    public Operation.@NotNull State getState() {
+    public @NotNull ResponseState getState() {
         return this.state;
     }
 }

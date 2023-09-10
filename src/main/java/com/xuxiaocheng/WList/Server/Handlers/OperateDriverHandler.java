@@ -6,13 +6,13 @@ public final class OperateDriverHandler {
     }
 
     public static void initialize() {
-//        ServerHandlerManager.register(Operation.Type.BuildIndex, OperateDriverHandler.doBuildIndex);
+//        ServerHandlerManager.register(OperationType.BuildIndex, OperateDriverHandler.doBuildIndex);
     }
 
 //    public static final @NotNull ServerHandler doBuildIndex = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, Operation.Permission.FilesBuildIndex);
+//        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, UserPermission.FilesBuildIndex);
 //        final String driver = ByteBufIOUtil.readUTF(buffer);
-//        ServerHandler.logOperation(channel, Operation.Type.BuildIndex, user, () -> ParametersMap.create()
+//        ServerHandler.logOperation(channel, OperationType.BuildIndex, user, () -> ParametersMap.create()
 //                .add("driver", driver));
 //        if (user.isFailure())
 //            return user.getE();

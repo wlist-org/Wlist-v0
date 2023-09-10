@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Commons;
+package com.xuxiaocheng.WList.Commons.Options;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
@@ -29,16 +29,16 @@ public final class Options {
         final int length = ByteBufIOUtil.readVariableLenInt(buffer);
         if (length <= 0 || maxCount < length)
             return null;
-        final LinkedHashMap<T, OrderDirection> policies = new LinkedHashMap<>(length);
+        final LinkedHashMap<T, OrderDirection> orders = new LinkedHashMap<>(length);
         for (int i = 0; i < length; i++) {
             final String name = ByteBufIOUtil.readUTF(buffer);
             final T policy = parser.apply(name);
             if (policy == null)
                 return UnionPair.fail(name);
             final boolean direction = ByteBufIOUtil.readBoolean(buffer);
-            policies.putIfAbsent(policy, direction ? OrderDirection.ASCEND : OrderDirection.DESCEND);
+            orders.putIfAbsent(policy, direction ? OrderDirection.ASCEND : OrderDirection.DESCEND);
         }
-        return UnionPair.ok(policies);
+        return UnionPair.ok(orders);
     }
 
     public static <T extends OrderPolicy> void dumpOrderPolicies(final @NotNull ByteBuf buffer, @SuppressWarnings("TypeMayBeWeakened") final @NotNull LinkedHashMap<@NotNull T, @NotNull OrderDirection> policies, final @NotNull Function<? super @NotNull T, @NotNull String> dumper) throws IOException {

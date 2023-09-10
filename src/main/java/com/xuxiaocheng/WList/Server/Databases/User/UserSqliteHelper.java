@@ -6,7 +6,7 @@ import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
-import com.xuxiaocheng.WList.Commons.Options;
+import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.DatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupInformation;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;

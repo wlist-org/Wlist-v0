@@ -9,7 +9,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Ranges.IntRange;
 import com.xuxiaocheng.Rust.NetworkTransmission;
 import com.xuxiaocheng.WList.Commons.Codecs.MessageServerCiphers;
-import com.xuxiaocheng.WList.Commons.Operation;
+import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.Server.Handlers.ServerHandler;
 import com.xuxiaocheng.WList.Server.Handlers.ServerHandlerManager;
@@ -179,13 +179,13 @@ public class WListServer {
             final RunnableE core;
             try {
                 final String rawType = ByteBufIOUtil.readUTF(msg);
-                final Operation.Type type = Operation.valueOfType(rawType);
-                if (type == Operation.Type.Undefined) {
-                    ServerHandler.logOperation(channel, Operation.Type.Undefined, null, () -> ParametersMap.create().add("type", rawType));
+                final OperationType type = OperationType.of(rawType);
+                if (type == OperationType.Undefined) {
+                    ServerHandler.logOperation(channel, OperationType.Undefined, null, () -> ParametersMap.create().add("type", rawType));
                     ServerChannelHandler.write(channel, MessageProto.Undefined);
                     return;
                 }
-                if (type != Operation.Type.SetBroadcastMode && BroadcastManager.isBroadcast(channel)) {
+                if (type != OperationType.SetBroadcastMode && BroadcastManager.isBroadcast(channel)) {
                     channel.close();
                     return;
                 }
@@ -194,7 +194,11 @@ public class WListServer {
                     WListServer.logger.log(HLogLevel.MISTAKE, "Unexpected discarded bytes: ", channel.remoteAddress(), ParametersMap.create().add("len", msg.readableBytes()));
                 if (core != null)
                     WListServer.ServerExecutors.submit(HExceptionWrapper.wrapRunnable(core, e -> {
-                    if (e != null) ctx.fireExceptionCaught(e);
+                    if (e != null)
+                        if (e instanceof UnsupportedOperationException exception)
+                            ServerChannelHandler.write(channel, MessageProto.Unsupported.apply(exception));
+                        else
+                            ctx.fireExceptionCaught(e);
                 }, true));
             } catch (final IOException exception) { // Read from msg.
                 ServerChannelHandler.write(channel, MessageProto.FormatError);
