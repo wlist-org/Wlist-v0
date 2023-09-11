@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.RepeatedTest;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.CleanupMode;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.parallel.Execution;
@@ -43,7 +44,7 @@ import java.util.random.RandomGenerator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@Execution(ExecutionMode.SAME_THREAD)
+@Execution(ExecutionMode.CONCURRENT)
 public final class UserGroupsTest {
     @TempDir(cleanup = CleanupMode.ALWAYS)
     private static File directory;
@@ -53,7 +54,7 @@ public final class UserGroupsTest {
         StaticLoader.load();
         final File file = new File(UserGroupsTest.directory, "data.db");
         final SqlDatabaseInterface database = SqlDatabaseManager.quicklyOpen(file);
-        UserGroupManager.quicklyInitialize(database, "initialize");
+        UserGroupManager.quicklyInitialize(database, null);
     }
 
     @AfterAll
@@ -67,13 +68,13 @@ public final class UserGroupsTest {
         Assertions.assertFalse(UserGroupManager.deleteGroup(UserGroupManager.getAdminId(), null));
         Assertions.assertFalse(UserGroupManager.deleteGroup(UserGroupManager.getDefaultId(), null));
         return Stream.of( null,
-                Arguments.of(IdentifierNames.UserGroupName.Admin.getIdentifier(), false, null, false, null, false),
-                Arguments.of(IdentifierNames.UserGroupName.Default.getIdentifier(), false, null, false, null, false),
-                Arguments.of("test-admin", true, IdentifierNames.UserGroupName.Admin.getIdentifier(), false, null, false),
-                Arguments.of("test-default", true, IdentifierNames.UserGroupName.Default.getIdentifier(), false, null, false),
-                Arguments.of("test-test", true, "test", true, UserPermission.All, true),
-                Arguments.of("test-2", true, null, true, UserPermission.Default, true),
-                Arguments.of("test-3", true, null, true, UserPermission.Empty, true)
+                Arguments.of(IdentifierNames.UserGroupName.Admin.getIdentifier(), false, null, false, null),
+                Arguments.of(IdentifierNames.UserGroupName.Default.getIdentifier(), false, null, false, null),
+                Arguments.of("test-admin", true, IdentifierNames.UserGroupName.Admin.getIdentifier(), false, null),
+                Arguments.of("test-default", true, IdentifierNames.UserGroupName.Default.getIdentifier(), false, null),
+                Arguments.of("test-test", true, "test", true, UserPermission.All),
+                Arguments.of("test-2", true, null, true, UserPermission.Default),
+                Arguments.of("test-3", true, null, true, UserPermission.Empty)
         ).skip(1);
     }
 
@@ -81,7 +82,7 @@ public final class UserGroupsTest {
     @MethodSource
     public void curd(final String name, final boolean nameS,
                      final String newName, final boolean newNameS,
-                     final Set<UserPermission> newPermissions, final boolean newPermissionsS)
+                     final Set<UserPermission> newPermissions)
             throws SQLException {
 
         final UserGroupInformation information = UserGroupManager.insertGroup(name, null);
@@ -105,10 +106,6 @@ public final class UserGroupsTest {
 
         if (newPermissions != null) {
             final LocalDateTime time = UserGroupManager.updateGroupPermission(information.id(), newPermissions, null);
-            if (!newPermissionsS) {
-                Assertions.assertNull(time);
-                return;
-            }
             Assertions.assertNotNull(time);
             Assertions.assertEquals(new UserGroupInformation(information.id(), Objects.requireNonNullElse(newName, name), newPermissions, information.createTime(), time),
                     UserGroupManager.selectGroup(information.id(), null));
@@ -117,6 +114,13 @@ public final class UserGroupsTest {
         Assertions.assertTrue(UserGroupManager.deleteGroup(information.id(), null));
     }
 
+    @Test
+    public void curd_() throws SQLException {
+        Assertions.assertNull(UserGroupManager.updateGroupPermission(UserGroupManager.getAdminId(), UserPermission.Empty, null));
+        Assertions.assertNotNull(UserGroupManager.updateGroupPermission(UserGroupManager.getDefaultId(), UserPermission.Empty, null));
+    }
+
+    @Execution(ExecutionMode.SAME_THREAD)
     @RepeatedTest(value = 5, failureThreshold = 1)
     public void selectList() throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
@@ -203,6 +207,7 @@ public final class UserGroupsTest {
         }
     }
 
+    @Execution(ExecutionMode.SAME_THREAD)
     @RepeatedTest(value = 5, failureThreshold = 1)
     public void searchList() throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();

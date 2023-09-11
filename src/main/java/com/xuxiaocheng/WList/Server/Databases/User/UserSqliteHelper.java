@@ -184,8 +184,8 @@ public class UserSqliteHelper implements UserSqlInterface {
             }
             if (success)
                 try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-    SELECT %s FROM groups WHERE name == ? LIMIT 1;
-                    """, UserSqliteHelper.UserAndGroupInfoExtra))) {
+    WITH temp AS (SELECT %s FROM users WHERE username == ? LIMIT 1) SELECT %s FROM temp INNER JOIN groups ON temp.group_id = groups.group_id LIMIT 1;
+                    """, UserSqliteHelper.UserInfoExtra, UserSqliteHelper.UserAndGroupInfoExtra))) {
                     statement.setString(1, username);
                     try (final ResultSet result = statement.executeQuery()) {
                         information = UserSqliteHelper.nextUser(result);
