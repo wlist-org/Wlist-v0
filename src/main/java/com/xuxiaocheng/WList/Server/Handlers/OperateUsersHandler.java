@@ -33,23 +33,23 @@ public final class OperateUsersHandler {
 //        if (UserManager.ADMIN.equals(username))
 //            return OperateUsersHandler.UserDataError;
 //        final UserInformation user;
-//        final UserGroupInformation group;
+//        final UserGroupInformation groupName;
 //        final AtomicReference<String> connectionId = new AtomicReference<>();
 //        try (final Connection connection = UserManager.getConnection(null, connectionId)) {
 //            user = UserManager.selectUserByName(username, connectionId.get());
 //            if (user == null)
 //                return OperateUsersHandler.UserDataError;
-//            group = UserGroupManager.selectGroupByName(groupName, connectionId.get());
-//            if (group == null)
+//            groupName = UserGroupManager.selectGroupByName(groupName, connectionId.get());
+//            if (groupName == null)
 //                return OperateUsersHandler.GroupDataError;
 //            UserManager.updateUser(new UserInformation.Updater(user.id(), user.username(),
-//                    user.password(), group.id(), null), connectionId.get());
+//                    user.encryptedPassword(), groupName.id(), null), connectionId.get());
 //            connection.commit();
 //        } catch (final SQLException exception) {
 //            throw new ServerException(exception);
 //        }
-//        HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Changed group.", ServerHandler.buildUserString(user.id(), user.username()),
-//                " from ", ServerHandler.buildUserGroupString(user.group().id(), user.group().name()), ", to", ServerHandler.buildUserGroupString(group.id(), group.name()),
+//        HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Changed groupName.", ServerHandler.buildUserString(user.id(), user.username()),
+//                " from ", ServerHandler.buildUserGroupString(user.groupName().id(), user.groupName().name()), ", to", ServerHandler.buildUserGroupString(groupName.id(), groupName.name()),
 //                ", changer", ServerHandler.buildUserString(changer.getT().id(), changer.getT().username()));
 //        return MessageProto.Success;
 //    };

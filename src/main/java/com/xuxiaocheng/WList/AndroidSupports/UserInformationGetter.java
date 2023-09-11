@@ -17,6 +17,6 @@ public final class UserInformationGetter {
     }
 
     public static @NotNull String group(final @NotNull VisibleUserInformation information) {
-        return information.group();
+        return information.groupName();
     }
 }

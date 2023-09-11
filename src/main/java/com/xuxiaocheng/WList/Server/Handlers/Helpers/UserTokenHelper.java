@@ -51,8 +51,8 @@ public final class UserTokenHelper {
         } catch (final JWTVerificationException | NumberFormatException ignore) {
             return null;
         }
-        final UserInformation user = UserManager.selectUser(id, "token_decoder");
-        if (user == null || !user.modifyTime().equals(modifyTime))
+        final UserInformation user = UserManager.selectUser(id, null);
+        if (user == null || !user.createTime().equals(modifyTime))
             return null;
         return user;
     }

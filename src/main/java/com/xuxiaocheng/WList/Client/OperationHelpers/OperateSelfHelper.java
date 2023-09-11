@@ -100,7 +100,7 @@ public final class OperateSelfHelper {
         try {
             final boolean success = OperateHelper.handleState(receive);
             final VisibleUserGroupInformation group = success ? VisibleUserGroupInformation.parse(receive) : null;
-            OperateHelper.logOperated(OperationType.GetSelfGroup, p -> p.add("success", success).optionallyAdd(success, "group", group));
+            OperateHelper.logOperated(OperationType.GetSelfGroup, p -> p.add("success", success).optionallyAdd(success, "groupName", group));
             return group;
         } finally {
             receive.release();

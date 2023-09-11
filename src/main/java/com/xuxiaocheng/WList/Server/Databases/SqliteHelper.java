@@ -27,4 +27,8 @@ public final class SqliteHelper {
     public static byte @NotNull [] toOrdered(final @NotNull String name) {
         return name.toLowerCase(Locale.ROOT).getBytes(Charset.forName("GBK"));
     }
+
+    public static @NotNull String likeName(final @NotNull String name) {
+        return '%' + name.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + '%';
+    }
 }

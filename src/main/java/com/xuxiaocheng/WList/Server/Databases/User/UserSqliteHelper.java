@@ -1,17 +1,20 @@
 package com.xuxiaocheng.WList.Server.Databases.User;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleUserInformation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.DatabaseInterface;
+import com.xuxiaocheng.WList.Server.Databases.SqliteHelper;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupInformation;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
+import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupSqliteHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
 import org.jetbrains.annotations.UnmodifiableView;
 
 import java.sql.Connection;
@@ -20,21 +23,18 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
-public final class UserSqliteHelper implements UserSqlInterface {
-    private final @NotNull DatabaseInterface database;
-    private final @NotNull HInitializer<Long> adminId = new HInitializer<>("UserAdminId");
-    private final @NotNull HInitializer<String> defaultAdminPassword = new HInitializer<>("DefaultAdminUserPassword");
+public class UserSqliteHelper implements UserSqlInterface {
+    protected final @NotNull DatabaseInterface database;
+    protected final @NotNull HInitializer<Long> adminId = new HInitializer<>("UserAdminId");
+    protected final @NotNull HInitializer<String> defaultAdminPassword = new HInitializer<>("DefaultAdminUserPassword");
 
     public UserSqliteHelper(final @NotNull DatabaseInterface database) {
         super();
@@ -48,72 +48,73 @@ public final class UserSqliteHelper implements UserSqlInterface {
 
     @Override
     public void createTable(final @Nullable String _connectionId) throws SQLException {
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        try (final Connection connection = this.database.getConnection(_connectionId, null)) {
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate(String.format("""
-                    CREATE TABLE IF NOT EXISTS users (
-                        id          INTEGER    PRIMARY KEY AUTOINCREMENT
-                                               UNIQUE
-                                               NOT NULL,
-                        username    TEXT       UNIQUE
-                                               NOT NULL,
-                        password    TEXT       NOT NULL,
-                        group_id    INTEGER    NOT NULL
-                                               DEFAULT %d
-                                               REFERENCES groups (group_id),
-                        modify_time TEXT       NOT NULL
-                    );
+    CREATE TABLE IF NOT EXISTS users (
+        id          INTEGER     PRIMARY KEY AUTOINCREMENT
+                                UNIQUE
+                                NOT NULL,
+        username    TEXT        UNIQUE
+                                NOT NULL,
+        name_order  BLOB        NOT NULL,
+        password    TEXT        NOT NULL,
+        group_id    INTEGER     NOT NULL
+                                DEFAULT %d
+                                REFERENCES groups (group_id),
+        create_time TEXT        NOT NULL,
+        update_time TEXT        NOT NULL,
+        modify_time TEXT        NOT NULL
+    );
                 """, UserGroupManager.getDefaultId()));
             }
-            Long adminId;
             try (final PreparedStatement statement = connection.prepareStatement("""
-                        SELECT id FROM users WHERE group_id == ? LIMIT 1;
+    SELECT id FROM users WHERE username == ? LIMIT 1;
                 """)) {
-                statement.setLong(1, UserGroupManager.getAdminId());
-                try (final ResultSet admins = statement.executeQuery()) {
-                    adminId = admins.next() ? admins.getLong("id") : null;
+                statement.setString(1, IdentifierNames.UserName.Admin.getIdentifier());
+                try (final ResultSet result = statement.executeQuery()) {
+                    if (result.next())
+                        this.adminId.initialize(result.getLong(1));
                 }
-                if (adminId == null) {
-                    final String password = UserSqliteHelper.generateRandomPassword();
+                if (this.adminId.isNotInitialized()) {
+                    final String password = PasswordGuard.generateRandomPassword();
                     try (final PreparedStatement insertStatement = connection.prepareStatement("""
-                        INSERT INTO users (username, password, group_id, modify_time)
-                            VALUES (?, ?, ?, ?)
-                        ON CONFLICT (username) DO UPDATE SET
-                            id = excluded.id, password = excluded.password,
-                            group_id = excluded.group_id, modify_time = excluded.modify_time;
+    INSERT INTO users (username, name_order, password, group_id, create_time, update_time, modify_time)
+        VALUES (?, ?, ?, ?, ?, ?, ?);
                         """)) {
                         insertStatement.setString(1, IdentifierNames.UserName.Admin.getIdentifier());
-                        insertStatement.setString(2, PasswordGuard.encryptPassword(password));
-                        insertStatement.setLong(3, UserGroupManager.getAdminId());
-                        insertStatement.setString(4, LocalDateTime.now().format(UserSqliteHelper.DefaultFormatter));
+                        insertStatement.setBytes(2, SqliteHelper.toOrdered(IdentifierNames.UserName.Admin.getIdentifier()));
+                        insertStatement.setString(3, PasswordGuard.encryptPassword(password));
+                        insertStatement.setLong(4, UserGroupManager.getAdminId());
+                        final String now = SqliteHelper.dumpTime(SqliteHelper.now());
+                        insertStatement.setString(5, now);
+                        insertStatement.setString(6, now);
+                        insertStatement.setString(7, now);
                         insertStatement.executeUpdate();
-                        statement.setLong(1, UserGroupManager.getAdminId());
-                        try (final ResultSet admins = statement.executeQuery()) {
-                            admins.next();
-                            adminId = admins.getLong("id");
-                        }
+                    }
+                    statement.setString(1, IdentifierNames.UserName.Admin.getIdentifier());
+                    try (final ResultSet result = statement.executeQuery()) {
+                        result.next();
+                        this.adminId.initialize(result.getLong(1));
                     }
                     HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Reset admin user. password: ", password);
                     this.defaultAdminPassword.initialize(password);
                 }
             }
             connection.commit();
-            this.adminId.initialize(adminId);
         }
     }
 
     @Override
     public void deleteTable(@Nullable final String _connectionId) throws SQLException {
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = this.database.getConnection(_connectionId, connectionId)) {
+        try (final Connection connection = this.database.getConnection(_connectionId, null)) {
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate("""
-                    DROP TABLE IF EXISTS users;
+    DROP TABLE IF EXISTS users;
                 """);
             }
+            this.adminId.uninitializeNullable();
             connection.commit();
-            this.adminId.uninitialize();
         }
     }
 
@@ -123,32 +124,30 @@ public final class UserSqliteHelper implements UserSqlInterface {
     }
 
     @Override
-    public @NotNull HInitializer<String> getDefaultAdminPassword() {
-        return this.defaultAdminPassword;
+    public @Nullable String getAndDeleteDefaultAdminPassword() {
+        return this.defaultAdminPassword.uninitializeNullable();
     }
 
-    private static final @NotNull DateTimeFormatter DefaultFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
-    private static @NotNull String generateRandomPassword() {
-        return HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 8, HRandomHelper.DefaultWords + HRandomHelper.NumberWords);
+    public static final @NotNull String UserInfoExtra = "id, username, password, group_id, create_time, update_time, modify_time";
+    // @see #selectUser(long, String) WITH temp AS(...) ...
+    public static final @NotNull String UserAndGroupInfoExtra = "id, username, password, temp.create_time AS ct, temp.update_time AS ut, modify_time, " +
+            "groups.group_id AS group_id, name, " + UserGroupSqliteHelper.PermissionsHeader + ", groups.create_time AS create_time, groups.update_time AS update_time";
+
+    public static @Nullable UserInformation nextUser(final @NotNull ResultSet result) throws SQLException {
+        final UserGroupInformation group = UserGroupSqliteHelper.nextGroup(result);
+        if (group == null)
+            return null;
+        return new UserInformation(result.getLong("id"), result.getString("username"),
+                result.getString("password"), group,
+                SqliteHelper.parseTime(result.getString("ct")), SqliteHelper.parseTime(result.getString("ut")),
+                SqliteHelper.parseTime(result.getString("modify_time")));
     }
 
-    private static @NotNull UserGroupInformation getUserGroupInformation(final @NotNull ResultSet result) throws SQLException {
-        return null;
-//        return new UserGroupInformation(result.getLong("group_id"), result.getString("name"),
-//                Operation.parsePermissionsNotNull(result.getString("permissions")));
-    }
-
-    private static @Nullable UserInformation createNextUserInfo(final @NotNull ResultSet result) throws SQLException {
-        return result.next() ? new UserInformation(result.getLong("id"), result.getString("username"),
-                result.getString("password"), UserSqliteHelper.getUserGroupInformation(result),
-                LocalDateTime.parse(result.getString("modify_time"), UserSqliteHelper.DefaultFormatter)) : null;
-    }
-
-    private static @NotNull @UnmodifiableView List<@NotNull UserInformation> createUsersInfo(final @NotNull ResultSet result) throws SQLException {
+    public static @NotNull @UnmodifiableView List<@NotNull UserInformation> allUsers(final @NotNull ResultSet result) throws SQLException {
         final List<UserInformation> list = new LinkedList<>();
         while (true) {
-            final UserInformation info = UserSqliteHelper.createNextUserInfo(result);
+            final UserInformation info = UserSqliteHelper.nextUser(result);
             if (info == null)
                 break;
             list.add(info);
@@ -156,231 +155,323 @@ public final class UserSqliteHelper implements UserSqlInterface {
         return Collections.unmodifiableList(list);
     }
 
-    @Override
-    public @NotNull @UnmodifiableView Map<UserInformation.@NotNull Inserter, @Nullable Long> insertUsers(final @NotNull Collection<UserInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException {
-        if (inserters.isEmpty())
-            return Map.of();
-        try (final Connection connection = this.getConnection(_connectionId, null)) {
-            final Map<UserInformation.Inserter, Long> map = new HashMap<>();
-            final Collection<UserInformation.Inserter> inserted = new HashSet<>();
-            try (final PreparedStatement statement = connection.prepareStatement("""
-                        INSERT OR IGNORE INTO users (username, password, group_id, modify_time)
-                            VALUES (?, ?, ?, ?);
-                        """)) {
-                for (final UserInformation.Inserter inserter: inserters) {
-                    statement.setString(1, inserter.username());
-                    statement.setString(2, PasswordGuard.encryptPassword(inserter.password()));
-                    statement.setLong(3, inserter.groupId());
-                    statement.setString(4, LocalDateTime.now().format(UserSqliteHelper.DefaultFormatter));
-                    if (statement.executeUpdate() > 0)
-                        inserted.add(inserter);
-                    else
-                        map.put(inserter, null);
-                }
-            }
-            if (!inserted.isEmpty()) {
-                try (final PreparedStatement statement = connection.prepareStatement("""
-                        SELECT id from users WHERE username == ?;
-                        """)) {
-                    for (final UserInformation.Inserter inserter: inserted) {
-                        statement.setString(1, inserter.username());
-                        try (final ResultSet resultSet = statement.executeQuery()) {
-                            resultSet.next();
-                            map.put(inserter, resultSet.getLong("id"));
-                        }
-                    }
-                }
-            }
-            connection.commit();
-            return Collections.unmodifiableMap(map);
-        }
-    }
+
+    /* --- Insert --- */
 
     @Override
-    public void updateUsers(final @NotNull Collection<UserInformation.@NotNull Updater> updaters, final @Nullable String _connectionId) throws SQLException {
-        if (updaters.isEmpty())
-            return;
+    public @Nullable UserInformation insertUser(final @NotNull String username, final @NotNull String encryptedPassword, final @Nullable String _connectionId) throws SQLException {
+        if (IdentifierNames.UserName.contains(username))
+            return null;
+        UserInformation information = null;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
+            final boolean success;
             try (final PreparedStatement statement = connection.prepareStatement("""
-                    UPDATE users SET username = ?, password = ?, group_id = ?, modify_time = ? WHERE id == ?;
+    INSERT OR IGNORE INTO users (username, name_order, password, create_time, update_time, modify_time)
+        VALUES (?, ?, ?, ?, ?, ?);
                 """)) {
-                for (final UserInformation.Updater updater: updaters) {
-                    statement.setString(1, updater.username());
-                    statement.setString(2, updater.encryptedPassword());
-                    statement.setLong(3, updater.groupId());
-                    statement.setString(4, Objects.requireNonNullElseGet(updater.modifyTime(), LocalDateTime::now).format(UserSqliteHelper.DefaultFormatter));
-                    statement.setLong(5, updater.id());
-                    statement.executeUpdate();
-                }
+                statement.setString(1, username);
+                statement.setBytes(2, SqliteHelper.toOrdered(username));
+                statement.setString(3, encryptedPassword);
+                final String now = SqliteHelper.dumpTime(LocalDateTime.now());
+                statement.setString(4, now);
+                statement.setString(5, now);
+                statement.setString(6, now);
+                success = statement.executeUpdate() == 1;
             }
-            connection.commit();
-        }
-    }
-
-    @Override
-    public void updateUsersByName(final @NotNull Collection<UserInformation.@NotNull Inserter> inserters, final @Nullable String _connectionId) throws SQLException {
-        if (inserters.isEmpty())
-            return;
-        try (final Connection connection = this.getConnection(_connectionId, null)) {
-            try (final PreparedStatement statement = connection.prepareStatement("""
-                    UPDATE users SET password = ?, group_id = ?, modify_time = ? WHERE username == ?;
-                """)) {
-                for (final UserInformation.Inserter inserter: inserters) {
-                    statement.setString(1, PasswordGuard.encryptPassword(inserter.password()));
-                    statement.setLong(2, inserter.groupId());
-                    statement.setString(3, LocalDateTime.now().format(UserSqliteHelper.DefaultFormatter));
-                    statement.setString(4, inserter.username());
-                    statement.executeUpdate();
-                }
-            }
-            connection.commit();
-        }
-    }
-
-    @Override
-    public void deleteUsers(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
-        if (idList.isEmpty())
-            return;
-        try (final Connection connection = this.getConnection(_connectionId, null)) {
-            try (final PreparedStatement statement = connection.prepareStatement("""
-                    DELETE FROM users WHERE id == ?;
-                """)) {
-                for (final Long id: idList) {
-                    statement.setLong(1, id.longValue());
-                    statement.executeUpdate();
-                }
-            }
-            connection.commit();
-        }
-    }
-
-    @Override
-    public void deleteUsersByName(final @NotNull Collection<@NotNull String> usernameList, final @Nullable String _connectionId) throws SQLException {
-        if (usernameList.isEmpty())
-            return;
-        try (final Connection connection = this.getConnection(_connectionId, null)) {
-            try (final PreparedStatement statement = connection.prepareStatement("""
-                    DELETE FROM users WHERE username == ?;
-                """)) {
-                for (final String username: usernameList) {
-                    statement.setString(1, username);
-                    statement.executeUpdate();
-                }
-            }
-            connection.commit();
-        }
-    }
-
-    @Override
-    public @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull UserInformation> selectUsers(final @NotNull Collection<@NotNull Long> idList, final @Nullable String _connectionId) throws SQLException {
-        if (idList.isEmpty())
-            return Map.of();
-        try (final Connection connection = this.getConnection(_connectionId, null)) {
-            final Map<Long, UserInformation> map = new HashMap<>();
-            try (final PreparedStatement statement = connection.prepareStatement("""
-                    SELECT * FROM users NATURAL JOIN groups WHERE users.id == ? LIMIT 1;
-                """)) {
-                for (final Long id: idList) {
-                    statement.setLong(1, id.longValue());
-                    try (final ResultSet result = statement.executeQuery()) {
-                        final UserInformation information = UserSqliteHelper.createNextUserInfo(result);
-                        if (information != null)
-                            map.put(id, information);
-                    }
-                }
-            }
-            return Collections.unmodifiableMap(map);
-        }
-    }
-
-    @Override
-    public @NotNull @UnmodifiableView Map<@NotNull String, @NotNull UserInformation> selectUsersByName(final @NotNull Collection<@NotNull String> usernameList, final @Nullable String _connectionId) throws SQLException {
-        if (usernameList.isEmpty())
-            return Map.of();
-        try (final Connection connection = this.getConnection(_connectionId, null)) {
-            final Map<String, UserInformation> map = new HashMap<>();
-            try (final PreparedStatement statement = connection.prepareStatement("""
-                    SELECT * FROM users NATURAL JOIN groups WHERE username == ? LIMIT 1;
-                """)) {
-                for (final String username: usernameList) {
+            if (success)
+                try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+    SELECT %s FROM groups WHERE name == ? LIMIT 1;
+                    """, UserSqliteHelper.UserAndGroupInfoExtra))) {
                     statement.setString(1, username);
                     try (final ResultSet result = statement.executeQuery()) {
-                        final UserInformation information = UserSqliteHelper.createNextUserInfo(result);
-                        if (information != null)
-                            map.put(username, information);
+                        information = UserSqliteHelper.nextUser(result);
                     }
                 }
-            }
-            return Collections.unmodifiableMap(map);
+            connection.commit();
         }
+        return information;
     }
 
+
+    /* --- Update --- */
+
     @Override
-    public @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull Long> selectUsersCountByGroup(final @NotNull Collection<@NotNull Long> groupIdList, final @Nullable String _connectionId) throws SQLException {
-        if (groupIdList.isEmpty())
-            return Map.of();
+    public @Nullable LocalDateTime updateUserName(final long id, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
+        if (id == this.getAdminId() || IdentifierNames.UserName.contains(name))
+            return null;
+        LocalDateTime time;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            final Map<Long, Long> map = new HashMap<>();
             try (final PreparedStatement statement = connection.prepareStatement("""
-                    SELECT COUNT(*) FROM users WHERE group_id == ?;
+    UPDATE OR IGNORE users SET username = ?, name_order = ?, update_time = ? WHERE id == ?;
                 """)) {
-                for (final Long groupId: groupIdList) {
-                    statement.setLong(1, groupId.longValue());
-                    try (final ResultSet result = statement.executeQuery()) {
-                        result.next();
-                        map.put(groupId, result.getLong(1));
-                    }
-                }
+                statement.setString(1, name);
+                statement.setBytes(2, SqliteHelper.toOrdered(name));
+                time = SqliteHelper.now();
+                statement.setString(3, SqliteHelper.dumpTime(time));
+                statement.setLong(4, id);
+                if (statement.executeUpdate() == 0)
+                    time = null;
             }
-            return Collections.unmodifiableMap(map);
+            connection.commit();
         }
+        return time;
     }
 
     @Override
-    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull UserInformation>> selectAllUsersInPage(final int limit, final long offset, final Options.@NotNull OrderDirection direction, final @Nullable String _connectionId) throws SQLException {
+    public @Nullable LocalDateTime updateUserPassword(final long id, final @NotNull String encryptedPassword, final @Nullable String _connectionId) throws SQLException {
+        if (id == this.getAdminId())
+            return null;
+        LocalDateTime time;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            final long count;
-            try (final Statement statement = connection.createStatement()) {
-                try (final ResultSet result = statement.executeQuery("SELECT COUNT(*) FROM users;")) {
+            try (final PreparedStatement statement = connection.prepareStatement("""
+    UPDATE OR IGNORE users SET password = ?, update_time = ?, modify_time = ? WHERE id == ?;
+                """)) {
+                statement.setString(1, encryptedPassword);
+                time = SqliteHelper.now();
+                final String now = SqliteHelper.dumpTime(time);
+                statement.setString(2, now);
+                statement.setString(3, now);
+                statement.setLong(4, id);
+                if (statement.executeUpdate() == 0)
+                    time = null;
+            }
+            connection.commit();
+        }
+        return time;
+    }
+
+    @Override
+    public @Nullable LocalDateTime updateUserGroup(final long id, final long groupId, final @Nullable String _connectionId) throws SQLException {
+        if (id == this.getAdminId())
+            return null;
+        LocalDateTime time;
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
+            try (final PreparedStatement statement = connection.prepareStatement("""
+    UPDATE OR IGNORE users SET group_id = ?, update_time = ?, modify_time = ? WHERE id == ?;
+                """)) {
+                statement.setLong(1, groupId);
+                time = SqliteHelper.now();
+                final String now = SqliteHelper.dumpTime(time);
+                statement.setString(2, now);
+                statement.setString(3, now);
+                statement.setLong(4, id);
+                if (statement.executeUpdate() == 0)
+                    time = null;
+            }
+            connection.commit();
+        }
+        return time;
+    }
+
+
+    /* --- Select --- */
+
+    protected static @NotNull String orderBy(@SuppressWarnings("TypeMayBeWeakened") final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders) {
+        if (orders.isEmpty())
+            return "ORDER BY temp.name_order ASC, id ASC";
+        final StringBuilder builder = new StringBuilder("ORDER BY ");
+        for (final Map.Entry<VisibleUserInformation.Order, Options.OrderDirection> order: orders.entrySet()) {
+            builder.append(switch (order.getKey()) {
+                case Id -> "temp.id";
+                case Name -> "temp.name_order";
+                case CreateTime -> "temp.create_time";
+                case UpdateTime -> "temp.update_time";
+                case GroupId -> "temp.group_id";
+                case GroupName -> "groups.name_order";
+            }).append(' ').append(switch (order.getValue()) {
+                case ASCEND -> "ASC";
+                case DESCEND -> "DESC";
+            }).append(',');
+        }
+        return builder.deleteCharAt(builder.length() - 1).toString();
+    }
+
+    protected static @NotNull String whereGroup(@SuppressWarnings("TypeMayBeWeakened") final @NotNull Set<@NotNull Long> chooser, final boolean blacklist) {
+        if (chooser.isEmpty())
+            return blacklist ? "WHERE true" : "WHERE false";
+        final StringBuilder builder = new StringBuilder("WHERE (");
+        if (blacklist) {
+            for (final Long id: chooser)
+                builder.append("group_id != ").append(id.longValue()).append(" AND ");
+            return builder.delete(builder.length() - 5, builder.length()).toString();
+        }
+        for (final Long id: chooser)
+            builder.append("group_id == ").append(id.longValue()).append(" OR ");
+        return builder.delete(builder.length() - 4, builder.length()).toString();
+    }
+
+    @Override
+    public @Nullable UserInformation selectUser(final long id, final @Nullable String _connectionId) throws SQLException {
+        final UserInformation information;
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
+            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+    WITH temp AS (SELECT %s FROM users WHERE id == ? LIMIT 1) SELECT %s FROM temp INNER JOIN groups ON temp.group_id = groups.group_id LIMIT 1;
+                """, UserSqliteHelper.UserInfoExtra, UserSqliteHelper.UserAndGroupInfoExtra))) {
+                statement.setLong(1, id);
+                try (final ResultSet result = statement.executeQuery()) {
+                    information = UserSqliteHelper.nextUser(result);
+                }
+            }
+        }
+        return information;
+    }
+
+    @Override
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> selectUsers(final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+        final long count;
+        final List<UserInformation> users;
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
+            try (final PreparedStatement statement = connection.prepareStatement("""
+    SELECT COUNT(*) FROM users;
+                """)) {
+                try (final ResultSet result = statement.executeQuery()) {
                     result.next();
                     count = result.getLong(1);
                 }
             }
-            if (offset >= count)
-                return Pair.ImmutablePair.makeImmutablePair(count, List.of());
-            final List<UserInformation> list;
-            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM users NATURAL JOIN groups ORDER BY id %s LIMIT ? OFFSET ?;
-                """, switch (direction) {case ASCEND -> "ASC";case DESCEND -> "DESC";}))) {
-                statement.setInt(1, limit);
-                statement.setLong(2, offset);
-                try (final ResultSet result = statement.executeQuery()) {
-                    list = UserSqliteHelper.createUsersInfo(result);
+            if (position < 0 || count <= position || limit <= 0)
+                users = List.of();
+            else
+                try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+    WITH temp AS (SELECT %s, name_order FROM users)
+        SELECT %s FROM temp INNER JOIN groups ON temp.group_id = groups.group_id %s LIMIT ? OFFSET ?;
+                """, UserSqliteHelper.UserInfoExtra, UserSqliteHelper.UserAndGroupInfoExtra, UserSqliteHelper.orderBy(orders)))) {
+                    statement.setLong(1, limit);
+                    statement.setLong(2, position);
+                    try (final ResultSet result = statement.executeQuery()) {
+                        users = UserSqliteHelper.allUsers(result);
+                    }
                 }
-            }
-            return Pair.ImmutablePair.makeImmutablePair(count, list);
+            connection.commit();
         }
+        return Pair.ImmutablePair.makeImmutablePair(count, users);
     }
 
     @Override
-    public @NotNull @UnmodifiableView List<@Nullable UserInformation> searchUsersByNameLimited(final @NotNull String rule, final boolean caseSensitive, final int limit, final @Nullable String _connectionId) throws SQLException {
-        if (limit <= 0)
-            return List.of();
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> selectUsersByGroup(final @NotNull Set<@NotNull Long> chooser, final boolean blacklist, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+        if (chooser.isEmpty())
+            return blacklist ? this.selectUsers(orders, position, limit, _connectionId) : Pair.ImmutablePair.makeImmutablePair(0L, List.of());
+        final long count;
+        final List<UserInformation> users;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
-            final List<UserInformation> list;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-                    SELECT * FROM users NATURAL JOIN groups WHERE username %s ?
-                    ORDER BY abs(length(username) - ?) ASC, id DESC LIMIT ?;
-                """, caseSensitive ? "GLOB" : "LIKE"))) {
-                statement.setString(1, rule);
-                statement.setInt(2, rule.length());
-                statement.setInt(3, limit);
+    SELECT COUNT(*) FROM users %s;
+                """, UserSqliteHelper.whereGroup(chooser, blacklist)))) {
                 try (final ResultSet result = statement.executeQuery()) {
-                    list = UserSqliteHelper.createUsersInfo(result);
+                    result.next();
+                    count = result.getLong(1);
                 }
             }
-            return list;
+            if (position < 0 || count <= position || limit <= 0)
+                users = List.of();
+            else
+                try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+    WITH temp AS (SELECT %s, name_order FROM users %s)
+        SELECT %s FROM temp INNER JOIN groups ON temp.group_id = groups.group_id %s LIMIT ? OFFSET ?;
+                """, UserSqliteHelper.UserInfoExtra, UserSqliteHelper.whereGroup(chooser, blacklist), UserSqliteHelper.UserAndGroupInfoExtra, UserSqliteHelper.orderBy(orders)))) {
+                    statement.setLong(1, limit);
+                    statement.setLong(2, position);
+                    try (final ResultSet result = statement.executeQuery()) {
+                        users = UserSqliteHelper.allUsers(result);
+                    }
+                }
+            connection.commit();
         }
+        return Pair.ImmutablePair.makeImmutablePair(count, users);
+    }
+
+
+    /* --- Delete --- */
+
+    @Override
+    public boolean deleteUser(final long id, final @Nullable String _connectionId) throws SQLException {
+        if (id == this.getAdminId())
+            return false;
+        final boolean success;
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
+            try (final PreparedStatement statement = connection.prepareStatement("""
+    DELETE FROM users WHERE id == ?;
+                """)) {
+                statement.setLong(1, id);
+                success = statement.executeUpdate() == 1;
+            }
+            connection.commit();
+        }
+        return success;
+    }
+
+
+    /* --- Search --- */
+
+    @Override
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> searchUsersByRegex(final @NotNull String regex, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+        final long count;
+        final List<UserInformation> users;
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
+            try (final PreparedStatement statement = connection.prepareStatement("""
+    SELECT COUNT(*) FROM users WHERE username REGEXP ?;
+                """)) {
+                statement.setString(1, regex);
+                try (final ResultSet result = statement.executeQuery()) {
+                    result.next();
+                    count = result.getLong(1);
+                }
+            }
+            if (position < 0 || count <= position || limit <= 0)
+                users = List.of();
+            else
+                try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+    WITH temp AS (SELECT %s FROM users WHERE username REGEXP ?)
+        SELECT %s FROM temp INNER JOIN groups ON temp.group_id = groups.group_id %s LIMIT ? OFFSET ?;
+                """, UserSqliteHelper.UserInfoExtra, UserSqliteHelper.UserAndGroupInfoExtra, UserSqliteHelper.orderBy(orders)))) {
+                    statement.setString(1, regex);
+                    statement.setLong(2, limit);
+                    statement.setLong(3, position);
+                    try (final ResultSet result = statement.executeQuery()) {
+                        users = UserSqliteHelper.allUsers(result);
+                    }
+                }
+            connection.commit();
+        }
+        return Pair.ImmutablePair.makeImmutablePair(count, users);
+    }
+
+    @Override
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> searchUsersByNames(final @NotNull Set<@NotNull String> names, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+        if (names.size() != 1)
+            throw new UnsupportedOperationException("Cannot search users by multiple names."); // TODO multiple names search support.
+        final String name = names.stream().findFirst().get();
+        final long count;
+        final List<UserInformation> users;
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
+            try (final PreparedStatement statement = connection.prepareStatement("""
+    SELECT COUNT(*) FROM users WHERE username LIKE ? ESCAPE '\\';
+                """)) {
+                statement.setString(1, SqliteHelper.likeName(name));
+                try (final ResultSet result = statement.executeQuery()) {
+                    result.next();
+                    count = result.getLong(1);
+                }
+            }
+            if (position < 0 || count <= position || limit <= 0)
+                users = List.of();
+            else
+                //noinspection SpellCheckingInspection
+                try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+    WITH temp AS (SELECT %s FROM users WHERE username LIKE ? ESCAPE '\\')
+        SELECT %s FROM temp INNER JOIN groups ON temp.group_id = groups.group_id ORDER BY length(name), charindex(?, name) LIMIT ? OFFSET ?;
+                """, UserSqliteHelper.UserInfoExtra, UserSqliteHelper.UserAndGroupInfoExtra))) {
+                    statement.setString(1, SqliteHelper.likeName(name));
+                    statement.setString(2, name);
+                    statement.setLong(3, limit);
+                    statement.setLong(4, position);
+                    try (final ResultSet result = statement.executeQuery()) {
+                        users = UserSqliteHelper.allUsers(result);
+                    }
+                }
+            connection.commit();
+        }
+        return Pair.ImmutablePair.makeImmutablePair(count, users);
     }
 
     @Override

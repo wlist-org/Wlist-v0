@@ -43,13 +43,13 @@ public final class OperateFileHandler {
 //        ServerHandler.logOperation(channel, OperationType.ListFiles, user, () -> ParametersMap.create()
 //                .add("location", location).add("filter", filter).add("limit", limit).add("page", page)
 //                .add("orderPolicy", orderPolicy).add("orderDirection", orderDirection).add("refresh", refresh)
-//                .optionallyAddSupplier(refresh && user.isSuccess(), "allow", () -> user.getT().group().permissions().contains(UserPermission.FilesBuildIndex)));
+//                .optionallyAddSupplier(refresh && user.isSuccess(), "allow", () -> user.getT().groupName().permissions().contains(UserPermission.FilesBuildIndex)));
 //        if (user.isFailure())
 //            return user.getE();
 //        if (limit < 1 || limit > ServerConfiguration.getInstance().maxLimitPerPage()
 //                || page < 0 || orderPolicy == null || orderDirection == null || filter == null)
 //            return MessageProto.WrongParameters;
-//        if (refresh && !user.getT().group().permissions().contains(UserPermission.FilesBuildIndex))
+//        if (refresh && !user.getT().groupName().permissions().contains(UserPermission.FilesBuildIndex))
 //            return MessageProto.NoPermission.apply(UserPermission.FilesBuildIndex);
 //        final Triad.ImmutableTriad<Long, Long, List<FileInformation>> list;
 //        try {
@@ -81,12 +81,12 @@ public final class OperateFileHandler {
 //        final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
 //        ServerHandler.logOperation(channel, OperationType.CreateDirectory, user, () -> ParametersMap.create()
 //                .add("parentLocation", parentLocation).add("directoryName", directoryName).add("duplicatePolicy", duplicatePolicy)
-//                .optionallyAddSupplier(duplicatePolicy == Options.DuplicatePolicy.OVER && user.isSuccess(), "allow", () -> user.getT().group().permissions().contains(UserPermission.FileDelete)));
+//                .optionallyAddSupplier(duplicatePolicy == Options.DuplicatePolicy.OVER && user.isSuccess(), "allow", () -> user.getT().groupName().permissions().contains(UserPermission.FileDelete)));
 //        if (user.isFailure())
 //            return user.getE();
 //        if (duplicatePolicy == null)
 //            return MessageProto.WrongParameters;
-//        if (duplicatePolicy == Options.DuplicatePolicy.OVER && !user.getT().group().permissions().contains(UserPermission.FileDelete))
+//        if (duplicatePolicy == Options.DuplicatePolicy.OVER && !user.getT().groupName().permissions().contains(UserPermission.FileDelete))
 //            return MessageProto.NoPermission.apply(UserPermission.FileDelete);
 //        final UnionPair<FileInformation, FailureReason> directory;
 //        try {
@@ -237,12 +237,12 @@ public final class OperateFileHandler {
 //        final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
 //        ServerHandler.logOperation(channel, OperationType.RequestUploadFile, user, () -> ParametersMap.create()
 //                .add("parentLocation", parentLocation).add("filename", filename).add("size", size).add("md5", md5).add("duplicatePolicy", duplicatePolicy)
-//                .optionallyAddSupplier(duplicatePolicy == Options.DuplicatePolicy.OVER && user.isSuccess(), "allow", () -> user.getT().group().permissions().contains(UserPermission.FileDelete)));
+//                .optionallyAddSupplier(duplicatePolicy == Options.DuplicatePolicy.OVER && user.isSuccess(), "allow", () -> user.getT().groupName().permissions().contains(UserPermission.FileDelete)));
 //        if (user.isFailure())
 //            return user.getE();
 //        if (size < 0 || !HMessageDigestHelper.MD5.pattern.matcher(md5).matches() || duplicatePolicy == null)
 //            return MessageProto.WrongParameters;
-//        if (duplicatePolicy == Options.DuplicatePolicy.OVER && !user.getT().group().permissions().contains(UserPermission.FileDelete))
+//        if (duplicatePolicy == Options.DuplicatePolicy.OVER && !user.getT().groupName().permissions().contains(UserPermission.FileDelete))
 //            return MessageProto.NoPermission.apply(UserPermission.FileDelete);
 //        final UnionPair<UploadMethods, FailureReason> methods;
 //        try {
@@ -337,12 +337,12 @@ public final class OperateFileHandler {
 //        final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
 //        ServerHandler.logOperation(channel, OperationType.CopyFile, user, () -> ParametersMap.create()
 //                .add("source", source).add("targetParent", targetParent).add("filename", filename).add("duplicatePolicy", duplicatePolicy)
-//                .optionallyAddSupplier(duplicatePolicy == Options.DuplicatePolicy.OVER && user.isSuccess(), "allow", () -> user.getT().group().permissions().contains(UserPermission.FileDelete)));
+//                .optionallyAddSupplier(duplicatePolicy == Options.DuplicatePolicy.OVER && user.isSuccess(), "allow", () -> user.getT().groupName().permissions().contains(UserPermission.FileDelete)));
 //        if (user.isFailure())
 //            return user.getE();
 //        if (duplicatePolicy == null)
 //            return MessageProto.WrongParameters;
-//        if (duplicatePolicy == Options.DuplicatePolicy.OVER && !user.getT().group().permissions().contains(UserPermission.FileDelete))
+//        if (duplicatePolicy == Options.DuplicatePolicy.OVER && !user.getT().groupName().permissions().contains(UserPermission.FileDelete))
 //            return MessageProto.NoPermission.apply(UserPermission.FileDelete);
 //        final UnionPair<FileInformation, FailureReason> file;
 //        try {

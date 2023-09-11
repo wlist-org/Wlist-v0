@@ -5,18 +5,17 @@ import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupInformation;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
-public record UserInformation(long id, @NotNull String username, @NotNull String password, @NotNull UserGroupInformation group, @NotNull LocalDateTime modifyTime) {
-    public record Inserter(@NotNull String username, @NotNull String password, long groupId) {
-    }
-
-    public record Updater(long id, @NotNull String username, @NotNull String encryptedPassword, long groupId, @Nullable LocalDateTime modifyTime) {
-    }
-
+/**
+ * @param updateTime last name/password/group change time.
+ * @param modifyTime last password/group change time. (for check token.)
+ */
+public record UserInformation(long id, @NotNull String username, @NotNull String encryptedPassword, @NotNull UserGroupInformation group,
+                              @NotNull LocalDateTime createTime, @NotNull LocalDateTime updateTime, @NotNull LocalDateTime modifyTime) {
     /**
      * @see com.xuxiaocheng.WList.Commons.Beans.VisibleUserInformation
      */
@@ -24,7 +23,10 @@ public record UserInformation(long id, @NotNull String username, @NotNull String
     public @NotNull ByteBuf dumpVisible(final @NotNull ByteBuf buffer) throws IOException {
         ByteBufIOUtil.writeVariableLenLong(buffer, this.id);
         ByteBufIOUtil.writeUTF(buffer, this.username);
+        ByteBufIOUtil.writeVariableLenLong(buffer, this.group.id());
         ByteBufIOUtil.writeUTF(buffer, this.group.name());
+        ByteBufIOUtil.writeUTF(buffer, this.createTime.format(DateTimeFormatter.ISO_DATE_TIME));
+        ByteBufIOUtil.writeUTF(buffer, this.updateTime.format(DateTimeFormatter.ISO_DATE_TIME));
         return buffer;
     }
 }

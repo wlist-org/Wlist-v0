@@ -2,19 +2,14 @@ package com.xuxiaocheng.WList.Server.Handlers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
-import com.xuxiaocheng.HeadLibs.Logger.HLog;
-import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import com.xuxiaocheng.WList.Commons.Operations.ResponseState;
 import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
-import com.xuxiaocheng.WList.Server.BroadcastManager;
 import com.xuxiaocheng.WList.Server.Databases.User.PasswordGuard;
 import com.xuxiaocheng.WList.Server.Databases.User.UserInformation;
-import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupInformation;
-import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.UserTokenHelper;
 import com.xuxiaocheng.WList.Server.MessageProto;
 import com.xuxiaocheng.WList.Server.WListServer;
@@ -65,7 +60,7 @@ public final class OperateSelfHandler {
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, permissions);
         if (user.isFailure())
             return user;
-        if (!PasswordGuard.encryptPassword(verifyingPassword).equals(user.getT().password()))
+        if (!PasswordGuard.encryptPassword(verifyingPassword).equals(user.getT().encryptedPassword()))
             return UnionPair.fail(OperateSelfHandler.NoSuchUser);
         return user;
     }
@@ -86,11 +81,11 @@ public final class OperateSelfHandler {
         ServerHandler.logOperation(channel, OperationType.Logon, null, () -> ParametersMap.create()
                 .add("username", username).add("password", password));
         return () -> {
-            final Long id = UserManager.insertUser(new UserInformation.Inserter(username, password, UserGroupManager.getDefaultId()), null);
-            if (id == null) {
-                WListServer.ServerChannelHandler.write(channel, OperateSelfHandler.UserDataError);
-                return;
-            }
+//            final Long id = UserManager.insertUser(new UserInformation.Inserter(username, password, UserGroupManager.getDefaultId()), null);
+//            if (id == null) {
+//                WListServer.ServerChannelHandler.write(channel, OperateSelfHandler.UserDataError);
+//                return;
+//            }
 //            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Logged on.", ServerHandler.user(null, id.longValue(), username));
 //            BroadcastManager.onUserLogon(); // TODO
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
@@ -103,14 +98,14 @@ public final class OperateSelfHandler {
         ServerHandler.logOperation(channel, OperationType.Login, null, () -> ParametersMap.create()
                 .add("username", username).add("password", password));
         return () -> {
-            final UserInformation user = UserManager.selectUserByName(username, null);
-            if (user == null || !PasswordGuard.encryptPassword(password).equals(user.password())) {
-                WListServer.ServerChannelHandler.write(channel, OperateSelfHandler.NoSuchUser);
-                return;
-            }
-            final String token = UserTokenHelper.encodeToken(user.id(), user.modifyTime());
-            HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Logged in.", ServerHandler.user(null, user), ParametersMap.create().add("token", token));
-            WListServer.ServerChannelHandler.write(channel, MessageProto.composeMessage(ResponseState.Success, token));
+//            final UserInformation user = UserManager.selectUserByName(username, null);
+//            if (user == null || !PasswordGuard.encryptPassword(password).equals(user.encryptedPassword())) {
+//                WListServer.ServerChannelHandler.write(channel, OperateSelfHandler.NoSuchUser);
+//                return;
+//            }
+//            final String token = UserTokenHelper.encodeToken(user.id(), user.createTime());
+//            HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Logged in.", ServerHandler.user(null, user), ParametersMap.create().add("token", token));
+//            WListServer.ServerChannelHandler.write(channel, MessageProto.composeMessage(ResponseState.Success, token));
         };
     };
 
@@ -130,10 +125,10 @@ public final class OperateSelfHandler {
             return null;
         }
         return () -> {
-            UserManager.deleteUser(user.getT().id(), null);
-            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Logged off.", ServerHandler.user(null, user.getT()));
-            BroadcastManager.onUserLogoff(user.getT().id());
-            WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
+//            UserManager.deleteUser(user.getT().id(), null);
+//            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Logged off.", ServerHandler.user(null, user.getT()));
+//            BroadcastManager.onUserLogoff(user.getT().id());
+//            WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
         };
     };
 
@@ -153,10 +148,10 @@ public final class OperateSelfHandler {
             return null;
         }
         return () -> {
-            UserManager.updateUser(new UserInformation.Updater(user.getT().id(), newUsername,
-                    user.getT().password(), user.getT().group().id(), user.getT().modifyTime()), null);
-            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Changed username.", ServerHandler.user(null, user.getT()),
-                    ParametersMap.create().add("new", newUsername));
+//            UserManager.updateUser(new UserInformation.Updater(user.getT().id(), newUsername,
+//                    user.getT().encryptedPassword(), user.getT().group().id(), user.getT().createTime()), null);
+//            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Changed username.", ServerHandler.user(null, user.getT()),
+//                    ParametersMap.create().add("new", newUsername));
 //            BroadcastManager.onUserChangeName(user.getT(), newUsername); // TODO
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
         };
@@ -174,9 +169,9 @@ public final class OperateSelfHandler {
             return null;
         }
         return () -> {
-            UserManager.updateUser(new UserInformation.Updater(user.getT().id(), user.getT().username(),
-                    PasswordGuard.encryptPassword(newPassword), user.getT().group().id(), null), null);
-            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Changed password.", ServerHandler.user(null, user.getT()));
+//            UserManager.updateUser(new UserInformation.Updater(user.getT().id(), user.getT().username(),
+//                    PasswordGuard.encryptPassword(newPassword), user.getT().group().id(), null), null);
+//            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Changed password.", ServerHandler.user(null, user.getT()));
 //            BroadcastManager.onUserChangePassword(user.getT(), time); // TODO
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
         };

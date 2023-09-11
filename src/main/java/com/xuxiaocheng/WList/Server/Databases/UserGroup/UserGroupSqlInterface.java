@@ -46,7 +46,7 @@ public interface UserGroupSqlInterface extends DatabaseInterface {
     @Nullable LocalDateTime updateGroupName(final long id, final @NotNull String name, final @Nullable String _connectionId) throws SQLException;
 
     /**
-     * Update group permissions. (Do NOT update admin group {@link com.xuxiaocheng.WList.Commons.IdentifierNames.UserGroupName#Admin})
+     * Update group permissions. (Do NOT update admin groupName {@link com.xuxiaocheng.WList.Commons.IdentifierNames.UserGroupName#Admin})
      * @return null: no such id. !null: operate time.
      */
     @Nullable LocalDateTime updateGroupPermission(final long id, final @NotNull EnumSet<@NotNull UserPermission> permissions, final @Nullable String _connectionId) throws SQLException;
@@ -89,6 +89,6 @@ public interface UserGroupSqlInterface extends DatabaseInterface {
 
     /**
      * Search groups which contains name.
-     */ // TODO: Multi name.
+     */
     Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserGroupInformation>> searchGroupsByNames(final @NotNull Set<@NotNull String> names, final long position, final int limit, final @Nullable String _connectionId) throws SQLException;
 }

@@ -20,4 +20,8 @@ public final class PasswordGuard {
         final String md5 = HMessageDigestHelper.MD5.get(password + PasswordGuard.ServerPasswordSlat);
         return sha256.substring(0, 32) + Integer.toString(password.length(), 16) + md5.substring(0, 16) + sha256.substring(32) + md5.substring(16);
     }
+
+    public static @NotNull String generateRandomPassword() {
+        return HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 8, HRandomHelper.DefaultWords + HRandomHelper.NumberWords);
+    }
 }

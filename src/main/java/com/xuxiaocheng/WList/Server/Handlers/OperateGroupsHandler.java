@@ -72,7 +72,7 @@ public final class OperateGroupsHandler {
                 WListServer.ServerChannelHandler.write(channel, OperateGroupsHandler.GroupDataError);
                 return;
             }
-            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Added group.", ServerHandler.userGroup(null, information), ',', ServerHandler.user("changer", changer.getT()));
+            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Added groupName.", ServerHandler.userGroup(null, information), ',', ServerHandler.user("changer", changer.getT()));
             BroadcastManager.onUserGroupAdded(information);
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
         };
@@ -101,7 +101,7 @@ public final class OperateGroupsHandler {
                 WListServer.ServerChannelHandler.write(channel, OperateGroupsHandler.GroupDataError);
                 return;
             }
-            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Changed group name.", ServerHandler.user("changer", changer.getT()),
+            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Changed groupName name.", ServerHandler.user("changer", changer.getT()),
                     ParametersMap.create().add("groupId", groupId).add("newGroupName", newGroupName).add("updateTime", updateTime));
             BroadcastManager.onUserGroupChangeName(groupId, newGroupName, updateTime);
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
@@ -133,7 +133,7 @@ public final class OperateGroupsHandler {
                 WListServer.ServerChannelHandler.write(channel, OperateGroupsHandler.GroupDataError);
                 return;
             }
-            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Changed group permissions.", ServerHandler.user("changer", changer.getT()),
+            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Changed groupName permissions.", ServerHandler.user("changer", changer.getT()),
                     ParametersMap.create().add("groupId", groupId).add("newPermissions", newPermissions).add("updateTime", updateTime));
             BroadcastManager.onUserGroupChangePermissions(groupId, newPermissions, updateTime);
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
@@ -247,7 +247,7 @@ public final class OperateGroupsHandler {
                 WListServer.ServerChannelHandler.write(channel, OperateUsersHandler.GroupDataError);
                 return;
             }
-            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Deleted group.", ServerHandler.user("changer", changer.getT()), ParametersMap.create().add("groupId", groupId));
+            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Deleted groupName.", ServerHandler.user("changer", changer.getT()), ParametersMap.create().add("groupId", groupId));
             BroadcastManager.onUserGroupDeleted(groupId);
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
         };
