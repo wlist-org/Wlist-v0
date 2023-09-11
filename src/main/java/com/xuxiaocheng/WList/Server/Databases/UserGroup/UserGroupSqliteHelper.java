@@ -18,6 +18,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Collections;
@@ -86,8 +87,10 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
                         """, p, p, p));
                 }
                 builder.append("""
-        create_time TEXT        NOT NULL,
-        update_time TEXT        NOT NULL
+        create_time TIMESTAMP   NOT NULL
+                                DEFAULT CURRENT_TIMESTAMP,
+        update_time TIMESTAMP   NOT NULL
+                                DEFAULT CURRENT_TIMESTAMP
     );
                     """);
                 statement.executeUpdate(builder.toString());
@@ -107,9 +110,9 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
                     """, UserGroupSqliteHelper.PermissionsHeader, UserGroupSqliteHelper.permissionsInsertValue(UserPermission.All)))) {
                         insertStatement.setString(1, IdentifierNames.UserGroupName.Admin.getIdentifier());
                         insertStatement.setBytes(2, SqliteHelper.toOrdered(IdentifierNames.UserGroupName.Admin.getIdentifier()));
-                        final String now = SqliteHelper.dumpTime(SqliteHelper.now());
-                        insertStatement.setString(3, now);
-                        insertStatement.setString(4, now);
+                        final Timestamp now = Timestamp.valueOf(SqliteHelper.now());
+                        insertStatement.setTimestamp(3, now);
+                        insertStatement.setTimestamp(4, now);
                         insertStatement.executeUpdate();
                     }
                     statement.setString(1, IdentifierNames.UserGroupName.Admin.getIdentifier());
@@ -130,9 +133,9 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
                     """, UserGroupSqliteHelper.PermissionsHeader, UserGroupSqliteHelper.permissionsInsertValue(UserPermission.Default)))) {
                         insertStatement.setString(1, IdentifierNames.UserGroupName.Default.getIdentifier());
                         insertStatement.setBytes(2, SqliteHelper.toOrdered(IdentifierNames.UserGroupName.Default.getIdentifier()));
-                        final String now = SqliteHelper.dumpTime(SqliteHelper.now());
-                        insertStatement.setString(3, now);
-                        insertStatement.setString(4, now);
+                        final Timestamp now = Timestamp.valueOf(SqliteHelper.now());
+                        insertStatement.setTimestamp(3, now);
+                        insertStatement.setTimestamp(4, now);
                         insertStatement.executeUpdate();
                     }
                     try (final ResultSet result = statement.executeQuery()) {
@@ -180,7 +183,7 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
             if (result.getBoolean("permissions_" + permission.name()))
                 permissions.add(permission);
         return new UserGroupInformation(result.getLong("group_id"), result.getString("name"), permissions,
-                SqliteHelper.parseTime(result.getString("create_time")), SqliteHelper.parseTime(result.getString("update_time")));
+                result.getTimestamp("create_time").toLocalDateTime(), result.getTimestamp("update_time").toLocalDateTime());
     }
 
     public static @NotNull @UnmodifiableView List<@NotNull UserGroupInformation> allGroups(final @NotNull ResultSet result) throws SQLException {
@@ -210,9 +213,9 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
                 """)) {
                 statement.setString(1, name);
                 statement.setBytes(2, SqliteHelper.toOrdered(name));
-                final String now = SqliteHelper.dumpTime(LocalDateTime.now());
-                statement.setString(3, now);
-                statement.setString(4, now);
+                final Timestamp now = Timestamp.valueOf(SqliteHelper.now());
+                statement.setTimestamp(3, now);
+                statement.setTimestamp(4, now);
                 success = statement.executeUpdate() == 1;
             }
             if (success)
@@ -244,7 +247,7 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
                 statement.setString(1, name);
                 statement.setBytes(2, SqliteHelper.toOrdered(name));
                 time = SqliteHelper.now();
-                statement.setString(3, SqliteHelper.dumpTime(time));
+                statement.setTimestamp(3, Timestamp.valueOf(time));
                 statement.setLong(4, id);
                 if (statement.executeUpdate() == 0)
                     time = null;
@@ -264,7 +267,7 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
     UPDATE OR IGNORE groups SET %s, update_time = ? WHERE group_id == ?;
                 """, UserGroupSqliteHelper.permissionsUpdateValue(permissions)))) {
                 time = SqliteHelper.now();
-                statement.setString(1, SqliteHelper.dumpTime(time));
+                statement.setTimestamp(1, Timestamp.valueOf(time));
                 statement.setLong(2, id);
                 if (statement.executeUpdate() == 0)
                     time = null;

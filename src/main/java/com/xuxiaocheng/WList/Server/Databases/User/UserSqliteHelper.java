@@ -22,6 +22,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -62,9 +63,12 @@ public class UserSqliteHelper implements UserSqlInterface {
         group_id    INTEGER     NOT NULL
                                 DEFAULT %d
                                 REFERENCES groups (group_id),
-        create_time TEXT        NOT NULL,
-        update_time TEXT        NOT NULL,
-        modify_time TEXT        NOT NULL
+        create_time TIMESTAMP   NOT NULL
+                                DEFAULT CURRENT_TIMESTAMP,
+        update_time TIMESTAMP   NOT NULL
+                                DEFAULT CURRENT_TIMESTAMP,
+        modify_time TIMESTAMP   NOT NULL
+                                DEFAULT CURRENT_TIMESTAMP
     );
                 """, UserGroupManager.getDefaultId()));
             }
@@ -86,10 +90,10 @@ public class UserSqliteHelper implements UserSqlInterface {
                         insertStatement.setBytes(2, SqliteHelper.toOrdered(IdentifierNames.UserName.Admin.getIdentifier()));
                         insertStatement.setString(3, PasswordGuard.encryptPassword(password));
                         insertStatement.setLong(4, UserGroupManager.getAdminId());
-                        final String now = SqliteHelper.dumpTime(SqliteHelper.now());
-                        insertStatement.setString(5, now);
-                        insertStatement.setString(6, now);
-                        insertStatement.setString(7, now);
+                        final Timestamp now = Timestamp.valueOf(SqliteHelper.now());
+                        insertStatement.setTimestamp(5, now);
+                        insertStatement.setTimestamp(6, now);
+                        insertStatement.setTimestamp(7, now);
                         insertStatement.executeUpdate();
                     }
                     statement.setString(1, IdentifierNames.UserName.Admin.getIdentifier());
@@ -140,8 +144,8 @@ public class UserSqliteHelper implements UserSqlInterface {
             return null;
         return new UserInformation(result.getLong("id"), result.getString("username"),
                 result.getString("password"), group,
-                SqliteHelper.parseTime(result.getString("ct")), SqliteHelper.parseTime(result.getString("ut")),
-                SqliteHelper.parseTime(result.getString("modify_time")));
+                result.getTimestamp("ct").toLocalDateTime(), result.getTimestamp("ut").toLocalDateTime(),
+                result.getTimestamp("modify_time").toLocalDateTime());
     }
 
     public static @NotNull @UnmodifiableView List<@NotNull UserInformation> allUsers(final @NotNull ResultSet result) throws SQLException {
@@ -172,10 +176,10 @@ public class UserSqliteHelper implements UserSqlInterface {
                 statement.setString(1, username);
                 statement.setBytes(2, SqliteHelper.toOrdered(username));
                 statement.setString(3, encryptedPassword);
-                final String now = SqliteHelper.dumpTime(LocalDateTime.now());
-                statement.setString(4, now);
-                statement.setString(5, now);
-                statement.setString(6, now);
+                final Timestamp now = Timestamp.valueOf(SqliteHelper.now());
+                statement.setTimestamp(4, now);
+                statement.setTimestamp(5, now);
+                statement.setTimestamp(6, now);
                 success = statement.executeUpdate() == 1;
             }
             if (success)
@@ -207,7 +211,7 @@ public class UserSqliteHelper implements UserSqlInterface {
                 statement.setString(1, name);
                 statement.setBytes(2, SqliteHelper.toOrdered(name));
                 time = SqliteHelper.now();
-                statement.setString(3, SqliteHelper.dumpTime(time));
+                statement.setTimestamp(3, Timestamp.valueOf(time));
                 statement.setLong(4, id);
                 if (statement.executeUpdate() == 0)
                     time = null;
@@ -228,9 +232,8 @@ public class UserSqliteHelper implements UserSqlInterface {
                 """)) {
                 statement.setString(1, encryptedPassword);
                 time = SqliteHelper.now();
-                final String now = SqliteHelper.dumpTime(time);
-                statement.setString(2, now);
-                statement.setString(3, now);
+                statement.setTimestamp(2, Timestamp.valueOf(time));
+                statement.setTimestamp(3, Timestamp.valueOf(time));
                 statement.setLong(4, id);
                 if (statement.executeUpdate() == 0)
                     time = null;
@@ -251,9 +254,8 @@ public class UserSqliteHelper implements UserSqlInterface {
                 """)) {
                 statement.setLong(1, groupId);
                 time = SqliteHelper.now();
-                final String now = SqliteHelper.dumpTime(time);
-                statement.setString(2, now);
-                statement.setString(3, now);
+                statement.setTimestamp(2, Timestamp.valueOf(time));
+                statement.setTimestamp(3, Timestamp.valueOf(time));
                 statement.setLong(4, id);
                 if (statement.executeUpdate() == 0)
                     time = null;
@@ -400,6 +402,21 @@ public class UserSqliteHelper implements UserSqlInterface {
         return success;
     }
 
+    @Override
+    public long deleteUsersByGroup(final long groupId, final @Nullable String _connectionId) throws SQLException {
+        final long count;
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
+            try (final PreparedStatement statement = connection.prepareStatement("""
+    DELETE FROM users WHERE group_id == ? AND id != ?;
+                """)) {
+                statement.setLong(1, groupId);
+                statement.setLong(2, this.getAdminId());
+                count = statement.executeLargeUpdate();
+            }
+            connection.commit();
+        }
+        return count;
+    }
 
     /* --- Search --- */
 

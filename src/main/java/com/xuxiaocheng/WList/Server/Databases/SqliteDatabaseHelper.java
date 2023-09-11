@@ -174,7 +174,7 @@ public class SqliteDatabaseHelper implements SqlDatabaseInterface {
         }
 
         @Override
-        public synchronized @Nullable Object invoke(final @NotNull Object proxy, final @NotNull Method method, final Object @Nullable [] args) throws SQLException {
+        public @Nullable Object invoke(final @NotNull Object proxy, final @NotNull Method method, final Object @Nullable [] args) throws SQLException {
             if (this.referenceCounter < 0)
                 throw new IllegalReferenceCountException(this.referenceCounter);
             switch (method.getName()) {
@@ -226,7 +226,7 @@ public class SqliteDatabaseHelper implements SqlDatabaseInterface {
         }
 
         @Override
-        public synchronized @NotNull String toString() {
+        public @NotNull String toString() {
             return "ReferencedConnectionProxy{" +
                     "id='" + this.id + '\'' +
                     ", rawConnection=" + this.rawConnection +

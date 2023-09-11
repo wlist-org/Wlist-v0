@@ -82,6 +82,12 @@ public interface UserSqlInterface extends DatabaseInterface {
      */
     boolean deleteUser(final long id, final @Nullable String _connectionId) throws SQLException;
 
+    /**
+     * Delete users in group. (Do NOT delete user in {@link com.xuxiaocheng.WList.Commons.IdentifierNames.UserName})
+     * @return false: deleted count.
+     */
+    long deleteUsersByGroup(final long groupId, final @Nullable String _connectionId) throws SQLException;
+
 
     /* --- Search --- */
 

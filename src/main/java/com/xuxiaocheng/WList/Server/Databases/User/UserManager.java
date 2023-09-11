@@ -16,6 +16,7 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
@@ -98,5 +99,29 @@ public final class UserManager {
 
     public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> selectUsers(final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
         return UserManager.sqlInstance.getInstance().selectUsers(orders, position, limit, _connectionId);
+    }
+
+    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> selectUsersByGroup(final @NotNull Set<@NotNull Long> chooser, final boolean blacklist, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+        return UserManager.sqlInstance.getInstance().selectUsersByGroup(chooser, blacklist, orders, position, limit, _connectionId);
+    }
+
+    /* --- Delete --- */
+
+    public static boolean deleteUser(final long id, final @Nullable String _connectionId) throws SQLException {
+        return UserManager.sqlInstance.getInstance().deleteUser(id, _connectionId);
+    }
+
+    public static long deleteUsersByGroup(final long groupId, final @Nullable String _connectionId) throws SQLException {
+        return UserManager.sqlInstance.getInstance().deleteUsersByGroup(groupId, _connectionId);
+    }
+
+    /* --- Search --- */
+
+    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> searchUsersByRegex(final @NotNull String regex, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+        return UserManager.sqlInstance.getInstance().searchUsersByRegex(regex, orders, position, limit, _connectionId);
+    }
+
+    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> searchUsersByNames(final @NotNull Set<@NotNull String> names, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+        return UserManager.sqlInstance.getInstance().searchUsersByNames(names, position, limit, _connectionId);
     }
 }

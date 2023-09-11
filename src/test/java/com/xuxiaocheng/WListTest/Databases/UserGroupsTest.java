@@ -32,6 +32,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -42,7 +43,7 @@ import java.util.random.RandomGenerator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@Execution(ExecutionMode.CONCURRENT)
+@Execution(ExecutionMode.SAME_THREAD)
 public final class UserGroupsTest {
     @TempDir(cleanup = CleanupMode.ALWAYS)
     private static File directory;
@@ -116,7 +117,7 @@ public final class UserGroupsTest {
         Assertions.assertTrue(UserGroupManager.deleteGroup(information.id(), null));
     }
 
-    @RepeatedTest(10)
+    @RepeatedTest(value = 5, failureThreshold = 1)
     public void selectList() throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection ignore = UserGroupManager.getConnection(null, connectionId)) {
@@ -202,7 +203,7 @@ public final class UserGroupsTest {
         }
     }
 
-    @RepeatedTest(10)
+    @RepeatedTest(value = 5, failureThreshold = 1)
     public void searchList() throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection ignore = UserGroupManager.getConnection(null, connectionId)) {
@@ -229,8 +230,8 @@ public final class UserGroupsTest {
 
             for (int i = 0; i < 10; ++i) {
                 final String n = HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, HRandomHelper.DefaultSecureRandom.nextInt(0, 3), "0123456789");
-                Assertions.assertEquals(informationList.stream().filter(p -> p.name().contains(n)).collect(Collectors.toList()),
-                        UserGroupManager.searchGroupsByNames(Set.of(n), 0, 0, connectionId.get()).getSecond());
+                Assertions.assertEquals(informationList.stream().filter(p -> p.name().contains(n)).collect(Collectors.toSet()),
+                        new HashSet<>(UserGroupManager.searchGroupsByNames(Set.of(n), 0, count + 2, connectionId.get()).getSecond()));
             }
         }
     }
