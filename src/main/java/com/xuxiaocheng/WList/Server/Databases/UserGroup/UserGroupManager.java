@@ -5,8 +5,8 @@ import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation;
-import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
+import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -15,10 +15,9 @@ import org.jetbrains.annotations.Unmodifiable;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
-import java.util.EnumMap;
-import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -87,7 +86,7 @@ public final class UserGroupManager {
         return UserGroupManager.sqlInstance.getInstance().updateGroupName(id, name, _connectionId);
     }
 
-    public static @Nullable LocalDateTime updateGroupPermission(final long id, final @NotNull EnumSet<@NotNull UserPermission> permissions, final @Nullable String _connectionId) throws SQLException {
+    public static @Nullable LocalDateTime updateGroupPermission(final long id, final @NotNull Set<@NotNull UserPermission> permissions, final @Nullable String _connectionId) throws SQLException {
         return UserGroupManager.sqlInstance.getInstance().updateGroupPermission(id, permissions, _connectionId);
     }
 
@@ -101,7 +100,7 @@ public final class UserGroupManager {
         return UserGroupManager.sqlInstance.getInstance().selectGroups(orders, position, limit, _connectionId);
     }
 
-    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserGroupInformation>> selectGroupsByPermissions(final @NotNull EnumMap<@NotNull UserPermission, @Nullable Boolean> permissions, final @NotNull LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserGroupInformation>> selectGroupsByPermissions(final @NotNull Map<@NotNull UserPermission, @Nullable Boolean> permissions, final @NotNull LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
         return UserGroupManager.sqlInstance.getInstance().selectGroupsByPermissions(permissions, orders, position, limit, _connectionId);
     }
 

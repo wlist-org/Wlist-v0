@@ -44,7 +44,7 @@ public enum UserPermission {
     public static final @NotNull Set<@NotNull UserPermission> Empty = Set.of();//Collections.unmodifiableSet(EnumSet.noneOf(Permission.class));
     public static final @NotNull Set<@NotNull UserPermission> Default = Collections.unmodifiableSet(EnumSet.of(UserPermission.FilesList));
 
-    public static @NotNull String dump(@SuppressWarnings("TypeMayBeWeakened") final @NotNull EnumSet<@NotNull UserPermission> permissions) {
+    public static @NotNull String dump(@SuppressWarnings("TypeMayBeWeakened") final @NotNull Set<@NotNull UserPermission> permissions) {
         long p = 0;
         for (final UserPermission permission: permissions)
             p |= 1L << permission.ordinal();

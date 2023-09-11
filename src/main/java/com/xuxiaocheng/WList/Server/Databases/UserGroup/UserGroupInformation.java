@@ -9,9 +9,9 @@ import org.jetbrains.annotations.NotNull;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.EnumSet;
+import java.util.Set;
 
-public record UserGroupInformation(long id, @NotNull String name, @NotNull EnumSet<@NotNull UserPermission> permissions,
+public record UserGroupInformation(long id, @NotNull String name, @NotNull Set<@NotNull UserPermission> permissions,
                                    @NotNull LocalDateTime createTime, @NotNull LocalDateTime updateTime) {
     /**
      * @see com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation

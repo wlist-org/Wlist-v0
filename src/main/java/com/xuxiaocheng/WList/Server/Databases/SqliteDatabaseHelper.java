@@ -16,6 +16,7 @@ import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.sqlite.Function;
 import org.sqlite.JDBC;
 import org.sqlite.SQLiteConfig;
 import org.sqlite.SQLiteDataSource;
@@ -95,6 +96,18 @@ public class SqliteDatabaseHelper implements SqlDatabaseInterface {
             final Connection connection = this.source.getConnection();
             if (connection == null)
                 throw new SQLException("Failed to get connection with sqlite database source." + ParametersMap.create().add("source", this.source));
+            // REGEXP fixer
+            Function.create(connection, "regexp", new Function() {
+                @Override
+                protected void xFunc() throws SQLException {
+                    final int args = this.args();
+                    if (args != 2)
+                        throw new SQLException("REGEXP requires two arguments.");
+                    final String pattern = this.value_text(0);
+                    final String value = this.value_text(1);
+                    this.result(value.matches(pattern) ? 1 : 0);
+                }
+            });
             return new DefaultPooledObject<>(connection);
         }
 

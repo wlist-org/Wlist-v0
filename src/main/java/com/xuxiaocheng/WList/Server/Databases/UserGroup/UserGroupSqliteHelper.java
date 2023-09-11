@@ -4,8 +4,8 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
-import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
+import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.DatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.SqliteHelper;
 import org.jetbrains.annotations.NotNull;
@@ -21,7 +21,6 @@ import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -61,7 +60,7 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
     protected static @NotNull String permissionsUpdateValue(final @NotNull Collection<@NotNull UserPermission> permissions) {
         final StringBuilder builder = new StringBuilder();
         for (final UserPermission permission: UserPermission.All)
-            builder.append(", permission_").append(permission.name()).append(" = ").append(permissions.contains(permission) ? 1 : 0);
+            builder.append(", permissions_").append(permission.name()).append(" = ").append(permissions.contains(permission) ? 1 : 0);
         return builder.delete(0, 2).toString();
     }
 
@@ -176,7 +175,7 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
     public static @Nullable UserGroupInformation nextGroup(final @NotNull ResultSet result) throws SQLException {
         if (!result.next())
             return null;
-        final EnumSet<UserPermission> permissions = EnumSet.noneOf(UserPermission.class);
+        final Set<UserPermission> permissions = EnumSet.noneOf(UserPermission.class);
         for (final UserPermission permission: UserPermission.All)
             if (result.getBoolean("permissions_" + permission.name()))
                 permissions.add(permission);
@@ -256,7 +255,7 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
     }
 
     @Override
-    public @Nullable LocalDateTime updateGroupPermission(final long id, final @NotNull EnumSet<@NotNull UserPermission> permissions, final @Nullable String _connectionId) throws SQLException {
+    public @Nullable LocalDateTime updateGroupPermission(final long id, final @NotNull Set<@NotNull UserPermission> permissions, final @Nullable String _connectionId) throws SQLException {
         if (id == this.getAdminId())
             return null;
         LocalDateTime time;
@@ -291,7 +290,7 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
                 case Name -> "name_order";
                 case CreateTime -> "create_time";
                 case UpdateTime -> "update_time";
-                default -> "permissions_" + order.getKey().name().substring("Permission_".length());
+                default -> "permissions" + order.getKey().name().substring("Permission_".length());
             }).append(' ').append(switch (order.getValue()) {
                 case ASCEND -> "ASC";
                 case DESCEND -> "DESC";
@@ -300,7 +299,7 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
         return builder.deleteCharAt(builder.length() - 1).toString();
     }
 
-    protected static @NotNull String wherePermissions(final @NotNull EnumMap<@NotNull UserPermission, @Nullable Boolean> chooser) {
+    protected static @NotNull String wherePermissions(final @NotNull Map<@NotNull UserPermission, @Nullable Boolean> chooser) {
         if (chooser.isEmpty())
             return "";
         final StringBuilder builder = new StringBuilder("WHERE ");
@@ -360,7 +359,7 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
     }
 
     @Override
-    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserGroupInformation>> selectGroupsByPermissions(final @NotNull EnumMap<@NotNull UserPermission, @Nullable Boolean> chooser, final @NotNull LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserGroupInformation>> selectGroupsByPermissions(final @NotNull Map<@NotNull UserPermission, @Nullable Boolean> chooser, final @NotNull LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
         final long count;
         final List<UserGroupInformation> groups;
         try (final Connection connection = this.getConnection(_connectionId, null)) {

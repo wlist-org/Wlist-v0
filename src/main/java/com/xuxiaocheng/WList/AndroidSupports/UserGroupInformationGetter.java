@@ -4,7 +4,7 @@ import com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation;
 import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.EnumSet;
+import java.util.Set;
 
 public final class UserGroupInformationGetter {
     private UserGroupInformationGetter() {
@@ -19,7 +19,7 @@ public final class UserGroupInformationGetter {
         return information.name();
     }
 
-    public static @NotNull EnumSet<UserPermission> permissions(final @NotNull VisibleUserGroupInformation information) {
+    public static @NotNull Set<UserPermission> permissions(final @NotNull VisibleUserGroupInformation information) {
         return information.permissions();
     }
 }

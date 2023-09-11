@@ -2,8 +2,8 @@ package com.xuxiaocheng.WList.Server.Databases.UserGroup;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation;
-import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
+import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.DatabaseInterface;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -12,10 +12,9 @@ import org.jetbrains.annotations.Unmodifiable;
 
 import java.sql.SQLException;
 import java.time.LocalDateTime;
-import java.util.EnumMap;
-import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -49,7 +48,7 @@ public interface UserGroupSqlInterface extends DatabaseInterface {
      * Update group permissions. (Do NOT update admin groupName {@link com.xuxiaocheng.WList.Commons.IdentifierNames.UserGroupName#Admin})
      * @return null: no such id. !null: operate time.
      */
-    @Nullable LocalDateTime updateGroupPermission(final long id, final @NotNull EnumSet<@NotNull UserPermission> permissions, final @Nullable String _connectionId) throws SQLException;
+    @Nullable LocalDateTime updateGroupPermission(final long id, final @NotNull Set<@NotNull UserPermission> permissions, final @Nullable String _connectionId) throws SQLException;
 
 
     /* --- Select --- */
@@ -67,8 +66,9 @@ public interface UserGroupSqlInterface extends DatabaseInterface {
 
     /**
      * Select groups which has/hasn't the permissions.
+     * @param chooser permission1 == false AND permission2 == true ...
      */
-    Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserGroupInformation>> selectGroupsByPermissions(final @NotNull EnumMap<@NotNull UserPermission, @Nullable Boolean> chooser, final @NotNull LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException;
+    Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserGroupInformation>> selectGroupsByPermissions(final @NotNull Map<@NotNull UserPermission, @Nullable Boolean> chooser, final @NotNull LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException;
 
 
     /* --- Delete --- */

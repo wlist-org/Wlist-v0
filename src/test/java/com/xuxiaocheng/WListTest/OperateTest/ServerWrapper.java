@@ -1,22 +1,22 @@
 package com.xuxiaocheng.WListTest.OperateTest;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
-import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
-import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
+import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
-import com.xuxiaocheng.WList.Server.Storage.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Server.DriverManager;
-import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Handlers.Helpers.BackgroundTaskManager;
+import com.xuxiaocheng.WList.Server.ServerConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Server.WListServer;
+import com.xuxiaocheng.WListTest.StaticLoader;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -34,18 +34,11 @@ import java.util.Objects;
 
 @Execution(ExecutionMode.CONCURRENT)
 public class ServerWrapper {
-    static {
-        HUncaughtExceptionHelper.setUncaughtExceptionListener(HUncaughtExceptionHelper.ListenerKey, (t, e) ->
-                HLog.DefaultLogger.log(HLogLevel.FAULT, "Uncaught exception listened by WListTester. thread: ", t.getName(), e));
-        System.setProperty("io.netty.leakDetectionLevel", "ADVANCED");
-        HLog.setLogCaller(true);
-        HLog.LoggerCreateCore.reinitialize(n -> HLog.createInstance(n, HLogLevel.DEBUG.getLevel(), true));
-    }
-
     public static final @NotNull File runtimeDirectory = new File("./run");
     public static final @NotNull HInitializer<SocketAddress> address = new HInitializer<>("address");
     @BeforeAll
     public static void initialize() throws IOException, SQLException, InterruptedException {
+        StaticLoader.load();
         ServerConfiguration.Location.initialize(new File(ServerWrapper.runtimeDirectory, "server.yaml"));
         ServerConfiguration.parseFromFile();
         final File file = new File(ServerWrapper.runtimeDirectory, "data.db");

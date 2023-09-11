@@ -2,7 +2,6 @@ package com.xuxiaocheng.WListTest;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
-import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
@@ -23,22 +22,20 @@ import org.junit.jupiter.api.Test;
 import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
 
 public class TempTest {
     private static final boolean initializeServer = true;
     private static final @NotNull SupplierE<@Nullable Object> _main = () -> {
-        return UserGroupManager.searchGroupsByNames(Set.of("t"), 0, 5, null);
+        return UserGroupManager.searchGroupsByRegex(".*", new LinkedHashMap<>(), 0, 10, null);
 //        return null;
     };
 
     private static final @NotNull File runtimeDirectory = new File("./run");
     @BeforeAll
     public static void initialize() throws IOException, SQLException {
-        HUncaughtExceptionHelper.setUncaughtExceptionListener(HUncaughtExceptionHelper.ListenerKey, (t, e) ->
-                HLog.DefaultLogger.log(HLogLevel.FAULT, "Uncaught exception listened by WListTester. thread: ", t.getName(), e));
-        System.setProperty("io.netty.leakDetectionLevel", "ADVANCED");
+        StaticLoader.load();
         if (TempTest.initializeServer) {
             ServerConfiguration.Location.initialize(new File(TempTest.runtimeDirectory, "server.yaml"));
             ServerConfiguration.parseFromFile();
@@ -47,7 +44,7 @@ public class TempTest {
             ConstantManager.quicklyInitialize(database, "initialize");
             UserGroupManager.quicklyInitialize(database, "initialize");
             UserManager.quicklyInitialize(database, "initialize");
-            DriverManager.initialize(new File("configs"));
+            DriverManager.initialize(new File(TempTest.runtimeDirectory, "configs"));
         }
     }
 
