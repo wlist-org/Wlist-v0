@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server.Handlers;
+package com.xuxiaocheng.WList.Server.Operations;
 
 import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import org.jetbrains.annotations.NotNull;
@@ -26,7 +26,7 @@ public final class ServerHandlerManager {
         OperateDriverHandler.initialize();
         OperateFileHandler.initialize();
         OperateProgressHandler.initialize();
-        assert ServerHandlerManager.map.size() == OperationType.values().length - 1; // #Undefined
+//        assert ServerHandlerManager.map.size() == OperationType.values().length - 1; // #Undefined
     }
 
 

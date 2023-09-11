@@ -42,7 +42,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@Execution(ExecutionMode.CONCURRENT)
+@Execution(ExecutionMode.SAME_THREAD)
 public final class UsersTest {
     @TempDir(cleanup = CleanupMode.ALWAYS)
     private static File directory;
@@ -61,7 +61,7 @@ public final class UsersTest {
     public static void uninitialize() throws SQLException {
         UserManager.quicklyUninitialize(null);
         UserGroupManager.quicklyUninitialize(null);
-        ConstantManager.quicklyUninitializeReserveTable();
+        Assertions.assertTrue(ConstantManager.quicklyUninitializeReserveTable());
         final File file = new File(UsersTest.directory, "data.db");
         SqlDatabaseManager.quicklyClose(file);
     }
@@ -128,9 +128,9 @@ public final class UsersTest {
         Assertions.assertNull(UserManager.updateUserGroup(UserManager.getAdminId(), UserGroupManager.getAdminId(), null));
         Assertions.assertNotNull(UserManager.updateUserGroup(Objects.requireNonNull(UserManager.insertUser("t", "", null)).id(),
                 UserGroupManager.getAdminId(), null));
+        Assertions.assertEquals(UserManager.selectUser(UserManager.getAdminId(), null), UserManager.selectUserByName(IdentifierNames.UserName.Admin.getIdentifier(), null));
     }
 
-    @Execution(ExecutionMode.SAME_THREAD)
     @RepeatedTest(value = 5, failureThreshold = 1)
     public void selectList() throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
@@ -207,7 +207,6 @@ public final class UsersTest {
         }
     }
 
-    @Execution(ExecutionMode.SAME_THREAD)
     @RepeatedTest(value = 5, failureThreshold = 1)
     public void searchList() throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();

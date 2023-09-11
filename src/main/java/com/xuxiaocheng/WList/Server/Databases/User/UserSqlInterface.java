@@ -64,6 +64,12 @@ public interface UserSqlInterface extends DatabaseInterface {
     @Nullable UserInformation selectUser(final long id, final @Nullable String _connectionId) throws SQLException;
 
     /**
+     * Select user by name. (For login.)
+     * @return null: not found. !null: found.
+     */
+    @Nullable UserInformation selectUserByName(final @NotNull String username, final @Nullable String _connectionId) throws SQLException;
+
+    /**
      * Select all users.
      */
     Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> selectUsers(final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException;

@@ -1,7 +1,6 @@
 package com.xuxiaocheng.WList.Server;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
-import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -10,9 +9,10 @@ import com.xuxiaocheng.HeadLibs.Ranges.IntRange;
 import com.xuxiaocheng.Rust.NetworkTransmission;
 import com.xuxiaocheng.WList.Commons.Codecs.MessageServerCiphers;
 import com.xuxiaocheng.WList.Commons.Operations.OperationType;
+import com.xuxiaocheng.WList.Commons.Operations.ResponseState;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
-import com.xuxiaocheng.WList.Server.Handlers.ServerHandler;
-import com.xuxiaocheng.WList.Server.Handlers.ServerHandlerManager;
+import com.xuxiaocheng.WList.Server.Operations.ServerHandler;
+import com.xuxiaocheng.WList.Server.Operations.ServerHandlerManager;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -183,26 +183,24 @@ public class WListServer {
                 if (type == OperationType.Undefined) {
                     ServerHandler.logOperation(channel, OperationType.Undefined, null, () -> ParametersMap.create().add("type", rawType));
                     ServerChannelHandler.write(channel, MessageProto.Undefined);
-                    return;
-                }
-                if (type != OperationType.SetBroadcastMode && BroadcastManager.isBroadcast(channel)) {
-                    channel.close();
-                    return;
-                }
-                core = ServerHandlerManager.getHandler(type).extra(channel, msg);
+                    core = null;
+                } else
+                    core = ServerHandlerManager.getHandler(type).extra(channel, msg);
                 if (msg.readableBytes() != 0)
                     WListServer.logger.log(HLogLevel.MISTAKE, "Unexpected discarded bytes: ", channel.remoteAddress(), ParametersMap.create().add("len", msg.readableBytes()));
-                if (core != null)
-                    WListServer.ServerExecutors.submit(HExceptionWrapper.wrapRunnable(core, e -> {
-                    if (e != null)
-                        if (e instanceof UnsupportedOperationException exception)
-                            ServerChannelHandler.write(channel, MessageProto.Unsupported.apply(exception));
-                        else
-                            ctx.fireExceptionCaught(e);
-                }, true));
             } catch (final IOException exception) { // Read from msg.
                 ServerChannelHandler.write(channel, MessageProto.FormatError);
                 channel.close();
+                return;
+            }
+            if (core == null)
+                return;
+            try {
+                core.run();
+            } catch (final UnsupportedOperationException exception) {
+                ServerChannelHandler.write(channel, MessageProto.composeMessage(ResponseState.Unsupported, exception.getMessage()));
+            } catch (final Exception exception) {
+                ctx.fireExceptionCaught(exception);
             }
         }
 

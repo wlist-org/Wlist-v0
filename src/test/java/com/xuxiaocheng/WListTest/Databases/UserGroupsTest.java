@@ -44,7 +44,7 @@ import java.util.random.RandomGenerator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@Execution(ExecutionMode.CONCURRENT)
+@Execution(ExecutionMode.SAME_THREAD)
 public final class UserGroupsTest {
     @TempDir(cleanup = CleanupMode.ALWAYS)
     private static File directory;
@@ -120,7 +120,6 @@ public final class UserGroupsTest {
         Assertions.assertNotNull(UserGroupManager.updateGroupPermission(UserGroupManager.getDefaultId(), UserPermission.Empty, null));
     }
 
-    @Execution(ExecutionMode.SAME_THREAD)
     @RepeatedTest(value = 5, failureThreshold = 1)
     public void selectList() throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
@@ -207,7 +206,6 @@ public final class UserGroupsTest {
         }
     }
 
-    @Execution(ExecutionMode.SAME_THREAD)
     @RepeatedTest(value = 5, failureThreshold = 1)
     public void searchList() throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();

@@ -1,6 +1,6 @@
 package com.xuxiaocheng.WList.AndroidSupports;
 
-import com.xuxiaocheng.WList.Client.GlobalConfiguration;
+import com.xuxiaocheng.WList.Client.ClientConfiguration;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -12,39 +12,39 @@ public final class GlobalConfigurationSupporter {
         super();
     }
 
-    public static @NotNull String host(final @NotNull GlobalConfiguration configuration) {
+    public static @NotNull String host(final @NotNull ClientConfiguration configuration) {
         return configuration.host();
     }
 
-    public static int port(final @NotNull GlobalConfiguration configuration) {
+    public static int port(final @NotNull ClientConfiguration configuration) {
         return configuration.port();
     }
 
-    public static int limit(final @NotNull GlobalConfiguration configuration) {
+    public static int limit(final @NotNull ClientConfiguration configuration) {
         return configuration.limit();
     }
 
-    public static int threadCount(final @NotNull GlobalConfiguration configuration) {
+    public static int threadCount(final @NotNull ClientConfiguration configuration) {
         return configuration.threadCount();
     }
 
-    public static @NotNull GlobalConfiguration create(final @NotNull String host, final int port, final int limit, final int threadCount) {
-        return new GlobalConfiguration(host, port, limit, threadCount);
+    public static @NotNull ClientConfiguration create(final @NotNull String host, final int port, final int limit, final int threadCount) {
+        return new ClientConfiguration(host, port, limit, threadCount);
     }
 
     public static void initialize(final @Nullable File path) throws IOException {
-        GlobalConfiguration.initialize(path);
+        ClientConfiguration.initialize(path);
     }
 
-    public static @NotNull GlobalConfiguration getInstance() {
-        return GlobalConfiguration.getInstance();
+    public static @NotNull ClientConfiguration getInstance() {
+        return ClientConfiguration.getInstance();
     }
 
-    public static void reInitialize(final @NotNull GlobalConfiguration configuration) throws IOException {
-        GlobalConfiguration.reInitialize(configuration);
+    public static void reInitialize(final @NotNull ClientConfiguration configuration) throws IOException {
+        ClientConfiguration.reInitialize(configuration);
     }
 
     public static void setPath(final @Nullable File path) throws IOException {
-        GlobalConfiguration.setPath(path);
+        ClientConfiguration.setPath(path);
     }
 }

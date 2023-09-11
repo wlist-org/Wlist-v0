@@ -7,7 +7,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.util.function.Function;
 
 public record MessageProto(@NotNull ResponseState state, @Nullable Appender appender) {
     @FunctionalInterface
@@ -24,7 +23,6 @@ public record MessageProto(@NotNull ResponseState state, @Nullable Appender appe
 
     public static final @NotNull MessageProto Success = MessageProto.composeMessage(ResponseState.Success, null);
     public static final @NotNull MessageProto WrongParameters = MessageProto.composeMessage(ResponseState.DataError, "Parameters");
-    public static final @NotNull Function<@NotNull UnsupportedOperationException, @NotNull MessageProto> Unsupported = e -> MessageProto.composeMessage(ResponseState.Unsupported, e.getMessage());
 
     public static final @NotNull MessageProto Undefined = MessageProto.composeMessage(ResponseState.Unsupported, "Undefined operation!");
     public static final @NotNull MessageProto ServerError = MessageProto.composeMessage(ResponseState.ServerError, null);

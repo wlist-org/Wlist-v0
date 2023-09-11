@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Client.OperationHelpers;
+package com.xuxiaocheng.WList.Client.Operations;
 
 public final class OperateUsersHelper {
     private OperateUsersHelper() {

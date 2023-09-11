@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server.Handlers.Helpers;
+package com.xuxiaocheng.WList.Server.Operations.Helpers;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTCreator;
@@ -52,7 +52,7 @@ public final class UserTokenHelper {
             return null;
         }
         final UserInformation user = UserManager.selectUser(id, null);
-        if (user == null || !user.createTime().equals(modifyTime))
+        if (user == null || !user.modifyTime().equals(modifyTime))
             return null;
         return user;
     }

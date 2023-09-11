@@ -97,6 +97,10 @@ public final class UserManager {
         return UserManager.sqlInstance.getInstance().selectUser(id, _connectionId);
     }
 
+    public static @Nullable UserInformation selectUserByName(final @NotNull String username, final @Nullable String _connectionId) throws SQLException {
+        return UserManager.sqlInstance.getInstance().selectUserByName(username, _connectionId);
+    }
+
     public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> selectUsers(final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
         return UserManager.sqlInstance.getInstance().selectUsers(orders, position, limit, _connectionId);
     }

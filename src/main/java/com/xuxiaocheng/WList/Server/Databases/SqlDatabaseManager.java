@@ -5,11 +5,14 @@ import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.WList;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.UnmodifiableView;
 
 import java.io.File;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -48,6 +51,10 @@ public final class SqlDatabaseManager {
             return false;
         instance.close();
         return true;
+    }
+
+    public static @NotNull @UnmodifiableView Set<@NotNull File> getOpenedDatabases() {
+        return Collections.unmodifiableSet(SqlDatabaseManager.databases.keySet());
     }
 
     public static @NotNull File getDriverDatabasePath(final @NotNull String driverName) {

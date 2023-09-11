@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Client.OperationHelpers;
+package com.xuxiaocheng.WList.Client.Operations;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;

@@ -223,8 +223,6 @@ public class UserSqliteHelper implements UserSqlInterface {
 
     @Override
     public @Nullable LocalDateTime updateUserPassword(final long id, final @NotNull String encryptedPassword, final @Nullable String _connectionId) throws SQLException {
-        if (id == this.getAdminId())
-            return null;
         LocalDateTime time;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             try (final PreparedStatement statement = connection.prepareStatement("""
@@ -310,6 +308,22 @@ public class UserSqliteHelper implements UserSqlInterface {
     WITH temp AS (SELECT %s FROM users WHERE id == ? LIMIT 1) SELECT %s FROM temp INNER JOIN groups ON temp.group_id = groups.group_id LIMIT 1;
                 """, UserSqliteHelper.UserInfoExtra, UserSqliteHelper.UserAndGroupInfoExtra))) {
                 statement.setLong(1, id);
+                try (final ResultSet result = statement.executeQuery()) {
+                    information = UserSqliteHelper.nextUser(result);
+                }
+            }
+        }
+        return information;
+    }
+
+    @Override
+    public @Nullable UserInformation selectUserByName(final @NotNull String username, final @Nullable String _connectionId) throws SQLException {
+        final UserInformation information;
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
+            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+    WITH temp AS (SELECT %s FROM users WHERE username == ? LIMIT 1) SELECT %s FROM temp INNER JOIN groups ON temp.group_id = groups.group_id LIMIT 1;
+                """, UserSqliteHelper.UserInfoExtra, UserSqliteHelper.UserAndGroupInfoExtra))) {
+                statement.setString(1, username);
                 try (final ResultSet result = statement.executeQuery()) {
                     information = UserSqliteHelper.nextUser(result);
                 }

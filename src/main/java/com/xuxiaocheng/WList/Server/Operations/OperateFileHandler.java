@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server.Handlers;
+package com.xuxiaocheng.WList.Server.Operations;
 
 import com.xuxiaocheng.WList.Commons.Operations.ResponseState;
 import com.xuxiaocheng.WList.Server.MessageProto;

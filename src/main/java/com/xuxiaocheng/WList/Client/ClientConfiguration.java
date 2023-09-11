@@ -17,14 +17,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.math.BigInteger;
-import java.nio.file.AccessDeniedException;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.Map;
 
-public record GlobalConfiguration(String host, int port, int limit, int threadCount) {
-    private static final @NotNull HInitializer<Pair<@NotNull GlobalConfiguration, @Nullable File>> instance = new HInitializer<>("ClientGlobalConfiguration");
+public record ClientConfiguration(String host, int port, int limit, int threadCount) {
+    private static final @NotNull HInitializer<Pair<@NotNull ClientConfiguration, @Nullable File>> instance = new HInitializer<>("ClientGlobalConfiguration");
 
     public static synchronized void initialize(final @Nullable File file) throws IOException {
         final Map<String, Object> config;
@@ -40,7 +39,7 @@ public record GlobalConfiguration(String host, int port, int limit, int threadCo
         } else
             config = Map.of();
         final Collection<Pair.ImmutablePair<String, String>> errors = new LinkedList<>();
-        final GlobalConfiguration configuration = new GlobalConfiguration(
+        final ClientConfiguration configuration = new ClientConfiguration(
             YamlHelper.getConfig(config, "host", "localhost",
                     o -> YamlHelper.transferString(o, errors, "host")),
             YamlHelper.getConfig(config, "port", 5212,
@@ -51,17 +50,17 @@ public record GlobalConfiguration(String host, int port, int limit, int threadCo
                     o -> YamlHelper.transferIntegerFromStr(o, errors, "thread_count", BigInteger.ONE, BigInteger.valueOf(Integer.MAX_VALUE))).intValue()
         );
         YamlHelper.throwErrors(errors);
-        GlobalConfiguration.instance.initialize(Pair.ImmutablePair.makeImmutablePair(configuration, file));
-        GlobalConfiguration.dumpToFile();
+        ClientConfiguration.instance.initialize(Pair.ImmutablePair.makeImmutablePair(configuration, file));
+        ClientConfiguration.dumpToFile();
     }
 
-    public static synchronized @NotNull GlobalConfiguration getInstance() {
-        return GlobalConfiguration.instance.getInstance().getFirst();
+    public static synchronized @NotNull ClientConfiguration getInstance() {
+        return ClientConfiguration.instance.getInstance().getFirst();
     }
 
     private static synchronized void dumpToFile() throws IOException {
-        final GlobalConfiguration configuration = GlobalConfiguration.instance.getInstance().getFirst();
-        final File file = GlobalConfiguration.instance.getInstance().getSecond();
+        final ClientConfiguration configuration = ClientConfiguration.instance.getInstance().getFirst();
+        final File file = ClientConfiguration.instance.getInstance().getSecond();
         if (file == null)
             return;
         final Map<String, Object> config = new LinkedHashMap<>();
@@ -74,9 +73,9 @@ public record GlobalConfiguration(String host, int port, int limit, int threadCo
         }
     }
 
-    public static synchronized void reInitialize(final @NotNull GlobalConfiguration configuration) throws IOException {
-        GlobalConfiguration.instance.getInstance().setFirst(configuration);
-        GlobalConfiguration.dumpToFile();
+    public static synchronized void reInitialize(final @NotNull ClientConfiguration configuration) throws IOException {
+        ClientConfiguration.instance.getInstance().setFirst(configuration);
+        ClientConfiguration.dumpToFile();
     }
 
     public static synchronized void setPath(final @Nullable File file) throws IOException {
@@ -86,7 +85,7 @@ public record GlobalConfiguration(String host, int port, int limit, int threadCo
             } catch (final IOException exception) {
                 throw new IOException("Failed to create global configuration file." + ParametersMap.create().add("file", file), exception);
             }
-        GlobalConfiguration.instance.getInstance().setSecond(file);
-        GlobalConfiguration.dumpToFile();
+        ClientConfiguration.instance.getInstance().setSecond(file);
+        ClientConfiguration.dumpToFile();
     }
 }

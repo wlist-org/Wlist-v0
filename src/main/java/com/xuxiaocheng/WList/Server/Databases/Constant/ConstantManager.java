@@ -55,7 +55,10 @@ public final class ConstantManager {
         return ConstantManager.sqlInstance.getInstance().getConnection(_connectionId, connectionId);
     }
 
-    // Each constant should call this method only once and then save the value in static fields.
+    /**
+     * Each constant should call this method only once and then save the value in static fields.
+     * @param _connectionId To prevent 'database is locked' error, please use 'initialize' when calling.
+     */
     public static @NotNull String get(final @NotNull String key, final @NotNull Supplier<@NotNull String> defaultValue, final @Nullable String _connectionId) throws SQLException {
         return ConstantManager.sqlInstance.getInstance().get(key, defaultValue, _connectionId);
     }
