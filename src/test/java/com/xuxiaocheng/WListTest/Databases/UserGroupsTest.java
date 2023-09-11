@@ -195,13 +195,13 @@ public final class UserGroupsTest {
                     if (random.nextBoolean())
                         chooser.put(permission, random.nextBoolean());
                 Assertions.assertEquals(informationList.stream().filter(p -> {
-                            final RandomGenerator r = new Random(seed);
-                            for (final UserPermission permission: UserPermission.All)
-                                if (r.nextBoolean())
-                                    if (r.nextBoolean() != p.permissions().contains(permission))
-                                        return false;
-                            return true;
-                        }).collect(Collectors.toList()),
+                    final RandomGenerator r = new Random(seed);
+                    for (final UserPermission permission: UserPermission.All)
+                        if (r.nextBoolean())
+                            if (r.nextBoolean() != p.permissions().contains(permission))
+                                return false;
+                    return true;
+                }).collect(Collectors.toList()),
                         UserGroupManager.selectGroupsByPermissions(chooser, orders, 0, count + 2, connectionId.get()).getSecond());
             }
         }
@@ -223,7 +223,7 @@ public final class UserGroupsTest {
                 for (final UserPermission permission: UserPermission.All)
                     if (HRandomHelper.DefaultSecureRandom.nextBoolean())
                         permissions.add(permission);
-                UserGroupManager.updateGroupPermission(information.id(), permissions, connectionId.get());
+                Assertions.assertNotNull(UserGroupManager.updateGroupPermission(information.id(), permissions, connectionId.get()));
                 informationList.add(UserGroupManager.selectGroup(information.id(), connectionId.get()));
             }
             final LinkedHashMap<VisibleUserGroupInformation.Order, Options.OrderDirection> orders = new LinkedHashMap<>();

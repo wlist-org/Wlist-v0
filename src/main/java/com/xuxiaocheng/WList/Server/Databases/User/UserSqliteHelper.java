@@ -295,11 +295,11 @@ public class UserSqliteHelper implements UserSqlInterface {
         if (blacklist) {
             for (final Long id: chooser)
                 builder.append("group_id != ").append(id.longValue()).append(" AND ");
-            return builder.delete(builder.length() - 5, builder.length()).toString();
+            return builder.replace(builder.length() - 5, builder.length(), ")").toString();
         }
         for (final Long id: chooser)
             builder.append("group_id == ").append(id.longValue()).append(" OR ");
-        return builder.delete(builder.length() - 4, builder.length()).toString();
+        return builder.replace(builder.length() - 4, builder.length(), ")").toString();
     }
 
     @Override
@@ -350,7 +350,7 @@ public class UserSqliteHelper implements UserSqlInterface {
     }
 
     @Override
-    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> selectUsersByGroup(final @NotNull Set<@NotNull Long> chooser, final boolean blacklist, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> selectUsersByGroups(final @NotNull Set<@NotNull Long> chooser, final boolean blacklist, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
         if (chooser.isEmpty())
             return blacklist ? this.selectUsers(orders, position, limit, _connectionId) : Pair.ImmutablePair.makeImmutablePair(0L, List.of());
         final long count;

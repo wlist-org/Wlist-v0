@@ -101,8 +101,8 @@ public final class UserManager {
         return UserManager.sqlInstance.getInstance().selectUsers(orders, position, limit, _connectionId);
     }
 
-    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> selectUsersByGroup(final @NotNull Set<@NotNull Long> chooser, final boolean blacklist, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
-        return UserManager.sqlInstance.getInstance().selectUsersByGroup(chooser, blacklist, orders, position, limit, _connectionId);
+    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> selectUsersByGroups(final @NotNull Set<@NotNull Long> chooser, final boolean blacklist, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+        return UserManager.sqlInstance.getInstance().selectUsersByGroups(chooser, blacklist, orders, position, limit, _connectionId);
     }
 
     /* --- Delete --- */

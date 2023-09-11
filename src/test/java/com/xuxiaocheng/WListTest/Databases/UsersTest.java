@@ -1,6 +1,9 @@
 package com.xuxiaocheng.WListTest.Databases;
 
+import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleUserInformation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
+import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
@@ -14,6 +17,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.CleanupMode;
 import org.junit.jupiter.api.io.TempDir;
@@ -24,9 +28,18 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.File;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Execution(ExecutionMode.CONCURRENT)
@@ -59,7 +72,7 @@ public final class UsersTest {
                 Objects.requireNonNull(UserManager.selectUser(UserManager.getAdminId(), null)).encryptedPassword());
         return Stream.of( null,
                 Arguments.of(IdentifierNames.UserName.Admin.getIdentifier(), false, 0, false, null, false),
-                Arguments.of("test-admin", true, UserGroupManager.getAdminId(), true, "test", true),
+                Arguments.of("test-admin", true, UserGroupManager.getAdminId(), true, "test1", true),
                 Arguments.of("test", true, UserGroupManager.getDefaultId(), true, "test2", true)
         ).skip(1);
     }
@@ -117,4 +130,108 @@ public final class UsersTest {
                 UserGroupManager.getAdminId(), null));
     }
 
+    @Execution(ExecutionMode.SAME_THREAD)
+    @RepeatedTest(value = 5, failureThreshold = 1)
+    public void selectList() throws SQLException {
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection ignore = UserManager.getConnection(null, connectionId)) {
+            final UserGroupInformation group = UserGroupManager.insertGroup("test", connectionId.get());
+            Assumptions.assumeTrue(group != null);
+            Assertions.assertEquals(1, UserGroupManager.getAdminId());
+            Assertions.assertEquals(2, UserGroupManager.getDefaultId());
+            Assertions.assertEquals(3, group.id());
+            final int count = 100 - 1;
+            final Collection<UserInformation> informationList = new ArrayList<>(count + 1);
+            informationList.add(UserManager.selectUser(UserManager.getAdminId(), connectionId.get()));
+            for (int i = 0; i < count; i++) {
+                final UserInformation information = UserManager.insertUser("test " + i, "", connectionId.get());
+                Assertions.assertNotNull(information);
+                Assertions.assertNotNull(UserManager.updateUserGroup(information.id(), HRandomHelper.DefaultSecureRandom.nextInt(1, 4), connectionId.get()));
+                informationList.add(UserManager.selectUser(information.id(), connectionId.get()));
+            }
+            final LinkedHashMap<VisibleUserInformation.Order, Options.OrderDirection> orders = new LinkedHashMap<>();
+            orders.put(VisibleUserInformation.Order.Id, Options.OrderDirection.ASCEND);
+            Assumptions.assumeTrue(UserManager.selectUsers(orders, 0, 0, connectionId.get()).getFirst().longValue() == count + 1);
+            Assertions.assertEquals(informationList, UserManager.selectUsers(orders, 0, count + 1, connectionId.get()).getSecond());
+
+            // Test limit and position.
+            for (int i = 0; i < 5; ++i) {
+                final int limit = HRandomHelper.DefaultSecureRandom.nextInt(1, count + 1);
+                final int position = HRandomHelper.DefaultSecureRandom.nextInt(0, count + 1);
+                Assertions.assertEquals(informationList.stream().limit(limit).collect(Collectors.toList()),
+                        UserManager.selectUsers(orders, 0, limit, connectionId.get()).getSecond());
+                Assertions.assertEquals(informationList.stream().skip(position).limit(limit).collect(Collectors.toList()),
+                        UserManager.selectUsers(orders, position, limit, connectionId.get()).getSecond());
+            }
+
+            // Test order.
+            orders.put(VisibleUserInformation.Order.Name, Options.OrderDirection.ASCEND);
+            orders.put(VisibleUserInformation.Order.CreateTime, Options.OrderDirection.ASCEND);
+            orders.put(VisibleUserInformation.Order.UpdateTime, Options.OrderDirection.ASCEND);
+            orders.put(VisibleUserInformation.Order.GroupId, Options.OrderDirection.ASCEND);
+            orders.put(VisibleUserInformation.Order.GroupName, Options.OrderDirection.ASCEND);
+            Assertions.assertEquals(informationList, UserManager.selectUsers(orders, 0, count + 1, connectionId.get()).getSecond());
+            orders.clear();
+            orders.put(VisibleUserInformation.Order.GroupId, Options.OrderDirection.ASCEND);
+            orders.put(VisibleUserInformation.Order.Id, Options.OrderDirection.DESCEND);
+            Assertions.assertEquals(informationList.stream().sorted((a, b) -> {
+                final int c1 = Comparator.comparingLong((UserInformation p) -> p.group().id()).compare(a, b);
+                if (c1 != 0)
+                    return c1;
+                return Comparator.comparingLong(UserInformation::id).reversed().compare(a, b);
+            }).collect(Collectors.toList()),
+                    UserManager.selectUsers(orders, 0, count + 1, connectionId.get()).getSecond());
+
+            // By groups
+            orders.clear();
+            orders.put(VisibleUserInformation.Order.Id, Options.OrderDirection.ASCEND);
+            for (int i = 0; i < 5; ++i) {
+                final Set<Long> chooser = new HashSet<>();
+                for (int k = 1; k < 4; ++k)
+                    if (HRandomHelper.DefaultSecureRandom.nextBoolean())
+                        chooser.add((long) k);
+                final boolean blacklist = HRandomHelper.DefaultSecureRandom.nextBoolean();
+
+                Assertions.assertEquals(informationList.stream().filter(p -> blacklist != chooser.contains(p.group().id())).collect(Collectors.toList()),
+                        UserManager.selectUsersByGroups(chooser, blacklist, orders, 0, count + 1, connectionId.get()).getSecond());
+            }
+
+            // Delete by group
+            UserManager.deleteUsersByGroup(3, connectionId.get());
+            Assertions.assertEquals(informationList.stream().filter(p -> p.group().id() != 3).collect(Collectors.toList()),
+                    UserManager.selectUsers(orders, 0, count + 1, connectionId.get()).getSecond());
+
+            UserManager.deleteUsersByGroup(1, connectionId.get());
+            Assertions.assertEquals(informationList.stream().filter(p -> p.group().id() == 2 || p.id() == UserManager.getAdminId()).collect(Collectors.toList()),
+                    UserManager.selectUsers(orders, 0, count + 1, connectionId.get()).getSecond());
+        }
+    }
+
+    @Execution(ExecutionMode.SAME_THREAD)
+    @RepeatedTest(value = 5, failureThreshold = 1)
+    public void searchList() throws SQLException {
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection ignore = UserManager.getConnection(null, connectionId)) {
+            final int count = 100 - 1;
+            final Collection<UserInformation> informationList = new ArrayList<>(count + 1);
+            informationList.add(UserManager.selectUser(UserManager.getAdminId(), connectionId.get()));
+            for (int i = 0; i < count; i++) {
+                final UserInformation information = UserManager.insertUser("test " + i, "", connectionId.get());
+                Assertions.assertNotNull(information);
+                informationList.add(information);
+            }
+            final LinkedHashMap<VisibleUserInformation.Order, Options.OrderDirection> orders = new LinkedHashMap<>();
+            orders.put(VisibleUserInformation.Order.Id, Options.OrderDirection.ASCEND);
+            Assumptions.assumeTrue(UserManager.selectUsers(orders, 0, 0, connectionId.get()).getFirst().longValue() == count + 1);
+
+            Assertions.assertEquals(informationList.stream().skip(1).collect(Collectors.toList()),
+                    UserManager.searchUsersByRegex("test [0-9]*", orders, 0, count + 1, connectionId.get()).getSecond());
+
+            for (int i = 0; i < 10; ++i) {
+                final String n = HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, HRandomHelper.DefaultSecureRandom.nextInt(0, 3), "0123456789");
+                Assertions.assertEquals(informationList.stream().filter(p -> p.username().contains(n)).collect(Collectors.toSet()),
+                        new HashSet<>(UserManager.searchUsersByNames(Set.of(n), 0, count + 1, connectionId.get()).getSecond()));
+            }
+        }
+    }
 }
