@@ -1,168 +1,148 @@
 package com.xuxiaocheng.WList.Client.Operations;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.WList.Client.Exceptions.WrongStateException;
+import com.xuxiaocheng.WList.Client.WListClientInterface;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleUserInformation;
+import com.xuxiaocheng.WList.Commons.Operations.OperationType;
+import com.xuxiaocheng.WList.Commons.Operations.ResponseState;
+import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
+import io.netty.buffer.ByteBuf;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
+import org.jetbrains.annotations.UnmodifiableView;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Set;
+import java.util.function.Consumer;
+
+/**
+ * @see com.xuxiaocheng.WList.Server.Operations.OperateUsersHandler
+ */
 public final class OperateUsersHelper {
     private OperateUsersHelper() {
         super();
     }
 
-//    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull VisibleUserInformation>> listUsers(final @NotNull WListClientInterface client, final @NotNull String token, final int limit, final int page, final Options.@NotNull OrderDirection direction) throws IOException, InterruptedException, WrongStateException {
-//        final ByteBuf send = OperateHelper.operateWithToken(OperationType.ListUsers, token);
-//        ByteBufIOUtil.writeVariableLenInt(send, limit);
-//        ByteBufIOUtil.writeVariableLenInt(send, page);
-//        ByteBufIOUtil.writeUTF(send, direction.name());
-//        OperateHelper.logOperating(OperationType.ListUsers, () -> ParametersMap.create().add("tokenHash", token.hashCode())
-//                .add("limit", limit).add("page", page).add("direction", direction));
-//        final ByteBuf receive = client.send(send);
-//        try {
-//            if (OperateHelper.handleState(receive)) {
-//                final long total = ByteBufIOUtil.readVariableLenLong(receive);
-//                final int length = ByteBufIOUtil.readVariableLenInt(receive);
-//                final List<VisibleUserInformation> list = new ArrayList<>(count);
-//                for (int i = 0; i < length; ++i)
-//                    list.add(VisibleUserInformation.parse(receive));
-//                OperateHelper.logOperated(OperationType.ListUsers, () -> ParametersMap.create().add("success", true)
-//                        .add("total", total).add("list", list));
-//                return Pair.ImmutablePair.makeImmutablePair(total, Collections.unmodifiableList(list));
-//            }
-//            final String reason = ByteBufIOUtil.readUTF(receive);
-//            OperateHelper.logOperated(OperationType.ListUsers, () -> ParametersMap.create().add("success", false).add("reason", reason));
-//            throw new WrongStateException(ResponseState.DataError, reason + ParametersMap.create().add("limit", limit).add("page", page).add("direction", direction));
-//        } finally {
-//            receive.release();
-//        }
-//    }
-//
-//    public static boolean deleteUser(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String username) throws IOException, InterruptedException, WrongStateException {
-//        final ByteBuf send = OperateHelper.operateWithToken(OperationType.DeleteUser, token);
-//        ByteBufIOUtil.writeUTF(send, username);
-//        OperateHelper.logOperating(OperationType.DeleteUser, () -> ParametersMap.create().add("tokenHash", token.hashCode())
-//                .add("username", username));
-//        final ByteBuf receive = client.send(send);
-//        try {
-//            if (OperateHelper.handleState(receive)) {
-//                OperateHelper.logOperated(OperationType.DeleteUser, () -> ParametersMap.create().add("success", true));
-//                return true;
-//            }
-//            final String reason = ByteBufIOUtil.readUTF(receive);
-//            OperateHelper.logOperated(OperationType.DeleteUser, () -> ParametersMap.create().add("success", false).add("reason", reason));
-//            if ("User".equals(reason))
-//                return false;
-//            throw new WrongStateException(ResponseState.DataError, reason + ParametersMap.create().add("username", username));
-//        } finally {
-//            receive.release();
-//        }
-//    }
-//
-//    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull VisibleUserGroupInformation>> listGroups(final @NotNull WListClientInterface client, final @NotNull String token, final int limit, final int page, final Options.@NotNull OrderDirection direction) throws IOException, InterruptedException, WrongStateException {
-//        final ByteBuf send = OperateHelper.operateWithToken(OperationType.ListGroups, token);
-//        ByteBufIOUtil.writeVariableLenInt(send, limit);
-//        ByteBufIOUtil.writeVariableLenInt(send, page);
-//        ByteBufIOUtil.writeUTF(send, direction.name());
-//        OperateHelper.logOperating(OperationType.ListGroups, () -> ParametersMap.create().add("tokenHash", token.hashCode())
-//                .add("limit", limit).add("page", page).add("direction", direction));
-//        final ByteBuf receive = client.send(send);
-//        try {
-//            if (OperateHelper.handleState(receive)) {
-//                final long total = ByteBufIOUtil.readVariableLenLong(receive);
-//                final int length = ByteBufIOUtil.readVariableLenInt(receive);
-//                final List<VisibleUserGroupInformation> list = new ArrayList<>(count);
-//                for (int i = 0; i < length; ++i)
-//                    list.add(VisibleUserGroupInformation.parse(receive));
-//                OperateHelper.logOperated(OperationType.ListGroups, () -> ParametersMap.create().add("success", true)
-//                        .add("total", total).add("list", list));
-//                return Pair.ImmutablePair.makeImmutablePair(total, Collections.unmodifiableList(list));
-//            }
-//            final String reason = ByteBufIOUtil.readUTF(receive);
-//            OperateHelper.logOperated(OperationType.ListGroups, () -> ParametersMap.create().add("success", false).add("reason", reason));
-//            throw new WrongStateException(ResponseState.DataError, reason + ParametersMap.create().add("limit", limit).add("page", page).add("direction", direction));
-//        } finally {
-//            receive.release();
-//        }
-//    }
-//
-//    public static boolean addGroup(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String groupName) throws IOException, InterruptedException, WrongStateException {
-//        final ByteBuf send = OperateHelper.operateWithToken(OperationType.AddGroup, token);
-//        ByteBufIOUtil.writeUTF(send, groupName);
-//        OperateHelper.logOperating(OperationType.AddGroup, () -> ParametersMap.create().add("tokenHash", token.hashCode())
-//                .add("groupName", groupName));
-//        final ByteBuf receive = client.send(send);
-//        try {
-//            final boolean success = OperateHelper.handleState(receive);
-//            OperateHelper.logOperated(OperationType.AddGroup, () -> ParametersMap.create().add("success", success));
-//            return success;
-//        } finally {
-//            receive.release();
-//        }
-//    }
-//
-//    public static @Nullable Boolean deleteGroup(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String groupName) throws IOException, InterruptedException, WrongStateException {
-//        final ByteBuf send = OperateHelper.operateWithToken(OperationType.DeleteGroup, token);
-//        ByteBufIOUtil.writeUTF(send, groupName);
-//        OperateHelper.logOperating(OperationType.DeleteGroup, () -> ParametersMap.create().add("tokenHash", token.hashCode())
-//                .add("groupName", groupName));
-//        final ByteBuf receive = client.send(send);
-//        try {
-//            if (OperateHelper.handleState(receive)) {
-//                OperateHelper.logOperated(OperationType.DeleteGroup, () -> ParametersMap.create().add("success", true));
-//                return true;
-//            }
-//            final String reason = ByteBufIOUtil.readUTF(receive);
-//            OperateHelper.logOperated(OperationType.DeleteGroup, () -> ParametersMap.create().add("success", false).add("reason", reason));
-//            if ("Users".equals(reason))
-//                return false;
-//            if ("Group".equals(reason))
-//                return null;
-//            throw new WrongStateException(ResponseState.DataError, reason + ParametersMap.create().add("groupName", groupName));
-//        } finally {
-//            receive.release();
-//        }
-//    }
-//
-//    public static @Nullable Boolean changeGroup(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String username, final @NotNull String groupName) throws IOException, InterruptedException, WrongStateException {
-//        final ByteBuf send = OperateHelper.operateWithToken(OperationType.ChangeGroup, token);
-//        ByteBufIOUtil.writeUTF(send, username);
-//        ByteBufIOUtil.writeUTF(send, groupName);
-//        OperateHelper.logOperating(OperationType.ChangeGroup, () -> ParametersMap.create().add("tokenHash", token.hashCode())
-//                .add("username", username).add("groupName", groupName));
-//        final ByteBuf receive = client.send(send);
-//        try {
-//            if (OperateHelper.handleState(receive)) {
-//                OperateHelper.logOperated(OperationType.ChangeGroup, () -> ParametersMap.create().add("success", true));
-//                return true;
-//            }
-//            final String reason = ByteBufIOUtil.readUTF(receive);
-//            OperateHelper.logOperated(OperationType.ChangeGroup, () -> ParametersMap.create().add("success", false).add("reason", reason));
-//            if ("User".equals(reason))
-//                return false;
-//            if ("Group".equals(reason))
-//                return null;
-//            throw new WrongStateException(ResponseState.DataError, reason + ParametersMap.create().add("username", username).add("groupName", groupName));
-//        } finally {
-//            receive.release();
-//        }
-//    }
-//
-//    public static boolean changePermission(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String groupName, final boolean add, final @NotNull Iterable<Operation.@NotNull Permission> permissions) throws IOException, InterruptedException, WrongStateException {
-//        final OperationType type = add ? OperationType.AddPermission : OperationType.RemovePermission;
-//        final ByteBuf send = OperateHelper.operateWithToken(type, token);
-//        ByteBufIOUtil.writeUTF(send, groupName);
-//        ByteBufIOUtil.writeUTF(send, Operation.dumpPermissions(permissions));
-//        OperateHelper.logOperating(type, () -> ParametersMap.create().add("tokenHash", token.hashCode())
-//                .add("groupName", groupName).add("permissions", permissions));
-//        final ByteBuf receive = client.send(send);
-//        try {
-//            if (OperateHelper.handleState(receive)) {
-//                OperateHelper.logOperated(type, () -> ParametersMap.create().add("success", true));
-//                return true;
-//            }
-//            final String reason = ByteBufIOUtil.readUTF(receive);
-//            OperateHelper.logOperated(OperationType.ChangeGroup, () -> ParametersMap.create().add("success", false).add("reason", reason));
-//            if ("Group".equals(reason))
-//                return false;
-//            assert "Permissions".equals(reason);
-//            throw new WrongStateException(ResponseState.DataError, reason + ParametersMap.create().add("groupName", groupName).add("permissions", permissions));
-//        } finally {
-//            receive.release();
-//        }
-//    }
+    public static boolean changeUserGroup(final @NotNull WListClientInterface client, final @NotNull String token, final long userId, final long groupId) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.ChangeUserGroup, token);
+        ByteBufIOUtil.writeVariableLenLong(send, userId);
+        ByteBufIOUtil.writeVariableLenLong(send, groupId);
+        OperateHelper.logOperating(OperationType.ChangeUserGroup, token, p -> p.add("userId", userId).add("groupId", groupId));
+        return OperateHelper.booleanOperation(client, send, OperationType.ChangeUserGroup);
+    }
+
+    public static @Nullable VisibleUserInformation getUser(final @NotNull WListClientInterface client, final @NotNull String token, final long userId) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.GetUser, token);
+        ByteBufIOUtil.writeVariableLenLong(send, userId);
+        OperateHelper.logOperating(OperationType.GetUser, token, p -> p.add("userId", userId));
+        final ByteBuf receive = client.send(send);
+        try {
+            final String reason = OperateHelper.handleState(receive);
+            if (reason == null) {
+                final VisibleUserInformation information = VisibleUserInformation.parse(receive);
+                OperateHelper.logOperated(OperationType.GetUser, OperateHelper.logReason(null).andThen(p -> p.add("information", information)));
+                return information;
+            }
+            OperateHelper.logOperated(OperationType.GetUser, OperateHelper.logReason(reason));
+            return null;
+        } finally {
+            receive.release();
+        }
+    }
+
+    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull VisibleUserInformation>> listUsers(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.ListUsers, token);
+        Options.dumpOrderPolicies(send, orders, VisibleUserInformation.Order::name);
+        ByteBufIOUtil.writeVariableLenLong(send, position);
+        ByteBufIOUtil.writeVariableLenInt(send, limit);
+        return OperateUsersHelper.pairListOperation(client, send, OperationType.ListUsers, token, p -> p.add("orders", orders).add("position", position).add("limit", limit));
+    }
+
+    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull VisibleUserInformation>> listUsersInGroups(final @NotNull WListClientInterface client, final @NotNull String token, @SuppressWarnings("TypeMayBeWeakened") final @NotNull Set<@NotNull Long> chooser, final boolean blacklist, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.ListUsersInGroups, token);
+        ByteBufIOUtil.writeVariableLenInt(send, chooser.size());
+        for (final Long id: chooser)
+            ByteBufIOUtil.writeVariableLenLong(send, id.longValue());
+        ByteBufIOUtil.writeBoolean(send, blacklist);
+        Options.dumpOrderPolicies(send, orders, VisibleUserInformation.Order::name);
+        ByteBufIOUtil.writeVariableLenLong(send, position);
+        ByteBufIOUtil.writeVariableLenInt(send, limit);
+        return OperateUsersHelper.pairListOperation(client, send, OperationType.ListUsersInGroups, token, p -> p.add("chooser", chooser).add("blacklist", blacklist).add("orders", orders).add("position", position).add("limit", limit));
+    }
+
+    public static boolean deleteUser(final @NotNull WListClientInterface client, final @NotNull String token, final long userId) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.DeleteUser, token);
+        ByteBufIOUtil.writeVariableLenLong(send, userId);
+        OperateHelper.logOperating(OperationType.DeleteUser, token, p -> p.add("userId", userId));
+        return OperateHelper.booleanOperation(client, send, OperationType.DeleteUser);
+    }
+
+    public static long deleteUsersInGroup(final @NotNull WListClientInterface client, final @NotNull String token, final long groupId) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.DeleteUsersInGroup, token);
+        ByteBufIOUtil.writeVariableLenLong(send, groupId);
+        OperateHelper.logOperating(OperationType.DeleteUsersInGroup, token, p -> p.add("userId", groupId));
+        final ByteBuf receive = client.send(send);
+        try {
+            final String reason = OperateHelper.handleState(receive);
+            if (reason == null) {
+                final long count = ByteBufIOUtil.readVariableLenLong(receive);
+                OperateHelper.logOperated(OperationType.DeleteUsersInGroup, OperateHelper.logReason(null).andThen(p -> p.add("count", count)));
+                return count;
+            }
+            OperateHelper.logOperated(OperationType.DeleteUsersInGroup, OperateHelper.logReason(reason));
+            return -1;
+        } finally {
+            receive.release();
+        }
+    }
+
+    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull VisibleUserInformation>> searchUsersRegex(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String regex, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.SearchUserRegex, token);
+        ByteBufIOUtil.writeUTF(send, regex);
+        Options.dumpOrderPolicies(send, orders, VisibleUserInformation.Order::name);
+        ByteBufIOUtil.writeVariableLenLong(send, position);
+        ByteBufIOUtil.writeVariableLenInt(send, limit);
+        return OperateUsersHelper.pairListOperation(client, send, OperationType.SearchUserRegex, token, p -> p.add("regex", regex).add("orders", orders).add("position", position).add("limit", limit));
+    }
+
+    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull VisibleUserInformation>> searchUserpsName(final @NotNull WListClientInterface client, final @NotNull String token, @SuppressWarnings("TypeMayBeWeakened") final @NotNull Set<@NotNull String> names, final long position, final int limit) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.SearchUserName, token);
+        ByteBufIOUtil.writeVariableLenInt(send, names.size());
+        for (final String name: names)
+            ByteBufIOUtil.writeUTF(send, name);
+        ByteBufIOUtil.writeVariableLenLong(send, position);
+        ByteBufIOUtil.writeVariableLenInt(send, limit);
+        return OperateUsersHelper.pairListOperation(client, send, OperationType.SearchUserName, token, p -> p.add("names", names).add("position", position).add("limit", limit));
+    }
+
+    private static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull VisibleUserInformation>> pairListOperation(final @NotNull WListClientInterface client, final @NotNull ByteBuf send, final @NotNull OperationType type, final @Nullable String token, final @NotNull Consumer<? super @NotNull ParametersMap> parameters) throws IOException, InterruptedException, WrongStateException {
+        OperateHelper.logOperating(type, token, parameters);
+        final ByteBuf receive = client.send(send);
+        try {
+            final String reason = OperateHelper.handleState(receive);
+            if (reason == null) {
+                final long total = ByteBufIOUtil.readVariableLenLong(receive);
+                final int length = ByteBufIOUtil.readVariableLenInt(receive);
+                final List<VisibleUserInformation> list = new ArrayList<>(length);
+                for (int i = 0; i < length; ++i)
+                    list.add(VisibleUserInformation.parse(receive));
+                OperateHelper.logOperated(type, OperateHelper.logReason(null).andThen(p -> p.add("total", total).add("list", list)));
+                return Pair.ImmutablePair.makeImmutablePair(total, Collections.unmodifiableList(list));
+            }
+            OperateHelper.logOperated(type, OperateHelper.logReason(reason));
+            final ParametersMap map = ParametersMap.create();
+            parameters.accept(map);
+            throw new WrongStateException(ResponseState.DataError, reason + map);
+        } finally {
+            receive.release();
+        }
+    }
 }

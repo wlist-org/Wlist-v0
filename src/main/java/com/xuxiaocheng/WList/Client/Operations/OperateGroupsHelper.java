@@ -118,7 +118,7 @@ public final class OperateGroupsHelper {
     }
 
     private static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull VisibleUserGroupInformation>> pairListOperation(final @NotNull WListClientInterface client, final @NotNull ByteBuf send, final @NotNull OperationType type, final @Nullable String token, final @NotNull Consumer<? super @NotNull ParametersMap> parameters) throws IOException, InterruptedException, WrongStateException {
-        OperateHelper.logOperating(OperationType.SearchGroupRegex, token, parameters);
+        OperateHelper.logOperating(type, token, parameters);
         final ByteBuf receive = client.send(send);
         try {
             final String reason = OperateHelper.handleState(receive);
