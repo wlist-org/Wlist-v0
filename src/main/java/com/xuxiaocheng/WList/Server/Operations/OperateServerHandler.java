@@ -50,6 +50,7 @@ public final class OperateServerHandler {
             return null;
         }
         return () -> {
+            WListServer.getInstance().refuseNew();
             WListServer.ServerExecutors.execute(() -> {
                 try {
                     final ChannelGroupFuture future = BroadcastManager.broadcast(OperationType.CloseServer, null);

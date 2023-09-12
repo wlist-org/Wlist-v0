@@ -20,6 +20,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
@@ -43,6 +44,7 @@ import java.net.SocketException;
 import java.sql.SQLException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class WListServer {
     public static final @NotNull EventExecutorGroup CodecExecutors =
@@ -95,6 +97,15 @@ public class WListServer {
             @Override
             protected void initChannel(final @NotNull SocketChannel ch) {
                 final ChannelPipeline pipeline = ch.pipeline();
+                pipeline.addLast(WListServer.CodecExecutors, "ClosedController", new ChannelInboundHandlerAdapter() {
+                    @Override
+                    public void channelActive(final @NotNull ChannelHandlerContext ctx) throws Exception {
+                        if (WListServer.this.refuseNew.get() || WListServer.this.address.isNotInitialized()) // Closed
+                            ctx.close();
+                        else
+                            super.channelActive(ctx);
+                    }
+                });
                 pipeline.addLast(WListServer.CodecExecutors, "LengthDecoder", new LengthFieldBasedFrameDecoder(NetworkTransmission.MaxSizePerPacket, 0, 4, 0, 4));
                 pipeline.addLast(WListServer.CodecExecutors, "LengthEncoder", new LengthFieldPrepender(4));
                 pipeline.addLast(WListServer.CodecExecutors, "Cipher", new MessageServerCiphers());
@@ -115,6 +126,11 @@ public class WListServer {
         final InetSocketAddress address = (InetSocketAddress) future.channel().localAddress();
         this.address.initialize(address);
         WListServer.logger.log(HLogLevel.ENHANCED, "Listening on: ", address);
+    }
+
+    protected final AtomicBoolean refuseNew = new AtomicBoolean(false);
+    public void refuseNew() {
+        this.refuseNew.set(true);
     }
 
     public synchronized void stop() {
