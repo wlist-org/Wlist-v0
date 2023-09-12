@@ -36,7 +36,7 @@ public interface ServerHandler {
 
     @Contract(pure = true)
     static @NotNull String userGroup(final @Nullable String group, final @NotNull UserGroupInformation information) {
-        return String.format(" %s: (id=%d, name='%s')", Objects.requireNonNullElse(group, "groupName"), information.id(), information.name());
+        return String.format(" %s: (id=%d, name='%s')", Objects.requireNonNullElse(group, "group"), information.id(), information.name());
     }
 
     AtomicBoolean logOperation = new AtomicBoolean(true);

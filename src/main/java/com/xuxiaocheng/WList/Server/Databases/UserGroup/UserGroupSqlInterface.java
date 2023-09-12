@@ -45,7 +45,7 @@ public interface UserGroupSqlInterface extends DatabaseInterface {
     @Nullable LocalDateTime updateGroupName(final long id, final @NotNull String name, final @Nullable String _connectionId) throws SQLException;
 
     /**
-     * Update group permissions. (Do NOT update admin groupName {@link com.xuxiaocheng.WList.Commons.IdentifierNames.UserGroupName#Admin})
+     * Update group permissions. (Do NOT update admin group {@link com.xuxiaocheng.WList.Commons.IdentifierNames.UserGroupName#Admin})
      * @return null: no such id. !null: operate time.
      */
     @Nullable LocalDateTime updateGroupPermission(final long id, final @NotNull Set<@NotNull UserPermission> permissions, final @Nullable String _connectionId) throws SQLException;

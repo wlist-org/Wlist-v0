@@ -16,9 +16,9 @@ public final class OperateUsersHelper {
 //        try {
 //            if (OperateHelper.handleState(receive)) {
 //                final long total = ByteBufIOUtil.readVariableLenLong(receive);
-//                final int count = ByteBufIOUtil.readVariableLenInt(receive);
+//                final int length = ByteBufIOUtil.readVariableLenInt(receive);
 //                final List<VisibleUserInformation> list = new ArrayList<>(count);
-//                for (int i = 0; i < count; ++i)
+//                for (int i = 0; i < length; ++i)
 //                    list.add(VisibleUserInformation.parse(receive));
 //                OperateHelper.logOperated(OperationType.ListUsers, () -> ParametersMap.create().add("success", true)
 //                        .add("total", total).add("list", list));
@@ -64,9 +64,9 @@ public final class OperateUsersHelper {
 //        try {
 //            if (OperateHelper.handleState(receive)) {
 //                final long total = ByteBufIOUtil.readVariableLenLong(receive);
-//                final int count = ByteBufIOUtil.readVariableLenInt(receive);
+//                final int length = ByteBufIOUtil.readVariableLenInt(receive);
 //                final List<VisibleUserGroupInformation> list = new ArrayList<>(count);
-//                for (int i = 0; i < count; ++i)
+//                for (int i = 0; i < length; ++i)
 //                    list.add(VisibleUserGroupInformation.parse(receive));
 //                OperateHelper.logOperated(OperationType.ListGroups, () -> ParametersMap.create().add("success", true)
 //                        .add("total", total).add("list", list));

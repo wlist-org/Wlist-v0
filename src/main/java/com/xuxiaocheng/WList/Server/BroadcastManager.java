@@ -130,4 +130,22 @@ public final class BroadcastManager {
             return buf;
         });
     }
+
+
+    public static void onUserChangeGroup(final long id, final long groupId, final @NotNull String groupName, final @NotNull LocalDateTime updateTime) {
+        BroadcastManager.broadcast(OperationType.ChangeUserGroup, buf -> {
+            ByteBufIOUtil.writeVariableLenLong(buf, id);
+            ByteBufIOUtil.writeVariableLenLong(buf, groupId);
+            ByteBufIOUtil.writeUTF(buf, groupName);
+            ByteBufIOUtil.writeUTF(buf, updateTime.format(DateTimeFormatter.ISO_DATE_TIME));
+            return buf;
+        });
+    }
+
+    public static void onUsersLogoff(final long groupId) {
+        BroadcastManager.broadcast(OperationType.DeleteUsersInGroup, buf -> {
+            ByteBufIOUtil.writeVariableLenLong(buf, groupId);
+            return buf;
+        });
+    }
 }

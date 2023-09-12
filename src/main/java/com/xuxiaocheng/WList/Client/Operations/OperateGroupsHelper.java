@@ -124,9 +124,9 @@ public final class OperateGroupsHelper {
             final String reason = OperateHelper.handleState(receive);
             if (reason == null) {
                 final long total = ByteBufIOUtil.readVariableLenLong(receive);
-                final int count = ByteBufIOUtil.readVariableLenInt(receive);
-                final List<VisibleUserGroupInformation> list = new ArrayList<>(count);
-                for (int i = 0; i < count; ++i)
+                final int length = ByteBufIOUtil.readVariableLenInt(receive);
+                final List<VisibleUserGroupInformation> list = new ArrayList<>(length);
+                for (int i = 0; i < length; ++i)
                     list.add(VisibleUserGroupInformation.parse(receive));
                 OperateHelper.logOperated(type, OperateHelper.logReason(null).andThen(p -> p.add("total", total).add("list", list)));
                 return Pair.ImmutablePair.makeImmutablePair(total, Collections.unmodifiableList(list));

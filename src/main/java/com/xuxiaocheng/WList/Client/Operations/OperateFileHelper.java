@@ -27,9 +27,9 @@ public final class OperateFileHelper {
 //            if (OperateHelper.handleState(receive)) {
 //                final long total = ByteBufIOUtil.readVariableLenLong(receive);
 //                final long filtered = ByteBufIOUtil.readVariableLenLong(receive);
-//                final int count = ByteBufIOUtil.readVariableLenInt(receive);
+//                final int length = ByteBufIOUtil.readVariableLenInt(receive);
 //                final List<VisibleFileInformation> list = new ArrayList<>(count);
-//                for (int i = 0; i < count; ++i)
+//                for (int i = 0; i < length; ++i)
 //                    list.add(VisibleFileInformation.parse(receive));
 //                OperateHelper.logOperated(OperationType.ListFiles, () -> ParametersMap.create().add("success", true)
 //                        .add("total", total).add("filtered", filtered).add("list", list));

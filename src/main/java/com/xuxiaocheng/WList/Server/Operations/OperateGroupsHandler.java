@@ -15,6 +15,7 @@ import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.Server.BroadcastManager;
 import com.xuxiaocheng.WList.Server.Databases.User.UserInformation;
+import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupInformation;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Server.MessageProto;
@@ -37,9 +38,10 @@ public final class OperateGroupsHandler {
         super();
     }
 
-    public static final @NotNull MessageProto GroupDataError = MessageProto.composeMessage(ResponseState.DataError, "Group");
-    public static final @NotNull MessageProto OrdersDataError = MessageProto.composeMessage(ResponseState.DataError, "Orders");
-    public static final @NotNull MessageProto ChooserDataError = MessageProto.composeMessage(ResponseState.DataError, "Chooser");
+    private static final @NotNull MessageProto GroupDataError = MessageProto.composeMessage(ResponseState.DataError, "Group");
+    private static final @NotNull MessageProto OrdersDataError = MessageProto.composeMessage(ResponseState.DataError, "Orders");
+    private static final @NotNull MessageProto ChooserDataError = MessageProto.composeMessage(ResponseState.DataError, "Chooser");
+    private static final @NotNull MessageProto UsersDataError = MessageProto.composeMessage(ResponseState.DataError, "Users");
 
     public static void initialize() {
         ServerHandlerManager.register(OperationType.AddGroup, OperateGroupsHandler.doAddGroup);
@@ -77,7 +79,7 @@ public final class OperateGroupsHandler {
                 WListServer.ServerChannelHandler.write(channel, OperateGroupsHandler.GroupDataError);
                 return;
             }
-            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Added groupName.", ServerHandler.userGroup(null, information), ',', ServerHandler.user("changer", changer.getT()));
+            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Added group.", ServerHandler.userGroup(null, information), ',', ServerHandler.user("changer", changer.getT()));
             BroadcastManager.onUserGroupAdded(information);
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
         };
@@ -109,7 +111,7 @@ public final class OperateGroupsHandler {
                 WListServer.ServerChannelHandler.write(channel, OperateGroupsHandler.GroupDataError);
                 return;
             }
-            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Changed groupName name.", ServerHandler.user("changer", changer.getT()),
+            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Changed group name.", ServerHandler.user("changer", changer.getT()),
                     ParametersMap.create().add("groupId", groupId).add("newGroupName", newGroupName).add("updateTime", updateTime));
             BroadcastManager.onUserGroupChangeName(groupId, newGroupName, updateTime);
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
@@ -124,7 +126,7 @@ public final class OperateGroupsHandler {
         final UnionPair<UserInformation, MessageProto> changer = OperateSelfHandler.checkToken(token, UserPermission.GroupsOperate, UserPermission.ServerOperate);
         final long groupId = ByteBufIOUtil.readVariableLenLong(buffer);
         final EnumSet<UserPermission> newPermissions = UserPermission.parse(ByteBufIOUtil.readUTF(buffer));
-        ServerHandler.logOperation(channel, OperationType.ChangeGroupName, changer, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, OperationType.ChangeGroupPermissions, changer, () -> ParametersMap.create()
                 .add("groupId", groupId).add("newPermissions", newPermissions).optionallyAdd(changer.isSuccess() && newPermissions != null, "denied",
                         UserGroupManager.getAdminId() == groupId || Objects.requireNonNull(newPermissions).contains(UserPermission.Undefined)));
         MessageProto message = null;
@@ -144,7 +146,7 @@ public final class OperateGroupsHandler {
                 WListServer.ServerChannelHandler.write(channel, OperateGroupsHandler.GroupDataError);
                 return;
             }
-            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Changed groupName permissions.", ServerHandler.user("changer", changer.getT()),
+            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Changed group permissions.", ServerHandler.user("changer", changer.getT()),
                     ParametersMap.create().add("groupId", groupId).add("newPermissions", newPermissions).add("updateTime", updateTime));
             BroadcastManager.onUserGroupChangePermissions(groupId, newPermissions, updateTime);
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
@@ -158,7 +160,7 @@ public final class OperateGroupsHandler {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.UsersList);
         final long groupId = ByteBufIOUtil.readVariableLenLong(buffer);
-        ServerHandler.logOperation(channel, OperationType.ChangeGroupName, user, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, OperationType.GetGroup, user, () -> ParametersMap.create()
                 .add("groupId", groupId));
         if (user.isFailure()) {
             WListServer.ServerChannelHandler.write(channel, user.getE());
@@ -220,7 +222,7 @@ public final class OperateGroupsHandler {
                 Options.parseOrderPolicies(buffer, VisibleUserGroupInformation::orderBy, VisibleUserGroupInformation.Order.values().length);
         final long position = ByteBufIOUtil.readVariableLenLong(buffer);
         final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
-        ServerHandler.logOperation(channel, OperationType.ListGroups, user, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, OperationType.ListGroupsInPermissions, user, () -> ParametersMap.create()
                 .add("chooser", chooser).add("orders", orders).add("position", position).add("limit", limit));
         MessageProto message = null;
         if (user.isFailure())
@@ -260,17 +262,22 @@ public final class OperateGroupsHandler {
         if (changer.isFailure())
             message = changer.getE();
         else if (UserGroupManager.getAdminId() == groupId || UserGroupManager.getDefaultId() == groupId)
-            message = OperateUsersHandler.GroupDataError;
+            message = OperateGroupsHandler.GroupDataError;
         if (message != null) {
             WListServer.ServerChannelHandler.write(channel, message);
             return null;
         }
         return () -> {
-            if (!UserGroupManager.deleteGroup(groupId, null)) {
-                WListServer.ServerChannelHandler.write(channel, OperateUsersHandler.GroupDataError);
+            final long count = UserManager.selectUsersByGroups(Set.of(groupId), false, new LinkedHashMap<>(), 0, 0, null).getFirst().longValue();
+            if (count > 0) {
+                WListServer.ServerChannelHandler.write(channel, OperateGroupsHandler.UsersDataError);
                 return;
             }
-            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Deleted groupName.", ServerHandler.user("changer", changer.getT()), ParametersMap.create().add("groupId", groupId));
+            if (!UserGroupManager.deleteGroup(groupId, null)) {
+                WListServer.ServerChannelHandler.write(channel, OperateGroupsHandler.GroupDataError);
+                return;
+            }
+            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Deleted group.", ServerHandler.user("changer", changer.getT()), ParametersMap.create().add("groupId", groupId));
             BroadcastManager.onUserGroupDeleted(groupId);
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
         };
@@ -318,13 +325,13 @@ public final class OperateGroupsHandler {
     private static final @NotNull ServerHandler doSearchGroupName = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.UsersList);
-        final int len = ByteBufIOUtil.readVariableLenInt(buffer);
-        final Set<String> names = new HashSet<>(len);
-        for (int i = 0; i < len; ++i)
+        final int length = ByteBufIOUtil.readVariableLenInt(buffer);
+        final Set<String> names = new HashSet<>(length);
+        for (int i = 0; i < length; ++i)
             names.add(ByteBufIOUtil.readUTF(buffer));
         final long position = ByteBufIOUtil.readVariableLenLong(buffer);
         final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
-        ServerHandler.logOperation(channel, OperationType.SearchGroupRegex, user, () -> ParametersMap.create()
+        ServerHandler.logOperation(channel, OperationType.SearchGroupName, user, () -> ParametersMap.create()
                 .add("names", names).add("position", position).add("limit", limit));
         MessageProto message = null;
         if (user.isFailure())

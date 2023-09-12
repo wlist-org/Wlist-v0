@@ -30,7 +30,7 @@ public final class Options {
         if (length < 0 || maxCount < length)
             return null;
         final LinkedHashMap<T, OrderDirection> orders = new LinkedHashMap<>(length);
-        for (int i = 0; i < length; i++) {
+        for (int i = 0; i < length; ++i) {
             final String name = ByteBufIOUtil.readUTF(buffer);
             final T policy = parser.apply(name);
             if (policy == null)

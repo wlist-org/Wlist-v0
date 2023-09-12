@@ -27,9 +27,14 @@ public enum OperationType {
     SearchGroupRegex,
     SearchGroupName,
     // Users
-    ChangeGroup,
+    ChangeUserGroup,
+    GetUser,
     ListUsers,
+    ListUsersInGroups,
     DeleteUser,
+    DeleteUsersInGroup,
+    SearchUserRegex,
+    SearchUserName,
     //
     BuildIndex,
     ListFiles,

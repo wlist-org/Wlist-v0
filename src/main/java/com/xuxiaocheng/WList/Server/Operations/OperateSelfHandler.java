@@ -32,12 +32,12 @@ public final class OperateSelfHandler {
         super();
     }
 
-    public static final @NotNull MessageProto TokenDataError = new MessageProto(ResponseState.NoPermission, buf -> {
+    private static final @NotNull MessageProto TokenDataError = new MessageProto(ResponseState.NoPermission, buf -> {
         ByteBufIOUtil.writeVariableLenInt(buf, 1);
         ByteBufIOUtil.writeUTF(buf, UserPermission.Undefined.name());
         return buf;
     });
-    public static @NotNull MessageProto NoPermission(final @NotNull Collection<@NotNull UserPermission> permissions) {
+    private static @NotNull MessageProto NoPermission(final @NotNull Collection<@NotNull UserPermission> permissions) {
         assert !permissions.isEmpty();
         return new MessageProto(ResponseState.NoPermission, buf -> {
             ByteBufIOUtil.writeVariableLenInt(buf, permissions.size());
@@ -70,7 +70,7 @@ public final class OperateSelfHandler {
         return user;
     }
 
-    public static final @NotNull MessageProto UserDataError = MessageProto.composeMessage(ResponseState.DataError, "User");
+    private static final @NotNull MessageProto UserDataError = MessageProto.composeMessage(ResponseState.DataError, "User");
 
     public static void initialize() {
         ServerHandlerManager.register(OperationType.Logon, OperateSelfHandler.doLogon);

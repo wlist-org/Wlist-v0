@@ -35,7 +35,7 @@ public final class OperateHelper {
             case NoPermission -> {
                 final int length = ByteBufIOUtil.readVariableLenInt(receive);
                 final UserPermission[] permissions = new UserPermission[length];
-                for (int i = 0; i < length; i++)
+                for (int i = 0; i < length; ++i)
                     permissions[i] = UserPermission.of(ByteBufIOUtil.readUTF(receive));
                 throw new NoPermissionException(permissions);
             }
