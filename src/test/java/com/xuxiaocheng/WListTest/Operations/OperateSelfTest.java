@@ -169,4 +169,20 @@ public class OperateSelfTest extends ServerWrapper {
         Assertions.assertEquals(IdentifierNames.UserGroupName.Admin.getIdentifier(),  information.name());
         Assertions.assertEquals(UserPermission.All, information.permissions());
     }
+
+
+    @ParameterizedTest(name = "running")
+    @MethodSource("client")
+    @Order(2)
+    public void invalidLogon(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+        final String password = HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 20, null);
+        Assertions.assertFalse(OperateSelfHelper.logon(client, this.username(), password));
+    }
+
+    @ParameterizedTest(name = "running")
+    @MethodSource("client")
+    @Order(1)
+    public void invalidLogoff(final WListClientInterface client) {
+        Assertions.assertThrows(WrongStateException.class, () -> OperateSelfHelper.logoff(client, "", ""));
+    }
 }

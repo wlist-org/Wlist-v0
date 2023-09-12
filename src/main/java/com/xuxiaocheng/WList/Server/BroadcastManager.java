@@ -20,7 +20,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.EnumSet;
+import java.util.Set;
 
 public final class BroadcastManager {
     private BroadcastManager() {
@@ -115,7 +115,7 @@ public final class BroadcastManager {
         });
     }
 
-    public static void onUserGroupChangePermissions(final long id, final @NotNull EnumSet<@NotNull UserPermission> newName, final @NotNull LocalDateTime updateTime) {
+    public static void onUserGroupChangePermissions(final long id, final @NotNull Set<@NotNull UserPermission> newName, final @NotNull LocalDateTime updateTime) {
         BroadcastManager.broadcast(OperationType.ChangeGroupName, buf -> {
             ByteBufIOUtil.writeVariableLenLong(buf, id);
             ByteBufIOUtil.writeUTF(buf, UserPermission.dump(newName));
