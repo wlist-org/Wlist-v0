@@ -216,7 +216,7 @@ public class WListServer {
             } catch (final UnsupportedOperationException exception) {
                 ServerChannelHandler.write(channel, MessageProto.composeMessage(ResponseState.Unsupported, exception.getMessage()));
             } catch (final Exception exception) {
-                ctx.fireExceptionCaught(exception);
+                channel.pipeline().fireExceptionCaught(exception);
             }
         }
 

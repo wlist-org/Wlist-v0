@@ -243,7 +243,7 @@ public final class OperateUsersHandler {
                         ParametersMap.create().add("groupId", groupId).add("count", count));
             BroadcastManager.onUsersLogoff(groupId);
             WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> {
-                ByteBufIOUtil.writeVariableLenLong(buffer, count);
+                ByteBufIOUtil.writeVariableLenLong(buf, count);
                 return buf;
             }));
         };

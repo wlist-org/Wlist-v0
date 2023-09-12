@@ -452,7 +452,7 @@ public class UserSqliteHelper implements UserSqlInterface {
                 users = List.of();
             else
                 try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-    WITH temp AS (SELECT %s FROM users WHERE username REGEXP ?)
+    WITH temp AS (SELECT %s, name_order FROM users WHERE username REGEXP ?)
         SELECT %s FROM temp INNER JOIN groups ON temp.group_id = groups.group_id %s LIMIT ? OFFSET ?;
                 """, UserSqliteHelper.UserInfoExtra, UserSqliteHelper.UserAndGroupInfoExtra, UserSqliteHelper.orderBy(orders)))) {
                     statement.setString(1, regex);
