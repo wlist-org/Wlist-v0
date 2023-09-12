@@ -35,7 +35,7 @@ public class MessageClientCiphers extends MessageToMessageCodec<ByteBuf, ByteBuf
 
     @Override
     public void channelActive(final @NotNull ChannelHandlerContext ctx) {
-        final Pair.ImmutablePair<NetworkTransmission.RsaPrivateKey, ByteBuf> pair = NetworkTransmission.clientStart();
+        final Pair.ImmutablePair<NetworkTransmission.RsaPrivateKey, ByteBuf> pair = NetworkTransmission.clientStartInJava();
         this.rsaPrivateKey = pair.getFirst();
         ctx.writeAndFlush(pair.getSecond());
     }

@@ -2,14 +2,22 @@ package com.xuxiaocheng.Rust;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
+import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.interfaces.RSAPrivateCrtKey;
+import java.security.interfaces.RSAPublicKey;
 
 @SuppressWarnings("NativeMethod")
 public final class NetworkTransmission {
@@ -18,15 +26,15 @@ public final class NetworkTransmission {
     }
 
     private static native void initialize();
-    static {
+    public static void load() { // Just call and load native library.
+    } static {
         NativeUtil.load("network_transmission");
         NetworkTransmission.initialize();
     }
 
-    public static void load() { // Just call and load native library.
-    }
-
+    private static native String getCipherHeader();
     private static native String getCipherVersion();
+    public static final @NotNull String CipherHeader = NetworkTransmission.getCipherHeader();
     public static final @NotNull String CipherVersion = NetworkTransmission.getCipherVersion();
     public static final int FileTransferBufferSize = 4 << 20;
     public static final int MaxSizePerPacket = (1 << 10) + NetworkTransmission.FileTransferBufferSize;
@@ -57,6 +65,40 @@ public final class NetworkTransmission {
         assert array.length == 2; // (key, request)
         assert array[1] instanceof ByteBuffer;
         return Pair.ImmutablePair.makeImmutablePair(new RsaPrivateKey((ByteBuffer[]) array[0]), Unpooled.wrappedBuffer((ByteBuffer) array[1]));
+    }
+    public static Pair.@NotNull ImmutablePair<@NotNull RsaPrivateKey, @NotNull ByteBuf> clientStartInJava() {
+        try {
+            final KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+            generator.initialize(2048, HRandomHelper.DefaultSecureRandom);
+            final KeyPair keyPair = generator.generateKeyPair();
+            final RSAPrivateCrtKey privateKey = (RSAPrivateCrtKey) keyPair.getPrivate();
+            final RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
+
+            final byte[] nB = privateKey.getModulus().toByteArray();
+            final ByteBuffer n = ByteBuffer.allocateDirect(nB.length);
+            n.put(nB);
+            final byte[] eB = publicKey.getPublicExponent().toByteArray();
+            final ByteBuffer e = ByteBuffer.allocateDirect(eB.length);
+            e.put(eB);
+            final byte[] dB = privateKey.getPrivateExponent().toByteArray();
+            final ByteBuffer d = ByteBuffer.allocateDirect(dB.length);
+            d.put(dB);
+            final byte[] pB = privateKey.getPrimeP().toByteArray();
+            final ByteBuffer p = ByteBuffer.allocateDirect(pB.length);
+            p.put(pB);
+            final byte[] qB = privateKey.getPrimeQ().toByteArray();
+            final ByteBuffer q = ByteBuffer.allocateDirect(qB.length);
+            q.put(qB);
+
+            final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
+            ByteBufIOUtil.writeUTF(buffer, NetworkTransmission.CipherHeader);
+            ByteBufIOUtil.writeUTF(buffer, NetworkTransmission.CipherVersion);
+            ByteBufIOUtil.writeByteArray(buffer, publicKey.getModulus().toByteArray());
+            ByteBufIOUtil.writeByteArray(buffer, publicKey.getPublicExponent().toByteArray());
+            return Pair.ImmutablePair.makeImmutablePair(new RsaPrivateKey(new ByteBuffer[]{n, e, d, p, q}), buffer);
+        } catch (final NoSuchAlgorithmException | IOException exception) {
+            throw new RuntimeException("Unreachable!", exception);
+        }
     }
 
     private static native ByteBuffer[] serverStart0(final @NotNull ByteBuffer request, final @NotNull String application);
