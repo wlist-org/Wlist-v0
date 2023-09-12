@@ -14,6 +14,9 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 
+/**
+ * @see com.xuxiaocheng.WList.Server.Operations.OperateServerHandler
+ */
 public final class OperateServerHelper {
     private OperateServerHelper() {
         super();
@@ -52,6 +55,9 @@ public final class OperateServerHelper {
         return OperateHelper.booleanOperation(client, send, OperationType.Broadcast);
     }
 
+    /**
+     * @see com.xuxiaocheng.WList.Server.BroadcastManager
+     */
     public static @NotNull UnionPair<Pair.ImmutablePair<@NotNull OperationType, @NotNull ByteBuf>, Pair.ImmutablePair<@NotNull String, @NotNull String>> waitBroadcast(final @NotNull WListClientInterface client) throws IOException, InterruptedException {
         final ByteBuf broadcast = client.send(null);
         try {

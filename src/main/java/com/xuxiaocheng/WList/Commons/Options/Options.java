@@ -27,7 +27,7 @@ public final class Options {
 
     public static <T extends OrderPolicy> @Nullable UnionPair<LinkedHashMap<@NotNull T, @NotNull OrderDirection>, String> parseOrderPolicies(final @NotNull ByteBuf buffer, final @NotNull Function<? super @NotNull String, ? extends @Nullable T> parser, final int maxCount) throws IOException {
         final int length = ByteBufIOUtil.readVariableLenInt(buffer);
-        if (length <= 0 || maxCount < length)
+        if (length < 0 || maxCount < length)
             return null;
         final LinkedHashMap<T, OrderDirection> orders = new LinkedHashMap<>(length);
         for (int i = 0; i < length; i++) {

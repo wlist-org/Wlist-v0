@@ -115,10 +115,10 @@ public final class BroadcastManager {
         });
     }
 
-    public static void onUserGroupChangePermissions(final long id, final @NotNull Set<@NotNull UserPermission> newName, final @NotNull LocalDateTime updateTime) {
-        BroadcastManager.broadcast(OperationType.ChangeGroupName, buf -> {
+    public static void onUserGroupChangePermissions(final long id, final @NotNull Set<@NotNull UserPermission> newPermissions, final @NotNull LocalDateTime updateTime) {
+        BroadcastManager.broadcast(OperationType.ChangeGroupPermissions, buf -> {
             ByteBufIOUtil.writeVariableLenLong(buf, id);
-            ByteBufIOUtil.writeUTF(buf, UserPermission.dump(newName));
+            ByteBufIOUtil.writeUTF(buf, UserPermission.dump(newPermissions));
             ByteBufIOUtil.writeUTF(buf, updateTime.format(DateTimeFormatter.ISO_DATE_TIME));
             return buf;
         });
