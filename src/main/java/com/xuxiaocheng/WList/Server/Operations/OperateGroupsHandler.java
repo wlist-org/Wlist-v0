@@ -5,6 +5,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WList.Commons.Operations.OperationType;
@@ -27,6 +28,7 @@ import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -51,6 +53,9 @@ public final class OperateGroupsHandler {
         ServerHandlerManager.register(OperationType.SearchGroupName, OperateGroupsHandler.doSearchGroupName);
     }
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateGroupsHelper#addGroup(WListClientInterface, String, String)
+     */
     private static final @NotNull ServerHandler doAddGroup = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> changer = OperateSelfHandler.checkToken(token, UserPermission.UsersOperate);
@@ -78,6 +83,9 @@ public final class OperateGroupsHandler {
         };
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateGroupsHelper#changeGroupName(WListClientInterface, String, long, String)
+     */
     private static final @NotNull ServerHandler doChangeGroupName = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> changer = OperateSelfHandler.checkToken(token, UserPermission.GroupsOperate);
@@ -108,6 +116,9 @@ public final class OperateGroupsHandler {
         };
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateGroupsHelper#changeGroupPermissions(WListClientInterface, String, long, Set)
+     */
     private static final @NotNull ServerHandler doChangeGroupPermissions = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> changer = OperateSelfHandler.checkToken(token, UserPermission.GroupsOperate, UserPermission.ServerOperate);
@@ -140,6 +151,9 @@ public final class OperateGroupsHandler {
         };
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateGroupsHelper#getGroup(WListClientInterface, String, long)
+     */
     private static final @NotNull ServerHandler doGetGroup = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.UsersList);
@@ -160,6 +174,9 @@ public final class OperateGroupsHandler {
         };
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateGroupsHelper#listGroups(WListClientInterface, String, LinkedHashMap, long, int)
+     */
     private static final @NotNull ServerHandler doListGroups = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.UsersList);
@@ -192,6 +209,9 @@ public final class OperateGroupsHandler {
         };
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateGroupsHelper#listGroupsInPermissions(WListClientInterface, String, Map, LinkedHashMap, long, int)
+     */
     private static final @NotNull ServerHandler doListGroupsInPermissions = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.UsersList);
@@ -227,6 +247,9 @@ public final class OperateGroupsHandler {
         };
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateGroupsHelper#deleteGroup(WListClientInterface, String, long)
+     */
     private static final @NotNull ServerHandler doDeleteGroup = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> changer = OperateSelfHandler.checkToken(token, UserPermission.GroupsOperate);
@@ -253,6 +276,9 @@ public final class OperateGroupsHandler {
         };
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateGroupsHelper#searchGroupsRegex(WListClientInterface, String, String, LinkedHashMap, long, int)
+     */
     private static final @NotNull ServerHandler doSearchGroupRegex = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.UsersList);
@@ -286,6 +312,9 @@ public final class OperateGroupsHandler {
         };
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateGroupsHelper#searchGroupsName(WListClientInterface, String, Set, long, int)
+     */
     private static final @NotNull ServerHandler doSearchGroupName = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.UsersList);

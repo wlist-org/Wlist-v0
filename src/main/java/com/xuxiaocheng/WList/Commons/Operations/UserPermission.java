@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -67,11 +68,11 @@ public enum UserPermission {
     }
 
     @Contract("_, _ -> param1")
-    public static @NotNull ByteBuf dumpChooser(final @NotNull ByteBuf buf, final @NotNull EnumMap<@NotNull UserPermission, @Nullable Boolean> permissions) throws IOException {
+    public static @NotNull ByteBuf dumpChooser(final @NotNull ByteBuf buf, final @NotNull Map<@NotNull UserPermission, @Nullable Boolean> chooser) throws IOException {
         final EnumSet<UserPermission> t = EnumSet.noneOf(UserPermission.class);
         final EnumSet<UserPermission> f = EnumSet.noneOf(UserPermission.class);
         for (final UserPermission permission: UserPermission.All) {
-            final Boolean has = permissions.get(permission);
+            final Boolean has = chooser.get(permission);
             if (has != null)
                 (has.booleanValue() ? t : f).add(permission);
         }

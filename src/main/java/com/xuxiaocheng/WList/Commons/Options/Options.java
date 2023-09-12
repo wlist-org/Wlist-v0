@@ -41,9 +41,9 @@ public final class Options {
         return UnionPair.ok(orders);
     }
 
-    public static <T extends OrderPolicy> void dumpOrderPolicies(final @NotNull ByteBuf buffer, @SuppressWarnings("TypeMayBeWeakened") final @NotNull LinkedHashMap<@NotNull T, @NotNull OrderDirection> policies, final @NotNull Function<? super @NotNull T, @NotNull String> dumper) throws IOException {
-        ByteBufIOUtil.writeVariableLenInt(buffer, policies.size());
-        for (final Map.Entry<T, OrderDirection> policy: policies.entrySet()) {
+    public static <T extends OrderPolicy> void dumpOrderPolicies(final @NotNull ByteBuf buffer, @SuppressWarnings("TypeMayBeWeakened") final @NotNull LinkedHashMap<@NotNull T, @NotNull OrderDirection> orders, final @NotNull Function<? super @NotNull T, @NotNull String> dumper) throws IOException {
+        ByteBufIOUtil.writeVariableLenInt(buffer, orders.size());
+        for (final Map.Entry<T, OrderDirection> policy: orders.entrySet()) {
             ByteBufIOUtil.writeUTF(buffer, dumper.apply(policy.getKey()));
             ByteBufIOUtil.writeBoolean(buffer, switch (policy.getValue()) {
                 case ASCEND -> true;

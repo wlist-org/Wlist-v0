@@ -100,7 +100,7 @@ public final class WList {
         final HLog logger = HLog.create("DefaultLogger");
         WList.logger = logger;
         try {
-            logger.log(HLogLevel.FINE, "Hello WList (Server v0.2.3)! Loading...");
+            logger.log(HLogLevel.FINE, "Hello WList (Server v0.3.0)! Loading...");
             WList.loadServerConfiguration();
             WList.initializeServerEnvironment();
             WList.initializeServerDatabase();

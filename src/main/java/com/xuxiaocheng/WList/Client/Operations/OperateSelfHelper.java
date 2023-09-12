@@ -11,6 +11,9 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 
+/**
+ * @see com.xuxiaocheng.WList.Server.Operations.OperateSelfHandler
+ */
 public final class OperateSelfHelper {
     private OperateSelfHelper() {
         super();
@@ -21,14 +24,7 @@ public final class OperateSelfHelper {
         ByteBufIOUtil.writeUTF(send, username);
         ByteBufIOUtil.writeUTF(send, password);
         OperateHelper.logOperating(OperationType.Logon, null, p -> p.add("username", username).add("password", password));
-        final ByteBuf receive = client.send(send);
-        try {
-            final boolean success = OperateHelper.handleState(receive);
-            OperateHelper.logOperated(OperationType.Logon, p -> p.add("success", success));
-            return success;
-        } finally {
-            receive.release();
-        }
+        return OperateHelper.booleanOperation(client, send, OperationType.Logon);
     }
 
     public static @Nullable String login(final @NotNull WListClientInterface client, final @NotNull String username, final @NotNull String password) throws IOException, InterruptedException, WrongStateException {
@@ -38,12 +34,13 @@ public final class OperateSelfHelper {
         OperateHelper.logOperating(OperationType.Login, null, p -> p.add("username", username).add("password", password));
         final ByteBuf receive = client.send(send);
         try {
-            if (OperateHelper.handleState(receive)) {
+            final String reason = OperateHelper.handleState(receive);
+            if (reason == null) {
                 final String token = ByteBufIOUtil.readUTF(receive);
-                OperateHelper.logOperated(OperationType.Login, p -> p.add("success", true).add("token", token).add("tokenHash", token.hashCode()));
+                OperateHelper.logOperated(OperationType.Login, OperateHelper.logReason(null).andThen(p -> p.add("token", token).add("tokenHash", token.hashCode())));
                 return token;
             }
-            OperateHelper.logOperated(OperationType.Login, p -> p.add("success", false));
+            OperateHelper.logOperated(OperationType.Login, OperateHelper.logReason(reason));
             return null;
         } finally {
             receive.release();
@@ -54,28 +51,14 @@ public final class OperateSelfHelper {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.Logoff, token);
         ByteBufIOUtil.writeUTF(send, password);
         OperateHelper.logOperating(OperationType.Logoff, token, p -> p.add("password", password));
-        final ByteBuf receive = client.send(send);
-        try {
-            final boolean success = OperateHelper.handleState(receive);
-            OperateHelper.logOperated(OperationType.Logoff, p -> p.add("success", success));
-            return success;
-        } finally {
-            receive.release();
-        }
+        return OperateHelper.booleanOperation(client, send, OperationType.Logoff);
     }
 
     public static boolean changeUsername(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String newUsername) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.ChangeUsername, token);
         ByteBufIOUtil.writeUTF(send, newUsername);
         OperateHelper.logOperating(OperationType.ChangeUsername, token, p -> p.add("newUsername", newUsername));
-        final ByteBuf receive = client.send(send);
-        try {
-            final boolean success = OperateHelper.handleState(receive);
-            OperateHelper.logOperated(OperationType.ChangeUsername, p -> p.add("success", success));
-            return success;
-        } finally {
-            receive.release();
-        }
+        return OperateHelper.booleanOperation(client, send, OperationType.ChangeUsername);
     }
 
     public static boolean changePassword(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String oldPassword, final @NotNull String newPassword) throws IOException, InterruptedException, WrongStateException {
@@ -83,14 +66,7 @@ public final class OperateSelfHelper {
         ByteBufIOUtil.writeUTF(send, oldPassword);
         ByteBufIOUtil.writeUTF(send, newPassword);
         OperateHelper.logOperating(OperationType.ChangePassword, token, p -> p.add("oldPassword", oldPassword).add("newPassword", newPassword));
-        final ByteBuf receive = client.send(send);
-        try {
-            final boolean success = OperateHelper.handleState(receive);
-            OperateHelper.logOperated(OperationType.ChangePassword, p -> p.add("success", success));
-            return success;
-        } finally {
-            receive.release();
-        }
+        return OperateHelper.booleanOperation(client, send, OperationType.ChangePassword);
     }
 
     public static @Nullable VisibleUserGroupInformation getSelfGroup(final @NotNull WListClientInterface client, final @NotNull String token) throws IOException, InterruptedException, WrongStateException {
@@ -98,10 +74,14 @@ public final class OperateSelfHelper {
         OperateHelper.logOperating(OperationType.GetSelfGroup, token, null);
         final ByteBuf receive = client.send(send);
         try {
-            final boolean success = OperateHelper.handleState(receive);
-            final VisibleUserGroupInformation group = success ? VisibleUserGroupInformation.parse(receive) : null;
-            OperateHelper.logOperated(OperationType.GetSelfGroup, p -> p.add("success", success).optionallyAdd(success, "groupName", group));
-            return group;
+            final String reason = OperateHelper.handleState(receive);
+            if (reason == null) {
+                final VisibleUserGroupInformation group = VisibleUserGroupInformation.parse(receive);
+                OperateHelper.logOperated(OperationType.GetSelfGroup, OperateHelper.logReason(null).andThen(p -> p.add("group", group)));
+                return group;
+            }
+            OperateHelper.logOperated(OperationType.GetSelfGroup, OperateHelper.logReason(reason));
+            return null;
         } finally {
             receive.release();
         }

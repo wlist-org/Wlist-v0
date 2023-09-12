@@ -4,6 +4,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import com.xuxiaocheng.WList.Commons.Operations.ResponseState;
@@ -78,9 +79,12 @@ public final class OperateSelfHandler {
         ServerHandlerManager.register(OperationType.Logoff, OperateSelfHandler.doLogoff);
         ServerHandlerManager.register(OperationType.ChangeUsername, OperateSelfHandler.doChangeUsername);
         ServerHandlerManager.register(OperationType.ChangePassword, OperateSelfHandler.doChangePassword);
-        ServerHandlerManager.register(OperationType.GetSelfGroup, OperateSelfHandler.doGetGroup);
+        ServerHandlerManager.register(OperationType.GetSelfGroup, OperateSelfHandler.doGetSelfGroup);
     }
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateSelfHelper#logon(WListClientInterface, String, String)
+     */
     private static final @NotNull ServerHandler doLogon = (channel, buffer) -> {
         final String username = ByteBufIOUtil.readUTF(buffer);
         final String password = PasswordGuard.encryptPassword(ByteBufIOUtil.readUTF(buffer));
@@ -98,6 +102,9 @@ public final class OperateSelfHandler {
         };
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateSelfHelper#login(WListClientInterface, String, String)
+     */
     private static final @NotNull ServerHandler doLogin = (channel, buffer) -> {
         final String username = ByteBufIOUtil.readUTF(buffer);
         final String password = ByteBufIOUtil.readUTF(buffer);
@@ -115,6 +122,9 @@ public final class OperateSelfHandler {
         };
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateSelfHelper#logoff(WListClientInterface, String, String)
+     */
     private static final @NotNull ServerHandler doLogoff = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final String verifyingPassword = ByteBufIOUtil.readUTF(buffer);
@@ -139,6 +149,9 @@ public final class OperateSelfHandler {
         };
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateSelfHelper#changeUsername(WListClientInterface, String, String)
+     */
     private static final @NotNull ServerHandler doChangeUsername = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token);
@@ -168,6 +181,9 @@ public final class OperateSelfHandler {
         };
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateSelfHelper#changePassword(WListClientInterface, String, String, String)
+     */
     private static final @NotNull ServerHandler doChangePassword = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final String verifyingPassword = ByteBufIOUtil.readUTF(buffer);
@@ -192,7 +208,10 @@ public final class OperateSelfHandler {
         };
     };
 
-    private static final @NotNull ServerHandler doGetGroup = (channel, buffer) -> {
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateSelfHelper#getSelfGroup(WListClientInterface, String)
+     */
+    private static final @NotNull ServerHandler doGetSelfGroup = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token);
         ServerHandler.logOperation(channel, OperationType.GetSelfGroup, user, null);

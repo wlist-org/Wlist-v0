@@ -5,6 +5,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Client.Exceptions.NoPermissionException;
 import com.xuxiaocheng.WList.Client.Exceptions.WrongStateException;
+import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import com.xuxiaocheng.WList.Commons.Operations.ResponseState;
 import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
@@ -23,7 +24,7 @@ public final class OperateHelper {
         super();
     }
 
-    static boolean handleState(final @NotNull ByteBuf receive) throws IOException, WrongStateException {
+    static @Nullable String handleState(final @NotNull ByteBuf receive) throws IOException, WrongStateException {
         if (receive.readableBytes() <= 0) throw new WrongStateException(ResponseState.Undefined, receive.toString());
         if (receive.getByte(receive.readerIndex()) <= 1) throw new WrongStateException(ResponseState.Success); // Prevent broadcast.
         final ResponseState state = ResponseState.of(ByteBufIOUtil.readUTF(receive));
@@ -38,8 +39,8 @@ public final class OperateHelper {
                     permissions[i] = UserPermission.of(ByteBufIOUtil.readUTF(receive));
                 throw new NoPermissionException(permissions);
             }
-            case Success -> true;
-            case DataError -> false;
+            case Success -> null;
+            case DataError -> ByteBufIOUtil.readUTF(receive);
         };
     }
 
@@ -74,6 +75,21 @@ public final class OperateHelper {
             if (parameters != null)
                 parameters.accept(parametersMap);
             HLog.getInstance("ClientLogger").log(HLogLevel.DEBUG, "Operated: ", operation, parametersMap);
+        }
+    }
+
+    static @NotNull Consumer<@NotNull ParametersMap> logReason(final @Nullable String reason) {
+        return p -> p.add("success", reason == null).optionallyAdd(reason != null, "reason", reason);
+    }
+
+    static boolean booleanOperation(final @NotNull WListClientInterface client, final @NotNull ByteBuf send, final @NotNull OperationType type) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf receive = client.send(send);
+        try {
+            final String reason = OperateHelper.handleState(receive);
+            OperateHelper.logOperated(type, OperateHelper.logReason(reason));
+            return reason == null;
+        } finally {
+            receive.release();
         }
     }
 }

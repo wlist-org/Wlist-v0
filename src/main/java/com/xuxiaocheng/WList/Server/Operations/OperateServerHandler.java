@@ -3,6 +3,7 @@ package com.xuxiaocheng.WList.Server.Operations;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
+import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
@@ -27,6 +28,9 @@ public final class OperateServerHandler {
         ServerHandlerManager.register(OperationType.ResetConfiguration, OperateServerHandler.doResetConfiguration);
     }
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateServerHelper#setBroadcastMode(WListClientInterface, boolean)
+     */
     private static final @NotNull ServerHandler doSetBroadcastMode = (channel, buffer) -> {
         final boolean receive = ByteBufIOUtil.readBoolean(buffer);
         ServerHandler.logOperation(channel, OperationType.SetBroadcastMode, null, () -> ParametersMap.create().add("receive", receive));
@@ -41,6 +45,9 @@ public final class OperateServerHandler {
         };
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateServerHelper#closeServer(WListClientInterface, String)
+     */
     private static final @NotNull ServerHandler doCloseServer = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.ServerOperate);
@@ -66,6 +73,10 @@ public final class OperateServerHandler {
         };
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateServerHelper#broadcast(WListClientInterface, String, String)
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateServerHelper#waitBroadcast(WListClientInterface)
+     */
     private static final @NotNull ServerHandler doBroadcast = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.Broadcast);
@@ -82,6 +93,9 @@ public final class OperateServerHandler {
         };
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateServerHelper#resetConfiguration(WListClientInterface, String, ServerConfiguration)
+     */
     private static final @NotNull ServerHandler doResetConfiguration = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.ServerOperate);
