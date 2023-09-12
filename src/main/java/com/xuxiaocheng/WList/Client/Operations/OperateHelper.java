@@ -3,6 +3,7 @@ package com.xuxiaocheng.WList.Client.Operations;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.Client.Exceptions.InvalidTokenException;
 import com.xuxiaocheng.WList.Client.Exceptions.NoPermissionException;
 import com.xuxiaocheng.WList.Client.Exceptions.WrongStateException;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
@@ -37,6 +38,8 @@ public final class OperateHelper {
                 final UserPermission[] permissions = new UserPermission[length];
                 for (int i = 0; i < length; ++i)
                     permissions[i] = UserPermission.of(ByteBufIOUtil.readUTF(receive));
+                if (length == 1 && permissions[0] == UserPermission.Undefined)
+                    throw new InvalidTokenException();
                 throw new NoPermissionException(permissions);
             }
             case Success -> null;
