@@ -3,7 +3,7 @@ package com.xuxiaocheng.WList.Server.Storage.Selectors;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
-import com.xuxiaocheng.HeadLibs.Helpers.HMiscellaneousHelper;
+import com.xuxiaocheng.HeadLibs.Helpers.HMultiRunHelper;
 import com.xuxiaocheng.HeadLibs.Ranges.LongRange;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
@@ -73,23 +73,19 @@ public final class RootSelector implements ProviderInterface<RootSelector.RootDr
     public void buildCache() throws Exception {
         final Map<String, Throwable> exceptions = new ConcurrentHashMap<>();
         final Map<String, ProviderInterface<?>> providers = ProviderManager.getAllProviders();
-        final Runnable[] tasks = new Runnable[providers.size()];
-        int i = 0;
-        for (final Map.Entry<String, ProviderInterface<?>> provider: providers.entrySet())
-            tasks[i++] = () -> {
+        HMultiRunHelper.runConsumers(WListServer.ServerExecutors, providers.size(), providers.entrySet().iterator(), provider -> {
+            try {
+                provider.getValue().buildCache();
+            } catch (final Exception exception) {
+                exceptions.put(provider.getKey(), exception);
+            } finally {
                 try {
-                    provider.getValue().buildCache();
-                } catch (final Exception exception) {
-                    exceptions.put(provider.getKey(), exception);
-                } finally {
-                    try {
-                        ProviderManager.dumpConfigurationIfModified(provider.getValue().getConfiguration());
-                    } catch (final IOException exception) {
-                        exceptions.merge(provider.getKey(), exception, (a, b) -> {a.addSuppressed(b); return a;});
-                    }
+                    ProviderManager.dumpConfigurationIfModified(provider.getValue().getConfiguration());
+                } catch (final IOException exception) {
+                    exceptions.merge(provider.getKey(), exception, (a, b) -> {a.addSuppressed(b); return a;});
                 }
-            };
-        HMiscellaneousHelper.runMultiTasks(WListServer.ServerExecutors,  tasks);
+            }
+        });
         if (!exceptions.isEmpty()) {
             final Exception exception = new Exception("Failed to build cache." + ParametersMap.create().add("names", exceptions.keySet()));
             exceptions.values().forEach(exception::addSuppressed);
@@ -102,23 +98,19 @@ public final class RootSelector implements ProviderInterface<RootSelector.RootDr
     public void buildIndex() throws Exception {
         final Map<String, Throwable> exceptions = new ConcurrentHashMap<>();
         final Map<String, ProviderInterface<?>> providers = ProviderManager.getAllProviders();
-        final Runnable[] tasks = new Runnable[providers.size()];
-        int i = 0;
-        for (final Map.Entry<String, ProviderInterface<?>> provider: providers.entrySet())
-            tasks[i++] = () -> {
+        HMultiRunHelper.runConsumers(WListServer.ServerExecutors, providers.size(), providers.entrySet().iterator(), provider -> {
+            try {
+                provider.getValue().buildIndex();
+            } catch (final Exception exception) {
+                exceptions.put(provider.getKey(), exception);
+            } finally {
                 try {
-                    provider.getValue().buildIndex();
-                } catch (final Exception exception) {
-                    exceptions.put(provider.getKey(), exception);
-                } finally {
-                    try {
-                        ProviderManager.dumpConfigurationIfModified(provider.getValue().getConfiguration());
-                    } catch (final IOException exception) {
-                        exceptions.merge(provider.getKey(), exception, (a, b) -> {a.addSuppressed(b); return a;});
-                    }
+                    ProviderManager.dumpConfigurationIfModified(provider.getValue().getConfiguration());
+                } catch (final IOException exception) {
+                    exceptions.merge(provider.getKey(), exception, (a, b) -> {a.addSuppressed(b); return a;});
                 }
-            };
-        HMiscellaneousHelper.runMultiTasks(WListServer.ServerExecutors,  tasks);
+            }
+        });
         if (!exceptions.isEmpty()) {
             final Exception exception = new Exception("Failed to build index." + ParametersMap.create().add("names", exceptions.keySet()));
             exceptions.values().forEach(exception::addSuppressed);

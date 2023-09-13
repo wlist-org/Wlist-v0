@@ -3,7 +3,7 @@ package com.xuxiaocheng.WList.Server.Storage;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
-import com.xuxiaocheng.HeadLibs.Helpers.HMiscellaneousHelper;
+import com.xuxiaocheng.HeadLibs.Helpers.HMultiRunHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -101,13 +101,11 @@ public final class ProviderManager {
             ProviderManager.logger.log(HLogLevel.ENHANCED, "No providers were found!");
             return;
         }
-        final Runnable[] tasks = new Runnable[ServerConfiguration.get().providers().size()];
-        int i = 0;
-        for (final Map.Entry<String, WebProviderType> entry: ServerConfiguration.get().providers().entrySet())
-            tasks[i++] = () -> ProviderManager.initializeProvider0(entry.getKey(), entry.getValue());
+        final Map<String, WebProviderType> providers = ServerConfiguration.get().providers();
         final LocalDateTime t1 = LocalDateTime.now();
         try {
-            HMiscellaneousHelper.runMultiTasks(WListServer.ServerExecutors, tasks);
+            HMultiRunHelper.runConsumers(WListServer.ServerExecutors, providers.size(), providers.entrySet().iterator(),
+                    e -> ProviderManager.initializeProvider0(e.getKey(), e.getValue()));
         } catch (final InterruptedException exception) {
             throw new RuntimeException(exception);
         }
