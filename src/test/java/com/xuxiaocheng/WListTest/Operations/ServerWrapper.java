@@ -14,7 +14,7 @@ import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
 import com.xuxiaocheng.WList.Server.Databases.User.PasswordGuard;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
-import com.xuxiaocheng.WList.Server.DriverManager;
+import com.xuxiaocheng.WList.Server.Storage.ProviderManager;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.DriverNetworkHelper;
@@ -54,7 +54,8 @@ public class ServerWrapper {
         ConstantManager.quicklyInitialize(database, "initialize");
         UserGroupManager.quicklyInitialize(database, "initialize");
         UserManager.quicklyInitialize(database, "initialize");
-        DriverManager.initialize(new File(ServerWrapper.runtimeDirectory, "configs"));
+        ProviderManager.initialize(new File(ServerWrapper.runtimeDirectory, "configs"),
+                new File(ServerWrapper.runtimeDirectory, "caches"));
         WListServer.getInstance().start(ServerConfiguration.get().port());
         final SocketAddress address = WListServer.getInstance().getAddress().getInstance();
         ServerWrapper.AdminPassword.initialize(Objects.requireNonNull(UserManager.getAndDeleteDefaultAdminPasswordAPI()));

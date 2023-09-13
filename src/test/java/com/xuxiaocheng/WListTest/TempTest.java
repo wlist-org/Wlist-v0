@@ -9,10 +9,11 @@ import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
-import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.DriverNetworkHelper;
+import com.xuxiaocheng.WList.Server.Storage.ProviderManager;
+import com.xuxiaocheng.WList.Server.Storage.WebProviders.ProviderInterface;
 import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -44,7 +45,8 @@ public class TempTest {
             ConstantManager.quicklyInitialize(database, "initialize");
             UserGroupManager.quicklyInitialize(database, "initialize");
             UserManager.quicklyInitialize(database, "initialize");
-            DriverManager.initialize(new File(TempTest.runtimeDirectory, "configs"));
+            ProviderManager.initialize(new File(TempTest.runtimeDirectory, "configs"),
+                    new File(TempTest.runtimeDirectory, "caches"));
         }
     }
 
@@ -52,7 +54,7 @@ public class TempTest {
     public void tempTest() throws Exception {
         try {
             if (TempTest.initializeServer) {
-                final Map<String, Exception> failures = DriverManager.getFailedDriversAPI();
+                final Map<String, Exception> failures = ProviderManager.getFailedProvidersAPI();
                 if (!failures.isEmpty()) {
                     HLog.DefaultLogger.log(HLogLevel.FAULT, failures);
                     return;
@@ -63,8 +65,12 @@ public class TempTest {
                 HLog.DefaultLogger.log(HLogLevel.DEBUG, obj);
         } finally {
             if (TempTest.initializeServer)
-                for (final Map.Entry<String, Exception> exception: DriverManager.operateAllDrivers(d -> DriverManager.dumpConfigurationIfModified(d.getConfiguration())).entrySet())
-                    HLog.DefaultLogger.log(HLogLevel.ERROR, "Failed to dump driver configuration.", ParametersMap.create().add("name", exception.getKey()), exception.getValue());
+                for (final Map.Entry<String, ProviderInterface<?>> provider: ProviderManager.getAllProviders().entrySet())
+                    try {
+                        ProviderManager.dumpConfigurationIfModified(provider.getValue().getConfiguration());
+                    } catch (final IOException exception) {
+                        HLog.DefaultLogger.log(HLogLevel.ERROR, "Failed to dump provider configuration.", ParametersMap.create().add("name", provider.getKey()), exception);
+                    }
             HLog.DefaultLogger.log(HLogLevel.FINE, "Shutting down all executors.");
             WListServer.CodecExecutors.shutdownGracefully();
             WListServer.ServerExecutors.shutdownGracefully();

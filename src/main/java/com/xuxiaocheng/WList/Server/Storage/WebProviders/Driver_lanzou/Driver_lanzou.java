@@ -13,6 +13,7 @@ import com.xuxiaocheng.WList.Server.Databases.TrashedFile.TrashedFileManager;
 import com.xuxiaocheng.WList.Server.Databases.TrashedFile.TrashedSqliteHelper;
 import com.xuxiaocheng.WList.Server.Storage.FailureReason;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
+import com.xuxiaocheng.WList.Server.Storage.ProviderManager;
 import com.xuxiaocheng.WList.Server.Storage.Selectors.RootSelector;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Storage.WebProviders.ProviderInterface;
@@ -44,7 +45,7 @@ public class Driver_lanzou implements ProviderInterface<DriverConfiguration_lanz
 
     @Override
     public void initialize(final @NotNull DriverConfiguration_lanzou configuration) throws SQLException {
-        final SqlDatabaseInterface database = SqlDatabaseManager.quicklyOpen(SqlDatabaseManager.getDriverDatabasePath(configuration.getName()));
+        final SqlDatabaseInterface database = SqlDatabaseManager.quicklyOpen(ProviderManager.getProviderDatabaseFile(configuration.getName()));
         FileManager.quicklyInitialize(new FileSqliteHelper(database, configuration.getName(), configuration.getWebSide().getRootDirectoryId()), null);
         this.configuration = configuration;
         FileManager.mergeFile(this.configuration.getName(), RootSelector.getDatabaseDriverInformation(this.configuration), null);

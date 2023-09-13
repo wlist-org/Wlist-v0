@@ -23,9 +23,9 @@ public enum WebProviderType {
 
     private final @NotNull String identifier;
     private final @NotNull Supplier<@NotNull ProviderInterface<?>> driver;
-    private final @Nullable Supplier<@NotNull ProviderTrashInterface<?>> trash;
+    private final @Nullable Supplier<@NotNull ProviderRecyclerInterface<?>> trash;
 
-    WebProviderType(final @NotNull String identifier, final @NotNull Supplier<@NotNull ProviderInterface<?>> driver, final @Nullable Supplier<@NotNull ProviderTrashInterface<?>> trash) {
+    WebProviderType(final @NotNull String identifier, final @NotNull Supplier<@NotNull ProviderInterface<?>> driver, final @Nullable Supplier<@NotNull ProviderRecyclerInterface<?>> trash) {
         this.identifier = identifier;
         this.driver = driver;
         this.trash = trash;
@@ -39,7 +39,7 @@ public enum WebProviderType {
         return this.driver;
     }
 
-    public @Nullable Supplier<@NotNull ProviderTrashInterface<?>> getTrash() {
+    public @Nullable Supplier<@NotNull ProviderRecyclerInterface<?>> getTrash() {
         return this.trash;
     }
 

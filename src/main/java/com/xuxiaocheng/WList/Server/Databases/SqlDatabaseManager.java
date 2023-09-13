@@ -1,8 +1,6 @@
 package com.xuxiaocheng.WList.Server.Databases;
 
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
-import com.xuxiaocheng.WList.Server.DriverManager;
-import com.xuxiaocheng.WList.WList;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -55,11 +53,6 @@ public final class SqlDatabaseManager {
 
     public static @NotNull @UnmodifiableView Set<@NotNull File> getOpenedDatabases() {
         return Collections.unmodifiableSet(SqlDatabaseManager.databases.keySet());
-    }
-
-    public static @NotNull File getDriverDatabasePath(final @NotNull String driverName) {
-        assert DriverManager.isDriverNameValid(driverName);
-        return new File(WList.RuntimePath.getInstance(), "cache/" + driverName + ".db");
     }
 
     @FunctionalInterface

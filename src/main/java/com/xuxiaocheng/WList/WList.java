@@ -13,11 +13,12 @@ import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
-import com.xuxiaocheng.WList.Server.DriverManager;
+import com.xuxiaocheng.WList.Server.Storage.ProviderManager;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Operations.ServerHandlerManager;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.DriverNetworkHelper;
+import com.xuxiaocheng.WList.Server.Storage.WebProviders.ProviderInterface;
 import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 
@@ -156,17 +157,22 @@ public final class WList {
     }
 
     private static void initializeStorageProvider() throws IOException {
-        final File directory = new File(WList.RuntimePath.getInstance(), "configs");
-        WList.logger.log(HLogLevel.LESS, "Initializing storage provider.", ParametersMap.create().add("directory", directory));
-        HFileHelper.ensureDirectoryExist(directory.toPath());
-        DriverManager.initialize(directory);
+        final File configuration = new File(WList.RuntimePath.getInstance(), "configs");
+        final File cache = new File(WList.RuntimePath.getInstance(), "caches");
+        WList.logger.log(HLogLevel.LESS, "Initializing storage provider.", ParametersMap.create().add("directory", configuration));
+        HFileHelper.ensureDirectoryExist(configuration.toPath());
+        ProviderManager.initialize(configuration, cache);
         WList.logger.log(HLogLevel.VERBOSE, "Initialized storage provider.");
     }
 
     private static void checkConfigurationsSaved() {
         WList.logger.log(HLogLevel.INFO, "Checking configurations is saved...");
-        for (final Map.Entry<String, Exception> exception: DriverManager.operateAllDrivers(d -> DriverManager.dumpConfigurationIfModified(d.getConfiguration())).entrySet())
-            WList.logger.log(HLogLevel.ERROR, "Failed to dump driver configuration.", ParametersMap.create().add("name", exception.getKey()), exception.getValue());
+        for (final Map.Entry<String, ProviderInterface<?>> provider: ProviderManager.getAllProviders().entrySet())
+            try {
+                ProviderManager.dumpConfigurationIfModified(provider.getValue().getConfiguration());
+            } catch (final IOException exception) {
+                HLog.DefaultLogger.log(HLogLevel.ERROR, "Failed to dump provider configuration.", ParametersMap.create().add("name", provider.getKey()), exception);
+            }
     }
 
     @SuppressWarnings("unchecked")

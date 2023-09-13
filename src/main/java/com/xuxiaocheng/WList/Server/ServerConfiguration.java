@@ -7,6 +7,7 @@ import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
+import com.xuxiaocheng.WList.Server.Storage.ProviderManager;
 import com.xuxiaocheng.WList.Server.Storage.WebProviders.WebProviderType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -27,6 +28,10 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+/**
+ * @see ProviderManager#addProvider(String, WebProviderType)
+ * @see ProviderManager#removeProvider(String)
+ */
 public record ServerConfiguration(int port, int maxServerBacklog,
                                   long tokenExpireTime, long idIdleExpireTime,
                                   int maxLimitPerPage, int forwardDownloadCacheCount,
@@ -70,6 +75,11 @@ public record ServerConfiguration(int port, int maxServerBacklog,
                     if (map == null) return null;
                     final Map<String, WebProviderType> drivers = new LinkedHashMap<>(map.size());
                     for (final Map.Entry<String, Object> e: map.entrySet()) {
+                        final String reason = ProviderManager.providerNameInvalidReason(e.getKey());
+                        if (reason != null) {
+                            HLog.getInstance("DefaultLogger").log(HLogLevel.WARN, "Invalid provider name.", ParametersMap.create().add("name", e.getKey()).add("type", e.getValue().toString()).add("reason", reason));
+                            continue;
+                        }
                         final String identifier = YamlHelper.transferString(e.getValue(), errors, "provider(" + e.getKey() + ')');
                         if (identifier == null) continue;
                         final WebProviderType type = WebProviderType.get(identifier);

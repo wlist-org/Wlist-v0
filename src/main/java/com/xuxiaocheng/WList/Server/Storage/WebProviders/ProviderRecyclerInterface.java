@@ -14,7 +14,7 @@ import org.jetbrains.annotations.UnmodifiableView;
 
 import java.util.List;
 
-public interface ProviderTrashInterface<D extends ProviderInterface<?>> {
+public interface ProviderRecyclerInterface<D extends ProviderInterface<?>> {
     @NotNull D getDriver();
 
     void initialize(final @NotNull D driver) throws Exception;

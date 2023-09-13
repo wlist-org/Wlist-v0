@@ -3,27 +3,31 @@ package com.xuxiaocheng.WList.Server.Storage.Selectors;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.Helpers.HMiscellaneousHelper;
 import com.xuxiaocheng.HeadLibs.Ranges.LongRange;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInterface;
-import com.xuxiaocheng.WList.Server.DriverManager;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.UploadMethods;
 import com.xuxiaocheng.WList.Server.Storage.FailureReason;
+import com.xuxiaocheng.WList.Server.Storage.ProviderManager;
 import com.xuxiaocheng.WList.Server.Storage.WebProviders.ProviderConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.WebProviders.ProviderInterface;
-import com.xuxiaocheng.WList.Server.Storage.WebProviders.ProviderTrashInterface;
+import com.xuxiaocheng.WList.Server.Storage.WebProviders.ProviderRecyclerInterface;
+import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 @SuppressWarnings("OverlyBroadThrowsClause")
@@ -67,13 +71,25 @@ public final class RootSelector implements ProviderInterface<RootSelector.RootDr
     @Deprecated
     @Override
     public void buildCache() throws Exception {
-        final Map<String, Exception> exceptions = DriverManager.operateAllDrivers(d -> {
-            try {
-                d.buildCache();
-            } finally {
-                DriverManager.dumpConfigurationIfModified(d.getConfiguration());
-            }
-        });
+        final Map<String, Throwable> exceptions = new ConcurrentHashMap<>();
+        final Map<String, ProviderInterface<?>> providers = ProviderManager.getAllProviders();
+        final Runnable[] tasks = new Runnable[providers.size()];
+        int i = 0;
+        for (final Map.Entry<String, ProviderInterface<?>> provider: providers.entrySet())
+            tasks[i++] = () -> {
+                try {
+                    provider.getValue().buildCache();
+                } catch (final Exception exception) {
+                    exceptions.put(provider.getKey(), exception);
+                } finally {
+                    try {
+                        ProviderManager.dumpConfigurationIfModified(provider.getValue().getConfiguration());
+                    } catch (final IOException exception) {
+                        exceptions.merge(provider.getKey(), exception, (a, b) -> {a.addSuppressed(b); return a;});
+                    }
+                }
+            };
+        HMiscellaneousHelper.runMultiTasks(WListServer.ServerExecutors,  tasks);
         if (!exceptions.isEmpty()) {
             final Exception exception = new Exception("Failed to build cache." + ParametersMap.create().add("names", exceptions.keySet()));
             exceptions.values().forEach(exception::addSuppressed);
@@ -84,13 +100,25 @@ public final class RootSelector implements ProviderInterface<RootSelector.RootDr
     @Deprecated
     @Override
     public void buildIndex() throws Exception {
-        final Map<String, Exception> exceptions = DriverManager.operateAllDrivers(d -> {
-            try {
-                d.buildIndex();
-            } finally {
-                DriverManager.dumpConfigurationIfModified(d.getConfiguration());
-            }
-        });
+        final Map<String, Throwable> exceptions = new ConcurrentHashMap<>();
+        final Map<String, ProviderInterface<?>> providers = ProviderManager.getAllProviders();
+        final Runnable[] tasks = new Runnable[providers.size()];
+        int i = 0;
+        for (final Map.Entry<String, ProviderInterface<?>> provider: providers.entrySet())
+            tasks[i++] = () -> {
+                try {
+                    provider.getValue().buildIndex();
+                } catch (final Exception exception) {
+                    exceptions.put(provider.getKey(), exception);
+                } finally {
+                    try {
+                        ProviderManager.dumpConfigurationIfModified(provider.getValue().getConfiguration());
+                    } catch (final IOException exception) {
+                        exceptions.merge(provider.getKey(), exception, (a, b) -> {a.addSuppressed(b); return a;});
+                    }
+                }
+            };
+        HMiscellaneousHelper.runMultiTasks(WListServer.ServerExecutors,  tasks);
         if (!exceptions.isEmpty()) {
             final Exception exception = new Exception("Failed to build index." + ParametersMap.create().add("names", exceptions.keySet()));
             exceptions.values().forEach(exception::addSuppressed);
@@ -99,15 +127,15 @@ public final class RootSelector implements ProviderInterface<RootSelector.RootDr
     }
 
     public boolean buildIndex(final @NotNull String name) throws Exception {
-        final ProviderInterface<?> driver = DriverManager.getDriver(name);
+        final ProviderInterface<?> driver = ProviderManager.getProvider(name);
         if (driver != null) {
-            final ProviderTrashInterface<?> trash = DriverManager.getTrash(name);
+            final ProviderRecyclerInterface<?> trash = ProviderManager.getRecycler(name);
             try {
                 final LocalDateTime old = driver.getConfiguration().getCacheSide().getLastFileIndexBuildTime();
                 if (old == null || Duration.between(old, LocalDateTime.now()).toMillis() > TimeUnit.HOURS.toMillis(3))
                     driver.buildIndex();
             } finally {
-                DriverManager.dumpConfigurationIfModified(driver.getConfiguration());
+                ProviderManager.dumpConfigurationIfModified(driver.getConfiguration());
             }
             if (trash != null)
                 try {
@@ -115,7 +143,7 @@ public final class RootSelector implements ProviderInterface<RootSelector.RootDr
                     if (old == null || Duration.between(old, LocalDateTime.now()).toMillis() > TimeUnit.HOURS.toMillis(3))
                         trash.buildIndex();
                 } finally {
-                    DriverManager.dumpConfigurationIfModified(trash.getDriver().getConfiguration());
+                    ProviderManager.dumpConfigurationIfModified(trash.getDriver().getConfiguration());
                 }
         }
         return driver != null;
@@ -123,12 +151,12 @@ public final class RootSelector implements ProviderInterface<RootSelector.RootDr
 
     @Override
     public void forceRefreshDirectory(final @NotNull FileLocation location) throws Exception {
-        final ProviderInterface<?> driver = DriverManager.getDriver(location.driver());
+        final ProviderInterface<?> driver = ProviderManager.getProvider(location.driver());
         if (driver != null)
             try {
                 driver.forceRefreshDirectory(location);
             } finally {
-                DriverManager.dumpConfigurationIfModified(driver.getConfiguration());
+                ProviderManager.dumpConfigurationIfModified(driver.getConfiguration());
             }
     }
 
@@ -136,7 +164,7 @@ public final class RootSelector implements ProviderInterface<RootSelector.RootDr
     public Triad.@Nullable ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileInformation>> list(final @NotNull FileLocation location, final Options.@NotNull DirectoriesOrFiles filter, final @LongRange(minimum = 0) int limit, final @LongRange(minimum = 0) int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws Exception {
         if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(location.driver())) {
 //            if (filter == Options.DirectoriesOrFiles.OnlyFiles)
-                return Triad.ImmutableTriad.makeImmutableTriad((long) DriverManager.getDriverCount(), 0L, List.of());
+                return Triad.ImmutableTriad.makeImmutableTriad((long) ProviderManager.getProvidersCount(), 0L, List.of());
 //            final Comparator<ProviderConfiguration<?, ?, ?>> comparator = switch (policy) {
 //                case FileName -> Comparator.comparing((ProviderConfiguration<?, ?, ?> a) -> a.getLocalSide().getDisplayName());
 //                case Size -> Comparator.comparing((ProviderConfiguration<?, ?, ?> a) -> a.getWebSide().getSpaceUsed(), Long::compareUnsigned);
@@ -146,20 +174,20 @@ public final class RootSelector implements ProviderInterface<RootSelector.RootDr
 //            final SortedSet<ProviderConfiguration<?, ?, ?>> all = new ConcurrentSkipListSet<>(switch (direction) {
 //                case ASCEND -> comparator; case DESCEND -> comparator.reversed();
 //            });
-//            DriverManager.operateAllDrivers(d -> all.add(d.getConfiguration()));
+//            ProviderManager.operateAllDrivers(d -> all.add(d.getConfiguration()));
 //            final Iterator<ProviderConfiguration<?, ?, ?>> iterator = all.stream().skip((long) limit * page).iterator();
 //            final List<FileInformation> list = new ArrayList<>(limit);
 //            while (list.size() < limit && iterator.hasNext())
 //                list.add(RootSelector.getDriverInformation(iterator.next()));
 //            return Triad.ImmutableTriad.makeImmutableTriad((long) all.size(), (long) all.size(), list);
         }
-        final ProviderInterface<?> real = DriverManager.getDriver(location.driver());
+        final ProviderInterface<?> real = ProviderManager.getProvider(location.driver());
         if (real == null) return null;
         final Triad.ImmutableTriad<Long, Long, List<FileInformation>> list;
         try {
             list = real.list(location, filter, limit, page, policy, direction);
         } finally {
-            DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+            ProviderManager.dumpConfigurationIfModified(real.getConfiguration());
         }
         return list;
     }
@@ -168,26 +196,26 @@ public final class RootSelector implements ProviderInterface<RootSelector.RootDr
     public @Nullable FileInformation info(final @NotNull FileLocation location) throws Exception {
         if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(location.driver()))
             throw new UnsupportedOperationException("Cannot get root info.");
-        final ProviderInterface<?> real = DriverManager.getDriver(location.driver());
+        final ProviderInterface<?> real = ProviderManager.getProvider(location.driver());
         if (real == null) return null;
         final FileInformation info;
         try {
             info = real.info(location);
         } finally {
-            DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+            ProviderManager.dumpConfigurationIfModified(real.getConfiguration());
         }
         return info;
     }
 
     @Override
     public @NotNull UnionPair<DownloadMethods, FailureReason> download(final @NotNull FileLocation location, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws Exception {
-        final ProviderInterface<?> real = DriverManager.getDriver(location.driver());
+        final ProviderInterface<?> real = ProviderManager.getProvider(location.driver());
         if (real == null) return UnionPair.fail(FailureReason.byNoSuchFile("Downloading.", location));
         final UnionPair<DownloadMethods, FailureReason> methods;
         try {
             methods = real.download(location, from, to);
         } finally {
-            DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+            ProviderManager.dumpConfigurationIfModified(real.getConfiguration());
         }
         return methods;
     }
@@ -196,13 +224,13 @@ public final class RootSelector implements ProviderInterface<RootSelector.RootDr
     public @NotNull UnionPair<FileInformation, FailureReason> createDirectory(final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws Exception {
         if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(parentLocation.driver()))
             throw new UnsupportedOperationException("Cannot create root directory.");
-        final ProviderInterface<?> real = DriverManager.getDriver(parentLocation.driver());
+        final ProviderInterface<?> real = ProviderManager.getProvider(parentLocation.driver());
         if (real == null) return UnionPair.fail(FailureReason.byNoSuchFile("Creating directories.", parentLocation));
         final UnionPair<FileInformation, FailureReason> directory;
         try {
             directory = real.createDirectory(parentLocation, directoryName, policy);
         } finally {
-            DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+            ProviderManager.dumpConfigurationIfModified(real.getConfiguration());
         }
         return directory;
     }
@@ -211,7 +239,7 @@ public final class RootSelector implements ProviderInterface<RootSelector.RootDr
     public @NotNull UnionPair<UploadMethods, FailureReason> upload(final @NotNull FileLocation parentLocation, final @NotNull String filename, final @LongRange(minimum = 0) long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws Exception {
         if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(parentLocation.driver()))
             throw new UnsupportedOperationException("Cannot create root file.");
-        final ProviderInterface<?> real = DriverManager.getDriver(parentLocation.driver());
+        final ProviderInterface<?> real = ProviderManager.getProvider(parentLocation.driver());
         if (real == null) return UnionPair.fail(FailureReason.byNoSuchFile("Uploading.", parentLocation));
         if (size > real.getConfiguration().getWebSide().getMaxSizePerFile())
             return UnionPair.fail(FailureReason.byExceedMaxSize("Uploading.", size, real.getConfiguration().getWebSide().getMaxSizePerFile(), parentLocation, filename));
@@ -219,7 +247,7 @@ public final class RootSelector implements ProviderInterface<RootSelector.RootDr
         try {
             methods = real.upload(parentLocation, filename, size, md5, policy);
         } finally {
-            DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+            ProviderManager.dumpConfigurationIfModified(real.getConfiguration());
         }
         return methods;
     }
@@ -229,12 +257,12 @@ public final class RootSelector implements ProviderInterface<RootSelector.RootDr
     public void delete(final @NotNull FileLocation location) throws Exception {
         if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(location.driver()))
             throw new UnsupportedOperationException("Cannot delete root driver.");
-        final ProviderInterface<?> real = DriverManager.getDriver(location.driver());
+        final ProviderInterface<?> real = ProviderManager.getProvider(location.driver());
         if (real == null) return;
         try {
             real.delete(location);
         } finally {
-            DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+            ProviderManager.dumpConfigurationIfModified(real.getConfiguration());
         }
     }
 
@@ -245,12 +273,12 @@ public final class RootSelector implements ProviderInterface<RootSelector.RootDr
         if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(targetParentLocation.driver()))
             throw new UnsupportedOperationException("Cannot copy to root driver.");
         if (sourceLocation.driver().equals(targetParentLocation.driver())) {
-            final ProviderInterface<?> real = DriverManager.getDriver(sourceLocation.driver());
+            final ProviderInterface<?> real = ProviderManager.getProvider(sourceLocation.driver());
             if (real == null) return UnionPair.fail(FailureReason.byNoSuchFile("Copying.", sourceLocation));
             try {
                 return real.copy(sourceLocation, targetParentLocation, targetFilename, policy);
             } finally {
-                DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+                ProviderManager.dumpConfigurationIfModified(real.getConfiguration());
             }
         }
         return ProviderInterface.super.copy(sourceLocation, targetParentLocation, targetFilename, policy);
@@ -263,12 +291,12 @@ public final class RootSelector implements ProviderInterface<RootSelector.RootDr
         if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(targetParentLocation.driver()))
             throw new UnsupportedOperationException("Cannot move to root driver.");
         if (sourceLocation.driver().equals(targetParentLocation.driver())) {
-            final ProviderInterface<?> real = DriverManager.getDriver(sourceLocation.driver());
+            final ProviderInterface<?> real = ProviderManager.getProvider(sourceLocation.driver());
             if (real == null) return UnionPair.fail(FailureReason.byNoSuchFile("Moving.", sourceLocation));
             try {
                 return real.move(sourceLocation, targetParentLocation, policy);
             } finally {
-                DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+                ProviderManager.dumpConfigurationIfModified(real.getConfiguration());
             }
         }
         return ProviderInterface.super.move(sourceLocation, targetParentLocation, policy);
@@ -278,12 +306,12 @@ public final class RootSelector implements ProviderInterface<RootSelector.RootDr
     public @NotNull UnionPair<FileInformation, FailureReason> rename(final @NotNull FileLocation sourceLocation, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
         if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(sourceLocation.driver()))
             throw new UnsupportedOperationException("Cannot rename root driver.");
-        final ProviderInterface<?> real = DriverManager.getDriver(sourceLocation.driver());
+        final ProviderInterface<?> real = ProviderManager.getProvider(sourceLocation.driver());
         if (real == null) return UnionPair.fail(FailureReason.byNoSuchFile("Renaming.", sourceLocation));
         try {
             return real.rename(sourceLocation, name, policy);
         } finally {
-            DriverManager.dumpConfigurationIfModified(real.getConfiguration());
+            ProviderManager.dumpConfigurationIfModified(real.getConfiguration());
         }
     }
 
