@@ -20,12 +20,13 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
-public final class UserManager {
-    private UserManager() {
-        super();
-    }
+public record UserManager(@NotNull UserSqlInterface innerSqlInstance) implements UserSqlInterface {
+    private static final @NotNull HInitializer<UserManager> ManagerInstance = new HInitializer<>("UserManager");
 
-    public static final @NotNull HInitializer<UserSqlInterface> sqlInstance = new HInitializer<>("UserSqlInstance");
+    @Deprecated
+    public static @NotNull HInitializer<UserManager> getManagerInstance() {
+        return UserManager.ManagerInstance;
+    }
 
     public static final @NotNull HInitializer<Function<@NotNull SqlDatabaseInterface, @NotNull UserSqlInterface>> SqlMapper = new HInitializer<>("UserGroupSqlInstanceMapper", d -> {
         if (!"Sqlite".equals(d.sqlLanguage()))
@@ -35,97 +36,129 @@ public final class UserManager {
 
     public static void quicklyInitialize(final @NotNull SqlDatabaseInterface database, final @Nullable String _connectionId) throws SQLException {
         try {
-            UserManager.sqlInstance.initializeIfNot(HExceptionWrapper.wrapSupplier(() -> {
+            UserManager.ManagerInstance.initializeIfNot(HExceptionWrapper.wrapSupplier(() -> {
                 final UserSqlInterface instance = UserManager.SqlMapper.getInstance().apply(database);
                 instance.createTable(_connectionId);
-                return instance;
+                return new UserManager(instance);
             }));
         } catch (final RuntimeException exception) {
             throw HExceptionWrapper.unwrapException(exception, SQLException.class);
         }
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     public static boolean quicklyUninitializeReserveTable() {
-        return UserManager.sqlInstance.uninitializeNullable() != null;
+        return UserManager.ManagerInstance.uninitializeNullable() != null;
     }
 
     @SuppressWarnings("UnusedReturnValue")
     public static boolean quicklyUninitialize(final @Nullable String _connectionId) throws SQLException {
-        final UserSqlInterface sqlInstance = UserManager.sqlInstance.uninitializeNullable();
+        final UserSqlInterface sqlInstance = UserManager.ManagerInstance.uninitializeNullable();
         if (sqlInstance == null)
             return false;
         sqlInstance.deleteTable(_connectionId);
         return true;
     }
 
-    public static @NotNull Connection getConnection(final @Nullable String _connectionId, final @Nullable AtomicReference<? super String> connectionId) throws SQLException {
-        return UserManager.sqlInstance.getInstance().getConnection(_connectionId, connectionId);
+
+    public static @NotNull UserManager getInstance() {
+        return UserManager.ManagerInstance.getInstance();
     }
 
-    public static long getAdminId() {
-        return UserManager.sqlInstance.getInstance().getAdminId();
+    @Deprecated
+    @Override
+    public void createTable(final @Nullable String _connectionId) throws SQLException {
+        this.innerSqlInstance.createTable(_connectionId);
     }
 
-    public static @Nullable String getAndDeleteDefaultAdminPasswordAPI() {
-        return UserManager.sqlInstance.getInstance().getAndDeleteDefaultAdminPassword();
+    @Deprecated
+    @Override
+    public void deleteTable(final @Nullable String _connectionId) throws SQLException {
+        this.innerSqlInstance.deleteTable(_connectionId);
     }
 
+    @Override
+    public @NotNull Connection getConnection(final @Nullable String _connectionId, final @Nullable AtomicReference<? super String> connectionId) throws SQLException {
+        return this.innerSqlInstance.getConnection(_connectionId, connectionId);
+    }
+
+    @Override
+    public long getAdminId() {
+        return this.innerSqlInstance.getAdminId();
+    }
+
+    @Override
+    public @Nullable String getAndDeleteDefaultAdminPassword() {
+        return this.innerSqlInstance.getAndDeleteDefaultAdminPassword();
+    }
 
     /* --- Insert --- */
 
-    public static @Nullable UserInformation insertUser(final @NotNull String username, final @NotNull String encryptedPassword, final @Nullable String _connectionId) throws SQLException {
-        return UserManager.sqlInstance.getInstance().insertUser(username, encryptedPassword, _connectionId);
+    @Override
+    public @Nullable UserInformation insertUser(final @NotNull String username, final @NotNull String encryptedPassword, final @Nullable String _connectionId) throws SQLException {
+        return this.innerSqlInstance.insertUser(username, encryptedPassword, _connectionId);
     }
 
     /* --- Update --- */
 
-    public static @Nullable LocalDateTime updateUserName(final long id, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
-        return UserManager.sqlInstance.getInstance().updateUserName(id, name, _connectionId);
+    @Override
+    public @Nullable LocalDateTime updateUserName(final long id, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
+        return this.innerSqlInstance.updateUserName(id, name, _connectionId);
     }
 
-    public static @Nullable LocalDateTime updateUserPassword(final long id, final @NotNull String encryptedPassword, final @Nullable String _connectionId) throws SQLException {
-        return UserManager.sqlInstance.getInstance().updateUserPassword(id, encryptedPassword, _connectionId);
+    @Override
+    public @Nullable LocalDateTime updateUserPassword(final long id, final @NotNull String encryptedPassword, final @Nullable String _connectionId) throws SQLException {
+        return this.innerSqlInstance.updateUserPassword(id, encryptedPassword, _connectionId);
     }
 
-    public static @Nullable LocalDateTime updateUserGroup(final long id, final long groupId, final @Nullable String _connectionId) throws SQLException {
-        return UserManager.sqlInstance.getInstance().updateUserGroup(id, groupId, _connectionId);
+    @Override
+    public @Nullable LocalDateTime updateUserGroup(final long id, final long groupId, final @Nullable String _connectionId) throws SQLException {
+        return this.innerSqlInstance.updateUserGroup(id, groupId, _connectionId);
     }
 
     /* --- Select --- */
 
-    public static @Nullable UserInformation selectUser(final long id, final @Nullable String _connectionId) throws SQLException {
-        return UserManager.sqlInstance.getInstance().selectUser(id, _connectionId);
+    @Override
+    public @Nullable UserInformation selectUser(final long id, final @Nullable String _connectionId) throws SQLException {
+        return this.innerSqlInstance.selectUser(id, _connectionId);
     }
 
-    public static @Nullable UserInformation selectUserByName(final @NotNull String username, final @Nullable String _connectionId) throws SQLException {
-        return UserManager.sqlInstance.getInstance().selectUserByName(username, _connectionId);
+    @Override
+    public @Nullable UserInformation selectUserByName(final @NotNull String username, final @Nullable String _connectionId) throws SQLException {
+        return this.innerSqlInstance.selectUserByName(username, _connectionId);
     }
 
-    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> selectUsers(final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
-        return UserManager.sqlInstance.getInstance().selectUsers(orders, position, limit, _connectionId);
+    @Override
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> selectUsers(final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+        return this.innerSqlInstance.selectUsers(orders, position, limit, _connectionId);
     }
 
-    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> selectUsersByGroups(final @NotNull Set<@NotNull Long> chooser, final boolean blacklist, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
-        return UserManager.sqlInstance.getInstance().selectUsersByGroups(chooser, blacklist, orders, position, limit, _connectionId);
+    @Override
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> selectUsersByGroups(final @NotNull Set<@NotNull Long> chooser, final boolean blacklist, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+        return this.innerSqlInstance.selectUsersByGroups(chooser, blacklist, orders, position, limit, _connectionId);
     }
 
     /* --- Delete --- */
 
-    public static boolean deleteUser(final long id, final @Nullable String _connectionId) throws SQLException {
-        return UserManager.sqlInstance.getInstance().deleteUser(id, _connectionId);
+    @Override
+    public boolean deleteUser(final long id, final @Nullable String _connectionId) throws SQLException {
+        return this.innerSqlInstance.deleteUser(id, _connectionId);
     }
 
-    public static long deleteUsersByGroup(final long groupId, final @Nullable String _connectionId) throws SQLException {
-        return UserManager.sqlInstance.getInstance().deleteUsersByGroup(groupId, _connectionId);
+    @Override
+    public long deleteUsersByGroup(final long groupId, final @Nullable String _connectionId) throws SQLException {
+        return this.innerSqlInstance.deleteUsersByGroup(groupId, _connectionId);
     }
 
     /* --- Search --- */
 
-    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> searchUsersByRegex(final @NotNull String regex, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
-        return UserManager.sqlInstance.getInstance().searchUsersByRegex(regex, orders, position, limit, _connectionId);
+    @Override
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> searchUsersByRegex(final @NotNull String regex, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+        return this.innerSqlInstance.searchUsersByRegex(regex, orders, position, limit, _connectionId);
     }
 
-    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> searchUsersByNames(final @NotNull Set<@NotNull String> names, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
-        return UserManager.sqlInstance.getInstance().searchUsersByNames(names, position, limit, _connectionId);
+    @Override
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> searchUsersByNames(final @NotNull Set<@NotNull String> names, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+        return this.innerSqlInstance.searchUsersByNames(names, position, limit, _connectionId);
     }
 }

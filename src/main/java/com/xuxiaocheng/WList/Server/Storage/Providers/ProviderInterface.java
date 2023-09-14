@@ -1,29 +1,9 @@
 package com.xuxiaocheng.WList.Server.Storage.Providers;
 
-import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
-import com.xuxiaocheng.HeadLibs.Ranges.IntRange;
-import com.xuxiaocheng.HeadLibs.Ranges.LongRange;
-import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
-import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
-import com.xuxiaocheng.WList.Commons.Options.Options;
-import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
-import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInterface;
-import com.xuxiaocheng.WList.Server.Storage.ProviderTypes;
-import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
-import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
-import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
-import com.xuxiaocheng.WList.Server.Storage.Records.UploadRequirements;
-import okhttp3.Headers;
-import okhttp3.HttpUrl;
-import okhttp3.OkHttpClient;
+import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-import org.jetbrains.annotations.Unmodifiable;
-
-import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
 
 public interface ProviderInterface<C extends ProviderConfiguration> {
     /**
@@ -41,67 +21,67 @@ public interface ProviderInterface<C extends ProviderConfiguration> {
     /**
      * Initialize the provider (and bind to the configuration). Create sql table in this method, etc.
      * When user modify the configuration, this method will be call again automatically.
-     * @see FileManager#quicklyInitialize(FileSqlInterface, String)
+     * @see FileManager#quicklyInitialize(String, SqlDatabaseInterface, long, String)
      */
     void initialize(final @NotNull C configuration) throws Exception;
 
     /**
      * Uninitialize this provider (and unbind to the configuration). Release buffers and close handles, etc.
-     * Delete sql table in this method if {@code keepCache} is TRUE.
+     * Delete sql table in this method if {@code dropIndex} is TRUE.
      * @see FileManager#quicklyUninitialize(String, String)
      */
-    void uninitialize(final boolean keepCache) throws Exception;
+    void uninitialize(final boolean dropIndex) throws Exception;
 
-    /**
-     * Build provider cache. Login and check token, etc.
-     * @see ProviderConfiguration#setLastFileCacheBuildTime(LocalDateTime)
-     */
-    void buildCache() throws Exception;
-
-    /**
-     * Build all files index into sql database. (Recursive from root.)
-     * @see FileManager
-     * @see ProviderConfiguration#setLastFileIndexBuildTime(LocalDateTime)
-     */
-    void buildIndex() throws Exception;
-
-    /**
-     * Force rebuild files index into sql database to synchronize with web server. (Not recursively)
-     * @param location The directory location to refresh.
-     * @see FileManager
-     */
-    void refreshDirectory(final @NotNull FileLocation location) throws Exception;
-
-    /**
-     * Get the list of files in directory.
-     * @param location The directory location.
-     * @return null: directory is not available. !null: list of files.
-     */
-    @Nullable FilesListInformation list(final @NotNull FileLocation location, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final @LongRange(minimum = 0) long position, final @IntRange(minimum = 0) int limit) throws Exception;
-
-    /**
-     * Get the file information of a specific file.
-     * @param location The file location to get information.
-     * @return The file information. Null means not existed.
-     */
-    @Nullable FileInformation info(final @NotNull FileLocation location) throws Exception;
-
-    /**
-     * Get download methods of a specific file.
-     * @see DownloadRequirements#tryGetDownloadFromUrl(OkHttpClient, HttpUrl, Headers, Long, Headers.Builder, long, long, LocalDateTime)
-     */
-    @NotNull UnionPair<DownloadRequirements, FailureReason> download(final @NotNull FileLocation location, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws Exception;
-
-    /**
-     * Create an empty directory.
-     * @see com.xuxiaocheng.WList.Server.Storage.Helpers.ProviderUtil#getRetryWrapper(String)
-     */
-    @NotNull UnionPair<FileInformation, FailureReason> createDirectory(final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws Exception;
-
-    /**
-     * Upload file.
-     */
-    @NotNull UnionPair<UploadRequirements, FailureReason> upload(final @NotNull FileLocation parentLocation, final @NotNull String filename, final @LongRange(minimum = 0) long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws Exception;
+//    /**
+//     * Build provider cache. Login and check token, etc.
+//     * @see ProviderConfiguration#setLastFileCacheBuildTime(LocalDateTime)
+//     */
+//    void buildCache() throws Exception;
+//
+//    /**
+//     * Build all files index into sql database. (Recursive from root.)
+//     * @see FileManager
+//     * @see ProviderConfiguration#setLastFileIndexBuildTime(LocalDateTime)
+//     */
+//    void buildIndex() throws Exception;
+//
+//    /**
+//     * Force rebuild files index into sql database to synchronize with web server. (Not recursively)
+//     * @param location The directory location to refresh.
+//     * @see FileManager
+//     */
+//    void refreshDirectory(final @NotNull FileLocation location) throws Exception;
+//
+//    /**
+//     * Get the list of files in directory.
+//     * @param location The directory location.
+//     * @return null: directory is not available. !null: list of files.
+//     */
+//    @Nullable FilesListInformation list(final @NotNull FileLocation location, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final @LongRange(minimum = 0) long position, final @IntRange(minimum = 0) int limit) throws Exception;
+//
+//    /**
+//     * Get the file information of a specific file.
+//     * @param location The file location to get information.
+//     * @return The file information. Null means not existed.
+//     */
+//    @Nullable FileInformation info(final @NotNull FileLocation location) throws Exception;
+//
+//    /**
+//     * Get download methods of a specific file.
+//     * @see DownloadRequirements#tryGetDownloadFromUrl(OkHttpClient, HttpUrl, Headers, Long, Headers.Builder, long, long, LocalDateTime)
+//     */
+//    @NotNull UnionPair<DownloadRequirements, FailureReason> download(final @NotNull FileLocation location, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws Exception;
+//
+//    /**
+//     * Create an empty directory.
+//     * @see com.xuxiaocheng.WList.Server.Storage.Helpers.ProviderUtil#getRetryWrapper(String)
+//     */
+//    @NotNull UnionPair<FileInformation, FailureReason> createDirectory(final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws Exception;
+//
+//    /**
+//     * Upload file.
+//     */
+//    @NotNull UnionPair<UploadRequirements, FailureReason> upload(final @NotNull FileLocation parentLocation, final @NotNull String filename, final @LongRange(minimum = 0) long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws Exception;
 
 //    /**
 //     * Delete file.

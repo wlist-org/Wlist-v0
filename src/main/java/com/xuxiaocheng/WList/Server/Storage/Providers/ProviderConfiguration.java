@@ -35,12 +35,8 @@ public abstract class ProviderConfiguration {
         return this.modified.compareAndSet(true, false);
     }
 
-    public boolean isModified() {
-        return this.modified.get();
-    }
-
-    public void setModified(final boolean modified) {
-        this.modified.set(modified);
+    public void markModified() {
+        this.modified.set(true);
     }
 
     public @NotNull OkHttpClient getHttpClient() {
@@ -66,6 +62,10 @@ public abstract class ProviderConfiguration {
 
     public @NotNull LocalDateTime getCreateTime() {
         return this.createTime;
+    }
+
+    public void setCreateTime(final @NotNull LocalDateTime createTime) {
+        this.createTime = createTime;
     }
 
     public @NotNull LocalDateTime getUpdateTime() {

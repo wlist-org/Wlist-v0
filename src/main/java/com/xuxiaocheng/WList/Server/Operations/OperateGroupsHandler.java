@@ -74,7 +74,7 @@ public final class OperateGroupsHandler {
             return null;
         }
         return () -> {
-            final UserGroupInformation information = UserGroupManager.insertGroup(groupName, null);
+            final UserGroupInformation information = UserGroupManager.getInstance().insertGroup(groupName, null);
             if (information == null) {
                 WListServer.ServerChannelHandler.write(channel, OperateGroupsHandler.GroupDataError);
                 return;
@@ -95,18 +95,18 @@ public final class OperateGroupsHandler {
         final String newGroupName = ByteBufIOUtil.readUTF(buffer);
         ServerHandler.logOperation(channel, OperationType.ChangeGroupName, changer, () -> ParametersMap.create()
                 .add("groupId", groupId).add("newGroupName", newGroupName).optionallyAdd(changer.isSuccess(), "denied",
-                        IdentifierNames.UserGroupName.contains(newGroupName) || UserGroupManager.getAdminId() == groupId || UserGroupManager.getDefaultId() == groupId));
+                        IdentifierNames.UserGroupName.contains(newGroupName) || UserGroupManager.getInstance().getAdminId() == groupId || UserGroupManager.getInstance().getDefaultId() == groupId));
         MessageProto message = null;
         if (changer.isFailure())
             message = changer.getE();
-        else if (IdentifierNames.UserGroupName.contains(newGroupName)|| UserGroupManager.getAdminId() == groupId || UserGroupManager.getDefaultId() == groupId)
+        else if (IdentifierNames.UserGroupName.contains(newGroupName)|| UserGroupManager.getInstance().getAdminId() == groupId || UserGroupManager.getInstance().getDefaultId() == groupId)
             message = OperateGroupsHandler.GroupDataError;
         if (message != null) {
             WListServer.ServerChannelHandler.write(channel, message);
             return null;
         }
         return () -> {
-            final LocalDateTime updateTime = UserGroupManager.updateGroupName(groupId, newGroupName, null);
+            final LocalDateTime updateTime = UserGroupManager.getInstance().updateGroupName(groupId, newGroupName, null);
             if (updateTime == null) {
                 WListServer.ServerChannelHandler.write(channel, OperateGroupsHandler.GroupDataError);
                 return;
@@ -128,20 +128,20 @@ public final class OperateGroupsHandler {
         final EnumSet<UserPermission> newPermissions = UserPermission.parse(ByteBufIOUtil.readUTF(buffer));
         ServerHandler.logOperation(channel, OperationType.ChangeGroupPermissions, changer, () -> ParametersMap.create()
                 .add("groupId", groupId).add("newPermissions", newPermissions).optionallyAdd(changer.isSuccess() && newPermissions != null, "denied",
-                        UserGroupManager.getAdminId() == groupId || Objects.requireNonNull(newPermissions).contains(UserPermission.Undefined)));
+                        UserGroupManager.getInstance().getAdminId() == groupId || Objects.requireNonNull(newPermissions).contains(UserPermission.Undefined)));
         MessageProto message = null;
         if (changer.isFailure())
             message = changer.getE();
         else if (newPermissions == null || newPermissions.contains(UserPermission.Undefined))
             message = MessageProto.WrongParameters;
-        else if (UserGroupManager.getAdminId() == groupId)
+        else if (UserGroupManager.getInstance().getAdminId() == groupId)
             message = OperateGroupsHandler.GroupDataError;
         if (message != null) {
             WListServer.ServerChannelHandler.write(channel, message);
             return null;
         }
         return () -> {
-            final LocalDateTime updateTime = UserGroupManager.updateGroupPermission(groupId, newPermissions, null);
+            final LocalDateTime updateTime = UserGroupManager.getInstance().updateGroupPermission(groupId, newPermissions, null);
             if (updateTime == null) {
                 WListServer.ServerChannelHandler.write(channel, OperateGroupsHandler.GroupDataError);
                 return;
@@ -167,7 +167,7 @@ public final class OperateGroupsHandler {
             return null;
         }
         return () -> {
-            final UserGroupInformation information = UserGroupManager.selectGroup(groupId, null);
+            final UserGroupInformation information = UserGroupManager.getInstance().selectGroup(groupId, null);
             if (information == null) {
                 WListServer.ServerChannelHandler.write(channel, OperateGroupsHandler.GroupDataError);
                 return;
@@ -200,7 +200,7 @@ public final class OperateGroupsHandler {
             return null;
         }
         return () -> {
-            final Pair.ImmutablePair<Long, List<UserGroupInformation>> list = UserGroupManager.selectGroups(orders.getT(), position, limit, null);
+            final Pair.ImmutablePair<Long, List<UserGroupInformation>> list = UserGroupManager.getInstance().selectGroups(orders.getT(), position, limit, null);
             WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> {
                 ByteBufIOUtil.writeVariableLenLong(buf, list.getFirst().longValue());
                 ByteBufIOUtil.writeVariableLenInt(buf, list.getSecond().size());
@@ -238,7 +238,7 @@ public final class OperateGroupsHandler {
             return null;
         }
         return () -> {
-            final Pair.ImmutablePair<Long, List<UserGroupInformation>> list = UserGroupManager.selectGroupsByPermissions(chooser, orders.getT(), position, limit, null);
+            final Pair.ImmutablePair<Long, List<UserGroupInformation>> list = UserGroupManager.getInstance().selectGroupsByPermissions(chooser, orders.getT(), position, limit, null);
             WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> {
                 ByteBufIOUtil.writeVariableLenLong(buf, list.getFirst().longValue());
                 ByteBufIOUtil.writeVariableLenInt(buf, list.getSecond().size());
@@ -257,23 +257,23 @@ public final class OperateGroupsHandler {
         final UnionPair<UserInformation, MessageProto> changer = OperateSelfHandler.checkToken(token, UserPermission.GroupsOperate);
         final long groupId = ByteBufIOUtil.readVariableLenLong(buffer);
         ServerHandler.logOperation(channel, OperationType.DeleteGroup, changer, () -> ParametersMap.create()
-                .add("groupId", groupId).optionallyAdd(changer.isSuccess(), "denied", UserGroupManager.getAdminId() == groupId || UserGroupManager.getDefaultId() == groupId));
+                .add("groupId", groupId).optionallyAdd(changer.isSuccess(), "denied", UserGroupManager.getInstance().getAdminId() == groupId || UserGroupManager.getInstance().getDefaultId() == groupId));
         MessageProto message = null;
         if (changer.isFailure())
             message = changer.getE();
-        else if (UserGroupManager.getAdminId() == groupId || UserGroupManager.getDefaultId() == groupId)
+        else if (UserGroupManager.getInstance().getAdminId() == groupId || UserGroupManager.getInstance().getDefaultId() == groupId)
             message = OperateGroupsHandler.GroupDataError;
         if (message != null) {
             WListServer.ServerChannelHandler.write(channel, message);
             return null;
         }
         return () -> {
-            final long count = UserManager.selectUsersByGroups(Set.of(groupId), false, new LinkedHashMap<>(), 0, 0, null).getFirst().longValue();
+            final long count = UserManager.getInstance().selectUsersByGroups(Set.of(groupId), false, new LinkedHashMap<>(), 0, 0, null).getFirst().longValue();
             if (count > 0) {
                 WListServer.ServerChannelHandler.write(channel, OperateGroupsHandler.UsersDataError);
                 return;
             }
-            if (!UserGroupManager.deleteGroup(groupId, null)) {
+            if (!UserGroupManager.getInstance().deleteGroup(groupId, null)) {
                 WListServer.ServerChannelHandler.write(channel, OperateGroupsHandler.GroupDataError);
                 return;
             }
@@ -308,7 +308,7 @@ public final class OperateGroupsHandler {
             return null;
         }
         return () -> {
-            final Pair.ImmutablePair<Long, List<UserGroupInformation>> list = UserGroupManager.searchGroupsByRegex(regex, orders.getT(), position, limit, null);
+            final Pair.ImmutablePair<Long, List<UserGroupInformation>> list = UserGroupManager.getInstance().searchGroupsByRegex(regex, orders.getT(), position, limit, null);
             WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> {
                 ByteBufIOUtil.writeVariableLenLong(buf, list.getFirst().longValue());
                 ByteBufIOUtil.writeVariableLenInt(buf, list.getSecond().size());
@@ -345,7 +345,7 @@ public final class OperateGroupsHandler {
             return null;
         }
         return () -> {
-            final Pair.ImmutablePair<Long, List<UserGroupInformation>> list = UserGroupManager.searchGroupsByNames(names, position, limit, null);
+            final Pair.ImmutablePair<Long, List<UserGroupInformation>> list = UserGroupManager.getInstance().searchGroupsByNames(names, position, limit, null);
             WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> {
                 ByteBufIOUtil.writeVariableLenLong(buf, list.getFirst().longValue());
                 ByteBufIOUtil.writeVariableLenInt(buf, list.getSecond().size());

@@ -34,7 +34,7 @@ public class OperateSelfTest extends ServerWrapper {
             Assertions.assertEquals(OperationType.Logon, pair.getFirst());
             final VisibleUserInformation information = VisibleUserInformation.parse(pair.getSecond());
             Assertions.assertEquals(this.username(), information.username());
-            Assertions.assertEquals(UserGroupManager.getDefaultId(), information.groupId());
+            Assertions.assertEquals(UserGroupManager.getInstance().getDefaultId(), information.groupId());
             Assertions.assertEquals(IdentifierNames.UserGroupName.Default.getIdentifier(), information.groupName());
         } finally {
             pair.getSecond().release();
@@ -103,7 +103,7 @@ public class OperateSelfTest extends ServerWrapper {
     public void getSelfGroup(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
         final VisibleUserGroupInformation information = OperateSelfHelper.getSelfGroup(client, this.token());
         Assertions.assertNotNull(information);
-        Assertions.assertEquals(UserGroupManager.getDefaultId(),  information.id());
+        Assertions.assertEquals(UserGroupManager.getInstance().getDefaultId(),  information.id());
         Assertions.assertEquals(IdentifierNames.UserGroupName.Default.getIdentifier(),  information.name());
         Assertions.assertEquals(UserPermission.Default, information.permissions());
     }
@@ -153,7 +153,7 @@ public class OperateSelfTest extends ServerWrapper {
         final Pair.ImmutablePair<OperationType, ByteBuf> pair = OperateServerHelper.waitBroadcast(broadcast).getT();
         try {
             Assertions.assertEquals(OperationType.ChangePassword, pair.getFirst());
-            Assertions.assertEquals(UserManager.getAdminId(), ByteBufIOUtil.readVariableLenLong(pair.getSecond()));
+            Assertions.assertEquals(UserManager.getInstance().getAdminId(), ByteBufIOUtil.readVariableLenLong(pair.getSecond()));
         } finally {
             pair.getSecond().release();
         }
@@ -165,7 +165,7 @@ public class OperateSelfTest extends ServerWrapper {
     public void adminGetSelfGroup(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
         final VisibleUserGroupInformation information = OperateSelfHelper.getSelfGroup(client, this.adminToken());
         Assertions.assertNotNull(information);
-        Assertions.assertEquals(UserGroupManager.getAdminId(),  information.id());
+        Assertions.assertEquals(UserGroupManager.getInstance().getAdminId(),  information.id());
         Assertions.assertEquals(IdentifierNames.UserGroupName.Admin.getIdentifier(),  information.name());
         Assertions.assertEquals(UserPermission.All, information.permissions());
     }

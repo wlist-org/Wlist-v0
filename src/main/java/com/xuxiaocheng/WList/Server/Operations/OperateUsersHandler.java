@@ -58,23 +58,23 @@ public final class OperateUsersHandler {
         final long userId = ByteBufIOUtil.readVariableLenLong(buffer);
         final long groupId = ByteBufIOUtil.readVariableLenLong(buffer);
         ServerHandler.logOperation(channel, OperationType.ChangeUserGroup, changer, () -> ParametersMap.create()
-                .add("userId", userId).add("groupId", groupId).optionallyAdd(changer.isSuccess(), "denied", UserManager.getAdminId() == userId));
+                .add("userId", userId).add("groupId", groupId).optionallyAdd(changer.isSuccess(), "denied", UserManager.getInstance().getAdminId() == userId));
         MessageProto message = null;
         if (changer.isFailure())
             message = changer.getE();
-        else if (UserManager.getAdminId() == userId)
+        else if (UserManager.getInstance().getAdminId() == userId)
             message = OperateUsersHandler.UserDataError;
         if (message != null) {
             WListServer.ServerChannelHandler.write(channel, message);
             return null;
         }
         return () -> {
-            final UserGroupInformation group = UserGroupManager.selectGroup(groupId, null);
+            final UserGroupInformation group = UserGroupManager.getInstance().selectGroup(groupId, null);
             if (group == null) {
                 WListServer.ServerChannelHandler.write(channel, OperateUsersHandler.GroupDataError);
                 return;
             }
-            final LocalDateTime time = UserManager.updateUserGroup(userId, groupId, null);
+            final LocalDateTime time = UserManager.getInstance().updateUserGroup(userId, groupId, null);
             if (time == null) {
                 WListServer.ServerChannelHandler.write(channel, OperateUsersHandler.UserDataError);
                 return;
@@ -100,7 +100,7 @@ public final class OperateUsersHandler {
             return null;
         }
         return () -> {
-            final UserInformation information = UserManager.selectUser(userId, null);
+            final UserInformation information = UserManager.getInstance().selectUser(userId, null);
             if (information == null) {
                 WListServer.ServerChannelHandler.write(channel, OperateUsersHandler.UserDataError);
                 return;
@@ -133,7 +133,7 @@ public final class OperateUsersHandler {
             return null;
         }
         return () -> {
-            final Pair.ImmutablePair<Long, List<UserInformation>> list = UserManager.selectUsers(orders.getT(), position, limit, null);
+            final Pair.ImmutablePair<Long, List<UserInformation>> list = UserManager.getInstance().selectUsers(orders.getT(), position, limit, null);
             WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> {
                 ByteBufIOUtil.writeVariableLenLong(buf, list.getFirst().longValue());
                 ByteBufIOUtil.writeVariableLenInt(buf, list.getSecond().size());
@@ -173,7 +173,7 @@ public final class OperateUsersHandler {
             return null;
         }
         return () -> {
-            final Pair.ImmutablePair<Long, List<UserInformation>> list = UserManager.selectUsersByGroups(chooser, blacklist, orders.getT(), position, limit, null);
+            final Pair.ImmutablePair<Long, List<UserInformation>> list = UserManager.getInstance().selectUsersByGroups(chooser, blacklist, orders.getT(), position, limit, null);
             WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> {
                 ByteBufIOUtil.writeVariableLenLong(buf, list.getFirst().longValue());
                 ByteBufIOUtil.writeVariableLenInt(buf, list.getSecond().size());
@@ -192,18 +192,18 @@ public final class OperateUsersHandler {
         final UnionPair<UserInformation, MessageProto> changer = OperateSelfHandler.checkToken(token, UserPermission.UsersOperate);
         final long userId = ByteBufIOUtil.readVariableLenLong(buffer);
         ServerHandler.logOperation(channel, OperationType.DeleteUser, changer, () -> ParametersMap.create()
-                .add("userId", userId).optionallyAdd(changer.isSuccess(), "denied", UserManager.getAdminId() == userId));
+                .add("userId", userId).optionallyAdd(changer.isSuccess(), "denied", UserManager.getInstance().getAdminId() == userId));
         MessageProto message = null;
         if (changer.isFailure())
             message = changer.getE();
-        else if (UserManager.getAdminId() == userId)
+        else if (UserManager.getInstance().getAdminId() == userId)
             message = OperateUsersHandler.UserDataError;
         if (message != null) {
             WListServer.ServerChannelHandler.write(channel, message);
             return null;
         }
         return () -> {
-            if (!UserManager.deleteUser(userId, null)) {
+            if (!UserManager.getInstance().deleteUser(userId, null)) {
                 WListServer.ServerChannelHandler.write(channel, OperateUsersHandler.UserDataError);
                 return;
             }
@@ -233,11 +233,11 @@ public final class OperateUsersHandler {
             return null;
         }
         return () -> {
-            if (UserGroupManager.selectGroup(groupId, null) == null) {
+            if (UserGroupManager.getInstance().selectGroup(groupId, null) == null) {
                 WListServer.ServerChannelHandler.write(channel, OperateUsersHandler.GroupDataError);
                 return;
             }
-            final long count = UserManager.deleteUsersByGroup(groupId, null);
+            final long count = UserManager.getInstance().deleteUsersByGroup(groupId, null);
             if (count > 0)
                 HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Deleted users in group.", ServerHandler.user("changer", changer.getT()),
                         ParametersMap.create().add("groupId", groupId).add("count", count));
@@ -274,7 +274,7 @@ public final class OperateUsersHandler {
             return null;
         }
         return () -> {
-            final Pair.ImmutablePair<Long, List<UserInformation>> list = UserManager.searchUsersByRegex(regex, orders.getT(), position, limit, null);
+            final Pair.ImmutablePair<Long, List<UserInformation>> list = UserManager.getInstance().searchUsersByRegex(regex, orders.getT(), position, limit, null);
             WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> {
                 ByteBufIOUtil.writeVariableLenLong(buf, list.getFirst().longValue());
                 ByteBufIOUtil.writeVariableLenInt(buf, list.getSecond().size());
@@ -311,7 +311,7 @@ public final class OperateUsersHandler {
             return null;
         }
         return () -> {
-            final Pair.ImmutablePair<Long, List<UserInformation>> list = UserManager.searchUsersByNames(names, position, limit, null);
+            final Pair.ImmutablePair<Long, List<UserInformation>> list = UserManager.getInstance().searchUsersByNames(names, position, limit, null);
             WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> {
                 ByteBufIOUtil.writeVariableLenLong(buf, list.getFirst().longValue());
                 ByteBufIOUtil.writeVariableLenInt(buf, list.getSecond().size());

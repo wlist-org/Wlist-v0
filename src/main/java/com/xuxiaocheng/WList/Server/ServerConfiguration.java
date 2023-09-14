@@ -7,7 +7,7 @@ import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
-import com.xuxiaocheng.WList.Server.Storage.ProviderTypes;
+import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderTypes;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

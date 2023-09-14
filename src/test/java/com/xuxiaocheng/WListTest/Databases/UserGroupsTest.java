@@ -65,8 +65,8 @@ public final class UserGroupsTest {
     }
 
     public static Stream<Arguments> curd() throws SQLException {
-        Assertions.assertFalse(UserGroupManager.deleteGroup(UserGroupManager.getAdminId(), null));
-        Assertions.assertFalse(UserGroupManager.deleteGroup(UserGroupManager.getDefaultId(), null));
+        Assertions.assertFalse(UserGroupManager.getInstance().deleteGroup(UserGroupManager.getInstance().getAdminId(), null));
+        Assertions.assertFalse(UserGroupManager.getInstance().deleteGroup(UserGroupManager.getInstance().getDefaultId(), null));
         return Stream.of( null,
                 Arguments.of(IdentifierNames.UserGroupName.Admin.getIdentifier(), false, null, false, null),
                 Arguments.of(IdentifierNames.UserGroupName.Default.getIdentifier(), false, null, false, null),
@@ -85,79 +85,79 @@ public final class UserGroupsTest {
                      final Set<UserPermission> newPermissions)
             throws SQLException {
 
-        final UserGroupInformation information = UserGroupManager.insertGroup(name, null);
+        final UserGroupInformation information = UserGroupManager.getInstance().insertGroup(name, null);
         if (!nameS) {
             Assertions.assertNull(information);
             return;
         }
         Assertions.assertNotNull(information);
-        Assertions.assertEquals(information, UserGroupManager.selectGroup(information.id(), null));
+        Assertions.assertEquals(information, UserGroupManager.getInstance().selectGroup(information.id(), null));
 
         if (newName != null) {
-            final LocalDateTime time = UserGroupManager.updateGroupName(information.id(), newName, null);
+            final LocalDateTime time = UserGroupManager.getInstance().updateGroupName(information.id(), newName, null);
             if (!newNameS) {
                 Assertions.assertNull(time);
                 return;
             }
             Assertions.assertNotNull(time);
             Assertions.assertEquals(new UserGroupInformation(information.id(), newName, information.permissions(), information.createTime(), time),
-                    UserGroupManager.selectGroup(information.id(), null));
+                    UserGroupManager.getInstance().selectGroup(information.id(), null));
         }
 
         if (newPermissions != null) {
-            final LocalDateTime time = UserGroupManager.updateGroupPermission(information.id(), newPermissions, null);
+            final LocalDateTime time = UserGroupManager.getInstance().updateGroupPermission(information.id(), newPermissions, null);
             Assertions.assertNotNull(time);
             Assertions.assertEquals(new UserGroupInformation(information.id(), Objects.requireNonNullElse(newName, name), newPermissions, information.createTime(), time),
-                    UserGroupManager.selectGroup(information.id(), null));
+                    UserGroupManager.getInstance().selectGroup(information.id(), null));
         }
 
-        Assertions.assertTrue(UserGroupManager.deleteGroup(information.id(), null));
+        Assertions.assertTrue(UserGroupManager.getInstance().deleteGroup(information.id(), null));
     }
 
     @Test
     public void curd_() throws SQLException {
-        Assertions.assertNull(UserGroupManager.updateGroupPermission(UserGroupManager.getAdminId(), UserPermission.Empty, null));
-        Assertions.assertNotNull(UserGroupManager.updateGroupPermission(UserGroupManager.getDefaultId(), UserPermission.Empty, null));
+        Assertions.assertNull(UserGroupManager.getInstance().updateGroupPermission(UserGroupManager.getInstance().getAdminId(), UserPermission.Empty, null));
+        Assertions.assertNotNull(UserGroupManager.getInstance().updateGroupPermission(UserGroupManager.getInstance().getDefaultId(), UserPermission.Empty, null));
     }
 
     @RepeatedTest(value = 5, failureThreshold = 1)
     public void selectList() throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection ignore = UserGroupManager.getConnection(null, connectionId)) {
+        try (final Connection ignore = UserGroupManager.getInstance().getConnection(null, connectionId)) {
             final int count = 100 - 2;
             final Collection<UserGroupInformation> informationList = new ArrayList<>(count + 2);
-            informationList.add(UserGroupManager.selectGroup(UserGroupManager.getAdminId(), connectionId.get()));
-            informationList.add(UserGroupManager.selectGroup(UserGroupManager.getDefaultId(), connectionId.get()));
+            informationList.add(UserGroupManager.getInstance().selectGroup(UserGroupManager.getInstance().getAdminId(), connectionId.get()));
+            informationList.add(UserGroupManager.getInstance().selectGroup(UserGroupManager.getInstance().getDefaultId(), connectionId.get()));
             for (int i = 0; i < count; i++) {
-                final UserGroupInformation information = UserGroupManager.insertGroup("test " + i, connectionId.get());
+                final UserGroupInformation information = UserGroupManager.getInstance().insertGroup("test " + i, connectionId.get());
                 Assertions.assertNotNull(information);
                 final Set<UserPermission> permissions = EnumSet.noneOf(UserPermission.class);
                 for (final UserPermission permission: UserPermission.All)
                     if (HRandomHelper.DefaultSecureRandom.nextBoolean())
                         permissions.add(permission);
-                UserGroupManager.updateGroupPermission(information.id(), permissions, connectionId.get());
-                informationList.add(UserGroupManager.selectGroup(information.id(), connectionId.get()));
+                UserGroupManager.getInstance().updateGroupPermission(information.id(), permissions, connectionId.get());
+                informationList.add(UserGroupManager.getInstance().selectGroup(information.id(), connectionId.get()));
             }
             final LinkedHashMap<VisibleUserGroupInformation.Order, Options.OrderDirection> orders = new LinkedHashMap<>();
             orders.put(VisibleUserGroupInformation.Order.Id, Options.OrderDirection.ASCEND);
-            Assumptions.assumeTrue(UserGroupManager.selectGroups(orders, 0, 0, connectionId.get()).getFirst().longValue() == count + 2);
-            Assertions.assertEquals(informationList, UserGroupManager.selectGroups(orders, 0, count + 2, connectionId.get()).getSecond());
+            Assumptions.assumeTrue(UserGroupManager.getInstance().selectGroups(orders, 0, 0, connectionId.get()).getFirst().longValue() == count + 2);
+            Assertions.assertEquals(informationList, UserGroupManager.getInstance().selectGroups(orders, 0, count + 2, connectionId.get()).getSecond());
 
             // Test limit and position.
             for (int i = 0; i < 5; ++i) {
                 final int limit = HRandomHelper.DefaultSecureRandom.nextInt(1, count + 2);
                 final int position = HRandomHelper.DefaultSecureRandom.nextInt(0, count + 2);
                 Assertions.assertEquals(informationList.stream().limit(limit).collect(Collectors.toList()),
-                        UserGroupManager.selectGroups(orders, 0, limit, connectionId.get()).getSecond());
+                        UserGroupManager.getInstance().selectGroups(orders, 0, limit, connectionId.get()).getSecond());
                 Assertions.assertEquals(informationList.stream().skip(position).limit(limit).collect(Collectors.toList()),
-                        UserGroupManager.selectGroups(orders, position, limit, connectionId.get()).getSecond());
+                        UserGroupManager.getInstance().selectGroups(orders, position, limit, connectionId.get()).getSecond());
             }
 
             // Test order.
             orders.put(VisibleUserGroupInformation.Order.Name, Options.OrderDirection.ASCEND);
             orders.put(VisibleUserGroupInformation.Order.CreateTime, Options.OrderDirection.ASCEND);
             orders.put(VisibleUserGroupInformation.Order.UpdateTime, Options.OrderDirection.ASCEND);
-            Assertions.assertEquals(informationList, UserGroupManager.selectGroups(orders, 0, count + 2, connectionId.get()).getSecond());
+            Assertions.assertEquals(informationList, UserGroupManager.getInstance().selectGroups(orders, 0, count + 2, connectionId.get()).getSecond());
             for (int i = 0; i < 5; ++i) {
                 orders.clear();
                 final long seed = HRandomHelper.DefaultSecureRandom.nextLong();
@@ -180,7 +180,7 @@ public final class UserGroupsTest {
                         }
                     return (r.nextBoolean() ? id : id.reversed()).compare(a, b);
                 }).collect(Collectors.toList()),
-                        UserGroupManager.selectGroups(orders, 0, count + 2, connectionId.get()).getSecond());
+                        UserGroupManager.getInstance().selectGroups(orders, 0, count + 2, connectionId.get()).getSecond());
             }
 
             // By permissions
@@ -201,7 +201,7 @@ public final class UserGroupsTest {
                                 return false;
                     return true;
                 }).collect(Collectors.toList()),
-                        UserGroupManager.selectGroupsByPermissions(chooser, orders, 0, count + 2, connectionId.get()).getSecond());
+                        UserGroupManager.getInstance().selectGroupsByPermissions(chooser, orders, 0, count + 2, connectionId.get()).getSecond());
             }
         }
     }
@@ -209,32 +209,32 @@ public final class UserGroupsTest {
     @RepeatedTest(value = 5, failureThreshold = 1)
     public void searchList() throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection ignore = UserGroupManager.getConnection(null, connectionId)) {
+        try (final Connection ignore = UserGroupManager.getInstance().getConnection(null, connectionId)) {
             final int count = 100 - 2;
             final Collection<UserGroupInformation> informationList = new ArrayList<>(count + 2);
-            informationList.add(UserGroupManager.selectGroup(UserGroupManager.getAdminId(), connectionId.get()));
-            informationList.add(UserGroupManager.selectGroup(UserGroupManager.getDefaultId(), connectionId.get()));
+            informationList.add(UserGroupManager.getInstance().selectGroup(UserGroupManager.getInstance().getAdminId(), connectionId.get()));
+            informationList.add(UserGroupManager.getInstance().selectGroup(UserGroupManager.getInstance().getDefaultId(), connectionId.get()));
             for (int i = 0; i < count; i++) {
-                final UserGroupInformation information = UserGroupManager.insertGroup("test " + i, connectionId.get());
+                final UserGroupInformation information = UserGroupManager.getInstance().insertGroup("test " + i, connectionId.get());
                 Assertions.assertNotNull(information);
                 final Set<UserPermission> permissions = EnumSet.noneOf(UserPermission.class);
                 for (final UserPermission permission: UserPermission.All)
                     if (HRandomHelper.DefaultSecureRandom.nextBoolean())
                         permissions.add(permission);
-                Assertions.assertNotNull(UserGroupManager.updateGroupPermission(information.id(), permissions, connectionId.get()));
-                informationList.add(UserGroupManager.selectGroup(information.id(), connectionId.get()));
+                Assertions.assertNotNull(UserGroupManager.getInstance().updateGroupPermission(information.id(), permissions, connectionId.get()));
+                informationList.add(UserGroupManager.getInstance().selectGroup(information.id(), connectionId.get()));
             }
             final LinkedHashMap<VisibleUserGroupInformation.Order, Options.OrderDirection> orders = new LinkedHashMap<>();
             orders.put(VisibleUserGroupInformation.Order.Id, Options.OrderDirection.ASCEND);
-            Assumptions.assumeTrue(UserGroupManager.selectGroups(orders, 0, 0, connectionId.get()).getFirst().longValue() == count + 2);
+            Assumptions.assumeTrue(UserGroupManager.getInstance().selectGroups(orders, 0, 0, connectionId.get()).getFirst().longValue() == count + 2);
 
             Assertions.assertEquals(informationList.stream().skip(2).collect(Collectors.toList()),
-                    UserGroupManager.searchGroupsByRegex("test [0-9]*", orders, 0, count + 2, connectionId.get()).getSecond());
+                    UserGroupManager.getInstance().searchGroupsByRegex("test [0-9]*", orders, 0, count + 2, connectionId.get()).getSecond());
 
             for (int i = 0; i < 10; ++i) {
                 final String n = HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, HRandomHelper.DefaultSecureRandom.nextInt(0, 3), "0123456789");
                 Assertions.assertEquals(informationList.stream().filter(p -> p.name().contains(n)).collect(Collectors.toSet()),
-                        new HashSet<>(UserGroupManager.searchGroupsByNames(Set.of(n), 0, count + 2, connectionId.get()).getSecond()));
+                        new HashSet<>(UserGroupManager.getInstance().searchGroupsByNames(Set.of(n), 0, count + 2, connectionId.get()).getSecond()));
             }
         }
     }

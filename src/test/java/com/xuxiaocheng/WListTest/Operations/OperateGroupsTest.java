@@ -170,14 +170,14 @@ public class OperateGroupsTest extends ServerWrapper {
     @Order(1)
     public void adminChangeGroupName(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
         final String groupName = HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 20, null);
-        Assertions.assertFalse(OperateGroupsHelper.changeGroupName(client, this.adminToken(), UserGroupManager.getAdminId(), groupName));
+        Assertions.assertFalse(OperateGroupsHelper.changeGroupName(client, this.adminToken(), UserGroupManager.getInstance().getAdminId(), groupName));
     }
 
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(1)
     public void adminChangeGroupPermissions(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
-        Assertions.assertFalse(OperateGroupsHelper.changeGroupPermissions(client, this.adminToken(), UserGroupManager.getAdminId(), UserPermission.Default));
+        Assertions.assertFalse(OperateGroupsHelper.changeGroupPermissions(client, this.adminToken(), UserGroupManager.getInstance().getAdminId(), UserPermission.Default));
     }
 
 
@@ -193,18 +193,18 @@ public class OperateGroupsTest extends ServerWrapper {
     @Order(1)
     public void defaultChangeGroupName(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
         final String groupName = HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 20, null);
-        Assertions.assertFalse(OperateGroupsHelper.changeGroupName(client, this.adminToken(), UserGroupManager.getDefaultId(), groupName));
+        Assertions.assertFalse(OperateGroupsHelper.changeGroupName(client, this.adminToken(), UserGroupManager.getInstance().getDefaultId(), groupName));
     }
 
     @ParameterizedTest(name = "running")
     @MethodSource("broadcast")
     @Order(5)
     public void defaultChangeGroupPermissions(final WListClientInterface client, final WListClientInterface broadcast) throws WrongStateException, IOException, InterruptedException {
-        Assertions.assertTrue(OperateGroupsHelper.changeGroupPermissions(client, this.adminToken(), UserGroupManager.getDefaultId(), UserPermission.All));
+        Assertions.assertTrue(OperateGroupsHelper.changeGroupPermissions(client, this.adminToken(), UserGroupManager.getInstance().getDefaultId(), UserPermission.All));
         final Pair.ImmutablePair<OperationType, ByteBuf> pair = OperateServerHelper.waitBroadcast(broadcast).getT();
         try {
             Assertions.assertEquals(OperationType.ChangeGroupPermissions, pair.getFirst());
-            Assertions.assertEquals(UserGroupManager.getDefaultId(), ByteBufIOUtil.readVariableLenLong(pair.getSecond()));
+            Assertions.assertEquals(UserGroupManager.getInstance().getDefaultId(), ByteBufIOUtil.readVariableLenLong(pair.getSecond()));
             Assertions.assertEquals(UserPermission.All, UserPermission.parse(ByteBufIOUtil.readUTF(pair.getSecond())));
         } finally {
             pair.getSecond().release();

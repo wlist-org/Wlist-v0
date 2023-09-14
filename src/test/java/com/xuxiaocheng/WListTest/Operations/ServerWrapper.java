@@ -58,7 +58,7 @@ public class ServerWrapper {
                 new File(ServerWrapper.runtimeDirectory, "caches"));
         WListServer.getInstance().start(ServerConfiguration.get().port());
         final SocketAddress address = WListServer.getInstance().getAddress().getInstance();
-        ServerWrapper.AdminPassword.initialize(Objects.requireNonNull(UserManager.getAndDeleteDefaultAdminPasswordAPI()));
+        ServerWrapper.AdminPassword.initialize(Objects.requireNonNull(UserManager.getInstance().getAndDeleteDefaultAdminPassword()));
         ServerWrapper.Password.initialize(PasswordGuard.generateRandomPassword());
 
         ClientConfiguration.initialize(null);

@@ -91,7 +91,7 @@ public final class OperateSelfHandler {
         ServerHandler.logOperation(channel, OperationType.Logon, null, () -> ParametersMap.create()
                 .add("username", username).add("password", password));
         return () -> {
-            final UserInformation information = UserManager.insertUser(username, password, null);
+            final UserInformation information = UserManager.getInstance().insertUser(username, password, null);
             if (information == null) {
                 WListServer.ServerChannelHandler.write(channel, OperateSelfHandler.UserDataError);
                 return;
@@ -111,7 +111,7 @@ public final class OperateSelfHandler {
         ServerHandler.logOperation(channel, OperationType.Login, null, () -> ParametersMap.create()
                 .add("username", username).add("password", password));
         return () -> {
-            final UserInformation user = UserManager.selectUserByName(username, null);
+            final UserInformation user = UserManager.getInstance().selectUserByName(username, null);
             if (user == null || !PasswordGuard.encryptPassword(password).equals(user.encryptedPassword())) {
                 WListServer.ServerChannelHandler.write(channel, OperateSelfHandler.UserDataError);
                 return;
@@ -141,7 +141,7 @@ public final class OperateSelfHandler {
             return null;
         }
         return () -> {
-            if (UserManager.deleteUser(user.getT().id(), null)) {
+            if (UserManager.getInstance().deleteUser(user.getT().id(), null)) {
                 HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Logged off.", ServerHandler.user(null, user.getT()));
                 BroadcastManager.onUserLogoff(user.getT().id());
             }
@@ -169,7 +169,7 @@ public final class OperateSelfHandler {
             return null;
         }
         return () -> {
-            final LocalDateTime time = UserManager.updateUserName(user.getT().id(), newUsername, null);
+            final LocalDateTime time = UserManager.getInstance().updateUserName(user.getT().id(), newUsername, null);
             if (time == null) {
                 WListServer.ServerChannelHandler.write(channel, OperateSelfHandler.UserDataError);
                 return;
@@ -196,7 +196,7 @@ public final class OperateSelfHandler {
             return null;
         }
         return () -> {
-            final LocalDateTime time = UserManager.updateUserPassword(user.getT().id(), newPassword, null);
+            final LocalDateTime time = UserManager.getInstance().updateUserPassword(user.getT().id(), newPassword, null);
             if (time == null) {
                 WListServer.ServerChannelHandler.write(channel, OperateSelfHandler.UserDataError);
                 return;

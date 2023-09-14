@@ -15,6 +15,7 @@ import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderRecyclerInterface;
+import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderTypes;
 import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -174,7 +175,7 @@ public final class StorageManager {
             if (driver == null || driver.getSecond() == StorageManager.ProviderPlaceholder) return false;
             if (canDelete && ServerConfiguration.get().deleteCacheAfterUninitializeProvider())
                 try {
-                    driver.getSecond().getFirst().uninitialize(!canDelete);
+                    driver.getSecond().getFirst().uninitialize(canDelete);
                     if (driver.getSecond().getSecond() != null)
                         driver.getSecond().getSecond().uninitialize();
                 } catch (final Exception exception) {

@@ -94,6 +94,9 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
     );
                     """);
                 statement.executeUpdate(builder.toString());
+                statement.executeUpdate("""
+    CREATE INDEX IF NOT EXISTS groups_name ON groups (name);
+                """);
             }
             try (final PreparedStatement statement = connection.prepareStatement("""
     SELECT group_id FROM groups WHERE name == ? LIMIT 1;
@@ -105,14 +108,11 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
                 }
                 if (this.adminId.isNotInitialized()) {
                     try (final PreparedStatement insertStatement = connection.prepareStatement(String.format("""
-    INSERT INTO groups (name, name_order, create_time, update_time, %s)
-        VALUES (?, ?, ?, ?, %s);
+    INSERT INTO groups (name, name_order, %s)
+        VALUES (?, ?, %s);
                     """, UserGroupSqliteHelper.PermissionsHeader, UserGroupSqliteHelper.permissionsInsertValue(UserPermission.All)))) {
                         insertStatement.setString(1, IdentifierNames.UserGroupName.Admin.getIdentifier());
                         insertStatement.setBytes(2, SqliteHelper.toOrdered(IdentifierNames.UserGroupName.Admin.getIdentifier()));
-                        final Timestamp now = Timestamp.valueOf(SqliteHelper.now());
-                        insertStatement.setTimestamp(3, now);
-                        insertStatement.setTimestamp(4, now);
                         insertStatement.executeUpdate();
                     }
                     statement.setString(1, IdentifierNames.UserGroupName.Admin.getIdentifier());
@@ -128,14 +128,11 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
                 }
                 if (this.defaultId.isNotInitialized()) {
                     try (final PreparedStatement insertStatement = connection.prepareStatement(String.format("""
-    INSERT INTO groups (name, name_order, create_time, update_time, %s)
-        VALUES (?, ?, ?, ?, %s);
+    INSERT INTO groups (name, name_order, %s)
+        VALUES (?, ?, %s);
                     """, UserGroupSqliteHelper.PermissionsHeader, UserGroupSqliteHelper.permissionsInsertValue(UserPermission.Default)))) {
                         insertStatement.setString(1, IdentifierNames.UserGroupName.Default.getIdentifier());
                         insertStatement.setBytes(2, SqliteHelper.toOrdered(IdentifierNames.UserGroupName.Default.getIdentifier()));
-                        final Timestamp now = Timestamp.valueOf(SqliteHelper.now());
-                        insertStatement.setTimestamp(3, now);
-                        insertStatement.setTimestamp(4, now);
                         insertStatement.executeUpdate();
                     }
                     try (final ResultSet result = statement.executeQuery()) {
@@ -208,14 +205,11 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             final boolean success;
             try (final PreparedStatement statement = connection.prepareStatement("""
-    INSERT OR IGNORE INTO groups (name, name_order, create_time, update_time)
-        VALUES (?, ?, ?, ?);
+    INSERT OR IGNORE INTO groups (name, name_order)
+        VALUES (?, ?);
                 """)) {
                 statement.setString(1, name);
                 statement.setBytes(2, SqliteHelper.toOrdered(name));
-                final Timestamp now = Timestamp.valueOf(SqliteHelper.now());
-                statement.setTimestamp(3, now);
-                statement.setTimestamp(4, now);
                 success = statement.executeUpdate() == 1;
             }
             if (success)

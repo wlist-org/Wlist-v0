@@ -1,9 +1,8 @@
 package com.xuxiaocheng.WList.Server.Databases.TrashedFile;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
-import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -15,7 +14,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.Collection;
@@ -112,15 +110,16 @@ public final class TrashedSqliteHelper implements TrashedSqlInterface {
     }
 
     private static @Nullable TrashedFileInformation createNextFileInfo(final @NotNull String driverName, final @NotNull ResultSet result) throws SQLException {
-        final @NotNull String createTime = result.getString("create_time");
-        final @NotNull String trashedTime = result.getString("trashed_time");
-        final @NotNull String expire_time = result.getString("expire_time");
-        return result.next() ? new TrashedFileInformation(new FileLocation(driverName, result.getLong("id")), result.getString("name"),
-                result.getBoolean("is_directory"), result.getLong("size"),
-                createTime.isEmpty() ? null : LocalDateTime.parse(createTime, TrashedSqliteHelper.DefaultFormatter),
-                trashedTime.isEmpty() ? null : LocalDateTime.parse(trashedTime, TrashedSqliteHelper.DefaultFormatter),
-                expire_time.isEmpty() ? null : LocalDateTime.parse(expire_time, TrashedSqliteHelper.DefaultFormatter),
-                result.getString("md5"), result.getString("others")) : null;
+//        final @NotNull String createTime = result.getString("create_time");
+//        final @NotNull String trashedTime = result.getString("trashed_time");
+//        final @NotNull String expire_time = result.getString("expire_time");
+//        return result.next() ? new TrashedFileInformation(new FileLocation(driverName, result.getLong("id")), result.getString("name"),
+//                result.getBoolean("is_directory"), result.getLong("size"),
+//                createTime.isEmpty() ? null : LocalDateTime.parse(createTime, TrashedSqliteHelper.DefaultFormatter),
+//                trashedTime.isEmpty() ? null : LocalDateTime.parse(trashedTime, TrashedSqliteHelper.DefaultFormatter),
+//                expire_time.isEmpty() ? null : LocalDateTime.parse(expire_time, TrashedSqliteHelper.DefaultFormatter),
+//                result.getString("md5"), result.getString("others")) : null;
+        return null;
     }
 
     private static @NotNull @UnmodifiableView List<@NotNull TrashedFileInformation> createFilesInfo(final @NotNull String driverName, final @NotNull ResultSet result) throws SQLException {
@@ -156,7 +155,7 @@ public final class TrashedSqliteHelper implements TrashedSqlInterface {
                     statement.setString(5, inserter.createTime() == null ? "" : inserter.createTime().format(TrashedSqliteHelper.DefaultFormatter));
                     statement.setString(6, inserter.trashedTime() == null ? "" : inserter.trashedTime().format(TrashedSqliteHelper.DefaultFormatter));
                     statement.setString(7, inserter.expireTime() == null ? "" : inserter.expireTime().format(TrashedSqliteHelper.DefaultFormatter));
-                    statement.setString(8, inserter.md5());
+//                    statement.setString(8, inserter.md5());
                     statement.setString(9, inserter.others());
                     statement.executeUpdate();
                 }

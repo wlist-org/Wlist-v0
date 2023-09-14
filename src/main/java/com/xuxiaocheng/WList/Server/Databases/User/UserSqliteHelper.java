@@ -70,7 +70,10 @@ public class UserSqliteHelper implements UserSqlInterface {
         modify_time TIMESTAMP   NOT NULL
                                 DEFAULT CURRENT_TIMESTAMP
     );
-                """, UserGroupManager.getDefaultId()));
+                """, UserGroupManager.getInstance().getDefaultId()));
+                statement.executeUpdate("""
+    CREATE INDEX IF NOT EXISTS users_name ON users (name);
+                """);
             }
             try (final PreparedStatement statement = connection.prepareStatement("""
     SELECT id FROM users WHERE username == ? LIMIT 1;
@@ -89,7 +92,7 @@ public class UserSqliteHelper implements UserSqlInterface {
                         insertStatement.setString(1, IdentifierNames.UserName.Admin.getIdentifier());
                         insertStatement.setBytes(2, SqliteHelper.toOrdered(IdentifierNames.UserName.Admin.getIdentifier()));
                         insertStatement.setString(3, PasswordGuard.encryptPassword(password));
-                        insertStatement.setLong(4, UserGroupManager.getAdminId());
+                        insertStatement.setLong(4, UserGroupManager.getInstance().getAdminId());
                         final Timestamp now = Timestamp.valueOf(SqliteHelper.now());
                         insertStatement.setTimestamp(5, now);
                         insertStatement.setTimestamp(6, now);
