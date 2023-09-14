@@ -7,8 +7,8 @@ import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
-import com.xuxiaocheng.WList.Server.Storage.ProviderManager;
-import com.xuxiaocheng.WList.Server.Storage.WebProviders.WebProviderType;
+import com.xuxiaocheng.WList.Server.Storage.ProviderTypes;
+import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -29,14 +29,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
- * @see ProviderManager#addProvider(String, WebProviderType)
- * @see ProviderManager#removeProvider(String)
+ * @see StorageManager#addProvider(String, ProviderTypes)
+ * @see StorageManager#removeProvider(String)
  */
 public record ServerConfiguration(int port, int maxServerBacklog,
                                   long tokenExpireTime, long idIdleExpireTime,
                                   int maxLimitPerPage, int forwardDownloadCacheCount,
                                   boolean deleteCacheAfterUninitializeProvider,
-                                  @NotNull Map<@NotNull String, @NotNull WebProviderType> providers) {
+                                  @NotNull Map<@NotNull String, @NotNull ProviderTypes> providers) {
     public static final @NotNull HInitializer<File> Location = new HInitializer<>("ServerConfigurationLocation");
     private static final @NotNull HInitializer<ServerConfiguration> instance = new HInitializer<>("ServerConfiguration");
 
@@ -73,16 +73,16 @@ public record ServerConfiguration(int port, int maxServerBacklog,
             YamlHelper.getConfig(config, "providers", LinkedHashMap::new,
                 o -> { final Map<String, Object> map = YamlHelper.transferMapNode(o, errors, "providers");
                     if (map == null) return null;
-                    final Map<String, WebProviderType> drivers = new LinkedHashMap<>(map.size());
+                    final Map<String, ProviderTypes> drivers = new LinkedHashMap<>(map.size());
                     for (final Map.Entry<String, Object> e: map.entrySet()) {
-                        final String reason = ProviderManager.providerNameInvalidReason(e.getKey());
+                        final String reason = StorageManager.providerNameInvalidReason(e.getKey());
                         if (reason != null) {
                             HLog.getInstance("DefaultLogger").log(HLogLevel.WARN, "Invalid provider name.", ParametersMap.create().add("name", e.getKey()).add("type", e.getValue().toString()).add("reason", reason));
                             continue;
                         }
                         final String identifier = YamlHelper.transferString(e.getValue(), errors, "provider(" + e.getKey() + ')');
                         if (identifier == null) continue;
-                        final WebProviderType type = WebProviderType.get(identifier);
+                        final ProviderTypes type = ProviderTypes.get(identifier);
                         if (type == null) {
                             HLog.getInstance("DefaultLogger").log(HLogLevel.WARN, "Unsupported provider type.", ParametersMap.create().add("name", e.getKey()).add("identifier", identifier));
                             continue;

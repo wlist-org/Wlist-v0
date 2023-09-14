@@ -13,7 +13,7 @@ import com.xuxiaocheng.WList.Commons.Operations.ResponseState;
 import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
-import com.xuxiaocheng.WList.Server.BroadcastManager;
+import com.xuxiaocheng.WList.Server.Operations.Helpers.BroadcastManager;
 import com.xuxiaocheng.WList.Server.Databases.User.UserInformation;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupInformation;
@@ -183,7 +183,7 @@ public final class OperateGroupsHandler {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.UsersList);
         final UnionPair<LinkedHashMap<VisibleUserGroupInformation.Order, Options.OrderDirection>, String> orders =
-                Options.parseOrderPolicies(buffer, VisibleUserGroupInformation::orderBy, VisibleUserGroupInformation.Order.values().length);
+                Options.parseOrderPolicies(buffer, VisibleUserGroupInformation.Order.class, -1);
         final long position = ByteBufIOUtil.readVariableLenLong(buffer);
         final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
         ServerHandler.logOperation(channel, OperationType.ListGroups, user, () -> ParametersMap.create()
@@ -219,7 +219,7 @@ public final class OperateGroupsHandler {
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.UsersList);
         final EnumMap<UserPermission, Boolean> chooser = UserPermission.parseChooser(buffer);
         final UnionPair<LinkedHashMap<VisibleUserGroupInformation.Order, Options.OrderDirection>, String> orders =
-                Options.parseOrderPolicies(buffer, VisibleUserGroupInformation::orderBy, VisibleUserGroupInformation.Order.values().length);
+                Options.parseOrderPolicies(buffer, VisibleUserGroupInformation.Order.class, -1);
         final long position = ByteBufIOUtil.readVariableLenLong(buffer);
         final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
         ServerHandler.logOperation(channel, OperationType.ListGroupsInPermissions, user, () -> ParametersMap.create()
@@ -291,7 +291,7 @@ public final class OperateGroupsHandler {
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.UsersList);
         final String regex = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<LinkedHashMap<VisibleUserGroupInformation.Order, Options.OrderDirection>, String> orders =
-                Options.parseOrderPolicies(buffer, VisibleUserGroupInformation::orderBy, VisibleUserGroupInformation.Order.values().length);
+                Options.parseOrderPolicies(buffer, VisibleUserGroupInformation.Order.class, -1);
         final long position = ByteBufIOUtil.readVariableLenLong(buffer);
         final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
         ServerHandler.logOperation(channel, OperationType.SearchGroupRegex, user, () -> ParametersMap.create()

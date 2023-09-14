@@ -34,7 +34,7 @@ public final class OperateFileHandler {
 //    public static final @NotNull ServerHandler doListFiles = (channel, buffer) -> {
 //        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, UserPermission.FilesList);
 //        final FileLocation location = FileLocation.parse(buffer);
-//        final Options.DirectoriesOrFiles filter = Options.valueOfDirectoriesOrFiles(ByteBufIOUtil.readByte(buffer));
+//        final Options.FilterPolicy filter = Options.valueOfDirectoriesOrFiles(ByteBufIOUtil.readByte(buffer));
 //        final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
 //        final int page = ByteBufIOUtil.readVariableLenInt(buffer);
 //        final Options.OrderPolicy orderPolicy = Options.valueOfOrderPolicy(ByteBufIOUtil.readUTF(buffer));

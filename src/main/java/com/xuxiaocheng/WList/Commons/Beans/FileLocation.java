@@ -6,19 +6,16 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 
-/**
- * @param driver Driver name. For database.
- * @param id File id. Primary key.
- */
-public record FileLocation(@NotNull String driver, long id) {
-    public static void dump(final @NotNull ByteBuf buffer, final @NotNull FileLocation location) throws IOException {
-        ByteBufIOUtil.writeUTF(buffer, location.driver);
-        ByteBufIOUtil.writeVariableLenLong(buffer, location.id);
+public record FileLocation(@NotNull String storage, long id) {
+    public static @NotNull FileLocation parse(final @NotNull ByteBuf buffer) throws IOException {
+        final String storage = ByteBufIOUtil.readUTF(buffer);
+        final long id = ByteBufIOUtil.readVariableLenLong(buffer);
+        return new FileLocation(storage, id);
     }
 
-    public static @NotNull FileLocation parse(final @NotNull ByteBuf buffer) throws IOException {
-        final String driver = ByteBufIOUtil.readUTF(buffer);
-        final long id = ByteBufIOUtil.readVariableLenLong(buffer);
-        return new FileLocation(driver, id);
+    public @NotNull ByteBuf dump(final @NotNull ByteBuf buffer) throws IOException {
+        ByteBufIOUtil.writeUTF(buffer, this.storage);
+        ByteBufIOUtil.writeVariableLenLong(buffer, this.id);
+        return buffer;
     }
 }

@@ -33,8 +33,8 @@ public class Trash_123pan_NoCache implements DriverTrashInterface<Driver_123pan>
     @Override
     public void uninitialize() throws IllegalParametersException, IOException, SQLException {
         // DriverHelper_123pan.logout(this.driver.configuration);
-        this.driver.configuration.getCacheSide().setLastTrashIndexBuildTime(null);
-        this.driver.configuration.getCacheSide().setModified(true);
+        this.driver.configuration.setLastTrashIndexBuildTime(null);
+        this.driver.configuration.setModified(true);
     }
 
     @Override

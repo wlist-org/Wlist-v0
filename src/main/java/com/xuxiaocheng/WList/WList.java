@@ -9,16 +9,16 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.Rust.NetworkTransmission;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
-import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
+import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
-import com.xuxiaocheng.WList.Server.Storage.ProviderManager;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Operations.ServerHandlerManager;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
-import com.xuxiaocheng.WList.Server.Storage.Helpers.DriverNetworkHelper;
-import com.xuxiaocheng.WList.Server.Storage.WebProviders.ProviderInterface;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
+import com.xuxiaocheng.WList.Server.Storage.StorageManager;
+import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
 import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 
@@ -161,15 +161,15 @@ public final class WList {
         final File cache = new File(WList.RuntimePath.getInstance(), "caches");
         WList.logger.log(HLogLevel.LESS, "Initializing storage provider.", ParametersMap.create().add("directory", configuration));
         HFileHelper.ensureDirectoryExist(configuration.toPath());
-        ProviderManager.initialize(configuration, cache);
+        StorageManager.initialize(configuration, cache);
         WList.logger.log(HLogLevel.VERBOSE, "Initialized storage provider.");
     }
 
     private static void checkConfigurationsSaved() {
         WList.logger.log(HLogLevel.INFO, "Checking configurations is saved...");
-        for (final Map.Entry<String, ProviderInterface<?>> provider: ProviderManager.getAllProviders().entrySet())
+        for (final Map.Entry<String, ProviderInterface<?>> provider: StorageManager.getAllProviders().entrySet())
             try {
-                ProviderManager.dumpConfigurationIfModified(provider.getValue().getConfiguration());
+                StorageManager.dumpConfigurationIfModified(provider.getValue().getConfiguration());
             } catch (final IOException exception) {
                 HLog.DefaultLogger.log(HLogLevel.ERROR, "Failed to dump provider configuration.", ParametersMap.create().add("name", provider.getKey()), exception);
             }
@@ -183,7 +183,7 @@ public final class WList {
         WListServer.ServerExecutors.shutdownGracefully().addListeners(f -> latch.countDown());
         WListServer.IOExecutors.shutdownGracefully().addListeners(f -> latch.countDown());
         BackgroundTaskManager.BackgroundExecutors.shutdownGracefully().addListeners(f -> latch.countDown());
-        DriverNetworkHelper.CountDownExecutors.shutdownGracefully().addListeners(f -> latch.countDown());
+        HttpNetworkHelper.CountDownExecutors.shutdownGracefully().addListeners(f -> latch.countDown());
         return latch;
     }
 }

@@ -9,6 +9,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Server.Exceptions.NetworkException;
 import com.xuxiaocheng.WList.Server.WListServer;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.EventExecutorGroup;
@@ -27,7 +28,10 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import okhttp3.internal.http.HttpMethod;
+import okio.Buffer;
 import okio.BufferedSink;
+import okio.ForwardingSink;
+import okio.Okio;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
@@ -49,24 +53,23 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-public final class DriverNetworkHelper {
-    private DriverNetworkHelper() {
+public final class HttpNetworkHelper {
+    private HttpNetworkHelper() {
         super();
     }
 
     private static final @NotNull HLog logger = HLog.create("NetworkLogger");
 
-    public static final @NotNull EventExecutorGroup CountDownExecutors =
-            new DefaultEventExecutorGroup(2, new DefaultThreadFactory("CountDownExecutors"));
+    public static final @NotNull EventExecutorGroup CountDownExecutors = new DefaultEventExecutorGroup(2, new DefaultThreadFactory("CountDownExecutors"));
     @SuppressWarnings("SpellCheckingInspection")
     public static final @NotNull String defaultWebAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.37";
     public static final @NotNull String defaultAgent = "WList/0.2.3";
 
-    private static final @NotNull Dispatcher dispatcher = new Dispatcher(WListServer.IOExecutors);
-    private static final @NotNull @Unmodifiable Set<@NotNull String> privateFormNames = Set.of("password", "pwd", "passwd", "pw");
+    private static final @NotNull Dispatcher Dispatcher = new Dispatcher(WListServer.IOExecutors);
+    private static final @NotNull @Unmodifiable Set<@NotNull String> PrivateFormNames = Set.of("password", "pwd", "passwd", "pw");
     private static final @NotNull Interceptor NetworkLoggerInterceptor = chain -> {
         final Request request = chain.request();
-        DriverNetworkHelper.logger.log(HLogLevel.NETWORK, "Sending: ", request.method(), ' ', request.url(),
+        HttpNetworkHelper.logger.log(HLogLevel.NETWORK, "Sending: ", request.method(), ' ', request.url(),
                 request.header("Range") == null ? "" : (" (Range: " + request.header("Range") + ')'),
                 (Supplier<String>) () -> {
                     final RequestBody requestBody = request.body();
@@ -77,7 +80,7 @@ public final class DriverNetworkHelper {
                     for (int i = 0; i < formBody.size(); i++) {
                         final String name = formBody.name(i);
                         builder.append(name);
-                        if (DriverNetworkHelper.privateFormNames.contains(name))
+                        if (HttpNetworkHelper.PrivateFormNames.contains(name))
                             builder.append(": ***");
                         else
                             builder.append("=").append(formBody.value(i));
@@ -96,7 +99,7 @@ public final class DriverNetworkHelper {
             successFlag = true;
         } finally {
             final long time2 = System.currentTimeMillis();
-            DriverNetworkHelper.logger.log(HLogLevel.NETWORK, "Received. Totally cost time: ", time2 - time1, "ms.",
+            HttpNetworkHelper.logger.log(HLogLevel.NETWORK, "Received. Totally cost time: ", time2 - time1, "ms.",
                     successFlag ? "" : " But something went wrong.");
         }
         return response;
@@ -106,22 +109,22 @@ public final class DriverNetworkHelper {
                 .connectTimeout(15, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
-                .dispatcher(DriverNetworkHelper.dispatcher)
-                .addInterceptor(DriverNetworkHelper.NetworkLoggerInterceptor);
+                .dispatcher(HttpNetworkHelper.Dispatcher)
+                .addInterceptor(HttpNetworkHelper.NetworkLoggerInterceptor);
     }
-    public static final @NotNull OkHttpClient defaultHttpClient = DriverNetworkHelper.newHttpClientBuilder().build();
-    public static final @NotNull OkHttpClient noRedirectHttpClient = DriverNetworkHelper.newHttpClientBuilder().followRedirects(false).followSslRedirects(false).build();
+    public static final @NotNull OkHttpClient DefaultHttpClient = HttpNetworkHelper.newHttpClientBuilder().build();
+    public static final @NotNull OkHttpClient DefaultNoRedirectHttpClient = HttpNetworkHelper.newHttpClientBuilder().followRedirects(false).followSslRedirects(false).build();
 
     public static class FrequencyControlPolicy {
         protected final int limit;
-        protected final int amount;
+        protected final int per;
         protected final @NotNull TimeUnit unit;
         protected final @NotNull AtomicInteger accepted = new AtomicInteger(0);
 
-        public FrequencyControlPolicy(final int limit, final int amount, final @NotNull TimeUnit unit) {
+        public FrequencyControlPolicy(final int limit, final int per, final @NotNull TimeUnit unit) {
             super();
             this.limit = limit;
-            this.amount = amount;
+            this.per = per;
             this.unit = unit;
         }
 
@@ -130,7 +133,7 @@ public final class DriverNetworkHelper {
                 boolean first = true;
                 while (this.accepted.get() > this.limit) {
                     if (first) {
-                        HLog.DefaultLogger.log(HLogLevel.NETWORK, "At frequency control: ", this.limit, " requests every ", this.unit.toMillis(this.amount), " ms.");
+                        HLog.DefaultLogger.log(HLogLevel.NETWORK, "At frequency control: ", this.limit, " requests every ", this.unit.toMillis(this.per), " ms.");
                         first = false;
                     }
                     this.accepted.wait();
@@ -140,33 +143,21 @@ public final class DriverNetworkHelper {
         }
 
         protected void release() {
-            DriverNetworkHelper.CountDownExecutors.schedule(() -> {
+            HttpNetworkHelper.CountDownExecutors.schedule(() -> {
                 synchronized (this.accepted) {
                     if (this.accepted.getAndDecrement() > 1)
                         this.accepted.notify();
                     else
                         this.accepted.notifyAll();
                 }
-            }, this.amount, this.unit);
-        }
-
-        @Override
-        public boolean equals(final @Nullable Object o) {
-            if (this == o) return true;
-            if (!(o instanceof FrequencyControlPolicy that)) return false;
-            return this.limit == that.limit && this.amount == that.amount && this.unit == that.unit;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(this.limit, this.amount, this.unit);
+            }, this.per, this.unit);
         }
 
         @Override
         public @NotNull String toString() {
             return "FrequencyControlPolicy{" +
                     "limit=" + this.limit +
-                    ", duration=" + this.amount +
+                    ", duration=" + this.per +
                     ", timeUnit=" + this.unit +
                     ", accepted=" + this.accepted +
                     '}';
@@ -180,7 +171,7 @@ public final class DriverNetworkHelper {
     }
 
     public static class FrequencyControlInterceptor implements Interceptor {
-        protected final Set<FrequencyControlPolicy> policies = new HashSet<>();
+        protected final Set<@NotNull FrequencyControlPolicy> policies = new HashSet<>();
 
         public FrequencyControlInterceptor(final @NotNull FrequencyControlPolicy @NotNull... policies) {
             super();
@@ -213,51 +204,51 @@ public final class DriverNetworkHelper {
         }
     }
 
-    private static @NotNull HttpUrl getRealUrl(final @NotNull String url, final @Nullable Map<@NotNull String, @NotNull String> parameters) {
+    private static @NotNull HttpUrl getRealUrl(final @NotNull HttpUrl url, final @Nullable Map<@NotNull String, @NotNull String> parameters) {
         if (parameters == null)
-            return Objects.requireNonNull(HttpUrl.parse(url));
-        final HttpUrl.Builder builder = Objects.requireNonNull(HttpUrl.parse(url)).newBuilder();
+            return url;
+        final HttpUrl.Builder builder = url.newBuilder();
         for (final Map.Entry<String, String> entry: parameters.entrySet())
             builder.addQueryParameter(entry.getKey(), entry.getValue());
         return builder.build();
     }
 
-    private static final Headers.@NotNull Builder emptyHeaders = new Headers.Builder();
+    private static final @NotNull Headers EmptyHeaders = new Headers.Builder().build();
 
-    public static @NotNull Call getWithParameters(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull String> parameters) {
+    public static @NotNull Call getWithParameters(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull String> parameters) {
         assert !HttpMethod.requiresRequestBody(url.getSecond());
-        return client.newCall(new Request.Builder().url(DriverNetworkHelper.getRealUrl(url.getFirst(), parameters))
-                .headers(Objects.requireNonNullElseGet(headers, DriverNetworkHelper.emptyHeaders::build))
+        return client.newCall(new Request.Builder().url(HttpNetworkHelper.getRealUrl(url.getFirst(), parameters))
+                .headers(Objects.requireNonNullElse(headers, HttpNetworkHelper.EmptyHeaders))
                 .method(url.getSecond(), null)
                 .build());
     }
 
-    public static @NotNull Call postWithBody(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable Headers headers, final @Nullable RequestBody body) {
+    public static @NotNull Call postWithBody(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> url, final @Nullable Headers headers, final @Nullable RequestBody body) {
         assert HttpMethod.requiresRequestBody(url.getSecond());
         return client.newCall(new Request.Builder().url(url.getFirst())
-                .headers(Objects.requireNonNullElseGet(headers, DriverNetworkHelper.emptyHeaders::build))
+                .headers(Objects.requireNonNullElse(headers, HttpNetworkHelper.EmptyHeaders))
                 .method(url.getSecond(),
                         Objects.requireNonNullElseGet(body, () -> RequestBody.create("".getBytes(StandardCharsets.UTF_8))))
                 .build());
     }
 
-    public static @NotNull Call postWithParametersAndBody(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull String> parameters, final @Nullable RequestBody body) {
+    public static @NotNull Call postWithParametersAndBody(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull String> parameters, final @Nullable RequestBody body) {
         assert HttpMethod.requiresRequestBody(url.getSecond());
-        return client.newCall(new Request.Builder().url(DriverNetworkHelper.getRealUrl(url.getFirst(), parameters))
-                .headers(Objects.requireNonNullElseGet(headers, DriverNetworkHelper.emptyHeaders::build))
+        return client.newCall(new Request.Builder().url(HttpNetworkHelper.getRealUrl(url.getFirst(), parameters))
+                .headers(Objects.requireNonNullElse(headers, HttpNetworkHelper.EmptyHeaders))
                 .method(url.getSecond(), Objects.requireNonNullElseGet(body, () ->
                         RequestBody.create("".getBytes(StandardCharsets.UTF_8))))
                 .build());
     }
 
-    public static @NotNull Call callWithJson(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body) {
+    public static @NotNull Call callWithJson(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body) {
         return HttpMethod.requiresRequestBody(url.getSecond()) ?
-                DriverNetworkHelper.postWithBody(client, url, headers, DriverNetworkHelper.createJsonRequestBody(body)) :
-                DriverNetworkHelper.getWithParameters(client, url, headers, body == null ? null : body.entrySet().stream()
+                HttpNetworkHelper.postWithBody(client, url, headers, HttpNetworkHelper.createJsonRequestBody(body)) :
+                HttpNetworkHelper.getWithParameters(client, url, headers, body == null ? null : body.entrySet().stream()
                         .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().toString())));
     }
 
-    public static @NotNull ResponseBody extraResponseBody(final @NotNull Response response) throws NetworkException {
+    public static @NotNull ResponseBody extraResponseBody(final @NotNull Response response) throws IOException {
         if (!response.isSuccessful())
             throw new NetworkException(response.code(), response.message());
         final ResponseBody body = response.body();
@@ -267,22 +258,23 @@ public final class DriverNetworkHelper {
     }
 
     public static @NotNull JSONObject extraJsonResponseBody(final @NotNull Response response) throws IOException {
-        try (final InputStream stream = DriverNetworkHelper.extraResponseBody(response).byteStream()) {
+        try (final InputStream stream = HttpNetworkHelper.extraResponseBody(response).byteStream()) {
             return JSON.parseObject(stream);
         }
     }
 
     public static @NotNull RequestBody createJsonRequestBody(final @Nullable Object obj) {
-        return RequestBody.create(JSON.toJSONBytes(obj),
-                MediaType.parse("application/json;charset=utf-8"));
+        return RequestBody.create(JSON.toJSONBytes(obj), MediaType.parse("application/json;charset=utf-8"));
     }
 
-    public static @NotNull RequestBody createOctetStreamRequestBody(final @NotNull ByteBuf content) {
-        final ByteBuf _content = content;
-        return new RequestBody() {
-            private final int length = _content.readableBytes();
-            private final @NotNull ByteBuf content = _content;
+    @FunctionalInterface
+    public interface UploadProgressListener {
+        void onProgress(long current, long total);
+    }
 
+    public static @NotNull RequestBody createOctetStreamRequestBody(final @NotNull ByteBuf content, final @Nullable UploadProgressListener listener) {
+        final long length = content.readableBytes();
+        final RequestBody body = new RequestBody() {
             @Override
             public @Nullable MediaType contentType() {
                 return MediaType.parse("application/octet-stream");
@@ -290,39 +282,89 @@ public final class DriverNetworkHelper {
 
             @Override
             public long contentLength() {
-                return this.length;
+                return length;
             }
 
             @Override
-            public void writeTo(final @NotNull BufferedSink bufferedSink) throws IOException {
-                if (this.content.readableBytes() == 0)
+            public void writeTo(final @NotNull BufferedSink sink) throws IOException {
+                if (content.readableBytes() == 0)
                     return;
-                if (this.content.nioBufferCount() < 0) {
+                if (content.nioBufferCount() < 0) {
                     HLog.getInstance("NetworkLogger").log(HLogLevel.MISTAKE, "Rewrite data from netty to okhttp by default algorithm.",
-                            ParametersMap.create().add("content", this.content)); // Reachable?
-                    final int bufferSize = Math.min(this.length, 2 << 20);
-                    for (final byte[] buffer = new byte[bufferSize]; this.content.readableBytes() > 0; ) {
-                        final int len = Math.min(bufferSize, this.content.readableBytes());
-                        this.content.readBytes(buffer, 0, len);
-                        bufferedSink.write(buffer, 0, len);
+                            ParametersMap.create().add("content", content)); // Reachable?
+                    final int bufferSize = (int) Math.min(length, 2 << 20);
+                    for (final byte[] buffer = new byte[bufferSize]; content.readableBytes() > 0; ) {
+                        final int len = Math.min(bufferSize, content.readableBytes());
+                        content.readBytes(buffer, 0, len);
+                        sink.write(buffer, 0, len);
                     }
                     return;
                 }
-                final ByteBuffer[] buffers = this.content.nioBuffers();
-                for (final ByteBuffer buffer: buffers)
-                    bufferedSink.write(buffer);
+                for (final ByteBuffer buffer: content.nioBuffers())
+                    sink.write(buffer);
             }
+
 
             @Override
             public @NotNull String toString() {
                 return "ByteBufOctetStreamRequestBody{" +
-                        "length=" + this.length +
+                        "length=" + length +
+                        ", content=" + content +
                         ", super=" + super.toString() +
                         "}";
             }
         };
+        return listener == null ? body : new ProgressRequestBody(body, listener);
     }
 
+    public static class ProgressRequestBody extends RequestBody {
+        protected final @NotNull RequestBody requestBody;
+        protected final @NotNull UploadProgressListener listener;
+
+        public ProgressRequestBody(final @NotNull RequestBody requestBody, final @NotNull UploadProgressListener listener) {
+            super();
+            this.requestBody = requestBody;
+            this.listener = listener;
+        }
+
+        @Override
+        public @Nullable MediaType contentType() {
+            return this.requestBody.contentType();
+        }
+
+        @Override
+        public long contentLength() throws IOException {
+            return this.requestBody.contentLength();
+        }
+
+        @Override
+        public void writeTo(final @NotNull BufferedSink sink) throws IOException {
+            final BufferedSink forwardingSink = Okio.buffer(new ForwardingSink(sink) {
+                private final long length = ProgressRequestBody.this.requestBody.contentLength();
+                private long written = 0;
+
+                @Override
+                public void write(final @NotNull Buffer source, final long byteCount) throws IOException {
+                    super.write(source, byteCount);
+                    this.written += byteCount;
+                    ProgressRequestBody.this.listener.onProgress(this.written, this.length);
+                }
+            });
+            this.requestBody.writeTo(forwardingSink);
+            forwardingSink.flush();
+        }
+
+        @Override
+        public @NotNull String toString() {
+            return "ProgressRequestBody{" +
+                    "requestBody=" + this.requestBody +
+                    ", listener=" + this.listener +
+                    ", super=" + super.toString() +
+                    '}';
+        }
+    }
+
+    @Deprecated
     public static class PersistenceCookieJar implements CookieJar {
         protected final @NotNull List<@NotNull Cookie> cookies;
 
@@ -355,6 +397,25 @@ public final class DriverNetworkHelper {
             return "PersistenceCookieJar{" +
                     "cache=" + this.cookies +
                     '}';
+        }
+    }
+
+    public static @NotNull ByteBuf receiveDataFromStream(final @NotNull InputStream stream, final int length) throws IOException {
+        final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(length, length);
+        try {
+            // stream.transferTo(new ByteBufOutputStream(buffer));
+            int read = 0;
+            while (read < length) {
+                final int current = buffer.writeBytes(stream, length - read);
+                if (current < 0)
+                    break;
+                if (current == 0)
+                    Thread.onSpinWait();
+                read += current;
+            }
+            return buffer.retain();
+        } finally {
+            buffer.release();
         }
     }
 }

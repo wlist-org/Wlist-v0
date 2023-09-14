@@ -155,7 +155,7 @@ final class DriverHelper_123pan {
     static @NotNull JSONObject sendRequestReceiveExtractedData(final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> url, final @Nullable DriverConfiguration_123pan configuration, final @Nullable Map<@NotNull String, @NotNull Object> body, final boolean loginFlag) throws IllegalParametersException, IOException {
         final Headers.Builder builder = new Headers.Builder();
         if (configuration != null)
-            builder.add("authorization", "Bearer " + configuration.getCacheSide().getToken());
+            builder.add("authorization", "Bearer " + configuration.getToken());
         builder.add("user-agent", DriverHelper_123pan.agent);
         builder.add("platform", "web").add("app-version", "3");
         builder.set("cache-control", "no-cache");
@@ -165,7 +165,7 @@ final class DriverHelper_123pan {
         if (json.getIntValue("code", -1) == DriverHelper_123pan.TokenExpireResponseCode && !loginFlag && configuration != null) {
             DriverHelper_123pan.forceGetToken(configuration);
             json = DriverNetworkHelper.extraJsonResponseBody(DriverNetworkHelper.callWithJson(DriverHelper_123pan.httpClient, realUrl,
-                    builder.set("authorization", "Bearer " + configuration.getCacheSide().getToken()).build(), body).execute());
+                    builder.set("authorization", "Bearer " + configuration.getToken()).build(), body).execute());
         }
         final int code = json.getIntValue("code", -1);
         final String message = json.getString("message");
@@ -208,29 +208,29 @@ final class DriverHelper_123pan {
      * <p> {@literal SET configuration.cacheSide.refreshExpire: }Refresh token expire time.
      */
     private static void login(final @NotNull DriverConfiguration_123pan configuration) throws IllegalParametersException, IOException {
-        final int loginType = configuration.getWebSide().getLoginType();
+        final int loginType = configuration.getLoginType();
         final boolean isPhone = switch (loginType) {
             case 1 -> true; case 2 -> false;
             default -> throw new IllegalParametersException("Unsupported login type.", ParametersMap.create().add("type", loginType));
         };
-        if (!(isPhone ? DriverHelper_123pan.PhoneNumberPattern : DriverHelper_123pan.MailAddressPattern).matcher(configuration.getWebSide().getPassport()).matches())
-            throw new DriverTokenExpiredException(isPhone ? DriverUtil.InvalidPhoneNumber : DriverUtil.InvalidMailAddress, ParametersMap.create().add("passport", configuration.getWebSide().getPassport()));
+        if (!(isPhone ? DriverHelper_123pan.PhoneNumberPattern : DriverHelper_123pan.MailAddressPattern).matcher(configuration.getPassport()).matches())
+            throw new DriverTokenExpiredException(isPhone ? DriverUtil.InvalidPhoneNumber : DriverUtil.InvalidMailAddress, ParametersMap.create().add("passport", configuration.getPassport()));
                 // isPhone ? "\u8bf7\u8f93\u5165\u6b63\u786e\u7684\u624b\u673a\u53f7\u7801" : "\u8bf7\u8f93\u5165\u6b63\u786e\u7684\u90ae\u7bb1\u53f7";
         final Map<String, Object> request = new LinkedHashMap<>(3);
         request.put("type", loginType);
-        request.put(isPhone ? "passport" : "mail", configuration.getWebSide().getPassport());
-        request.put("password", configuration.getWebSide().getPassword());
+        request.put(isPhone ? "passport" : "mail", configuration.getPassport());
+        request.put("password", configuration.getPassword());
         final JSONObject data;
         try {
             data = DriverHelper_123pan.sendRequestReceiveExtractedData(DriverHelper_123pan.LoginURL, null, request, true);
         } catch (final IllegalResponseCodeException exception) {
             if (exception.getCode() == DriverHelper_123pan.TokenExpireResponseCode)
-                throw new DriverTokenExpiredException(exception.getMeaning(), ParametersMap.create().add("passport", configuration.getWebSide().getPassport()));
+                throw new DriverTokenExpiredException(exception.getMeaning(), ParametersMap.create().add("passport", configuration.getPassport()));
             throw exception;
         }
-        DriverHelper_123pan.handleLoginData(configuration.getCacheSide(), data);
+        DriverHelper_123pan.handleLoginData(configuration, data);
         DriverHelper_123pan.logger.log(HLogLevel.LESS, "Logged in.", ParametersMap.create()
-                .add("driver", configuration.getName()).add("passport", configuration.getWebSide().getPassport()));
+                .add("driver", configuration.getName()).add("passport", configuration.getPassport()));
     }
 
     /**
@@ -245,7 +245,7 @@ final class DriverHelper_123pan {
      * <p> {@code false}: Success.
      */
     private static boolean refreshToken(final @NotNull DriverConfiguration_123pan configuration) throws IllegalParametersException, IOException {
-        if (configuration.getCacheSide().getToken() == null) // Quick response.
+        if (configuration.getToken() == null) // Quick response.
             return true;
         final JSONObject data;
         try {
@@ -255,18 +255,18 @@ final class DriverHelper_123pan {
                 return true;
             throw exception;
         }
-        DriverHelper_123pan.handleLoginData(configuration.getCacheSide(), data);
+        DriverHelper_123pan.handleLoginData(configuration, data);
         DriverHelper_123pan.logger.log(HLogLevel.LESS, "Refreshed token.", ParametersMap.create()
-                        .add("driver", configuration.getName()).add("passport", configuration.getWebSide().getPassport()));
+                        .add("driver", configuration.getName()).add("passport", configuration.getPassport()));
         return false;
     }
 
     static void forceGetToken(final @NotNull DriverConfiguration_123pan configuration) throws IllegalParametersException, IOException {
         final LocalDateTime time = LocalDateTime.now().minusMinutes(3);
         synchronized (configuration.getCacheSide()) {
-            if (configuration.getCacheSide().getToken() == null
-                    || configuration.getCacheSide().getRefreshExpire() == null
-                    || time.isAfter(configuration.getCacheSide().getRefreshExpire())
+            if (configuration.getToken() == null
+                    || configuration.getRefreshExpire() == null
+                    || time.isAfter(configuration.getRefreshExpire())
                     || DriverHelper_123pan.refreshToken(configuration)) {
                 DriverHelper_123pan.login(configuration);
             }
@@ -280,9 +280,9 @@ final class DriverHelper_123pan {
     static void ensureToken(final @NotNull DriverConfiguration_123pan configuration) throws IllegalParametersException, IOException {
         final LocalDateTime time = LocalDateTime.now().minusMinutes(3);
         synchronized (configuration.getCacheSide()) {
-            if (configuration.getCacheSide().getToken() == null
-                    || configuration.getCacheSide().getTokenExpire() == null
-                    || time.isAfter(configuration.getCacheSide().getTokenExpire()))
+            if (configuration.getToken() == null
+                    || configuration.getTokenExpire() == null
+                    || time.isAfter(configuration.getTokenExpire()))
                 DriverHelper_123pan.forceGetToken(configuration);
         }
     }
@@ -302,14 +302,14 @@ final class DriverHelper_123pan {
     static void resetUserInformation(final @NotNull DriverConfiguration_123pan configuration) throws IllegalParametersException, IOException {
         DriverHelper_123pan.ensureToken(configuration);
         final JSONObject data = DriverHelper_123pan.sendRequestReceiveExtractedData(DriverHelper_123pan.UserInformationURL, configuration, null, false);
-        configuration.getCacheSide().setNickname(Objects.requireNonNullElse(data.getString("Nickname"), "undefined"));
-        configuration.getCacheSide().setImageLink(data.getString("HeadImage"));
-        configuration.getCacheSide().setVip(data.getBooleanValue("Vip", false));
-        configuration.getCacheSide().setFileCount(data.getLongValue("FileCount", -1));
-        configuration.getWebSide().setSpaceAll(data.getLongValue("SpacePermanent", 0) + data.getLongValue("SpaceTemp", 0));
-        configuration.getWebSide().setSpaceUsed(data.getLongValue("SpaceUsed", -1));
-        configuration.getWebSide().setMaxSizePerFile(configuration.getCacheSide().isVip() ? 1L << 40 /*1TB*/ : 100L << 30 /*100GB*/);
-        configuration.getCacheSide().setModified(true);
+        configuration.setNickname(Objects.requireNonNullElse(data.getString("Nickname"), "undefined"));
+        configuration.setImageLink(data.getString("HeadImage"));
+        configuration.setVip(data.getBooleanValue("Vip", false));
+        configuration.setFileCount(data.getLongValue("FileCount", -1));
+        configuration.setSpaceAll(data.getLongValue("SpacePermanent", 0) + data.getLongValue("SpaceTemp", 0));
+        configuration.setSpaceUsed(data.getLongValue("SpaceUsed", -1));
+        configuration.setMaxSizePerFile(configuration.isVip() ? 1L << 40 /*1TB*/ : 100L << 30 /*100GB*/);
+        configuration.setModified(true);
     }
 
     /**
@@ -320,7 +320,7 @@ final class DriverHelper_123pan {
      * <p> {@literal SET configuration.cacheSide.refreshExpire: null}
      */
     static void logout(final @NotNull DriverConfiguration_123pan configuration) throws IllegalParametersException, IOException {
-        if (configuration.getCacheSide().getToken() == null)
+        if (configuration.getToken() == null)
             return;
         try {
             DriverHelper_123pan.sendRequestReceiveExtractedData(DriverHelper_123pan.LogoutURL, configuration, null, false);
@@ -330,12 +330,12 @@ final class DriverHelper_123pan {
             if (exception.getCode() != 200 || !"\u8bf7\u91cd\u65b0\u767b\u5f55\uff01".equals(exception.getMeaning()))
                 throw exception;
         }
-        configuration.getCacheSide().setToken(null);
-        configuration.getCacheSide().setTokenExpire(null);
-        configuration.getCacheSide().setRefreshExpire(null);
-        configuration.getCacheSide().setModified(true);
+        configuration.setToken(null);
+        configuration.setTokenExpire(null);
+        configuration.setRefreshExpire(null);
+        configuration.setModified(true);
         DriverHelper_123pan.logger.log(HLogLevel.LESS, "Logged out.", ParametersMap.create()
-                .add("driver", configuration.getName()).add("passport", configuration.getWebSide().getPassport()));
+                .add("driver", configuration.getName()).add("passport", configuration.getPassport()));
     }
 
     // File
@@ -512,8 +512,8 @@ final class DriverHelper_123pan {
             throw new IllegalParametersException("Invalid md5.", ParametersMap.create().add("md5", md5));
         if (!DriverHelper_123pan.filenamePredication.test(filename))
             return UnionPair.fail(FailureReason.byInvalidName("Uploading request.", new FileLocation(configuration.getName(), parentId), filename));
-        if (size > configuration.getWebSide().getMaxSizePerFile())
-            return UnionPair.fail(FailureReason.byExceedMaxSize("Uploading request.", size, configuration.getWebSide().getMaxSizePerFile(), new FileLocation(configuration.getName(), parentId), filename));
+        if (size > configuration.getMaxSizePerFile())
+            return UnionPair.fail(FailureReason.byExceedMaxSize("Uploading request.", size, configuration.getMaxSizePerFile(), new FileLocation(configuration.getName(), parentId), filename));
         DriverHelper_123pan.ensureToken(configuration);
         final Map<String, Object> request = new LinkedHashMap<>(7);
         request.put("DriveId", 0);

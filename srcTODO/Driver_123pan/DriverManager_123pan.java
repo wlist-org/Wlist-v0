@@ -110,7 +110,7 @@ public final class DriverManager_123pan {
     }
 
     static @Nullable FileSqlInformation getFileInformation(final @NotNull DriverConfiguration_123pan configuration, final long id, final @Nullable String _connectionId) throws IllegalParametersException, IOException, SQLException {
-        if (id == configuration.getWebSide().getRootDirectoryId()) return RootDriver.getDriverInformation(configuration);
+        if (id == configuration.getRootDirectoryId()) return RootDriver.getDriverInformation(configuration);
         if (id == 0) return null; // Out of Root File Tree.
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = FileManager.getConnection(configuration.getName(), _connectionId, connectionId)) {

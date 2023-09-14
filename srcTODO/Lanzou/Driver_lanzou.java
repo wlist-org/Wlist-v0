@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server.Storage.WebProviders.Driver_lanzou;
+package com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
@@ -13,10 +13,10 @@ import com.xuxiaocheng.WList.Server.Databases.TrashedFile.TrashedFileManager;
 import com.xuxiaocheng.WList.Server.Databases.TrashedFile.TrashedSqliteHelper;
 import com.xuxiaocheng.WList.Server.Storage.FailureReason;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
-import com.xuxiaocheng.WList.Server.Storage.ProviderManager;
+import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WList.Server.Storage.Selectors.RootSelector;
 import com.xuxiaocheng.WList.Commons.Options.Options;
-import com.xuxiaocheng.WList.Server.Storage.WebProviders.ProviderInterface;
+import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.DownloadMethods;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.UploadMethods;
 import org.jetbrains.annotations.NotNull;
@@ -45,8 +45,8 @@ public class Driver_lanzou implements ProviderInterface<DriverConfiguration_lanz
 
     @Override
     public void initialize(final @NotNull DriverConfiguration_lanzou configuration) throws SQLException {
-        final SqlDatabaseInterface database = SqlDatabaseManager.quicklyOpen(ProviderManager.getProviderDatabaseFile(configuration.getName()));
-        FileManager.quicklyInitialize(new FileSqliteHelper(database, configuration.getName(), configuration.getWebSide().getRootDirectoryId()), null);
+        final SqlDatabaseInterface database = SqlDatabaseManager.quicklyOpen(StorageManager.getStorageDatabaseFile(configuration.getName()));
+        FileManager.quicklyInitialize(new FileSqliteHelper(database, configuration.getName(), configuration.getRootDirectoryId()), null);
         this.configuration = configuration;
         FileManager.mergeFile(this.configuration.getName(), RootSelector.getDatabaseDriverInformation(this.configuration), null);
 
@@ -63,8 +63,8 @@ public class Driver_lanzou implements ProviderInterface<DriverConfiguration_lanz
     @Override
     public void buildCache() throws IOException {
         DriverManager_lanzou.ensureLoggedIn(this.configuration);
-        this.configuration.getCacheSide().setLastFileCacheBuildTime(LocalDateTime.now());
-        this.configuration.getCacheSide().setModified(true);
+        this.configuration.setLastFileCacheBuildTime(LocalDateTime.now());
+        this.configuration.setModified(true);
     }
 
     @Override
@@ -72,7 +72,7 @@ public class Driver_lanzou implements ProviderInterface<DriverConfiguration_lanz
         final Set<CompletableFuture<?>> futures = ConcurrentHashMap.newKeySet();
         final AtomicLong runningFutures = new AtomicLong(1);
         final AtomicBoolean interruptFlag = new AtomicBoolean(false);
-        DriverManager_lanzou.refreshDirectoryRecursively(this.configuration, this.configuration.getWebSide().getRootDirectoryId(), futures, runningFutures, interruptFlag);
+        DriverManager_lanzou.refreshDirectoryRecursively(this.configuration, this.configuration.getRootDirectoryId(), futures, runningFutures, interruptFlag);
         try {
             synchronized (runningFutures) {
                 while (runningFutures.get() > 0)
@@ -95,15 +95,15 @@ public class Driver_lanzou implements ProviderInterface<DriverConfiguration_lanz
                 }
                 HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), throwable);
             }
-        final FileInformation root = FileManager.selectFile(this.configuration.getName(), this.configuration.getWebSide().getRootDirectoryId(), null);
+        final FileInformation root = FileManager.selectFile(this.configuration.getName(), this.configuration.getRootDirectoryId(), null);
         if (root != null)
-            this.configuration.getWebSide().setSpaceUsed(root.size());
-        this.configuration.getCacheSide().setLastFileIndexBuildTime(LocalDateTime.now());
-        this.configuration.getCacheSide().setModified(true);
+            this.configuration.setSpaceUsed(root.size());
+        this.configuration.setLastFileIndexBuildTime(LocalDateTime.now());
+        this.configuration.setModified(true);
     }
 
     @Override
-    public void forceRefreshDirectory(final @NotNull FileLocation location) throws IOException, SQLException, InterruptedException {
+    public void refreshDirectory(final @NotNull FileLocation location) throws IOException, SQLException, InterruptedException {
         DriverManager_lanzou.waitSyncComplete(DriverManager_lanzou.syncFilesList(this.configuration, location.id(), null));
     }
 

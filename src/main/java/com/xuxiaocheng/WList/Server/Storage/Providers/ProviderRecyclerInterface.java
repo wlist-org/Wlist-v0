@@ -1,12 +1,12 @@
-package com.xuxiaocheng.WList.Server.Storage.WebProviders;
+package com.xuxiaocheng.WList.Server.Storage.Providers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.TrashedFile.TrashedFileInformation;
-import com.xuxiaocheng.WList.Server.Storage.FailureReason;
+import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
-import com.xuxiaocheng.WList.Server.Storage.Helpers.DriverUtil;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.ProviderUtil;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -35,7 +35,7 @@ public interface ProviderRecyclerInterface<D extends ProviderInterface<?>> {
 
     default void deleteAll() throws Exception {
         while (true) {
-            final Pair.ImmutablePair<Long, List<TrashedFileInformation>> page = this.list(DriverUtil.DefaultLimitPerRequestPage, 0, DriverUtil.DefaultOrderPolicy, DriverUtil.DefaultOrderDirection);
+            final Pair.ImmutablePair<Long, List<TrashedFileInformation>> page = this.list(ProviderUtil.DefaultLimitPerRequestPage, 0, ProviderUtil.DefaultOrderPolicy, ProviderUtil.DefaultOrderDirection);
             for (final TrashedFileInformation information: page.getSecond())
                 this.delete(information.location());
             if (page.getFirst().longValue() == page.getSecond().size() || page.getSecond().isEmpty())

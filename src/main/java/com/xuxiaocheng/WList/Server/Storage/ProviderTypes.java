@@ -1,6 +1,7 @@
-package com.xuxiaocheng.WList.Server.Storage.WebProviders;
+package com.xuxiaocheng.WList.Server.Storage;
 
-import com.xuxiaocheng.WList.Server.Storage.WebProviders.Driver_lanzou.Driver_lanzou;
+import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
+import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderRecyclerInterface;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -8,24 +9,24 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
-public enum WebProviderType {
+public enum ProviderTypes {
 //    driver_123Pan("123pan", Driver_123pan::new, Trash_123pan::new),
-    driver_lanzou("lanzou", Driver_lanzou::new, null),
+//    driver_lanzou("lanzou", Driver_lanzou::new, null),
     ;
-    private static final @NotNull Map<@NotNull String, @NotNull WebProviderType> drivers = new HashMap<>(); static {
-        for (final WebProviderType type: WebProviderType.values())
-            WebProviderType.drivers.put(type.identifier, type);
+    private static final @NotNull Map<@NotNull String, @NotNull ProviderTypes> drivers = new HashMap<>(); static {
+        for (final ProviderTypes type: ProviderTypes.values())
+            ProviderTypes.drivers.put(type.identifier, type);
     }
 
-    public static @Nullable WebProviderType get(final @Nullable String identifier) {
-        return WebProviderType.drivers.get(identifier);
+    public static @Nullable ProviderTypes get(final @Nullable String identifier) {
+        return ProviderTypes.drivers.get(identifier);
     }
 
     private final @NotNull String identifier;
     private final @NotNull Supplier<@NotNull ProviderInterface<?>> driver;
     private final @Nullable Supplier<@NotNull ProviderRecyclerInterface<?>> trash;
 
-    WebProviderType(final @NotNull String identifier, final @NotNull Supplier<@NotNull ProviderInterface<?>> driver, final @Nullable Supplier<@NotNull ProviderRecyclerInterface<?>> trash) {
+    ProviderTypes(final @NotNull String identifier, final @NotNull Supplier<@NotNull ProviderInterface<?>> driver, final @Nullable Supplier<@NotNull ProviderRecyclerInterface<?>> trash) {
         this.identifier = identifier;
         this.driver = driver;
         this.trash = trash;
@@ -45,7 +46,7 @@ public enum WebProviderType {
 
     @Override
     public @NotNull String toString() {
-        return "WebProviderType{" +
+        return "ProviderTypes{" +
                 "identifier='" + this.identifier + '\'' +
                 ", name='" + this.name() + '\'' +
                 '}';

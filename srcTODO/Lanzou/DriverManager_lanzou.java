@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server.Storage.WebProviders.Driver_lanzou;
+package com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
@@ -89,7 +89,7 @@ public final class DriverManager_lanzou {
                 FileManager.updateDirectoryType(configuration.getName(), directoryId, false, connectionId.get());
             final Set<Long> deletedIds = ConcurrentHashMap.newKeySet();
             deletedIds.addAll(FileManager.selectFileIdByParentId(configuration.getName(), directoryId, _connectionId));
-            deletedIds.remove(configuration.getWebSide().getRootDirectoryId());
+            deletedIds.remove(configuration.getRootDirectoryId());
             FileManager.getConnection(configuration.getName(), connectionId.get(), null);
             return DriverUtil.wrapSuppliersInPages(page -> {
                 final Collection<FileInformation> list = switch (page.intValue()) {
@@ -121,7 +121,7 @@ public final class DriverManager_lanzou {
     }
 
     static @Nullable FileInformation getFileInformation(final @NotNull DriverConfiguration_lanzou configuration, final long id, final @Nullable Long parentId, final @Nullable String _connectionId) throws IOException, SQLException, InterruptedException {
-        if (id == configuration.getWebSide().getRootDirectoryId()) return RootSelector.getDriverInformation(configuration);
+        if (id == configuration.getRootDirectoryId()) return RootSelector.getDriverInformation(configuration);
         if (id == -1) return null; // Out of Root File Tree.
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = FileManager.getConnection(configuration.getName(), _connectionId, connectionId)) {
@@ -261,13 +261,13 @@ public final class DriverManager_lanzou {
             if (requireDirectory && information.isDirectory())
                 return UnionPair.ok(UnionPair.fail(information));
             switch (policy) {
-                case ERROR:
+                case DuplicatePolicy.ERROR:
                     return UnionPair.fail(FailureReason.byDuplicateError(duplicateErrorMessage, new FileLocation(configuration.getName(), parentId), name));
-                case OVER:
+                case DuplicatePolicy.OVER:
                     DriverManager_lanzou.trash(configuration, information, connectionId.get(), null);
                     connection.commit();
                     return UnionPair.ok(UnionPair.ok(name));
-                case KEEP:
+                case DuplicatePolicy.KEEP:
                     int retry = 0;
                     final Pair.ImmutablePair<String, String> wrapper = DriverUtil.getRetryWrapper(name);
                     while (information != null && !(requireDirectory && information.isDirectory()))
@@ -300,8 +300,8 @@ public final class DriverManager_lanzou {
             throw new IllegalStateException("Invalid md5." + ParametersMap.create().add("md5", md5));
         if (!DriverHelper_lanzou.filenamePredication.test(name))
             return UnionPair.fail(FailureReason.byInvalidName("Uploading.", new FileLocation(configuration.getName(), parentId), name));
-        if (size > configuration.getWebSide().getMaxSizePerFile())
-            return UnionPair.fail(FailureReason.byExceedMaxSize("Uploading.", size, configuration.getWebSide().getMaxSizePerFile(), new FileLocation(configuration.getName(), parentId), name));
+        if (size > configuration.getMaxSizePerFile())
+            return UnionPair.fail(FailureReason.byExceedMaxSize("Uploading.", size, configuration.getMaxSizePerFile(), new FileLocation(configuration.getName(), parentId), name));
         final int intSize = Math.toIntExact(size);
         final UnionPair<UnionPair<String, FileInformation>, FailureReason> duplicate = DriverManager_lanzou.getDuplicatePolicyName(configuration, parentId, name, false, policy, "Uploading.", _connectionId);
         if (duplicate.isFailure()) return UnionPair.fail(duplicate.getE());

@@ -14,7 +14,7 @@ public class Trash_123pan {//extends Trash_123pan_NoCache {
 //
 //    @Override
 //    public void buildCache() throws SQLException {
-//        final LocalDateTime old = this.driver.configuration.getCacheSide().getLastTrashIndexBuildTime();
+//        final LocalDateTime old = this.driver.configuration.getLastTrashIndexBuildTime();
 //        final LocalDateTime now = LocalDateTime.now();
 //        if (old == null || Duration.between(old, now).toMillis() > TimeUnit.HOURS.toMillis(3))
 //            this.buildIndex();
@@ -22,8 +22,8 @@ public class Trash_123pan {//extends Trash_123pan_NoCache {
 //
 //    @Override
 //    public void buildIndex() throws SQLException {
-//        this.driver.configuration.getCacheSide().setLastTrashIndexBuildTime(LocalDateTime.now());
-//        this.driver.configuration.getCacheSide().setModified(true);
+//        this.driver.configuration.setLastTrashIndexBuildTime(LocalDateTime.now());
+//        this.driver.configuration.setModified(true);
 //        final Iterator<TrashedSqlInformation> iterator = TrashManager_123pan.listAllFilesNoCache(this.driver.configuration, null, WListServer.IOExecutors).getB();
 //        while (iterator.hasNext())
 //            iterator.next();

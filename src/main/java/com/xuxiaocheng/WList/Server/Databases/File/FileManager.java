@@ -113,7 +113,7 @@ public final class FileManager {
         return FileManager.selectFilesCountByParentId(driverName, List.of(parentId), _connectionId).get(parentId).longValue();
     }
 
-    public static Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileInformation>> selectFilesByParentIdInPage(final @NotNull String driverName, final long parentId, final Options.@NotNull DirectoriesOrFiles filter, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final @Nullable String _connectionId) throws SQLException {
+    public static Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileInformation>> selectFilesByParentIdInPage(final @NotNull String driverName, final long parentId, final Options.@NotNull FilterPolicy filter, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final @Nullable String _connectionId) throws SQLException {
         return FileManager.sqlInstances.getInstance(driverName).selectFilesByParentIdInPage(parentId, filter, limit, offset, direction, policy, _connectionId);
     }
 

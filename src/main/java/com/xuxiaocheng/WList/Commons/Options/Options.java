@@ -7,17 +7,15 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public final class Options {
     private Options() {
         super();
-    }
-
-    public enum OrderDirection {
-        ASCEND, DESCEND,
     }
 
     @FunctionalInterface
@@ -25,14 +23,21 @@ public final class Options {
         @NotNull String name();
     }
 
-    public static <T extends OrderPolicy> @Nullable UnionPair<LinkedHashMap<@NotNull T, @NotNull OrderDirection>, String> parseOrderPolicies(final @NotNull ByteBuf buffer, final @NotNull Function<? super @NotNull String, ? extends @Nullable T> parser, final int maxCount) throws IOException {
+    private static final @NotNull Map<@NotNull Class<?>, @NotNull Map<@NotNull String, ?>> typesCache = new LinkedHashMap<>();
+    private static <T extends Enum<T> & OrderPolicy> @NotNull Map<@NotNull String, @NotNull T> computeTypeCache(final @NotNull Class<? extends T> type) {
+        return Arrays.stream(type.getEnumConstants()).collect(Collectors.toMap(Enum::name, Function.identity()));
+    }
+
+    public static <T extends Enum<T> & OrderPolicy> @Nullable UnionPair<LinkedHashMap<@NotNull T, @NotNull OrderDirection>, String> parseOrderPolicies(final @NotNull ByteBuf buffer, final @NotNull Class<T> type, final int maxCount_) throws IOException {
         final int length = ByteBufIOUtil.readVariableLenInt(buffer);
-        if (length < 0 || maxCount < length)
+        @SuppressWarnings("unchecked")
+        final Map<String, T> enums = (Map<String, T>) Options.typesCache.computeIfAbsent(type, t -> Options.computeTypeCache((Class<T>) t));
+        if (length < 0 || (maxCount_ < 0 ? enums.size() : Math.min(maxCount_, enums.size())) < length)
             return null;
         final LinkedHashMap<T, OrderDirection> orders = new LinkedHashMap<>(length);
         for (int i = 0; i < length; ++i) {
             final String name = ByteBufIOUtil.readUTF(buffer);
-            final T policy = parser.apply(name);
+            final T policy = enums.get(name);
             if (policy == null)
                 return UnionPair.fail(name);
             final boolean direction = ByteBufIOUtil.readBoolean(buffer);
@@ -41,10 +46,10 @@ public final class Options {
         return UnionPair.ok(orders);
     }
 
-    public static <T extends OrderPolicy> void dumpOrderPolicies(final @NotNull ByteBuf buffer, @SuppressWarnings("TypeMayBeWeakened") final @NotNull LinkedHashMap<@NotNull T, @NotNull OrderDirection> orders, final @NotNull Function<? super @NotNull T, @NotNull String> dumper) throws IOException {
+    public static <T extends Enum<T>& OrderPolicy> void dumpOrderPolicies(final @NotNull ByteBuf buffer, @SuppressWarnings("TypeMayBeWeakened") final @NotNull LinkedHashMap<@NotNull T, @NotNull OrderDirection> orders) throws IOException {
         ByteBufIOUtil.writeVariableLenInt(buffer, orders.size());
         for (final Map.Entry<T, OrderDirection> policy: orders.entrySet()) {
-            ByteBufIOUtil.writeUTF(buffer, dumper.apply(policy.getKey()));
+            ByteBufIOUtil.writeUTF(buffer, policy.getKey().name());
             ByteBufIOUtil.writeBoolean(buffer, switch (policy.getValue()) {
                 case ASCEND -> true;
                 case DESCEND -> false;
@@ -52,55 +57,37 @@ public final class Options {
         }
     }
 
-//    public enum OrderPolicy {
-//        FileName,
-//        Size,
-//        CreateTime,
-//        UpdateTime,
-//    }
+    public enum OrderDirection {
+        ASCEND, DESCEND,
+    }
 
-    public enum DirectoriesOrFiles {
+
+    public enum FilterPolicy {
         OnlyDirectories,
         OnlyFiles,
         Both,
-    }
-
-    public static @Nullable OrderDirection valueOfOrderDirection(final @NotNull String direction) {
-        try {
-            return OrderDirection.valueOf(direction);
-        } catch (final IllegalArgumentException exception) {
-            return null;
+        ;
+        public static @Nullable Options.FilterPolicy of(final byte policy) {
+            return switch (policy) {
+                case 1 -> FilterPolicy.OnlyDirectories;
+                case 2 -> FilterPolicy.OnlyFiles;
+                case 3 -> FilterPolicy.Both;
+                default -> null;
+            };
         }
-    }
-
-//    public static @Nullable OrderPolicy valueOfOrderPolicy(final @NotNull String policy) {
-//        try {
-//            return OrderPolicy.valueOf(policy);
-//        } catch (final IllegalArgumentException exception) {
-//            return null;
-//        }
-//    }
-
-    public static @Nullable DirectoriesOrFiles valueOfDirectoriesOrFiles(final byte policy) {
-        return switch (policy) {
-            case 1 -> DirectoriesOrFiles.OnlyDirectories;
-            case 2 -> DirectoriesOrFiles.OnlyFiles;
-            case 3 -> DirectoriesOrFiles.Both;
-            default -> null;
-        };
     }
 
     public enum DuplicatePolicy {
         ERROR,
         OVER,
         KEEP,
-    }
-
-    public static @Nullable DuplicatePolicy valueOfDuplicatePolicy(final @NotNull String policy) {
-        try {
-            return DuplicatePolicy.valueOf(policy);
-        } catch (final IllegalArgumentException exception) {
-            return null;
+        ;
+        public static @Nullable DuplicatePolicy of(final @NotNull String policy) {
+            try {
+                return DuplicatePolicy.valueOf(policy);
+            } catch (final IllegalArgumentException exception) {
+                return null;
+            }
         }
     }
 }

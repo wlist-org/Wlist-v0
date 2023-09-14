@@ -24,28 +24,28 @@ public final class LocalDisk implements DriverInterface<LocalDiskConfiguration> 
 
     @Override
     public void initialize(final @NotNull LocalDiskConfiguration configuration) throws SQLException {
-        FileManager.initialize(configuration.getLocalSide().getName());
+        FileManager.initialize(configuration.getName());
         this.configuration = configuration;
     }
 
     @Override
     public void uninitialize() throws SQLException {
-        FileManager.uninitialize(this.configuration.getLocalSide().getName());
+        FileManager.uninitialize(this.configuration.getName());
     }
 
     @Override
     public void buildCache() throws IllegalParametersException {
-        if (!HFileHelper.ensureDirectoryExist(this.configuration.getWebSide().getRootDirectoryPath()))
-            throw new IllegalParametersException("Failed to create root directory.", this.configuration.getWebSide().getRootDirectoryPath());
-        this.configuration.getCacheSide().setNickname("Server Disk (" + this.configuration.getLocalSide().getName() + ")");
-        this.configuration.getCacheSide().setVip(true);
-        this.configuration.getCacheSide().setSpaceAll(Math.min(this.configuration.getWebSide().getMaxSpaceUse(), this.configuration.getWebSide().getRootDirectoryPath().getTotalSpace()));
+        if (!HFileHelper.ensureDirectoryExist(this.configuration.getRootDirectoryPath()))
+            throw new IllegalParametersException("Failed to create root directory.", this.configuration.getRootDirectoryPath());
+        this.configuration.setNickname("Server Disk (" + this.configuration.getName() + ")");
+        this.configuration.setVip(true);
+        this.configuration.setSpaceAll(Math.min(this.configuration.getMaxSpaceUse(), this.configuration.getRootDirectoryPath().getTotalSpace()));
     }
 
     @Override
     public void buildIndex() {
         //TODO
-        this.configuration.getCacheSide().setSpaceUsed(this.configuration.getWebSide().getRootDirectoryPath().getUsableSpace() /*TODO: count each file*/);
+        this.configuration.setSpaceUsed(this.configuration.getRootDirectoryPath().getUsableSpace() /*TODO: count each file*/);
     }
 
     @Override

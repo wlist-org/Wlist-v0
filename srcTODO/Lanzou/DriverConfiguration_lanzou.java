@@ -1,7 +1,7 @@
-package com.xuxiaocheng.WList.Server.Storage.WebProviders.Driver_lanzou;
+package com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.WList.Server.Storage.WebProviders.ProviderConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.DriverNetworkHelper;
 import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
 import okhttp3.OkHttpClient;

@@ -50,8 +50,4 @@ public final class FileInformationGetter {
     public static @NotNull String updateTimeString(final @NotNull VisibleFileInformation information, final @NotNull DateTimeFormatter formatter, final @Nullable String unknown) {
         return information.updateTimeString(formatter, unknown);
     }
-
-    public static @NotNull String md5(final @NotNull VisibleFileInformation information) {
-        return information.md5();
-    }
 }

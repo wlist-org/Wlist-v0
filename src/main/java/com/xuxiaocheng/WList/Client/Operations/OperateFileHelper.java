@@ -11,7 +11,7 @@ public final class OperateFileHelper {
 //        return FailureReason.parse(reason);
 //    }
 //
-//    public static Triad.@Nullable ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull @UnmodifiableView List<@NotNull VisibleFileInformation>> listFiles(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation directoryLocation, final Options.@NotNull DirectoriesOrFiles filter, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction, final boolean refresh) throws IOException, InterruptedException, WrongStateException {
+//    public static Triad.@Nullable ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull @UnmodifiableView List<@NotNull VisibleFileInformation>> listFiles(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation directoryLocation, final Options.@NotNull FilterPolicy filter, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction, final boolean refresh) throws IOException, InterruptedException, WrongStateException {
 //        final ByteBuf send = OperateHelper.operateWithToken(OperationType.ListFiles, token);
 //        FileLocation.dump(send, directoryLocation);
 //        ByteBufIOUtil.writeByte(send, (byte) (filter.ordinal() + 1));

@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server;
+package com.xuxiaocheng.WList.Server.Operations.Helpers;
 
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
@@ -7,6 +7,7 @@ import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.Server.Databases.User.UserInformation;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupInformation;
+import com.xuxiaocheng.WList.Server.MessageProto;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;

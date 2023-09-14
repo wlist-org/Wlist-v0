@@ -116,7 +116,7 @@ public final class TrashManager_123pan {
     }
 
     static @Nullable DrivePath buildPath(final @NotNull DriverConfiguration_123pan configuration, final long id, final boolean useCache, final @Nullable String _connectionId) throws IllegalParametersException, IOException, SQLException {
-//        if (id == configuration.getWebSide().getRootDirectoryId())
+//        if (id == configuration.getRootDirectoryId())
 //            return new DrivePath("");
 //        if (id == 0)
             return null;

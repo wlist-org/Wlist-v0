@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server.Storage;
+package com.xuxiaocheng.WList.Server.Storage.Records;
 
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import org.jetbrains.annotations.NotNull;

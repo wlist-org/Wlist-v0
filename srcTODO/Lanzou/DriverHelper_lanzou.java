@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server.Storage.WebProviders.Driver_lanzou;
+package com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou;
 
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
@@ -96,13 +96,13 @@ final class DriverHelper_lanzou {
     }
 
     static void login(final @NotNull DriverConfiguration_lanzou configuration) throws IOException {
-        if (configuration.getWebSide().getPassport().isEmpty() || configuration.getWebSide().getPassword().isEmpty())
+        if (configuration.getPassport().isEmpty() || configuration.getPassword().isEmpty())
             throw new IllegalResponseCodeException(0, "\u5BC6\u7801\u4E0D\u5BF9", ParametersMap.create()
                     .add("process", "login").add("configuration", configuration));
         final FormBody.Builder builder = new FormBody.Builder()
                 .add("task", "3")
-                .add("uid", configuration.getWebSide().getPassport())
-                .add("pwd", configuration.getWebSide().getPassword());
+                .add("uid", configuration.getPassport())
+                .add("pwd", configuration.getPassword());
         final List<Cookie> cookies;
         final JSONObject json;
         try (final Response response = DriverNetworkHelper.postWithBody(configuration.getHttpClient(), DriverHelper_lanzou.LoginURL, DriverHelper_lanzou.headers, builder.build()).execute()) {
@@ -123,27 +123,27 @@ final class DriverHelper_lanzou {
                     .add("process", "login").add("configuration", configuration).add("json", json).add("cookies", cookies));
         final String identifier = c.value();
         final LocalDateTime expire = LocalDateTime.ofInstant(Instant.ofEpochMilli(c.expiresAt()), ZoneOffset.UTC);
-        configuration.getCacheSide().setUid(id.longValue());
-        configuration.getCacheSide().setIdentifier(identifier);
-        configuration.getCacheSide().setTokenExpire(expire);
-        configuration.getCacheSide().setModified(true);
+        configuration.setUid(id.longValue());
+        configuration.setIdentifier(identifier);
+        configuration.setTokenExpire(expire);
+        configuration.setModified(true);
         DriverHelper_lanzou.logger.log(HLogLevel.LESS, "Logged in.", ParametersMap.create()
-                .add("driver", configuration.getName()).add("passport", configuration.getWebSide().getPassport()));
+                .add("driver", configuration.getName()).add("passport", configuration.getPassport()));
     }
 
     static void ensureLoggedIn(final @NotNull DriverConfiguration_lanzou configuration) throws IOException {
-        if (configuration.getCacheSide().getIdentifier() == null || configuration.getCacheSide().getTokenExpire() == null
-                || LocalDateTime.now().isAfter(configuration.getCacheSide().getTokenExpire()))
+        if (configuration.getIdentifier() == null || configuration.getTokenExpire() == null
+                || LocalDateTime.now().isAfter(configuration.getTokenExpire()))
             DriverHelper_lanzou.login(configuration);
     }
 
     static @NotNull JSONObject task(final @NotNull DriverConfiguration_lanzou configuration, final int type, final FormBody.@NotNull Builder request, final @Nullable Integer zt) throws IOException {
         DriverManager_lanzou.ensureLoggedIn(configuration);
         final Map<String, String> parameters = new HashMap<>();
-        parameters.put("uid", String.valueOf(configuration.getCacheSide().getUid()));
+        parameters.put("uid", String.valueOf(configuration.getUid()));
         request.add("task", String.valueOf(type));
         final JSONObject json = DriverNetworkHelper.extraJsonResponseBody(DriverNetworkHelper.postWithParametersAndBody(configuration.getHttpClient(), DriverHelper_lanzou.TaskURL,
-                DriverHelper_lanzou.headers.newBuilder().set("cookie", "phpdisk_info=" + configuration.getCacheSide().getIdentifier() + "; ").build(), parameters, request.build()).execute());
+                DriverHelper_lanzou.headers.newBuilder().set("cookie", "phpdisk_info=" + configuration.getIdentifier() + "; ").build(), parameters, request.build()).execute());
         if (zt != null) {
             final Integer code = json.getInteger("zt");
             if (code == null || code.intValue() != zt.intValue())
@@ -398,8 +398,8 @@ final class DriverHelper_lanzou {
         if (!DriverHelper_lanzou.filenamePredication.test(name))
             return UnionPair.fail(FailureReason.byInvalidName("Uploading.", new FileLocation(configuration.getName(), parentId), name));
         final int size = content.readableBytes();
-        if (size > configuration.getWebSide().getMaxSizePerFile())
-            return UnionPair.fail(FailureReason.byExceedMaxSize("Uploading.", size, configuration.getWebSide().getMaxSizePerFile(), new FileLocation(configuration.getName(), parentId), name));
+        if (size > configuration.getMaxSizePerFile())
+            return UnionPair.fail(FailureReason.byExceedMaxSize("Uploading.", size, configuration.getMaxSizePerFile(), new FileLocation(configuration.getName(), parentId), name));
         DriverManager_lanzou.ensureLoggedIn(configuration);
         final MultipartBody body = new MultipartBody.Builder().setType(MultipartBody.FORM)
                 .addFormDataPart("task", "1")
@@ -408,7 +408,7 @@ final class DriverHelper_lanzou {
                 .addFormDataPart("upload_file", name, DriverNetworkHelper.createOctetStreamRequestBody(content))
                 .build();
         final JSONObject json = DriverNetworkHelper.extraJsonResponseBody(DriverNetworkHelper.postWithBody(configuration.getHttpClient(), DriverHelper_lanzou.UploadURL,
-                DriverHelper_lanzou.headers.newBuilder().set("cookie", "phpdisk_info=" + configuration.getCacheSide().getIdentifier() + "; ").build(), body).execute());
+                DriverHelper_lanzou.headers.newBuilder().set("cookie", "phpdisk_info=" + configuration.getIdentifier() + "; ").build(), body).execute());
         final LocalDateTime now = LocalDateTime.now();
         final int code = json.getIntValue("zt", -1);
         if (code != 1)

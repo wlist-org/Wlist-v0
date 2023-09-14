@@ -47,9 +47,9 @@ public class Driver_123pan_NoCache implements DriverInterface<DriverConfiguratio
     @Override
     public void uninitialize() throws IllegalParametersException, IOException, SQLException {
         DriverHelper_123pan.logout(this.configuration);
-        this.configuration.getCacheSide().setLastFileCacheBuildTime(null);
-        this.configuration.getCacheSide().setLastFileIndexBuildTime(null);
-        this.configuration.getCacheSide().setModified(true);
+        this.configuration.setLastFileCacheBuildTime(null);
+        this.configuration.setLastFileIndexBuildTime(null);
+        this.configuration.setModified(true);
     }
 
     @Override
@@ -62,7 +62,7 @@ public class Driver_123pan_NoCache implements DriverInterface<DriverConfiguratio
     }
 
     protected long toRootId(final long id) {
-        return id == 0 ? this.configuration.getWebSide().getRootDirectoryId() : id;
+        return id == 0 ? this.configuration.getRootDirectoryId() : id;
     }
 
     @Override
@@ -77,7 +77,7 @@ public class Driver_123pan_NoCache implements DriverInterface<DriverConfiguratio
     @Override
     public @Nullable FileSqlInformation info(final @NotNull FileLocation location) throws IllegalParametersException, IOException, SQLException {
         final long id = this.toRootId(location.id());
-        if (id == this.configuration.getWebSide().getRootDirectoryId()) return RootDriver.getDriverInformation(this.configuration);
+        if (id == this.configuration.getRootDirectoryId()) return RootDriver.getDriverInformation(this.configuration);
         if (id == 0) return null; // Out of Root File Tree.
         return DriverHelper_123pan.getFilesInformation(this.configuration, List.of(id)).get(id);
     }
@@ -130,7 +130,7 @@ public class Driver_123pan_NoCache implements DriverInterface<DriverConfiguratio
     @SuppressWarnings("OverlyBroadThrowsClause")
     @Override
     public void delete(final @NotNull FileLocation location) throws Exception {
-        if (location.id() == 0 || location.id() == this.configuration.getWebSide().getRootDirectoryId()) {
+        if (location.id() == 0 || location.id() == this.configuration.getRootDirectoryId()) {
             DriverManager.removeDriver(this.configuration.getName());
             return;
         }

@@ -11,26 +11,54 @@ import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
-import com.xuxiaocheng.WList.Server.Storage.Helpers.DriverNetworkHelper;
-import com.xuxiaocheng.WList.Server.Storage.ProviderManager;
-import com.xuxiaocheng.WList.Server.Storage.WebProviders.ProviderInterface;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
+import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
+import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
+import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WList.Server.WListServer;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.ByteBufInputStream;
+import io.netty.buffer.CompositeByteBuf;
+import okhttp3.HttpUrl;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.sql.SQLException;
-import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
 
 public class TempTest {
-    private static final boolean initializeServer = true;
+    private static final boolean initializeServer = false;
     private static final @NotNull SupplierE<@Nullable Object> _main = () -> {
-        return UserGroupManager.searchGroupsByRegex(".*", new LinkedHashMap<>(), 0, 10, null);
-//        return null;
+        final DownloadRequirements.DownloadMethods methods = DownloadRequirements.tryGetDownloadFromUrl(HttpNetworkHelper.DefaultHttpClient,
+                Objects.requireNonNull(HttpUrl.parse("")),
+                null, null, null, 0, Long.MAX_VALUE, null).supplier().get();
+        final CompositeByteBuf buffer = ByteBufAllocator.DEFAULT.compositeBuffer();
+        for (final DownloadRequirements.OrderedSuppliers suppliers: methods.parallelMethods()) {
+            DownloadRequirements.OrderedNode node = suppliers.suppliersLink();
+            while (node != null) {
+                final CountDownLatch latch = new CountDownLatch(1);
+                node = node.apply(p -> {
+                    buffer.addComponent(true, p.getT());
+                    latch.countDown();
+                });
+                latch.await();
+            }
+        }
+        try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(new File(TempTest.runtimeDirectory, "1.zip")));
+                final InputStream inputStream = new ByteBufInputStream(buffer)) {
+            inputStream.transferTo(outputStream);
+        }
+        return null;
     };
 
     private static final @NotNull File runtimeDirectory = new File("./run");
@@ -45,7 +73,7 @@ public class TempTest {
             ConstantManager.quicklyInitialize(database, "initialize");
             UserGroupManager.quicklyInitialize(database, "initialize");
             UserManager.quicklyInitialize(database, "initialize");
-            ProviderManager.initialize(new File(TempTest.runtimeDirectory, "configs"),
+            StorageManager.initialize(new File(TempTest.runtimeDirectory, "configs"),
                     new File(TempTest.runtimeDirectory, "caches"));
         }
     }
@@ -54,7 +82,7 @@ public class TempTest {
     public void tempTest() throws Exception {
         try {
             if (TempTest.initializeServer) {
-                final Map<String, Exception> failures = ProviderManager.getFailedProvidersAPI();
+                final Map<String, Exception> failures = StorageManager.getFailedProvidersAPI();
                 if (!failures.isEmpty()) {
                     HLog.DefaultLogger.log(HLogLevel.FAULT, failures);
                     return;
@@ -65,9 +93,9 @@ public class TempTest {
                 HLog.DefaultLogger.log(HLogLevel.DEBUG, obj);
         } finally {
             if (TempTest.initializeServer)
-                for (final Map.Entry<String, ProviderInterface<?>> provider: ProviderManager.getAllProviders().entrySet())
+                for (final Map.Entry<String, ProviderInterface<?>> provider: StorageManager.getAllProviders().entrySet())
                     try {
-                        ProviderManager.dumpConfigurationIfModified(provider.getValue().getConfiguration());
+                        StorageManager.dumpConfigurationIfModified(provider.getValue().getConfiguration());
                     } catch (final IOException exception) {
                         HLog.DefaultLogger.log(HLogLevel.ERROR, "Failed to dump provider configuration.", ParametersMap.create().add("name", provider.getKey()), exception);
                     }
@@ -76,7 +104,7 @@ public class TempTest {
             WListServer.ServerExecutors.shutdownGracefully();
             WListServer.IOExecutors.shutdownGracefully();
             BackgroundTaskManager.BackgroundExecutors.shutdownGracefully();
-            DriverNetworkHelper.CountDownExecutors.shutdownGracefully();
+            HttpNetworkHelper.CountDownExecutors.shutdownGracefully();
         }
     }
 }

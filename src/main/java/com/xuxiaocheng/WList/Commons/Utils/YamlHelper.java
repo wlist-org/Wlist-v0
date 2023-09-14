@@ -119,6 +119,11 @@ public final class YamlHelper {
         return Boolean.parseBoolean(str);
     }
 
+    public static final @NotNull BigInteger IntegerMin = BigInteger.valueOf(Integer.MIN_VALUE);
+    public static final @NotNull BigInteger IntegerMax = BigInteger.valueOf(Integer.MAX_VALUE);
+    public static final @NotNull BigInteger LongMin = BigInteger.valueOf(Long.MIN_VALUE);
+    public static final @NotNull BigInteger LongMax = BigInteger.valueOf(Long.MAX_VALUE);
+
     public static @Nullable BigInteger transferIntegerFromStr(final @Nullable Object obj, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String slot, final @Nullable BigInteger min, final @Nullable BigInteger max) {
         final String str = YamlHelper.transferString(obj, errors, slot);
         if (str == null) return null;

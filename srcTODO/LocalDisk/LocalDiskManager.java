@@ -35,18 +35,18 @@ public final class LocalDiskManager {
 
     static @Nullable FileSqlInformationWithGroups getFileInformation(final @NotNull LocalDiskConfiguration configuration, final @NotNull DrivePath path, final boolean useCache, final @Nullable String connectionId) throws IOException, SQLException {
         if (useCache) {
-            final FileSqlInformationWithGroups info = FileManager.selectFileByPathWithGroups(configuration.getLocalSide().getName(), path, connectionId);
+            final FileSqlInformationWithGroups info = FileManager.selectFileByPathWithGroups(configuration.getName(), path, connectionId);
             if (info != null)
                 return info;
         }
-        final Path file = LocalDiskManager.toFile(configuration.getWebSide().getRootDirectoryPath(), path).toPath();
+        final Path file = LocalDiskManager.toFile(configuration.getRootDirectoryPath(), path).toPath();
         final BasicFileAttributes attributes = Files.readAttributes(file, BasicFileAttributes.class);
-        return FileInformation_LocalDisk.create(configuration.getWebSide().getRootDirectoryPath().toPath(), file, attributes);
+        return FileInformation_LocalDisk.create(configuration.getRootDirectoryPath().toPath(), file, attributes);
     }
 
     static Pair.@NotNull ImmutablePair<@NotNull Integer, @NotNull List<@NotNull FileSqlInformationWithGroups>> listFileNoCache(final @NotNull LocalDiskConfiguration configuration, final @NotNull DrivePath directoryPath, final int limit, final int page, final @Nullable String connectionId
     ) throws IOException, SQLException {
-        final File root = LocalDiskManager.toFile(configuration.getWebSide().getRootDirectoryPath(), directoryPath);
+        final File root = LocalDiskManager.toFile(configuration.getRootDirectoryPath(), directoryPath);
         final File[] children = root.listFiles();
         if (children == null)
             return Pair.ImmutablePair.makeImmutablePair(0, new LinkedList<>());
@@ -61,7 +61,7 @@ public final class LocalDiskManager {
                 directoryPath.parent();
             }
         }
-//        FileManager.insertFilesIgnoreId(configuration.getLocalSide().getName(), list, _connection);
+//        FileManager.insertFilesIgnoreId(configuration.getName(), list, _connection);
         return Pair.ImmutablePair.makeImmutablePair(children.length, list);
     }
 
@@ -73,10 +73,10 @@ public final class LocalDiskManager {
     public static void recursiveRefreshDirectory(final @NotNull LocalDiskConfiguration configuration, final @NotNull DrivePath directoryPath, final @NotNull String connectionId) throws IOException, SQLException {
 //        try (final Connection connection = FileManager.DefaultDatabaseUtil.getExplicitConnection(connectionId)) {
 //            connection.setAutoCommit(false);
-//            final Path root = new File(configuration.getWebSide().getRootDirectoryPath(), directoryPath.getPath()).toPath();
+//            final Path root = new File(configuration.getRootDirectoryPath(), directoryPath.getPath()).toPath();
 //            final Collection<FileSqlInformationWithGroups> list = new LinkedList<>();
             // TODO
-//            FileManager.deleteFileByParentPathRecursively(configuration.getLocalSide().getName(), LocalDiskManager.getDrivePath(root, dir), connectionId);
+//            FileManager.deleteFileByParentPathRecursively(configuration.getName(), LocalDiskManager.getDrivePath(root, dir), connectionId);
 //            Files.walkFileTree(root, Set.of(), Integer.MAX_VALUE, new SimpleFileVisitor<>() {
 //                @Override
 //                public FileVisitResult preVisitDirectory(final Path dir, final BasicFileAttributes attrs) throws IOException {
@@ -95,7 +95,7 @@ public final class LocalDiskManager {
 //                    return FileVisitResult.CONTINUE;
 //                }
 //            });
-//            FileManager.insertFilesIgnoreId(configuration.getLocalSide().getName(), list, connection);
+//            FileManager.insertFilesIgnoreId(configuration.getName(), list, connection);
 //            connection.commit();
 //        }
     }

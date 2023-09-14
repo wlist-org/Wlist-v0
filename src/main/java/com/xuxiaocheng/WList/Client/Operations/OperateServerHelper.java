@@ -7,6 +7,7 @@ import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import com.xuxiaocheng.WList.Commons.Operations.ResponseState;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
+import com.xuxiaocheng.WList.Server.Operations.Helpers.BroadcastManager;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
@@ -56,7 +57,7 @@ public final class OperateServerHelper {
     }
 
     /**
-     * @see com.xuxiaocheng.WList.Server.BroadcastManager
+     * @see BroadcastManager
      */
     public static @NotNull UnionPair<Pair.ImmutablePair<@NotNull OperationType, @NotNull ByteBuf>, Pair.ImmutablePair<@NotNull String, @NotNull String>> waitBroadcast(final @NotNull WListClientInterface client) throws IOException, InterruptedException {
         final ByteBuf broadcast = client.send(null);

@@ -60,7 +60,7 @@ public final class OperateUsersHelper {
 
     public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull VisibleUserInformation>> listUsers(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.ListUsers, token);
-        Options.dumpOrderPolicies(send, orders, VisibleUserInformation.Order::name);
+        Options.dumpOrderPolicies(send, orders);
         ByteBufIOUtil.writeVariableLenLong(send, position);
         ByteBufIOUtil.writeVariableLenInt(send, limit);
         return OperateUsersHelper.pairListOperation(client, send, OperationType.ListUsers, token, p -> p.add("orders", orders).add("position", position).add("limit", limit));
@@ -72,7 +72,7 @@ public final class OperateUsersHelper {
         for (final Long id: chooser)
             ByteBufIOUtil.writeVariableLenLong(send, id.longValue());
         ByteBufIOUtil.writeBoolean(send, blacklist);
-        Options.dumpOrderPolicies(send, orders, VisibleUserInformation.Order::name);
+        Options.dumpOrderPolicies(send, orders);
         ByteBufIOUtil.writeVariableLenLong(send, position);
         ByteBufIOUtil.writeVariableLenInt(send, limit);
         return OperateUsersHelper.pairListOperation(client, send, OperationType.ListUsersInGroups, token, p -> p.add("chooser", chooser).add("blacklist", blacklist).add("orders", orders).add("position", position).add("limit", limit));
@@ -107,7 +107,7 @@ public final class OperateUsersHelper {
     public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull VisibleUserInformation>> searchUsersRegex(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String regex, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.SearchUserRegex, token);
         ByteBufIOUtil.writeUTF(send, regex);
-        Options.dumpOrderPolicies(send, orders, VisibleUserInformation.Order::name);
+        Options.dumpOrderPolicies(send, orders);
         ByteBufIOUtil.writeVariableLenLong(send, position);
         ByteBufIOUtil.writeVariableLenInt(send, limit);
         return OperateUsersHelper.pairListOperation(client, send, OperationType.SearchUserRegex, token, p -> p.add("regex", regex).add("orders", orders).add("position", position).add("limit", limit));

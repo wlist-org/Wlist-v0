@@ -7,6 +7,7 @@ import com.xuxiaocheng.Rust.NetworkTransmission;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Records.UploadRequirements;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -31,7 +32,7 @@ public final class UploadIdHelper {
 
     private static final @NotNull Map<@NotNull String, @NotNull UploaderData> buffers = new ConcurrentHashMap<>();
 
-    public static @NotNull String generateId(final @NotNull UploadMethods methods, final long size, final @NotNull String username) {
+    public static @NotNull String generateId(final @NotNull UploadRequirements.UploadMethods methods, final long size, final @NotNull String username) {
         //noinspection IOResourceOpenedButNotSafelyClosed , resource // In cleaner.
         return new UploaderData(methods, size, username).id;
     }
@@ -52,7 +53,7 @@ public final class UploadIdHelper {
     }
 
     private static class UploaderData implements Closeable {
-        private final @NotNull UploadMethods methods;
+        private final @NotNull UploadRequirements.UploadMethods methods;
         private final int count;
         private final @NotNull String username;
         private final @NotNull String id;
@@ -67,10 +68,10 @@ public final class UploadIdHelper {
             UploadIdHelper.checkTime.add(Pair.ImmutablePair.makeImmutablePair(this.expireTime, this));
         }
 
-        private UploaderData(final @NotNull UploadMethods methods, final long size, final @NotNull String username) {
+        private UploaderData(final @NotNull UploadRequirements.UploadMethods methods, final long size, final @NotNull String username) {
             super();
             this.methods = methods;
-            this.count = methods.methods().size();
+            this.count = 0;//methods.methods().size();
             this.username = username;
             final int mod = (int) (size % NetworkTransmission.FileTransferBufferSize);
             this.rest = mod == 0 ? NetworkTransmission.FileTransferBufferSize : mod;
@@ -105,7 +106,7 @@ public final class UploadIdHelper {
                         return false;
                     this.calledSet.add(chunk);
                 }
-                this.methods.methods().get(chunk).accept(buf.retain());
+//                this.methods.methods().get(chunk).accept(buf.retain());
                 return true;
             } finally {
                 this.closerLock.readLock().unlock();

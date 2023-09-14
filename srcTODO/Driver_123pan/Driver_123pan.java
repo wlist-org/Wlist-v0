@@ -27,7 +27,7 @@ import java.util.List;
 public class Driver_123pan extends Driver_123pan_NoCache {
     @Override
     public void initialize(final @NotNull DriverConfiguration_123pan configuration) throws SQLException {
-        FileManager.quicklyInitialize(new FileSqlHelper(PooledDatabase.instance.getInstance(), configuration.getName(), configuration.getWebSide().getRootDirectoryId()), null);
+        FileManager.quicklyInitialize(new FileSqlHelper(PooledDatabase.instance.getInstance(), configuration.getName(), configuration.getRootDirectoryId()), null);
         this.configuration = configuration;
     }
 
@@ -40,9 +40,9 @@ public class Driver_123pan extends Driver_123pan_NoCache {
 
     @Override
     public void buildIndex() throws SQLException {
-        this.configuration.getCacheSide().setLastFileIndexBuildTime(LocalDateTime.now());
-        DriverManager_123pan.refreshDirectoryRecursively(this.configuration, this.configuration.getWebSide().getRootDirectoryId(), null);
-        this.configuration.getCacheSide().setModified(true);
+        this.configuration.setLastFileIndexBuildTime(LocalDateTime.now());
+        DriverManager_123pan.refreshDirectoryRecursively(this.configuration, this.configuration.getRootDirectoryId(), null);
+        this.configuration.setModified(true);
     }
 
 
@@ -82,7 +82,7 @@ public class Driver_123pan extends Driver_123pan_NoCache {
     @SuppressWarnings("OverlyBroadThrowsClause")
     @Override
     public void delete(final @NotNull FileLocation location) throws Exception {
-        if (location.id() == 0 || location.id() == this.configuration.getWebSide().getRootDirectoryId()) {
+        if (location.id() == 0 || location.id() == this.configuration.getRootDirectoryId()) {
             DriverManager.removeDriver(this.configuration.getName());
             return;
         }

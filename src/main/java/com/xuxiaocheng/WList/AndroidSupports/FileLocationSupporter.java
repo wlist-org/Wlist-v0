@@ -9,7 +9,7 @@ public final class FileLocationSupporter {
     }
 
     public static @NotNull String driver(final @NotNull FileLocation location) {
-        return location.driver();
+        return location.storage();
     }
 
     public static long id(final @NotNull FileLocation location) {
