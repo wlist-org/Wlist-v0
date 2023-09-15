@@ -216,6 +216,7 @@ public final class NetworkTransmission {
     private static Pair.@NotNull ImmutablePair<@NotNull ByteBuffer, @Nullable ByteBuf> toDirectByteBuffer(final @NotNull ByteBuf buffer) {
         if (buffer.nioBufferCount() == 1 && buffer.nioBuffer().isDirect())
             return Pair.ImmutablePair.makeImmutablePair(buffer.nioBuffer(), null);
+        // ByteBuffer.allocateDirect(buf.readableBytes()); // Netty buffer pool.
         final ByteBuf tmp = ByteBufAllocator.DEFAULT.directBuffer(buffer.readableBytes(), buffer.readableBytes());
         tmp.writeBytes(buffer);
         return Pair.ImmutablePair.makeImmutablePair(tmp.nioBuffer(), tmp);

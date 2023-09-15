@@ -5,7 +5,7 @@ public final class RootSelector {
     public static RootSelector getInstance() {
         return RootSelector.instance;
     }
-//
+
 //    public static @NotNull FileInformation getDriverInformation(final @NotNull ProviderConfiguration configuration) {
 //        return new FileInformation(new FileLocation(IdentifierNames.SelectorProviderName.RootSelector.getIdentifier(), configuration.getRootDirectoryId()),
 //                0, configuration.getName(), FileSqlInterface.FileSqlType.Directory, configuration.getSpaceUsed(),

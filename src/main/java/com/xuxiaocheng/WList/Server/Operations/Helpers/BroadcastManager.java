@@ -149,4 +149,19 @@ public final class BroadcastManager {
             return buf;
         });
     }
+
+
+    public static void onProviderInitialized(final @NotNull String name) {
+        BroadcastManager.broadcast(OperationType.AddProvider, buf -> {
+            ByteBufIOUtil.writeUTF(buf, name);
+            return buf;
+        });
+    }
+
+    public static void onProviderUninitialized(final @NotNull String name) {
+        BroadcastManager.broadcast(OperationType.RemoveProvider, buf -> {
+            ByteBufIOUtil.writeUTF(buf, name);
+            return buf;
+        });
+    }
 }

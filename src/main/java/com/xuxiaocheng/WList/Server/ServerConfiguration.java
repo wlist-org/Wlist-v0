@@ -28,10 +28,6 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-/**
- * @see StorageManager#addProvider(String, ProviderTypes)
- * @see StorageManager#removeProvider(String)
- */
 public record ServerConfiguration(int port, int maxServerBacklog,
                                   long tokenExpireTime, long idIdleExpireTime,
                                   int maxLimitPerPage, int forwardDownloadCacheCount,
@@ -44,6 +40,10 @@ public record ServerConfiguration(int port, int maxServerBacklog,
         return ServerConfiguration.instance.getInstance();
     }
 
+    /**
+     * @see StorageManager#addProvider(String, ProviderTypes)
+     * @see StorageManager#removeProvider(String)
+     */
     public static void set(final @NotNull ServerConfiguration configuration) throws IOException {
         final ServerConfiguration existed = ServerConfiguration.instance.getInstanceNullable();
         if (existed != null && !existed.providers.equals(configuration.providers))

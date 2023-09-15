@@ -33,7 +33,7 @@ public record VisibleUserGroupInformation(long id, @NotNull String name, @NotNul
         Permissions_UsersList,
         Permissions_GroupsOperate,
         Permissions_UsersOperate,
-        Permissions_DriverOperate,
+        Permissions_ProvidersOperate,
         Permissions_FilesBuildIndex,
         Permissions_FilesList,
         Permissions_FileDownload,

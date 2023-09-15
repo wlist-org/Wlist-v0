@@ -35,8 +35,11 @@ public enum OperationType {
     DeleteUsersInGroup,
     SearchUserRegex,
     SearchUserName,
-    //
+    // Providers
+    AddProvider,
+    RemoveProvider,
     BuildIndex,
+    //
     ListFiles,
     CreateDirectory,
     DeleteFile,

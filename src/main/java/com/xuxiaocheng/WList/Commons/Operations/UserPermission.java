@@ -25,7 +25,7 @@ public enum UserPermission {
     UsersList,
     GroupsOperate,
     UsersOperate,
-    DriverOperate,
+    ProvidersOperate,
     FilesBuildIndex,
     FilesList,
     FileDownload,
