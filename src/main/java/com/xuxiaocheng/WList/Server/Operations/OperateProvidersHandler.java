@@ -2,6 +2,7 @@ package com.xuxiaocheng.WList.Server.Operations;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
@@ -10,6 +11,7 @@ import com.xuxiaocheng.WList.Server.Databases.User.UserInformation;
 import com.xuxiaocheng.WList.Server.MessageProto;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.BroadcastManager;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderTypes;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WList.Server.WListServer;
@@ -30,6 +32,9 @@ public final class OperateProvidersHandler {
 //        ServerHandlerManager.register(OperationType.BuildIndex, OperateProvidersHandler.doBuildIndex);
     }
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateProvidersHelper#addProvider(WListClientInterface, String, String, ProviderTypes, ProviderConfiguration)
+     */
     public static final @NotNull ServerHandler doAddProvider = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> operator = OperateSelfHandler.checkToken(token, UserPermission.ServerOperate, UserPermission.ProvidersOperate);
@@ -81,8 +86,8 @@ public final class OperateProvidersHandler {
             return null;
         }
         return () -> {
-            StorageManager.removeProvider(name, dropIndex);
-            BroadcastManager.onProviderUninitialized(name);
+            if (StorageManager.removeProvider(name, dropIndex))
+                BroadcastManager.onProviderUninitialized(name);
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
         };
     };

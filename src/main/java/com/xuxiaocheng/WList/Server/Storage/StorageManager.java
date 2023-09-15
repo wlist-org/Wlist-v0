@@ -155,14 +155,13 @@ public final class StorageManager {
             StorageManager.failedProviders.remove(name);
             final Pair<ProviderTypes<?>, Pair.ImmutablePair<ProviderInterface<?>, ProviderRecyclerInterface<?>>> triad = StorageManager.providers.remove(name);
             if (triad == null || triad.getSecond() == StorageManager.ProviderPlaceholder) return false;
+            StorageManager.dumpConfigurationIfModified(triad.getSecond().getFirst().getConfiguration());
             final boolean drop = dropIndex && ServerConfiguration.get().allowDropIndexAfterUninitializeProvider();
             try {
                 triad.getSecond().getFirst().uninitialize(drop);
                 triad.getSecond().getSecond().uninitialize(drop);
             } catch (final Exception exception) {
                 throw new RuntimeException("Failed to uninitialize provider." + ParametersMap.create().add("name", name).add("type", triad.getFirst()), exception);
-            } finally {
-                StorageManager.dumpConfigurationIfModified(triad.getSecond().getFirst().getConfiguration());
             }
             StorageManager.logger.log(HLogLevel.VERBOSE, "Unload provider successfully:", ParametersMap.create().add("name", name));
             return true;
@@ -184,11 +183,13 @@ public final class StorageManager {
         ServerConfiguration.dumpToFile();
     }
 
-    public static void removeProvider(final @NotNull String name, final boolean dropIndex) throws IOException {
-        if (StorageManager.uninitializeProvider0(name, dropIndex)) {
+    public static boolean removeProvider(final @NotNull String name, final boolean dropIndex) throws IOException {
+        final boolean success = StorageManager.uninitializeProvider0(name, dropIndex);
+        if (success) {
             ServerConfiguration.get().providers().remove(name);
             ServerConfiguration.dumpToFile();
         }
+        return success;
     }
 
     public static void dumpConfigurationIfModified(final @NotNull ProviderConfiguration configuration) throws IOException {
