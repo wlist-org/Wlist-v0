@@ -7,12 +7,12 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Set;
 
 public record UserGroupInformation(long id, @NotNull String name, @NotNull Set<@NotNull UserPermission> permissions,
-                                   @NotNull LocalDateTime createTime, @NotNull LocalDateTime updateTime) {
+                                   @NotNull ZonedDateTime createTime, @NotNull ZonedDateTime updateTime) {
     /**
      * @see com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation
      */

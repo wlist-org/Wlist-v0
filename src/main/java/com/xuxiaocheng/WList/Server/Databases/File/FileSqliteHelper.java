@@ -15,6 +15,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -78,7 +80,7 @@ public final class FileSqliteHelper implements FileSqlInterface {
                                 DEFAULT CURRENT_TIMESTAMP,
         update_time TIMESTAMP   NOT NULL
                                 DEFAULT CURRENT_TIMESTAMP,
-        others       TEXT       DEFAULT (NULL)
+        others      TEXT       DEFAULT (NULL)
     );
                 """, this.tableName));
                 statement.executeUpdate(String.format("""
@@ -137,7 +139,7 @@ public final class FileSqliteHelper implements FileSqlInterface {
     }
 
 
-    public static final @NotNull String FileInfoExtra = "double_id, parent_id, name, size, create_time, update_time, other";
+    public static final @NotNull String FileInfoExtra = "double_id, parent_id, name, size, create_time, update_time, others";
 
     public static @Nullable FileInformation nextFile(final @NotNull ResultSet result) throws SQLException {
         if (!result.next())
@@ -149,9 +151,11 @@ public final class FileSqliteHelper implements FileSqlInterface {
         final long size = result.getLong("size");
         final Timestamp createTime = result.getTimestamp("create_time");
         final Timestamp updateTime = result.getTimestamp("update_time");
-        final String other = result.getString("other");
+        final String others = result.getString("others");
         return new FileInformation(FileSqliteHelper.getRealId(doubleId), parentId, name, directory, size,
-                createTime.toLocalDateTime(), updateTime.toLocalDateTime(), other);
+                ZonedDateTime.of(createTime.toLocalDateTime(), ZoneOffset.UTC),
+                ZonedDateTime.of(updateTime.toLocalDateTime(), ZoneOffset.UTC),
+                others);
     }
 
     public static @NotNull @Unmodifiable List<@NotNull FileInformation> allFiles(final @NotNull ResultSet result) throws SQLException {

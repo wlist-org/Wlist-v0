@@ -9,6 +9,7 @@ import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
+import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
 import com.xuxiaocheng.WList.Server.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
@@ -29,7 +30,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -46,10 +47,11 @@ public final class StorageManager {
     private static final @NotNull HInitializer<File> ConfigurationsDirectory = new HInitializer<>("ProviderConfigurationsDirectory");
     private static final @NotNull HInitializer<File> CacheDirectory = new HInitializer<>("ProviderCacheDirectory");
 
+    private static final @NotNull Path DirectoryRootPathCache = Path.of("").toAbsolutePath();
     public static @Nullable String providerNameInvalidReason(final @NotNull String name) {
         if (name.isBlank())
             return "Blank name";
-        if (!Path.of(name).toAbsolutePath().getParent().equals(Path.of(".").toAbsolutePath()))
+        if (!StorageManager.DirectoryRootPathCache.equals(Path.of(name).toAbsolutePath().getParent()))
             return "Contain special characters.";
         if (IdentifierNames.SelectorProviderName.contains(name))
             return "Conflict with internal selector provider name.";
@@ -95,7 +97,7 @@ public final class StorageManager {
             return;
         }
         final Map<String, ProviderTypes<?>> providers = ServerConfiguration.get().providers();
-        final LocalDateTime t1 = LocalDateTime.now();
+        final ZonedDateTime t1 = MiscellaneousUtil.now();
         try {
             HMultiRunHelper.runConsumers(WListServer.ServerExecutors, providers.size(), providers.entrySet().iterator(), e -> {
                 try {
@@ -113,7 +115,7 @@ public final class StorageManager {
         } catch (final InterruptedException exception) {
             throw new RuntimeException(exception);
         }
-        final LocalDateTime t2 = LocalDateTime.now();
+        final ZonedDateTime t2 = MiscellaneousUtil.now();
         StorageManager.logger.log(HLogLevel.ENHANCED, "Loaded ", StorageManager.providers.size(), " providers successfully. ",
                 StorageManager.failedProviders.size(), " failed. Totally cost time: ", Duration.between(t1, t2).toMillis() + " ms.");
     }

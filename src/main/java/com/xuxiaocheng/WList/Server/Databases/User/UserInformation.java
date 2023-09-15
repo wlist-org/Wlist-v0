@@ -7,7 +7,7 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
@@ -15,7 +15,7 @@ import java.time.format.DateTimeFormatter;
  * @param modifyTime last password/group change time. (for check token.)
  */
 public record UserInformation(long id, @NotNull String username, @NotNull String encryptedPassword, @NotNull UserGroupInformation group,
-                              @NotNull LocalDateTime createTime, @NotNull LocalDateTime updateTime, @NotNull LocalDateTime modifyTime) {
+                              @NotNull ZonedDateTime createTime, @NotNull ZonedDateTime updateTime, @NotNull ZonedDateTime modifyTime) {
     /**
      * @see com.xuxiaocheng.WList.Commons.Beans.VisibleUserInformation
      */

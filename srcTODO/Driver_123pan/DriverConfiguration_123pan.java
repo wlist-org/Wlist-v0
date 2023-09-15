@@ -9,7 +9,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
 import java.math.BigInteger;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.Map;
 
@@ -84,8 +84,8 @@ public final class DriverConfiguration_123pan extends DriverConfiguration<
 
     public static final class CacheSide extends CacheSideDriverConfiguration {
         private @Nullable String token;
-        private @Nullable LocalDateTime tokenExpire;
-        private @Nullable LocalDateTime refreshExpire;
+        private @Nullable ZonedDateTime tokenExpire;
+        private @Nullable ZonedDateTime refreshExpire;
 
         @Override
         protected void load(final @NotNull @UnmodifiableView Map<? super @NotNull String, @NotNull Object> cache, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String prefix) {
@@ -115,19 +115,19 @@ public final class DriverConfiguration_123pan extends DriverConfiguration<
             this.token = token;
         }
 
-        public @Nullable LocalDateTime getTokenExpire() {
+        public @Nullable ZonedDateTime getTokenExpire() {
             return this.tokenExpire;
         }
 
-        public void setTokenExpire(final @Nullable LocalDateTime tokenExpire) {
+        public void setTokenExpire(final @Nullable ZonedDateTime tokenExpire) {
             this.tokenExpire = tokenExpire;
         }
 
-        public @Nullable LocalDateTime getRefreshExpire() {
+        public @Nullable ZonedDateTime getRefreshExpire() {
             return this.refreshExpire;
         }
 
-        public void setRefreshExpire(final @Nullable LocalDateTime refreshExpire) {
+        public void setRefreshExpire(final @Nullable ZonedDateTime refreshExpire) {
             this.refreshExpire = refreshExpire;
         }
 

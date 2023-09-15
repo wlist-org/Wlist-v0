@@ -6,21 +6,21 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
 public record VisibleTrashedFileInformation(long id, @NotNull String name, boolean isDirectory, long size,
-                                            @Nullable LocalDateTime createTime, @Nullable LocalDateTime trashedTime, @Nullable LocalDateTime expireTime,
+                                            @Nullable ZonedDateTime createTime, @Nullable ZonedDateTime trashedTime, @Nullable ZonedDateTime expireTime,
                                             @NotNull String md5) {
     public static @NotNull VisibleTrashedFileInformation parse(final @NotNull ByteBuf buffer) throws IOException {
         final long id = ByteBufIOUtil.readVariableLenLong(buffer);
         final String name = ByteBufIOUtil.readUTF(buffer);
         final boolean isDirectory = ByteBufIOUtil.readBoolean(buffer);
         final long size = ByteBufIOUtil.readVariable2LenLong(buffer);
-        final LocalDateTime createTime = ByteBufIOUtil.readNullableDataTime(buffer,DateTimeFormatter.ISO_DATE_TIME);
-        final LocalDateTime trashedTime = ByteBufIOUtil.readNullableDataTime(buffer,DateTimeFormatter.ISO_DATE_TIME);
-        final LocalDateTime expireTime = ByteBufIOUtil.readNullableDataTime(buffer,DateTimeFormatter.ISO_DATE_TIME);
+        final ZonedDateTime createTime = ByteBufIOUtil.readNullableDataTime(buffer,DateTimeFormatter.ISO_DATE_TIME);
+        final ZonedDateTime trashedTime = ByteBufIOUtil.readNullableDataTime(buffer,DateTimeFormatter.ISO_DATE_TIME);
+        final ZonedDateTime expireTime = ByteBufIOUtil.readNullableDataTime(buffer,DateTimeFormatter.ISO_DATE_TIME);
         final String md5 = ByteBufIOUtil.readUTF(buffer);
         return new VisibleTrashedFileInformation(id, name, isDirectory, size, createTime, trashedTime, expireTime, md5);
     }

@@ -12,7 +12,7 @@ import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.UUID;
@@ -288,10 +288,10 @@ public final class ByteBufIOUtil {
         }
     }
 
-    public static @Nullable LocalDateTime readNullableDataTime(final @NotNull ByteBuf buffer, final @NotNull DateTimeFormatter formatter) throws IOException {
+    public static @Nullable ZonedDateTime readNullableDataTime(final @NotNull ByteBuf buffer, final @NotNull DateTimeFormatter formatter) throws IOException {
         if (ByteBufIOUtil.readBoolean(buffer))
             return null;
-        return LocalDateTime.parse(ByteBufIOUtil.readUTF(buffer), formatter);
+        return ZonedDateTime.parse(ByteBufIOUtil.readUTF(buffer), formatter);
     }
 
     public static <T> @Nullable T readObjectNullable(final @NotNull ByteBuf buffer, final @NotNull Deserializer<@NotNull T> deserializer) throws IOException {
@@ -501,7 +501,7 @@ public final class ByteBufIOUtil {
         }
     }
 
-    public static void writeNullableDataTime(final @NotNull ByteBuf buffer, final @Nullable LocalDateTime time, final @NotNull DateTimeFormatter formatter) throws IOException {
+    public static void writeNullableDataTime(final @NotNull ByteBuf buffer, final @Nullable ZonedDateTime time, final @NotNull DateTimeFormatter formatter) throws IOException {
         ByteBufIOUtil.writeBoolean(buffer, time == null);
         if (time != null)
             ByteBufIOUtil.writeUTF(buffer, time.format(formatter));

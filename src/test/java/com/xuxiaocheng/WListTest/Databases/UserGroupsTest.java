@@ -27,7 +27,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.io.File;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -94,7 +94,7 @@ public final class UserGroupsTest {
         Assertions.assertEquals(information, UserGroupManager.getInstance().selectGroup(information.id(), null));
 
         if (newName != null) {
-            final LocalDateTime time = UserGroupManager.getInstance().updateGroupName(information.id(), newName, null);
+            final ZonedDateTime time = UserGroupManager.getInstance().updateGroupName(information.id(), newName, null);
             if (!newNameS) {
                 Assertions.assertNull(time);
                 return;
@@ -105,7 +105,7 @@ public final class UserGroupsTest {
         }
 
         if (newPermissions != null) {
-            final LocalDateTime time = UserGroupManager.getInstance().updateGroupPermission(information.id(), newPermissions, null);
+            final ZonedDateTime time = UserGroupManager.getInstance().updateGroupPermission(information.id(), newPermissions, null);
             Assertions.assertNotNull(time);
             Assertions.assertEquals(new UserGroupInformation(information.id(), Objects.requireNonNullElse(newName, name), newPermissions, information.createTime(), time),
                     UserGroupManager.getInstance().selectGroup(information.id(), null));

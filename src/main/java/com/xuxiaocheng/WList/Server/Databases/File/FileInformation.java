@@ -7,11 +7,11 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
 public record FileInformation(long id, long parentId, @NotNull String name, boolean isDirectory, long size,
-                              @Nullable LocalDateTime createTime, @Nullable LocalDateTime updateTime, @Nullable String others) {
+                              @Nullable ZonedDateTime createTime, @Nullable ZonedDateTime updateTime, @Nullable String others) {
     /**
      * @see com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation
      */

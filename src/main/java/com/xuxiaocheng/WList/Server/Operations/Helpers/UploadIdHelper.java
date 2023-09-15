@@ -14,7 +14,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.Closeable;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
@@ -59,12 +59,12 @@ public final class UploadIdHelper {
         private final @NotNull String id;
         private final int rest;
         private final @NotNull Collection<@NotNull Integer> calledSet = ConcurrentHashMap.newKeySet();
-        private @NotNull LocalDateTime expireTime = LocalDateTime.now();
+        private @NotNull ZonedDateTime expireTime = MiscellaneousUtil.now();
         private final @NotNull AtomicBoolean closed = new AtomicBoolean(false);
         private final @NotNull ReadWriteLock closerLock = new ReentrantReadWriteLock();
 
         private void appendExpireTime() {
-            this.expireTime = LocalDateTime.now().plusSeconds(ServerConfiguration.get().idIdleExpireTime());
+            this.expireTime = MiscellaneousUtil.now().plusSeconds(ServerConfiguration.get().idIdleExpireTime());
             UploadIdHelper.checkTime.add(Pair.ImmutablePair.makeImmutablePair(this.expireTime, this));
         }
 
@@ -151,19 +151,19 @@ public final class UploadIdHelper {
         }
     }
 
-    private static final @NotNull BlockingQueue<Pair.@NotNull ImmutablePair<@NotNull LocalDateTime, @NotNull UploaderData>> checkTime = new LinkedBlockingQueue<>();
+    private static final @NotNull BlockingQueue<Pair.@NotNull ImmutablePair<@NotNull ZonedDateTime, @NotNull UploaderData>> checkTime = new LinkedBlockingQueue<>();
     public static final Thread cleaner = new Thread(() -> {
         while (true) {
             try {
-                final Pair.ImmutablePair<LocalDateTime, UploaderData> check = UploadIdHelper.checkTime.take();
+                final Pair.ImmutablePair<ZonedDateTime, UploaderData> check = UploadIdHelper.checkTime.take();
                 if (check.getSecond().closed.get())
                     continue;
-                final LocalDateTime now = LocalDateTime.now();
+                final ZonedDateTime now = MiscellaneousUtil.now();
                 if (now.isBefore(check.getFirst()))
                     TimeUnit.MILLISECONDS.sleep(Duration.between(now, check.getFirst()).toMillis());
                 if (check.getSecond().closed.get())
                     continue;
-                if (LocalDateTime.now().isAfter(check.getSecond().expireTime))
+                if (MiscellaneousUtil.now().isAfter(check.getSecond().expireTime))
                     check.getSecond().close();
             } catch (final InterruptedException ignore) {
                 break;

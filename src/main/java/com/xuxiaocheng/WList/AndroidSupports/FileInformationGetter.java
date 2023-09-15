@@ -4,7 +4,7 @@ import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
@@ -35,7 +35,7 @@ public final class FileInformationGetter {
         return information.size();
     }
 
-    public static @Nullable LocalDateTime createTime(final @NotNull VisibleFileInformation information) {
+    public static @Nullable ZonedDateTime createTime(final @NotNull VisibleFileInformation information) {
         return information.createTime();
     }
 
@@ -43,7 +43,7 @@ public final class FileInformationGetter {
         return information.createTimeString(formatter, unknown);
     }
 
-    public static @Nullable LocalDateTime updateTime(final @NotNull VisibleFileInformation information) {
+    public static @Nullable ZonedDateTime updateTime(final @NotNull VisibleFileInformation information) {
         return information.updateTime();
     }
 

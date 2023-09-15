@@ -7,6 +7,8 @@ import io.netty.util.concurrent.GenericFutureListener;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -14,6 +16,10 @@ import java.util.function.Supplier;
 public final class MiscellaneousUtil {
     private MiscellaneousUtil() {
         super();
+    }
+
+    public static @NotNull ZonedDateTime now() {
+        return ZonedDateTime.now(ZoneOffset.UTC);
     }
 
     /**

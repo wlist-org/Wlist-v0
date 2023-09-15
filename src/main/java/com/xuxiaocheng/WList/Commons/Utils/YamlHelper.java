@@ -20,7 +20,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -158,11 +158,11 @@ public final class YamlHelper {
         return e;
     }
 
-    public static @Nullable LocalDateTime transferDateTimeFromStr(final @Nullable Object obj, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String slot, final @NotNull DateTimeFormatter formatter) {
+    public static @Nullable ZonedDateTime transferDateTimeFromStr(final @Nullable Object obj, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String slot, final @NotNull DateTimeFormatter formatter) {
         final String str = YamlHelper.transferString(obj, errors, slot);
         if (str == null) return null;
         try {
-            return LocalDateTime.parse(str, formatter);
+            return ZonedDateTime.parse(str, formatter);
         } catch (final DateTimeParseException exception) {
             errors.add(Pair.ImmutablePair.makeImmutablePair(slot, "Require formatted data time." + ParametersMap.create().add("str", str).add("exception", exception.getLocalizedMessage()).add("formatter", formatter)));
             return null;

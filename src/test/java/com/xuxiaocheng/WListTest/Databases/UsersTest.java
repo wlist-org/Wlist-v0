@@ -30,7 +30,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.io.File;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -92,14 +92,14 @@ public final class UsersTest {
         Assertions.assertNotNull(information);
         Assertions.assertEquals(information, UserManager.getInstance().selectUser(information.id(), null));
 
-        final LocalDateTime t = UserManager.getInstance().updateUserPassword(information.id(), PasswordGuard.encryptPassword(""), null);
+        final ZonedDateTime t = UserManager.getInstance().updateUserPassword(information.id(), PasswordGuard.encryptPassword(""), null);
         Assertions.assertNotNull(t);
         Assertions.assertEquals(new UserInformation(information.id(), information.username(), PasswordGuard.encryptPassword(""), information.group(),
                         information.createTime(), t, t), UserManager.getInstance().selectUser(information.id(), null));
 
         final UserGroupInformation group = UserGroupManager.getInstance().selectGroup(newGroup, null);
         Assumptions.assumeTrue(group != null);
-        final LocalDateTime t2 = UserManager.getInstance().updateUserGroup(information.id(), newGroup, null);
+        final ZonedDateTime t2 = UserManager.getInstance().updateUserGroup(information.id(), newGroup, null);
         if (!newGroupS) {
             Assertions.assertNull(t2);
             return;
@@ -110,7 +110,7 @@ public final class UsersTest {
                 UserManager.getInstance().selectUser(information.id(), null));
 
         if (newName != null) {
-            final LocalDateTime time = UserManager.getInstance().updateUserName(information.id(), newName, null);
+            final ZonedDateTime time = UserManager.getInstance().updateUserName(information.id(), newName, null);
             if (!newNameS) {
                 Assertions.assertNull(time);
                 return;

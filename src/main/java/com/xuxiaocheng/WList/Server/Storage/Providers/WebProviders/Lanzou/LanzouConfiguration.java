@@ -9,7 +9,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -29,7 +29,7 @@ public final class LanzouConfiguration extends ProviderConfiguration {
     private @NotNull String passport = "";
     private @NotNull String password = "";
     private @Nullable String token;
-    private @Nullable LocalDateTime tokenExpire;
+    private @Nullable ZonedDateTime tokenExpire;
 
     public @NotNull String getPassport() {
         return this.passport;
@@ -47,11 +47,11 @@ public final class LanzouConfiguration extends ProviderConfiguration {
         this.token = token;
     }
 
-    public @Nullable LocalDateTime getTokenExpire() {
+    public @Nullable ZonedDateTime getTokenExpire() {
         return this.tokenExpire;
     }
 
-    public void setTokenExpire(final @Nullable LocalDateTime tokenExpire) {
+    public void setTokenExpire(final @Nullable ZonedDateTime tokenExpire) {
         this.tokenExpire = tokenExpire;
     }
 

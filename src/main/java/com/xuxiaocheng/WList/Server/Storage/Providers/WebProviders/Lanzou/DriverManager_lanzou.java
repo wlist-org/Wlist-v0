@@ -159,7 +159,7 @@ public final class DriverManager_lanzou {
 //        final AtomicReference<String> connectionId = new AtomicReference<>();
 //        final AtomicReference<String> trashConnectionId = new AtomicReference<>();
 //        try (final Connection connection = FileManager.getConnection(configuration.getName(), _connectionId, connectionId); final Connection trashConnection = TrashedFileManager.getConnection(configuration.getName(), _trashConnectionId, trashConnectionId)) {
-//            final LocalDateTime time;
+//            final ZonedDateTime time;
 //            if (information.isDirectory()) {
 //                Triad.ImmutableTriad<Long, Long, List<FileInformation>> list;
 //                do {
@@ -180,10 +180,10 @@ public final class DriverManager_lanzou {
 //                                latch::countDown), WListServer.IOExecutors).exceptionally(MiscellaneousUtil.exceptionHandler());
 //                    latch.await();
 //                } while (list.getA().longValue() > 0);
-//                time = LocalDateTime.now();
+//                time = MiscellaneousUtil.now();
 //                DriverHelper_lanzou.trashDirectories(configuration, information.id());
 //            } else {
-//                time = LocalDateTime.now();
+//                time = MiscellaneousUtil.now();
 //                DriverHelper_lanzou.trashFile(configuration, information.id());
 //            }
 //            FileManager.deleteFileRecursively(configuration.getName(), information.id(), connectionId.get());
@@ -290,7 +290,7 @@ public final class DriverManager_lanzou {
 //            final UnionPair<UnionPair<String, FileInformation>, FailureReason> duplicate = DriverManager_lanzou.getDuplicatePolicyName(configuration, targetId, source.name(), false, policy, "Moving.", connectionId.get());
 //            if (duplicate.isFailure()) {connection.commit();return UnionPair.fail(duplicate.getE());}
 //            assert duplicate.getT().getT().equals(source.name());
-//            final UnionPair<LocalDateTime, FailureReason> information = DriverHelper_lanzou.moveFile(configuration, source.id(), targetId);
+//            final UnionPair<ZonedDateTime, FailureReason> information = DriverHelper_lanzou.moveFile(configuration, source.id(), targetId);
 //            if (information == null) {connection.commit();return UnionPair.ok(source);}
 //            if (information.isFailure()) {connection.commit();return UnionPair.fail(information.getE());}
 //            FileManager.mergeFile(configuration.getName(), new FileInformation(source.location(), targetId,

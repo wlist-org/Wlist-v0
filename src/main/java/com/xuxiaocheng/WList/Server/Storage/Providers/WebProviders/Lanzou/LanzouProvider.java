@@ -5,10 +5,6 @@ import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderTypes;
 import org.jetbrains.annotations.NotNull;
 
 public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> {
-    public LanzouProvider() {
-        super(LanzouConfiguration::new);
-    }
-
     @Override
     public @NotNull ProviderTypes<LanzouConfiguration> getType() {
         return ProviderTypes.Lanzou;
@@ -20,7 +16,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
 //    @Override
 //    public void buildCache() throws IOException {
 //        DriverManager_lanzou.ensureLoggedIn(this.configuration);
-//        this.configuration.setLastFileCacheBuildTime(LocalDateTime.now());
+//        this.configuration.setLastFileCacheBuildTime(ZonedDateTime.now());
 //        this.configuration.setModified(true);
 //    }
 //
@@ -55,7 +51,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
 //        final FileInformation root = FileManager.selectFile(this.configuration.getName(), this.configuration.getRootDirectoryId(), null);
 //        if (root != null)
 //            this.configuration.setSpaceUsed(root.size());
-//        this.configuration.setLastFileIndexBuildTime(LocalDateTime.now());
+//        this.configuration.setLastFileIndexBuildTime(ZonedDateTime.now());
 //        this.configuration.setModified(true);
 //    }
 //

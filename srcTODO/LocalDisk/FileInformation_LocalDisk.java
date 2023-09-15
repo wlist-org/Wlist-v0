@@ -8,7 +8,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.ZoneId;
 
 public final class FileInformation_LocalDisk {
@@ -24,8 +24,8 @@ public final class FileInformation_LocalDisk {
         try {
             return new FileSqlInformation(-1, LocalDiskManager.getDrivePath(root, child),
                     !attributes.isRegularFile(), attributes.size(),
-                    LocalDateTime.ofInstant(attributes.creationTime().toInstant(), ZoneId.systemDefault()),
-                    LocalDateTime.ofInstant(attributes.lastModifiedTime().toInstant(), ZoneId.systemDefault()),
+                    ZonedDateTime.ofInstant(attributes.creationTime().toInstant(), ZoneId.systemDefault()),
+                    ZonedDateTime.ofInstant(attributes.lastModifiedTime().toInstant(), ZoneId.systemDefault()),
                     "", attributes.isSymbolicLink() ? "S" : attributes.isOther() ? "O" : "");
         } catch (final RuntimeException exception) {
             throw HExceptionWrapper.unwrapException(exception, IOException.class);

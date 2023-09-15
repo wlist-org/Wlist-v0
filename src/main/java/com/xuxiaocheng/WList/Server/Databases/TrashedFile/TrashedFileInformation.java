@@ -8,12 +8,12 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
 public record TrashedFileInformation(long id, @NotNull String name, boolean isDirectory, long size,
-                                     @Nullable LocalDateTime createTime, @Nullable LocalDateTime trashedTime, @Nullable LocalDateTime expireTime, @Nullable String others) {
-    public static @NotNull TrashedFileInformation fromFileInformation(final @NotNull FileInformation information, final @Nullable LocalDateTime trashedTime, final @Nullable LocalDateTime expireTime) {
+                                     @Nullable ZonedDateTime createTime, @Nullable ZonedDateTime trashedTime, @Nullable ZonedDateTime expireTime, @Nullable String others) {
+    public static @NotNull TrashedFileInformation fromFileInformation(final @NotNull FileInformation information, final @Nullable ZonedDateTime trashedTime, final @Nullable ZonedDateTime expireTime) {
         return new TrashedFileInformation(information.id(), information.name(), information.isDirectory(), information.size(), information.createTime(), trashedTime, expireTime, information.others());
     }
 

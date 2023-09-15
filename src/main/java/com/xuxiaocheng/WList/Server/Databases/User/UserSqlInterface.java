@@ -10,7 +10,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 
 import java.sql.SQLException;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
@@ -40,19 +40,19 @@ public interface UserSqlInterface extends DatabaseInterface {
      * Update username. (Do NOT update name in {@link com.xuxiaocheng.WList.Commons.IdentifierNames.UserName})
      * @return null: name is conflict OR no such id. !null: operate time.
      */
-    @Nullable LocalDateTime updateUserName(final long id, final @NotNull String name, final @Nullable String _connectionId) throws SQLException;
+    @Nullable ZonedDateTime updateUserName(final long id, final @NotNull String name, final @Nullable String _connectionId) throws SQLException;
 
     /**
      * Update user password.
      * @return null: no such id. !null: operate time.
      */
-    @Nullable LocalDateTime updateUserPassword(final long id, final @NotNull String encryptedPassword, final @Nullable String _connectionId) throws SQLException;
+    @Nullable ZonedDateTime updateUserPassword(final long id, final @NotNull String encryptedPassword, final @Nullable String _connectionId) throws SQLException;
 
     /**
      * Update user group.
      * @return null: no such id. !null: operate time.
      */
-    @Nullable LocalDateTime updateUserGroup(final long id, final long groupId, final @Nullable String _connectionId) throws SQLException;
+    @Nullable ZonedDateTime updateUserGroup(final long id, final long groupId, final @Nullable String _connectionId) throws SQLException;
 
 
     /* --- Select --- */

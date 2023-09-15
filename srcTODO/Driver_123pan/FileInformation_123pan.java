@@ -12,7 +12,7 @@ import com.xuxiaocheng.WList.Exceptions.IllegalParametersException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 
@@ -67,8 +67,8 @@ public final class FileInformation_123pan {
         try {
             return new FileSqlInformation(new FileLocation(driver, id.longValue()), parent.longValue(),
                     name, type.intValue() == 0 ? FileSqlInterface.FileSqlType.RegularFile : FileSqlInterface.FileSqlType.Directory, size.longValue(),
-                    LocalDateTime.parse(create, DateTimeFormatter.ISO_ZONED_DATE_TIME),
-                    LocalDateTime.parse(update, DateTimeFormatter.ISO_ZONED_DATE_TIME),
+                    ZonedDateTime.parse(create, DateTimeFormatter.ISO_ZONED_DATE_TIME),
+                    ZonedDateTime.parse(update, DateTimeFormatter.ISO_ZONED_DATE_TIME),
                     etag, FileInformation_123pan.serializeOther(new FileInfoExtra_123pan(
                             type.intValue(), flag)));
         } catch (final DateTimeParseException ignore) {
@@ -94,9 +94,9 @@ public final class FileInformation_123pan {
             return null;
         try {
             return new TrashedSqlInformation(new FileLocation(driver, id.longValue()), name, type.intValue() == 1, size.longValue(),
-                    LocalDateTime.parse(create, DateTimeFormatter.ISO_ZONED_DATE_TIME),
-                    LocalDateTime.parse(trashed, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
-                    LocalDateTime.parse(expire, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
+                    ZonedDateTime.parse(create, DateTimeFormatter.ISO_ZONED_DATE_TIME),
+                    ZonedDateTime.parse(trashed, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
+                    ZonedDateTime.parse(expire, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
                     etag, FileInformation_123pan.serializeOther(new FileInfoExtra_123pan(
                     type.intValue(), flag)));
         } catch (final DateTimeParseException ignore) {

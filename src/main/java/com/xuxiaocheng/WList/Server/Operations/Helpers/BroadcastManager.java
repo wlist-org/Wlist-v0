@@ -19,7 +19,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Set;
 
@@ -85,7 +85,7 @@ public final class BroadcastManager {
         });
     }
 
-    public static void onUserChangeName(final long id, final @NotNull String newName, final @NotNull LocalDateTime updateTime) {
+    public static void onUserChangeName(final long id, final @NotNull String newName, final @NotNull ZonedDateTime updateTime) {
         BroadcastManager.broadcast(OperationType.ChangeUsername, buf -> {
             ByteBufIOUtil.writeVariableLenLong(buf, id);
             ByteBufIOUtil.writeUTF(buf, newName);
@@ -94,7 +94,7 @@ public final class BroadcastManager {
         });
     }
 
-    public static void onUserChangePassword(final long id, final @NotNull LocalDateTime updateTime) {
+    public static void onUserChangePassword(final long id, final @NotNull ZonedDateTime updateTime) {
         BroadcastManager.broadcast(OperationType.ChangePassword, buf -> {
             ByteBufIOUtil.writeVariableLenLong(buf, id);
             ByteBufIOUtil.writeUTF(buf, updateTime.format(DateTimeFormatter.ISO_DATE_TIME));
@@ -107,7 +107,7 @@ public final class BroadcastManager {
         BroadcastManager.broadcast(OperationType.AddGroup, information::dumpVisible);
     }
 
-    public static void onUserGroupChangeName(final long id, final @NotNull String newName, final @NotNull LocalDateTime updateTime) {
+    public static void onUserGroupChangeName(final long id, final @NotNull String newName, final @NotNull ZonedDateTime updateTime) {
         BroadcastManager.broadcast(OperationType.ChangeGroupName, buf -> {
             ByteBufIOUtil.writeVariableLenLong(buf, id);
             ByteBufIOUtil.writeUTF(buf, newName);
@@ -116,7 +116,7 @@ public final class BroadcastManager {
         });
     }
 
-    public static void onUserGroupChangePermissions(final long id, final @NotNull Set<@NotNull UserPermission> newPermissions, final @NotNull LocalDateTime updateTime) {
+    public static void onUserGroupChangePermissions(final long id, final @NotNull Set<@NotNull UserPermission> newPermissions, final @NotNull ZonedDateTime updateTime) {
         BroadcastManager.broadcast(OperationType.ChangeGroupPermissions, buf -> {
             ByteBufIOUtil.writeVariableLenLong(buf, id);
             ByteBufIOUtil.writeUTF(buf, UserPermission.dump(newPermissions));
@@ -133,7 +133,7 @@ public final class BroadcastManager {
     }
 
 
-    public static void onUserChangeGroup(final long id, final long groupId, final @NotNull String groupName, final @NotNull LocalDateTime updateTime) {
+    public static void onUserChangeGroup(final long id, final long groupId, final @NotNull String groupName, final @NotNull ZonedDateTime updateTime) {
         BroadcastManager.broadcast(OperationType.ChangeUserGroup, buf -> {
             ByteBufIOUtil.writeVariableLenLong(buf, id);
             ByteBufIOUtil.writeVariableLenLong(buf, groupId);

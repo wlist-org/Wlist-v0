@@ -2,6 +2,7 @@ package com.xuxiaocheng.WList.Server.Storage.Providers;
 
 import com.xuxiaocheng.WList.Server.Storage.Providers.WebProviders.Lanzou.LanzouConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.WebProviders.Lanzou.LanzouProvider;
+import com.xuxiaocheng.WList.Server.Storage.Providers.WebProviders.LanzouRecycler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -10,12 +11,10 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 public final class ProviderTypes<C extends ProviderConfiguration> {
-    public static final @NotNull ProviderTypes<LanzouConfiguration> Lanzou = new ProviderTypes<>("lanzou", LanzouConfiguration::new, LanzouProvider::new, null);
+    private static final @NotNull Map<@NotNull String, @NotNull ProviderTypes<?>> providers = new HashMap<>();
 
+    public static final @NotNull ProviderTypes<LanzouConfiguration> Lanzou = new ProviderTypes<>("lanzou", LanzouConfiguration::new, LanzouProvider::new, LanzouRecycler::new);
 
-    private static final @NotNull Map<@NotNull String, @NotNull ProviderTypes<?>> providers = new HashMap<>(); static {
-        ProviderTypes.providers.put(ProviderTypes.Lanzou.identifier, ProviderTypes.Lanzou);
-    }
 
     public static @Nullable ProviderTypes<?> get(final @Nullable String identifier) {
         return ProviderTypes.providers.get(identifier);
@@ -32,6 +31,7 @@ public final class ProviderTypes<C extends ProviderConfiguration> {
         this.configuration = configuration;
         this.provider = provider;
         this.recycler = recycler;
+        ProviderTypes.providers.put(this.identifier, this);
     }
 
     public @NotNull String getIdentifier() {

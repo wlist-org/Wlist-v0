@@ -25,16 +25,16 @@ public final class RootSelector {
 //        if (driver != null) {
 //            final ProviderRecyclerInterface<?> trash = StorageManager.getRecycler(name);
 //            try {
-//                final LocalDateTime old = driver.getConfiguration().getLastFileIndexBuildTime();
-//                if (old == null || Duration.between(old, LocalDateTime.now()).toMillis() > TimeUnit.HOURS.toMillis(3))
+//                final ZonedDateTime old = driver.getConfiguration().getLastFileIndexBuildTime();
+//                if (old == null || Duration.between(old, ZonedDateTime.now()).toMillis() > TimeUnit.HOURS.toMillis(3))
 //                    driver.buildIndex();
 //            } finally {
 //                StorageManager.dumpConfigurationIfModified(driver.getConfiguration());
 //            }
 //            if (trash != null)
 //                try {
-//                    final LocalDateTime old = trash.getDriver().getConfiguration().getLastTrashIndexBuildTime();
-//                    if (old == null || Duration.between(old, LocalDateTime.now()).toMillis() > TimeUnit.HOURS.toMillis(3))
+//                    final ZonedDateTime old = trash.getDriver().getConfiguration().getLastTrashIndexBuildTime();
+//                    if (old == null || Duration.between(old, ZonedDateTime.now()).toMillis() > TimeUnit.HOURS.toMillis(3))
 //                        trash.buildIndex();
 //                } finally {
 //                    StorageManager.dumpConfigurationIfModified(trash.getDriver().getConfiguration());

@@ -21,7 +21,7 @@ import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 
 import java.sql.SQLException;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
@@ -169,7 +169,7 @@ public final class OperateSelfHandler {
             return null;
         }
         return () -> {
-            final LocalDateTime time = UserManager.getInstance().updateUserName(user.getT().id(), newUsername, null);
+            final ZonedDateTime time = UserManager.getInstance().updateUserName(user.getT().id(), newUsername, null);
             if (time == null) {
                 WListServer.ServerChannelHandler.write(channel, OperateSelfHandler.UserDataError);
                 return;
@@ -196,7 +196,7 @@ public final class OperateSelfHandler {
             return null;
         }
         return () -> {
-            final LocalDateTime time = UserManager.getInstance().updateUserPassword(user.getT().id(), newPassword, null);
+            final ZonedDateTime time = UserManager.getInstance().updateUserPassword(user.getT().id(), newPassword, null);
             if (time == null) {
                 WListServer.ServerChannelHandler.write(channel, OperateSelfHandler.UserDataError);
                 return;

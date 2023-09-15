@@ -250,7 +250,7 @@ public final class HttpNetworkHelper {
 
     public static @NotNull ResponseBody extraResponseBody(final @NotNull Response response) throws IOException {
         if (!response.isSuccessful())
-            throw new NetworkException(response.code(), response.message());
+            throw new NetworkException(response.code(), response.message(), response.request().url());
         final ResponseBody body = response.body();
         if (body == null)
             throw new NetworkException("Null response body.");

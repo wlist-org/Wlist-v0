@@ -14,7 +14,7 @@ import org.jetbrains.annotations.Unmodifiable;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -105,12 +105,12 @@ public record UserGroupManager(@NotNull UserGroupSqlInterface innerSqlInstance) 
     /* --- Update --- */
 
     @Override
-    public @Nullable LocalDateTime updateGroupName(final long id, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
+    public @Nullable ZonedDateTime updateGroupName(final long id, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
         return this.innerSqlInstance.updateGroupName(id, name, _connectionId);
     }
 
     @Override
-    public @Nullable LocalDateTime updateGroupPermission(final long id, final @NotNull Set<@NotNull UserPermission> permissions, final @Nullable String _connectionId) throws SQLException {
+    public @Nullable ZonedDateTime updateGroupPermission(final long id, final @NotNull Set<@NotNull UserPermission> permissions, final @Nullable String _connectionId) throws SQLException {
         return this.innerSqlInstance.updateGroupPermission(id, permissions, _connectionId);
     }
 

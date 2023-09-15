@@ -23,7 +23,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
-import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -72,7 +73,7 @@ public class UserSqliteHelper implements UserSqlInterface {
     );
                 """, UserGroupManager.getInstance().getDefaultId()));
                 statement.executeUpdate("""
-    CREATE INDEX IF NOT EXISTS users_name ON users (name);
+    CREATE INDEX IF NOT EXISTS users_name ON users (username);
                 """);
             }
             try (final PreparedStatement statement = connection.prepareStatement("""
@@ -86,17 +87,13 @@ public class UserSqliteHelper implements UserSqlInterface {
                 if (this.adminId.isNotInitialized()) {
                     final String password = PasswordGuard.generateRandomPassword();
                     try (final PreparedStatement insertStatement = connection.prepareStatement("""
-    INSERT INTO users (username, name_order, password, group_id, create_time, update_time, modify_time)
-        VALUES (?, ?, ?, ?, ?, ?, ?);
+    INSERT INTO users (username, name_order, password, group_id)
+        VALUES (?, ?, ?, ?);
                         """)) {
                         insertStatement.setString(1, IdentifierNames.UserName.Admin.getIdentifier());
                         insertStatement.setBytes(2, SqliteHelper.toOrdered(IdentifierNames.UserName.Admin.getIdentifier()));
                         insertStatement.setString(3, PasswordGuard.encryptPassword(password));
                         insertStatement.setLong(4, UserGroupManager.getInstance().getAdminId());
-                        final Timestamp now = Timestamp.valueOf(SqliteHelper.now());
-                        insertStatement.setTimestamp(5, now);
-                        insertStatement.setTimestamp(6, now);
-                        insertStatement.setTimestamp(7, now);
                         insertStatement.executeUpdate();
                     }
                     statement.setString(1, IdentifierNames.UserName.Admin.getIdentifier());
@@ -147,8 +144,9 @@ public class UserSqliteHelper implements UserSqlInterface {
             return null;
         return new UserInformation(result.getLong("id"), result.getString("username"),
                 result.getString("password"), group,
-                result.getTimestamp("ct").toLocalDateTime(), result.getTimestamp("ut").toLocalDateTime(),
-                result.getTimestamp("modify_time").toLocalDateTime());
+                ZonedDateTime.of(result.getTimestamp("ct").toLocalDateTime(), ZoneOffset.UTC),
+                ZonedDateTime.of(result.getTimestamp("ut").toLocalDateTime(), ZoneOffset.UTC),
+                ZonedDateTime.of(result.getTimestamp("modify_time").toLocalDateTime(), ZoneOffset.UTC));
     }
 
     public static @NotNull @UnmodifiableView List<@NotNull UserInformation> allUsers(final @NotNull ResultSet result) throws SQLException {
@@ -173,16 +171,12 @@ public class UserSqliteHelper implements UserSqlInterface {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             final boolean success;
             try (final PreparedStatement statement = connection.prepareStatement("""
-    INSERT OR IGNORE INTO users (username, name_order, password, create_time, update_time, modify_time)
-        VALUES (?, ?, ?, ?, ?, ?);
+    INSERT OR IGNORE INTO users (username, name_order, password)
+        VALUES (?, ?, ?);
                 """)) {
                 statement.setString(1, username);
                 statement.setBytes(2, SqliteHelper.toOrdered(username));
                 statement.setString(3, encryptedPassword);
-                final Timestamp now = Timestamp.valueOf(SqliteHelper.now());
-                statement.setTimestamp(4, now);
-                statement.setTimestamp(5, now);
-                statement.setTimestamp(6, now);
                 success = statement.executeUpdate() == 1;
             }
             if (success)
@@ -203,10 +197,10 @@ public class UserSqliteHelper implements UserSqlInterface {
     /* --- Update --- */
 
     @Override
-    public @Nullable LocalDateTime updateUserName(final long id, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
+    public @Nullable ZonedDateTime updateUserName(final long id, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
         if (id == this.getAdminId() || IdentifierNames.UserName.contains(name))
             return null;
-        LocalDateTime time;
+        ZonedDateTime time;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             try (final PreparedStatement statement = connection.prepareStatement("""
     UPDATE OR IGNORE users SET username = ?, name_order = ?, update_time = ? WHERE id == ?;
@@ -214,7 +208,7 @@ public class UserSqliteHelper implements UserSqlInterface {
                 statement.setString(1, name);
                 statement.setBytes(2, SqliteHelper.toOrdered(name));
                 time = SqliteHelper.now();
-                statement.setTimestamp(3, Timestamp.valueOf(time));
+                statement.setTimestamp(3, Timestamp.valueOf(time.toLocalDateTime()));
                 statement.setLong(4, id);
                 if (statement.executeUpdate() == 0)
                     time = null;
@@ -225,16 +219,16 @@ public class UserSqliteHelper implements UserSqlInterface {
     }
 
     @Override
-    public @Nullable LocalDateTime updateUserPassword(final long id, final @NotNull String encryptedPassword, final @Nullable String _connectionId) throws SQLException {
-        LocalDateTime time;
+    public @Nullable ZonedDateTime updateUserPassword(final long id, final @NotNull String encryptedPassword, final @Nullable String _connectionId) throws SQLException {
+        ZonedDateTime time;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             try (final PreparedStatement statement = connection.prepareStatement("""
     UPDATE OR IGNORE users SET password = ?, update_time = ?, modify_time = ? WHERE id == ?;
                 """)) {
                 statement.setString(1, encryptedPassword);
                 time = SqliteHelper.now();
-                statement.setTimestamp(2, Timestamp.valueOf(time));
-                statement.setTimestamp(3, Timestamp.valueOf(time));
+                statement.setTimestamp(2, Timestamp.valueOf(time.toLocalDateTime()));
+                statement.setTimestamp(3, Timestamp.valueOf(time.toLocalDateTime()));
                 statement.setLong(4, id);
                 if (statement.executeUpdate() == 0)
                     time = null;
@@ -245,18 +239,18 @@ public class UserSqliteHelper implements UserSqlInterface {
     }
 
     @Override
-    public @Nullable LocalDateTime updateUserGroup(final long id, final long groupId, final @Nullable String _connectionId) throws SQLException {
+    public @Nullable ZonedDateTime updateUserGroup(final long id, final long groupId, final @Nullable String _connectionId) throws SQLException {
         if (id == this.getAdminId())
             return null;
-        LocalDateTime time;
+        ZonedDateTime time;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             try (final PreparedStatement statement = connection.prepareStatement("""
     UPDATE OR IGNORE users SET group_id = ?, update_time = ?, modify_time = ? WHERE id == ?;
                 """)) {
                 statement.setLong(1, groupId);
                 time = SqliteHelper.now();
-                statement.setTimestamp(2, Timestamp.valueOf(time));
-                statement.setTimestamp(3, Timestamp.valueOf(time));
+                statement.setTimestamp(2, Timestamp.valueOf(time.toLocalDateTime()));
+                statement.setTimestamp(3, Timestamp.valueOf(time.toLocalDateTime()));
                 statement.setLong(4, id);
                 if (statement.executeUpdate() == 0)
                     time = null;

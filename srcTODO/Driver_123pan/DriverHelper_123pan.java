@@ -32,7 +32,7 @@ import org.jetbrains.annotations.UnmodifiableView;
 
 import java.io.IOException;
 import java.net.URL;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -138,7 +138,7 @@ final class DriverHelper_123pan {
     @SuppressWarnings("SameParameterValue")
     private static Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> generateDyKey(final @NotNull String url, final @NotNull String platform, final int appVersion) {
         final int random = HRandomHelper.DefaultSecureRandom.nextInt(0x989680);
-        final LocalDateTime now = LocalDateTime.now();
+        final ZonedDateTime now = MiscellaneousUtil.now();
         final long time = now.toEpochSecond(ZoneOffset.ofHours(8));
         // TODO getServerTime ;serverTime = response['data']['data']['timestamp']
         // time = serverTime && getAbsMinuteDuration(time, serverTime) >= 20 ? serverTime : time,
@@ -189,11 +189,11 @@ final class DriverHelper_123pan {
         final String expire = data.getString("expire");
         if (expire == null)
             throw new WrongResponseException("No expire time in response.", data, ParametersMap.create().add("configurationCache", configurationCache));
-        configurationCache.setTokenExpire(LocalDateTime.parse(expire, DateTimeFormatter.ISO_ZONED_DATE_TIME));
+        configurationCache.setTokenExpire(ZonedDateTime.parse(expire, DateTimeFormatter.ISO_ZONED_DATE_TIME));
         final Long refresh = data.getLong("refresh_token_expire_time");
         if (refresh == null)
             throw new WrongResponseException("No refresh time in response.", data, ParametersMap.create().add("configurationCache", configurationCache));
-        configurationCache.setRefreshExpire(LocalDateTime.ofEpochSecond(refresh.longValue(), 0, ZoneOffset.ofHours(8)));
+        configurationCache.setRefreshExpire(ZonedDateTime.ofEpochSecond(refresh.longValue(), 0, ZoneOffset.ofHours(8)));
         configurationCache.setModified(true);
     }
 
@@ -262,7 +262,7 @@ final class DriverHelper_123pan {
     }
 
     static void forceGetToken(final @NotNull DriverConfiguration_123pan configuration) throws IllegalParametersException, IOException {
-        final LocalDateTime time = LocalDateTime.now().minusMinutes(3);
+        final ZonedDateTime time = MiscellaneousUtil.now().minusMinutes(3);
         synchronized (configuration.getCacheSide()) {
             if (configuration.getToken() == null
                     || configuration.getRefreshExpire() == null
@@ -278,7 +278,7 @@ final class DriverHelper_123pan {
      * @see DriverHelper_123pan#login(DriverConfiguration_123pan)
      */
     static void ensureToken(final @NotNull DriverConfiguration_123pan configuration) throws IllegalParametersException, IOException {
-        final LocalDateTime time = LocalDateTime.now().minusMinutes(3);
+        final ZonedDateTime time = MiscellaneousUtil.now().minusMinutes(3);
         synchronized (configuration.getCacheSide()) {
             if (configuration.getToken() == null
                     || configuration.getTokenExpire() == null

@@ -7,20 +7,20 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
 public record VisibleFileInformation(long id, long parentId, @NotNull String name, boolean isDirectory, long size,
-                                     @Nullable LocalDateTime createTime, @Nullable LocalDateTime updateTime) {
+                                     @Nullable ZonedDateTime createTime, @Nullable ZonedDateTime updateTime) {
     public static @NotNull VisibleFileInformation parse(final @NotNull ByteBuf buffer) throws IOException {
         final long id = ByteBufIOUtil.readVariableLenLong(buffer);
         final long parentId = ByteBufIOUtil.readVariableLenLong(buffer);
         final String name = ByteBufIOUtil.readUTF(buffer);
         final boolean isDirectory = ByteBufIOUtil.readBoolean(buffer);
         final long size = ByteBufIOUtil.readVariable2LenLong(buffer);
-        final LocalDateTime createTime = ByteBufIOUtil.readNullableDataTime(buffer,DateTimeFormatter.ISO_DATE_TIME);
-        final LocalDateTime updateTime = ByteBufIOUtil.readNullableDataTime(buffer,DateTimeFormatter.ISO_DATE_TIME);
+        final ZonedDateTime createTime = ByteBufIOUtil.readNullableDataTime(buffer,DateTimeFormatter.ISO_DATE_TIME);
+        final ZonedDateTime updateTime = ByteBufIOUtil.readNullableDataTime(buffer,DateTimeFormatter.ISO_DATE_TIME);
         return new VisibleFileInformation(id, parentId, name, isDirectory, size, createTime, updateTime);
     }
 

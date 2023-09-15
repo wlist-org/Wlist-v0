@@ -19,7 +19,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
-import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -180,7 +181,8 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
             if (result.getBoolean("permissions_" + permission.name()))
                 permissions.add(permission);
         return new UserGroupInformation(result.getLong("group_id"), result.getString("name"), permissions,
-                result.getTimestamp("create_time").toLocalDateTime(), result.getTimestamp("update_time").toLocalDateTime());
+                ZonedDateTime.of(result.getTimestamp("create_time").toLocalDateTime(), ZoneOffset.UTC),
+                ZonedDateTime.of(result.getTimestamp("update_time").toLocalDateTime(), ZoneOffset.UTC));
     }
 
     public static @NotNull @UnmodifiableView List<@NotNull UserGroupInformation> allGroups(final @NotNull ResultSet result) throws SQLException {
@@ -230,10 +232,10 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
     /* --- Update --- */
 
     @Override
-    public @Nullable LocalDateTime updateGroupName(final long id, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
+    public @Nullable ZonedDateTime updateGroupName(final long id, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
         if (id == this.getAdminId() || id == this.getDefaultId() || IdentifierNames.UserGroupName.contains(name))
             return null;
-        LocalDateTime time;
+        ZonedDateTime time;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             try (final PreparedStatement statement = connection.prepareStatement("""
     UPDATE OR IGNORE groups SET name = ?, name_order = ?, update_time = ? WHERE group_id == ?;
@@ -241,7 +243,7 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
                 statement.setString(1, name);
                 statement.setBytes(2, SqliteHelper.toOrdered(name));
                 time = SqliteHelper.now();
-                statement.setTimestamp(3, Timestamp.valueOf(time));
+                statement.setTimestamp(3, Timestamp.valueOf(time.toLocalDateTime()));
                 statement.setLong(4, id);
                 if (statement.executeUpdate() == 0)
                     time = null;
@@ -252,16 +254,16 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
     }
 
     @Override
-    public @Nullable LocalDateTime updateGroupPermission(final long id, final @NotNull Set<@NotNull UserPermission> permissions, final @Nullable String _connectionId) throws SQLException {
+    public @Nullable ZonedDateTime updateGroupPermission(final long id, final @NotNull Set<@NotNull UserPermission> permissions, final @Nullable String _connectionId) throws SQLException {
         if (id == this.getAdminId())
             return null;
-        LocalDateTime time;
+        ZonedDateTime time;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     UPDATE OR IGNORE groups SET %s, update_time = ? WHERE group_id == ?;
                 """, UserGroupSqliteHelper.permissionsUpdateValue(permissions)))) {
                 time = SqliteHelper.now();
-                statement.setTimestamp(1, Timestamp.valueOf(time));
+                statement.setTimestamp(1, Timestamp.valueOf(time.toLocalDateTime()));
                 statement.setLong(2, id);
                 if (statement.executeUpdate() == 0)
                     time = null;

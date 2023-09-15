@@ -20,7 +20,7 @@ import org.jetbrains.annotations.UnmodifiableView;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.Iterator;
 import java.util.List;
 
@@ -40,7 +40,7 @@ public class Driver_123pan extends Driver_123pan_NoCache {
 
     @Override
     public void buildIndex() throws SQLException {
-        this.configuration.setLastFileIndexBuildTime(LocalDateTime.now());
+        this.configuration.setLastFileIndexBuildTime(ZonedDateTime.now());
         DriverManager_123pan.refreshDirectoryRecursively(this.configuration, this.configuration.getRootDirectoryId(), null);
         this.configuration.setModified(true);
     }

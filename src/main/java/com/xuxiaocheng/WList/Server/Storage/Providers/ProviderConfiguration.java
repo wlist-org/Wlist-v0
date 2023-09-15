@@ -1,6 +1,7 @@
 package com.xuxiaocheng.WList.Server.Storage.Providers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import okhttp3.OkHttpClient;
@@ -9,7 +10,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 
 import java.math.BigInteger;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -17,7 +18,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class ProviderConfiguration {
-    public static final @NotNull DateTimeFormatter TimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+    public static final @NotNull DateTimeFormatter TimeFormatter = DateTimeFormatter.ISO_DATE_TIME;
 
     protected @NotNull String name = "provider";
     protected @NotNull AtomicBoolean modified = new AtomicBoolean(false);
@@ -47,8 +48,8 @@ public abstract class ProviderConfiguration {
     }
 
     protected @NotNull String displayName = "provider";
-    protected @NotNull LocalDateTime createTime = LocalDateTime.now();
-    protected @NotNull LocalDateTime updateTime = LocalDateTime.now();
+    protected @NotNull ZonedDateTime createTime = MiscellaneousUtil.now();
+    protected @NotNull ZonedDateTime updateTime = MiscellaneousUtil.now();
     protected long rootDirectoryId = 0;
 
     public @NotNull String getDisplayName() {
@@ -59,19 +60,19 @@ public abstract class ProviderConfiguration {
         this.displayName = displayName;
     }
 
-    public @NotNull LocalDateTime getCreateTime() {
+    public @NotNull ZonedDateTime getCreateTime() {
         return this.createTime;
     }
 
-    public void setCreateTime(final @NotNull LocalDateTime createTime) {
+    public void setCreateTime(final @NotNull ZonedDateTime createTime) {
         this.createTime = createTime;
     }
 
-    public @NotNull LocalDateTime getUpdateTime() {
+    public @NotNull ZonedDateTime getUpdateTime() {
         return this.updateTime;
     }
 
-    public void setUpdateTime(final @NotNull LocalDateTime updateTime) {
+    public void setUpdateTime(final @NotNull ZonedDateTime updateTime) {
         this.updateTime = updateTime;
     }
 
@@ -79,40 +80,40 @@ public abstract class ProviderConfiguration {
         return this.rootDirectoryId;
     }
 
-    protected @Nullable LocalDateTime lastFileCacheBuildTime = null;
-    protected @Nullable LocalDateTime lastFileIndexBuildTime = null;
-    protected @Nullable LocalDateTime lastTrashCacheBuildTime = null;
-    protected @Nullable LocalDateTime lastTrashIndexBuildTime = null;
+    protected @Nullable ZonedDateTime lastFileCacheBuildTime = null;
+    protected @Nullable ZonedDateTime lastFileIndexBuildTime = null;
+    protected @Nullable ZonedDateTime lastTrashCacheBuildTime = null;
+    protected @Nullable ZonedDateTime lastTrashIndexBuildTime = null;
 
-    public @Nullable LocalDateTime getLastFileCacheBuildTime() {
+    public @Nullable ZonedDateTime getLastFileCacheBuildTime() {
         return this.lastFileCacheBuildTime;
     }
 
-    public void setLastFileCacheBuildTime(final @Nullable LocalDateTime lastFileCacheBuildTime) {
+    public void setLastFileCacheBuildTime(final @Nullable ZonedDateTime lastFileCacheBuildTime) {
         this.lastFileCacheBuildTime = lastFileCacheBuildTime;
     }
 
-    public @Nullable LocalDateTime getLastFileIndexBuildTime() {
+    public @Nullable ZonedDateTime getLastFileIndexBuildTime() {
         return this.lastFileIndexBuildTime;
     }
 
-    public void setLastFileIndexBuildTime(final @Nullable LocalDateTime lastFileIndexBuildTime) {
+    public void setLastFileIndexBuildTime(final @Nullable ZonedDateTime lastFileIndexBuildTime) {
         this.lastFileIndexBuildTime = lastFileIndexBuildTime;
     }
 
-    public @Nullable LocalDateTime getLastTrashCacheBuildTime() {
+    public @Nullable ZonedDateTime getLastTrashCacheBuildTime() {
         return this.lastTrashCacheBuildTime;
     }
 
-    public void setLastTrashCacheBuildTime(final @Nullable LocalDateTime lastTrashCacheBuildTime) {
+    public void setLastTrashCacheBuildTime(final @Nullable ZonedDateTime lastTrashCacheBuildTime) {
         this.lastTrashCacheBuildTime = lastTrashCacheBuildTime;
     }
 
-    public @Nullable LocalDateTime getLastTrashIndexBuildTime() {
+    public @Nullable ZonedDateTime getLastTrashIndexBuildTime() {
         return this.lastTrashIndexBuildTime;
     }
 
-    public void setLastTrashIndexBuildTime(final @Nullable LocalDateTime lastTrashIndexBuildTime) {
+    public void setLastTrashIndexBuildTime(final @Nullable ZonedDateTime lastTrashIndexBuildTime) {
         this.lastTrashIndexBuildTime = lastTrashIndexBuildTime;
     }
 
@@ -215,9 +216,9 @@ public abstract class ProviderConfiguration {
         this.displayName = YamlHelper.getConfig(config, "display_name", this.displayName,
                 o -> YamlHelper.transferString(o, errors, "display_name"));
         this.createTime = YamlHelper.getConfig(config, "create_time", this.createTime,
-                o -> YamlHelper.transferDateTimeFromStr(o, errors, "create_time", ProviderConfiguration.TimeFormatter));
+                o -> YamlHelper.transferDateTimeFromStr(o, errors, "create_time", ProviderConfiguration.TimeFormatter)).withNano(0);
         this.updateTime = YamlHelper.getConfig(config, "update_time", this.updateTime,
-                o -> YamlHelper.transferDateTimeFromStr(o, errors, "update_time", ProviderConfiguration.TimeFormatter));
+                o -> YamlHelper.transferDateTimeFromStr(o, errors, "update_time", ProviderConfiguration.TimeFormatter)).withNano(0);
         this.rootDirectoryId = YamlHelper.getConfig(config, "root_directory_id", this.rootDirectoryId,
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "root_directory_id", YamlHelper.LongMin, YamlHelper.LongMax)).longValue();
 

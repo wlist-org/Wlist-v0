@@ -23,7 +23,7 @@ import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -106,7 +106,7 @@ public final class OperateGroupsHandler {
             return null;
         }
         return () -> {
-            final LocalDateTime updateTime = UserGroupManager.getInstance().updateGroupName(groupId, newGroupName, null);
+            final ZonedDateTime updateTime = UserGroupManager.getInstance().updateGroupName(groupId, newGroupName, null);
             if (updateTime == null) {
                 WListServer.ServerChannelHandler.write(channel, OperateGroupsHandler.GroupDataError);
                 return;
@@ -141,7 +141,7 @@ public final class OperateGroupsHandler {
             return null;
         }
         return () -> {
-            final LocalDateTime updateTime = UserGroupManager.getInstance().updateGroupPermission(groupId, newPermissions, null);
+            final ZonedDateTime updateTime = UserGroupManager.getInstance().updateGroupPermission(groupId, newPermissions, null);
             if (updateTime == null) {
                 WListServer.ServerChannelHandler.write(channel, OperateGroupsHandler.GroupDataError);
                 return;

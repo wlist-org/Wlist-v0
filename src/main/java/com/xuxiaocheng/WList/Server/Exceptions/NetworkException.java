@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Server.Exceptions;
 
+import okhttp3.HttpUrl;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -37,11 +38,11 @@ public class NetworkException extends IOException {
         super("[" + code + "]", cause);
     }
 
-    public NetworkException(final int code, final @NotNull String message) {
-        super("[" + code + "] " + message);
+    public NetworkException(final int code, final @NotNull String message, final @NotNull HttpUrl url) {
+        super("[" + code + "] " + message + " (" + url + ")");
     }
 
-    public NetworkException(final int code, final @NotNull String message, final @NotNull Throwable cause) {
-        super("[" + code + "] " + message, cause);
+    public NetworkException(final int code, final @NotNull String message, final @NotNull HttpUrl url, final @NotNull Throwable cause) {
+        super("[" + code + "] " + message + " (" + url + ")", cause);
     }
 }

@@ -34,14 +34,14 @@ public interface ProviderInterface<C extends ProviderConfiguration> {
 
 //    /**
 //     * Build provider cache. Login and check token, etc.
-//     * @see ProviderConfiguration#setLastFileCacheBuildTime(LocalDateTime)
+//     * @see ProviderConfiguration#setLastFileCacheBuildTime(ZonedDateTime)
 //     */
 //    void buildCache() throws Exception;
 //
 //    /**
 //     * Build all files index into sql database. (Recursive from root.)
 //     * @see FileManager
-//     * @see ProviderConfiguration#setLastFileIndexBuildTime(LocalDateTime)
+//     * @see ProviderConfiguration#setLastFileIndexBuildTime(ZonedDateTime)
 //     */
 //    void buildIndex() throws Exception;
 //
@@ -68,7 +68,7 @@ public interface ProviderInterface<C extends ProviderConfiguration> {
 //
 //    /**
 //     * Get download methods of a specific file.
-//     * @see DownloadRequirements#tryGetDownloadFromUrl(OkHttpClient, HttpUrl, Headers, Long, Headers.Builder, long, long, LocalDateTime)
+//     * @see DownloadRequirements#tryGetDownloadFromUrl(OkHttpClient, HttpUrl, Headers, Long, Headers.Builder, long, long, ZonedDateTime)
 //     */
 //    @NotNull UnionPair<DownloadRequirements, FailureReason> download(final @NotNull FileLocation location, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws Exception;
 //

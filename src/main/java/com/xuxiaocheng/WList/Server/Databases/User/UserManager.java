@@ -13,7 +13,7 @@ import org.jetbrains.annotations.Unmodifiable;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
@@ -102,17 +102,17 @@ public record UserManager(@NotNull UserSqlInterface innerSqlInstance) implements
     /* --- Update --- */
 
     @Override
-    public @Nullable LocalDateTime updateUserName(final long id, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
+    public @Nullable ZonedDateTime updateUserName(final long id, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
         return this.innerSqlInstance.updateUserName(id, name, _connectionId);
     }
 
     @Override
-    public @Nullable LocalDateTime updateUserPassword(final long id, final @NotNull String encryptedPassword, final @Nullable String _connectionId) throws SQLException {
+    public @Nullable ZonedDateTime updateUserPassword(final long id, final @NotNull String encryptedPassword, final @Nullable String _connectionId) throws SQLException {
         return this.innerSqlInstance.updateUserPassword(id, encryptedPassword, _connectionId);
     }
 
     @Override
-    public @Nullable LocalDateTime updateUserGroup(final long id, final long groupId, final @Nullable String _connectionId) throws SQLException {
+    public @Nullable ZonedDateTime updateUserGroup(final long id, final long groupId, final @Nullable String _connectionId) throws SQLException {
         return this.innerSqlInstance.updateUserGroup(id, groupId, _connectionId);
     }
 

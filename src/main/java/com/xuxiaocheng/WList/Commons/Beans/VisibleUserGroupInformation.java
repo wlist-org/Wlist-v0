@@ -7,19 +7,19 @@ import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 import java.util.Set;
 
 public record VisibleUserGroupInformation(long id, @NotNull String name, @NotNull Set<@NotNull UserPermission> permissions,
-                                          @NotNull LocalDateTime createTime, @NotNull LocalDateTime updateTime) {
+                                          @NotNull ZonedDateTime createTime, @NotNull ZonedDateTime updateTime) {
     public static @NotNull VisibleUserGroupInformation parse(final @NotNull ByteBuf buffer) throws IOException {
         final long id = ByteBufIOUtil.readVariableLenLong(buffer);
         final String name = ByteBufIOUtil.readUTF(buffer);
         final Set<UserPermission> permissions = Objects.requireNonNullElse(UserPermission.parse(ByteBufIOUtil.readUTF(buffer)), UserPermission.Empty);
-        final LocalDateTime createTime = LocalDateTime.parse(ByteBufIOUtil.readUTF(buffer), DateTimeFormatter.ISO_DATE_TIME);
-        final LocalDateTime updateTime = LocalDateTime.parse(ByteBufIOUtil.readUTF(buffer), DateTimeFormatter.ISO_DATE_TIME);
+        final ZonedDateTime createTime = ZonedDateTime.parse(ByteBufIOUtil.readUTF(buffer), DateTimeFormatter.ISO_DATE_TIME);
+        final ZonedDateTime updateTime = ZonedDateTime.parse(ByteBufIOUtil.readUTF(buffer), DateTimeFormatter.ISO_DATE_TIME);
         return new VisibleUserGroupInformation(id, name, permissions, createTime, updateTime);
     }
 

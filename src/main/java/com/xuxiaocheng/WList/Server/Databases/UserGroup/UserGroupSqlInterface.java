@@ -11,7 +11,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 
 import java.sql.SQLException;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,13 +42,13 @@ public interface UserGroupSqlInterface extends DatabaseInterface {
      * Update group name. (Do NOT update groups in {@link com.xuxiaocheng.WList.Commons.IdentifierNames.UserGroupName})
      * @return null: name is conflict OR no such id. !null: operate time.
      */
-    @Nullable LocalDateTime updateGroupName(final long id, final @NotNull String name, final @Nullable String _connectionId) throws SQLException;
+    @Nullable ZonedDateTime updateGroupName(final long id, final @NotNull String name, final @Nullable String _connectionId) throws SQLException;
 
     /**
      * Update group permissions. (Do NOT update admin group {@link com.xuxiaocheng.WList.Commons.IdentifierNames.UserGroupName#Admin})
      * @return null: no such id. !null: operate time.
      */
-    @Nullable LocalDateTime updateGroupPermission(final long id, final @NotNull Set<@NotNull UserPermission> permissions, final @Nullable String _connectionId) throws SQLException;
+    @Nullable ZonedDateTime updateGroupPermission(final long id, final @NotNull Set<@NotNull UserPermission> permissions, final @Nullable String _connectionId) throws SQLException;
 
 
     /* --- Select --- */

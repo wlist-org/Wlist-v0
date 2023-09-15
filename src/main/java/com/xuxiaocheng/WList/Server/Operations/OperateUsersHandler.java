@@ -22,7 +22,7 @@ import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -74,7 +74,7 @@ public final class OperateUsersHandler {
                 WListServer.ServerChannelHandler.write(channel, OperateUsersHandler.GroupDataError);
                 return;
             }
-            final LocalDateTime time = UserManager.getInstance().updateUserGroup(userId, groupId, null);
+            final ZonedDateTime time = UserManager.getInstance().updateUserGroup(userId, groupId, null);
             if (time == null) {
                 WListServer.ServerChannelHandler.write(channel, OperateUsersHandler.UserDataError);
                 return;
