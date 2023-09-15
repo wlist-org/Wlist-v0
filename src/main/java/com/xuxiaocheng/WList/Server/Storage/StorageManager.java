@@ -23,16 +23,11 @@ import org.jetbrains.annotations.Unmodifiable;
 import org.jetbrains.annotations.UnmodifiableView;
 
 import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -197,22 +192,8 @@ public final class StorageManager {
     public static void dumpConfigurationIfModified(final @NotNull ProviderConfiguration configuration) throws IOException {
         synchronized (configuration) {
             if (configuration.resetModified()) {
-                final File file = StorageManager.getStorageConfigurationFile(configuration.getName());
-                final File tmp = new File(file.getAbsolutePath() + ".tmp");
-                HFileHelper.ensureFileAccessible(tmp, true);
-                try {
-                    try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(file))) {
-                        YamlHelper.dumpYaml(configuration.dump(), outputStream);
-                    }
-                    try {
-                        Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-                    } catch (final IOException ignore) {
-                        Files.deleteIfExists(file.toPath());
-                        Files.move(tmp.toPath(), file.toPath());
-                    }
-                } finally {
-                    Files.deleteIfExists(tmp.toPath());
-                }
+                final Map<String, Object> config = configuration.dump();
+                HFileHelper.writeFileAtomically(StorageManager.getStorageConfigurationFile(configuration.getName()), stream -> YamlHelper.dumpYaml(config, stream));
             }
         }
     }

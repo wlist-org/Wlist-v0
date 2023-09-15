@@ -13,10 +13,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -125,9 +123,6 @@ public record ServerConfiguration(int port, int maxServerBacklog,
         final File file = ServerConfiguration.Location.getInstanceNullable();
         if (file == null) return;
         final ServerConfiguration configuration = ServerConfiguration.instance.getInstance();
-        HFileHelper.ensureFileAccessible(file, true);
-        try (final OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(file))) {
-            ServerConfiguration.dump(configuration, outputStream);
-        }
+        HFileHelper.writeFileAtomically(file, stream -> ServerConfiguration.dump(configuration, stream));
     }
 }
