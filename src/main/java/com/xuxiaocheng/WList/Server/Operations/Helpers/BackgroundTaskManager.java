@@ -29,7 +29,7 @@ public final class BackgroundTaskManager {
             new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 2, new DefaultThreadFactory("BackgroundExecutors"));
 
     public enum BackgroundTaskType {
-        Driver,
+        Provider,
         User,
     }
 

@@ -19,16 +19,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public abstract class ProviderConfiguration {
     public static final @NotNull DateTimeFormatter TimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
-    protected @NotNull String name;
+    protected @NotNull String name = "provider";
     protected @NotNull AtomicBoolean modified = new AtomicBoolean(false);
-
-    protected ProviderConfiguration(final @NotNull String name) {
-        super();
-        this.name = name;
-    }
 
     public @NotNull String getName() {
         return this.name;
+    }
+
+    public void setName(final @NotNull String name) {
+        this.name = name;
     }
 
     public boolean resetModified() {

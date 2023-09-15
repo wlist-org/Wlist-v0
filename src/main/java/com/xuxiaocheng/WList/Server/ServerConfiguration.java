@@ -31,8 +31,8 @@ import java.util.stream.Collectors;
 public record ServerConfiguration(int port, int maxServerBacklog,
                                   long tokenExpireTime, long idIdleExpireTime,
                                   int maxLimitPerPage, int forwardDownloadCacheCount,
-                                  boolean deleteCacheAfterUninitializeProvider,
-                                  @NotNull Map<@NotNull String, @NotNull ProviderTypes> providers) {
+                                  boolean allowDropIndexAfterUninitializeProvider,
+                                  @NotNull Map<@NotNull String, @NotNull ProviderTypes<?>> providers) {
     public static final @NotNull HInitializer<File> Location = new HInitializer<>("ServerConfigurationLocation");
     private static final @NotNull HInitializer<ServerConfiguration> instance = new HInitializer<>("ServerConfiguration");
 
@@ -41,8 +41,8 @@ public record ServerConfiguration(int port, int maxServerBacklog,
     }
 
     /**
-     * @see StorageManager#addProvider(String, ProviderTypes)
-     * @see StorageManager#removeProvider(String)
+     * @see StorageManager#addProvider(String, ProviderTypes, Map)
+     * @see StorageManager#removeProvider(String, boolean)
      */
     public static void set(final @NotNull ServerConfiguration configuration) throws IOException {
         final ServerConfiguration existed = ServerConfiguration.instance.getInstanceNullable();
@@ -68,12 +68,12 @@ public record ServerConfiguration(int port, int maxServerBacklog,
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "max_limit_per_page", BigInteger.ONE, BigInteger.valueOf(Integer.MAX_VALUE))).intValue(),
             YamlHelper.getConfig(config, "forward_download_cache_count", 3,
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "forward_download_cache_count", BigInteger.ZERO, BigInteger.valueOf(Integer.MAX_VALUE))).intValue(),
-            YamlHelper.getConfig(config, "delete_cache_after_uninitialize_provider", false,
-                o -> YamlHelper.transferBooleanFromStr(o, errors, "delete_cache_after_uninitialize_provider")).booleanValue(),
+            YamlHelper.getConfig(config, "allow_drop_index_after_uninitialize_provider", false,
+                o -> YamlHelper.transferBooleanFromStr(o, errors, "allow_drop_index_after_uninitialize_provider")).booleanValue(),
             YamlHelper.getConfig(config, "providers", LinkedHashMap::new,
                 o -> { final Map<String, Object> map = YamlHelper.transferMapNode(o, errors, "providers");
                     if (map == null) return null;
-                    final Map<String, ProviderTypes> drivers = new LinkedHashMap<>(map.size());
+                    final Map<String, ProviderTypes<?>> providers = new LinkedHashMap<>(map.size());
                     for (final Map.Entry<String, Object> e: map.entrySet()) {
                         final String reason = StorageManager.providerNameInvalidReason(e.getKey());
                         if (reason != null) {
@@ -82,14 +82,14 @@ public record ServerConfiguration(int port, int maxServerBacklog,
                         }
                         final String identifier = YamlHelper.transferString(e.getValue(), errors, "provider(" + e.getKey() + ')');
                         if (identifier == null) continue;
-                        final ProviderTypes type = ProviderTypes.get(identifier);
+                        final ProviderTypes<?> type = ProviderTypes.get(identifier);
                         if (type == null) {
                             HLog.getInstance("DefaultLogger").log(HLogLevel.WARN, "Unsupported provider type.", ParametersMap.create().add("name", e.getKey()).add("identifier", identifier));
                             continue;
                         }
-                        drivers.put(e.getKey(), type);
+                        providers.put(e.getKey(), type);
                     }
-                    return drivers;
+                    return providers;
                 })
         );
         YamlHelper.throwErrors(errors);
@@ -104,7 +104,7 @@ public record ServerConfiguration(int port, int maxServerBacklog,
         config.put("id_idle_expire_time", configuration.idIdleExpireTime);
         config.put("max_limit_per_page", configuration.maxLimitPerPage);
         config.put("forward_download_cache_count", configuration.forwardDownloadCacheCount);
-        config.put("delete_cache_after_uninitialize_provider", configuration.deleteCacheAfterUninitializeProvider);
+        config.put("allow_drop_index_after_uninitialize_provider", configuration.allowDropIndexAfterUninitializeProvider);
         config.put("providers", configuration.providers.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, t -> t.getValue().getIdentifier())));
         YamlHelper.dumpYaml(config, stream);
     }

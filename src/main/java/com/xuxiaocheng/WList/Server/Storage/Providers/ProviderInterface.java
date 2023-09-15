@@ -10,7 +10,7 @@ public interface ProviderInterface<C extends ProviderConfiguration> {
      * Get the type of the provider.
      */
     @Contract(pure = true)
-    @NotNull ProviderTypes getType();
+    @NotNull ProviderTypes<?> getType();
 
     /**
      * Return the default configuration if this provider is not initialized.

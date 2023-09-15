@@ -14,11 +14,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-final class LanzouConfiguration extends ProviderConfiguration {
-    LanzouConfiguration() {
-        super("lanzou");
-    }
-
+public final class LanzouConfiguration extends ProviderConfiguration {
     private final @NotNull OkHttpClient httpClient = HttpNetworkHelper.newHttpClientBuilder()
             .addNetworkInterceptor(new HttpNetworkHelper.FrequencyControlInterceptor(
                     new HttpNetworkHelper.FrequencyControlPolicy(3, 1, TimeUnit.SECONDS),
@@ -61,7 +57,8 @@ final class LanzouConfiguration extends ProviderConfiguration {
 
     @Override
     public void load(final @NotNull @UnmodifiableView Map<? super @NotNull String, @NotNull Object> config, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors) {
-        super.displayName = "lanzou";
+        super.name = "lanzou";
+        super.displayName = "Lanzou";
         super.maxSizePerFile = 100 << 20;
         super.rootDirectoryId = -1;
         super.load(config, errors);

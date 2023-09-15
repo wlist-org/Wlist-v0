@@ -10,7 +10,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     @Override
-    public @NotNull ProviderTypes getType() {
+    public @NotNull ProviderTypes<LanzouConfiguration> getType() {
         return ProviderTypes.Lanzou;
     }
 
