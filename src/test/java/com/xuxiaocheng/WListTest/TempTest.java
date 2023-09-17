@@ -4,36 +4,32 @@ import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
-import com.xuxiaocheng.WList.Server.Operations.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
-import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
-import java.time.ZonedDateTime;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 public class TempTest {
-    private static final boolean initializeServer = false;
+    private static final boolean initializeServer = true;
     private static final @NotNull SupplierE<@Nullable Object> _main = () -> {
-        final ZonedDateTime time = MiscellaneousUtil.now().withNano(0);
-        Assertions.assertEquals(time, ZonedDateTime.parse(time.format(ProviderConfiguration.TimeFormatter), ProviderConfiguration.TimeFormatter));
+
         return null;
     };
 

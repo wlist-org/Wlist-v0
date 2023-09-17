@@ -275,9 +275,9 @@ public class UserSqliteHelper implements UserSqlInterface {
                 case UpdateTime -> "temp.update_time";
                 case GroupId -> "temp.group_id";
                 case GroupName -> "groups.name_order";
-            }).append(' ').append(switch (order.getValue()) {
-                case ASCEND -> "ASC";
-                case DESCEND -> "DESC";
+            }).append(switch (order.getValue()) {
+                case ASCEND -> " ASC";
+                case DESCEND -> " DESC";
             }).append(',');
         }
         return builder.deleteCharAt(builder.length() - 1).toString();

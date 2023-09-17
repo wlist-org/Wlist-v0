@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WListTest.Databases;
 
+import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqliteHelper;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
@@ -8,6 +9,7 @@ import com.xuxiaocheng.WListTest.StaticLoader;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.CleanupMode;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.parallel.Execution;
@@ -17,11 +19,17 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.File;
 import java.sql.SQLException;
+import java.util.Collections;
+import java.util.Objects;
 
 @Execution(ExecutionMode.SAME_THREAD)
 public class FilesTest {
     @TempDir(cleanup = CleanupMode.ALWAYS)
     private static File directory;
+
+    public FileManager manager() {
+        return FileManager.getInstance("test");
+    }
 
     @BeforeAll
     public static void initialize() throws SQLException {
@@ -48,5 +56,15 @@ public class FilesTest {
         Assertions.assertTrue(FileSqliteHelper.isDirectory(directory));
         Assertions.assertFalse(FileSqliteHelper.isDirectory(file));
         Assertions.assertEquals(directory, file - 1);
+    }
+
+    @Test
+    public void inserts() throws SQLException {
+        FileManager.getInstance("test").insertFilesSameDirectory(Collections.emptyIterator(), 0, null);
+        this.manager().insertFileOrDirectory(new FileInformation(1, 0, "1-file", false, 1024, null, null, null), null);
+        this.manager().insertFileOrDirectory(new FileInformation(2, 0, "2-directory", true, 0, null, null, null), null);
+        this.manager().insertFileOrDirectory(new FileInformation(3, 2, "2-file", false, 204, null, null, null), null);
+        Assertions.assertEquals(1024 + 204, Objects.requireNonNull(this.manager().selectFile(0, true, null)).size());
+        Assertions.assertEquals(204, Objects.requireNonNull(this.manager().selectFile(2, true, null)).size());
     }
 }

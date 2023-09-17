@@ -1,9 +1,20 @@
 package com.xuxiaocheng.WList.Server.Storage.Providers;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.Ranges.IntRange;
+import com.xuxiaocheng.HeadLibs.Ranges.LongRange;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
+import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
+import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
+
+import java.util.LinkedHashMap;
+import java.util.function.Consumer;
 
 public interface ProviderInterface<C extends ProviderConfiguration> {
     /**
@@ -32,6 +43,18 @@ public interface ProviderInterface<C extends ProviderConfiguration> {
      */
     void uninitialize(final boolean dropIndex) throws Exception;
 
+    /**
+     * Get the list of files in directory.
+     * @param consumer: null: directory is not available. !null: list of files.
+     */
+    void list(final long directoryId, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final @LongRange(minimum = 0) long position, final @IntRange(minimum = 0) int limit, final @NotNull Consumer<@Nullable UnionPair<FilesListInformation, Exception>> consumer);
+
+    /**
+     * Get the file or directory information of a specific id.
+     * @return null: file/directory is not available. !null: information.
+     */
+//    @Nullable FileInformation info(final long id, final boolean isDirectory) throws Exception;
+
 //    /**
 //     * Build provider cache. Login and check token, etc.
 //     * @see ProviderConfiguration#setLastFileCacheBuildTime(ZonedDateTime)
@@ -51,20 +74,6 @@ public interface ProviderInterface<C extends ProviderConfiguration> {
 //     * @see FileManager
 //     */
 //    void refreshDirectory(final @NotNull FileLocation location) throws Exception;
-//
-//    /**
-//     * Get the list of files in directory.
-//     * @param location The directory location.
-//     * @return null: directory is not available. !null: list of files.
-//     */
-//    @Nullable FilesListInformation list(final @NotNull FileLocation location, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final @LongRange(minimum = 0) long position, final @IntRange(minimum = 0) int limit) throws Exception;
-//
-//    /**
-//     * Get the file information of a specific file.
-//     * @param location The file location to get information.
-//     * @return The file information. Null means not existed.
-//     */
-//    @Nullable FileInformation info(final @NotNull FileLocation location) throws Exception;
 //
 //    /**
 //     * Get download methods of a specific file.

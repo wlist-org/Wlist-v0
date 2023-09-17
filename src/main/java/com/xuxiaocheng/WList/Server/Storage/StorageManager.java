@@ -125,7 +125,7 @@ public final class StorageManager {
         StorageManager.failedProviders.remove(name);
         final Pair<ProviderTypes<?>, Pair.ImmutablePair<ProviderInterface<?>, ProviderRecyclerInterface<?>>> triad = Pair.makePair(type, StorageManager.ProviderPlaceholder);
         if (StorageManager.providers.putIfAbsent(name, triad) != null)
-            throw new IllegalParametersException("Conflict driver name.", ParametersMap.create().add("name", name).add("type", type));
+            throw new IllegalParametersException("Conflict provider name.", ParametersMap.create().add("name", name).add("type", type));
         try {
             final C configuration = type.getConfiguration().get();
             final ProviderInterface<C> provider = type.getProvider().get();

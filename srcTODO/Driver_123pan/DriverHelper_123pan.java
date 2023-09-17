@@ -85,14 +85,16 @@ final class DriverHelper_123pan {
     static final int ExceedSizeLimitSingleFileResponseCode = 5054;
     static final int InvalidFilenameResponseCode = 5064;
 
-    @Contract(pure = true) static int getDuplicatePolicy(final Options.@NotNull DuplicatePolicy policy) {
+    @Contract(pure = true)
+    static int getDuplicatePolicy(final Options.@NotNull DuplicatePolicy policy) {
         return switch (policy) {
             case DuplicatePolicy.ERROR -> 0;
             case DuplicatePolicy.OVER -> 2;
             case DuplicatePolicy.KEEP -> 1;
         };
     }
-    @Contract(pure = true) static @NotNull String getOrderPolicy(final Options.@NotNull OrderPolicy policy) {
+    @Contract(pure = true)
+    static @NotNull String getOrderPolicy(final Options.@NotNull OrderPolicy policy) {
         return switch (policy) {
             case OrderPolicy.FileName -> "file_name";
             case OrderPolicy.Size -> "size";
@@ -100,7 +102,8 @@ final class DriverHelper_123pan {
             case OrderPolicy.UpdateTime -> "update_at";
         };
     }
-    @Contract(pure = true) static @NotNull String getOrderDirection(final Options.@NotNull OrderDirection policy) {
+    @Contract(pure = true)
+    static @NotNull String getOrderDirection(final Options.@NotNull OrderDirection policy) {
         return switch (policy) {
             case OrderDirection.ASCEND -> "asc";
             case OrderDirection.DESCEND -> "desc";

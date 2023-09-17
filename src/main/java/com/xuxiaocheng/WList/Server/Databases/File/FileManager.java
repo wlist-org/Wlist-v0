@@ -1,16 +1,20 @@
 package com.xuxiaocheng.WList.Server.Databases.File;
 
-import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Initializers.HMultiInitializers;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
+import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
+import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -87,15 +91,46 @@ public record FileManager(@NotNull FileSqlInterface innerSqlInstance) implements
         return this.innerSqlInstance.getRootId();
     }
 
-
+    /* --- Insert --- */
 
     @Override
-    public Pair.@NotNull ImmutablePair<@Nullable FileInformation, @Nullable FileInformation> selectFile(final long id, @Nullable final String _connectionId) throws SQLException {
-        return this.innerSqlInstance.selectFile(id, _connectionId);
+    public void insertFileOrDirectory(final @NotNull FileInformation information, final @Nullable String _connectionId) throws SQLException {
+        this.innerSqlInstance.insertFileOrDirectory(information, _connectionId);
     }
+
+    @Override
+    public void insertFilesSameDirectory(final @NotNull Iterator<@NotNull FileInformation> iterator, final long directoryId, final @Nullable String _connectionId) throws SQLException {
+        this.innerSqlInstance.insertFilesSameDirectory(iterator, directoryId, _connectionId);
+    }
+
+    /* --- Update --- */
+
+    @Override
+    public void updateDirectorySizeRecursively(final long directoryId, final long delta, final @Nullable String _connectionId) throws SQLException {
+        this.innerSqlInstance.updateDirectorySizeRecursively(directoryId, delta, _connectionId);
+    }
+
+    /* --- Select --- */
 
     @Override
     public @Nullable FileInformation selectFile(final long id, final boolean isDirectory, @Nullable final String _connectionId) throws SQLException {
         return this.innerSqlInstance.selectFile(id, isDirectory, _connectionId);
+    }
+
+    @Override
+    public @NotNull FilesListInformation selectFilesInDirectory(final long directoryId, final Options.@NotNull FilterPolicy filter, final @NotNull LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+        return this.innerSqlInstance.selectFilesInDirectory(directoryId, filter, orders, position, limit, _connectionId);
+    }
+
+    /* --- Delete --- */
+
+    @Override
+    public boolean deleteFile(final long fileId, final @Nullable String _connectionId) throws SQLException {
+        return this.innerSqlInstance.deleteFile(fileId, _connectionId);
+    }
+
+    @Override
+    public long deleteDirectoryRecursively(final long directoryId, final @Nullable String _connectionId) throws SQLException {
+        return this.innerSqlInstance.deleteDirectoryRecursively(directoryId, _connectionId);
     }
 }

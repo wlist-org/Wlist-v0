@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server.Storage.Providers.WebProviders.Lanzou;
+package com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou;
 
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;

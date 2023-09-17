@@ -13,7 +13,7 @@ import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
-import com.xuxiaocheng.WList.Server.Operations.Helpers.BackgroundTaskManager;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Operations.ServerHandlerManager;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;

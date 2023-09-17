@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server.Storage.Providers.WebProviders.Lanzou;
+package com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou;
 
 @SuppressWarnings("SameParameterValue")
 public final class DriverManager_lanzou {
@@ -88,7 +88,7 @@ public final class DriverManager_lanzou {
 //            while (list.getFirst().hasNext()) {
 //                final FileInformation information = list.getFirst().next();
 //                if (information.id() == id) {
-//                    BackgroundTaskManager.backgroundWithLock(new BackgroundTaskManager.BackgroundTaskIdentify(BackgroundTaskManager.BackgroundTaskType.Driver,
+//                    BackgroundTaskManager.backgroundWithLock(new BackgroundTaskManager.BackgroundTaskIdentifier(BackgroundTaskManager.BackgroundTaskType.Driver,
 //                            configuration.getName(), "Sync files list.", parentId.toString()), () -> new AtomicBoolean(true),
 //                            AtomicBoolean.class, l -> l.compareAndSet(true, false), () -> /*Held connection id*/
 //                            HMiscellaneousHelper.consumeIterator(list.getFirst(), list.getSecond()), null);

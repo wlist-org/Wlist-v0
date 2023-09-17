@@ -27,11 +27,13 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class TrashedSqliteHelper implements TrashedSqlInterface {
-    @Contract(pure = true) private static @NotNull String getTableName(final @NotNull String name) {
+    @Contract(pure = true)
+    private static @NotNull String getTableName(final @NotNull String name) {
         return "driver_" + Base64.getEncoder().encodeToString(name.getBytes(StandardCharsets.UTF_8)).replace('=', '_') + "_trash";
     }
 
-    @Contract(pure = true) private static @NotNull String getOrderPolicy(final Options.@NotNull OrderPolicy policy) {
+    @Contract(pure = true)
+    private static @NotNull String getOrderPolicy(final Options.@NotNull OrderPolicy policy) {
         return "name";
 //        return switch (policy) {
 //            case FileName -> "name";
@@ -40,7 +42,8 @@ public final class TrashedSqliteHelper implements TrashedSqlInterface {
 //            case UpdateTime -> "expire_time";
 //        };
     }
-    @Contract(pure = true) private static @NotNull String getOrderDirection(final Options.@NotNull OrderDirection policy) {
+    @Contract(pure = true)
+    private static @NotNull String getOrderDirection(final Options.@NotNull OrderDirection policy) {
         return switch (policy) {
             case ASCEND -> "ASC";
             case DESCEND -> "DESC";

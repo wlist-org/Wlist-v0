@@ -66,7 +66,7 @@ public record ServerConfiguration(int port, int maxServerBacklog,
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "max_limit_per_page", BigInteger.ONE, BigInteger.valueOf(Integer.MAX_VALUE))).intValue(),
             YamlHelper.getConfig(config, "forward_download_cache_count", 3,
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "forward_download_cache_count", BigInteger.ZERO, BigInteger.valueOf(Integer.MAX_VALUE))).intValue(),
-            YamlHelper.getConfig(config, "allow_drop_index_after_uninitialize_provider", false,
+            YamlHelper.getConfig(config, "allow_drop_index_after_uninitialize_provider", true,
                 o -> YamlHelper.transferBooleanFromStr(o, errors, "allow_drop_index_after_uninitialize_provider")).booleanValue(),
             YamlHelper.getConfig(config, "providers", LinkedHashMap::new,
                 o -> { final Map<String, Object> map = YamlHelper.transferMapNode(o, errors, "providers");
@@ -114,9 +114,11 @@ public record ServerConfiguration(int port, int maxServerBacklog,
             return;
         }
         HFileHelper.ensureFileAccessible(file, true);
+        final ServerConfiguration configuration;
         try (final InputStream stream = new BufferedInputStream(new FileInputStream(file))) {
-            ServerConfiguration.set(ServerConfiguration.parse(stream));
+            configuration = ServerConfiguration.parse(stream);
         }
+        ServerConfiguration.set(configuration);
     }
 
     public static synchronized void dumpToFile() throws IOException {

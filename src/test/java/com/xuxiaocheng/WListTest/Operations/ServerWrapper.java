@@ -16,7 +16,7 @@ import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
-import com.xuxiaocheng.WList.Server.Operations.Helpers.BackgroundTaskManager;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WListTest.StaticLoader;

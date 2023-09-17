@@ -276,9 +276,6 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
 
     /* --- Select --- */
 
-    /**
-     * @see com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation.Order
-     */
     protected static @NotNull String orderBy(@SuppressWarnings("TypeMayBeWeakened") final @NotNull LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> orders) {
         if (orders.isEmpty())
             return "ORDER BY name_order ASC, group_id ASC";
@@ -290,9 +287,9 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
                 case CreateTime -> "create_time";
                 case UpdateTime -> "update_time";
                 default -> "permissions" + order.getKey().name().substring("Permission_".length());
-            }).append(' ').append(switch (order.getValue()) {
-                case ASCEND -> "ASC";
-                case DESCEND -> "DESC";
+            }).append(switch (order.getValue()) {
+                case ASCEND -> " ASC";
+                case DESCEND -> " DESC";
             }).append(',');
         }
         return builder.deleteCharAt(builder.length() - 1).toString();
