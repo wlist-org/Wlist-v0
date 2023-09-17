@@ -32,7 +32,7 @@ public interface FileSqlInterface extends DatabaseInterface {
     /**
      * Build directory index. And auto update parents' size recursively.
      * WARNING: ONLY be called when first listing the directory.
-     *
+     * {@code assert information.parentId() == directoryId && (information.isDirectory() || information.size() >= 0);}
      * @see #insertFileOrDirectory(FileInformation, String)
      */
     void insertFilesSameDirectory(final @NotNull Iterator<@NotNull FileInformation> iterator, final long directoryId, final @Nullable String _connectionId) throws SQLException;
@@ -40,14 +40,25 @@ public interface FileSqlInterface extends DatabaseInterface {
 
     /* --- Update --- */
 
-    void updateDirectorySizeRecursively(final long  directoryId, final long delta, final @Nullable String _connectionId) throws SQLException;
+    /**
+     * Update directory size recursively.
+     */
+    void updateDirectorySizeRecursively(final long directoryId, final long delta, final @Nullable String _connectionId) throws SQLException;
 
 
     /* --- Select --- */
 
+    /**
+     * Select file by id.
+     * @return null: not found. !null: found.
+     */
     @Nullable FileInformation selectFile(final long id, final boolean isDirectory, final @Nullable String _connectionId) throws SQLException;
 
+    /**
+     * Select all files in directory.
+     */
     @NotNull FilesListInformation selectFilesInDirectory(final long directoryId, final Options.@NotNull FilterPolicy filter, final @NotNull LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException;
+
 
     /* --- Delete --- */
 
@@ -55,19 +66,11 @@ public interface FileSqlInterface extends DatabaseInterface {
 
     long deleteDirectoryRecursively(final long directoryId, final @Nullable String _connectionId) throws SQLException;
 
+
     /* --- Search --- */
 
 
-//    void updateDirectoryType(final long id, final boolean empty, final @Nullable String _connectionId) throws SQLException;
 //    @Nullable FileInformation selectFileInDirectory(final long parentId, final @NotNull String name, final @Nullable String _connectionId) throws SQLException;
-//    @NotNull @UnmodifiableView Map<@NotNull String, @Nullable @UnmodifiableView Set<@NotNull FileInformation>> selectFilesByMd5(final @NotNull Collection<@NotNull String> md5List, final @Nullable String _connectionId) throws SQLException;
-//    @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull @UnmodifiableView Set<@NotNull Long>> selectFilesIdByParentId(final @NotNull Collection<@NotNull Long> parentIdList, final @Nullable String _connectionId) throws SQLException;
-//    @NotNull @UnmodifiableView Map<@NotNull Long, @NotNull Long> selectFilesCountByParentId(final @NotNull Collection<@NotNull Long> parentIdList, final @Nullable String _connectionId) throws SQLException;
-//    Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileInformation>> selectFilesByParentIdInPage(final long parentId, final Options.@NotNull FilterPolicy filter, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final @Nullable String _connectionId) throws SQLException;
-
-//
-//    @Nullable Long updateDirectorySize(final long directoryId, final long delta, final @Nullable String _connectionId) throws SQLException;
-//    @Nullable Long calculateDirectorySizeRecursively(final long directoryId, final @Nullable String _connectionId) throws SQLException;
 
     // TODO Search
 }

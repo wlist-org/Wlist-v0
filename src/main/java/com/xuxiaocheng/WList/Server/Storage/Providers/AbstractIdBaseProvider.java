@@ -20,7 +20,6 @@ import java.sql.SQLException;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.NoSuchElementException;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -134,7 +133,7 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
         // Not indexed.
         final BackgroundTaskManager.BackgroundTaskIdentifier identifier = new BackgroundTaskManager.BackgroundTaskIdentifier(
                 this.configuration.getInstance().getName(), BackgroundTaskManager.SyncTask, String.valueOf(directoryId));
-        final CompletableFuture<?> future = BackgroundTaskManager.background(identifier, () -> {
+        if (BackgroundTaskManager.background(identifier, () -> {
             UnionPair<FilesListInformation, Exception> result = null;
             try (final Connection connection = manager.getConnection(null, connectionId)) {
                 final Iterator<FileInformation> iterator = this.list0(directoryId);
@@ -155,8 +154,7 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
             } finally {
                 consumer.accept(result);
             }
-        });
-        if (future == null) {
+        }) == null) {
             BackgroundTaskManager.join(identifier);
             this.list(directoryId, filter, orders, position, limit, consumer);
         }
