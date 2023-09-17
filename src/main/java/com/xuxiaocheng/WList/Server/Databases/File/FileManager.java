@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Server.Databases.File;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
@@ -15,6 +16,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -99,27 +101,32 @@ public record FileManager(@NotNull FileSqlInterface innerSqlInstance) implements
     }
 
     @Override
-    public void insertFilesSameDirectory(final @NotNull Iterator<@NotNull FileInformation> iterator, final long directoryId, final @Nullable String _connectionId) throws SQLException {
-        this.innerSqlInstance.insertFilesSameDirectory(iterator, directoryId, _connectionId);
+    public void insertIterator(final @NotNull Iterator<@NotNull FileInformation> iterator, final long directoryId, final @Nullable String _connectionId) throws SQLException {
+        this.innerSqlInstance.insertIterator(iterator, directoryId, _connectionId);
     }
 
     /* --- Update --- */
 
     @Override
-    public void updateDirectorySizeRecursively(final long directoryId, final long delta, final @Nullable String _connectionId) throws SQLException {
-        this.innerSqlInstance.updateDirectorySizeRecursively(directoryId, delta, _connectionId);
+    public void updateFileName(final long id, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
+        this.innerSqlInstance.updateFileName(id, name, _connectionId);
     }
 
     /* --- Select --- */
 
     @Override
-    public @Nullable FileInformation selectFile(final long id, final boolean isDirectory, @Nullable final String _connectionId) throws SQLException {
-        return this.innerSqlInstance.selectFile(id, isDirectory, _connectionId);
+    public @Nullable FileInformation selectInfo(final long id, final boolean isDirectory, @Nullable final String _connectionId) throws SQLException {
+        return this.innerSqlInstance.selectInfo(id, isDirectory, _connectionId);
     }
 
     @Override
-    public @NotNull FilesListInformation selectFilesInDirectory(final long directoryId, final Options.@NotNull FilterPolicy filter, final @NotNull LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
-        return this.innerSqlInstance.selectFilesInDirectory(directoryId, filter, orders, position, limit, _connectionId);
+    public @NotNull FilesListInformation selectInfosInDirectory(final long directoryId, final Options.@NotNull FilterPolicy filter, final @NotNull LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+        return this.innerSqlInstance.selectInfosInDirectory(directoryId, filter, orders, position, limit, _connectionId);
+    }
+
+    @Override
+    public Pair.@NotNull ImmutablePair<@NotNull Set<@NotNull Long>, @NotNull Set<@NotNull Long>> selectIdsInDirectory(final long directoryId, final @Nullable String _connectionId) throws SQLException {
+        return this.innerSqlInstance.selectIdsInDirectory(directoryId, _connectionId);
     }
 
     /* --- Delete --- */
@@ -130,7 +137,7 @@ public record FileManager(@NotNull FileSqlInterface innerSqlInstance) implements
     }
 
     @Override
-    public long deleteDirectoryRecursively(final long directoryId, final @Nullable String _connectionId) throws SQLException {
-        return this.innerSqlInstance.deleteDirectoryRecursively(directoryId, _connectionId);
+    public void deleteDirectoryRecursively(final long directoryId, final @Nullable String _connectionId) throws SQLException {
+        this.innerSqlInstance.deleteDirectoryRecursively(directoryId, _connectionId);
     }
 }

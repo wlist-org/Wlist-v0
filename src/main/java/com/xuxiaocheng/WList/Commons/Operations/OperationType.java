@@ -38,7 +38,6 @@ public enum OperationType {
     // Providers
     AddProvider,
     RemoveProvider,
-    BuildIndex,
     //
     ListFiles,
     CreateDirectory,

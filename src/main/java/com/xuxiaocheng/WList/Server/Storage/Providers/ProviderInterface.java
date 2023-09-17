@@ -5,6 +5,7 @@ import com.xuxiaocheng.HeadLibs.Ranges.IntRange;
 import com.xuxiaocheng.HeadLibs.Ranges.LongRange;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
@@ -47,33 +48,26 @@ public interface ProviderInterface<C extends ProviderConfiguration> {
      * Get the list of files in directory.
      * @param consumer: null: directory is not available. !null: list of files.
      */
-    void list(final long directoryId, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final @LongRange(minimum = 0) long position, final @IntRange(minimum = 0) int limit, final @NotNull Consumer<@Nullable UnionPair<FilesListInformation, Exception>> consumer);
+    void list(final long directoryId, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final @LongRange(minimum = 0) long position, final @IntRange(minimum = 0) int limit, final @NotNull Consumer<@Nullable UnionPair<FilesListInformation, Throwable>> consumer);
+
+    /**
+     * Force rebuild files index to synchronize with web server (not recursively).
+     * @param consumer: null: directory is not available. false: directory is not existed in web server. true: success.
+     */
+    void refreshDirectory(final long directoryId, final Consumer<? super @Nullable UnionPair<Boolean, Throwable>> consumer);
 
     /**
      * Get the file or directory information of a specific id.
      * @return null: file/directory is not available. !null: information.
      */
-//    @Nullable FileInformation info(final long id, final boolean isDirectory) throws Exception;
+    @Deprecated
+    @Nullable FileInformation info(final long id, final boolean isDirectory) throws Exception;
 
 //    /**
 //     * Build provider cache. Login and check token, etc.
 //     * @see ProviderConfiguration#setLastFileCacheBuildTime(ZonedDateTime)
 //     */
 //    void buildCache() throws Exception;
-//
-//    /**
-//     * Build all files index into sql database. (Recursive from root.)
-//     * @see FileManager
-//     * @see ProviderConfiguration#setLastFileIndexBuildTime(ZonedDateTime)
-//     */
-//    void buildIndex() throws Exception;
-//
-//    /**
-//     * Force rebuild files index into sql database to synchronize with web server. (Not recursively)
-//     * @param location The directory location to refresh.
-//     * @see FileManager
-//     */
-//    void refreshDirectory(final @NotNull FileLocation location) throws Exception;
 //
 //    /**
 //     * Get download methods of a specific file.

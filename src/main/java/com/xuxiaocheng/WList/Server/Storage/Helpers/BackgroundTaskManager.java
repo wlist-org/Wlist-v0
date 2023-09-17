@@ -9,7 +9,10 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 public final class BackgroundTaskManager {
     private BackgroundTaskManager() {
@@ -30,11 +33,10 @@ public final class BackgroundTaskManager {
         final boolean[] flag = {true};
         final CompletableFuture<?> future = BackgroundTaskManager.tasks.computeIfAbsent(identify, k -> {
             flag[0] = false;
-            return CompletableFuture.runAsync(runnable, BackgroundTaskManager.BackgroundExecutors).handle((v, e) -> {
+            return CompletableFuture.runAsync(runnable, BackgroundTaskManager.BackgroundExecutors).whenComplete((v, e) -> {
                 BackgroundTaskManager.tasks.remove(identify);
                 if (e != null)
                     HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), e);
-                return v;
             });
         });
         return flag[0] ? null : future;
@@ -51,9 +53,44 @@ public final class BackgroundTaskManager {
             future.cancel(true);
     }
 
+    @Deprecated
     public static void join(final @NotNull BackgroundTaskIdentifier identify) {
         final CompletableFuture<?> future = BackgroundTaskManager.tasks.get(identify);
         if (future != null)
             future.join();
+    }
+
+    public static void onFinally(final @NotNull BackgroundTaskIdentifier identify, final Runnable runnable) {
+        final CompletableFuture<?> future = BackgroundTaskManager.tasks.get(identify);
+        if (future == null)
+            runnable.run();
+        else
+            future.whenComplete((v, e) -> runnable.run());
+    }
+
+    public static boolean onException(final @NotNull BackgroundTaskIdentifier identify, final @NotNull Consumer<? super @NotNull Throwable> consumer) {
+        final CompletableFuture<?> future = BackgroundTaskManager.tasks.get(identify);
+        if (future == null)
+            return false;
+        future.whenComplete((v, e) -> consumer.accept(e));
+        return true;
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> boolean onSuccess(final @NotNull BackgroundTaskIdentifier identify, final @NotNull Consumer<T> consumer) {
+        final CompletionStage<T> future = (CompletionStage<T>) BackgroundTaskManager.tasks.get(identify);
+        if (future == null)
+            return false;
+        future.whenComplete((v, e) -> consumer.accept(v));
+        return true;
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> boolean onComplete(final @NotNull BackgroundTaskIdentifier identify, final @NotNull BiConsumer<T, ? super Throwable> consumer) {
+        final CompletionStage<T> future = (CompletionStage<T>) BackgroundTaskManager.tasks.get(identify);
+        if (future == null)
+            return false;
+        future.whenComplete(consumer);
+        return true;
     }
 }
