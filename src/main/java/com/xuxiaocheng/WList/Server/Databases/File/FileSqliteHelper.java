@@ -229,7 +229,7 @@ public class FileSqliteHelper implements FileSqlInterface {
             long size = 0;
             if (iterator.hasNext()) {
                 try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-    INSERT OR REPLACE INTO %s (double_id, parent_id, name, name_order, size, create_time, update_time, others)
+    INSERT INTO %s (double_id, parent_id, name, name_order, size, create_time, update_time, others)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?);
                     """, this.tableName))) {
                     while (iterator.hasNext()) {
@@ -343,7 +343,8 @@ public class FileSqliteHelper implements FileSqlInterface {
 
     /* --- Select --- */
 
-    protected static @NotNull String orderBy(@SuppressWarnings("TypeMayBeWeakened") final @NotNull LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders) {
+    @Contract(pure = true)
+    protected static @NotNull String orderBy(@SuppressWarnings("TypeMayBeWeakened") final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders) {
         if (orders.isEmpty())
             return "ORDER BY name_order ASC, double_id ASC";
         final StringBuilder builder = new StringBuilder("ORDER BY ");
@@ -363,6 +364,7 @@ public class FileSqliteHelper implements FileSqlInterface {
         return builder.deleteCharAt(builder.length() - 1).toString();
     }
 
+    @Contract(pure = true)
     protected static @NotNull String whereFilter(final Options.@NotNull FilterPolicy filter) {
         return switch (filter) {
             case Both -> "";
@@ -538,7 +540,7 @@ public class FileSqliteHelper implements FileSqlInterface {
                     statement.setLong(1, FileSqliteHelper.getDoubleId(directoryId, true));
                     statement.executeUpdate();
                 }
-                this.updateDirectorySizeRecursively(parentId, size == -1 ? 0 : size, connectionId.get());
+                this.updateDirectorySizeRecursively(parentId, size == -1 ? 0 : -size, connectionId.get());
             }
             connection.commit();
         }

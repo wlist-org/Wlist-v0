@@ -56,7 +56,12 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
             FileManager.quicklyUninitialize(configuration.getName(), null);
     }
 
-    public abstract @Nullable Iterator<@NotNull FileInformation> list0(final long directoryId) throws Exception;
+    /**
+     * List the directory.
+     * @return null: directory is not existed. !null: list of files.
+     * @exception Exception: Any iterating exception can be wrapped in {@link NoSuchElementException} and then thrown in method {@code next()}.
+     */
+    protected abstract @Nullable Iterator<@NotNull FileInformation> list0(final long directoryId) throws Exception;
 
     @Override
     public void list(final long directoryId, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @NotNull Consumer<@Nullable UnionPair<FilesListInformation, Throwable>> consumer) {
@@ -156,13 +161,50 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
         }
     }
 
-    @Override
-    public @Nullable FileInformation info(final long id, final boolean isDirectory) throws Exception {
-        return this.manager.getInstance().selectInfo(id, isDirectory, null);
+    /**
+     * Try update file/directory information.
+     * @return false: file is not existed. true: needn't updated. success: updated.
+     */
+    protected @NotNull UnionPair<FileInformation, Boolean> info0(final @NotNull FileInformation oldInformation) throws Exception {
+        return UnionPair.fail(Boolean.TRUE);
     }
 
+    @Override
+    public @Nullable FileInformation info(final long id, final boolean isDirectory) throws Exception {
+        final FileInformation information = this.manager.getInstance().selectInfo(id, isDirectory, null);
+        if (information == null) return null;
+        final UnionPair<FileInformation, Boolean> update = this.info0(information);
+        if (update.isSuccess()) {
+            throw new UnsupportedOperationException();
+            // TODO
+        } else if (update.getE().booleanValue())
+            return information;
+        else {
+            if (isDirectory)
+                this.manager.getInstance().deleteDirectoryRecursively(id, null);
+            else
+                this.manager.getInstance().deleteFile(id, null);
+            return null;
+        }
+    }
+
+    /**
+     * Delete file or directory by id.
+     */
+    protected abstract void delete0(final long id, final boolean isDirectory) throws Exception;
+
+    @Override
+    public boolean delete(final long id, final boolean isDirectory) throws Exception {
+        this.delete0(id, isDirectory);
+        return true;
+    }
 
     //    @Override
+//    public @NotNull UnionPair<FileInformation, FailureReason> createDirectory(final long parentId, final @NotNull String directoryName, final @NotNull Options.DuplicatePolicy policy) throws Exception {
+//        return null;
+//    }
+//
+//    @Override
 //    public void buildIndex() throws IOException, SQLException, InterruptedException {
 //        final Set<CompletableFuture<?>> futures = ConcurrentHashMap.newKeySet();
 //        final AtomicLong runningFutures = new AtomicLong(1);
@@ -196,7 +238,7 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
 //        this.configuration.setLastFileIndexBuildTime(ZonedDateTime.now());
 //        this.configuration.setModified(true);
 //    }
-//
+
     @Override
     public @NotNull String toString() {
         return "AbstractIdBaseProvider{" +

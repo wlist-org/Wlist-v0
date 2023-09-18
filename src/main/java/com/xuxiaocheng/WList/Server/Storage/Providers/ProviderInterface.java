@@ -60,8 +60,19 @@ public interface ProviderInterface<C extends ProviderConfiguration> {
      * Get the file or directory information of a specific id.
      * @return null: file/directory is not available. !null: information.
      */
-    @Deprecated
     @Nullable FileInformation info(final long id, final boolean isDirectory) throws Exception;
+
+    /**
+     * Delete file or directory.
+     * @return false: file/directory is not available. true: deleted.
+     */
+    boolean delete(final long id, final boolean isDirectory) throws Exception;
+
+//    /**
+//     * Create an empty directory.
+//     * @see com.xuxiaocheng.WList.Server.Storage.Helpers.ProviderUtil#getRetryWrapper(String)
+//     */
+//    @NotNull UnionPair<FileInformation, FailureReason> createDirectory(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws Exception;
 
 //    /**
 //     * Build provider cache. Login and check token, etc.
@@ -76,23 +87,10 @@ public interface ProviderInterface<C extends ProviderConfiguration> {
 //    @NotNull UnionPair<DownloadRequirements, FailureReason> download(final @NotNull FileLocation location, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws Exception;
 //
 //    /**
-//     * Create an empty directory.
-//     * @see com.xuxiaocheng.WList.Server.Storage.Helpers.ProviderUtil#getRetryWrapper(String)
-//     */
-//    @NotNull UnionPair<FileInformation, FailureReason> createDirectory(final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws Exception;
-//
-//    /**
 //     * Upload file.
 //     */
 //    @NotNull UnionPair<UploadRequirements, FailureReason> upload(final @NotNull FileLocation parentLocation, final @NotNull String filename, final @LongRange(minimum = 0) long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws Exception;
 
-//    /**
-//     * Delete file.
-//     * @param location The file location to delete.
-//     * @throws Exception Something went wrong.
-//     */
-//    void delete(final @NotNull FileLocation location) throws Exception;
-//
 //    /**
 //     * Copy file.
 //     * @param sourceLocation The file location to copy.

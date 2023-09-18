@@ -58,34 +58,6 @@ public final class DriverManager_lanzou {
 //        }
 //    }
 //
-//    static void refreshDirectoryRecursively(final @NotNull LanzouConfiguration configuration, final long directoryId, final @NotNull Set<@NotNull CompletableFuture<?>> futures, final @NotNull AtomicLong runningFutures, final @NotNull AtomicBoolean interruptFlag) throws IOException, SQLException, InterruptedException {
-//        try {
-//            final Pair.ImmutablePair<Iterator<FileInformation>, Runnable> list = DriverManager_lanzou.syncFilesList(configuration, directoryId, null);
-//            if (list == null)
-//                return;
-//            final Collection<Long> directoryIdList = new LinkedList<>();
-//            try {
-//                while (list.getFirst().hasNext()) {
-//                    final FileInformation information = list.getFirst().next();
-//                    if (information.isDirectory())
-//                        directoryIdList.add(information.id());
-//                }
-//            } finally {
-//                list.getSecond().run();
-//            }
-//            if (interruptFlag.get()) return;
-//            runningFutures.addAndGet(directoryIdList.size());
-//            for (final Long id: directoryIdList)
-//                futures.add(CompletableFuture.runAsync(HExceptionWrapper.wrapRunnable(() -> DriverManager_lanzou.refreshDirectoryRecursively(configuration,
-//                        id.longValue(), futures, runningFutures, interruptFlag)), WListServer.IOExecutors).exceptionally(MiscellaneousUtil.exceptionHandler()));
-//        } finally {
-//            synchronized (runningFutures) {
-//                if (runningFutures.decrementAndGet() == 0)
-//                    runningFutures.notifyAll();
-//            }
-//        }
-//    }
-//
 //    static @NotNull UnionPair<DownloadMethods, FailureReason> getDownloadMethods(final @NotNull LanzouConfiguration configuration, final long fileId, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @Nullable String _connectionId) throws IOException, SQLException, InterruptedException {
 //        final FileInformation info = DriverManager_lanzou.getFileInformation(configuration, fileId, null, _connectionId);
 //        if (info == null || info.isDirectory()) return UnionPair.fail(FailureReason.byNoSuchFile("Downloading.", new FileLocation(configuration.getName(), fileId)));

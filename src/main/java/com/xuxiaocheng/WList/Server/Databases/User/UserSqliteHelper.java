@@ -12,6 +12,7 @@ import com.xuxiaocheng.WList.Server.Databases.SqliteHelper;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupInformation;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupSqliteHelper;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
@@ -263,7 +264,8 @@ public class UserSqliteHelper implements UserSqlInterface {
 
     /* --- Select --- */
 
-    protected static @NotNull String orderBy(@SuppressWarnings("TypeMayBeWeakened") final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders) {
+    @Contract(pure = true)
+    protected static @NotNull String orderBy(@SuppressWarnings("TypeMayBeWeakened") final @NotNull @Unmodifiable LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders) {
         if (orders.isEmpty())
             return "ORDER BY temp.name_order ASC, id ASC";
         final StringBuilder builder = new StringBuilder("ORDER BY ");
@@ -283,7 +285,8 @@ public class UserSqliteHelper implements UserSqlInterface {
         return builder.deleteCharAt(builder.length() - 1).toString();
     }
 
-    protected static @NotNull String whereGroup(@SuppressWarnings("TypeMayBeWeakened") final @NotNull Set<@NotNull Long> chooser, final boolean blacklist) {
+    @Contract(pure = true)
+    protected static @NotNull String whereGroup(@SuppressWarnings("TypeMayBeWeakened") final @NotNull @Unmodifiable Set<@NotNull Long> chooser, final boolean blacklist) {
         if (chooser.isEmpty())
             return blacklist ? "WHERE true" : "WHERE false";
         final StringBuilder builder = new StringBuilder("WHERE (");

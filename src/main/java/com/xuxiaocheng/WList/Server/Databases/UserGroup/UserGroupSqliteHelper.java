@@ -8,6 +8,7 @@ import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.DatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.SqliteHelper;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
@@ -276,7 +277,8 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
 
     /* --- Select --- */
 
-    protected static @NotNull String orderBy(@SuppressWarnings("TypeMayBeWeakened") final @NotNull LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> orders) {
+    @Contract(pure = true)
+    protected static @NotNull String orderBy(@SuppressWarnings("TypeMayBeWeakened") final @NotNull @Unmodifiable LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> orders) {
         if (orders.isEmpty())
             return "ORDER BY name_order ASC, group_id ASC";
         final StringBuilder builder = new StringBuilder("ORDER BY ");
@@ -295,7 +297,8 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
         return builder.deleteCharAt(builder.length() - 1).toString();
     }
 
-    protected static @NotNull String wherePermissions(final @NotNull Map<@NotNull UserPermission, @Nullable Boolean> chooser) {
+    @Contract(pure = true)
+    protected static @NotNull String wherePermissions(final @NotNull @Unmodifiable Map<@NotNull UserPermission, @Nullable Boolean> chooser) {
         if (chooser.isEmpty())
             return "";
         final StringBuilder builder = new StringBuilder("WHERE ");

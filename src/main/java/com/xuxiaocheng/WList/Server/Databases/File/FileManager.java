@@ -112,6 +112,11 @@ public record FileManager(@NotNull FileSqlInterface innerSqlInstance) implements
         this.innerSqlInstance.updateFileName(id, name, _connectionId);
     }
 
+    @Override
+    public void updateFileParentId(final long fileId, final long parentId, final @Nullable String _connectionId) throws SQLException {
+        this.innerSqlInstance.updateFileParentId(fileId, parentId, _connectionId);
+    }
+
     /* --- Select --- */
 
     @Override

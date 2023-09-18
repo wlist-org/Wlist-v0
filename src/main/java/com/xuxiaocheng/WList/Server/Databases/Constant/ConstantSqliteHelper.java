@@ -30,12 +30,12 @@ public final class ConstantSqliteHelper implements ConstantSqlInterface {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate("""
-                    CREATE TABLE IF NOT EXISTS constants (
-                        key         TEXT       PRIMARY KEY
-                                               UNIQUE
-                                               NOT NULL,
-                        value       TEXT
-                    );
+    CREATE TABLE IF NOT EXISTS constants (
+        key         TEXT        PRIMARY KEY
+                                UNIQUE
+                                NOT NULL,
+        value       TEXT        NOT NULL
+    );
                 """);
             }
             connection.commit();
@@ -47,7 +47,7 @@ public final class ConstantSqliteHelper implements ConstantSqlInterface {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             try (final Statement statement = connection.createStatement()) {
                 statement.executeUpdate("""
-                    DROP TABLE IF EXISTS constants;
+    DROP TABLE IF EXISTS constants;
                 """);
             }
             connection.commit();
@@ -58,7 +58,7 @@ public final class ConstantSqliteHelper implements ConstantSqlInterface {
     public @NotNull String get(final @NotNull String key, final @NotNull Supplier<@NotNull String> defaultValue, final @Nullable String _connectionId) throws SQLException {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             try (final PreparedStatement statement = connection.prepareStatement("""
-                    SELECT value FROM constants WHERE key == ? LIMIT 1;
+    SELECT value FROM constants WHERE key == ? LIMIT 1;
                 """)) {
                 statement.setString(1, key);
                 try (final ResultSet constant = statement.executeQuery()) {
@@ -68,7 +68,7 @@ public final class ConstantSqliteHelper implements ConstantSqlInterface {
             }
             final String value = defaultValue.get();
             try (final PreparedStatement statement = connection.prepareStatement("""
-                    INSERT INTO constants (key, value) VALUES (?, ?);
+    INSERT INTO constants (key, value) VALUES (?, ?);
                 """)) {
                 statement.setString(1, key);
                 statement.setString(2, value);
