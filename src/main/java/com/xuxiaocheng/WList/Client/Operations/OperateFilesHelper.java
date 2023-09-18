@@ -1,7 +1,7 @@
 package com.xuxiaocheng.WList.Client.Operations;
 
-public final class OperateFileHelper {
-    private OperateFileHelper() {
+public final class OperateFilesHelper {
+    private OperateFilesHelper() {
         super();
     }
 
@@ -63,7 +63,7 @@ public final class OperateFileHelper {
 //            }
 //            final String reason = ByteBufIOUtil.readUTF(receive);
 //            OperateHelper.logOperated(OperationType.CreateDirectory, () -> ParametersMap.create().add("success", false).add("reason", reason));
-//            return UnionPair.fail(OperateFileHelper.handleFailureReason(reason));
+//            return UnionPair.fail(OperateFilesHelper.handleFailureReason(reason));
 //        } finally {
 //            receive.release();
 //        }
@@ -101,7 +101,7 @@ public final class OperateFileHelper {
 //            }
 //            final String reason = ByteBufIOUtil.readUTF(receive);
 //            OperateHelper.logOperated(OperationType.RenameFile, () -> ParametersMap.create().add("success", false).add("reason", reason));
-//            return UnionPair.fail(OperateFileHelper.handleFailureReason(reason));
+//            return UnionPair.fail(OperateFilesHelper.handleFailureReason(reason));
 //        } finally {
 //            receive.release();
 //        }
@@ -197,7 +197,7 @@ public final class OperateFileHelper {
 //                }
 //            final String reason = ByteBufIOUtil.readUTF(receive);
 //            OperateHelper.logOperated(OperationType.RequestUploadFile, () -> ParametersMap.create().add("success", false).add("reason", reason));
-//            return UnionPair.fail(OperateFileHelper.handleFailureReason(reason));
+//            return UnionPair.fail(OperateFilesHelper.handleFailureReason(reason));
 //        } finally {
 //            receive.release();
 //        }
@@ -272,7 +272,7 @@ public final class OperateFileHelper {
 //            }
 //            final String reason = ByteBufIOUtil.readUTF(receive);
 //            OperateHelper.logOperated(type, () -> ParametersMap.create().add("success", false).add("reason", reason));
-//            return UnionPair.fail(OperateFileHelper.handleFailureReason(reason));
+//            return UnionPair.fail(OperateFilesHelper.handleFailureReason(reason));
 //        } finally {
 //            receive.release();
 //        }

@@ -38,17 +38,19 @@ public enum OperationType {
     // Providers
     AddProvider,
     RemoveProvider,
-    //
+    // Files
     ListFiles,
+    RefreshDirectory,
+    GetFileOrDirectory,
+    DeleteFileOrDirectory,
     CreateDirectory,
-    DeleteFile,
-    RenameFile,
     RequestDownloadFile,
     DownloadFile,
     CancelDownloadFile,
     RequestUploadFile,
     UploadFile,
     CancelUploadFile,
+    RenameFile,
     CopyFile,
     MoveFile,
     ;

@@ -35,7 +35,7 @@ public final class RootSelector {
         super();
     }
 
-    public static @NotNull FileInformation getProviderInformation(final @NotNull ProviderConfiguration configuration) {
+    private static @NotNull FileInformation getProviderInformation(final @NotNull ProviderConfiguration configuration) {
         return new FileInformation(configuration.getRootDirectoryId(), 0, configuration.getName(), true, configuration.getSpaceUsed(),
                 configuration.getCreateTime(), configuration.getUpdateTime(), configuration.getDisplayName());
     }

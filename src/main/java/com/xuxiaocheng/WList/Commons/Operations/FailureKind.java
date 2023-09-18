@@ -8,8 +8,8 @@ public enum FailureKind {
     ExceedMaxSize("Exceed max size per file."),
     NoSuchFile("No such file or directory."),
     Others("Unknown reason."),
-
     ;
+
     public static @NotNull FailureKind of(final @NotNull String type) {
         try {
             return FailureKind.valueOf(type);

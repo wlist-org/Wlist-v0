@@ -29,7 +29,6 @@ public final class OperateProvidersHandler {
     public static void initialize() {
         ServerHandlerManager.register(OperationType.AddProvider, OperateProvidersHandler.doAddProvider);
         ServerHandlerManager.register(OperationType.RemoveProvider, OperateProvidersHandler.doRemoveProvider);
-//        ServerHandlerManager.register(OperationType.BuildIndex, OperateProvidersHandler.doBuildIndex);
     }
 
     /**
@@ -68,6 +67,9 @@ public final class OperateProvidersHandler {
         };
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateProvidersHelper#removeProvider(WListClientInterface, String, String, boolean)
+     */
     public static final @NotNull ServerHandler doRemoveProvider = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> operator = OperateSelfHandler.checkToken(token, UserPermission.ServerOperate, UserPermission.ProvidersOperate);
@@ -91,22 +93,4 @@ public final class OperateProvidersHandler {
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
         };
     };
-
-//    public static final @NotNull ServerHandler doBuildIndex = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, UserPermission.FilesBuildIndex);
-//        final String driver = ByteBufIOUtil.readUTF(buffer);
-//        ServerHandler.logOperation(channel, OperationType.BuildIndex, user, () -> ParametersMap.create()
-//                .add("driver", driver));
-//        if (user.isFailure())
-//            return user.getE();
-//        final boolean success;
-//        try {
-//            success = RootSelector.getInstance().buildIndex(driver);
-//        } catch (final UnsupportedOperationException exception) {
-//            return MessageProto.Unsupported.apply(exception);
-//        } catch (final Exception exception) {
-//            throw new ServerException(exception);
-//        }
-//        return success ? MessageProto.Success : MessageProto.DataError;
-//    };
 }

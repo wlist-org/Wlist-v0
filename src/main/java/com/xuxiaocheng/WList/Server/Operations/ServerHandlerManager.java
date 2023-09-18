@@ -24,7 +24,7 @@ public final class ServerHandlerManager {
         OperateGroupsHandler.initialize();
         OperateUsersHandler.initialize();
         OperateProvidersHandler.initialize();
-        OperateFileHandler.initialize();
+        OperateFilesHandler.initialize();
         OperateProgressHandler.initialize();
 //        assert ServerHandlerManager.map.size() == OperationType.values().length - 1; // #Undefined
     }

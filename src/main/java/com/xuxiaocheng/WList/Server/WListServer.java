@@ -213,8 +213,6 @@ public class WListServer {
                 return;
             try {
                 core.run();
-            } catch (final UnsupportedOperationException exception) {
-                ServerChannelHandler.write(channel, MessageProto.composeMessage(ResponseState.Unsupported, exception.getMessage()));
             } catch (final Exception exception) {
                 channel.pipeline().fireExceptionCaught(exception);
             }
@@ -223,6 +221,10 @@ public class WListServer {
         @Override
         public void exceptionCaught(final @NotNull ChannelHandlerContext ctx, final @NotNull Throwable cause) {
             final Channel channel = ctx.channel();
+            if (cause instanceof UnsupportedOperationException exception) {
+                ServerChannelHandler.write(channel, MessageProto.composeMessage(ResponseState.Unsupported, exception.getMessage()));
+                return;
+            }
             if (cause instanceof CodecException || cause instanceof SocketException) {
                 WListServer.logger.log(HLogLevel.MISTAKE, "Codec/Socket Exception at ", channel.remoteAddress(), ": ", cause.getLocalizedMessage());
                 channel.close();
