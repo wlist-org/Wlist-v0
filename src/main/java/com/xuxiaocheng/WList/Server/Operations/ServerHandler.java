@@ -25,7 +25,7 @@ import java.util.function.Supplier;
 public interface ServerHandler {
     /**
      * Call {@link com.xuxiaocheng.WList.Server.WListServer.ServerChannelHandler#write(Channel, MessageProto)} to response message.
-     * @return null: Invalid token or parameters etc. !null: Real handler.
+     * @return null: Invalid token/parameters etc. !null: Real handler.
      */
     @Nullable RunnableE extra(final @NotNull Channel channel, final @NotNull ByteBuf buffer) throws IOException, SQLException;
 

@@ -118,6 +118,12 @@ public record FileManager(@NotNull FileSqlInterface innerSqlInstance) implements
         this.innerSqlInstance.updateOrInsertDirectory(directory, _connectionId);
     }
 
+    @Override
+    public void updateOrInsertFileOrDirectory(final @NotNull FileInformation information, final @Nullable String _connectionId) throws SQLException {
+        this.innerSqlInstance.updateOrInsertFileOrDirectory(information, _connectionId);
+    }
+
+
     /* --- Select --- */
 
     @Override

@@ -56,6 +56,14 @@ public interface FileSqlInterface extends DatabaseInterface {
      */
     void updateOrInsertDirectory(final @NotNull FileInformation directory, final @Nullable String _connectionId) throws SQLException;
 
+    default void updateOrInsertFileOrDirectory(final @NotNull FileInformation information, final @Nullable String _connectionId) throws SQLException {
+        if (information.isDirectory())
+            this.updateOrInsertDirectory(information, _connectionId);
+        else
+            this.updateOrInsertFile(information, _connectionId);
+    }
+
+
     /* --- Select --- */
 
     /**

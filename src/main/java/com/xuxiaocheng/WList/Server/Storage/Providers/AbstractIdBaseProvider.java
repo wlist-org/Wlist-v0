@@ -2,7 +2,10 @@ package com.xuxiaocheng.WList.Server.Storage.Providers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.HeadLibs.Helpers.HMultiRunHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
@@ -10,8 +13,11 @@ import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.BackgroundTaskManager;
+import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
+import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
+import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
@@ -19,8 +25,10 @@ import org.jetbrains.annotations.Unmodifiable;
 import java.sql.Connection;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -116,11 +124,43 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
     }
 
     /**
-     * Try to get file/directory information by id.
-     * @return false: unsupported. true: file is not existed. success: information.
+     * Try to update file/directory information.
+     * @return false: file is not existed. true: needn't updated. success: updated.
      */
-    protected @NotNull UnionPair<FileInformation, Boolean> info0(final long id, final boolean isDirectory) {
-        return UnionPair.fail(Boolean.FALSE);
+    protected @NotNull UnionPair<FileInformation, Boolean> update0(final @NotNull FileInformation oldInformation) throws Exception {
+        return UnionPair.fail(Boolean.TRUE);
+    }
+
+    @Override
+    public @Nullable FileInformation info(final long id, final boolean isDirectory) throws Exception {
+        final FileManager manager = this.manager.getInstance();
+        final FileInformation information = manager.selectInfo(id, isDirectory, null);
+        if (information == null) return null;
+        final UnionPair<FileInformation, Boolean> update = this.update0(information);
+        if (update.isFailure()) {
+            if (update.getE().booleanValue())
+                return information;
+            manager.deleteFileOrDirectory(id, isDirectory, null);
+            return null;
+        }
+        if (information.equals(update.getT()))
+            return information;
+        assert update.getT().isDirectory() == isDirectory;
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = manager.getConnection(null, connectionId)) {
+            if (manager.selectInfo(update.getT().parentId(), true, connectionId.get()) != null)
+                manager.updateOrInsertFileOrDirectory(update.getT(), connectionId.get());
+            connection.commit();
+        }
+        return update.getT();
+    }
+
+    /**
+     * Try to get file/directory information by id.
+     * @return null: unsupported / not existed. !null: information.
+     */
+    protected @Nullable FileInformation info0(final long id, final boolean isDirectory) throws Exception {
+        return null;
     }
 
     @Override
@@ -142,11 +182,12 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
                         consumer.accept(UnionPair.ok(Boolean.FALSE));
                         return;
                     }
+                    final Set<Long> deleteFiles, deleteDirectories;
                     final AtomicReference<String> connectionId = new AtomicReference<>();
                     try (final Connection connection = manager.getConnection(null, connectionId)) {
                         final Pair.ImmutablePair<Set<Long>, Set<Long>> old = manager.selectIdsInDirectory(directoryId, connectionId.get());
-                        final Set<Long> deleteFiles = old.getFirst();
-                        final Set<Long> deleteDirectories = old.getSecond();
+                        deleteFiles = old.getFirst();
+                        deleteDirectories = old.getSecond();
                         while (iterator.hasNext()) {
                             final FileInformation information = iterator.next();
                             if (information.isDirectory()) {
@@ -157,12 +198,36 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
                                 manager.updateOrInsertFile(information, connectionId.get());
                             }
                         }
-                        // TODO: test real and update information.
-                        for (final Long id: deleteFiles)
-                            manager.deleteFile(id.longValue(), connectionId.get());
-                        for (final Long id: deleteDirectories)
-                            manager.deleteDirectoryRecursively(id.longValue(), connectionId.get());
                         connection.commit();
+                    }
+                    if (!deleteFiles.isEmpty() || !deleteDirectories.isEmpty()) {
+                        final Map<Long, FileInformation> files = new ConcurrentHashMap<>();
+                        final Map<Long, FileInformation> directories = new ConcurrentHashMap<>();
+                        HMultiRunHelper.runConsumers(WListServer.IOExecutors, deleteFiles.size(), deleteFiles.iterator(), HExceptionWrapper.wrapConsumer(id -> {
+                            final FileInformation info = this.info0(id.longValue(), false);
+                            if (info != null) files.put(id, info);
+                        }));
+                        HMultiRunHelper.runConsumers(WListServer.IOExecutors, deleteDirectories.size(), deleteDirectories.iterator(), HExceptionWrapper.wrapConsumer(id -> {
+                            final FileInformation info = this.info0(id.longValue(), true);
+                            if (info != null) directories.put(id, info);
+                        }));
+                        try (final Connection connection = manager.getConnection(null, connectionId)) {
+                            for (final Long id: deleteFiles) {
+                                final FileInformation info = files.get(id);
+                                if (info == null)
+                                    manager.deleteFile(id.longValue(), connectionId.get());
+                                else if (manager.selectInfo(info.parentId(), true, connectionId.get()) != null)
+                                    manager.updateOrInsertFile(info, connectionId.get());
+                            }
+                            for (final Long id: deleteDirectories) {
+                                final FileInformation info = directories.get(id);
+                                if (info == null)
+                                    manager.deleteDirectoryRecursively(id.longValue(), connectionId.get());
+                                else if (manager.selectInfo(info.parentId(), true, connectionId.get()) != null)
+                                    manager.updateOrInsertDirectory(info, connectionId.get());
+                            }
+                            connection.commit();
+                        }
                     }
                     consumer.accept(UnionPair.ok(Boolean.TRUE));
                 } catch (final NoSuchElementException exception) {
@@ -187,35 +252,7 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
     }
 
     /**
-     * Try to update file/directory information.
-     * @return false: file is not existed. true: needn't updated. success: updated.
-     */
-    protected @NotNull UnionPair<FileInformation, Boolean> update0(final @NotNull FileInformation oldInformation) throws Exception {
-        return UnionPair.fail(Boolean.TRUE);
-    }
-
-    @Override
-    public @Nullable FileInformation info(final long id, final boolean isDirectory) throws Exception {
-        final FileInformation information = this.manager.getInstance().selectInfo(id, isDirectory, null);
-        if (information == null) return null;
-        final UnionPair<FileInformation, Boolean> update = this.update0(information);
-        if (update.isSuccess()) {
-            if (information.equals(update.getT()))
-                return information;
-            if (isDirectory)
-                this.manager.getInstance().updateOrInsertDirectory(update.getT(), null);
-            else
-                this.manager.getInstance().updateOrInsertFile(update.getT(), null);
-            return update.getT();
-        }
-        if (update.getE().booleanValue())
-            return information;
-        this.manager.getInstance().deleteFileOrDirectory(id, isDirectory, null);
-        return null;
-    }
-
-    /**
-     * Delete file or directory.
+     * Delete file/directory.
      */
     protected abstract void delete0(final @NotNull FileInformation information) throws Exception;
 
@@ -227,6 +264,15 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
         this.delete0(information);
         this.manager.getInstance().deleteFileOrDirectory(id, isDirectory, null);
         return true;
+    }
+
+    @Override
+    public @NotNull UnionPair<DownloadRequirements, FailureReason> download(final long fileId, final long from, final long to, final @NotNull FileLocation location) throws Exception {
+        final FileInformation information = this.manager.getInstance().selectInfo(fileId, false, null);
+        if (information == null)
+            return UnionPair.fail(FailureReason.byNoSuchFile(location));
+        throw new UnsupportedOperationException();
+//        return null;
     }
 
     //    @Override
