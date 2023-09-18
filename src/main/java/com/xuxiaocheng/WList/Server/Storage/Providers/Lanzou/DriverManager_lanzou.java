@@ -54,39 +54,6 @@ public final class DriverManager_lanzou {
 //        }
 //    }
 //
-//    static @NotNull UnionPair<UnionPair<String/*new name*/, FileInformation/*for directory*/>, FailureReason> getDuplicatePolicyName(final @NotNull LanzouConfiguration configuration, final long parentId, final @NotNull String name, final boolean requireDirectory, final Options.@NotNull DuplicatePolicy policy, final @NotNull String duplicateErrorMessage, final @Nullable String _connectionId) throws IOException, SQLException, InterruptedException {
-//        final AtomicReference<String> connectionId = new AtomicReference<>();
-//        try (final Connection connection = FileManager.getConnection(configuration.getName(), _connectionId, connectionId)) {
-//            final FileInformation parentInformation = DriverManager_lanzou.getFileInformation(configuration, parentId, null, connectionId.get());
-//            if (parentInformation == null || !parentInformation.isDirectory())
-//                return UnionPair.fail(FailureReason.byNoSuchFile(duplicateErrorMessage + " Getting duplicate policy name (parent).", new FileLocation(configuration.getName(), parentId)));
-//            if (parentInformation.type() == FileSqlInterface.FileSqlType.Directory && FileManager.selectFileCountByParentId(configuration.getName(), parentId, connectionId.get()) == 0) {
-//                DriverManager_lanzou.waitSyncComplete(DriverManager_lanzou.syncFilesList(configuration, parentId, connectionId.get()));
-//                connection.commit();
-//            }
-//            FileInformation information = FileManager.selectFileInDirectory(configuration.getName(), parentId, name, connectionId.get());
-//            if (information == null)
-//                return UnionPair.ok(UnionPair.ok(name));
-//            if (requireDirectory && information.isDirectory())
-//                return UnionPair.ok(UnionPair.fail(information));
-//            switch (policy) {
-//                case DuplicatePolicy.ERROR:
-//                    return UnionPair.fail(FailureReason.byDuplicateError(duplicateErrorMessage, new FileLocation(configuration.getName(), parentId), name));
-//                case DuplicatePolicy.OVER:
-//                    DriverManager_lanzou.trash(configuration, information, connectionId.get(), null);
-//                    connection.commit();
-//                    return UnionPair.ok(UnionPair.ok(name));
-//                case DuplicatePolicy.KEEP:
-//                    int retry = 0;
-//                    final Pair.ImmutablePair<String, String> wrapper = DriverUtil.getRetryWrapper(name);
-//                    while (information != null && !(requireDirectory && information.isDirectory()))
-//                        information = FileManager.selectFileInDirectory(configuration.getName(), parentId, wrapper.getFirst() + (++retry) + wrapper.getSecond(), connectionId.get());
-//                    return information == null ? UnionPair.ok(UnionPair.ok(wrapper.getFirst() + retry + wrapper.getSecond())) : UnionPair.ok(UnionPair.fail(information));
-//            }
-//            throw new RuntimeException("Unreachable!");
-//        }
-//    }
-//
 //    static @NotNull UnionPair<FileInformation, FailureReason> createDirectory(final @NotNull LanzouConfiguration configuration, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @Nullable String _connectionId) throws IOException, SQLException, InterruptedException {
 //        final AtomicReference<String> connectionId = new AtomicReference<>();
 //        try (final Connection connection = FileManager.getConnection(configuration.getName(), _connectionId, connectionId)) {

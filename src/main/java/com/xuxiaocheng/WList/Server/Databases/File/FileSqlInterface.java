@@ -83,6 +83,11 @@ public interface FileSqlInterface extends DatabaseInterface {
      */
     Pair.@NotNull ImmutablePair<@NotNull Set<@NotNull Long>, @NotNull Set<@NotNull Long>> selectIdsInDirectory(final long directoryId, final @Nullable String _connectionId) throws SQLException;
 
+    /**
+     * Select file by name in directory. (For duplicate.)
+     */
+    @Nullable FileInformation selectInfoInDirectoryByName(final long parentId, final @NotNull String name, final @Nullable String _connectionId) throws SQLException;
+
 
     /* --- Delete --- */
 
@@ -107,9 +112,6 @@ public interface FileSqlInterface extends DatabaseInterface {
 
 
     /* --- Search --- */
-
-
-//    @Nullable FileInformation selectFileInDirectory(final long parentId, final @NotNull String name, final @Nullable String _connectionId) throws SQLException;
 
     // TODO Search
 }

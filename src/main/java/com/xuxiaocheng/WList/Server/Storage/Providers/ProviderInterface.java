@@ -72,16 +72,16 @@ public interface ProviderInterface<C extends ProviderConfiguration> {
     boolean delete(final long id, final boolean isDirectory) throws Exception;
 
     /**
+     * Create an empty directory.
+     * @param parentLocation Only by used to create {@code FailureReason}.
+     */
+    @NotNull UnionPair<FileInformation, FailureReason> createDirectory(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy, final @NotNull FileLocation parentLocation) throws Exception;
+
+    /**
      * Get download methods of a specific file.
      * @param location Only by used to create {@code FailureReason}.
      */
     @NotNull UnionPair<DownloadRequirements, FailureReason> download(final long fileId, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @NotNull FileLocation location) throws Exception;
-
-//    /**
-//     * Create an empty directory.
-//     * @see com.xuxiaocheng.WList.Server.Storage.Helpers.ProviderUtil#getRetryWrapper(String)
-//     */
-//    @NotNull UnionPair<FileInformation, FailureReason> createDirectory(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws Exception;
 
 //    /**
 //     * Build provider cache. Login and check token, etc.

@@ -141,6 +141,11 @@ public record FileManager(@NotNull FileSqlInterface innerSqlInstance) implements
         return this.innerSqlInstance.selectIdsInDirectory(directoryId, _connectionId);
     }
 
+    @Override
+    public @Nullable FileInformation selectInfoInDirectoryByName(final long parentId, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
+        return this.innerSqlInstance.selectInfoInDirectoryByName(parentId, name, _connectionId);
+    }
+
     /* --- Delete --- */
 
     @Override

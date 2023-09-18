@@ -548,6 +548,23 @@ public class FileSqliteHelper implements FileSqlInterface {
         return Pair.ImmutablePair.makeImmutablePair(files, directories);
     }
 
+    @Override
+    public @Nullable FileInformation selectInfoInDirectoryByName(final long parentId, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
+        final FileInformation information;
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
+            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+    SELECT %s FROM %s WHERE parent_id == ? AND name == ? LIMIT 1;
+                """, FileSqliteHelper.FileInfoExtra, this.tableName))) {
+                statement.setLong(1, FileSqliteHelper.getDoubleId(parentId, true));
+                statement.setString(2, name);
+                try (final ResultSet result = statement.executeQuery()) {
+                    information = FileSqliteHelper.nextFile(result);
+                }
+            }
+        }
+        return information;
+    }
+
 
     /* --- Delete --- */
 
@@ -636,22 +653,9 @@ public class FileSqliteHelper implements FileSqlInterface {
         return success;
     }
 
-//    @Override
-//    public @Nullable FileInformation selectFileInDirectory(final long parentId, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
-//        try (final Connection connection = this.getConnection(_connectionId, null)) {
-//            final FileInformation information;
-//            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-//                    SELECT * FROM %s WHERE parent_id == ? AND name == ? AND parent_id != id LIMIT 1;
-//                """, this.tableName))) {
-//                statement.setLong(1, parentId);
-//                statement.setString(2, name);
-//                try (final ResultSet result = statement.executeQuery()) {
-//                    information = FileSqliteHelper.createNextFileInfo(this.driverName, result);
-//                }
-//            }
-//            return information;
-//        }
-//    }
+
+    /* --- Search --- */
+
 
     @Override
     public @NotNull String toString() {

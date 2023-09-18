@@ -65,23 +65,6 @@ public final class ProviderUtil {
         return scripts;
     }
 
-    /** TODO
-     * Example: <pre>{@code
-     *     int retry = 0;
-     *     final Pair.ImmutablePair<String, String> wrapper = ProviderUtil.getRetryWrapper(path.getName());
-     *     while (...) {
-     *         final String name = wrapper.getFirst() + (++retry) + wrapper.getSecond();
-     *         ...
-     *     }
-     * }</pre>
-     */
-    public static Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> getRetryWrapper(final @NotNull String name) {
-        final int index = name.lastIndexOf('.');
-        final String left = (index < 0 ? name: name.substring(0, index)) + '(';
-        final String right = ')' + (index < 0 ? "" : name.substring(index));
-        return Pair.ImmutablePair.makeImmutablePair(left, right);
-    }
-
     private static <I> Pair.@NotNull ImmutablePair<@NotNull Iterator<@NotNull I>, @NotNull Runnable> getIteratorWrappedSuppliers(final @NotNull Runnable supplier, final @NotNull BlockingQueue<? extends @NotNull I> filesQueue, final @NotNull AtomicBoolean noNext, final @NotNull AtomicBoolean threadRunning, final @NotNull Consumer<? super @Nullable Exception> callback) {
         return Pair.ImmutablePair.makeImmutablePair(new Iterator<>() {
             @Override
