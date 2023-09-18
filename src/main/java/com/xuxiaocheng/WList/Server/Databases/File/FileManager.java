@@ -93,6 +93,7 @@ public record FileManager(@NotNull FileSqlInterface innerSqlInstance) implements
         return this.innerSqlInstance.getRootId();
     }
 
+
     /* --- Insert --- */
 
     @Override
@@ -108,13 +109,13 @@ public record FileManager(@NotNull FileSqlInterface innerSqlInstance) implements
     /* --- Update --- */
 
     @Override
-    public void updateFileName(final long id, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
-        this.innerSqlInstance.updateFileName(id, name, _connectionId);
+    public void updateOrInsertFile(final @NotNull FileInformation file, final @Nullable String _connectionId) throws SQLException {
+        this.innerSqlInstance.updateOrInsertFile(file, _connectionId);
     }
 
     @Override
-    public void updateFileParentId(final long fileId, final long parentId, final @Nullable String _connectionId) throws SQLException {
-        this.innerSqlInstance.updateFileParentId(fileId, parentId, _connectionId);
+    public void updateOrInsertDirectory(final @NotNull FileInformation directory, final @Nullable String _connectionId) throws SQLException {
+        this.innerSqlInstance.updateOrInsertDirectory(directory, _connectionId);
     }
 
     /* --- Select --- */

@@ -24,15 +24,17 @@ public interface FileSqlInterface extends DatabaseInterface {
     /* --- Insert --- */
 
     /**
-     * Insert file information / empty directory information. And auto update parents' size recursively.
+     * Insert file information / empty directory information. And auto update sizes of parents recursively.
      * WARNING: ONLY be called when uploading file / creating directory.
      * {@code assert information.isDirectory() ? information.size() == 0 : information.size() >= 0;}
      * @see #insertIterator(Iterator, long, String)
+     * @see #updateOrInsertFile(FileInformation, String)
+     * @see #updateOrInsertDirectory(FileInformation, String)
      */
     void insertFileOrDirectory(final @NotNull FileInformation information, final @Nullable String _connectionId) throws SQLException;
 
     /**
-     * Build directory index. And auto update parents' size recursively.
+     * Build directory index. And auto update sizes of parents recursively.
      * WARNING: ONLY be called when first listing the directory.
      * {@code assert information.parentId() == directoryId && (information.isDirectory() || information.size() >= 0);}
      * @see #insertFileOrDirectory(FileInformation, String)
@@ -43,15 +45,16 @@ public interface FileSqlInterface extends DatabaseInterface {
     /* --- Update --- */
 
     /**
-     * Update file / directory name.
-     * WARNING: ONLY be called when renaming file / directory.
+     * Update file information. {@code parentId, name, size, createTime, updateTime, others}. And auto update sizes of parents recursively.
+     * {@code assert !file.isDirectory() && file.size() >= 0;}
      */
-    void updateFileName(final long id, final @NotNull String name, final @Nullable String _connectionId) throws SQLException;
+    void updateOrInsertFile(final @NotNull FileInformation file, final @Nullable String _connectionId) throws SQLException;
 
     /**
-     * Move file. And auto update parents' size recursively.
+     * Update directory information. {@code parentId, name, createTime, updateTime, others}. And auto update sizes of parents recursively.
+     * {@code assert file.isDirectory();} // Not update directory size. (Be counted by other methods.)
      */
-    void updateFileParentId(final long fileId, final long parentId, final @Nullable String _connectionId) throws SQLException;
+    void updateOrInsertDirectory(final @NotNull FileInformation directory, final @Nullable String _connectionId) throws SQLException;
 
     /* --- Select --- */
 
@@ -76,13 +79,13 @@ public interface FileSqlInterface extends DatabaseInterface {
     /* --- Delete --- */
 
     /**
-     * Delete file by id.
+     * Delete file by id. And auto update sizes of parents recursively.
      * @return false: not found. true: deleted.
      */
     boolean deleteFile(final long fileId, final @Nullable String _connectionId) throws SQLException;
 
     /**
-     * Delete directory by id. (Do NOT delete root directory.)
+     * Delete directory by id. (Do NOT delete root directory.) And auto update sizes of parents recursively.
      */
     void deleteDirectoryRecursively(final long directoryId, final @Nullable String _connectionId) throws SQLException;
 

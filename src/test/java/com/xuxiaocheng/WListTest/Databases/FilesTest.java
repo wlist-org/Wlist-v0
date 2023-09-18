@@ -100,6 +100,59 @@ public class FilesTest {
         Assertions.assertEquals(702/*123 + 234 + 345*/, Objects.requireNonNull(this.manager().selectInfo(0, true, null)).size());
     }
 
+    @Test
+    public void updateOrInsertFile() throws SQLException {
+        this.manager().insertIterator(List.of(
+                new FileInformation(1, 0, "1-directory", true, -1, null, null, null),
+                new FileInformation(2, 0, "1-file", false, 123, null, null, null)
+        ).iterator(), 0, null);
+        this.manager().insertIterator(List.of(
+                new FileInformation(3, 1, "2-file1", false, 234, null, null, null),
+                new FileInformation(4, 1, "2-file2", false, 345, null, null, null)
+        ).iterator(), 1, null);
+        this.manager().updateOrInsertFile(new FileInformation(5, 1, "2-file3", false, 456, null, null, null), null);
+        Assertions.assertEquals(1035/*234 + 345 + 456*/, Objects.requireNonNull(this.manager().selectInfo(1, true, null)).size());
+        Assertions.assertEquals(1158/*123 + 234 + 345 + 456*/, Objects.requireNonNull(this.manager().selectInfo(0, true, null)).size());
+        this.manager().updateOrInsertFile(new FileInformation(3, 0, "3-file1", false, 567, null, null, null), null);
+        Assertions.assertEquals(801/*345 + 456*/, Objects.requireNonNull(this.manager().selectInfo(1, true, null)).size());
+        Assertions.assertEquals(1491/*123 + 345 + 456 + 567*/, Objects.requireNonNull(this.manager().selectInfo(0, true, null)).size());
+        this.manager().updateOrInsertFile(new FileInformation(5, 0, "4-file3", false, 678, null, null, null), null);
+        Assertions.assertEquals(345, Objects.requireNonNull(this.manager().selectInfo(1, true, null)).size());
+        Assertions.assertEquals(1713/*123 + 345 + 567 + 678*/, Objects.requireNonNull(this.manager().selectInfo(0, true, null)).size());
+    }
+
+    @Test
+    public void updateOrInsertDirectory() throws SQLException {
+        this.manager().insertIterator(List.of(
+                new FileInformation(1, 0, "1-directory1", true, -1, null, null, null),
+                new FileInformation(2, 0, "1-directory2", true, -1, null, null, null),
+                new FileInformation(3, 0, "1-file", false, 123, null, null, null)
+        ).iterator(), 0, null);
+        this.manager().insertIterator(List.of(
+                new FileInformation(4, 1, "2-file1", false, 234, null, null, null),
+                new FileInformation(5, 1, "2-file2", false, 345, null, null, null)
+        ).iterator(), 1, null);
+        Assertions.assertEquals(579,/*234 + 345,*/ Objects.requireNonNull(this.manager().selectInfo(1, true, null)).size());
+        Assertions.assertEquals(-1, Objects.requireNonNull(this.manager().selectInfo(2, true, null)).size());
+        Assertions.assertEquals(-1, Objects.requireNonNull(this.manager().selectInfo(0, true, null)).size());
+        this.manager().updateOrInsertDirectory(new FileInformation(2, 1, "3-directory2", true, -1, null, null, null), null);
+        Assertions.assertEquals(-1, Objects.requireNonNull(this.manager().selectInfo(1, true, null)).size());
+        Assertions.assertEquals(-1, Objects.requireNonNull(this.manager().selectInfo(2, true, null)).size());
+        Assertions.assertEquals(-1, Objects.requireNonNull(this.manager().selectInfo(0, true, null)).size());
+        this.manager().updateOrInsertDirectory(new FileInformation(2, 0, "3-directory2", true, -1, null, null, null), null);
+        Assertions.assertEquals(579/*234 + 345*/, Objects.requireNonNull(this.manager().selectInfo(1, true, null)).size());
+        Assertions.assertEquals(-1, Objects.requireNonNull(this.manager().selectInfo(2, true, null)).size());
+        Assertions.assertEquals(-1, Objects.requireNonNull(this.manager().selectInfo(0, true, null)).size());
+        this.manager().insertIterator(List.of(
+                new FileInformation(6, 2, "2-file3", false, 456, null, null, null)
+        ).iterator(), 2, null);
+        Assertions.assertEquals(456, Objects.requireNonNull(this.manager().selectInfo(2, true, null)).size());
+        Assertions.assertEquals(1158/*123 + 234 + 345 + 456*/, Objects.requireNonNull(this.manager().selectInfo(0, true, null)).size());
+        this.manager().updateOrInsertDirectory(new FileInformation(1, 2, "4-directory1", true, -1, null, null, null), null);
+        Assertions.assertEquals(1035/*234 + 345 + 456*/, Objects.requireNonNull(this.manager().selectInfo(2, true, null)).size());
+        Assertions.assertEquals(1158/*123 + 234 + 345 + 456*/, Objects.requireNonNull(this.manager().selectInfo(0, true, null)).size());
+    }
+
 
     @Test
     public void deleteFile() throws SQLException {
@@ -137,6 +190,8 @@ public class FilesTest {
         Assertions.assertNull(this.manager().selectInfo(1, true, null));
         Assertions.assertEquals(123, Objects.requireNonNull(this.manager().selectInfo(0, true, null)).size());
         this.manager().deleteFile(2, null);
+        Assertions.assertEquals(0, Objects.requireNonNull(this.manager().selectInfo(0, true, null)).size());
+        this.manager().deleteDirectoryRecursively(0, null);
         Assertions.assertEquals(0, Objects.requireNonNull(this.manager().selectInfo(0, true, null)).size());
     }
 }

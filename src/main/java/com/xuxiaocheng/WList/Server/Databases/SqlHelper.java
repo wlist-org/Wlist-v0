@@ -8,8 +8,8 @@ import java.nio.charset.Charset;
 import java.time.ZonedDateTime;
 import java.util.Locale;
 
-public final class SqliteHelper {
-    private SqliteHelper() {
+public final class SqlHelper {
+    private SqlHelper() {
         super();
     }
 

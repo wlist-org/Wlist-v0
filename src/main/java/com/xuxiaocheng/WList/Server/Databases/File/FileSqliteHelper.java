@@ -5,7 +5,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
-import com.xuxiaocheng.WList.Server.Databases.SqliteHelper;
+import com.xuxiaocheng.WList.Server.Databases.SqlHelper;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -77,7 +77,7 @@ public class FileSqliteHelper implements FileSqlInterface {
 
     @Contract(pure = true)
     public static byte @NotNull [] getNameOrder(final @NotNull String name, final boolean isDirectory) {
-        return SqliteHelper.toOrdered((isDirectory ? 'd' : 'f') + name);
+        return SqlHelper.toOrdered((isDirectory ? 'd' : 'f') + name);
     }
 
     @Contract(pure = true)
@@ -175,7 +175,7 @@ public class FileSqliteHelper implements FileSqlInterface {
         final Timestamp createTime = result.getTimestamp("create_time");
         final Timestamp updateTime = result.getTimestamp("update_time");
         final String others = result.getString("others");
-        return new FileInformation(FileSqliteHelper.getRealId(doubleId), parentId, name, directory, size,
+        return new FileInformation(FileSqliteHelper.getRealId(doubleId), FileSqliteHelper.getRealId(parentId), name, directory, size,
                 createTime == null ? null : ZonedDateTime.of(createTime.toLocalDateTime(), ZoneOffset.UTC),
                 updateTime == null ? null : ZonedDateTime.of(updateTime.toLocalDateTime(), ZoneOffset.UTC),
                 others);
@@ -331,15 +331,104 @@ public class FileSqliteHelper implements FileSqlInterface {
         }
     }
 
-    @Override
-    public void updateFileName(final long id, final @NotNull String name, final @Nullable String _connectionId) throws SQLException {
-        throw new UnsupportedOperationException();
+    protected void unknowDirectorySizeRecursively(final long directoryId, final @Nullable String _connectionId) throws SQLException {
+        final AtomicReference<String> connectionId = new AtomicReference<>(_connectionId);
+        try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
+            final long doubleId = FileSqliteHelper.getDoubleId(directoryId, true);
+            final long size, parentId;
+            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+    SELECT size, parent_id FROM %s WHERE double_id == ? LIMIT 1;
+                """, this.tableName))) {
+                statement.setLong(1, doubleId);
+                try (final ResultSet result = statement.executeQuery()) {
+                    if (!result.next())
+                        throw new IllegalStateException("No such directory." + ParametersMap.create().add("directoryId", directoryId));
+                    size = result.getLong("size");
+                    parentId = result.getLong("parent_id");
+                }
+            }
+            if (size >= 0) {
+                try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+    UPDATE %s SET size = -1 WHERE double_id == ?;
+                    """, this.tableName))) {
+                    statement.setLong(1, doubleId);
+                    statement.executeUpdate();
+                }
+                if (directoryId != this.rootId)
+                    this.unknowDirectorySizeRecursively(parentId, connectionId.get());
+            }
+            connection.commit();
+        }
     }
 
     @Override
-    public void updateFileParentId(final long fileId, final long parentId, final @Nullable String _connectionId) throws SQLException {
-        throw new UnsupportedOperationException();
+    public void updateOrInsertFile(final @NotNull FileInformation file, final @Nullable String _connectionId) throws SQLException {
+        final AtomicReference<String> connectionId = new AtomicReference<>(_connectionId);
+        try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
+            final FileInformation old = this.selectInfo(file.id(), file.isDirectory(), connectionId.get());
+            if (old == null)
+                this.insertFileOrDirectory(file, connectionId.get());
+            else {
+                assert !file.isDirectory() && file.size() >= 0;
+                try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+    UPDATE %s SET parent_id = ?, name = ?, name_order = ?, size = ?, create_time = ?, update_time = ?, others = ? WHERE double_id == ?;
+                    """, this.tableName))) {
+                    statement.setLong(1, FileSqliteHelper.getDoubleId(file.parentId(), true));
+                    statement.setString(2, file.name());
+                    statement.setBytes(3, FileSqliteHelper.getNameOrder(file.name(), false));
+                    statement.setLong(4, file.size());
+                    statement.setTimestamp(5, FileSqliteHelper.getTimestamp(file.createTime() == null ? old.createTime() : file.createTime()));
+                    statement.setTimestamp(6, FileSqliteHelper.getTimestamp(file.updateTime() == null ? old.updateTime() : file.updateTime()));
+                    statement.setString(7, file.others());
+                    statement.setLong(8, FileSqliteHelper.getDoubleId(file.id(), false));
+                    statement.executeUpdate();
+                }
+                if (file.parentId() == old.parentId()) {
+                    if (file.size() != old.size())
+                        this.updateDirectorySizeRecursively(file.parentId(), file.size() - old.size(), connectionId.get());
+                } else {
+                    this.updateDirectorySizeRecursively(old.parentId(), -old.size(), connectionId.get());
+                    this.updateDirectorySizeRecursively(file.parentId(), file.size(), connectionId.get());
+                }
+            }
+            connection.commit();
+        }
     }
+
+    @Override // TODO: recycle detector
+    public void updateOrInsertDirectory(final @NotNull FileInformation directory, final @Nullable String _connectionId) throws SQLException {
+        final AtomicReference<String> connectionId = new AtomicReference<>(_connectionId);
+        try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
+            final FileInformation old = this.selectInfo(directory.id(), directory.isDirectory(), connectionId.get());
+            if (old == null)
+                this.insertFileOrDirectory(directory, connectionId.get());
+            else {
+                assert directory.isDirectory();
+                try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+    UPDATE %s SET parent_id = ?, name = ?, name_order = ?, create_time = ?, update_time = ?, others = ? WHERE double_id == ?;
+                    """, this.tableName))) {
+                    statement.setLong(1, FileSqliteHelper.getDoubleId(directory.parentId(), true));
+                    statement.setString(2, directory.name());
+                    statement.setBytes(3, FileSqliteHelper.getNameOrder(directory.name(), false));
+                    statement.setTimestamp(4, FileSqliteHelper.getTimestamp(directory.createTime() == null ? old.createTime() : directory.createTime()));
+                    statement.setTimestamp(5, FileSqliteHelper.getTimestamp(directory.updateTime() == null ? old.updateTime() : directory.updateTime()));
+                    statement.setString(6, directory.others());
+                    statement.setLong(7, FileSqliteHelper.getDoubleId(directory.id(), true));
+                    statement.executeUpdate();
+                }
+                if (directory.parentId() != old.parentId())
+                    if (old.size() == -1) {
+                        this.updateDirectorySizeRecursively(old.parentId(), 0, connectionId.get());
+                        this.unknowDirectorySizeRecursively(directory.parentId(), connectionId.get());
+                    } else {
+                        this.updateDirectorySizeRecursively(old.parentId(), -old.size(), connectionId.get());
+                        this.updateDirectorySizeRecursively(directory.parentId(), old.size(), connectionId.get());
+                    }
+            }
+            connection.commit();
+        }
+    }
+
 
     /* --- Select --- */
 

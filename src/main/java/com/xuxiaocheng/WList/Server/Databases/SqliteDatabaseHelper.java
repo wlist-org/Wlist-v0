@@ -177,7 +177,7 @@ public class SqliteDatabaseHelper implements SqlDatabaseInterface {
         public @Nullable Object invoke(final @NotNull Object proxy, final @NotNull Method method, final Object @Nullable [] args) throws SQLException {
             if (this.referenceCounter < 0)
                 throw new IllegalReferenceCountException(this.referenceCounter);
-            switch (method.getName()) {
+            switch (method.getName()) { // TODO: prepared statement cacher
                 case "setId" -> {
                     assert args != null && args.length == 1;
                     this.id = (String) args[0];

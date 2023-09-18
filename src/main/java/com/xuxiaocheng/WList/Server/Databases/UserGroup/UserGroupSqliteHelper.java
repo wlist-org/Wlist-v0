@@ -7,7 +7,7 @@ import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.DatabaseInterface;
-import com.xuxiaocheng.WList.Server.Databases.SqliteHelper;
+import com.xuxiaocheng.WList.Server.Databases.SqlHelper;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -114,7 +114,7 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
         VALUES (?, ?, %s);
                     """, UserGroupSqliteHelper.PermissionsHeader, UserGroupSqliteHelper.permissionsInsertValue(UserPermission.All)))) {
                         insertStatement.setString(1, IdentifierNames.UserGroupName.Admin.getIdentifier());
-                        insertStatement.setBytes(2, SqliteHelper.toOrdered(IdentifierNames.UserGroupName.Admin.getIdentifier()));
+                        insertStatement.setBytes(2, SqlHelper.toOrdered(IdentifierNames.UserGroupName.Admin.getIdentifier()));
                         insertStatement.executeUpdate();
                     }
                     statement.setString(1, IdentifierNames.UserGroupName.Admin.getIdentifier());
@@ -134,7 +134,7 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
         VALUES (?, ?, %s);
                     """, UserGroupSqliteHelper.PermissionsHeader, UserGroupSqliteHelper.permissionsInsertValue(UserPermission.Default)))) {
                         insertStatement.setString(1, IdentifierNames.UserGroupName.Default.getIdentifier());
-                        insertStatement.setBytes(2, SqliteHelper.toOrdered(IdentifierNames.UserGroupName.Default.getIdentifier()));
+                        insertStatement.setBytes(2, SqlHelper.toOrdered(IdentifierNames.UserGroupName.Default.getIdentifier()));
                         insertStatement.executeUpdate();
                     }
                     try (final ResultSet result = statement.executeQuery()) {
@@ -212,7 +212,7 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
         VALUES (?, ?);
                 """)) {
                 statement.setString(1, name);
-                statement.setBytes(2, SqliteHelper.toOrdered(name));
+                statement.setBytes(2, SqlHelper.toOrdered(name));
                 success = statement.executeUpdate() == 1;
             }
             if (success)
@@ -242,8 +242,8 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
     UPDATE OR IGNORE groups SET name = ?, name_order = ?, update_time = ? WHERE group_id == ?;
                 """)) {
                 statement.setString(1, name);
-                statement.setBytes(2, SqliteHelper.toOrdered(name));
-                time = SqliteHelper.now();
+                statement.setBytes(2, SqlHelper.toOrdered(name));
+                time = SqlHelper.now();
                 statement.setTimestamp(3, Timestamp.valueOf(time.toLocalDateTime()));
                 statement.setLong(4, id);
                 if (statement.executeUpdate() == 0)
@@ -263,7 +263,7 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     UPDATE OR IGNORE groups SET %s, update_time = ? WHERE group_id == ?;
                 """, UserGroupSqliteHelper.permissionsUpdateValue(permissions)))) {
-                time = SqliteHelper.now();
+                time = SqlHelper.now();
                 statement.setTimestamp(1, Timestamp.valueOf(time.toLocalDateTime()));
                 statement.setLong(2, id);
                 if (statement.executeUpdate() == 0)
@@ -453,7 +453,7 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
             try (final PreparedStatement statement = connection.prepareStatement("""
     SELECT COUNT(*) FROM groups WHERE name LIKE ? ESCAPE '\\';
                 """)) {
-                statement.setString(1, SqliteHelper.likeName(name));
+                statement.setString(1, SqlHelper.likeName(name));
                 try (final ResultSet result = statement.executeQuery()) {
                     result.next();
                     count = result.getLong(1);
@@ -466,7 +466,7 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
                 try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     SELECT %s FROM groups WHERE name LIKE ? ESCAPE '\\' ORDER BY length(name), charindex(?, name) LIMIT ? OFFSET ?;
                 """, UserGroupSqliteHelper.UserGroupInfoExtra))) {
-                    statement.setString(1, SqliteHelper.likeName(name));
+                    statement.setString(1, SqlHelper.likeName(name));
                     statement.setString(2, name);
                     statement.setLong(3, limit);
                     statement.setLong(4, position);

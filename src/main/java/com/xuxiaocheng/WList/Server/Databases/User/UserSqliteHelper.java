@@ -8,7 +8,7 @@ import com.xuxiaocheng.WList.Commons.Beans.VisibleUserInformation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.DatabaseInterface;
-import com.xuxiaocheng.WList.Server.Databases.SqliteHelper;
+import com.xuxiaocheng.WList.Server.Databases.SqlHelper;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupInformation;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupSqliteHelper;
@@ -92,7 +92,7 @@ public class UserSqliteHelper implements UserSqlInterface {
         VALUES (?, ?, ?, ?);
                         """)) {
                         insertStatement.setString(1, IdentifierNames.UserName.Admin.getIdentifier());
-                        insertStatement.setBytes(2, SqliteHelper.toOrdered(IdentifierNames.UserName.Admin.getIdentifier()));
+                        insertStatement.setBytes(2, SqlHelper.toOrdered(IdentifierNames.UserName.Admin.getIdentifier()));
                         insertStatement.setString(3, PasswordGuard.encryptPassword(password));
                         insertStatement.setLong(4, UserGroupManager.getInstance().getAdminId());
                         insertStatement.executeUpdate();
@@ -176,7 +176,7 @@ public class UserSqliteHelper implements UserSqlInterface {
         VALUES (?, ?, ?);
                 """)) {
                 statement.setString(1, username);
-                statement.setBytes(2, SqliteHelper.toOrdered(username));
+                statement.setBytes(2, SqlHelper.toOrdered(username));
                 statement.setString(3, encryptedPassword);
                 success = statement.executeUpdate() == 1;
             }
@@ -207,8 +207,8 @@ public class UserSqliteHelper implements UserSqlInterface {
     UPDATE OR IGNORE users SET username = ?, name_order = ?, update_time = ? WHERE id == ?;
                 """)) {
                 statement.setString(1, name);
-                statement.setBytes(2, SqliteHelper.toOrdered(name));
-                time = SqliteHelper.now();
+                statement.setBytes(2, SqlHelper.toOrdered(name));
+                time = SqlHelper.now();
                 statement.setTimestamp(3, Timestamp.valueOf(time.toLocalDateTime()));
                 statement.setLong(4, id);
                 if (statement.executeUpdate() == 0)
@@ -227,7 +227,7 @@ public class UserSqliteHelper implements UserSqlInterface {
     UPDATE OR IGNORE users SET password = ?, update_time = ?, modify_time = ? WHERE id == ?;
                 """)) {
                 statement.setString(1, encryptedPassword);
-                time = SqliteHelper.now();
+                time = SqlHelper.now();
                 statement.setTimestamp(2, Timestamp.valueOf(time.toLocalDateTime()));
                 statement.setTimestamp(3, Timestamp.valueOf(time.toLocalDateTime()));
                 statement.setLong(4, id);
@@ -249,7 +249,7 @@ public class UserSqliteHelper implements UserSqlInterface {
     UPDATE OR IGNORE users SET group_id = ?, update_time = ?, modify_time = ? WHERE id == ?;
                 """)) {
                 statement.setLong(1, groupId);
-                time = SqliteHelper.now();
+                time = SqlHelper.now();
                 statement.setTimestamp(2, Timestamp.valueOf(time.toLocalDateTime()));
                 statement.setTimestamp(3, Timestamp.valueOf(time.toLocalDateTime()));
                 statement.setLong(4, id);
@@ -478,7 +478,7 @@ public class UserSqliteHelper implements UserSqlInterface {
             try (final PreparedStatement statement = connection.prepareStatement("""
     SELECT COUNT(*) FROM users WHERE username LIKE ? ESCAPE '\\';
                 """)) {
-                statement.setString(1, SqliteHelper.likeName(name));
+                statement.setString(1, SqlHelper.likeName(name));
                 try (final ResultSet result = statement.executeQuery()) {
                     result.next();
                     count = result.getLong(1);
@@ -492,7 +492,7 @@ public class UserSqliteHelper implements UserSqlInterface {
     WITH temp AS (SELECT %s FROM users WHERE username LIKE ? ESCAPE '\\')
         SELECT %s FROM temp INNER JOIN groups ON temp.group_id = groups.group_id ORDER BY length(name), charindex(?, name) LIMIT ? OFFSET ?;
                 """, UserSqliteHelper.UserInfoExtra, UserSqliteHelper.UserAndGroupInfoExtra))) {
-                    statement.setString(1, SqliteHelper.likeName(name));
+                    statement.setString(1, SqlHelper.likeName(name));
                     statement.setString(2, name);
                     statement.setLong(3, limit);
                     statement.setLong(4, position);
