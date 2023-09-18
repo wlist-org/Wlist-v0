@@ -86,8 +86,16 @@ public interface FileSqlInterface extends DatabaseInterface {
 
     /**
      * Delete directory by id. (Do NOT delete root directory.) And auto update sizes of parents recursively.
+     *
+     * @return false: not found. true: deleted.
      */
-    void deleteDirectoryRecursively(final long directoryId, final @Nullable String _connectionId) throws SQLException;
+    boolean deleteDirectoryRecursively(final long directoryId, final @Nullable String _connectionId) throws SQLException;
+
+    default boolean deleteFileOrDirectory(final long id, final boolean isDirectory, final @Nullable String _connectionId) throws SQLException {
+        if (isDirectory)
+            return this.deleteDirectoryRecursively(id, _connectionId);
+        return this.deleteFile(id, _connectionId);
+    }
 
 
     /* --- Search --- */

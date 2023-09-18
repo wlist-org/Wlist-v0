@@ -27,7 +27,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     @Override
-    protected void delete0(final long id, final boolean isDirectory) throws Exception {
+    protected void delete0(final @NotNull FileInformation information) throws Exception {
 
     }
 }

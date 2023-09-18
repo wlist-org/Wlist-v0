@@ -143,7 +143,12 @@ public record FileManager(@NotNull FileSqlInterface innerSqlInstance) implements
     }
 
     @Override
-    public void deleteDirectoryRecursively(final long directoryId, final @Nullable String _connectionId) throws SQLException {
-        this.innerSqlInstance.deleteDirectoryRecursively(directoryId, _connectionId);
+    public boolean deleteDirectoryRecursively(final long directoryId, final @Nullable String _connectionId) throws SQLException {
+        return this.innerSqlInstance.deleteDirectoryRecursively(directoryId, _connectionId);
+    }
+
+    @Override
+    public boolean deleteFileOrDirectory(final long id, final boolean isDirectory, final @Nullable String _connectionId) throws SQLException {
+        return this.innerSqlInstance.deleteFileOrDirectory(id, isDirectory, _connectionId);
     }
 }

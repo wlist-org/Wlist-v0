@@ -69,6 +69,11 @@ public interface ProviderInterface<C extends ProviderConfiguration> {
     boolean delete(final long id, final boolean isDirectory) throws Exception;
 
 //    /**
+//     * Get download methods of a specific file.
+//     */
+//    @NotNull UnionPair<DownloadRequirements, FailureReason> download(final long fileId, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws Exception;
+
+//    /**
 //     * Create an empty directory.
 //     * @see com.xuxiaocheng.WList.Server.Storage.Helpers.ProviderUtil#getRetryWrapper(String)
 //     */
@@ -79,12 +84,6 @@ public interface ProviderInterface<C extends ProviderConfiguration> {
 //     * @see ProviderConfiguration#setLastFileCacheBuildTime(ZonedDateTime)
 //     */
 //    void buildCache() throws Exception;
-//
-//    /**
-//     * Get download methods of a specific file.
-//     * @see DownloadRequirements#tryGetDownloadFromUrl(OkHttpClient, HttpUrl, Headers, Long, Headers.Builder, long, long, ZonedDateTime)
-//     */
-//    @NotNull UnionPair<DownloadRequirements, FailureReason> download(final @NotNull FileLocation location, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws Exception;
 //
 //    /**
 //     * Upload file.

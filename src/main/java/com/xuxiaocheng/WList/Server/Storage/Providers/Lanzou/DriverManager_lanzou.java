@@ -6,58 +6,6 @@ public final class DriverManager_lanzou {
         super();
     }
 
-    // File Reader
-
-//    static Pair.@Nullable ImmutablePair<@NotNull Iterator<@NotNull FileInformation>, @NotNull Runnable> syncFilesList(final @NotNull LanzouConfiguration configuration, final long directoryId, final @Nullable String _connectionId) throws IOException, SQLException, InterruptedException {
-//        final AtomicReference<String> connectionId = new AtomicReference<>();
-//        try (final Connection connection = FileManager.getConnection(configuration.getName(), _connectionId, connectionId)) {
-//            final FileInformation directoryInformation = FileManager.selectFile(configuration.getName(), directoryId, connectionId.get());
-//            if (directoryInformation == null || directoryInformation.type() == FileSqlInterface.FileSqlType.RegularFile)
-//                return null;
-//            final List<FileInformation> directoriesInformation = DriverHelper_lanzou.listAllDirectory(configuration, directoryId);
-//            if (directoriesInformation == null) {
-//                FileManager.deleteFileRecursively(configuration.getName(), directoryId, connectionId.get());
-//                connection.commit();
-//                return null;
-//            }
-//            final Set<FileInformation> filesInformation = DriverHelper_lanzou.listFilesInPage(configuration, directoryId, 0);
-//            if (directoriesInformation.isEmpty() && filesInformation.isEmpty()) {
-//                FileManager.deleteFileRecursively(configuration.getName(), directoryId, connectionId.get());
-//                FileManager.insertFileForce(configuration.getName(), directoryInformation, connectionId.get()); // TODO: Only delete children.
-//                if (directoryInformation.type() == FileSqlInterface.FileSqlType.Directory)
-//                    FileManager.updateDirectoryType(configuration.getName(), directoryId, true, connectionId.get());
-//                connection.commit();
-//                return Pair.ImmutablePair.makeImmutablePair(HMiscellaneousHelper.getEmptyIterator(), RunnableE.EmptyRunnable);
-//            }
-//            if (directoryInformation.type() == FileSqlInterface.FileSqlType.EmptyDirectory)
-//                FileManager.updateDirectoryType(configuration.getName(), directoryId, false, connectionId.get());
-//            final Set<Long> deletedIds = ConcurrentHashMap.newKeySet();
-//            deletedIds.addAll(FileManager.selectFileIdByParentId(configuration.getName(), directoryId, _connectionId));
-//            deletedIds.remove(configuration.getRootDirectoryId());
-//            FileManager.getConnection(configuration.getName(), connectionId.get(), null);
-//            return DriverUtil.wrapSuppliersInPages(page -> {
-//                final Collection<FileInformation> list = switch (page.intValue()) {
-//                    case 0 -> directoriesInformation;
-//                    case 1 -> filesInformation;
-//                    default -> DriverHelper_lanzou.listFilesInPage(configuration, directoryId, page.intValue() - 1);
-//                };
-//                if (page.intValue() > 1 && list.isEmpty())
-//                    return null;
-//                final Set<Long> ids = list.stream().map(FileInformation::id).collect(Collectors.toSet());
-//                deletedIds.removeAll(ids);
-//                FileManager.mergeFiles(configuration.getName(), list, ids, connectionId.get());
-//                return list;
-//            }, HExceptionWrapper.wrapConsumer(e -> {
-//                if (e == null) {
-//                    FileManager.deleteFilesRecursively(configuration.getName(), deletedIds, connectionId.get());
-//                    FileManager.calculateDirectorySizeRecursively(configuration.getName(), directoryId, connectionId.get());
-//                    connection.commit();
-//                } else if (!(e instanceof CancellationException))
-//                    throw e;
-//            }, connection::close));
-//        }
-//    }
-//
 //    static @NotNull UnionPair<DownloadMethods, FailureReason> getDownloadMethods(final @NotNull LanzouConfiguration configuration, final long fileId, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @Nullable String _connectionId) throws IOException, SQLException, InterruptedException {
 //        final FileInformation info = DriverManager_lanzou.getFileInformation(configuration, fileId, null, _connectionId);
 //        if (info == null || info.isDirectory()) return UnionPair.fail(FailureReason.byNoSuchFile("Downloading.", new FileLocation(configuration.getName(), fileId)));
@@ -65,8 +13,6 @@ public final class DriverManager_lanzou {
 //        if (url == null) return UnionPair.fail(FailureReason.byNoSuchFile("Downloading.", new FileLocation(configuration.getName(), fileId)));
 //        return UnionPair.ok(DriverUtil.toCachedDownloadMethods(DriverUtil.getDownloadMethodsByUrlWithRangeHeader(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(url.getFirst(), "GET"), url.getSecond(), info.size(), from, to, DriverHelper_lanzou.headers.newBuilder())));
 //    }
-//
-//    // File Writer
 //
 //    static void trash(final @NotNull LanzouConfiguration configuration, final @NotNull FileInformation information, final @Nullable String _connectionId, final @Nullable String _trashConnectionId) throws IOException, SQLException, InterruptedException {
 //        final AtomicReference<String> connectionId = new AtomicReference<>();

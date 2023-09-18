@@ -585,11 +585,11 @@ public class FileSqliteHelper implements FileSqlInterface {
     }
 
     @Override
-    public void deleteDirectoryRecursively(final long directoryId, final @Nullable String _connectionId) throws SQLException {
-        if (directoryId == this.rootId) return;
+    public boolean deleteDirectoryRecursively(final long directoryId, final @Nullable String _connectionId) throws SQLException {
+        if (directoryId == this.rootId) return false;
+        final boolean success;
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
-            final boolean success;
             long size = 0, parentId = 0;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     SELECT size, parent_id FROM %s WHERE double_id == ? LIMIT 1;
@@ -633,6 +633,7 @@ public class FileSqliteHelper implements FileSqlInterface {
             }
             connection.commit();
         }
+        return success;
     }
 
 //    @Override

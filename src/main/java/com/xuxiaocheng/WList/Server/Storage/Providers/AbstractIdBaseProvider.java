@@ -115,6 +115,14 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
         }
     }
 
+    /**
+     * Try to get file/directory information by id.
+     * @return false: unsupported. true: file is not existed. success: information.
+     */
+    protected @NotNull UnionPair<FileInformation, Boolean> info0(final long id, final boolean isDirectory) {
+        return UnionPair.fail(Boolean.FALSE);
+    }
+
     @Override
     public void refreshDirectory(final long directoryId, final Consumer<? super @Nullable UnionPair<Boolean, Throwable>> consumer) {
         try {
@@ -179,7 +187,7 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
     }
 
     /**
-     * Try update file/directory information.
+     * Try to update file/directory information.
      * @return false: file is not existed. true: needn't updated. success: updated.
      */
     protected @NotNull UnionPair<FileInformation, Boolean> update0(final @NotNull FileInformation oldInformation) throws Exception {
@@ -202,21 +210,22 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
         }
         if (update.getE().booleanValue())
             return information;
-        if (isDirectory)
-            this.manager.getInstance().deleteDirectoryRecursively(id, null);
-        else
-            this.manager.getInstance().deleteFile(id, null);
+        this.manager.getInstance().deleteFileOrDirectory(id, isDirectory, null);
         return null;
     }
 
     /**
-     * Delete file or directory by id.
+     * Delete file or directory.
      */
-    protected abstract void delete0(final long id, final boolean isDirectory) throws Exception;
+    protected abstract void delete0(final @NotNull FileInformation information) throws Exception;
 
     @Override
     public boolean delete(final long id, final boolean isDirectory) throws Exception {
-        this.delete0(id, isDirectory);
+        final FileInformation information = this.manager.getInstance().selectInfo(id, isDirectory, null);
+        if (information == null)
+            return false;
+        this.delete0(information);
+        this.manager.getInstance().deleteFileOrDirectory(id, isDirectory, null);
         return true;
     }
 
