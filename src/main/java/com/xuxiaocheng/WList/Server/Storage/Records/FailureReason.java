@@ -1,91 +1,70 @@
 package com.xuxiaocheng.WList.Server.Storage.Records;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.WList.Commons.Operations.FailureKind;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 
-// TODO enhance.
 public class FailureReason {
-    public static final @NotNull String InvalidFilename = "Invalid filename.";
-    public static final @NotNull String DuplicatePolicyError = "ERROR by duplicate policy.";
-    public static final @NotNull String ExceedMaxSize = "Exceed max size per file.";
-    public static final @NotNull String NoSuchFile = "No such file.";
-    public static final @NotNull String Others = "Others.";
-
-    public static @NotNull FailureReason byInvalidName(final @NotNull String callingMethodMessage, final @NotNull FileLocation location, final @NotNull String name) {
-        return new FailureReason(FailureReason.InvalidFilename, name, location);
+    public static @NotNull FailureReason byInvalidName(final @NotNull FileLocation location, final @NotNull String name, final @NotNull String rules) {
+        return new FailureReason(FailureKind.InvalidName, location, ParametersMap.create().add("name", name).add("rules", rules).toString());
     }
 
-    public static @NotNull FailureReason byDuplicateError(final @NotNull String callingMethodMessage, final @NotNull FileLocation location, final @NotNull String name) {
-        return new FailureReason(FailureReason.DuplicatePolicyError, callingMethodMessage, location);
+    public static @NotNull FailureReason byDuplicateError(final @NotNull FileLocation location) {
+        return new FailureReason(FailureKind.DuplicateError, location, null);
     }
 
-    public static @NotNull FailureReason byExceedMaxSize(final @NotNull String callingMethodMessage, final long current, final long max, final @NotNull FileLocation location, final @NotNull String name) {
-        return new FailureReason(FailureReason.ExceedMaxSize, String.format("current (%d) > max (%d).", current, max), location);
+    public static @NotNull FailureReason byExceedMaxSize(final @NotNull FileLocation location, final long current, final long max) {
+        return new FailureReason(FailureKind.ExceedMaxSize, location, ParametersMap.create().add("current", current).add("max", max).toString());
     }
 
-    public static @NotNull FailureReason byExceedMaxSize(final @NotNull String callingMethodMessage, final long current, final @NotNull String message, final @NotNull FileLocation location, final @NotNull String name) {
-        return new FailureReason(FailureReason.ExceedMaxSize, "Current: " + current + ", " + message, location);
-    }
-
-    public static @NotNull FailureReason byNoSuchFile(final @NotNull String callingMethodMessage, final @NotNull FileLocation location) {
-        return new FailureReason(FailureReason.NoSuchFile, callingMethodMessage, location);
+    public static @NotNull FailureReason byNoSuchFile(final @NotNull FileLocation location) {
+        return new FailureReason(FailureKind.NoSuchFile, location, null);
     }
 
     @Deprecated
-    public static @NotNull FailureReason others(final @NotNull String message, final @Nullable Object extra) {
-        return new FailureReason(FailureReason.Others, message, extra);
+    public static @NotNull FailureReason others(final @NotNull FileLocation location, final @Nullable String message) {
+        return new FailureReason(FailureKind.Others, location, message);
     }
 
-    protected final @NotNull String kind;
+    protected final @NotNull FailureKind kind;
+    protected final @NotNull FileLocation location;
     protected final @NotNull String message;
-    protected final @Nullable Object extra;
-    protected final @NotNull Throwable throwable;
+    protected final @NotNull Exception exception;
 
-    protected FailureReason(final @NotNull String kind, final @NotNull String message, final @Nullable Object extra) {
+    protected FailureReason(final @NotNull FailureKind kind, final @NotNull FileLocation location, final @Nullable String message) {
         super();
         this.kind = kind;
-        this.message = message;
-        this.extra = extra;
-        this.throwable = new Throwable();
+        this.location = location;
+        this.message = Objects.requireNonNullElse(message, "");
+        this.exception = new Exception(kind.description() + this.message);
     }
 
-    public @NotNull String kind() {
+    public @NotNull FailureKind kind() {
         return this.kind;
+    }
+
+    public @NotNull FileLocation location() {
+        return this.location;
     }
 
     public @NotNull String message() {
         return this.message;
     }
 
-    public @Nullable Object extra() {
-        return this.extra;
-    }
-
-    public @NotNull Throwable throwable() {
-        return this.throwable;
-    }
-
-    @Override
-    public boolean equals(final @Nullable Object o) {
-        if (this == o) return true;
-        if (!(o instanceof FailureReason that)) return false;
-        return this.kind.equals(that.kind) && this.message.equals(that.message) && Objects.equals(this.extra, that.extra);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(this.kind, this.message);
+    public @NotNull Exception exception() {
+        return this.exception;
     }
 
     @Override
     public @NotNull String toString() {
         return "FailureReason{" +
-                "kind='" + this.kind + '\'' +
-                ", message='" + this.message + '\'' +
-                ", extra=" + this.extra +
+                "kind=" + this.kind +
+                ", location=" + this.location +
+                ", exception=" + this.exception +
                 '}';
     }
 }
