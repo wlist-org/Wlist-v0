@@ -1,353 +1,169 @@
 package com.xuxiaocheng.WList.Server.Storage.Selectors;
 
+import com.xuxiaocheng.HeadLibs.AndroidSupport.AStreams;
+import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
+import com.xuxiaocheng.HeadLibs.Ranges.IntRange;
+import com.xuxiaocheng.HeadLibs.Ranges.LongRange;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
+import com.xuxiaocheng.WList.Commons.IdentifierNames;
+import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
+import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
+import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
+import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
+import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
+import com.xuxiaocheng.WList.Server.Storage.StorageManager;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
+
+import java.io.IOException;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.function.Consumer;
+
+@SuppressWarnings("OverlyBroadThrowsClause")
 public final class RootSelector {
-    private static final RootSelector instance = new RootSelector();
-    public static RootSelector getInstance() {
-        return RootSelector.instance;
+    private RootSelector() {
+        super();
     }
 
-//    /**
-//     * Build provider cache. Login and check token, etc.
-//     * @see ProviderConfiguration#setLastFileCacheBuildTime(ZonedDateTime)
-//     */
-//    void buildCache() throws Exception;
-//
-//    /**
-//     * Build all files index into sql database. (Recursive from root.)
-//     * @see FileManager
-//     * @see ProviderConfiguration#setLastFileIndexBuildTime(ZonedDateTime)
-//     */
-//    void buildIndex() throws Exception;
-//
-//    /**
-//     * Force rebuild files index into sql database to synchronize with web server. (Not recursively)
-//     * @param location The directory location to refresh.
-//     * @see FileManager
-//     */
-//    void refreshDirectory(final @NotNull FileLocation location) throws Exception;
-//
-//    /**
-//     * Get the list of files in directory.
-//     * @param location The directory location.
-//     * @return null: directory is not available. !null: list of files.
-//     */
-//    @Nullable FilesListInformation list(final @NotNull FileLocation location, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final @LongRange(minimum = 0) long position, final @IntRange(minimum = 0) int limit) throws Exception;
-//
-//    /**
-//     * Get the file information of a specific file.
-//     * @param location The file location to get information.
-//     * @return The file information. Null means not existed.
-//     */
-//    @Nullable FileInformation info(final @NotNull FileLocation location) throws Exception;
-//
-//    /**
-//     * Get download methods of a specific file.
-//     * @see DownloadRequirements#tryGetDownloadFromUrl(OkHttpClient, HttpUrl, Headers, Long, Headers.Builder, long, long, ZonedDateTime)
-//     */
-//    @NotNull UnionPair<DownloadRequirements, FailureReason> download(final @NotNull FileLocation location, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws Exception;
-//
-//    /**
-//     * Create an empty directory.
-//     * @see com.xuxiaocheng.WList.Server.Storage.Helpers.ProviderUtil#getRetryWrapper(String)
-//     */
-//    @NotNull UnionPair<FileInformation, FailureReason> createDirectory(final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws Exception;
-//
-//    /**
-//     * Upload file.
-//     */
-//    @NotNull UnionPair<UploadRequirements, FailureReason> upload(final @NotNull FileLocation parentLocation, final @NotNull String filename, final @LongRange(minimum = 0) long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws Exception;
+    public static @NotNull FileInformation getProviderInformation(final @NotNull ProviderConfiguration configuration) {
+        return new FileInformation(configuration.getRootDirectoryId(), 0, configuration.getName(), true, configuration.getSpaceUsed(),
+                configuration.getCreateTime(), configuration.getUpdateTime(), configuration.getDisplayName());
+    }
 
-//    /**
-//     * Delete file.
-//     * @param location The file location to delete.
-//     * @throws Exception Something went wrong.
-//     */
-//    void delete(final @NotNull FileLocation location) throws Exception;
-//
-//    /**
-//     * Copy file.
-//     * @param sourceLocation The file location to copy.
-//     * @param targetParentLocation The target parent directory location.
-//     * @param targetFilename The name of target file.
-//     * @param policy Duplicate policy.
-//     * @return The information of new file.
-//     * @throws Exception Something went wrong.
-//     */
-//    @SuppressWarnings("OverlyBroadThrowsClause")
-//    default @NotNull UnionPair<FileInformation, FailureReason> copy(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final @NotNull String targetFilename, final Options.@NotNull DuplicatePolicy policy) throws Exception {
-//        HLog.getInstance("ServerLogger").log(HLogLevel.WARN, "Copying by default algorithm.", ParametersMap.create().add("sourceLocation", sourceLocation).add("targetParentLocation", targetParentLocation).add("targetFilename", targetFilename).add("policy", policy));
-//        final FileInformation source = this.info(sourceLocation);
-//        if (source == null || source.isDirectory())
-//            return UnionPair.fail(FailureReason.byNoSuchFile("Copying.", sourceLocation));
-//        Runnable uploadFinisher = null;
-//        Runnable downloadFinisher = null;
-//        try {
-//            final UnionPair<UploadRequirements.UploadMethods, FailureReason> upload = this.upload(targetParentLocation, targetFilename, source.size(), source.md5(), policy);
-//            if (upload.isFailure())
-//                return UnionPair.fail(upload.getE());
-//            uploadFinisher = upload.getT().finisher();
-//            if (!upload.getT().methods().isEmpty()) {
-//                final UnionPair<DownloadMethods, FailureReason> download = this.download(sourceLocation, 0, Long.MAX_VALUE);
-//                if (download.isFailure())
-//                    return UnionPair.fail(download.getE());
-//                downloadFinisher = download.getT().finisher();
-//                assert source.size() == download.getT().total();
-//                if (upload.getT().methods().size() != download.getT().methods().size())
-//                    throw new AssertionError("Copying. Same size but different methods count." + ParametersMap.create()
-//                            .add("size_uploader", source.size()).add("size_downloader", download.getT().total())
-//                            .add("downloader", download.getT().methods().size()).add("uploader", upload.getT().methods().size())
-//                            .add("source", source).add("target", targetParentLocation).add("filename", targetFilename).add("policy", policy));
-//                final Iterator<ConsumerE<ByteBuf>> uploadIterator = upload.getT().methods().iterator();
-//                final Iterator<SupplierE<ByteBuf>> downloadIterator = download.getT().methods().iterator();
-//                while (uploadIterator.hasNext() && downloadIterator.hasNext())
-//                    uploadIterator.next().accept(downloadIterator.next().get());
-//                assert !uploadIterator.hasNext() && !downloadIterator.hasNext();
-//            }
-//            final FileInformation information = upload.getT().supplier().get();
-//            if (information == null)
-//                throw new IllegalStateException("Failed to copy file. Failed to get target file information." + ParametersMap.create()
-//                        .add("sourceLocation", sourceLocation).add("sourceInfo", source).add("targetParentLocation", targetParentLocation).add(targetFilename, "targetFilename").add("policy", policy));
-//            return UnionPair.ok(information);
-//        } finally {
-//            if (uploadFinisher != null)
-//                uploadFinisher.run();
-//            if (downloadFinisher != null)
-//                downloadFinisher.run();
-//        }
-//    }
-//
-//    /**
-//     * Move file/directory.
-//     * @param sourceLocation The file/directory location to move.
-//     * @param targetParentLocation The target directory location.
-//     * @param policy Duplicate policy.
-//     * @return The information of new file/directory.
-//     * @throws Exception Something went wrong.
-//     */
-//    @SuppressWarnings("OverlyBroadThrowsClause")
-//    default @NotNull UnionPair<FileInformation, FailureReason> move(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final Options.@NotNull DuplicatePolicy policy) throws Exception {
-//        HLog.getInstance("ServerLogger").log(HLogLevel.WARN, "Moving by default algorithm.", ParametersMap.create().add("sourceLocation", sourceLocation).add("targetParentLocation", targetParentLocation).add("policy", policy));
-//        final FileInformation source = this.info(sourceLocation);
-//        if (source == null)
-//            return UnionPair.fail(FailureReason.byNoSuchFile("Moving.", sourceLocation));
-//        if (source.isDirectory()) {
-//            final UnionPair<FileInformation, FailureReason> directory = this.createDirectory(targetParentLocation, source.name(), policy);
-//            if (directory.isFailure())
-//                return UnionPair.fail(directory.getE());
-//            Triad.ImmutableTriad<Long, Long, List<FileInformation>> list;
-//            do {
-//                list = this.list(sourceLocation, Options.FilterPolicy.OnlyDirectories, ProviderUtil.DefaultLimitPerRequestPage, 0, ProviderUtil.DefaultOrderPolicy, ProviderUtil.DefaultOrderDirection);
-//                if (list == null)
-//                    return directory;
-//                for (final FileInformation f: list.getC())
-//                    this.move(f.location(), directory.getT().location(), policy);
-//            } while (list.getB().longValue() > 0);
-//            this.moveFilesInDirectory(sourceLocation, policy, directory);
-//            return directory;
-//        }
-//        if (source.location().equals(targetParentLocation))
-//            return UnionPair.ok(source);
-//        final UnionPair<FileInformation, FailureReason> information = this.copy(sourceLocation, targetParentLocation, source.name(), policy);
-//        if (information.isFailure())
-//            return UnionPair.fail(information.getE());
-//        try {
-//            this.delete(sourceLocation);
-//        } catch (final Exception exception) {
-//            try {
-//                this.delete(targetParentLocation);
-//            } catch (final Exception e) {
-//                throw new IllegalStateException("Failed to delete target file after a failed deletion of source file when moving file by default algorithm." +
-//                        ParametersMap.create().add("sourceLocation", sourceLocation).add("targetParentLocation", targetParentLocation).add("policy", policy).add("exception", exception), e);
-//            }
-//            throw exception;
-//        }
-//        return information;
-//    }
-//
-//    /**
-//     * Rename file/directory.
-//     * @param sourceLocation The file/directory location to move.
-//     * @param name The name of new file/directory.
-//     * @param policy Duplicate policy.
-//     * @return The information of new file/directory.
-//     * @throws Exception Something went wrong.
-//     */
-//    @SuppressWarnings("OverlyBroadThrowsClause")
-//    default @NotNull UnionPair<FileInformation, FailureReason> rename(final @NotNull FileLocation sourceLocation, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
-//        HLog.getInstance("ServerLogger").log(HLogLevel.WARN, "Renaming by default algorithm.", ParametersMap.create().add("sourceLocation", sourceLocation).add("name", name).add("policy", policy));
-//        final FileInformation source = this.info(sourceLocation);
-//        if (source == null)
-//            return UnionPair.fail(FailureReason.byNoSuchFile("Renaming.", sourceLocation));
-//        if (source.isDirectory()) {
-//            final UnionPair<FileInformation, FailureReason> directory = this.createDirectory(new FileLocation(sourceLocation.storage(), source.parentId()), name, policy);
-//            if (directory.isFailure())
-//                return UnionPair.fail(directory.getE());
-//            this.moveFilesInDirectory(sourceLocation, policy, directory);
-//            this.delete(sourceLocation);
-//            return directory;
-//        }
-//        if (source.name().equals(name))
-//            return UnionPair.ok(source);
-//        final UnionPair<FileInformation, FailureReason> information = this.copy(sourceLocation, sourceLocation, name, policy);
-//        if (information.isFailure())
-//            return UnionPair.fail(information.getE());
-//        try {
-//            this.delete(sourceLocation);
-//        } catch (final Exception exception) {
-//            try {
-//                this.delete(information.getT().location());
-//            } catch (final Exception e) {
-//                throw new IllegalStateException("Failed to delete target file after a failed deletion of source file when renaming file by default algorithm." +
-//                        ParametersMap.create().add("sourceLocation", sourceLocation).add("name", name).add("targetLocation", information.getT().location()).add("policy", policy).add("exception", exception), e);
-//            }
-//            throw exception;
-//        }
-//        return information;
-//    }
-//
-//    @SuppressWarnings("OverlyBroadThrowsClause")
-//    private void moveFilesInDirectory(final @NotNull FileLocation sourceLocation, final Options.@NotNull DuplicatePolicy policy, final @NotNull UnionPair<FileInformation, FailureReason> directory) throws Exception {
-//        Triad.ImmutableTriad<Long, Long, List<FileInformation>> list;
-//        do {
-//            list = this.list(sourceLocation, Options.FilterPolicy.Both, 10, 0, ProviderUtil.DefaultOrderPolicy, ProviderUtil.DefaultOrderDirection);
-//            if (list == null)
-//                break;
-//            final CountDownLatch latch = new CountDownLatch(list.getC().size());
-//            for (final FileInformation f: list.getC())
-//                CompletableFuture.runAsync(HExceptionWrapper.wrapRunnable(() -> this.move(f.location(), directory.getT().location(), policy),
-//                        latch::countDown), WListServer.ServerExecutors).exceptionally(MiscellaneousUtil.exceptionHandler());
-//            latch.await();
-//        } while (list.getA().longValue() > 0);
-//    }
+    private static <T> @NotNull Consumer<T> dumper(final ProviderConfiguration configuration) {
+        return t -> {
+            try {
+                StorageManager.dumpConfigurationIfModified(configuration);
+            } catch (final IOException exception) {
+                HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
+            }
+        };
+    }
 
-//    public static @NotNull FileInformation getDriverInformation(final @NotNull ProviderConfiguration configuration) {
-//        return new FileInformation(new FileLocation(IdentifierNames.SelectorProviderName.RootSelector.getIdentifier(), configuration.getRootDirectoryId()),
-//                0, configuration.getName(), FileSqlInterface.FileSqlType.Directory, configuration.getSpaceUsed(),
-//                configuration.getCreateTime(), configuration.getUpdateTime(),
-//                configuration.getDisplayName(), null);
-//    }
-//
-//    public static @NotNull FileInformation getDatabaseDriverInformation(final @NotNull ProviderConfiguration configuration) {
-//        return new FileInformation(new FileLocation(IdentifierNames.SelectorProviderName.RootSelector.getIdentifier(), configuration.getRootDirectoryId()),
-//                configuration.getRootDirectoryId(), configuration.getName(),
-//                FileSqlInterface.FileSqlType.Directory, configuration.getSpaceUsed(),
-//                configuration.getCreateTime(), configuration.getUpdateTime(), "", null);
-//    }
+    public static void list(final @NotNull FileLocation directory, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final @LongRange(minimum = 0) long position, final @IntRange(minimum = 0) int limit, final @NotNull Consumer<@Nullable UnionPair<FilesListInformation, Throwable>> consumer) {
+        try {
+            if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(directory.storage())) {
+                if (filter == Options.FilterPolicy.OnlyFiles) {
+                    consumer.accept(UnionPair.ok(new FilesListInformation(StorageManager.getProvidersCount(), 0L, List.of())));
+                    return;
+                }
+                final Set<ProviderConfiguration> all = new ConcurrentSkipListSet<>((a, b) -> {
+                    for (final Map.Entry<VisibleFileInformation.Order, Options.OrderDirection> order: orders.entrySet()) {
+                        final Comparator<ProviderConfiguration> comparator = switch (order.getKey()) {
+                            case Id, Name -> Comparator.comparing(ProviderConfiguration::getDisplayName);
+                            case Directory -> (m, n) -> 0;
+                            case Size -> Comparator.comparing(ProviderConfiguration::getSpaceUsed, Long::compareUnsigned);
+                            case CreateTime -> Comparator.comparing(ProviderConfiguration::getCreateTime);
+                            case UpdateTime -> Comparator.comparing(ProviderConfiguration::getUpdateTime);
+                        };
+                        final int res = (switch (order.getValue()) {
+                            case ASCEND -> comparator;
+                            case DESCEND -> comparator.reversed();
+                        }).compare(a, b);
+                        if (res != 0)
+                            return res;
+                    }
+                    return 0;
+                });
+                StorageManager.getAllProviders().values().forEach(p -> all.add(p.getConfiguration()));
+                final List<FileInformation> list = AStreams.streamToList(all.stream().skip(position).limit(limit).map(RootSelector::getProviderInformation));
+                consumer.accept(UnionPair.ok(new FilesListInformation(StorageManager.getProvidersCount(), StorageManager.getProvidersCount(), list)));
+                return;
+            }
+            final ProviderInterface<?> real = StorageManager.getProvider(directory.storage());
+            if (real == null) {
+                consumer.accept(UnionPair.ok(FilesListInformation.Empty));
+                return;
+            }
+            real.list(directory.id(), filter, orders, position, limit, consumer.andThen(RootSelector.dumper(real.getConfiguration())));
+        } catch (final Throwable exception) {
+            consumer.accept(UnionPair.fail(exception));
+        }
+    }
 
-//    public boolean buildIndex(final @NotNull String name) throws Exception {
-//        final ProviderInterface<?> driver = StorageManager.getProvider(name);
-//        if (driver != null) {
-//            final ProviderRecyclerInterface<?> trash = StorageManager.getRecycler(name);
-//            try {
-//                final ZonedDateTime old = driver.getConfiguration().getLastFileIndexBuildTime();
-//                if (old == null || Duration.between(old, ZonedDateTime.now()).toMillis() > TimeUnit.HOURS.toMillis(3))
-//                    driver.buildIndex();
-//            } finally {
-//                StorageManager.dumpConfigurationIfModified(driver.getConfiguration());
-//            }
-//            if (trash != null)
-//                try {
-//                    final ZonedDateTime old = trash.getDriver().getConfiguration().getLastTrashIndexBuildTime();
-//                    if (old == null || Duration.between(old, ZonedDateTime.now()).toMillis() > TimeUnit.HOURS.toMillis(3))
-//                        trash.buildIndex();
-//                } finally {
-//                    StorageManager.dumpConfigurationIfModified(trash.getDriver().getConfiguration());
-//                }
-//        }
-//        return driver != null;
-//    }
-//
-//    @Override
-//    public void refreshDirectory(final @NotNull FileLocation location) throws Exception {
-//        final ProviderInterface<?> driver = StorageManager.getProvider(location.storage());
-//        if (driver != null)
-//            try {
-//                driver.refreshDirectory(location);
-//            } finally {
-//                StorageManager.dumpConfigurationIfModified(driver.getConfiguration());
-//            }
-//    }
-//
-//    @Override
-//    public @Nullable FilesListInformation list(@NotNull final FileLocation location, @NotNull final Options.FilterPolicy filter, @NotNull @Unmodifiable final LinkedHashMap<VisibleFileInformation.Order, Options.OrderDirection> orders, final long position, final int limit) throws Exception {
-//        return null;
-//    }
+    public static void refreshDirectory(final @NotNull FileLocation directory, final Consumer<? super @Nullable UnionPair<Boolean, Throwable>> consumer) {
+        try {
+            if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(directory.storage())) {
+                consumer.accept(UnionPair.ok(Boolean.TRUE));
+                return;
+            }
+            final ProviderInterface<?> real = StorageManager.getProvider(directory.storage());
+            if (real == null) {
+                consumer.accept(UnionPair.ok(Boolean.FALSE));
+                return;
+            }
+            real.refreshDirectory(directory.id(), consumer.andThen(RootSelector.dumper(real.getConfiguration())));
+        } catch (final Throwable exception) {
+            consumer.accept(UnionPair.fail(exception));
+        }
+    }
 
-//    @Override
-//    public Triad.@Nullable ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull @UnmodifiableView List<@NotNull FileInformation>> list(final @NotNull FileLocation location, final Options.@NotNull FilterPolicy filter, final @LongRange(minimum = 0) int limit, final @LongRange(minimum = 0) int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction) throws Exception {
-//        if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(location.storage())) {
-//            if (filter == Options.FilterPolicy.OnlyFiles)
-//                return Triad.ImmutableTriad.makeImmutableTriad((long) StorageManager.getProvidersCount(), 0L, List.of());
-//            final Comparator<ProviderConfiguration<?, ?, ?>> comparator = switch (policy) {
-//                case FileName -> Comparator.comparing((ProviderConfiguration a) -> a.getDisplayName());
-//                case Size -> Comparator.comparing((ProviderConfiguration a) -> a.getSpaceUsed(), Long::compareUnsigned);
-//                case CreateTime -> Comparator.comparing((ProviderConfiguration a) -> a.getCreateTime());
-//                case UpdateTime -> Comparator.comparing((ProviderConfiguration a) -> a.getUpdateTime());
-//            };
-//            final SortedSet<ProviderConfiguration<?, ?, ?>> all = new ConcurrentSkipListSet<>(switch (direction) {
-//                case ASCEND -> comparator; case DESCEND -> comparator.reversed();
-//            });
-//            StorageManager.operateAllDrivers(d -> all.add(d.getConfiguration()));
-//            final Iterator<ProviderConfiguration<?, ?, ?>> iterator = all.stream().skip((long) limit * page).iterator();
-//            final List<FileInformation> list = new ArrayList<>(limit);
-//            while (list.size() < limit && iterator.hasNext())
-//                list.add(RootSelector.getDriverInformation(iterator.next()));
-//            return Triad.ImmutableTriad.makeImmutableTriad((long) all.size(), (long) all.size(), list);
-//        }
-//        final ProviderInterface<?> real = StorageManager.getProvider(location.storage());
-//        if (real == null) return null;
-//        final Triad.ImmutableTriad<Long, Long, List<FileInformation>> list;
-//        try {
-//            list = real.list(location, filter, limit, page, policy, direction);
-//        } finally {
-//            StorageManager.dumpConfigurationIfModified(real.getConfiguration());
-//        }
-//        return list;
-//    }
+    public static @Nullable FileInformation info(final @NotNull FileLocation location, final boolean isDirectory) throws Exception {
+        if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(location.storage()))
+            return null; // TODO: Root information.
+        final ProviderInterface<?> real = StorageManager.getProvider(location.storage());
+        if (real == null)
+            return null;
+        final FileInformation info;
+        try {
+            info = real.info(location.id(), isDirectory);
+        } finally {
+            StorageManager.dumpConfigurationIfModified(real.getConfiguration());
+        }
+        return info;
+    }
 
-//    @Override
-//    public @Nullable FileInformation info(final @NotNull FileLocation location) throws Exception {
-//        if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(location.storage()))
-//            throw new UnsupportedOperationException("Cannot get root info.");
-//        final ProviderInterface<?> real = StorageManager.getProvider(location.storage());
-//        if (real == null) return null;
-//        final FileInformation info;
-//        try {
-//            info = real.info(location);
-//        } finally {
-//            StorageManager.dumpConfigurationIfModified(real.getConfiguration());
-//        }
-//        return info;
-//    }
+    public static boolean delete(final @NotNull FileLocation location, final boolean isDirectory) throws Exception {
+        if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(location.storage()))
+            return false;
+        final ProviderInterface<?> real = StorageManager.getProvider(location.storage());
+        if (real == null)
+            return false;
+        final boolean res;
+        try {
+            res = real.delete(location.id(), isDirectory);
+        } finally {
+            StorageManager.dumpConfigurationIfModified(real.getConfiguration());
+        }
+        return res;
+    }
 
-//    @Override
-//    public @NotNull UnionPair<DownloadMethods, FailureReason> download(final @NotNull FileLocation location, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws Exception {
-//        final ProviderInterface<?> real = StorageManager.getProvider(location.storage());
-//        if (real == null) return UnionPair.fail(FailureReason.byNoSuchFile("Downloading.", location));
-//        final UnionPair<DownloadMethods, FailureReason> methods;
-//        try {
-//            methods = real.download(location, from, to);
-//        } finally {
-//            StorageManager.dumpConfigurationIfModified(real.getConfiguration());
-//        }
-//        return methods;
-//    }
-//
-//    @Override
-//    public @NotNull UnionPair<FileInformation, FailureReason> createDirectory(final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws Exception {
-//        if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(parentLocation.storage()))
-//            throw new UnsupportedOperationException("Cannot create root directory.");
-//        final ProviderInterface<?> real = StorageManager.getProvider(parentLocation.storage());
-//        if (real == null) return UnionPair.fail(FailureReason.byNoSuchFile("Creating directories.", parentLocation));
-//        final UnionPair<FileInformation, FailureReason> directory;
-//        try {
-//            directory = real.createDirectory(parentLocation, directoryName, policy);
-//        } finally {
-//            StorageManager.dumpConfigurationIfModified(real.getConfiguration());
-//        }
-//        return directory;
-//    }
-//
+    public static @NotNull UnionPair<FileInformation, FailureReason> createDirectory(final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+        final ProviderInterface<?> real = StorageManager.getProvider(parentLocation.storage());
+        if (real == null)
+            return UnionPair.fail(FailureReason.byNoSuchFile(parentLocation));
+        final UnionPair<FileInformation, FailureReason> directory;
+        try {
+            directory = real.createDirectory(parentLocation.id(), directoryName, policy, parentLocation);
+        } finally {
+            StorageManager.dumpConfigurationIfModified(real.getConfiguration());
+        }
+        return directory;
+    }
+
+    public static @NotNull UnionPair<DownloadRequirements, FailureReason> download(final @NotNull FileLocation file, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws Exception {
+        final ProviderInterface<?> real = StorageManager.getProvider(file.storage());
+        if (real == null)
+            return UnionPair.fail(FailureReason.byNoSuchFile(file));
+        final UnionPair<DownloadRequirements, FailureReason> methods;
+        try {
+            methods = real.download(file.id(), from, to, file);
+        } finally {
+            StorageManager.dumpConfigurationIfModified(real.getConfiguration());
+        }
+        return methods;
+    }
+
 //    @Override
 //    public @NotNull UnionPair<UploadMethods, FailureReason> upload(final @NotNull FileLocation parentLocation, final @NotNull String filename, final @LongRange(minimum = 0) long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws Exception {
 //        if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(parentLocation.storage()))
@@ -363,20 +179,6 @@ public final class RootSelector {
 //            StorageManager.dumpConfigurationIfModified(real.getConfiguration());
 //        }
 //        return methods;
-//    }
-//
-//    @SuppressWarnings("OverlyBroadThrowsClause")
-//    @Override
-//    public void delete(final @NotNull FileLocation location) throws Exception {
-//        if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(location.storage()))
-//            throw new UnsupportedOperationException("Cannot delete root driver.");
-//        final ProviderInterface<?> real = StorageManager.getProvider(location.storage());
-//        if (real == null) return;
-//        try {
-//            real.delete(location);
-//        } finally {
-//            StorageManager.dumpConfigurationIfModified(real.getConfiguration());
-//        }
 //    }
 //
 //    @Override
