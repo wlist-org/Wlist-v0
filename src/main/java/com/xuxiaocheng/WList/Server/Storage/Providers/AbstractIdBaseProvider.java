@@ -136,9 +136,24 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
                     }
                     final AtomicReference<String> connectionId = new AtomicReference<>();
                     try (final Connection connection = manager.getConnection(null, connectionId)) {
-                        manager.deleteDirectoryRecursively(directoryId, connectionId.get()); // TODO: Only update delta.
-                        manager.insertFileOrDirectory(new FileInformation(directoryId, directory.parentId(), directory.name(), true, -1, directory.createTime(), directory.updateTime(), directory.others()), connectionId.get());
-                        manager.insertIterator(iterator, directoryId, connectionId.get());
+                        final Pair.ImmutablePair<Set<Long>, Set<Long>> old = manager.selectIdsInDirectory(directoryId, connectionId.get());
+                        final Set<Long> deleteFiles = old.getFirst();
+                        final Set<Long> deleteDirectories = old.getSecond();
+                        while (iterator.hasNext()) {
+                            final FileInformation information = iterator.next();
+                            if (information.isDirectory()) {
+                                deleteDirectories.remove(information.id());
+                                manager.updateOrInsertDirectory(information, connectionId.get());
+                            } else {
+                                deleteFiles.remove(information.id());
+                                manager.updateOrInsertFile(information, connectionId.get());
+                            }
+                        }
+                        // TODO: test real and update information.
+                        for (final Long id: deleteFiles)
+                            manager.deleteFile(id.longValue(), connectionId.get());
+                        for (final Long id: deleteDirectories)
+                            manager.deleteDirectoryRecursively(id.longValue(), connectionId.get());
                         connection.commit();
                     }
                     consumer.accept(UnionPair.ok(Boolean.TRUE));
@@ -167,7 +182,7 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
      * Try update file/directory information.
      * @return false: file is not existed. true: needn't updated. success: updated.
      */
-    protected @NotNull UnionPair<FileInformation, Boolean> info0(final @NotNull FileInformation oldInformation) throws Exception {
+    protected @NotNull UnionPair<FileInformation, Boolean> update0(final @NotNull FileInformation oldInformation) throws Exception {
         return UnionPair.fail(Boolean.TRUE);
     }
 
@@ -175,19 +190,23 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
     public @Nullable FileInformation info(final long id, final boolean isDirectory) throws Exception {
         final FileInformation information = this.manager.getInstance().selectInfo(id, isDirectory, null);
         if (information == null) return null;
-        final UnionPair<FileInformation, Boolean> update = this.info0(information);
+        final UnionPair<FileInformation, Boolean> update = this.update0(information);
         if (update.isSuccess()) {
-            throw new UnsupportedOperationException();
-            // TODO
-        } else if (update.getE().booleanValue())
-            return information;
-        else {
+            if (information.equals(update.getT()))
+                return information;
             if (isDirectory)
-                this.manager.getInstance().deleteDirectoryRecursively(id, null);
+                this.manager.getInstance().updateOrInsertDirectory(update.getT(), null);
             else
-                this.manager.getInstance().deleteFile(id, null);
-            return null;
+                this.manager.getInstance().updateOrInsertFile(update.getT(), null);
+            return update.getT();
         }
+        if (update.getE().booleanValue())
+            return information;
+        if (isDirectory)
+            this.manager.getInstance().deleteDirectoryRecursively(id, null);
+        else
+            this.manager.getInstance().deleteFile(id, null);
+        return null;
     }
 
     /**

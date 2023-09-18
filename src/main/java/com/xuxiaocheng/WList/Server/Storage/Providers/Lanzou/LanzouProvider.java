@@ -22,7 +22,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     @Override
-    protected @NotNull UnionPair<FileInformation, Boolean> info0(@NotNull final FileInformation oldInformation) throws Exception {
+    protected @NotNull UnionPair<FileInformation, Boolean> update0(@NotNull final FileInformation oldInformation) throws Exception {
         return UnionPair.fail(Boolean.TRUE);
     }
 
