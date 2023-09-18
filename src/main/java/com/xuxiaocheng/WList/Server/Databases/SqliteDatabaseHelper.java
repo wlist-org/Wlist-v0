@@ -29,8 +29,11 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -165,6 +168,7 @@ public class SqliteDatabaseHelper implements SqlDatabaseInterface {
 
         private int referenceCounter = 0;
         private @Nullable String allow = null;
+        private final @NotNull Map<@NotNull String, @NotNull StatementProxy> statementCache = new ConcurrentHashMap<>();
 
         private ReferencedConnectionProxy(final @Nullable String id, final @NotNull Connection rawConnection, final @NotNull SqliteDatabaseHelper databaseHelper) {
             super();
@@ -177,7 +181,7 @@ public class SqliteDatabaseHelper implements SqlDatabaseInterface {
         public @Nullable Object invoke(final @NotNull Object proxy, final @NotNull Method method, final Object @Nullable [] args) throws SQLException {
             if (this.referenceCounter < 0)
                 throw new IllegalReferenceCountException(this.referenceCounter);
-            switch (method.getName()) { // TODO: prepared statement cacher
+            switch (method.getName()) {
                 case "setId" -> {
                     assert args != null && args.length == 1;
                     this.id = (String) args[0];
@@ -202,7 +206,23 @@ public class SqliteDatabaseHelper implements SqlDatabaseInterface {
                 }
                 case "closePool" -> {
                     this.databaseHelper.activeConnections.remove(this.id, (ReferencedConnection) proxy);
-                    this.rawConnection.close();
+                    final Collection<Throwable> exceptions = new ArrayList<>(1);
+                    for (final StatementProxy statement: this.statementCache.values())
+                        try {
+                            statement.closeConnection();
+                        } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                            exceptions.add(exception);
+                        }
+                    try {
+                        this.rawConnection.close();
+                    } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                        exceptions.add(exception);
+                    }
+                    if (!exceptions.isEmpty()) {
+                        final SQLException exception = new SQLException("Something went wrong when close statements cache or raw connection.");
+                        exceptions.forEach(exception::addSuppressed);
+                        throw exception;
+                    }
                     return null;
                 }
                 case "commit" -> {
@@ -212,6 +232,23 @@ public class SqliteDatabaseHelper implements SqlDatabaseInterface {
             }
             if (this.allow != null)
                 throw new SQLWarning("Something went wrong on this connection (" + this.rawConnection + "). Usually caused in other threads.", this.allow);
+            if ("prepareStatement".equals(method.getName())) {
+                assert args != null && args.length >= 1;
+                try {
+                    return this.statementCache.computeIfAbsent((String) args[0], HExceptionWrapper.wrapFunction(k -> {
+                        final PreparedStatement rawStatement = (PreparedStatement) this.invoke0(method, args);
+                        assert rawStatement != null;
+                        return (StatementProxy) Proxy.newProxyInstance(rawStatement.getClass().getClassLoader(),
+                                ReferencedConnectionProxy.StatementProxy, new PreparedStatementProxy(rawStatement));
+                    }));
+                } catch (final RuntimeException exception) {
+                    throw HExceptionWrapper.unwrapException(exception, SQLException.class);
+                }
+            }
+            return this.invoke0(method, args);
+        }
+
+        private @Nullable Object invoke0(final @NotNull Method method, final Object @Nullable [] args) throws SQLException {
             try {
                 return method.invoke(this.rawConnection, args);
             } catch (final IllegalAccessException exception) {
@@ -234,6 +271,33 @@ public class SqliteDatabaseHelper implements SqlDatabaseInterface {
                     ", referenceCounter=" + this.referenceCounter +
                     ", allow='" + this.allow + '\'' +
                     '}';
+        }
+
+        private static final Class<?>[] StatementProxy = new Class[] {StatementProxy.class};
+        private interface StatementProxy extends PreparedStatement {
+            // void close() throws SQLException;
+            void closeConnection() throws SQLException;
+        }
+        private record PreparedStatementProxy(@NotNull PreparedStatement rawStatement) implements InvocationHandler {
+            @Override
+            public @Nullable Object invoke(final @NotNull Object proxy, final @NotNull Method method, final Object @Nullable [] args) throws SQLException {
+                switch (method.getName()) {
+                    case "close" -> {
+                        return null;
+                    }
+                    case "closeConnection" -> {
+                        this.rawStatement.close();
+                        return null;
+                    }
+                }
+                try {
+                    return method.invoke(this.rawStatement, args);
+                } catch (final IllegalAccessException exception) {
+                    throw new RuntimeException(exception);
+                } catch (final InvocationTargetException exception) {
+                    throw new RuntimeException(exception.getCause() == null ? exception : HExceptionWrapper.unwrapException(exception, SQLException.class).getCause());
+                }
+            }
         }
     }
 
