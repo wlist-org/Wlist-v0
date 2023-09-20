@@ -1,5 +1,13 @@
 package com.xuxiaocheng.WListTest;
 
+import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.WebRequest;
+import com.gargoylesoftware.htmlunit.WebResponse;
+import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.html.HtmlSpan;
+import com.gargoylesoftware.htmlunit.javascript.host.event.MouseEvent;
+import com.gargoylesoftware.htmlunit.util.WebConnectionWrapper;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -24,13 +32,30 @@ import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 public class TempTest {
-    private static final boolean initializeServer = true;
+    private static final boolean initializeServer = false;
     private static final @NotNull SupplierE<@Nullable Object> _main = () -> {
-
-        return null;
+        try (final WebClient client = new WebClient(BrowserVersion.EDGE)) {
+            client.getOptions().setCssEnabled(false);
+            client.getOptions().setJavaScriptEnabled(true);
+            client.getOptions().setThrowExceptionOnScriptError(false);
+            client.setWebConnection(new WebConnectionWrapper(client.getWebConnection()) {
+                @Override
+                public WebResponse getResponse(final WebRequest request) throws IOException {
+                    HLog.DefaultLogger.log(HLogLevel.NETWORK, request.getHttpMethod(), ": ", request.getUrl());
+                    return super.getResponse(request);
+                }
+            });
+            final HtmlPage page = client.getPage("https://up.woozooo.com/account.php?action=login");
+            while (true)
+                if (client.waitForBackgroundJavaScript(100) == 0)
+                    break;
+            final HtmlSpan slide = (HtmlSpan) page.getElementById("nc_1_n1z");
+            slide.mouseDown();
+            slide.mouseMove(false, false, false, MouseEvent.BUTTON_RIGHT);
+            return null;
+        }
     };
 
     private static final @NotNull File runtimeDirectory = new File("./run");
