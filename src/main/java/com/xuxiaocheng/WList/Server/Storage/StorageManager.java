@@ -99,7 +99,7 @@ public final class StorageManager {
         final Map<String, ProviderTypes<?>> providers = ServerConfiguration.get().providers();
         final ZonedDateTime t1 = MiscellaneousUtil.now();
         try {
-            HMultiRunHelper.runConsumers(WListServer.ServerExecutors, providers.size(), providers.entrySet().iterator(), e -> {
+            HMultiRunHelper.runConsumers(WListServer.ServerExecutors, providers.entrySet(), e -> {
                 try {
                     final File configurationFile = StorageManager.getStorageConfigurationFile(e.getKey());
                     final Map<String, Object> config;
@@ -121,7 +121,7 @@ public final class StorageManager {
     }
 
     private static <C extends ProviderConfiguration> void initializeProvider0(final @NotNull String name, final @NotNull ProviderTypes<C> type, final @NotNull @Unmodifiable Map<? super String, Object> config) throws IllegalParametersException, IOException {
-        StorageManager.logger.log(HLogLevel.INFO, "Loading provider:", ParametersMap.create().add("name", name).add("type", type));
+        StorageManager.logger.log(HLogLevel.LESS, "Loading provider:", ParametersMap.create().add("name", name).add("type", type));
         StorageManager.failedProviders.remove(name);
         final Pair<ProviderTypes<?>, Pair.ImmutablePair<ProviderInterface<?>, ProviderRecyclerInterface<?>>> triad = Pair.makePair(type, StorageManager.ProviderPlaceholder);
         if (StorageManager.providers.putIfAbsent(name, triad) != null)
@@ -146,11 +146,11 @@ public final class StorageManager {
             if (triad.getSecond() == StorageManager.ProviderPlaceholder)
                 StorageManager.providers.remove(name);
         }
-        StorageManager.logger.log(HLogLevel.VERBOSE, "Load provider successfully:", ParametersMap.create().add("name", name));
+        StorageManager.logger.log(HLogLevel.INFO, "Load provider successfully:", ParametersMap.create().add("name", name));
     }
 
     private static boolean uninitializeProvider0(final @NotNull String name, final boolean dropIndex) {
-        StorageManager.logger.log(HLogLevel.INFO, "Unloading provider.", ParametersMap.create().add("name", name));
+        StorageManager.logger.log(HLogLevel.LESS, "Unloading provider.", ParametersMap.create().add("name", name));
         try {
             StorageManager.failedProviders.remove(name);
             final Pair<ProviderTypes<?>, Pair.ImmutablePair<ProviderInterface<?>, ProviderRecyclerInterface<?>>> triad = StorageManager.providers.remove(name);
@@ -163,7 +163,7 @@ public final class StorageManager {
             } catch (final Exception exception) {
                 throw new RuntimeException("Failed to uninitialize provider." + ParametersMap.create().add("name", name).add("type", triad.getFirst()), exception);
             }
-            StorageManager.logger.log(HLogLevel.VERBOSE, "Unload provider successfully:", ParametersMap.create().add("name", name));
+            StorageManager.logger.log(HLogLevel.INFO, "Unload provider successfully:", ParametersMap.create().add("name", name));
             return true;
         } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable throwable) {
             HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), throwable);

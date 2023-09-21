@@ -1,51 +1,52 @@
 package com.xuxiaocheng.WList.Client.Operations;
 
+import com.xuxiaocheng.WList.Client.Exceptions.WrongStateException;
+import com.xuxiaocheng.WList.Client.WListClientInterface;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleFilesListInformation;
+import com.xuxiaocheng.WList.Commons.Operations.OperationType;
+import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
+import io.netty.buffer.ByteBuf;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
+
+import java.io.IOException;
+import java.util.LinkedHashMap;
+
+/**
+ * @see com.xuxiaocheng.WList.Server.Operations.OperateFilesHandler
+ */
 public final class OperateFilesHelper {
     private OperateFilesHelper() {
         super();
     }
 
-//    private static @NotNull FailureReason handleFailureReason(final @NotNull String reason) {
-//        if ("Parameters".equals(reason))
-//            throw new IllegalArgumentException();
-//        return FailureReason.parse(reason);
-//    }
-//
-//    public static Triad.@Nullable ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull @UnmodifiableView List<@NotNull VisibleFileInformation>> listFiles(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation directoryLocation, final Options.@NotNull FilterPolicy filter, final int limit, final int page, final Options.@NotNull OrderPolicy policy, final Options.@NotNull OrderDirection direction, final boolean refresh) throws IOException, InterruptedException, WrongStateException {
-//        final ByteBuf send = OperateHelper.operateWithToken(OperationType.ListFiles, token);
-//        FileLocation.dump(send, directoryLocation);
-//        ByteBufIOUtil.writeByte(send, (byte) (filter.ordinal() + 1));
-//        ByteBufIOUtil.writeVariableLenInt(send, limit);
-//        ByteBufIOUtil.writeVariableLenInt(send, page);
-//        ByteBufIOUtil.writeUTF(send, policy.name());
-//        ByteBufIOUtil.writeUTF(send, direction.name());
-//        ByteBufIOUtil.writeBoolean(send, refresh);
-//        OperateHelper.logOperating(OperationType.ListFiles, () -> ParametersMap.create().add("tokenHash", token.hashCode())
-//                .add("directoryLocation", directoryLocation).add("filter", filter).add("limit", limit).add("page", page).add("policy", policy).add("direction", direction).add("refresh", refresh));
-//        final ByteBuf receive = client.send(send);
-//        try {
-//            if (OperateHelper.handleState(receive)) {
-//                final long total = ByteBufIOUtil.readVariableLenLong(receive);
-//                final long filtered = ByteBufIOUtil.readVariableLenLong(receive);
-//                final int length = ByteBufIOUtil.readVariableLenInt(receive);
-//                final List<VisibleFileInformation> list = new ArrayList<>(count);
-//                for (int i = 0; i < length; ++i)
-//                    list.add(VisibleFileInformation.parse(receive));
-//                OperateHelper.logOperated(OperationType.ListFiles, () -> ParametersMap.create().add("success", true)
-//                        .add("total", total).add("filtered", filtered).add("list", list));
-//                return Triad.ImmutableTriad.makeImmutableTriad(total, filtered, Collections.unmodifiableList(list));
-//            }
-//            final String reason = ByteBufIOUtil.readUTF(receive);
-//            OperateHelper.logOperated(OperationType.ListFiles, () -> ParametersMap.create().add("success", false).add("reason", reason));
-//            if ("File".equals(reason))
-//                return null;
-//            throw new WrongStateException(ResponseState.DataError, reason + ParametersMap.create()
-//                    .add("directoryLocation", directoryLocation).add("filter", filter).add("limit", limit).add("page", page).add("policy", policy).add("direction", direction).add("refresh", refresh));
-//        } finally {
-//            receive.release();
-//        }
-//    }
-//
+    public static @Nullable VisibleFilesListInformation listFiles(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation directory, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.Order, Options.OrderDirection> orders, final long position, final int limit) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.ListFiles, token);
+        directory.dump(send);
+        ByteBufIOUtil.writeByte(send, (byte) filter.ordinal());
+        Options.dumpOrderPolicies(send, orders);
+        ByteBufIOUtil.writeVariableLenLong(send, position);
+        ByteBufIOUtil.writeVariableLenInt(send, limit);
+        OperateHelper.logOperating(OperationType.ListFiles, token, p -> p.add("directory", directory).add("filter", filter).add("orders", orders).add("position", position).add("limit", limit));
+        final ByteBuf receive = client.send(send);
+        try {
+            final String reason = OperateHelper.handleState(receive);
+            if (reason == null) {
+                final VisibleFilesListInformation information = VisibleFilesListInformation.parse(receive);
+                OperateHelper.logOperated(OperationType.ListFiles, OperateHelper.logReason(null).andThen(p -> p.add("information", information)));
+                return information;
+            }
+            OperateHelper.logOperated(OperationType.ListFiles, OperateHelper.logReason(reason));
+            return null;
+        } finally {
+            receive.release();
+        }
+    }
+
 //    public static @NotNull UnionPair<@NotNull VisibleFileInformation, @NotNull FailureReason> createDirectory(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
 //        final ByteBuf send = OperateHelper.operateWithToken(OperationType.CreateDirectory, token);
 //        FileLocation.dump(send, parentLocation);

@@ -103,6 +103,7 @@ public final class ProviderUtil {
         });
     }
 
+    // TODO
     public static <I> Pair.@NotNull ImmutablePair<@NotNull Iterator<@NotNull I>, @NotNull Runnable> wrapSuppliersInPages(final @NotNull FunctionE<? super @NotNull Integer, ? extends @Nullable Collection<@NotNull I>> supplierInPage, final @NotNull Consumer<? super @Nullable Exception> callback) {
         final AtomicBoolean noNext = new AtomicBoolean(false);
         final BlockingQueue<I> filesQueue = new LinkedBlockingQueue<>();

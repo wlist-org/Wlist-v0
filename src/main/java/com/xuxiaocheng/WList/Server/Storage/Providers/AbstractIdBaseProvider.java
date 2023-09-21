@@ -69,9 +69,14 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
     public void uninitialize(final boolean dropIndex) throws Exception {
         final C configuration = this.configuration.uninitializeNullable();
         this.manager.uninitializeNullable();
-        if (configuration != null && dropIndex)
-            FileManager.quicklyUninitialize(configuration.getName(), null);
+        if (configuration != null) {
+            if (dropIndex)
+                FileManager.quicklyUninitialize(configuration.getName(), null);
+            SqlDatabaseManager.quicklyClose(StorageManager.getStorageDatabaseFile(configuration.getName()));
+        }
     }
+
+    protected abstract void loginIfNot() throws Exception;
 
     /**
      * List the directory.
@@ -110,9 +115,11 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
                     this.configuration.getInstance().getName(), BackgroundTaskManager.SyncTask, String.valueOf(directoryId));
             if (BackgroundTaskManager.background(identifier, () -> {
                 try  {
+                    this.loginIfNot();
                     final Iterator<FileInformation> iterator = this.list0(directoryId);
                     if (iterator == null) {
-                        manager.deleteDirectoryRecursively(directoryId, null);
+                        if (directoryId != this.getConfiguration().getRootDirectoryId())
+                            manager.deleteDirectoryRecursively(directoryId, null);
                         consumer.accept(null);
                         return;
                     }
@@ -143,6 +150,7 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
         final FileManager manager = this.manager.getInstance();
         final FileInformation information = manager.selectInfo(id, isDirectory, null);
         if (information == null) return null;
+        this.loginIfNot();
         final UnionPair<FileInformation, Boolean> update = this.update0(information);
         if (update.isFailure()) {
             if (update.getE().booleanValue())
@@ -179,6 +187,7 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
                 consumer.accept(null);
                 return;
             }
+            this.loginIfNot();
             final BackgroundTaskManager.BackgroundTaskIdentifier identifier = new BackgroundTaskManager.BackgroundTaskIdentifier(
                     this.configuration.getInstance().getName(), BackgroundTaskManager.SyncTask, String.valueOf(directoryId));
             if (BackgroundTaskManager.background(identifier, () -> {
@@ -210,11 +219,11 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
                     if (!deleteFiles.isEmpty() || !deleteDirectories.isEmpty()) {
                         final Map<Long, FileInformation> files = new ConcurrentHashMap<>();
                         final Map<Long, FileInformation> directories = new ConcurrentHashMap<>();
-                        HMultiRunHelper.runConsumers(WListServer.IOExecutors, deleteFiles.size(), deleteFiles.iterator(), HExceptionWrapper.wrapConsumer(id -> {
+                        HMultiRunHelper.runConsumers(WListServer.IOExecutors, deleteFiles, HExceptionWrapper.wrapConsumer(id -> {
                             final FileInformation info = this.info0(id.longValue(), false);
                             if (info != null) files.put(id, info);
                         }));
-                        HMultiRunHelper.runConsumers(WListServer.IOExecutors, deleteDirectories.size(), deleteDirectories.iterator(), HExceptionWrapper.wrapConsumer(id -> {
+                        HMultiRunHelper.runConsumers(WListServer.IOExecutors, deleteDirectories, HExceptionWrapper.wrapConsumer(id -> {
                             final FileInformation info = this.info0(id.longValue(), true);
                             if (info != null) directories.put(id, info);
                         }));
@@ -268,6 +277,7 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
         final FileInformation information = this.manager.getInstance().selectInfo(id, isDirectory, null);
         if (information == null)
             return false;
+        this.loginIfNot();
         this.delete0(information);
         this.manager.getInstance().deleteFileOrDirectory(id, isDirectory, null);
         return true;
@@ -290,6 +300,7 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
         final long end = Math.min(Math.max(to, 0), information.size());
         if (start >= end)
             return UnionPair.ok(DownloadRequirements.EmptyDownloadRequirements);
+        this.loginIfNot();
         return this.download0(information, start, end, location);
     }
 

@@ -69,9 +69,9 @@ public final class Options {
         ;
         public static @Nullable Options.FilterPolicy of(final byte policy) {
             return switch (policy) {
-                case 1 -> FilterPolicy.OnlyDirectories;
-                case 2 -> FilterPolicy.OnlyFiles;
-                case 3 -> FilterPolicy.Both;
+                case 0 -> FilterPolicy.OnlyDirectories;
+                case 1 -> FilterPolicy.OnlyFiles;
+                case 2 -> FilterPolicy.Both;
                 default -> null;
             };
         }

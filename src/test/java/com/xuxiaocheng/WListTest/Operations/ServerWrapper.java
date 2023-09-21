@@ -14,10 +14,10 @@ import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
 import com.xuxiaocheng.WList.Server.Databases.User.PasswordGuard;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
+import com.xuxiaocheng.WList.Server.ServerConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
-import com.xuxiaocheng.WList.Server.Storage.Helpers.BackgroundTaskManager;
-import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WListTest.StaticLoader;
 import org.jetbrains.annotations.NotNull;
@@ -33,7 +33,6 @@ import org.junit.jupiter.params.provider.Arguments;
 import java.io.File;
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -46,7 +45,7 @@ public class ServerWrapper {
 
     public static final @NotNull HInitializer<SocketAddress> address = new HInitializer<>("address");
     @BeforeAll
-    public static void initialize() throws IOException, SQLException, InterruptedException {
+    public static void initialize() throws Exception {
         StaticLoader.load();
         ServerConfiguration.parseFromFile();
         final File file = new File(ServerWrapper.runtimeDirectory, "data.db");
@@ -54,7 +53,7 @@ public class ServerWrapper {
         ConstantManager.quicklyInitialize(database, "initialize");
         UserGroupManager.quicklyInitialize(database, "initialize");
         UserManager.quicklyInitialize(database, "initialize");
-        StorageManager.initialize(new File(ServerWrapper.runtimeDirectory, "configs"),
+        StorageManager.initialize(new File("run/configs"),
                 new File(ServerWrapper.runtimeDirectory, "caches"));
         WListServer.getInstance().start(ServerConfiguration.get().port());
         final SocketAddress address = WListServer.getInstance().getAddress().getInstance();
@@ -66,7 +65,7 @@ public class ServerWrapper {
         ServerWrapper.address.initialize(address);
     }
     @AfterAll
-    public static void uninitialize() throws SQLException {
+    public static void uninitialize() throws Exception {
         WListClientManager.quicklyUninitialize(ServerWrapper.address.uninitialize());
 
         for (final File file: new HashSet<>(SqlDatabaseManager.getOpenedDatabases()))

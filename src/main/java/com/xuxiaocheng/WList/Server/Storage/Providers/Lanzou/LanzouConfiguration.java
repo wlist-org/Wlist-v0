@@ -28,6 +28,7 @@ public final class LanzouConfiguration extends ProviderConfiguration {
 
     private @NotNull String passport = "";
     private @NotNull String password = "";
+    private long uid;
     private @Nullable String token;
     private @Nullable ZonedDateTime tokenExpire;
 
@@ -37,6 +38,14 @@ public final class LanzouConfiguration extends ProviderConfiguration {
 
     public @NotNull String getPassword() {
         return this.password;
+    }
+
+    public long getUid() {
+        return this.uid;
+    }
+
+    public void setUid(final long uid) {
+        this.uid = uid;
     }
 
     public @Nullable String getToken() {
@@ -66,6 +75,8 @@ public final class LanzouConfiguration extends ProviderConfiguration {
                 o -> YamlHelper.transferString(o, errors, "passport"));
         this.password = YamlHelper.getConfig(config, "password", this.password,
                 o -> YamlHelper.transferString(o, errors, "password"));
+        this.uid = YamlHelper.getConfig(config, "uid", this.uid,
+                o -> YamlHelper.transferIntegerFromStr(o, errors, "uid", YamlHelper.LongMin, YamlHelper.LongMax)).longValue();
         this.token = YamlHelper.getConfigNullable(config, "token",
                 o -> YamlHelper.transferString(o, errors, "token"));
         this.tokenExpire = YamlHelper.getConfigNullable(config, "token_expire",
@@ -77,6 +88,7 @@ public final class LanzouConfiguration extends ProviderConfiguration {
         final Map<String, Object> config = super.dump();
         config.put("passport", this.passport);
         config.put("password", this.password);
+        config.put("uid", this.uid);
         config.put("token", this.token);
         config.put("token_expire", this.tokenExpire == null ? null : ProviderConfiguration.TimeFormatter.format(this.tokenExpire));
         return config;
@@ -88,6 +100,7 @@ public final class LanzouConfiguration extends ProviderConfiguration {
                 "super=" + super.toString() +
                 ", passport='" + this.passport + '\'' +
                 ", password='" + this.password + '\'' +
+                ", uid=" + this.uid +
                 ", token='" + this.token + '\'' +
                 ", tokenExpire=" + this.tokenExpire +
                 '}';

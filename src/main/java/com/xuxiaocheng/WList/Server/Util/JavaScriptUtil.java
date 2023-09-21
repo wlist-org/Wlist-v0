@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Commons.Utils;
+package com.xuxiaocheng.WList.Server.Util;
 
 import com.xuxiaocheng.HeadLibs.Functions.FunctionE;
 import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
