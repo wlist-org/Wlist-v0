@@ -241,12 +241,43 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
             if (list.isEmpty())
                 return null;
             return list;
-        });
+        }, this.getConfiguration().getRetry());
     }
 
     @Override
-    protected @NotNull UnionPair<FileInformation, Boolean> update0(@NotNull final FileInformation oldInformation) {
-        return UnionPair.fail(Boolean.TRUE);
+    protected @NotNull UnionPair<FileInformation, Boolean> update0(@NotNull final FileInformation oldInformation) throws IOException {
+        if (oldInformation.createTime() != null || oldInformation.isDirectory())
+            return UnionPair.fail(Boolean.TRUE);
+        final HttpUrl url;
+        final String id, pwd, others;
+        if (oldInformation.others() == null) {
+            final Triad.ImmutableTriad<HttpUrl, String, String> shareUrl = this.getFileShareUrl(oldInformation.id());
+            if (shareUrl == null) return UnionPair.fail(Boolean.FALSE);
+            url = shareUrl.getA();
+            id = shareUrl.getB();
+            pwd = shareUrl.getC();
+            others = JSON.toJSONString(Map.of("domin", url.toString(), "id", id, "pwd", Objects.requireNonNullElse(pwd, "")));
+        } else {
+            others = oldInformation.others();
+            final JSONObject json = JSON.parseObject(others);
+            url = Objects.requireNonNull(HttpUrl.parse(json.getString("domin")));
+            id = Objects.requireNonNull(json.getString("id"));
+            final String p = Objects.requireNonNull(json.getString("pwd"));
+            pwd = p.isEmpty() ? null : p;
+        }
+        final LanzouSharer sharer = (LanzouSharer) StorageManager.getSharer(this.getConfiguration().getName());
+        assert sharer != null;
+        try {
+            final Pair.ImmutablePair<HttpUrl, Headers> downloadUrl = sharer.getSingleShareFileDownloadUrl(url, id, pwd);
+            if (downloadUrl == null)
+                return UnionPair.fail(Boolean.FALSE);
+            final Pair<Long, ZonedDateTime> fixed = sharer.testRealSizeAndData(downloadUrl.getFirst(), downloadUrl.getSecond());
+            if (fixed != null)
+                return UnionPair.ok(new FileInformation(oldInformation.id(), oldInformation.parentId(), oldInformation.name(), false, fixed.getFirst().longValue(), fixed.getSecond(), fixed.getSecond(), others));
+        } catch (final IllegalParametersException exception) {
+            LanzouProvider.logger.log(HLogLevel.MISTAKE, exception);
+        }
+        return UnionPair.ok(new FileInformation(oldInformation.id(), oldInformation.parentId(), oldInformation.name(), false, oldInformation.size(), oldInformation.createTime(), oldInformation.updateTime(), others));
     }
 
     @Override
@@ -257,16 +288,16 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
             final JSONObject json = this.task(3, builder, 1);
             final String message = json.getString("info");
             if (!"\u5220\u9664\u6210\u529F".equals(message))
-                throw new WrongResponseException("Trashing directory.", message, ParametersMap.create()
-                        .add("configuration", this.configuration.getInstance()).add("information", information).add("json", json));
+                LanzouProvider.logger.log(HLogLevel.WARN, new WrongResponseException("Trashing directory.", message, ParametersMap.create()
+                        .add("configuration", this.configuration.getInstance()).add("information", information).add("json", json)));
         } else {
             final FormBody.Builder builder = new FormBody.Builder()
                     .add("file_id", String.valueOf(information.id()));
             final JSONObject json = this.task(6, builder, 1);
             final String message = json.getString("info");
             if (!"\u5DF2\u5220\u9664".equals(message))
-                throw new WrongResponseException("Trashing file.", message, ParametersMap.create()
-                        .add("configuration", this.configuration.getInstance()).add("information", information).add("json", json));
+                LanzouProvider.logger.log(HLogLevel.WARN, new WrongResponseException("Trashing file.", message, ParametersMap.create()
+                        .add("configuration", this.configuration.getInstance()).add("information", information).add("json", json)));
         }
     }
 

@@ -77,12 +77,12 @@ public class LanzouSharer extends AbstractIdBaseSharer<LanzouConfiguration> {
 
     private static final @NotNull Pattern srcPattern = Pattern.compile("src=\"(/fn?[^\"]+)");
     @SuppressWarnings("unchecked")
-    protected @Nullable Pair.ImmutablePair<@NotNull HttpUrl, @Nullable Headers> getSingleShareFileDownloadUrl(final @NotNull HttpUrl domin, final @NotNull String identifier, final @Nullable String pwd) throws IOException, IllegalParametersException {
+    protected @Nullable Pair.ImmutablePair<@NotNull HttpUrl, @Nullable Headers> getSingleShareFileDownloadUrl(final @NotNull HttpUrl domin, final @NotNull String id, final @Nullable String pwd) throws IOException, IllegalParametersException {
         final LanzouConfiguration configuration = this.configuration.getInstance();
-        final String sharePage = LanzouSharer.requestHtml(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin.newBuilder().addPathSegment(identifier).build(), "GET"));
+        final String sharePage = LanzouSharer.requestHtml(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin.newBuilder().addPathSegment(id).build(), "GET"));
         if (sharePage.contains("\u6587\u4EF6\u53D6\u6D88\u5206\u4EAB\u4E86") || sharePage.contains("\u6587\u4EF6\u5730\u5740\u9519\u8BEF"))
             return null;
-        final ParametersMap parametersMap = ParametersMap.create().add("configuration", configuration).add("domin", domin).add("identifier", identifier);
+        final ParametersMap parametersMap = ParametersMap.create().add("configuration", configuration).add("domin", domin).add("id", id);
         final List<String> javaScript;
         if (sharePage.contains("<iframe")) {
             final Matcher srcMatcher = LanzouSharer.srcPattern.matcher(sharePage);
@@ -94,7 +94,7 @@ public class LanzouSharer extends AbstractIdBaseSharer<LanzouConfiguration> {
         } else {
             parametersMap.add("pwd", pwd);
             if (pwd == null)
-                throw new IllegalParametersException("Require password.", ParametersMap.create().add("domin", domin).add("identifier", identifier));
+                throw new IllegalParametersException("Require password.", ParametersMap.create().add("domin", domin).add("id", id));
             final List<String> scripts = LanzouSharer.findScripts(sharePage);
             javaScript = new ArrayList<>(scripts.size());
             for (final String script: scripts) {
@@ -132,7 +132,7 @@ public class LanzouSharer extends AbstractIdBaseSharer<LanzouConfiguration> {
         final HttpUrl dom = HttpUrl.parse(json.getString("dom"));
         final String para = json.getString("url");
         if (dom == null || para == null)
-            throw new WrongResponseException("Getting single shared file download url.", json, parametersMap);
+            return null;
         final HttpUrl displayUrl = dom.newBuilder().addPathSegment("file").addPathSegment("?" + para).build();
         final String redirectPage;
         try (final Response response = HttpNetworkHelper.getWithParameters(HttpNetworkHelper.DefaultNoRedirectHttpClient, Pair.ImmutablePair.makeImmutablePair(displayUrl, "GET"), LanzouProvider.Headers, null).execute()) {
