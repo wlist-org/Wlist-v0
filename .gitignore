@@ -18,5 +18,7 @@
 !/libs
 !/META-INF
 !/src
+## test ##
+/src/test/generated_tests
 
 !/srcTODO
