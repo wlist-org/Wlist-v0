@@ -363,13 +363,13 @@ public class FileSqliteHelper implements FileSqlInterface {
 
     @Override
     public void updateOrInsertFile(final @NotNull FileInformation file, final @Nullable String _connectionId) throws SQLException {
+        assert !file.isDirectory() && file.size() >= 0;
         final AtomicReference<String> connectionId = new AtomicReference<>(_connectionId);
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
-            final FileInformation old = this.selectInfo(file.id(), file.isDirectory(), connectionId.get());
+            final FileInformation old = this.selectInfo(file.id(), false, connectionId.get());
             if (old == null)
                 this.insertFileOrDirectory(file, connectionId.get());
             else {
-                assert !file.isDirectory() && file.size() >= 0;
                 try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     UPDATE %s SET parent_id = ?, name = ?, name_order = ?, size = ?, create_time = ?, update_time = ?, others = ? WHERE double_id == ?;
                     """, this.tableName))) {
@@ -397,13 +397,26 @@ public class FileSqliteHelper implements FileSqlInterface {
 
     @Override // TODO: recycle detector
     public void updateOrInsertDirectory(final @NotNull FileInformation directory, final @Nullable String _connectionId) throws SQLException {
+        assert directory.isDirectory();
         final AtomicReference<String> connectionId = new AtomicReference<>(_connectionId);
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
-            final FileInformation old = this.selectInfo(directory.id(), directory.isDirectory(), connectionId.get());
-            if (old == null)
-                this.insertFileOrDirectory(directory, connectionId.get());
-            else {
-                assert directory.isDirectory();
+            final FileInformation old = this.selectInfo(directory.id(), true, connectionId.get());
+            if (old == null) {
+                try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+    INSERT INTO %s (double_id, parent_id, name, name_order, size, create_time, update_time, others)
+        VALUES (?, ?, ?, ?, -1, ?, ?, ?);
+                    """, this.tableName))) {
+                    statement.setLong(1, FileSqliteHelper.getDoubleId(directory.id(), true));
+                    statement.setLong(2, FileSqliteHelper.getDoubleId(directory.parentId(), true));
+                    statement.setString(3, directory.name());
+                    statement.setBytes(4, SqlHelper.toOrdered(directory.name()));
+                    statement.setTimestamp(5, FileSqliteHelper.getTimestamp(directory.createTime()));
+                    statement.setTimestamp(6, FileSqliteHelper.getTimestamp(directory.updateTime()));
+                    statement.setString(7, directory.others());
+                    statement.executeUpdate();
+                }
+                this.unknowDirectorySizeRecursively(directory.parentId(), connectionId.get());
+            } else {
                 try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     UPDATE %s SET parent_id = ?, name = ?, name_order = ?, create_time = ?, update_time = ?, others = ? WHERE double_id == ?;
                     """, this.tableName))) {

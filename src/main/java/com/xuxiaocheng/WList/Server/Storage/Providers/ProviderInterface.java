@@ -53,6 +53,7 @@ public interface ProviderInterface<C extends ProviderConfiguration> {
      */
     void list(final long directoryId, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final @LongRange(minimum = 0) long position, final @IntRange(minimum = 0) int limit, final @NotNull Consumer<@NotNull UnionPair<UnionPair<FilesListInformation, Boolean>, Throwable>> consumer) throws Exception;
 
+    @NotNull UnionPair<UnionPair<Pair.ImmutablePair<FileInformation, Boolean>, Boolean>, Throwable> InfoNotAvailable = UnionPair.ok(UnionPair.fail(Boolean.FALSE));
     @NotNull UnionPair<UnionPair<Pair.ImmutablePair<FileInformation, Boolean>, Boolean>, Throwable> InfoNotExisted = UnionPair.ok(UnionPair.fail(Boolean.TRUE));
     /**
      * Get the file/directory information of a specific id.
@@ -67,7 +68,7 @@ public interface ProviderInterface<C extends ProviderConfiguration> {
      * Force rebuild (or build) files index to synchronize with web server (not recursively).
      * @param consumer: false: directory is not available. true: directory is not existed in web server. !null: inserted (into other directories) ids of files and directories.
      */
-    void refreshDirectory(final long directoryId, final Consumer<? super @NotNull UnionPair<UnionPair<Pair.ImmutablePair<@NotNull Set<Long>, @NotNull Set<Long>>, Boolean>, Throwable>> consumer) throws Exception;
+    void refresh(final long directoryId, final Consumer<? super @NotNull UnionPair<UnionPair<Pair.ImmutablePair<@NotNull Set<Long>, @NotNull Set<Long>>, Boolean>, Throwable>> consumer) throws Exception;
 
 //    /**
 //     * Delete file/directory.

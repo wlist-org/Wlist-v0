@@ -199,7 +199,7 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
     }
 
     @Override
-    public void refreshDirectory(final long directoryId, final Consumer<? super @NotNull UnionPair<UnionPair<Pair.ImmutablePair<@NotNull Set<Long>, @NotNull Set<Long>>, Boolean>, Throwable>> consumer) throws Exception {
+    public void refresh(final long directoryId, final Consumer<? super @NotNull UnionPair<UnionPair<Pair.ImmutablePair<@NotNull Set<Long>, @NotNull Set<Long>>, Boolean>, Throwable>> consumer) throws Exception {
         final FileManager manager = this.manager.getInstance();
         final FileInformation directory = manager.selectInfo(directoryId, true, null);
         if (directory == null) {
@@ -235,25 +235,29 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
                     }
                     connection.commit();
                 }
-                if ((deleteFiles.isEmpty() && deleteDirectories.isEmpty()) || !this.isSupportedInfo()) {
-                    consumer.accept(ProviderInterface.RefreshNoUpdater);
-                    return;
-                }
                 final Map<Long, FileInformation> files = new ConcurrentHashMap<>();
                 final Map<Long, FileInformation> directories = new ConcurrentHashMap<>();
-                try {
-                    HMultiRunHelper.runConsumers(WListServer.IOExecutors, deleteFiles, HExceptionWrapper.wrapConsumer(id -> {
-                        final FileInformation info = this.info0(id.longValue(), false);
-                        if (info != null) files.put(id, info);
-                    }));
-                    HMultiRunHelper.runConsumers(WListServer.IOExecutors, deleteDirectories, HExceptionWrapper.wrapConsumer(id -> {
-                        final FileInformation info = this.info0(id.longValue(), true);
-                        if (info != null) directories.put(id, info);
-                    }));
-                } catch (final RuntimeException exception) {
-                    throw HExceptionWrapper.unwrapException(exception, Exception.class);
-                }
+                if (this.isSupportedInfo())
+                    try {
+                        HMultiRunHelper.runConsumers(WListServer.IOExecutors, deleteFiles, HExceptionWrapper.wrapConsumer(id -> {
+                            final FileInformation info = this.info0(id.longValue(), false);
+                            if (info != null) files.put(id, info);
+                        }));
+                        HMultiRunHelper.runConsumers(WListServer.IOExecutors, deleteDirectories, HExceptionWrapper.wrapConsumer(id -> {
+                            final FileInformation info = this.info0(id.longValue(), true);
+                            if (info != null) directories.put(id, info);
+                        }));
+                    } catch (final RuntimeException exception) {
+                        throw HExceptionWrapper.unwrapException(exception, Exception.class);
+                    }
                 if (files.isEmpty() && directories.isEmpty()) {
+                    try (final Connection connection = manager.getConnection(null, connectionId)) {
+                        for (final Long id: deleteFiles)
+                            manager.deleteFile(id.longValue(), connectionId.get());
+                        for (final Long id: deleteDirectories)
+                            manager.deleteDirectoryRecursively(id.longValue(), connectionId.get());
+                        connection.commit();
+                    }
                     consumer.accept(ProviderInterface.RefreshNoUpdater);
                     return;
                 }

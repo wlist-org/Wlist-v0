@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -408,51 +409,60 @@ public class AbstractProviderTest {
         }
     }
 
-//    @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
-//    @Nested
-//    public class RefreshTest {
-//        @Test
-//        @Disabled
-//        public void refresh() throws Exception {
-//            final FileInformation directory = new FileInformation(1, 0, "directory", true, -1, null, null, null);
-//            final FileInformation file = new FileInformation(2, 0, "file", false, 1, null, null, null);
-//            list.set(List.of(directory, file).iterator());
-//            final CountDownLatch latch = new CountDownLatch(1);
-//            provider().list(0, Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 2, p -> latch.countDown());
-//            latch.await();
-//            loggedIn.set(false);
-//
-//            final FileInformation directory0 = new FileInformation(1, 0, "directory0", true, -1, null, null, null);
-//            list.set(List.of(directory0, file).iterator());
-//            final CountDownLatch latch0 = new CountDownLatch(1);
-//            provider().refreshDirectory(0, p -> latch0.countDown());
-//            latch0.await();
-//            updated.set(UnionPair.fail(Boolean.TRUE));
-//            Assertions.assertEquals(directory0, provider().info(1, true));
-//            updated.set(UnionPair.fail(Boolean.TRUE));
-//            Assertions.assertEquals(file, provider().info(2, false));
-//        }
-//
-//        @Test
-//        public void replace() throws Exception {
-//            final FileInformation directory = new FileInformation(1, 0, "directory", true, -1, null, null, null);
-//            final FileInformation file = new FileInformation(2, 0, "file", false, 1, null, null, null);
-//            list.set(List.of(directory, file).iterator());
-//            final CountDownLatch latch = new CountDownLatch(1);
-//            provider().refreshDirectory(0, p -> latch.countDown());
-//            latch.await();
-//
-//            final FileInformation directory0 = new FileInformation(1, 0, "directory0", true, -1, null, null, null);
-//            final FileInformation file0 = new FileInformation(2, 1, "file0", false, 1, null, null, null);
-//            info.put(2L, file0);
-//            list.set(List.of(directory0).iterator());
-//            final CountDownLatch latch0 = new CountDownLatch(1);
-//            provider().refreshDirectory(0, p -> latch0.countDown());
-//            latch0.await();
-//            updated.set(UnionPair.fail(Boolean.TRUE));
-//            Assertions.assertEquals(directory0, provider().info(1, true));
-//            updated.set(UnionPair.fail(Boolean.TRUE));
-//            Assertions.assertNull(provider().info(2, false));
-//        }
-//    }
+    @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
+    @Nested
+    public class RefreshTest {
+        @Test
+        public void refresh() throws Exception {
+            final FileInformation directory = new FileInformation(1, 0, "directory", true, -1, null, null, null);
+            final FileInformation file = new FileInformation(2, 0, "file", false, 1, null, null, null);
+            list.set(List.of(directory, file).iterator());
+            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 0);
+            loggedIn.set(false);
+
+            final FileInformation directory0 = new FileInformation(1, 0, "directory0", true, -1, null, null, null);
+            list.set(List.of(directory0, file).iterator());
+            ProviderHelper.testRefresh(ProviderHelper.refresh(provider(), 0).getT(), Set.of(), Set.of());
+
+            updated.set(() -> AbstractIdBaseProvider.UpdateNoRequired);
+            ProviderHelper.testInfo(ProviderHelper.info(provider(), 1, true).getT(), directory0, false);
+            updated.set(() -> AbstractIdBaseProvider.UpdateNoRequired);
+            ProviderHelper.testInfo(ProviderHelper.info(provider(), 2, false).getT(), file, false);
+        }
+
+        @Test
+        public void delete() throws Exception {
+            final FileInformation directory = new FileInformation(1, 0, "directory", true, -1, null, null, null);
+            final FileInformation file = new FileInformation(2, 0, "file", false, 1, null, null, null);
+            list.set(List.of(directory, file).iterator());
+            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 0);
+            loggedIn.set(false);
+
+            list.set(List.of(file).iterator());
+            ProviderHelper.testRefresh(ProviderHelper.refresh(provider(), 0).getT(), Set.of(), Set.of());
+
+            Assertions.assertFalse(ProviderHelper.info(provider(), 1, true).getE().booleanValue());
+            updated.set(() -> AbstractIdBaseProvider.UpdateNoRequired);
+            ProviderHelper.testInfo(ProviderHelper.info(provider(), 2, false).getT(), file, false);
+        }
+
+        @Test
+        public void insert() throws Exception {
+            final FileInformation directory = new FileInformation(1, 0, "directory", true, -1, null, null, null);
+            final FileInformation file = new FileInformation(2, 0, "file", false, 1, null, null, null);
+            list.set(List.of(file).iterator());
+            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 0);
+            loggedIn.set(false);
+
+            list.set(List.of(directory, file).iterator());
+            ProviderHelper.testRefresh(ProviderHelper.refresh(provider(), 0).getT(), Set.of(), Set.of());
+
+            updated.set(() -> AbstractIdBaseProvider.UpdateNoRequired);
+            ProviderHelper.testInfo(ProviderHelper.info(provider(), 1, true).getT(), directory, false);
+            updated.set(() -> AbstractIdBaseProvider.UpdateNoRequired);
+            ProviderHelper.testInfo(ProviderHelper.info(provider(), 2, false).getT(), file, false);
+        }
+
+        // No concurrent test due to same code as 'list'.
+    }
 }

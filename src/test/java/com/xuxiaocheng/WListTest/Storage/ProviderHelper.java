@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Assertions;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
@@ -72,4 +73,26 @@ public final class ProviderHelper {
         Assertions.assertEquals(information, pair.getFirst());
         Assertions.assertEquals(isUpdated, pair.getSecond());
     }
+
+    public static @NotNull UnionPair<Pair.ImmutablePair<@NotNull Set<Long>, @NotNull Set<Long>>, Boolean> refresh(final @NotNull ProviderInterface<?> provider, final long directoryId) throws Exception {
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<UnionPair<UnionPair<Pair.ImmutablePair<Set<Long>, Set<Long>>, Boolean>, Throwable>> result = new AtomicReference<>();
+        provider.refresh(directoryId, p -> {
+            result.set(p);
+            latch.countDown();
+        });
+        latch.await();
+        if (result.get().isFailure()) {
+            final Throwable throwable = result.get().getE();
+            if (throwable instanceof Exception exception)
+                throw exception;
+            throw (Error) throwable;
+        }
+        return result.get().getT();
+    }
+    public static void testRefresh(final Pair.@NotNull ImmutablePair<@NotNull Set<Long>, @NotNull Set<Long>> pair, final @NotNull Set<Long> files, final @NotNull Set<Long> directories) {
+        Assertions.assertEquals(files, pair.getFirst());
+        Assertions.assertEquals(directories, pair.getSecond());
+    }
+
 }
