@@ -53,7 +53,7 @@ public class TempTest {
     public void tempTest() throws Exception {
         try {
             if (TempTest.initializeServer) {
-                final Map<String, Exception> failures = StorageManager.getFailedProvidersAPI();
+                final Map<String, Exception> failures = StorageManager.getFailedStoragesAPI();
                 if (!failures.isEmpty()) {
                     HLog.DefaultLogger.log(HLogLevel.FAULT, failures);
                     return;

@@ -17,7 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public abstract class ProviderConfiguration {
+public abstract class StorageConfiguration {
     public static final @NotNull DateTimeFormatter TimeFormatter = DateTimeFormatter.ISO_DATE_TIME;
 
     protected @NotNull String name = "provider";
@@ -179,9 +179,9 @@ public abstract class ProviderConfiguration {
         this.displayName = YamlHelper.getConfig(config, "display_name", this.displayName,
                 o -> YamlHelper.transferString(o, errors, "display_name"));
         this.createTime = YamlHelper.getConfig(config, "create_time", this.createTime,
-                o -> YamlHelper.transferDateTimeFromStr(o, errors, "create_time", ProviderConfiguration.TimeFormatter)).withNano(0);
+                o -> YamlHelper.transferDateTimeFromStr(o, errors, "create_time", StorageConfiguration.TimeFormatter)).withNano(0);
         this.updateTime = YamlHelper.getConfig(config, "update_time", this.updateTime,
-                o -> YamlHelper.transferDateTimeFromStr(o, errors, "update_time", ProviderConfiguration.TimeFormatter)).withNano(0);
+                o -> YamlHelper.transferDateTimeFromStr(o, errors, "update_time", StorageConfiguration.TimeFormatter)).withNano(0);
         this.rootDirectoryId = YamlHelper.getConfig(config, "root_directory_id", this.rootDirectoryId,
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "root_directory_id", YamlHelper.LongMin, YamlHelper.LongMax)).longValue();
 
@@ -212,8 +212,8 @@ public abstract class ProviderConfiguration {
     public @NotNull Map<@NotNull String, @NotNull Object> dump() {
         final Map<String, Object> config = new LinkedHashMap<>();
         config.put("display_name", this.displayName);
-        config.put("create_time", this.createTime.format(ProviderConfiguration.TimeFormatter));
-        config.put("update_time", this.updateTime.format(ProviderConfiguration.TimeFormatter));
+        config.put("create_time", this.createTime.format(StorageConfiguration.TimeFormatter));
+        config.put("update_time", this.updateTime.format(StorageConfiguration.TimeFormatter));
         config.put("root_directory_id", this.rootDirectoryId);
 
         config.put("space_all", this.spaceAll);
@@ -233,7 +233,7 @@ public abstract class ProviderConfiguration {
 
     @Override
     public @NotNull String toString() {
-        return "ProviderConfiguration{" +
+        return "StorageConfiguration{" +
                 "name='" + this.name + '\'' +
                 ", modified=" + this.modified +
                 ", displayName='" + this.displayName + '\'' +

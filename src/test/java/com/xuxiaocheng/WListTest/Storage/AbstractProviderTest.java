@@ -6,9 +6,9 @@ import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseProvider;
-import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
-import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderTypes;
+import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WListTest.StaticLoader;
@@ -60,7 +60,7 @@ public class AbstractProviderTest {
         StorageManager.initialize(new File(AbstractProviderTest.directory, "configs"), new File(AbstractProviderTest.directory, "caches"));
     }
 
-    public static class AbstractConfiguration extends ProviderConfiguration {
+    public static class AbstractConfiguration extends StorageConfiguration {
     }
 
     protected final AtomicBoolean loggedIn = new AtomicBoolean();
@@ -71,7 +71,7 @@ public class AbstractProviderTest {
 
     public class AbstractProvider extends AbstractIdBaseProvider<AbstractConfiguration> {
         @Override
-        public @NotNull ProviderTypes<?> getType() {
+        public @NotNull StorageTypes<AbstractConfiguration> getType() {
             throw new RuntimeException("Unreachable.");
         }
 

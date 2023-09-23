@@ -3,7 +3,7 @@ package com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
-import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import okhttp3.OkHttpClient;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -14,7 +14,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-public final class LanzouConfiguration extends ProviderConfiguration {
+public final class LanzouConfiguration extends StorageConfiguration {
     private final @NotNull OkHttpClient httpClient = HttpNetworkHelper.newHttpClientBuilder()
             .addNetworkInterceptor(new HttpNetworkHelper.FrequencyControlInterceptor(
                     new HttpNetworkHelper.FrequencyControlPolicy(3, 1, TimeUnit.SECONDS),
@@ -80,7 +80,7 @@ public final class LanzouConfiguration extends ProviderConfiguration {
         this.token = YamlHelper.getConfigNullable(config, "token",
                 o -> YamlHelper.transferString(o, errors, "token"));
         this.tokenExpire = YamlHelper.getConfigNullable(config, "token_expire",
-                o -> YamlHelper.transferDateTimeFromStr(o, errors, "token_expire", ProviderConfiguration.TimeFormatter));
+                o -> YamlHelper.transferDateTimeFromStr(o, errors, "token_expire", StorageConfiguration.TimeFormatter));
     }
 
     @Override
@@ -90,7 +90,7 @@ public final class LanzouConfiguration extends ProviderConfiguration {
         config.put("password", this.password);
         config.put("uid", this.uid);
         config.put("token", this.token);
-        config.put("token_expire", this.tokenExpire == null ? null : ProviderConfiguration.TimeFormatter.format(this.tokenExpire));
+        config.put("token_expire", this.tokenExpire == null ? null : StorageConfiguration.TimeFormatter.format(this.tokenExpire));
         return config;
     }
 
@@ -99,7 +99,7 @@ public final class LanzouConfiguration extends ProviderConfiguration {
         return "LanzouConfiguration{" +
                 "super=" + super.toString() +
                 ", passport='" + this.passport + '\'' +
-                ", password='" + this.password + '\'' +
+                ", password=" + "*".repeat(this.password.length()) +
                 ", uid=" + this.uid +
                 ", token='" + this.token + '\'' +
                 ", tokenExpire=" + this.tokenExpire +

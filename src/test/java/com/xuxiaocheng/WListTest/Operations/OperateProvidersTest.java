@@ -9,7 +9,7 @@ import com.xuxiaocheng.WList.Client.Operations.OperateServerHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
-import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderTypes;
+import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou.LanzouConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import io.netty.buffer.ByteBuf;
@@ -42,11 +42,11 @@ public class OperateProvidersTest extends ServerWrapper {
     public @NotNull String providerName() {
         return OperateProvidersTest.ProviderName.getInstance();
     }
-    protected static final @NotNull HInitializer<ProviderTypes<LanzouConfiguration>> ProviderType = new HInitializer<>("ProviderType", ProviderTypes.Lanzou);
-    public @NotNull ProviderTypes<LanzouConfiguration> providerType() {
+    protected static final @NotNull HInitializer<StorageTypes<LanzouConfiguration>> ProviderType = new HInitializer<>("ProviderType", StorageTypes.Lanzou);
+    public @NotNull StorageTypes<LanzouConfiguration> providerType() {
         return OperateProvidersTest.ProviderType.getInstance();
     }
-    protected static final @NotNull HInitializer<LanzouConfiguration> Configuration = new HInitializer<>("ProviderConfiguration", ProviderTypes.Lanzou.getConfiguration().get());
+    protected static final @NotNull HInitializer<LanzouConfiguration> Configuration = new HInitializer<>("StorageConfiguration", StorageTypes.Lanzou.getConfiguration().get());
     public @NotNull LanzouConfiguration providerConfiguration() {
         return OperateProvidersTest.Configuration.getInstance();
     }

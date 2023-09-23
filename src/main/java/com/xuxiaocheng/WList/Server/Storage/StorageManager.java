@@ -2,6 +2,7 @@ package com.xuxiaocheng.WList.Server.Storage;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMultiRunHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
@@ -13,10 +14,11 @@ import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
 import com.xuxiaocheng.WList.Server.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
-import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
-import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderRecyclerInterface;
-import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderTypes;
+import com.xuxiaocheng.WList.Server.Storage.Providers.RecyclerInterface;
+import com.xuxiaocheng.WList.Server.Storage.Providers.SharerInterface;
+import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -69,34 +71,39 @@ public final class StorageManager {
         return new File(StorageManager.CacheDirectory.getInstance(), name + ".db");
     }
 
-    private static final @NotNull Map<@NotNull String, @NotNull Pair<@NotNull ProviderTypes<?>, Pair.@NotNull ImmutablePair<@NotNull ProviderInterface<?>, @NotNull ProviderRecyclerInterface<?>>>> providers = new ConcurrentHashMap<>();
-    private static final Pair.@NotNull ImmutablePair<@NotNull ProviderInterface<?>, @NotNull ProviderRecyclerInterface<?>> ProviderPlaceholder = new Pair.ImmutablePair<>() {
+    private static final @NotNull Map<@NotNull String, @NotNull Pair<@NotNull StorageTypes<?>, Triad.@NotNull ImmutableTriad<@NotNull ProviderInterface<?>, @NotNull RecyclerInterface<?>, @NotNull SharerInterface<?>>>> storages = new ConcurrentHashMap<>();
+    private static final Triad.@NotNull ImmutableTriad<@NotNull ProviderInterface<?>, @NotNull RecyclerInterface<?>, @NotNull SharerInterface<?>> ProviderPlaceholder = new Triad.ImmutableTriad<>() {
         @Override
-        public @NotNull ProviderInterface<?> getFirst() {
+        public @NotNull ProviderInterface<?> getA() {
             throw new IllegalStateException("Unreachable!");
         }
 
         @Override
-        public @Nullable ProviderRecyclerInterface<?> getSecond() {
+        public @Nullable RecyclerInterface<?> getB() {
+            throw new IllegalStateException("Unreachable!");
+        }
+
+        @Override
+        public @Nullable SharerInterface<?> getC() {
             throw new IllegalStateException("Unreachable!");
         }
     };
-    private static final @NotNull Map<@NotNull String, @NotNull Exception> failedProviders = new ConcurrentHashMap<>();
+    private static final @NotNull Map<@NotNull String, @NotNull Exception> failedStorages = new ConcurrentHashMap<>();
 
-    public static @NotNull @UnmodifiableView Map<@NotNull String, @NotNull Exception> getFailedProvidersAPI() {
-        return Collections.unmodifiableMap(StorageManager.failedProviders);
+    public static @NotNull @UnmodifiableView Map<@NotNull String, @NotNull Exception> getFailedStoragesAPI() {
+        return Collections.unmodifiableMap(StorageManager.failedStorages);
     }
 
 
     public static void initialize(final @NotNull File configurationsDirectory, final @NotNull File cacheDirectory) {
         StorageManager.ConfigurationsDirectory.initialize(configurationsDirectory.getAbsoluteFile());
         StorageManager.CacheDirectory.initialize(cacheDirectory.getAbsoluteFile());
-        StorageManager.providers.clear();
+        StorageManager.storages.clear();
         if (ServerConfiguration.get().providers().isEmpty()) {
-            StorageManager.logger.log(HLogLevel.ENHANCED, "No providers were found!");
+            StorageManager.logger.log(HLogLevel.ENHANCED, "No storages were found!");
             return;
         }
-        final Map<String, ProviderTypes<?>> providers = ServerConfiguration.get().providers();
+        final Map<String, StorageTypes<?>> providers = ServerConfiguration.get().providers();
         final ZonedDateTime t1 = MiscellaneousUtil.now();
         try {
             HMultiRunHelper.runConsumers(WListServer.ServerExecutors, providers.entrySet(), e -> {
@@ -106,9 +113,9 @@ public final class StorageManager {
                     try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(configurationFile))) {
                         config = YamlHelper.loadYaml(inputStream);
                     }
-                    StorageManager.initializeProvider0(e.getKey(), e.getValue(), config);
+                    StorageManager.initializeStorage0(e.getKey(), e.getValue(), config);
                 } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Exception exception) {
-                    StorageManager.failedProviders.put(e.getKey(), exception);
+                    StorageManager.failedStorages.put(e.getKey(), exception);
                     HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
                 }
             });
@@ -116,20 +123,21 @@ public final class StorageManager {
             throw new RuntimeException(exception);
         }
         final ZonedDateTime t2 = MiscellaneousUtil.now();
-        StorageManager.logger.log(HLogLevel.ENHANCED, "Loaded ", StorageManager.providers.size(), " providers successfully. ",
-                StorageManager.failedProviders.size(), " failed. Totally cost time: ", Duration.between(t1, t2).toMillis() + " ms.");
+        StorageManager.logger.log(HLogLevel.ENHANCED, "Loaded ", StorageManager.storages.size(), " providers successfully. ",
+                StorageManager.failedStorages.size(), " failed. Totally cost time: ", Duration.between(t1, t2).toMillis() + " ms.");
     }
 
-    private static <C extends ProviderConfiguration> void initializeProvider0(final @NotNull String name, final @NotNull ProviderTypes<C> type, final @NotNull @Unmodifiable Map<? super String, Object> config) throws IllegalParametersException, IOException {
-        StorageManager.logger.log(HLogLevel.LESS, "Loading provider:", ParametersMap.create().add("name", name).add("type", type));
-        StorageManager.failedProviders.remove(name);
-        final Pair<ProviderTypes<?>, Pair.ImmutablePair<ProviderInterface<?>, ProviderRecyclerInterface<?>>> triad = Pair.makePair(type, StorageManager.ProviderPlaceholder);
-        if (StorageManager.providers.putIfAbsent(name, triad) != null)
-            throw new IllegalParametersException("Conflict provider name.", ParametersMap.create().add("name", name).add("type", type));
+    private static <C extends StorageConfiguration> void initializeStorage0(final @NotNull String name, final @NotNull StorageTypes<C> type, final @NotNull @Unmodifiable Map<? super String, Object> config) throws IllegalParametersException, IOException {
+        StorageManager.logger.log(HLogLevel.LESS, "Loading storage:", ParametersMap.create().add("name", name).add("type", type));
+        StorageManager.failedStorages.remove(name);
+        final Pair<StorageTypes<?>, Triad.ImmutableTriad<ProviderInterface<?>, RecyclerInterface<?>, SharerInterface<?>>> triad = Pair.makePair(type, StorageManager.ProviderPlaceholder);
+        if (StorageManager.storages.putIfAbsent(name, triad) != null)
+            throw new IllegalParametersException("Conflict storage name.", ParametersMap.create().add("name", name).add("type", type));
         try {
             final C configuration = type.getConfiguration().get();
             final ProviderInterface<C> provider = type.getProvider().get();
-            final ProviderRecyclerInterface<C> recycler = type.getRecycler().get();
+            final RecyclerInterface<C> recycler = type.getRecycler().get();
+            final SharerInterface<C> sharer = type.getSharer().get();
             final Collection<Pair.ImmutablePair<String, String>> errors = new LinkedList<>();
             configuration.load(config, errors);
             YamlHelper.throwErrors(errors);
@@ -137,33 +145,35 @@ public final class StorageManager {
             try {
                 provider.initialize(configuration);
                 recycler.initialize(configuration);
+                sharer.initialize(configuration);
             } catch (final Exception exception) {
-                throw new RuntimeException("Failed to initialize provider." + ParametersMap.create().add("name", name).add("type", type).add("configuration", configuration), exception);
+                throw new RuntimeException("Failed to initialize storage." + ParametersMap.create().add("name", name).add("type", type).add("configuration", configuration), exception);
             }
             StorageManager.dumpConfigurationIfModified(configuration);
-            triad.setSecond(Pair.ImmutablePair.makeImmutablePair(provider, recycler));
+            triad.setSecond(Triad.ImmutableTriad.makeImmutableTriad(provider, recycler, sharer));
         } finally {
             if (triad.getSecond() == StorageManager.ProviderPlaceholder)
-                StorageManager.providers.remove(name);
+                StorageManager.storages.remove(name);
         }
-        StorageManager.logger.log(HLogLevel.INFO, "Load provider successfully:", ParametersMap.create().add("name", name));
+        StorageManager.logger.log(HLogLevel.INFO, "Load storage successfully:", ParametersMap.create().add("name", name));
     }
 
-    private static boolean uninitializeProvider0(final @NotNull String name, final boolean dropIndex) {
-        StorageManager.logger.log(HLogLevel.LESS, "Unloading provider.", ParametersMap.create().add("name", name));
+    private static boolean uninitializeStorage0(final @NotNull String name, final boolean dropIndex) {
+        StorageManager.logger.log(HLogLevel.LESS, "Unloading storage.", ParametersMap.create().add("name", name));
         try {
-            StorageManager.failedProviders.remove(name);
-            final Pair<ProviderTypes<?>, Pair.ImmutablePair<ProviderInterface<?>, ProviderRecyclerInterface<?>>> triad = StorageManager.providers.remove(name);
+            StorageManager.failedStorages.remove(name);
+            final var triad = StorageManager.storages.remove(name);
             if (triad == null || triad.getSecond() == StorageManager.ProviderPlaceholder) return false;
-            StorageManager.dumpConfigurationIfModified(triad.getSecond().getFirst().getConfiguration());
+            StorageManager.dumpConfigurationIfModified(triad.getSecond().getA().getConfiguration());
             final boolean drop = dropIndex && ServerConfiguration.get().allowDropIndexAfterUninitializeProvider();
             try {
-                triad.getSecond().getFirst().uninitialize(drop);
-                triad.getSecond().getSecond().uninitialize(drop);
+                triad.getSecond().getA().uninitialize(drop);
+                triad.getSecond().getB().uninitialize(drop);
+                triad.getSecond().getC().uninitialize(drop);
             } catch (final Exception exception) {
-                throw new RuntimeException("Failed to uninitialize provider." + ParametersMap.create().add("name", name).add("type", triad.getFirst()), exception);
+                throw new RuntimeException("Failed to uninitialize storage." + ParametersMap.create().add("name", name).add("type", triad.getFirst()), exception);
             }
-            StorageManager.logger.log(HLogLevel.INFO, "Unload provider successfully:", ParametersMap.create().add("name", name));
+            StorageManager.logger.log(HLogLevel.INFO, "Unload storage successfully:", ParametersMap.create().add("name", name));
             return true;
         } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable throwable) {
             HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), throwable);
@@ -171,20 +181,20 @@ public final class StorageManager {
         return false;
     }
 
-    public static void addProvider(final @NotNull String name, final @NotNull ProviderTypes<?> type, final @Nullable Map<String, Object> config) throws IOException, IllegalParametersException {
+    public static void addStorage(final @NotNull String name, final @NotNull StorageTypes<?> type, final @Nullable Map<String, Object> config) throws IOException, IllegalParametersException {
         final Map<String, Object> configuration;
         if (config == null)
             try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(StorageManager.getStorageConfigurationFile(name)))) {
                 configuration = YamlHelper.loadYaml(inputStream);
             }
         else configuration = config;
-        StorageManager.initializeProvider0(name, type, configuration);
+        StorageManager.initializeStorage0(name, type, configuration);
         ServerConfiguration.get().providers().put(name, type);
         ServerConfiguration.dumpToFile();
     }
 
-    public static boolean removeProvider(final @NotNull String name, final boolean dropIndex) throws IOException {
-        final boolean success = StorageManager.uninitializeProvider0(name, dropIndex);
+    public static boolean removeStorage(final @NotNull String name, final boolean dropIndex) throws IOException {
+        final boolean success = StorageManager.uninitializeStorage0(name, dropIndex);
         if (success) {
             ServerConfiguration.get().providers().remove(name);
             ServerConfiguration.dumpToFile();
@@ -192,7 +202,7 @@ public final class StorageManager {
         return success;
     }
 
-    public static void dumpConfigurationIfModified(final @NotNull ProviderConfiguration configuration) throws IOException {
+    public static void dumpConfigurationIfModified(final @NotNull StorageConfiguration configuration) throws IOException {
         synchronized (configuration) {
             if (configuration.resetModified()) {
                 final Map<String, Object> config = configuration.dump();
@@ -203,26 +213,39 @@ public final class StorageManager {
 
 
     public static @Nullable ProviderInterface<?> getProvider(final @NotNull String name) {
-        final Pair<ProviderTypes<?>, Pair.ImmutablePair<ProviderInterface<?>, ProviderRecyclerInterface<?>>> triad = StorageManager.providers.get(name);
+        final var triad = StorageManager.storages.get(name);
         if (triad == null || triad.getSecond() == StorageManager.ProviderPlaceholder) return null;
-        return triad.getSecond().getFirst();
+        return triad.getSecond().getA();
     }
 
-    public static @Nullable ProviderRecyclerInterface<?> getRecycler(final @NotNull String name) {
-        final Pair<ProviderTypes<?>, Pair.ImmutablePair<ProviderInterface<?>, ProviderRecyclerInterface<?>>> triad = StorageManager.providers.get(name);
+    public static @Nullable RecyclerInterface<?> getRecycler(final @NotNull String name) {
+        final var triad = StorageManager.storages.get(name);
         if (triad == null || triad.getSecond() == StorageManager.ProviderPlaceholder) return null;
-        return triad.getSecond().getSecond();
+        return triad.getSecond().getB();
+    }
+
+    public static @Nullable SharerInterface<?> getSharer(final @NotNull String name) {
+        final var triad = StorageManager.storages.get(name);
+        if (triad == null || triad.getSecond() == StorageManager.ProviderPlaceholder) return null;
+        return triad.getSecond().getC();
     }
 
     public static int getProvidersCount() {
-        return StorageManager.providers.size();
+        return StorageManager.storages.size();
     }
 
     public static @NotNull @Unmodifiable Map<@NotNull String, @NotNull ProviderInterface<?>> getAllProviders() {
-        return StorageManager.providers.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getSecond().getFirst()));
+        return StorageManager.storages.entrySet().stream().filter(e -> e.getValue().getSecond() != StorageManager.ProviderPlaceholder)
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getSecond().getA()));
     }
 
-    public static @NotNull @Unmodifiable Map<@NotNull String, @NotNull ProviderRecyclerInterface<?>> getAllRecyclers() {
-        return StorageManager.providers.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getSecond().getSecond()));
+    public static @NotNull @Unmodifiable Map<@NotNull String, @NotNull RecyclerInterface<?>> getAllRecyclers() {
+        return StorageManager.storages.entrySet().stream().filter(e -> e.getValue().getSecond() != StorageManager.ProviderPlaceholder)
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getSecond().getB()));
+    }
+
+    public static @NotNull @Unmodifiable Map<@NotNull String, @NotNull SharerInterface<?>> getAllSharers() {
+        return StorageManager.storages.entrySet().stream().filter(e -> e.getValue().getSecond() != StorageManager.ProviderPlaceholder)
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getSecond().getC()));
     }
 }

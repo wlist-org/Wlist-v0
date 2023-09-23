@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 @SuppressWarnings("OverlyBroadThrowsClause")
-public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> implements ProviderInterface<C> {
+public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> implements ProviderInterface<C> {
     protected @NotNull HInitializer<C> configuration = new HInitializer<>("ProviderConfiguration");
     protected @NotNull HInitializer<FileManager> manager = new HInitializer<>("ProviderManager");
 

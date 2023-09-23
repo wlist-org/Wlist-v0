@@ -11,7 +11,7 @@ import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
-import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
@@ -33,12 +33,12 @@ public final class RootSelector {
         super();
     }
 
-    private static @NotNull FileInformation getProviderInformation(final @NotNull ProviderConfiguration configuration) {
+    private static @NotNull FileInformation getProviderInformation(final @NotNull StorageConfiguration configuration) {
         return new FileInformation(configuration.getRootDirectoryId(), 0, configuration.getName(), true, configuration.getSpaceUsed(),
                 configuration.getCreateTime(), configuration.getUpdateTime(), configuration.getDisplayName());
     }
 
-    private static <T> @NotNull Consumer<T> dumper(final ProviderConfiguration configuration) {
+    private static <T> @NotNull Consumer<T> dumper(final StorageConfiguration configuration) {
         return t -> {
             try {
                 StorageManager.dumpConfigurationIfModified(configuration);
@@ -55,14 +55,14 @@ public final class RootSelector {
                     consumer.accept(UnionPair.ok(UnionPair.ok(new FilesListInformation(StorageManager.getProvidersCount(), 0L, List.of()))));
                     return;
                 }
-                final Set<ProviderConfiguration> all = new ConcurrentSkipListSet<>((a, b) -> {
+                final Set<StorageConfiguration> all = new ConcurrentSkipListSet<>((a, b) -> {
                     for (final Map.Entry<VisibleFileInformation.Order, Options.OrderDirection> order: orders.entrySet()) {
-                        final Comparator<ProviderConfiguration> comparator = switch (order.getKey()) {
-                            case Id, Name -> Comparator.comparing(ProviderConfiguration::getDisplayName);
+                        final Comparator<StorageConfiguration> comparator = switch (order.getKey()) {
+                            case Id, Name -> Comparator.comparing(StorageConfiguration::getDisplayName);
                             case Directory -> (m, n) -> 0;
-                            case Size -> Comparator.comparing(ProviderConfiguration::getSpaceUsed, Long::compareUnsigned);
-                            case CreateTime -> Comparator.comparing(ProviderConfiguration::getCreateTime);
-                            case UpdateTime -> Comparator.comparing(ProviderConfiguration::getUpdateTime);
+                            case Size -> Comparator.comparing(StorageConfiguration::getSpaceUsed, Long::compareUnsigned);
+                            case CreateTime -> Comparator.comparing(StorageConfiguration::getCreateTime);
+                            case UpdateTime -> Comparator.comparing(StorageConfiguration::getUpdateTime);
                         };
                         final int res = (switch (order.getValue()) {
                             case ASCEND -> comparator;
@@ -230,7 +230,7 @@ public final class RootSelector {
 //        }
 //    }
 //
-//    protected static class RootDriverConfiguration extends ProviderConfiguration<RootDriverConfiguration.LocalSide, RootDriverConfiguration.WebSide, RootDriverConfiguration.CacheSide> {
+//    protected static class RootDriverConfiguration extends StorageConfiguration<RootDriverConfiguration.LocalSide, RootDriverConfiguration.WebSide, RootDriverConfiguration.CacheSide> {
 //        private RootDriverConfiguration() {
 //            super("RootSelector", LocalSide::new, WebSide::new, CacheSide::new);
 //        }

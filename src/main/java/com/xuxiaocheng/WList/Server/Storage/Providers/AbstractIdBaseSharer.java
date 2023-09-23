@@ -4,8 +4,8 @@ import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import org.jetbrains.annotations.NotNull;
 
 @SuppressWarnings("OverlyBroadThrowsClause")
-public abstract class AbstractIdBaseRecycler<C extends StorageConfiguration> implements RecyclerInterface<C> {
-    protected @NotNull HInitializer<C> configuration = new HInitializer<>("RecyclerConfiguration");
+public abstract class AbstractIdBaseSharer<C extends StorageConfiguration> implements SharerInterface<C> {
+    protected @NotNull HInitializer<C> configuration = new HInitializer<>("SharerConfiguration");
 //    protected @NotNull HInitializer<FileManager> manager = new HInitializer<>("ProviderManager");
 
     @Override
@@ -39,7 +39,7 @@ public abstract class AbstractIdBaseRecycler<C extends StorageConfiguration> imp
 
     @Override
     public @NotNull String toString() {
-        return "AbstractIdBaseRecycler{" +
+        return "AbstractIdBaseSharer{" +
                 "configuration=" + this.configuration +
                 '}';
     }

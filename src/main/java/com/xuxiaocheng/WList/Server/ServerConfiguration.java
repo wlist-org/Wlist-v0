@@ -7,7 +7,7 @@ import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
-import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderTypes;
+import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -30,7 +30,7 @@ public record ServerConfiguration(int port, int maxServerBacklog,
                                   long tokenExpireTime, long idIdleExpireTime,
                                   int maxLimitPerPage, int forwardDownloadCacheCount,
                                   boolean allowDropIndexAfterUninitializeProvider,
-                                  @NotNull Map<@NotNull String, @NotNull ProviderTypes<?>> providers) {
+                                  @NotNull Map<@NotNull String, @NotNull StorageTypes<?>> providers) {
     public static final @NotNull HInitializer<File> Location = new HInitializer<>("ServerConfigurationLocation");
     private static final @NotNull HInitializer<ServerConfiguration> instance = new HInitializer<>("ServerConfiguration");
 
@@ -39,8 +39,8 @@ public record ServerConfiguration(int port, int maxServerBacklog,
     }
 
     /**
-     * @see StorageManager#addProvider(String, ProviderTypes, Map)
-     * @see StorageManager#removeProvider(String, boolean)
+     * @see StorageManager#addStorage(String, StorageTypes, Map)
+     * @see StorageManager#removeStorage(String, boolean)
      */
     public static void set(final @NotNull ServerConfiguration configuration) throws IOException {
         final ServerConfiguration existed = ServerConfiguration.instance.getInstanceNullable();
@@ -71,7 +71,7 @@ public record ServerConfiguration(int port, int maxServerBacklog,
             YamlHelper.getConfig(config, "providers", LinkedHashMap::new,
                 o -> { final Map<String, Object> map = YamlHelper.transferMapNode(o, errors, "providers");
                     if (map == null) return null;
-                    final Map<String, ProviderTypes<?>> providers = new LinkedHashMap<>(map.size());
+                    final Map<String, StorageTypes<?>> providers = new LinkedHashMap<>(map.size());
                     for (final Map.Entry<String, Object> e: map.entrySet()) {
                         final String reason = StorageManager.providerNameInvalidReason(e.getKey());
                         if (reason != null) {
@@ -80,7 +80,7 @@ public record ServerConfiguration(int port, int maxServerBacklog,
                         }
                         final String identifier = YamlHelper.transferString(e.getValue(), errors, "provider(" + e.getKey() + ')');
                         if (identifier == null) continue;
-                        final ProviderTypes<?> type = ProviderTypes.get(identifier);
+                        final StorageTypes<?> type = StorageTypes.get(identifier);
                         if (type == null) {
                             HLog.getInstance("DefaultLogger").log(HLogLevel.WARN, "Unsupported provider type.", ParametersMap.create().add("name", e.getKey()).add("identifier", identifier));
                             continue;

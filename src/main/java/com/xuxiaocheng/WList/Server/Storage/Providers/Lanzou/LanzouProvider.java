@@ -25,16 +25,13 @@ import com.xuxiaocheng.WList.Server.Exceptions.WrongResponseException;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.ProviderUtil;
 import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseProvider;
-import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderTypes;
+import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
+import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WList.Server.Util.BrowserUtil;
-import com.xuxiaocheng.WList.Server.Util.JavaScriptUtil;
 import com.xuxiaocheng.WList.Server.WListServer;
 import okhttp3.FormBody;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
-import okhttp3.OkHttpClient;
-import okhttp3.Response;
-import okhttp3.ResponseBody;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
@@ -43,8 +40,6 @@ import java.io.IOException;
 import java.net.URL;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -58,46 +53,39 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @SuppressWarnings("SpellCheckingInspection")
 public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> {
     @Override
-    public @NotNull ProviderTypes<LanzouConfiguration> getType() {
-        return ProviderTypes.Lanzou;
+    public @NotNull StorageTypes<LanzouConfiguration> getType() {
+        return StorageTypes.Lanzou;
     }
 
-    private static final @NotNull HLog logger = HLog.create("DriverLogger/lanzou");
+    protected static final @NotNull HLog logger = HLog.create("DriverLogger/lanzou");
 
-    static final @NotNull DateTimeFormatter dataTimeFormatter = DateTimeFormatter.RFC_1123_DATE_TIME;
-    static final @NotNull Headers headers = new Headers.Builder().set("referer", "https://up.woozooo.com/u").set("accept-language", "zh-CN")
-            .set("user-agent", HttpNetworkHelper.defaultWebAgent).set("cache-control", "no-cache").build();
-
-    static final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> LoginURL =
+    protected static final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> LoginURL =
             Pair.ImmutablePair.makeImmutablePair(Objects.requireNonNull(HttpUrl.parse("https://up.woozooo.com/account.php")), "POST");
-    static final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> TaskURL =
+    protected static final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> TaskURL =
         Pair.ImmutablePair.makeImmutablePair(Objects.requireNonNull(HttpUrl.parse("https://up.woozooo.com/doupload.php")), "POST");
-    static final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> UploadURL =
+    protected static final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> UploadURL =
             Pair.ImmutablePair.makeImmutablePair(Objects.requireNonNull(HttpUrl.parse("https://up.woozooo.com/html5up.php")), "POST");
-    static final @NotNull URL CookieUrl = LanzouProvider.LoginURL.getFirst().url();
+    protected static final @NotNull URL CookieUrl = LanzouProvider.LoginURL.getFirst().url();
 
-    static @NotNull String requestHtml(final @NotNull OkHttpClient httpClient, final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> url) throws IOException {
-        try (final ResponseBody body = HttpNetworkHelper.extraResponseBody(HttpNetworkHelper.getWithParameters(httpClient, url, LanzouProvider.headers, null).execute())) {
-            return ProviderUtil.removeHtmlComments(body.string());
-        }
-    }
-    static @NotNull JSONObject requestJson(final @NotNull OkHttpClient httpClient, final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> url, final FormBody.@NotNull Builder request) throws IOException {
-        return HttpNetworkHelper.extraJsonResponseBody(HttpNetworkHelper.postWithBody(httpClient, url, LanzouProvider.headers, request.build()).execute());
-    }
+    protected static final @NotNull Headers Headers = new Headers.Builder().set("referer", "https://up.woozooo.com/u").set("accept-language", "zh-CN")
+            .set("user-agent", HttpNetworkHelper.defaultWebAgent).set("cache-control", "no-cache").build();
+    protected @NotNull Headers headerWithToken = LanzouProvider.Headers;
 
     @Override
     protected void loginIfNot() throws IOException, IllegalParametersException {
         final LanzouConfiguration configuration = this.configuration.getInstance();
         if (configuration.getToken() != null && configuration.getTokenExpire() != null && !MiscellaneousUtil.now().isAfter(configuration.getTokenExpire()))
             return;
-        if (configuration.getPassport().isEmpty() || configuration.getPassword().isEmpty()) // Quicker response.
-            throw new IllegalResponseCodeException(0, "\u5BC6\u7801\u4E0D\u5BF9", ParametersMap.create().add("process", "login").add("configuration", configuration));
+        { // Quicker response.
+            if (configuration.getPassport().isEmpty() || !ProviderUtil.PhoneNumberPattern.matcher(configuration.getPassport()).matches())
+                throw new IllegalParametersException("Invalid passport.", ParametersMap.create().add("configuration", configuration));
+            if (configuration.getPassword().length() < 6 || 20 < configuration.getPassword().length())
+                throw new IllegalParametersException("Invalid password.", ParametersMap.create().add("configuration", configuration));
+        }
         final Set<Cookie> cookies;
         try (final WebClient client = BrowserUtil.newWebClient()) {
             final HtmlPage page = client.getPage("https://up.woozooo.com/account.php?action=login");
@@ -108,7 +96,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
             page.<HtmlInput>getElementByName("username").setValue(configuration.getPassport());
             page.<HtmlInput>getElementByName("password").setValue(configuration.getPassword());
             final HtmlPage res = page.getHtmlElementById("s3").click();
-            final String result = res.asNormalizedText();
+            final String result = res.asNormalizedText(); // ((DomNode) res.getByXPath("//p").get(0)).getVisibleText()
             final Optional<String> message = Arrays.stream(result.split("\n")).dropWhile(Predicate.not("\u63D0\u793A\u4FE1\u606F"::equals)).skip(1).findFirst();
             if (message.isEmpty() || !message.get().contains("\u767B\u5F55\u6210\u529F"))
                 throw new IllegalParametersException("Failed to login.", ParametersMap.create().add("configuration", configuration).add("page", result));
@@ -123,6 +111,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         }
         if (token == null || uid == null)
             throw new IllegalParametersException("No token/uid receive.", ParametersMap.create().add("configuration", configuration).add("cookies", cookies));
+        this.headerWithToken = LanzouProvider.Headers.newBuilder().set("cookie", "phpdisk_info=" + configuration.getToken()).build();
         configuration.setNickname(configuration.getPassport());
         configuration.setVip(false); // TODO: nickname and vip.
         configuration.setUid(Long.parseLong(uid.getValue()));
@@ -137,8 +126,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         final Map<String, String> parameters = new HashMap<>();
         parameters.put("uid", String.valueOf(configuration.getUid()));
         request.add("task", String.valueOf(type));
-        final JSONObject json = HttpNetworkHelper.extraJsonResponseBody(HttpNetworkHelper.postWithParametersAndBody(configuration.getHttpClient(), LanzouProvider.TaskURL,
-                LanzouProvider.headers.newBuilder().set("cookie", "phpdisk_info=" + configuration.getToken() + "; ").build(), parameters, request.build()).execute());
+        final JSONObject json = HttpNetworkHelper.extraJsonResponseBody(HttpNetworkHelper.postWithParametersAndBody(configuration.getHttpClient(), LanzouProvider.TaskURL, this.headerWithToken, parameters, request.build()).execute());
         if (zt != null) {
             final Integer code = json.getInteger("zt");
             if (code == null || code.intValue() != zt.intValue())
@@ -180,50 +168,6 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         return list;
     }
 
-    protected @NotNull @Unmodifiable Set<@NotNull FileInformation> listFilesInPage(final long directoryId, final int page) throws IOException, InterruptedException {
-        final LanzouConfiguration configuration = this.configuration.getInstance();
-        final FormBody.Builder builder = new FormBody.Builder()
-                .add("folder_id", String.valueOf(directoryId))
-                .add("pg", String.valueOf(page + 1));
-        final JSONObject files = this.task(5, builder, 1);
-        final JSONArray infos = files.getJSONArray("text");
-        if (infos == null)
-            throw new WrongResponseException("Listing files.", files, ParametersMap.create().add("configuration", configuration).add("directoryId", directoryId).add("page", page));
-        if (infos.isEmpty()) return Set.of();
-        final Set<FileInformation> set = ConcurrentHashMap.newKeySet();
-        try {
-            HMultiRunHelper.runConsumers(WListServer.IOExecutors, infos.toList(JSONObject.class), HExceptionWrapper.wrapConsumer(info -> {
-                final String name = info.getString("name");
-                final Long id = info.getLong("id");
-                if (name == null || id == null) return;
-                final Triad.ImmutableTriad<HttpUrl, String, String> shareUrl = this.getFileShareUrl(id.longValue());
-                if (shareUrl == null) return;
-                final String others = JSON.toJSONString(Map.of(
-                        "domin", shareUrl.getA().toString(),
-                        "identifier", shareUrl.getB(),
-                        "pwd", Objects.requireNonNullElse(shareUrl.getC(), "")
-                ));
-                boolean flag = true;
-                try {
-                    final Pair.ImmutablePair<HttpUrl, Headers> downloadUrl = this.getSingleShareFileDownloadUrl(shareUrl.getA(), shareUrl.getB(), shareUrl.getC());
-                    if (downloadUrl != null) {
-                        final Pair<Long, ZonedDateTime> fixed = this.testRealSizeAndData(downloadUrl);
-                        if (fixed != null) {
-                            set.add(new FileInformation(id.longValue(), directoryId, name, false, fixed.getFirst().longValue(), fixed.getSecond(), fixed.getSecond(), others));
-                            flag = false;
-                        }
-                    }
-                } finally {
-                    if (flag)
-                        set.add(new FileInformation(id.longValue(), directoryId, name, false, 0, null, null, others));
-                }
-            }));
-        } catch (final RuntimeException exception) {
-            throw HExceptionWrapper.unwrapException(exception, IOException.class);
-        }
-        return Collections.unmodifiableSet(set);
-    }
-
     protected @Nullable Triad.ImmutableTriad<@NotNull HttpUrl, @NotNull String, @Nullable String> getFileShareUrl(final long fileId) throws IOException {
         final LanzouConfiguration configuration = this.configuration.getInstance();
         final FormBody.Builder sharerBuilder = new FormBody.Builder()
@@ -241,100 +185,49 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         return Triad.ImmutableTriad.makeImmutableTriad(domin, identifier, hasPwd.booleanValue() ? pwd : null);
     }
 
-    private static final @NotNull Pattern srcPattern = Pattern.compile("src=\"(/fn?[^\"]+)");
-    @SuppressWarnings("unchecked")
-    protected @Nullable Pair.ImmutablePair<@NotNull HttpUrl, @Nullable Headers> getSingleShareFileDownloadUrl(final @NotNull HttpUrl domin, final @NotNull String identifier, final @Nullable String pwd) throws IOException, IllegalParametersException {
+    protected @NotNull @Unmodifiable Set<@NotNull FileInformation> listFilesInPage(final long directoryId, final int page) throws IOException, InterruptedException {
         final LanzouConfiguration configuration = this.configuration.getInstance();
-        final String sharePage = LanzouProvider.requestHtml(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin.newBuilder().addPathSegment(identifier).build(), "GET"));
-        if (sharePage.contains("\u6587\u4EF6\u53D6\u6D88\u5206\u4EAB\u4E86") || sharePage.contains("\u6587\u4EF6\u5730\u5740\u9519\u8BEF"))
-            return null;
-        final ParametersMap parametersMap = ParametersMap.create().add("configuration", configuration).add("domin", domin).add("identifier", identifier);
-        final List<String> javaScript;
-        if (sharePage.contains("<iframe")) {
-            final Matcher srcMatcher = LanzouProvider.srcPattern.matcher(sharePage);
-            if (!srcMatcher.find())
-                throw new WrongResponseException("No src matched.", sharePage, parametersMap);
-            final String src = srcMatcher.group(1);
-            final String loadingPage = LanzouProvider.requestHtml(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin.newBuilder().addPathSegment(src).build(), "GET"));
-            javaScript = ProviderUtil.findScripts(loadingPage);
-        } else {
-            parametersMap.add("pwd", pwd);
-            if (pwd == null)
-                throw new IllegalParametersException("Require password.", ParametersMap.create().add("domin", domin).add("identifier", identifier));
-            final List<String> scripts = ProviderUtil.findScripts(sharePage);
-            javaScript = new ArrayList<>(scripts.size());
-            for (final String script: scripts) {
-                //noinspection ReassignedVariable,NonConstantStringShouldBeStringBuffer
-                String js = script.replace("document.getElementById('pwd').value", String.format("'%s'", pwd));
-                if (js.contains("$(document).keyup(")) {
-                    js = js.replace("$(document)", "$$()");
-                    js = "function $$(){return{keyup:function(f){f({keyCode:13});}};}" + js;
+        final FormBody.Builder builder = new FormBody.Builder()
+                .add("folder_id", String.valueOf(directoryId))
+                .add("pg", String.valueOf(page));
+        final JSONObject files = this.task(5, builder, 1);
+        final JSONArray infos = files.getJSONArray("text");
+        if (infos == null)
+            throw new WrongResponseException("Listing files.", files, ParametersMap.create().add("configuration", configuration).add("directoryId", directoryId).add("page", page));
+        if (infos.isEmpty()) return Set.of();
+        final Set<FileInformation> set = ConcurrentHashMap.newKeySet();
+        try {
+            HMultiRunHelper.runConsumers(WListServer.IOExecutors, infos.toList(JSONObject.class), HExceptionWrapper.wrapConsumer(info -> {
+                final String name = info.getString("name");
+                final Long id = info.getLong("id");
+                if (name == null || id == null) return;
+                String others = null;
+                boolean flag = true;
+                try {
+                    final Triad.ImmutableTriad<HttpUrl, String, String> shareUrl = this.getFileShareUrl(id.longValue());
+                    if (shareUrl == null) return;
+                    others = JSON.toJSONString(Map.of(
+                            "domin", shareUrl.getA().toString(),
+                            "id", shareUrl.getB(),
+                            "pwd", Objects.requireNonNullElse(shareUrl.getC(), "")
+                    ));
+                    final LanzouSharer sharer = (LanzouSharer) StorageManager.getSharer(this.getConfiguration().getName());
+                    assert sharer != null;
+                    final Pair.ImmutablePair<HttpUrl, Headers> url = sharer.getSingleShareFileDownloadUrl(shareUrl.getA(), shareUrl.getB(), shareUrl.getC());
+                    if (url == null) return;
+                    final Pair<Long, ZonedDateTime> fixed = sharer.testRealSizeAndData(url.getFirst(), url.getSecond());
+                    if (fixed == null) return;
+                    set.add(new FileInformation(id.longValue(), directoryId, name, false, fixed.getFirst().longValue(), fixed.getSecond(), fixed.getSecond(), others));
+                    flag = false;
+                } finally {
+                    if (flag)
+                        set.add(new FileInformation(id.longValue(), directoryId, name, false, 0, null, null, others));
                 }
-                final int endIndex = js.indexOf("document.getElementById('rpt')");
-                if (endIndex > 0)
-                    js = js.substring(0, endIndex);
-                javaScript.add(js);
-            }
+            }));
+        } catch (final RuntimeException exception) {
+            throw HExceptionWrapper.unwrapException(exception, IOException.class);
         }
-        final String ajaxUrl;
-        final Map<String, Object> ajaxData;
-        try {
-            final Map<String, Object> ajax = JavaScriptUtil.extraOnlyAjaxData(javaScript);
-            if (ajax == null)
-                throw new IOException("Null ajax.");
-            assert "post".equals(ajax.get("type"));
-            ajaxUrl = (String) ajax.get("url");
-            ajaxData = (Map<String, Object>) ajax.get("data");
-        } catch (final JavaScriptUtil.ScriptException exception) {
-            throw new IOException("Failed to run share page java scripts." + parametersMap, exception);
-        }
-        final FormBody.Builder builder = new FormBody.Builder();
-        for (final Map.Entry<String, Object> entry: ajaxData.entrySet())
-            builder.add(entry.getKey(), entry.getValue().toString());
-        final JSONObject json = LanzouProvider.requestJson(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin.newBuilder().addPathSegment(ajaxUrl).build(), "POST"), builder);
-        final int code = json.getIntValue("zt", -1);
-        if (code != 1)
-            throw new IllegalResponseCodeException(code, json.getString("inf"), parametersMap.add("json", json));
-        final HttpUrl dom = HttpUrl.parse(json.getString("dom"));
-        final String para = json.getString("url");
-        if (dom == null || para == null)
-            throw new WrongResponseException("Getting single shared file download url.", json, parametersMap);
-        final HttpUrl displayUrl = dom.newBuilder().addPathSegment("file").addPathSegment("?" + para).build();
-        final String redirectPage;
-        try (final Response response = HttpNetworkHelper.getWithParameters(HttpNetworkHelper.DefaultNoRedirectHttpClient, Pair.ImmutablePair.makeImmutablePair(displayUrl, "GET"), LanzouProvider.headers, null).execute()) {
-            if (response.code() == 302) {
-                final String finalUrl = response.header("Location");
-                assert finalUrl != null;
-                return Pair.ImmutablePair.makeImmutablePair(Objects.requireNonNull(HttpUrl.parse(finalUrl)), null);
-            }
-            redirectPage = ProviderUtil.removeHtmlComments(HttpNetworkHelper.extraResponseBody(response).string());
-        }
-        // TODO: el
-        LanzouProvider.logger.log(HLogLevel.WARN, "Find el: " + redirectPage);
-        return Pair.ImmutablePair.makeImmutablePair(displayUrl, null);
-    }
-
-    protected Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull ZonedDateTime> testRealSizeAndData(final @NotNull Pair.ImmutablePair<@NotNull HttpUrl, @Nullable Headers> downloadUrl) throws IOException {
-        final LanzouConfiguration configuration = this.configuration.getInstance();
-        final Headers headers;
-        if (downloadUrl.getSecond() == null)
-            try (final Response response = HttpNetworkHelper.getWithParameters(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(downloadUrl.getFirst(), "HEAD"), LanzouProvider.headers, null).execute()) {
-                headers = response.headers();
-            }
-        else headers = downloadUrl.getSecond();
-        final String sizeS = headers.get("Content-Length");
-        final String dataS = headers.get("Last-Modified");
-        if (sizeS == null || dataS == null)
-            return null;
-        final long size;
-        final ZonedDateTime time;
-        try {
-            size = Long.parseLong(sizeS);
-            time = ZonedDateTime.parse(dataS, LanzouProvider.dataTimeFormatter);
-        } catch (final NumberFormatException | DateTimeParseException ignore) {
-            return null;
-        }
-        return Pair.ImmutablePair.makeImmutablePair(size, time);
+        return Collections.unmodifiableSet(set);
     }
 
     @Override
@@ -344,14 +237,11 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         return ProviderUtil.wrapSuppliersInPages(page -> {
             if (page.intValue() == 0)
                 return directories;
-            final Collection<FileInformation> list = this.listFilesInPage(directoryId, page.intValue() - 1);
+            final Collection<FileInformation> list = this.listFilesInPage(directoryId, page.intValue());
             if (list.isEmpty())
                 return null;
             return list;
-        }, HExceptionWrapper.wrapConsumer(e -> {
-            if (e != null)
-                throw e;
-        })).getFirst();
+        });
     }
 
     @Override
@@ -402,4 +292,12 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
 //    protected @NotNull UnionPair<FileInformation, FailureReason> createDirectory0(final long parentId, @NotNull final String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull FileLocation parentLocation) throws Exception {
 //        throw new UnsupportedOperationException();
 //    }
+
+    @Override
+    public @NotNull String toString() {
+        return "LanzouProvider{" +
+                "headerWithToken=" + this.headerWithToken +
+                ", super=" + super.toString() +
+                '}';
+    }
 }

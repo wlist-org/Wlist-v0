@@ -2,6 +2,8 @@ package com.xuxiaocheng.WListTest.Storage.Real;
 
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou.LanzouConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou.LanzouProvider;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WListTest.StaticLoader;
@@ -10,22 +12,22 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Objects;
 
 @Execution(ExecutionMode.SAME_THREAD)
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class LanzouTest {
     @BeforeAll
     public static void initialize() throws IOException {
@@ -36,7 +38,7 @@ public class LanzouTest {
 
     @AfterAll
     public static void uninitialize() throws IOException {
-        StorageManager.removeProvider("test", false);
+        StorageManager.removeStorage("test", false);
     }
 
     public @NotNull ProviderInterface<?> provider() {
@@ -48,14 +50,24 @@ public class LanzouTest {
     }
 
     @Test
-    @Order(0)
-    public void list() throws Exception {
-        Assumptions.assumeTrue(ProviderHelper.list(this.provider(), this.root(), Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 10).getT().total() == 0);
+    @Disabled
+    @SuppressWarnings("unchecked")
+    public void login() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+        final ProviderInterface<LanzouConfiguration> provider = (ProviderInterface<LanzouConfiguration>) this.provider();
+        final Method method = LanzouProvider.class.getDeclaredMethod("loginIfNot");
+        method.setAccessible(true);
+        provider.getConfiguration().setToken(null);
+        provider.getConfiguration().setTokenExpire(null);
+        method.invoke(provider);
+    }
 
-//        latch.await();
-//        Assumptions.assumeTrue(result.get() != null);
-//        Assumptions.assumeTrue(result.get().isSuccess());
-//        final FilesListInformation information = result.get().getT();
-//        HLog.DefaultLogger.log("", information);
+    @BeforeEach
+    public void checkEmpty() throws Exception {
+        Assumptions.assumeTrue(ProviderHelper.list(this.provider(), this.root(), Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 10).getT().total() == 0);
+    }
+
+    @Test
+    public void list() throws Exception {
+
     }
 }

@@ -11,8 +11,8 @@ import com.xuxiaocheng.WList.Server.Databases.User.UserInformation;
 import com.xuxiaocheng.WList.Server.MessageProto;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.BroadcastManager;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
-import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderConfiguration;
-import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderTypes;
+import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WList.Server.WListServer;
 import io.netty.buffer.ByteBufInputStream;
@@ -32,7 +32,7 @@ public final class OperateProvidersHandler {
     }
 
     /**
-     * @see com.xuxiaocheng.WList.Client.Operations.OperateProvidersHelper#addProvider(WListClientInterface, String, String, ProviderTypes, ProviderConfiguration)
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateProvidersHelper#addProvider(WListClientInterface, String, String, StorageTypes, StorageConfiguration)
      */
     public static final @NotNull ServerHandler doAddProvider = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
@@ -40,7 +40,7 @@ public final class OperateProvidersHandler {
         final String name = ByteBufIOUtil.readUTF(buffer);
         final String identifier = ByteBufIOUtil.readUTF(buffer);
         final String reason = StorageManager.providerNameInvalidReason(name);
-        final ProviderTypes<?> type = ProviderTypes.get(identifier);
+        final StorageTypes<?> type = StorageTypes.get(identifier);
         final Map<String, Object> config;
         if (operator.isSuccess() && reason == null && type != null) {
             try (final InputStream inputStream = new ByteBufInputStream(buffer)) {
@@ -61,7 +61,7 @@ public final class OperateProvidersHandler {
         }
         assert config != null;
         return () -> {
-            StorageManager.addProvider(name, type, config);
+            StorageManager.addStorage(name, type, config);
             BroadcastManager.onProviderInitialized(name);
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
         };
@@ -88,7 +88,7 @@ public final class OperateProvidersHandler {
             return null;
         }
         return () -> {
-            if (StorageManager.removeProvider(name, dropIndex))
+            if (StorageManager.removeStorage(name, dropIndex))
                 BroadcastManager.onProviderUninitialized(name);
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
         };

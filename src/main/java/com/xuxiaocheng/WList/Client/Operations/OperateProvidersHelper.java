@@ -5,8 +5,8 @@ import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
-import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderConfiguration;
-import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderTypes;
+import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import org.jetbrains.annotations.NotNull;
@@ -21,7 +21,7 @@ public final class OperateProvidersHelper {
         super();
     }
 
-    public static <C extends ProviderConfiguration> void addProvider(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String name, final @NotNull ProviderTypes<C> type, final @NotNull C configuration) throws IOException, InterruptedException, WrongStateException {
+    public static <C extends StorageConfiguration> void addProvider(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String name, final @NotNull StorageTypes<C> type, final @NotNull C configuration) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.AddProvider, token);
         ByteBufIOUtil.writeUTF(send, name);
         ByteBufIOUtil.writeUTF(send, type.getIdentifier());
