@@ -1,6 +1,7 @@
 package com.xuxiaocheng.WList.Server.Util;
 
 import com.gargoylesoftware.htmlunit.BrowserVersion;
+import com.gargoylesoftware.htmlunit.HttpMethod;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebResponse;
@@ -33,7 +34,7 @@ public final class BrowserUtil {
             @Override
             public WebResponse getResponse(final WebRequest request) throws IOException {
                 BrowserUtil.logger.log(HLogLevel.NETWORK, "Sending: ", request.getHttpMethod(), ' ', request.getUrl(),
-                        " Parameters: ", request.getParameters(),
+                        request.getHttpMethod() == HttpMethod.GET || request.getParameters().isEmpty() ? "" : " Parameters: " + request.getParameters(),
                         request.getAdditionalHeader("Range") == null ? "" : (" (Range: " + request.getAdditionalHeader("Range") + ')'));
                 final long time1 = System.currentTimeMillis();
                 final WebResponse response;
@@ -54,5 +55,11 @@ public final class BrowserUtil {
 
     public static @NotNull WebClient newWebClient() {
         return BrowserUtil.WebClientCore.getInstance().get();
+    }
+
+    public static void waitJavaScriptCompleted(final @NotNull WebClient client) {
+        while (true)
+            if (client.waitForBackgroundJavaScript(5000) == 0)
+                break;
     }
 }

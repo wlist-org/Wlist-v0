@@ -3,6 +3,12 @@ package com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
+import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.html.HtmlInput;
+import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.html.HtmlSpan;
+import com.gargoylesoftware.htmlunit.javascript.host.event.MouseEvent;
+import com.gargoylesoftware.htmlunit.util.Cookie;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
@@ -20,9 +26,9 @@ import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.ProviderUtil;
 import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseProvider;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderTypes;
+import com.xuxiaocheng.WList.Server.Util.BrowserUtil;
 import com.xuxiaocheng.WList.Server.Util.JavaScriptUtil;
 import com.xuxiaocheng.WList.Server.WListServer;
-import okhttp3.Cookie;
 import okhttp3.FormBody;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
@@ -34,12 +40,13 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 
 import java.io.IOException;
-import java.time.Instant;
+import java.net.URL;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -47,8 +54,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -66,13 +75,12 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
             .set("user-agent", HttpNetworkHelper.defaultWebAgent).set("cache-control", "no-cache").build();
 
     static final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> LoginURL =
-            Pair.ImmutablePair.makeImmutablePair(Objects.requireNonNull(HttpUrl.parse("https://up.woozooo.com/mlogin.php")), "POST"); // TODO use account.php
-//    static final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> InformationURL =
-//    Pair.ImmutablePair.makeImmutablePair(Objects.requireNonNull(HttpUrl.parse("https://up.woozooo.com/mydisk.php")), "GET");
+            Pair.ImmutablePair.makeImmutablePair(Objects.requireNonNull(HttpUrl.parse("https://up.woozooo.com/account.php")), "POST");
     static final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> TaskURL =
         Pair.ImmutablePair.makeImmutablePair(Objects.requireNonNull(HttpUrl.parse("https://up.woozooo.com/doupload.php")), "POST");
     static final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> UploadURL =
             Pair.ImmutablePair.makeImmutablePair(Objects.requireNonNull(HttpUrl.parse("https://up.woozooo.com/html5up.php")), "POST");
+    static final @NotNull URL CookieUrl = LanzouProvider.LoginURL.getFirst().url();
 
     static @NotNull String requestHtml(final @NotNull OkHttpClient httpClient, final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> url) throws IOException {
         try (final ResponseBody body = HttpNetworkHelper.extraResponseBody(HttpNetworkHelper.getWithParameters(httpClient, url, LanzouProvider.headers, null).execute())) {
@@ -84,40 +92,44 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     @Override
-    protected void loginIfNot() throws IOException {
+    protected void loginIfNot() throws IOException, IllegalParametersException {
         final LanzouConfiguration configuration = this.configuration.getInstance();
         if (configuration.getToken() != null && configuration.getTokenExpire() != null && !MiscellaneousUtil.now().isAfter(configuration.getTokenExpire()))
             return;
         if (configuration.getPassport().isEmpty() || configuration.getPassword().isEmpty()) // Quicker response.
             throw new IllegalResponseCodeException(0, "\u5BC6\u7801\u4E0D\u5BF9", ParametersMap.create().add("process", "login").add("configuration", configuration));
-        final FormBody.Builder builder = new FormBody.Builder()
-                .add("task", "3")
-                .add("uid", configuration.getPassport())
-                .add("pwd", configuration.getPassword());
-        final List<Cookie> cookies;
-        final JSONObject json;
-        try (final Response response = HttpNetworkHelper.postWithBody(configuration.getHttpClient(), LanzouProvider.LoginURL, LanzouProvider.headers, builder.build()).execute()) {
-            cookies = Cookie.parseAll(response.request().url(), response.headers());
-            json = HttpNetworkHelper.extraJsonResponseBody(response);
+        final Set<Cookie> cookies;
+        try (final WebClient client = BrowserUtil.newWebClient()) {
+            final HtmlPage page = client.getPage("https://up.woozooo.com/account.php?action=login");
+            BrowserUtil.waitJavaScriptCompleted(client);
+            final HtmlSpan slide = page.getHtmlElementById("nc_1_n1z");
+            slide.mouseDown();
+            slide.mouseMove(false, false, false, MouseEvent.BUTTON_RIGHT);
+            page.<HtmlInput>getElementByName("username").setValue(configuration.getPassport());
+            page.<HtmlInput>getElementByName("password").setValue(configuration.getPassword());
+            final HtmlPage res = page.getHtmlElementById("s3").click();
+            final String result = res.asNormalizedText();
+            final Optional<String> message = Arrays.stream(result.split("\n")).dropWhile(Predicate.not("\u63D0\u793A\u4FE1\u606F"::equals)).skip(1).findFirst();
+            if (message.isEmpty() || !message.get().contains("\u767B\u5F55\u6210\u529F"))
+                throw new IllegalParametersException("Failed to login.", ParametersMap.create().add("configuration", configuration).add("page", result));
+            cookies = client.getCookies(LanzouProvider.CookieUrl);
         }
-        final int code = json.getIntValue("zt", -1);
-        final String info = json.getString("info");
-        final Long id = json.getLong("id");
-        Cookie token = null;
-        for (final Cookie cookie: cookies)
-            if ("phpdisk_info".equals(cookie.name())) {
-                token = cookie;
-                break;
-            }
-        if (code != 1 || !"\u6210\u529f\u767b\u5f55".equals(info) || token == null)
-            throw new IllegalResponseCodeException(code, info, ParametersMap.create().add("process", "login").add("configuration", configuration).add("json", json).add("cookies", cookies));
-        configuration.setName(configuration.getPassport()); // TODO: if vip.
-        configuration.setUid(id.longValue());
-        configuration.setToken(token.value());
-        configuration.setTokenExpire(ZonedDateTime.ofInstant(Instant.ofEpochMilli(token.expiresAt()), ZoneOffset.UTC));
+        Cookie token = null, uid = null;
+        for (final Cookie c: cookies) {
+            if ("phpdisk_info".equalsIgnoreCase(c.getName()))
+                token = c;
+            if ("ylogin".equalsIgnoreCase(c.getName()))
+                uid = c;
+        }
+        if (token == null || uid == null)
+            throw new IllegalParametersException("No token/uid receive.", ParametersMap.create().add("configuration", configuration).add("cookies", cookies));
+        configuration.setNickname(configuration.getPassport());
+        configuration.setVip(false); // TODO: nickname and vip.
+        configuration.setUid(Long.parseLong(uid.getValue()));
+        configuration.setToken(token.getValue());
+        configuration.setTokenExpire(ZonedDateTime.ofInstant(token.getExpires().toInstant(), ZoneOffset.UTC));
         configuration.markModified();
         LanzouProvider.logger.log(HLogLevel.LESS, "Logged in.", ParametersMap.create().add("storage", configuration.getName()).add("passport", configuration.getPassport()));
-
     }
 
     protected @NotNull JSONObject task(final int type, final FormBody.@NotNull Builder request, final @Nullable Integer zt) throws IOException {
@@ -199,7 +211,6 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                         if (fixed != null) {
                             set.add(new FileInformation(id.longValue(), directoryId, name, false, fixed.getFirst().longValue(), fixed.getSecond(), fixed.getSecond(), others));
                             flag = false;
-                            return;
                         }
                     }
                 } finally {
@@ -231,6 +242,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     private static final @NotNull Pattern srcPattern = Pattern.compile("src=\"(/fn?[^\"]+)");
+    @SuppressWarnings("unchecked")
     protected @Nullable Pair.ImmutablePair<@NotNull HttpUrl, @Nullable Headers> getSingleShareFileDownloadUrl(final @NotNull HttpUrl domin, final @NotNull String identifier, final @Nullable String pwd) throws IOException, IllegalParametersException {
         final LanzouConfiguration configuration = this.configuration.getInstance();
         final String sharePage = LanzouProvider.requestHtml(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin.newBuilder().addPathSegment(identifier).build(), "GET"));
@@ -343,7 +355,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     @Override
-    protected @NotNull UnionPair<FileInformation, Boolean> update0(@NotNull final FileInformation oldInformation) throws Exception {
+    protected @NotNull UnionPair<FileInformation, Boolean> update0(@NotNull final FileInformation oldInformation) {
         return UnionPair.fail(Boolean.TRUE);
     }
 

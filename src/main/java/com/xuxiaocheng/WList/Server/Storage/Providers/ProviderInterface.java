@@ -91,12 +91,6 @@ public interface ProviderInterface<C extends ProviderConfiguration> {
 //    @NotNull UnionPair<DownloadRequirements, FailureReason> download(final long fileId, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @NotNull FileLocation location) throws Exception;
 
 //    /**
-//     * Build provider cache. Login and check token, etc.
-//     * @see ProviderConfiguration#setLastFileCacheBuildTime(ZonedDateTime)
-//     */
-//    void buildCache() throws Exception;
-//
-//    /**
 //     * Upload file.
 //     */
 //    @NotNull UnionPair<UploadRequirements, FailureReason> upload(final @NotNull FileLocation parentLocation, final @NotNull String filename, final @LongRange(minimum = 0) long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws Exception;

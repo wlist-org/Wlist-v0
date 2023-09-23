@@ -80,43 +80,6 @@ public abstract class ProviderConfiguration {
         return this.rootDirectoryId;
     }
 
-    protected @Nullable ZonedDateTime lastFileCacheBuildTime = null;
-    protected @Nullable ZonedDateTime lastFileIndexBuildTime = null;
-    protected @Nullable ZonedDateTime lastTrashCacheBuildTime = null;
-    protected @Nullable ZonedDateTime lastTrashIndexBuildTime = null;
-
-    public @Nullable ZonedDateTime getLastFileCacheBuildTime() {
-        return this.lastFileCacheBuildTime;
-    }
-
-    public void setLastFileCacheBuildTime(final @Nullable ZonedDateTime lastFileCacheBuildTime) {
-        this.lastFileCacheBuildTime = lastFileCacheBuildTime;
-    }
-
-    public @Nullable ZonedDateTime getLastFileIndexBuildTime() {
-        return this.lastFileIndexBuildTime;
-    }
-
-    public void setLastFileIndexBuildTime(final @Nullable ZonedDateTime lastFileIndexBuildTime) {
-        this.lastFileIndexBuildTime = lastFileIndexBuildTime;
-    }
-
-    public @Nullable ZonedDateTime getLastTrashCacheBuildTime() {
-        return this.lastTrashCacheBuildTime;
-    }
-
-    public void setLastTrashCacheBuildTime(final @Nullable ZonedDateTime lastTrashCacheBuildTime) {
-        this.lastTrashCacheBuildTime = lastTrashCacheBuildTime;
-    }
-
-    public @Nullable ZonedDateTime getLastTrashIndexBuildTime() {
-        return this.lastTrashIndexBuildTime;
-    }
-
-    public void setLastTrashIndexBuildTime(final @Nullable ZonedDateTime lastTrashIndexBuildTime) {
-        this.lastTrashIndexBuildTime = lastTrashIndexBuildTime;
-    }
-
     protected long spaceAll = 0;
     protected long spaceUsed = -1;
     protected long spaceGlobalAll = 0;
@@ -222,15 +185,6 @@ public abstract class ProviderConfiguration {
         this.rootDirectoryId = YamlHelper.getConfig(config, "root_directory_id", this.rootDirectoryId,
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "root_directory_id", YamlHelper.LongMin, YamlHelper.LongMax)).longValue();
 
-        this.lastFileCacheBuildTime = YamlHelper.getConfigNullable(config, "last_file_cache_build_time",
-                o -> YamlHelper.transferDateTimeFromStr(o, errors, "last_file_cache_build_time", ProviderConfiguration.TimeFormatter));
-        this.lastFileIndexBuildTime = YamlHelper.getConfigNullable(config, "last_file_index_build_time",
-                o -> YamlHelper.transferDateTimeFromStr(o, errors, "last_file_index_build_time", ProviderConfiguration.TimeFormatter));
-        this.lastTrashCacheBuildTime = YamlHelper.getConfigNullable(config, "last_trash_cache_build_time",
-                o -> YamlHelper.transferDateTimeFromStr(o, errors, "last_trash_cache_build_time", ProviderConfiguration.TimeFormatter));
-        this.lastTrashIndexBuildTime = YamlHelper.getConfigNullable(config, "last_trash_index_build_time",
-                o -> YamlHelper.transferDateTimeFromStr(o, errors, "last_trash_index_build_time", ProviderConfiguration.TimeFormatter));
-
         this.spaceAll = YamlHelper.getConfig(config, "space_all", this.spaceAll,
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "space_all", BigInteger.ZERO, YamlHelper.LongMax)).longValue();
         this.spaceUsed = YamlHelper.getConfig(config, "space_used", this.spaceUsed,
@@ -262,11 +216,6 @@ public abstract class ProviderConfiguration {
         config.put("update_time", this.updateTime.format(ProviderConfiguration.TimeFormatter));
         config.put("root_directory_id", this.rootDirectoryId);
 
-        config.put("last_file_cache_build_time", this.lastFileCacheBuildTime == null ? null : this.lastFileCacheBuildTime.format(ProviderConfiguration.TimeFormatter));
-        config.put("last_file_index_build_time", this.lastFileIndexBuildTime == null ? null : this.lastFileIndexBuildTime.format(ProviderConfiguration.TimeFormatter));
-        config.put("last_trash_cache_build_time", this.lastTrashCacheBuildTime == null ? null : this.lastTrashCacheBuildTime.format(ProviderConfiguration.TimeFormatter));
-        config.put("last_trash_index_build_time", this.lastTrashIndexBuildTime == null ? null : this.lastTrashIndexBuildTime.format(ProviderConfiguration.TimeFormatter));
-
         config.put("space_all", this.spaceAll);
         config.put("space_used", this.spaceUsed);
         config.put("space_global_all", this.spaceGlobalAll);
@@ -291,10 +240,6 @@ public abstract class ProviderConfiguration {
                 ", createTime=" + this.createTime +
                 ", updateTime=" + this.updateTime +
                 ", rootDirectoryId=" + this.rootDirectoryId +
-                ", lastFileCacheBuildTime=" + this.lastFileCacheBuildTime +
-                ", lastFileIndexBuildTime=" + this.lastFileIndexBuildTime +
-                ", lastTrashCacheBuildTime=" + this.lastTrashCacheBuildTime +
-                ", lastTrashIndexBuildTime=" + this.lastTrashIndexBuildTime +
                 ", spaceAll=" + this.spaceAll +
                 ", spaceUsed=" + this.spaceUsed +
                 ", spaceGlobalAll=" + this.spaceGlobalAll +

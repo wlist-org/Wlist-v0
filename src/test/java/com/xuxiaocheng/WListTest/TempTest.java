@@ -1,9 +1,5 @@
 package com.xuxiaocheng.WListTest;
 
-import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import com.gargoylesoftware.htmlunit.html.HtmlSpan;
-import com.gargoylesoftware.htmlunit.javascript.host.event.MouseEvent;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -18,7 +14,6 @@ import com.xuxiaocheng.WList.Server.Storage.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
-import com.xuxiaocheng.WList.Server.Util.BrowserUtil;
 import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -33,17 +28,8 @@ import java.util.Map;
 public class TempTest {
     private static final boolean initializeServer = false;
     private static final @NotNull SupplierE<@Nullable Object> _main = () -> {
-        try (final WebClient client = BrowserUtil.newWebClient()) {
-            final HtmlPage page = client.getPage("https://up.woozooo.com/account.php?action=login");
-            while (true)
-                if (client.waitForBackgroundJavaScript(1000) == 0)
-                    break;
-            final HtmlSpan slide = (HtmlSpan) page.getElementById("nc_1_n1z");
-            slide.mouseDown();
-            slide.mouseMove(false, false, false, MouseEvent.BUTTON_RIGHT);
-//            page.getElementByName("setSessionId").getAttribute("value");
-            return null;
-        }
+
+        return null;
     };
 
     private static final @NotNull File runtimeDirectory = new File("./run");
