@@ -109,6 +109,15 @@ public class FileSqliteHelper implements FileSqlInterface {
     CREATE INDEX IF NOT EXISTS %s_parent ON %s (parent_id);
                 """, this.tableName, this.tableName));
             }
+            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+    SELECT double_id FROM %s WHERE double_id == parent_id LIMIT 1;
+                """, this.tableName))) {
+                try (final ResultSet result = statement.executeQuery()) {
+                    if (result.next() && this.doubleRootId != result.getLong(1))
+                        throw new IllegalStateException("Duplicate database root id." + ParametersMap.create()
+                                .add("existed", FileSqliteHelper.getRealId(result.getLong(1))).add("new", this.rootId).add("provider", this.providerName));
+                }
+            }
             final boolean newer;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     SELECT parent_id FROM %s WHERE double_id == ? LIMIT 1;
