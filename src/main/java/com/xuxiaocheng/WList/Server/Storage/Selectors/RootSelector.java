@@ -104,38 +104,40 @@ public final class RootSelector {
         }
     }
 
-//    public static void refreshDirectory(final @NotNull FileLocation directory, final Consumer<? super @Nullable UnionPair<Boolean, Throwable>> consumer) {
-//        try {
-//            if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(directory.storage())) {
-//                consumer.accept(UnionPair.ok(Boolean.TRUE));
-//                return;
-//            }
-//            final ProviderInterface<?> real = StorageManager.getProvider(directory.storage());
-//            if (real == null) {
-//                consumer.accept(UnionPair.ok(Boolean.FALSE));
-//                return;
-//            }
-//            real.refreshDirectory(directory.id(), consumer.andThen(RootSelector.dumper(real.getConfiguration())));
-//        } catch (final Throwable exception) {
-//            consumer.accept(UnionPair.fail(exception));
-//        }
-//    }
-//
-//    public static boolean delete(final @NotNull FileLocation location, final boolean isDirectory) throws Exception {
-//        if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(location.storage()))
-//            return false;
-//        final ProviderInterface<?> real = StorageManager.getProvider(location.storage());
-//        if (real == null)
-//            return false;
-//        final boolean res;
-//        try {
-//            res = real.delete(location.id(), isDirectory);
-//        } finally {
-//            StorageManager.dumpConfigurationIfModified(real.getConfiguration());
-//        }
-//        return res;
-//    }
-//
+    public static void refresh(final @NotNull FileLocation directory, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<Pair.ImmutablePair<@NotNull Set<Long>, @NotNull Set<Long>>, Boolean>, Throwable>> consumer) {
+        try {
+            if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(directory.storage())) {
+                consumer.accept(ProviderInterface.RefreshNotAvailable);
+                return;
+            }
+            final ProviderInterface<?> real = StorageManager.getProvider(directory.storage());
+            if (real == null) {
+                consumer.accept(ProviderInterface.RefreshNotExisted);
+                return;
+            }
+            real.refresh(directory.id(), consumer.andThen(RootSelector.dumper(real.getConfiguration())));
+        } catch (final Throwable exception) {
+            consumer.accept(UnionPair.fail(exception));
+        }
+    }
+
+    public static void trash(final @NotNull FileLocation location, final boolean isDirectory, final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) throws Exception {
+        try {
+            if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(location.storage())) {
+                consumer.accept(ProviderInterface.TrashNotAvailable);
+                return;
+            }
+            final ProviderInterface<?> real = StorageManager.getProvider(location.storage());
+            if (real == null) {
+                consumer.accept(ProviderInterface.TrashNotAvailable);
+                return;
+            }
+            real.trash(location.id(), isDirectory, consumer.andThen(RootSelector.dumper(real.getConfiguration())));
+        } catch (final Throwable exception) {
+            consumer.accept(UnionPair.fail(exception));
+        }
+    }
+
 //    public static @NotNull UnionPair<FileInformation, FailureReason> createDirectory(final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws Exception {
 //        final ProviderInterface<?> real = StorageManager.getProvider(parentLocation.storage());
 //        if (real == null)

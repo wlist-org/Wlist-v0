@@ -1,7 +1,10 @@
 package com.xuxiaocheng.WList.Server.Operations;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.Logger.HLog;
+import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
@@ -20,6 +23,8 @@ import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.LinkedHashMap;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class OperateFilesHandler {
     private OperateFilesHandler() {
@@ -45,8 +50,8 @@ public final class OperateFilesHandler {
     public static void initialize() {
         ServerHandlerManager.register(OperationType.ListFiles, OperateFilesHandler.doListFiles);
         ServerHandlerManager.register(OperationType.GetFileOrDirectory, OperateFilesHandler.doGetFileOrDirectory);
-//        ServerHandlerManager.register(OperationType.RefreshDirectory, OperateFilesHandler.doRefreshDirectory);
-//        ServerHandlerManager.register(OperationType.DeleteFileOrDirectory, OperateFilesHandler.doDeleteFileOrDirectory);
+        ServerHandlerManager.register(OperationType.RefreshDirectory, OperateFilesHandler.doRefreshDirectory);
+        ServerHandlerManager.register(OperationType.TrashFileOrDirectory, OperateFilesHandler.doTrashFileOrDirectory);
 //        ServerHandlerManager.register(OperationType.CreateDirectory, OperateFilesHandler.doCreateDirectory);
 //        ServerHandlerManager.register(OperationType.RenameFile, OperateFilesHandler.doRenameFile);
 //        ServerHandlerManager.register(OperationType.RequestDownloadFile, OperateFilesHandler.doRequestDownloadFile);
@@ -87,7 +92,13 @@ public final class OperateFilesHandler {
             WListServer.ServerChannelHandler.write(channel, message);
             return null;
         }
+        final AtomicBoolean barrier = new AtomicBoolean(true);
         return () -> RootSelector.list(directory, filter, orders.getT(), position, limit, p -> {
+            if (!barrier.compareAndSet(true, false)) {
+                HLog.getInstance("ServerLogger").log(HLogLevel.MISTAKE, "Duplicate message on 'doListFiles'.", ParametersMap.create()
+                        .add("p", p).add("directory", directory).add("filter", filter).add("orders", orders).add("position", position).add("limit", limit));
+                return;
+            }
             if (p.isFailure()) {
                 channel.pipeline().fireExceptionCaught(p.getE());
                 return;
@@ -113,7 +124,13 @@ public final class OperateFilesHandler {
             WListServer.ServerChannelHandler.write(channel, user.getE());
             return null;
         }
+        final AtomicBoolean barrier = new AtomicBoolean(true);
         return () -> RootSelector.info(location, isDirectory, p -> {
+            if (!barrier.compareAndSet(true, false)) {
+                HLog.getInstance("ServerLogger").log(HLogLevel.MISTAKE, "Duplicate message on 'doGetFileOrDirectory'.", ParametersMap.create()
+                        .add("p", p).add("location", location).add("isDirectory", isDirectory));
+                return;
+            }
             if (p.isFailure()) {
                 channel.pipeline().fireExceptionCaught(p.getE());
                 return;
@@ -130,51 +147,76 @@ public final class OperateFilesHandler {
         });
     };
 
-//    public static final @NotNull ServerHandler doRefreshDirectory = (channel, buffer) -> {
-//        final String token = ByteBufIOUtil.readUTF(buffer);
-//        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FilesBuildIndex);
-//        final FileLocation directory = FileLocation.parse(buffer);
-//        ServerHandler.logOperation(channel, OperationType.RefreshDirectory, user, () -> ParametersMap.create()
-//                .add("directory", directory));
-//        if (user.isFailure()) {
-//            WListServer.ServerChannelHandler.write(channel, user.getE());
-//            return null;
-//        }
-//        return () -> RootSelector.refreshDirectory(directory, p -> {
-//            if (p == null) {
-//                WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.LocationNotAvailable);
-//                return;
-//            }
-//            if (p.isFailure()) {
-//                channel.pipeline().fireExceptionCaught(p.getE());
-//                return;
-//            }
-//            WListServer.ServerChannelHandler.write(channel, p.getT().booleanValue() ? MessageProto.Success : OperateFilesHandler.LocationNotFound);
-//        });
-//    };
+    public static final @NotNull ServerHandler doRefreshDirectory = (channel, buffer) -> {
+        final String token = ByteBufIOUtil.readUTF(buffer);
+        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FilesRefresh);
+        final FileLocation directory = FileLocation.parse(buffer);
+        ServerHandler.logOperation(channel, OperationType.RefreshDirectory, user, () -> ParametersMap.create()
+                .add("directory", directory));
+        if (user.isFailure()) {
+            WListServer.ServerChannelHandler.write(channel, user.getE());
+            return null;
+        }
+        final AtomicBoolean barrier = new AtomicBoolean(true);
+        return () -> RootSelector.refresh(directory, p -> {
+            if (!barrier.compareAndSet(true, false)) {
+                HLog.getInstance("ServerLogger").log(HLogLevel.MISTAKE, "Duplicate message on 'doRefreshDirectory'.", ParametersMap.create()
+                        .add("p", p).add("directory", directory));
+                return;
+            }
+            if (p.isFailure()) {
+                channel.pipeline().fireExceptionCaught(p.getE());
+                return;
+            }
+            if (p.getT().isFailure()) {
+                if (p.getT().getE().booleanValue())
+                    BroadcastManager.onFileDelete(directory, true);
+                WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.LocationNotAvailable);
+                return;
+            }
+            BroadcastManager.onDirectoryRefresh(directory);
+            final Pair.ImmutablePair<Set<Long>, Set<Long>> ids = p.getT().getT();
+            for (final Long id: ids.getFirst())
+                BroadcastManager.onFileInsert(new FileLocation(directory.storage(), id.longValue()), false);
+            for (final Long id: ids.getSecond())
+                BroadcastManager.onFileInsert(new FileLocation(directory.storage(), id.longValue()), true);
+            WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
+        });
+    };
 
-//    public static final @NotNull ServerHandler doDeleteFileOrDirectory = (channel, buffer) -> {
-//        final String token = ByteBufIOUtil.readUTF(buffer);
-//        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileDelete);
-//        final FileLocation location = FileLocation.parse(buffer);
-//        final boolean isDirectory = ByteBufIOUtil.readBoolean(buffer);
-//        ServerHandler.logOperation(channel, OperationType.DeleteFileOrDirectory, user, () -> ParametersMap.create()
-//                .add("location", location).add("isDirectory", isDirectory));
-//        if (user.isFailure()) {
-//            WListServer.ServerChannelHandler.write(channel, user.getE());
-//            return null;
-//        }
-//        return () -> {
-//            if (RootSelector.delete(location, isDirectory)) {
-//                HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Deleted.", ServerHandler.user(null, user.getT()),
-//                        ParametersMap.create().add("location", location).add("isDirectory", isDirectory));
-//                WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
-//                return;
-//            }
-//            WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.LocationNotAvailable);
-//        };
-//    };
-//
+    public static final @NotNull ServerHandler doTrashFileOrDirectory = (channel, buffer) -> {
+        final String token = ByteBufIOUtil.readUTF(buffer);
+        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileDelete);
+        final FileLocation location = FileLocation.parse(buffer);
+        final boolean isDirectory = ByteBufIOUtil.readBoolean(buffer);
+        ServerHandler.logOperation(channel, OperationType.TrashFileOrDirectory, user, () -> ParametersMap.create()
+                .add("location", location).add("isDirectory", isDirectory));
+        if (user.isFailure()) {
+            WListServer.ServerChannelHandler.write(channel, user.getE());
+            return null;
+        }
+        final AtomicBoolean barrier = new AtomicBoolean(true);
+        return () -> RootSelector.trash(location, isDirectory, p -> {
+            if (!barrier.compareAndSet(true, false)) {
+                HLog.getInstance("ServerLogger").log(HLogLevel.MISTAKE, "Duplicate message on 'doTrashFileOrDirectory'.", ParametersMap.create()
+                        .add("p", p).add("location", location).add("isDirectory", isDirectory));
+                return;
+            }
+            if (p.isFailure()) {
+                channel.pipeline().fireExceptionCaught(p.getE());
+                return;
+            }
+            if (!p.getT().booleanValue()) {
+                WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.LocationNotAvailable);
+                return;
+            }
+            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Deleted file.", ServerHandler.user(null, user.getT()),
+                    ParametersMap.create().add("location", location).add("isDirectory", isDirectory));
+            BroadcastManager.onFileDelete(location, isDirectory);
+            WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
+        });
+    };
+
 //    public static final @NotNull ServerHandler doCreateDirectory = (channel, buffer) -> {
 //        final String token = ByteBufIOUtil.readUTF(buffer);
 //        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FilesList, UserPermission.FileUpload);

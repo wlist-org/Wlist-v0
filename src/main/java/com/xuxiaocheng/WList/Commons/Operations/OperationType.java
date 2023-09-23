@@ -42,7 +42,7 @@ public enum OperationType {
     ListFiles,
     RefreshDirectory,
     GetFileOrDirectory,
-    DeleteFileOrDirectory,
+    TrashFileOrDirectory,
     CreateDirectory,
     RequestDownloadFile,
     DownloadFile,

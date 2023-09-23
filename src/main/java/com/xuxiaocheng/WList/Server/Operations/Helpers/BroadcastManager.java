@@ -169,7 +169,7 @@ public final class BroadcastManager {
 
 
     public static void onFileDelete(final @NotNull FileLocation location, final boolean isDirectory) {
-        BroadcastManager.broadcast(OperationType.DeleteFileOrDirectory, buf -> {
+        BroadcastManager.broadcast(OperationType.TrashFileOrDirectory, buf -> {
             location.dump(buf);
             ByteBufIOUtil.writeBoolean(buf, isDirectory);
             return buf;
@@ -178,5 +178,17 @@ public final class BroadcastManager {
 
     public static void onFileUpdate(final @NotNull FileInformation information) {
         BroadcastManager.broadcast(OperationType.GetFileOrDirectory, information::dumpVisible);
+    }
+
+    public static void onFileInsert(final @NotNull FileLocation location, final boolean isDirectory) {
+        BroadcastManager.broadcast(OperationType.UploadFile, buf -> {
+            location.dump(buf);
+            ByteBufIOUtil.writeBoolean(buf, isDirectory);
+            return buf;
+        });
+    }
+
+    public static void onDirectoryRefresh(final @NotNull FileLocation location) {
+        BroadcastManager.broadcast(OperationType.RefreshDirectory, location::dump);
     }
 }
