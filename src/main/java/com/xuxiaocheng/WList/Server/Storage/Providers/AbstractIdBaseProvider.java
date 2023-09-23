@@ -3,6 +3,7 @@ package com.xuxiaocheng.WList.Server.Storage.Providers;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.HeadLibs.Helpers.HMultiRunHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Options.Options;
@@ -13,15 +14,21 @@ import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
+import com.xuxiaocheng.WList.Server.WListServer;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 
 import java.sql.Connection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -88,7 +95,7 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
             connection.commit();
         }
         if (information == null && indexed == null) {
-            consumer.accept(UnionPair.ok(UnionPair.fail(Boolean.FALSE)));
+            consumer.accept(ProviderInterface.ListNotAvailable);
             return;
         }
         if (information != null) {
@@ -105,7 +112,7 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
                 if (iterator == null) {
                     if (directoryId != this.getConfiguration().getRootDirectoryId())
                         manager.deleteDirectoryRecursively(directoryId, null);
-                    consumer.accept(UnionPair.ok(UnionPair.fail(Boolean.TRUE)));
+                    consumer.accept(ProviderInterface.ListNotExisted);
                     return;
                 }
                 manager.insertIterator(iterator, directoryId, null);
@@ -127,7 +134,7 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
     /**
      * Try to update file/directory information. (Should call {@link #loginIfNot()} manually.)
      * @return false: file is not existed. true: needn't updated. success: updated.
-     */
+     */ // TODO: in recycler.
     protected @NotNull UnionPair<FileInformation, Boolean> update0(final @NotNull FileInformation oldInformation) throws Exception {
         return AbstractIdBaseProvider.UpdateNoRequired;
     }
@@ -137,7 +144,7 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
         final FileManager manager = this.manager.getInstance();
         final FileInformation information = manager.selectInfo(id, isDirectory, null);
         if (information == null) {
-            consumer.accept(UnionPair.ok(UnionPair.fail(Boolean.FALSE)));
+            consumer.accept(ProviderInterface.InfoNotAvailable);
             return;
         }
         final BackgroundTaskManager.BackgroundTaskIdentifier identifier = new BackgroundTaskManager.BackgroundTaskIdentifier(
@@ -151,7 +158,7 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
                 }
                 if (update.isFailure()) { // && !update.getE().booleanValue()
                     manager.deleteFileOrDirectory(id, isDirectory, null);
-                    consumer.accept(UnionPair.ok(UnionPair.fail(Boolean.TRUE)));
+                    consumer.accept(ProviderInterface.InfoNotExisted);
                     return;
                 }
                 assert update.getT().isDirectory() == isDirectory;
@@ -178,103 +185,110 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
             }, true));
     }
 
-//    /**
-//     * Try to get file/directory information by id.
-//     * @return null: unsupported / not existed. !null: information.
-//     */
-//    protected @Nullable FileInformation info0(final long id, final boolean isDirectory) throws Exception {
-//        return null;
-//    }
-//
-//    @Override
-//    public void refreshDirectory(final long directoryId, final Consumer<? super @Nullable UnionPair<Boolean, Throwable>> consumer) {
-//        try {
-//            final FileManager manager = this.manager.getInstance();
-//            final FileInformation directory = manager.selectInfo(directoryId, true, null);
-//            if (directory == null) {
-//                consumer.accept(null);
-//                return;
-//            }
-//            this.loginIfNot();
-//            final BackgroundTaskManager.BackgroundTaskIdentifier identifier = new BackgroundTaskManager.BackgroundTaskIdentifier(
-//                    this.configuration.getInstance().getName(), BackgroundTaskManager.SyncTask, String.valueOf(directoryId));
-//            if (BackgroundTaskManager.background(identifier, () -> {
-//                try {
-//                    final Iterator<FileInformation> iterator = this.list0(directoryId);
-//                    if (iterator == null) {
-//                        manager.deleteDirectoryRecursively(directoryId, null);
-//                        consumer.accept(UnionPair.ok(Boolean.FALSE));
-//                        return;
-//                    }
-//                    final Set<Long> deleteFiles, deleteDirectories;
-//                    final AtomicReference<String> connectionId = new AtomicReference<>();
-//                    try (final Connection connection = manager.getConnection(null, connectionId)) {
-//                        final Pair.ImmutablePair<Set<Long>, Set<Long>> old = manager.selectIdsInDirectory(directoryId, connectionId.get());
-//                        deleteFiles = old.getFirst();
-//                        deleteDirectories = old.getSecond();
-//                        while (iterator.hasNext()) {
-//                            final FileInformation information = iterator.next();
-//                            if (information.isDirectory()) {
-//                                deleteDirectories.remove(information.id()); // TODO
-//                                manager.updateOrInsertDirectory(information, connectionId.get());
-//                            } else {
-//                                deleteFiles.remove(information.id());
-//                                manager.updateOrInsertFile(information, connectionId.get());
-//                            }
-//                        }
-//                        connection.commit();
-//                    }
-//                    if (!deleteFiles.isEmpty() || !deleteDirectories.isEmpty()) {
-//                        final Map<Long, FileInformation> files = new ConcurrentHashMap<>();
-//                        final Map<Long, FileInformation> directories = new ConcurrentHashMap<>();
-//                        HMultiRunHelper.runConsumers(WListServer.IOExecutors, deleteFiles, HExceptionWrapper.wrapConsumer(id -> {
-//                            final FileInformation info = this.info0(id.longValue(), false);
-//                            if (info != null) files.put(id, info);
-//                        }));
-//                        HMultiRunHelper.runConsumers(WListServer.IOExecutors, deleteDirectories, HExceptionWrapper.wrapConsumer(id -> {
-//                            final FileInformation info = this.info0(id.longValue(), true);
-//                            if (info != null) directories.put(id, info);
-//                        }));
-//                        try (final Connection connection = manager.getConnection(null, connectionId)) {
-//                            for (final Long id: deleteFiles) {
-//                                final FileInformation info = files.get(id);
-//                                if (info == null)
-//                                    manager.deleteFile(id.longValue(), connectionId.get());
-//                                else if (manager.selectInfo(info.parentId(), true, connectionId.get()) != null)
-//                                    manager.updateOrInsertFile(info, connectionId.get());
-//                            }
-//                            for (final Long id: deleteDirectories) {
-//                                final FileInformation info = directories.get(id);
-//                                if (info == null)
-//                                    manager.deleteDirectoryRecursively(id.longValue(), connectionId.get());
-//                                else if (manager.selectInfo(info.parentId(), true, connectionId.get()) != null)
-//                                    manager.updateOrInsertDirectory(info, connectionId.get());
-//                            }
-//                            connection.commit();
-//                        }
-//                    }
-//                    consumer.accept(UnionPair.ok(Boolean.TRUE));
-//                } catch (final NoSuchElementException exception) {
-//                    consumer.accept(exception.getCause() instanceof Exception e ? UnionPair.fail(e) : UnionPair.fail(exception));
-//                } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
-//                    consumer.accept(UnionPair.fail(exception));
-//                }
-//            }) == null && !BackgroundTaskManager.onComplete(identifier, (a, e) -> {
-//                if (e != null) {
-//                    consumer.accept(UnionPair.fail(e));
-//                    return;
-//                }
-//                try {
-//                    consumer.accept(UnionPair.ok(manager.selectInfo(directoryId, true, null) != null));
-//                } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
-//                    consumer.accept(UnionPair.fail(exception));
-//                }
-//            })) consumer.accept(UnionPair.ok(manager.selectInfo(directoryId, true, null) != null));
-//        } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
-//            consumer.accept(UnionPair.fail(exception));
-//        }
-//    }
-//
+    @Contract(pure = true)
+    protected boolean isSupportedInfo() {
+        return false;
+    }
+    /**
+     * Try to get file/directory information by id.
+     * @return null: unsupported / not existed. !null: information.
+     * @see #isSupportedInfo()
+     */
+    protected @Nullable FileInformation info0(final long id, final boolean isDirectory) throws Exception {
+        return null;
+    }
+
+    @Override
+    public void refreshDirectory(final long directoryId, final Consumer<? super @NotNull UnionPair<UnionPair<Pair.ImmutablePair<@NotNull Set<Long>, @NotNull Set<Long>>, Boolean>, Throwable>> consumer) throws Exception {
+        final FileManager manager = this.manager.getInstance();
+        final FileInformation directory = manager.selectInfo(directoryId, true, null);
+        if (directory == null) {
+            consumer.accept(ProviderInterface.RefreshNotAvailable);
+            return;
+        }
+        final BackgroundTaskManager.BackgroundTaskIdentifier identifier = new BackgroundTaskManager.BackgroundTaskIdentifier(
+                this.configuration.getInstance().getName(), BackgroundTaskManager.SyncDirectory, String.valueOf(directoryId));
+        if (BackgroundTaskManager.background(identifier, () -> {
+            try {
+                this.loginIfNot();
+                final Iterator<FileInformation> iterator = this.list0(directoryId);
+                if (iterator == null) {
+                    manager.deleteDirectoryRecursively(directoryId, null);
+                    consumer.accept(ProviderInterface.RefreshNotExisted);
+                    return;
+                }
+                final Set<Long> deleteFiles, deleteDirectories;
+                final AtomicReference<String> connectionId = new AtomicReference<>();
+                try (final Connection connection = manager.getConnection(null, connectionId)) {
+                    final Pair.ImmutablePair<Set<Long>, Set<Long>> old = manager.selectIdsInDirectory(directoryId, connectionId.get());
+                    deleteFiles = old.getFirst();
+                    deleteDirectories = old.getSecond();
+                    while (iterator.hasNext()) {
+                        final FileInformation information = iterator.next();
+                        if (information.isDirectory()) {
+                            deleteDirectories.remove(information.id());
+                            manager.updateOrInsertDirectory(information, connectionId.get());
+                        } else {
+                            deleteFiles.remove(information.id());
+                            manager.updateOrInsertFile(information, connectionId.get());
+                        }
+                    }
+                    connection.commit();
+                }
+                if ((deleteFiles.isEmpty() && deleteDirectories.isEmpty()) || !this.isSupportedInfo()) {
+                    consumer.accept(ProviderInterface.RefreshNoUpdater);
+                    return;
+                }
+                final Map<Long, FileInformation> files = new ConcurrentHashMap<>();
+                final Map<Long, FileInformation> directories = new ConcurrentHashMap<>();
+                try {
+                    HMultiRunHelper.runConsumers(WListServer.IOExecutors, deleteFiles, HExceptionWrapper.wrapConsumer(id -> {
+                        final FileInformation info = this.info0(id.longValue(), false);
+                        if (info != null) files.put(id, info);
+                    }));
+                    HMultiRunHelper.runConsumers(WListServer.IOExecutors, deleteDirectories, HExceptionWrapper.wrapConsumer(id -> {
+                        final FileInformation info = this.info0(id.longValue(), true);
+                        if (info != null) directories.put(id, info);
+                    }));
+                } catch (final RuntimeException exception) {
+                    throw HExceptionWrapper.unwrapException(exception, Exception.class);
+                }
+                if (files.isEmpty() && directories.isEmpty()) {
+                    consumer.accept(ProviderInterface.RefreshNoUpdater);
+                    return;
+                }
+                final Set<Long> insertedFiles = new HashSet<>(), insertedDirectories = new HashSet<>();
+                try (final Connection connection = manager.getConnection(null, connectionId)) {
+                    for (final Long id: deleteFiles) {
+                        final FileInformation info = files.get(id);
+                        if (info == null || manager.selectInfo(info.parentId(), true, connectionId.get()) == null)
+                            manager.deleteFile(id.longValue(), connectionId.get());
+                        else {
+                            manager.updateOrInsertFile(info, connectionId.get());
+                            insertedFiles.add(id);
+                        }
+                    }
+                    for (final Long id: deleteDirectories) {
+                        final FileInformation info = directories.get(id);
+                        if (info == null || manager.selectInfo(info.parentId(), true, connectionId.get()) == null)
+                            manager.deleteDirectoryRecursively(id.longValue(), connectionId.get());
+                        else {
+                            manager.updateOrInsertDirectory(info, connectionId.get());
+                            insertedDirectories.add(id);
+                        }
+                    }
+                    connection.commit();
+                }
+                consumer.accept(UnionPair.ok(UnionPair.ok(Pair.ImmutablePair.makeImmutablePair(insertedFiles, insertedDirectories))));
+            } catch (final NoSuchElementException exception) {
+                consumer.accept(exception.getCause() instanceof Exception e ? UnionPair.fail(e) : UnionPair.fail(exception));
+            } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                consumer.accept(UnionPair.fail(exception));
+            }
+        }) == null)
+            BackgroundTaskManager.onFinally(identifier, () -> consumer.accept(ProviderInterface.RefreshNoUpdater));
+    }
+
 //    /**
 //     * Delete file/directory.
 //     */

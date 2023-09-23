@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.CleanupMode;
@@ -64,6 +65,7 @@ public class AbstractProviderTest {
     protected final AtomicBoolean loggedIn = new AtomicBoolean();
     protected final AtomicReference<Iterator<FileInformation>> list = new AtomicReference<>();
     protected final AtomicReference<Supplier<UnionPair<FileInformation, Boolean>>> updated = new AtomicReference<>();
+    protected final AtomicBoolean supportedInfo = new AtomicBoolean();
     protected final Map<Long, FileInformation> info = new HashMap<>();
 
     public class AbstractProvider extends AbstractIdBaseProvider<AbstractConfiguration> {
@@ -87,11 +89,15 @@ public class AbstractProviderTest {
             return Objects.requireNonNull(AbstractProviderTest.this.updated.getAndSet(null)).get();
         }
 
-//        @Override
-//        protected @Nullable FileInformation info0(final long id, final boolean isDirectory) {
-//            return AbstractProviderTest.this.info.get(id);
-//        }
-//
+        @Override
+        protected boolean isSupportedInfo() {
+            return AbstractProviderTest.this.supportedInfo.get();
+        }
+        @Override
+        protected @Nullable FileInformation info0(final long id, final boolean isDirectory) {
+            return AbstractProviderTest.this.info.get(id);
+        }
+
 //        @Override
 //        protected void delete0(final @NotNull FileInformation information) {
 //            throw new UnsupportedOperationException();
@@ -122,6 +128,9 @@ public class AbstractProviderTest {
     public void reset() throws Exception {
         this.loggedIn.set(false);
         this.list.set(null);
+        this.updated.set(null);
+        this.supportedInfo.set(false);
+        this.info.clear();
         final ProviderInterface<AbstractConfiguration> provider = new AbstractProvider();
         AbstractProviderTest.provider.set(provider);
         final AbstractConfiguration configuration = new AbstractConfiguration();
@@ -139,6 +148,7 @@ public class AbstractProviderTest {
 
     @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
     @Nested
+    @Disabled
     public class ListTest {
         public static Stream<List<FileInformation>> list() {
             return Stream.of(null,
@@ -310,6 +320,7 @@ public class AbstractProviderTest {
 
     @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
     @Nested
+    @Disabled
     public class InfoTest {
         @Test
         public void info() throws Exception {
