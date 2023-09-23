@@ -2,9 +2,11 @@ package com.xuxiaocheng.WList.Server.Operations.Helpers;
 
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
+import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.User.UserInformation;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupInformation;
 import com.xuxiaocheng.WList.Server.MessageProto;
@@ -163,5 +165,18 @@ public final class BroadcastManager {
             ByteBufIOUtil.writeUTF(buf, name);
             return buf;
         });
+    }
+
+
+    public static void onFileDelete(final @NotNull FileLocation location, final boolean isDirectory) {
+        BroadcastManager.broadcast(OperationType.DeleteFileOrDirectory, buf -> {
+            location.dump(buf);
+            ByteBufIOUtil.writeBoolean(buf, isDirectory);
+            return buf;
+        });
+    }
+
+    public static void onFileUpdate(final @NotNull FileInformation information) {
+        BroadcastManager.broadcast(OperationType.GetFileOrDirectory, information::dumpVisible);
     }
 }

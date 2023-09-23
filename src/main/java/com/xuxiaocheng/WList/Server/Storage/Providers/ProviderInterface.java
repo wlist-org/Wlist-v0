@@ -1,20 +1,17 @@
 package com.xuxiaocheng.WList.Server.Storage.Providers;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Ranges.IntRange;
 import com.xuxiaocheng.HeadLibs.Ranges.LongRange;
-import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
-import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
-import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 
 import java.util.LinkedHashMap;
@@ -49,39 +46,39 @@ public interface ProviderInterface<C extends ProviderConfiguration> {
 
     /**
      * Get the list of files in directory.
-     * @param consumer: null: directory is not available. !null: list of files.
+     * @param consumer: false: directory is not available. true: file/directory is not existed in web server. !null: list of files.
      */
-    void list(final long directoryId, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final @LongRange(minimum = 0) long position, final @IntRange(minimum = 0) int limit, final @NotNull Consumer<@Nullable UnionPair<FilesListInformation, Throwable>> consumer);
-
-    /**
-     * Force rebuild files index to synchronize with web server (not recursively).
-     * @param consumer: null: directory is not available. false: directory is not existed in web server. true: success.
-     */
-    void refreshDirectory(final long directoryId, final Consumer<? super @Nullable UnionPair<Boolean, Throwable>> consumer);
+    void list(final long directoryId, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final @LongRange(minimum = 0) long position, final @IntRange(minimum = 0) int limit, final @NotNull Consumer<@NotNull UnionPair<UnionPair<FilesListInformation, Boolean>, Throwable>> consumer) throws Exception;
 
     /**
      * Get the file/directory information of a specific id.
-     * @return null: file/directory is not available. !null: information.
+     * @param consumer: false: file/directory is not available. true: file/directory is not existed in web server. !null: information and isUpdated.
      */
-    @Nullable FileInformation info(final long id, final boolean isDirectory) throws Exception;
+    void info(final long id, final boolean isDirectory, final Consumer<? super @NotNull UnionPair<UnionPair<Pair.ImmutablePair<@NotNull FileInformation, @NotNull Boolean>, Boolean>, Throwable>> consumer) throws Exception;
 
-    /**
-     * Delete file/directory.
-     * @return false: file/directory is not available. true: deleted.
-     */
-    boolean delete(final long id, final boolean isDirectory) throws Exception;
-
-    /**
-     * Create an empty directory.
-     * @param parentLocation Only by used to create {@code FailureReason}.
-     */
-    @NotNull UnionPair<FileInformation, FailureReason> createDirectory(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy, final @NotNull FileLocation parentLocation) throws Exception;
-
-    /**
-     * Get download methods of a specific file.
-     * @param location Only by used to create {@code FailureReason}.
-     */
-    @NotNull UnionPair<DownloadRequirements, FailureReason> download(final long fileId, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @NotNull FileLocation location) throws Exception;
+//    /**
+//     * Force rebuild files index to synchronize with web server (not recursively).
+//     * @param consumer: null: directory is not available. false: directory is not existed in web server. true: success.
+//     */
+//    void refreshDirectory(final long directoryId, final Consumer<? super @Nullable UnionPair<Boolean, Throwable>> consumer);
+//
+//    /**
+//     * Delete file/directory.
+//     * @return false: file/directory is not available. true: deleted.
+//     */
+//    boolean delete(final long id, final boolean isDirectory) throws Exception;
+//
+//    /**
+//     * Create an empty directory.
+//     * @param parentLocation Only by used to create {@code FailureReason}.
+//     */
+//    @NotNull UnionPair<FileInformation, FailureReason> createDirectory(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy, final @NotNull FileLocation parentLocation) throws Exception;
+//
+//    /**
+//     * Get download methods of a specific file.
+//     * @param location Only by used to create {@code FailureReason}.
+//     */
+//    @NotNull UnionPair<DownloadRequirements, FailureReason> download(final long fileId, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @NotNull FileLocation location) throws Exception;
 
 //    /**
 //     * Build provider cache. Login and check token, etc.

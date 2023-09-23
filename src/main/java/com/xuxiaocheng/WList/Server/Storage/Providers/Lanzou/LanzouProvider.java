@@ -3,9 +3,6 @@ package com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
-import com.xuxiaocheng.HeadLibs.CheckRules.CheckRule;
-import com.xuxiaocheng.HeadLibs.CheckRules.CheckRuleSet;
-import com.xuxiaocheng.HeadLibs.CheckRules.StringCheckRules.SuffixCheckRule;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
@@ -14,9 +11,6 @@ import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMultiRunHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
-import com.xuxiaocheng.WList.Commons.Options.Options;
-import com.xuxiaocheng.WList.Server.Util.JavaScriptUtil;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Exceptions.IllegalParametersException;
@@ -26,8 +20,7 @@ import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.ProviderUtil;
 import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseProvider;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderTypes;
-import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
-import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
+import com.xuxiaocheng.WList.Server.Util.JavaScriptUtil;
 import com.xuxiaocheng.WList.Server.WListServer;
 import okhttp3.Cookie;
 import okhttp3.FormBody;
@@ -354,47 +347,47 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         return UnionPair.fail(Boolean.TRUE);
     }
 
-    @Override
-    protected void delete0(final @NotNull FileInformation information) throws IOException {
-        if (information.isDirectory()) {
-            final FormBody.Builder builder = new FormBody.Builder()
-                    .add("folder_id", String.valueOf(information.id()));
-            final JSONObject json = this.task(3, builder, 1);
-            final String message = json.getString("info");
-            if (!"\u5220\u9664\u6210\u529F".equals(message))
-                throw new WrongResponseException("Trashing directory.", message, ParametersMap.create()
-                        .add("configuration", this.configuration.getInstance()).add("information", information).add("json", json));
-        } else {
-            final FormBody.Builder builder = new FormBody.Builder()
-                    .add("file_id", String.valueOf(information.id()));
-            final JSONObject json = this.task(6, builder, 1);
-            final String message = json.getString("info");
-            if (!"\u5DF2\u5220\u9664".equals(message))
-                throw new WrongResponseException("Trashing file.", message, ParametersMap.create()
-                        .add("configuration", this.configuration.getInstance()).add("information", information).add("json", json));
-        }
-    }
-
-    @Override
-    protected @NotNull UnionPair<DownloadRequirements, FailureReason> download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull FileLocation location) throws Exception {
-        return null;
-    }
-
-    protected static @NotNull CheckRule<@NotNull String> nameChecker = new CheckRuleSet<>(
-        new SuffixCheckRule(Set.of("doc","docx","zip","rar","apk","ipa","txt","exe","7z","e","z","ct","ke","cetrainer","db","tar","pdf","w3x","epub",
-                "mobi","azw","azw3","osk","osz","xpa","cpk","lua","jar","dmg","ppt","pptx","xls","xlsx","mp3","iso","img","gho","ttf","ttc","txf","dwg","bat",
-                "imazingapp","dll","crx","xapk","conf","deb","rp","rpm","rplib","mobileconfig","appimage","lolgezi","flac","cad","hwt","accdb","ce","xmind",
-                "enc","bds","bdi","ssf","it","pkg","cfg"))
-        //TODO
-    );
-
-    @Override
-    protected @NotNull CheckRule<@NotNull String> nameChecker() {
-        return LanzouProvider.nameChecker;
-    }
-
-    @Override
-    protected @NotNull UnionPair<FileInformation, FailureReason> createDirectory0(final long parentId, @NotNull final String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull FileLocation parentLocation) throws Exception {
-        throw new UnsupportedOperationException();
-    }
+//    @Override
+//    protected void delete0(final @NotNull FileInformation information) throws IOException {
+//        if (information.isDirectory()) {
+//            final FormBody.Builder builder = new FormBody.Builder()
+//                    .add("folder_id", String.valueOf(information.id()));
+//            final JSONObject json = this.task(3, builder, 1);
+//            final String message = json.getString("info");
+//            if (!"\u5220\u9664\u6210\u529F".equals(message))
+//                throw new WrongResponseException("Trashing directory.", message, ParametersMap.create()
+//                        .add("configuration", this.configuration.getInstance()).add("information", information).add("json", json));
+//        } else {
+//            final FormBody.Builder builder = new FormBody.Builder()
+//                    .add("file_id", String.valueOf(information.id()));
+//            final JSONObject json = this.task(6, builder, 1);
+//            final String message = json.getString("info");
+//            if (!"\u5DF2\u5220\u9664".equals(message))
+//                throw new WrongResponseException("Trashing file.", message, ParametersMap.create()
+//                        .add("configuration", this.configuration.getInstance()).add("information", information).add("json", json));
+//        }
+//    }
+//
+//    @Override
+//    protected @NotNull UnionPair<DownloadRequirements, FailureReason> download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull FileLocation location) throws Exception {
+//        return null;
+//    }
+//
+//    protected static @NotNull CheckRule<@NotNull String> nameChecker = new CheckRuleSet<>(
+//        new SuffixCheckRule(Set.of("doc","docx","zip","rar","apk","ipa","txt","exe","7z","e","z","ct","ke","cetrainer","db","tar","pdf","w3x","epub",
+//                "mobi","azw","azw3","osk","osz","xpa","cpk","lua","jar","dmg","ppt","pptx","xls","xlsx","mp3","iso","img","gho","ttf","ttc","txf","dwg","bat",
+//                "imazingapp","dll","crx","xapk","conf","deb","rp","rpm","rplib","mobileconfig","appimage","lolgezi","flac","cad","hwt","accdb","ce","xmind",
+//                "enc","bds","bdi","ssf","it","pkg","cfg"))
+//        //TODO
+//    );
+//
+//    @Override
+//    protected @NotNull CheckRule<@NotNull String> nameChecker() {
+//        return LanzouProvider.nameChecker;
+//    }
+//
+//    @Override
+//    protected @NotNull UnionPair<FileInformation, FailureReason> createDirectory0(final long parentId, @NotNull final String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull FileLocation parentLocation) throws Exception {
+//        throw new UnsupportedOperationException();
+//    }
 }

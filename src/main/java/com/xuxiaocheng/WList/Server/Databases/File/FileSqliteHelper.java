@@ -76,11 +76,6 @@ public class FileSqliteHelper implements FileSqlInterface {
     }
 
     @Contract(pure = true)
-    public static byte @NotNull [] getNameOrder(final @NotNull String name, final boolean isDirectory) {
-        return SqlHelper.toOrdered((isDirectory ? 'd' : 'f') + name);
-    }
-
-    @Contract(pure = true)
     public static @Nullable Timestamp getTimestamp(final @Nullable ZonedDateTime time) {
         assert time == null || ZoneOffset.UTC.equals(time.getZone());
         return time == null ? null : Timestamp.valueOf(time.toLocalDateTime());
@@ -131,7 +126,7 @@ public class FileSqliteHelper implements FileSqlInterface {
                     statement.setLong(1, this.doubleRootId);
                     statement.setLong(2, this.doubleRootId);
                     statement.setString(3, this.providerName);
-                    statement.setBytes(4, FileSqliteHelper.getNameOrder(this.providerName, true));
+                    statement.setBytes(4, SqlHelper.toOrdered(this.providerName));
                     statement.setLong(5, -1);
                     statement.executeUpdate();
                 }
@@ -207,7 +202,7 @@ public class FileSqliteHelper implements FileSqlInterface {
                 statement.setLong(1, FileSqliteHelper.getDoubleId(information.id(), information.isDirectory()));
                 statement.setLong(2, FileSqliteHelper.getDoubleId(information.parentId(), true));
                 statement.setString(3, information.name());
-                statement.setBytes(4, FileSqliteHelper.getNameOrder(information.name(), information.isDirectory()));
+                statement.setBytes(4, SqlHelper.toOrdered(information.name()));
                 statement.setLong(5, information.size());
                 statement.setTimestamp(6, FileSqliteHelper.getTimestamp(information.createTime()));
                 statement.setTimestamp(7, FileSqliteHelper.getTimestamp(information.updateTime()));
@@ -228,6 +223,7 @@ public class FileSqliteHelper implements FileSqlInterface {
             boolean success = true;
             long size = 0;
             if (iterator.hasNext()) {
+                final Collection<Long> inserted = new HashSet<>();
                 try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     INSERT INTO %s (double_id, parent_id, name, name_order, size, create_time, update_time, others)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?);
@@ -235,10 +231,14 @@ public class FileSqliteHelper implements FileSqlInterface {
                     while (iterator.hasNext()) {
                         final FileInformation information = iterator.next();
                         assert information.parentId() == directoryId && (information.isDirectory() || information.size() >= 0);
-                        statement.setLong(1, FileSqliteHelper.getDoubleId(information.id(), information.isDirectory()));
+                        final long doubleId = FileSqliteHelper.getDoubleId(information.id(), information.isDirectory());
+                        if (inserted.contains(doubleId))
+                            continue;
+                        inserted.add(doubleId);
+                        statement.setLong(1, doubleId);
                         statement.setLong(2, doubleDirectoryId);
                         statement.setString(3, information.name());
-                        statement.setBytes(4, FileSqliteHelper.getNameOrder(information.name(), information.isDirectory()));
+                        statement.setBytes(4, SqlHelper.toOrdered(information.name()));
                         statement.setLong(5, information.size());
                         statement.setTimestamp(6, FileSqliteHelper.getTimestamp(information.createTime()));
                         statement.setTimestamp(7, FileSqliteHelper.getTimestamp(information.updateTime()));
@@ -375,7 +375,7 @@ public class FileSqliteHelper implements FileSqlInterface {
                     """, this.tableName))) {
                     statement.setLong(1, FileSqliteHelper.getDoubleId(file.parentId(), true));
                     statement.setString(2, file.name());
-                    statement.setBytes(3, FileSqliteHelper.getNameOrder(file.name(), false));
+                    statement.setBytes(3, SqlHelper.toOrdered(file.name()));
                     statement.setLong(4, file.size());
                     statement.setTimestamp(5, FileSqliteHelper.getTimestamp(file.createTime() == null ? old.createTime() : file.createTime()));
                     statement.setTimestamp(6, FileSqliteHelper.getTimestamp(file.updateTime() == null ? old.updateTime() : file.updateTime()));
@@ -409,7 +409,7 @@ public class FileSqliteHelper implements FileSqlInterface {
                     """, this.tableName))) {
                     statement.setLong(1, FileSqliteHelper.getDoubleId(directory.parentId(), true));
                     statement.setString(2, directory.name());
-                    statement.setBytes(3, FileSqliteHelper.getNameOrder(directory.name(), false));
+                    statement.setBytes(3, SqlHelper.toOrdered(directory.name()));
                     statement.setTimestamp(4, FileSqliteHelper.getTimestamp(directory.createTime() == null ? old.createTime() : directory.createTime()));
                     statement.setTimestamp(5, FileSqliteHelper.getTimestamp(directory.updateTime() == null ? old.updateTime() : directory.updateTime()));
                     statement.setString(6, directory.others());
