@@ -140,7 +140,7 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
     }
 
     @Override
-    public void info(final long id, final boolean isDirectory, final Consumer<? super @NotNull UnionPair<UnionPair<Pair.ImmutablePair<@NotNull FileInformation, @NotNull Boolean>, Boolean>, Throwable>> consumer) throws Exception {
+    public void info(final long id, final boolean isDirectory, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<Pair.ImmutablePair<@NotNull FileInformation, @NotNull Boolean>, Boolean>, Throwable>> consumer) throws Exception {
         final FileManager manager = this.manager.getInstance();
         final FileInformation information = manager.selectInfo(id, isDirectory, null);
         if (information == null) {
@@ -199,7 +199,7 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
     }
 
     @Override
-    public void refresh(final long directoryId, final Consumer<? super @NotNull UnionPair<UnionPair<Pair.ImmutablePair<@NotNull Set<Long>, @NotNull Set<Long>>, Boolean>, Throwable>> consumer) throws Exception {
+    public void refresh(final long directoryId, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<Pair.ImmutablePair<@NotNull Set<Long>, @NotNull Set<Long>>, Boolean>, Throwable>> consumer) throws Exception {
         final FileManager manager = this.manager.getInstance();
         final FileInformation directory = manager.selectInfo(directoryId, true, null);
         if (directory == null) {
@@ -293,22 +293,24 @@ public abstract class AbstractIdBaseProvider<C extends ProviderConfiguration> im
             BackgroundTaskManager.onFinally(identifier, () -> consumer.accept(ProviderInterface.RefreshNoUpdater));
     }
 
-//    /**
-//     * Delete file/directory.
-//     */
-//    protected abstract void delete0(final @NotNull FileInformation information) throws Exception;
-//
-//    @Override
-//    public boolean delete(final long id, final boolean isDirectory) throws Exception {
-//        final FileInformation information = this.manager.getInstance().selectInfo(id, isDirectory, null);
-//        if (information == null)
-//            return false;
-//        this.loginIfNot();
-//        this.delete0(information);
-//        this.manager.getInstance().deleteFileOrDirectory(id, isDirectory, null);
-//        return true;
-//    }
-//
+    /**
+     * Delete file/directory.
+     */
+    protected abstract void delete0(final @NotNull FileInformation information) throws Exception;
+
+    @Override
+    public void trash(final long id, final boolean isDirectory, final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) throws Exception {
+        final FileInformation information = this.manager.getInstance().selectInfo(id, isDirectory, null);
+        if (information == null) {
+            consumer.accept(ProviderInterface.TrashNotAvailable);
+            return;
+        }
+        this.loginIfNot();
+        this.delete0(information);
+        this.manager.getInstance().deleteFileOrDirectory(id, isDirectory, null);
+        consumer.accept(ProviderInterface.TrashSuccess);
+    }
+
 //    /**
 //     * Get download methods of a specific file.
 //     * @param location Only by used to create {@code FailureReason}.

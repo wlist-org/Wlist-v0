@@ -347,27 +347,27 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         return UnionPair.fail(Boolean.TRUE);
     }
 
-//    @Override
-//    protected void delete0(final @NotNull FileInformation information) throws IOException {
-//        if (information.isDirectory()) {
-//            final FormBody.Builder builder = new FormBody.Builder()
-//                    .add("folder_id", String.valueOf(information.id()));
-//            final JSONObject json = this.task(3, builder, 1);
-//            final String message = json.getString("info");
-//            if (!"\u5220\u9664\u6210\u529F".equals(message))
-//                throw new WrongResponseException("Trashing directory.", message, ParametersMap.create()
-//                        .add("configuration", this.configuration.getInstance()).add("information", information).add("json", json));
-//        } else {
-//            final FormBody.Builder builder = new FormBody.Builder()
-//                    .add("file_id", String.valueOf(information.id()));
-//            final JSONObject json = this.task(6, builder, 1);
-//            final String message = json.getString("info");
-//            if (!"\u5DF2\u5220\u9664".equals(message))
-//                throw new WrongResponseException("Trashing file.", message, ParametersMap.create()
-//                        .add("configuration", this.configuration.getInstance()).add("information", information).add("json", json));
-//        }
-//    }
-//
+    @Override
+    protected void delete0(final @NotNull FileInformation information) throws IOException {
+        if (information.isDirectory()) {
+            final FormBody.Builder builder = new FormBody.Builder()
+                    .add("folder_id", String.valueOf(information.id()));
+            final JSONObject json = this.task(3, builder, 1);
+            final String message = json.getString("info");
+            if (!"\u5220\u9664\u6210\u529F".equals(message))
+                throw new WrongResponseException("Trashing directory.", message, ParametersMap.create()
+                        .add("configuration", this.configuration.getInstance()).add("information", information).add("json", json));
+        } else {
+            final FormBody.Builder builder = new FormBody.Builder()
+                    .add("file_id", String.valueOf(information.id()));
+            final JSONObject json = this.task(6, builder, 1);
+            final String message = json.getString("info");
+            if (!"\u5DF2\u5220\u9664".equals(message))
+                throw new WrongResponseException("Trashing file.", message, ParametersMap.create()
+                        .add("configuration", this.configuration.getInstance()).add("information", information).add("json", json));
+        }
+    }
+
 //    @Override
 //    protected @NotNull UnionPair<DownloadRequirements, FailureReason> download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull FileLocation location) throws Exception {
 //        return null;

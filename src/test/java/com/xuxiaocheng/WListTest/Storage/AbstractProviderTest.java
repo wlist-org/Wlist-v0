@@ -99,11 +99,11 @@ public class AbstractProviderTest {
             return AbstractProviderTest.this.info.get(id);
         }
 
-//        @Override
-//        protected void delete0(final @NotNull FileInformation information) {
-//            throw new UnsupportedOperationException();
-//        }
-//
+        @Override
+        protected void delete0(final @NotNull FileInformation information) {
+            throw new UnsupportedOperationException();
+        }
+
 //        @Override
 //        protected @NotNull UnionPair<DownloadRequirements, FailureReason> download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull FileLocation location) {
 //            throw new UnsupportedOperationException();
@@ -465,4 +465,6 @@ public class AbstractProviderTest {
 
         // No concurrent test due to same code as 'list'.
     }
+
+    // No trash test.
 }

@@ -49,7 +49,7 @@ public interface ProviderInterface<C extends ProviderConfiguration> {
     @NotNull UnionPair<UnionPair<FilesListInformation, Boolean>, Throwable> ListNotExisted = UnionPair.ok(UnionPair.fail(Boolean.TRUE));
     /**
      * Get the list of files in directory.
-     * @param consumer: false: directory is not available. true: file/directory is not existed in web server. !null: list of files.
+     * @param consumer false: directory is not available. true: file/directory is not existed in web server. !null: list of files.
      */
     void list(final long directoryId, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final @LongRange(minimum = 0) long position, final @IntRange(minimum = 0) int limit, final @NotNull Consumer<@NotNull UnionPair<UnionPair<FilesListInformation, Boolean>, Throwable>> consumer) throws Exception;
 
@@ -57,25 +57,27 @@ public interface ProviderInterface<C extends ProviderConfiguration> {
     @NotNull UnionPair<UnionPair<Pair.ImmutablePair<FileInformation, Boolean>, Boolean>, Throwable> InfoNotExisted = UnionPair.ok(UnionPair.fail(Boolean.TRUE));
     /**
      * Get the file/directory information of a specific id.
-     * @param consumer: false: file/directory is not available. true: file/directory is not existed in web server. !null: information and isUpdated.
+     * @param consumer false: file/directory is not available. true: file/directory is not existed in web server. !null: information and isUpdated.
      */
-    void info(final long id, final boolean isDirectory, final Consumer<? super @NotNull UnionPair<UnionPair<Pair.ImmutablePair<@NotNull FileInformation, @NotNull Boolean>, Boolean>, Throwable>> consumer) throws Exception;
+    void info(final long id, final boolean isDirectory, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<Pair.ImmutablePair<@NotNull FileInformation, @NotNull Boolean>, Boolean>, Throwable>> consumer) throws Exception;
 
     @NotNull UnionPair<UnionPair<Pair.ImmutablePair<Set<Long>, Set<Long>>, Boolean>, Throwable> RefreshNotAvailable = UnionPair.ok(UnionPair.fail(Boolean.FALSE));
     @NotNull UnionPair<UnionPair<Pair.ImmutablePair<Set<Long>, Set<Long>>, Boolean>, Throwable> RefreshNotExisted = UnionPair.ok(UnionPair.fail(Boolean.TRUE));
     @NotNull UnionPair<UnionPair<Pair.ImmutablePair<@NotNull Set<Long>, @NotNull Set<Long>>, Boolean>, Throwable> RefreshNoUpdater = UnionPair.ok(UnionPair.ok(Pair.ImmutablePair.makeImmutablePair(Set.of(), Set.of())));
     /**
      * Force rebuild (or build) files index to synchronize with web server (not recursively).
-     * @param consumer: false: directory is not available. true: directory is not existed in web server. !null: inserted (into other directories) ids of files and directories.
+     * @param consumer false: directory is not available. true: directory is not existed in web server. !null: inserted (into other directories) ids of files and directories.
      */
-    void refresh(final long directoryId, final Consumer<? super @NotNull UnionPair<UnionPair<Pair.ImmutablePair<@NotNull Set<Long>, @NotNull Set<Long>>, Boolean>, Throwable>> consumer) throws Exception;
+    void refresh(final long directoryId, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<Pair.ImmutablePair<@NotNull Set<Long>, @NotNull Set<Long>>, Boolean>, Throwable>> consumer) throws Exception;
 
-//    /**
-//     * Delete file/directory.
-//     * @return false: file/directory is not available. true: deleted.
-//     */
-//    boolean delete(final long id, final boolean isDirectory) throws Exception;
-//
+    @NotNull UnionPair<Boolean, Throwable> TrashNotAvailable = UnionPair.ok(Boolean.FALSE);
+    @NotNull UnionPair<Boolean, Throwable> TrashSuccess = UnionPair.ok(Boolean.TRUE);
+    /**
+     * Delete file/directory.
+     * @param consumer false: file/directory is not available. true: deleted.
+     */
+    void trash(final long id, final boolean isDirectory, final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) throws Exception;
+
 //    /**
 //     * Create an empty directory.
 //     * @param parentLocation Only by used to create {@code FailureReason}.
