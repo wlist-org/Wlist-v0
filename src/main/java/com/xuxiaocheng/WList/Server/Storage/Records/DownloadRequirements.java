@@ -157,8 +157,8 @@ public record DownloadRequirements(boolean acceptedRange, long downloadingSize, 
                         public void onResponse(final @NotNull Call call, final @NotNull Response response) {
                             try (final InputStream stream = HttpNetworkHelper.extraResponseBody(response).byteStream()) {
                                 consumer.accept(UnionPair.ok(HttpNetworkHelper.receiveDataFromStream(stream, length)));
-                            } catch (final IOException exception) {
-                                this.onFailure(call, exception);
+                            } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                                consumer.accept(UnionPair.fail(exception));
                             }
                         }
                     });

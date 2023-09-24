@@ -178,9 +178,6 @@ public class WListServer {
                 ByteBufIOUtil.writeUTF(prefix, message.state().name());
                 buffer = message.appender() == null ? prefix : message.appender().apply(prefix);
                 prefix.retain();
-            } catch (final CodecException | SocketException exception) {
-                channel.pipeline().fireExceptionCaught(exception);
-                return;
             } catch (final IOException exception) {
                 WListServer.logger.log(HLogLevel.ERROR, exception);
                 channel.close().addListener(MiscellaneousUtil.exceptionListener());

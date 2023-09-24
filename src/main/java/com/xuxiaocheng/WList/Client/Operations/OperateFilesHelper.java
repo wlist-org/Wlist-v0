@@ -114,7 +114,7 @@ public final class OperateFilesHelper {
     public static DownloadConfirm.@Nullable DownloadInformation confirmDownloadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String id) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.ConfirmDownloadFile, token);
         ByteBufIOUtil.writeUTF(send, id);
-        OperateHelper.logOperating(OperationType.CancelDownloadFile, token, p -> p.add("id", id));
+        OperateHelper.logOperating(OperationType.ConfirmDownloadFile, token, p -> p.add("id", id));
         final ByteBuf receive = client.send(send);
         try {
             final String reason = OperateHelper.handleState(receive);

@@ -80,10 +80,12 @@ public final class DownloadIdHelper {
             super();
             this.id = id;
             this.methods = methods;
-            this.nodes = (DownloadRequirements.OrderedNode[]) this.methods.parallelMethods().stream().map(DownloadRequirements.OrderedSuppliers::suppliersLink).toArray();
-            this.locks = new Object[this.nodes.length];
-            for (int i = 0; i < this.locks.length; ++i)
+            this.nodes = new DownloadRequirements.OrderedNode[this.methods.parallelMethods().size()];
+            this.locks = new Object[this.methods.parallelMethods().size()];
+            for (int i = 0; i < this.methods.parallelMethods().size(); ++i) {
+                this.nodes[i] = this.methods.parallelMethods().get(i).suppliersLink();
                 this.locks[i] = new Object();
+            }
             if (this.methods.expireTime() == null) {
                 this.expireTime = MiscellaneousUtil.now().plusSeconds(ServerConfiguration.get().idIdleExpireTime());
                 IdsHelper.CleanerExecutors.schedule(() -> {
