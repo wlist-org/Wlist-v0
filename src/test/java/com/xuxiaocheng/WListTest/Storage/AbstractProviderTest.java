@@ -71,6 +71,7 @@ public class AbstractProviderTest {
     protected final AtomicReference<Supplier<UnionPair<FileInformation, Boolean>>> updated = new AtomicReference<>();
     protected final AtomicBoolean supportedInfo = new AtomicBoolean();
     protected final Map<Long, FileInformation> info = new HashMap<>();
+    protected final HInitializer<FileInformation> trash = new HInitializer<>("Trashed");
 
     public class AbstractProvider extends AbstractIdBaseProvider<AbstractConfiguration> {
         @Override
@@ -104,7 +105,7 @@ public class AbstractProviderTest {
 
         @Override
         protected void trash0(final @NotNull FileInformation information) {
-            throw new UnsupportedOperationException(); // Use TrashProvider. (@see TrashTest.TrashTestProvider)
+            AbstractProviderTest.this.trash.initialize(information);
         }
 
 //        @Override
@@ -137,6 +138,7 @@ public class AbstractProviderTest {
         this.updated.set(null);
         this.supportedInfo.set(false);
         this.info.clear();
+        this.trash.uninitializeNullable();
         final ProviderInterface<AbstractConfiguration> provider = this.ProviderCore.getInstance().get();
         AbstractProviderTest.provider.set(provider);
         final AbstractConfiguration configuration = new AbstractConfiguration();
@@ -476,7 +478,24 @@ public class AbstractProviderTest {
     @Nested
     public class TrashTest {
         @Test
-        public void trash() {
+        public void trash() throws Exception {
+            final FileInformation directory = new FileInformation(1, 0, "directory", true, -1, null, null, null);
+            final FileInformation file = new FileInformation(1, 0, "file", false, 1, null, null, null);
+            list.set(List.of(directory, file).iterator());
+            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 0);
+            loggedIn.set(false);
+
+            Assertions.assertTrue(ProviderHelper.trash(provider(), 1, true));
+            Assertions.assertEquals(directory, trash.uninitialize());
+            Assertions.assertTrue(ProviderHelper.trash(provider(), 1, false));
+            Assertions.assertEquals(file, trash.uninitialize());
+        }
+
+        @Test
+        public void notAvailable() throws Exception {
+            Assertions.assertFalse(ProviderHelper.trash(provider(), 0, true));
+            Assertions.assertFalse(ProviderHelper.trash(provider(), 0, false));
+            Assertions.assertFalse(loggedIn.get());
         }
 
         public class TrashTestProvider extends AbstractProvider {
@@ -517,7 +536,6 @@ public class AbstractProviderTest {
         }
 
         @Test
-        @Disabled
         public void trashRecursively() throws Exception {
             AbstractProviderTest.this.unset();
             ProviderCore.reinitialize(TrashTestProvider::new);

@@ -308,9 +308,13 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
     protected abstract void trash0(final @NotNull FileInformation information) throws Exception;
 
     @Override // TODO: delete root.
-    public void trash(final long id, final boolean isDirectory, final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) throws Exception {
+    public synchronized void trash(final long id, final boolean isDirectory, final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) throws Exception {
         final FileInformation information = this.manager.getInstance().selectInfo(id, isDirectory, null);
         if (information == null) {
+            consumer.accept(ProviderInterface.TrashNotAvailable);
+            return;
+        }
+        if (isDirectory && id == this.getConfiguration().getRootDirectoryId()) {
             consumer.accept(ProviderInterface.TrashNotAvailable);
             return;
         }
@@ -321,14 +325,10 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
             consumer.accept(ProviderInterface.TrashSuccess);
             return;
         }
-        if (id == this.getConfiguration().getRootDirectoryId()) {
-            consumer.accept(ProviderInterface.TrashNotAvailable);
-            return;
-        }
         this.trashInside(information, false, consumer);
     }
 
-    private void trashInside(final @NotNull FileInformation parent, final boolean refreshed, final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) throws Exception {
+    private synchronized void trashInside(final @NotNull FileInformation parent, final boolean refreshed, final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) throws Exception {
         if (!parent.isDirectory()) {
             this.loginIfNot();
             this.trash0(parent);
