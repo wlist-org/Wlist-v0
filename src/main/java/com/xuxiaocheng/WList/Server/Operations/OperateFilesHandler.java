@@ -26,7 +26,6 @@ import com.xuxiaocheng.WList.Server.WListServer;
 import io.netty.buffer.ByteBufAllocator;
 import org.jetbrains.annotations.NotNull;
 
-import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -73,7 +72,7 @@ public final class OperateFilesHandler {
     /**
      * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#listFiles(WListClientInterface, String, FileLocation, Options.FilterPolicy, LinkedHashMap, long, int)
      */
-    public static final @NotNull ServerHandler doListFiles = (channel, buffer) -> {
+    private static final @NotNull ServerHandler doListFiles = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FilesList);
         final FileLocation directory = FileLocation.parse(buffer);
@@ -122,7 +121,7 @@ public final class OperateFilesHandler {
     /**
      * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#getFileOrDirectory(WListClientInterface, String, FileLocation, boolean)
      */
-    public static final @NotNull ServerHandler doGetFileOrDirectory = (channel, buffer) -> {
+    private static final @NotNull ServerHandler doGetFileOrDirectory = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileDownload);
         final FileLocation location = FileLocation.parse(buffer);
@@ -159,7 +158,7 @@ public final class OperateFilesHandler {
     /**
      * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#refreshDirectory(WListClientInterface, String, FileLocation)
      */
-    public static final @NotNull ServerHandler doRefreshDirectory = (channel, buffer) -> {
+    private static final @NotNull ServerHandler doRefreshDirectory = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FilesRefresh);
         final FileLocation directory = FileLocation.parse(buffer);
@@ -199,7 +198,7 @@ public final class OperateFilesHandler {
     /**
      * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#trashFileOrDirectory(WListClientInterface, String, FileLocation, boolean)
      */
-    public static final @NotNull ServerHandler doTrashFileOrDirectory = (channel, buffer) -> {
+    private static final @NotNull ServerHandler doTrashFileOrDirectory = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileDelete);
         final FileLocation location = FileLocation.parse(buffer);
@@ -232,7 +231,10 @@ public final class OperateFilesHandler {
         });
     };
 
-    public static final @NotNull ServerHandler doRequestDownloadFile = (channel, buffer) -> {
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#requestDownloadFile(WListClientInterface, String, FileLocation, long, long)
+     */
+    private static final @NotNull ServerHandler doRequestDownloadFile = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FilesList, UserPermission.FileDownload);
         final FileLocation file = FileLocation.parse(buffer);
@@ -268,16 +270,14 @@ public final class OperateFilesHandler {
             final String id = DownloadIdHelper.generateId(requirements);
             HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Signed download requirements id.", ServerHandler.user(null, user.getT()),
                     ParametersMap.create().add("file", file).add("from", from).add("to", to).add("id", id));
-            WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> {
-                ByteBufIOUtil.writeBoolean(buf, requirements.acceptedRange());
-                ByteBufIOUtil.writeVariable2LenLong(buf, requirements.downloadingSize());
-                ByteBufIOUtil.writeUTF(buf, id);
-                return buf;
-            }));
+            WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> requirements.dumpConfirm(buf, id)));
         });
     };
 
-    public static final @NotNull ServerHandler doCancelDownloadFile = (channel, buffer) -> {
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#cancelDownloadFile(WListClientInterface, String, String)
+     */
+    private static final @NotNull ServerHandler doCancelDownloadFile = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileDownload);
         final String id = ByteBufIOUtil.readUTF(buffer);
@@ -289,7 +289,10 @@ public final class OperateFilesHandler {
         return () -> WListServer.ServerChannelHandler.write(channel, DownloadIdHelper.cancel(id) ? MessageProto.Success : OperateFilesHandler.IdDataError);
     };
 
-    public static final @NotNull ServerHandler doConfirmDownloadFile = (channel, buffer) -> {
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#confirmDownloadFile(WListClientInterface, String, String)
+     */
+    private static final @NotNull ServerHandler doConfirmDownloadFile = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileDownload);
         final String id = ByteBufIOUtil.readUTF(buffer);
@@ -304,19 +307,14 @@ public final class OperateFilesHandler {
                 WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.IdDataError);
                 return;
             }
-            WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> {
-                ByteBufIOUtil.writeVariableLenInt(buf, parallel.parallelMethods().size());
-                for (final DownloadRequirements.OrderedSuppliers suppliers: parallel.parallelMethods()) {
-                    ByteBufIOUtil.writeVariable2LenLong(buf, suppliers.start());
-                    ByteBufIOUtil.writeVariable2LenLong(buf, suppliers.end());
-                }
-                ByteBufIOUtil.writeNullableDataTime(buf, parallel.expireTime(), DateTimeFormatter.ISO_DATE_TIME);
-                return buf;
-            }));
+            WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(parallel::dumpInformation));
         };
     };
 
-    public static final @NotNull ServerHandler doDownloadFile = (channel, buffer) -> {
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#downloadFile(WListClientInterface, String, String, int)
+     */
+    private static final @NotNull ServerHandler doDownloadFile = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileDownload);
         final String id = ByteBufIOUtil.readUTF(buffer);
@@ -353,7 +351,10 @@ public final class OperateFilesHandler {
         });
     };
 
-    public static final @NotNull ServerHandler doFinishDownloadFile = (channel, buffer) -> {
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#finishDownloadFile(WListClientInterface, String, String)
+     */
+    private static final @NotNull ServerHandler doFinishDownloadFile = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileDownload);
         final String id = ByteBufIOUtil.readUTF(buffer);

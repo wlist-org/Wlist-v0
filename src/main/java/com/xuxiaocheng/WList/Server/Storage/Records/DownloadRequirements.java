@@ -9,6 +9,7 @@ import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Ranges.LongRange;
 import com.xuxiaocheng.Rust.NetworkTransmission;
+import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Server.Exceptions.NetworkException;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
@@ -19,6 +20,7 @@ import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Response;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
@@ -28,6 +30,7 @@ import java.io.InputStream;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -35,7 +38,28 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 public record DownloadRequirements(boolean acceptedRange, long downloadingSize, @NotNull SupplierE<@NotNull DownloadMethods> supplier) {
+    /**
+     * @see com.xuxiaocheng.WList.Commons.Beans.DownloadConfirm
+     */
+    @Contract("_, _ -> param1")
+    public @NotNull ByteBuf dumpConfirm(final @NotNull ByteBuf buffer, final @NotNull String id) throws IOException {
+        ByteBufIOUtil.writeBoolean(buffer, this.acceptedRange());
+        ByteBufIOUtil.writeVariable2LenLong(buffer, this.downloadingSize());
+        ByteBufIOUtil.writeUTF(buffer, id);
+        return buffer;
+    }
+
     public record DownloadMethods(@NotNull @Unmodifiable List<@NotNull OrderedSuppliers> parallelMethods, @NotNull Runnable finisher, @Nullable ZonedDateTime expireTime) {
+        @Contract("_ -> param1")
+        public @NotNull ByteBuf dumpInformation(final @NotNull ByteBuf buffer) throws IOException {
+            ByteBufIOUtil.writeVariableLenInt(buffer, this.parallelMethods().size());
+            for (final DownloadRequirements.OrderedSuppliers suppliers: this.parallelMethods()) {
+                ByteBufIOUtil.writeVariable2LenLong(buffer, suppliers.start());
+                ByteBufIOUtil.writeVariable2LenLong(buffer, suppliers.end());
+            }
+            ByteBufIOUtil.writeNullableDataTime(buffer, this.expireTime(), DateTimeFormatter.ISO_DATE_TIME);
+            return buffer;
+        }
     }
 
     /**
@@ -162,7 +186,7 @@ public record DownloadRequirements(boolean acceptedRange, long downloadingSize, 
             return new DownloadMethods(List.of(new OrderedSuppliers(0, size, new OrderedNode() {
                 private long current = 0;
                 @Override
-                public @Nullable OrderedNode apply(final @NotNull Consumer<@NotNull UnionPair<ByteBuf, Exception>> consumer) {
+                public @Nullable OrderedNode apply(final @NotNull Consumer<@NotNull UnionPair<ByteBuf, Throwable>> consumer) {
                     final long start = this.current;
                     final long end = Math.min(start + NetworkTransmission.FileTransferBufferSize, size);
                     final int length = Math.toIntExact(end - start);

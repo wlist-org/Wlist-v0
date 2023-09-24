@@ -2,6 +2,7 @@ package com.xuxiaocheng.WList.Client.Operations;
 
 import com.xuxiaocheng.WList.Client.Exceptions.WrongStateException;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
+import com.xuxiaocheng.WList.Commons.Beans.DownloadConfirm;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFilesListInformation;
@@ -82,6 +83,79 @@ public final class OperateFilesHelper {
         return OperateHelper.booleanOperation(client, send, OperationType.TrashFileOrDirectory);
     }
 
+    public static @Nullable DownloadConfirm requestDownloadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation file, final long from, final long to) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.RequestDownloadFile, token);
+        file.dump(send);
+        ByteBufIOUtil.writeVariableLenLong(send, from);
+        ByteBufIOUtil.writeVariable2LenLong(send, to);
+        OperateHelper.logOperating(OperationType.RequestDownloadFile, token, p -> p.add("file", file).add("from", from).add("to", to));
+        final ByteBuf receive = client.send(send);
+        try {
+            final String reason = OperateHelper.handleState(receive);
+            if (reason == null) {
+                final DownloadConfirm confirm = DownloadConfirm.parse(receive);
+                OperateHelper.logOperated(OperationType.RequestDownloadFile, OperateHelper.logReason(null).andThen(p -> p.add("confirm", confirm)));
+                return confirm;
+            }
+            OperateHelper.logOperated(OperationType.RequestDownloadFile, OperateHelper.logReason(reason));
+            return null;
+        } finally {
+            receive.release();
+        }
+    }
+
+    public static boolean cancelDownloadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String id) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.CancelDownloadFile, token);
+        ByteBufIOUtil.writeUTF(send, id);
+        OperateHelper.logOperating(OperationType.CancelDownloadFile, token, p -> p.add("id", id));
+        return OperateHelper.booleanOperation(client, send, OperationType.CancelDownloadFile);
+    }
+
+    public static DownloadConfirm.@Nullable DownloadInformation confirmDownloadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String id) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.ConfirmDownloadFile, token);
+        ByteBufIOUtil.writeUTF(send, id);
+        OperateHelper.logOperating(OperationType.CancelDownloadFile, token, p -> p.add("id", id));
+        final ByteBuf receive = client.send(send);
+        try {
+            final String reason = OperateHelper.handleState(receive);
+            if (reason == null) {
+                final DownloadConfirm.DownloadInformation information = DownloadConfirm.DownloadInformation.parse(receive);
+                OperateHelper.logOperated(OperationType.ConfirmDownloadFile, OperateHelper.logReason(null).andThen(p -> p.add("information", information)));
+                return information;
+            }
+            OperateHelper.logOperated(OperationType.ConfirmDownloadFile, OperateHelper.logReason(reason));
+            return null;
+        } finally {
+            receive.release();
+        }
+    }
+
+    public static @Nullable ByteBuf downloadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String id, final int index) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.DownloadFile, token);
+        ByteBufIOUtil.writeUTF(send, id);
+        ByteBufIOUtil.writeVariableLenInt(send, index);
+        OperateHelper.logOperating(OperationType.DownloadFile, token, p -> p.add("id", id).add("index", index));
+        final ByteBuf receive = client.send(send);
+        try {
+            final String reason = OperateHelper.handleState(receive);
+            if (reason == null) {
+                OperateHelper.logOperated(OperationType.DownloadFile, OperateHelper.logReason(null).andThen(p -> p.add("size", receive.readableBytes())));
+                return receive.retainedDuplicate();
+            }
+            OperateHelper.logOperated(OperationType.DownloadFile, OperateHelper.logReason(reason));
+            return null;
+        } finally {
+            receive.release();
+        }
+    }
+
+    public static boolean finishDownloadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String id) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.FinishDownloadFile, token);
+        ByteBufIOUtil.writeUTF(send, id);
+        OperateHelper.logOperating(OperationType.FinishDownloadFile, token, p -> p.add("id", id));
+        return OperateHelper.booleanOperation(client, send, OperationType.FinishDownloadFile);
+    }
+
 //    public static @NotNull UnionPair<@NotNull VisibleFileInformation, @NotNull FailureReason> createDirectory(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
 //        final ByteBuf send = OperateHelper.operateWithToken(OperationType.CreateDirectory, token);
 //        FileLocation.dump(send, parentLocation);
@@ -123,71 +197,6 @@ public final class OperateFilesHelper {
 //            final String reason = ByteBufIOUtil.readUTF(receive);
 //            OperateHelper.logOperated(OperationType.RenameFile, () -> ParametersMap.create().add("success", false).add("reason", reason));
 //            return UnionPair.fail(OperateFilesHelper.handleFailureReason(reason));
-//        } finally {
-//            receive.release();
-//        }
-//    }
-//
-//    public static Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull String> requestDownloadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation fileLocation, final long from, final long to) throws IOException, InterruptedException, WrongStateException {
-//        final ByteBuf send = OperateHelper.operateWithToken(OperationType.RequestDownloadFile, token);
-//        FileLocation.dump(send, fileLocation);
-//        ByteBufIOUtil.writeVariableLenLong(send, from);
-//        ByteBufIOUtil.writeVariable2LenLong(send, to);
-//        OperateHelper.logOperating(OperationType.RequestDownloadFile, () -> ParametersMap.create().add("tokenHash", token.hashCode())
-//                .add("fileLocation", fileLocation).add("from", from).add("to", to));
-//        final ByteBuf receive = client.send(send);
-//        try {
-//            if (OperateHelper.handleState(receive)) {
-//                final long size = ByteBufIOUtil.readVariable2LenLong(receive);
-//                final String id = ByteBufIOUtil.readUTF(receive);
-//                OperateHelper.logOperated(OperationType.RequestDownloadFile, () -> ParametersMap.create().add("success", true)
-//                        .add("size", size).add("id", id));
-//                return Pair.ImmutablePair.makeImmutablePair(size, id);
-//            }
-//            final String reason = ByteBufIOUtil.readUTF(receive);
-//            OperateHelper.logOperated(OperationType.RequestDownloadFile, () -> ParametersMap.create().add("success", false).add("reason", reason));
-//            if ("File".equals(reason))
-//                return null;
-//            assert "Parameters".equals(reason);
-//            throw new WrongStateException(ResponseState.DataError, reason + ParametersMap.create().add("fileLocation", fileLocation).add("from", from).add("to", to));
-//        } finally {
-//            receive.release();
-//        }
-//    }
-//
-//    public static @Nullable ByteBuf downloadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String id, final int chunk) throws IOException, InterruptedException, WrongStateException {
-//        final ByteBuf send = OperateHelper.operateWithToken(OperationType.DownloadFile, token);
-//        ByteBufIOUtil.writeUTF(send, id);
-//        ByteBufIOUtil.writeVariableLenInt(send, chunk);
-//        OperateHelper.logOperating(OperationType.DownloadFile, () -> ParametersMap.create().add("tokenHash", token.hashCode())
-//                .add("id", id).add("chunk", chunk));
-//        final ByteBuf receive = client.send(send);
-//        try {
-//            if (OperateHelper.handleState(receive)) {
-//                OperateHelper.logOperated(OperationType.DownloadFile, () -> ParametersMap.create().add("success", true)
-//                        .add("chunkSize", receive.readableBytes()));
-//                return receive.retain();
-//            }
-//            final String reason = ByteBufIOUtil.readUTF(receive);
-//            OperateHelper.logOperated(OperationType.DownloadFile, () -> ParametersMap.create().add("success", false).add("reason", reason));
-//            if ("Id".equals(reason))
-//                return null;
-//            throw new WrongStateException(ResponseState.DataError, reason + ParametersMap.create().add("id", id).add("chunk", chunk));
-//        } finally {
-//            receive.release();
-//        }
-//    }
-//
-//    public static boolean cancelDownloadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String id) throws IOException, InterruptedException, WrongStateException {
-//        final ByteBuf send = OperateHelper.operateWithToken(OperationType.CancelDownloadFile, token);
-//        ByteBufIOUtil.writeUTF(send, id);
-//        OperateHelper.logOperating(OperationType.CancelDownloadFile, () -> ParametersMap.create().add("tokenHash", token.hashCode())
-//                .add("id", id));
-//        final ByteBuf receive = client.send(send);
-//        try {
-//            final boolean success = OperateHelper.handleState(receive);
-//            OperateHelper.logOperated(OperationType.CancelDownloadFile, () -> ParametersMap.create().add("success", success));
-//            return success;
 //        } finally {
 //            receive.release();
 //        }
