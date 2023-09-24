@@ -58,6 +58,7 @@ public class OperateFilesTest extends ProvidersWrapper {
         Assumptions.assumeTrue(list.informationList().size() == 1);
         final VisibleFileInformation information = list.informationList().get(0);
         Assumptions.assumeFalse(information.isDirectory());
+        Assumptions.assumeTrue("WList-V0.2.0.jar".equals(information.name()));
         // assumption "0efa9c569a7f37f0c92a352042a01df7".equals(MD5(information.content()));
 
         final DownloadConfirm confirm = OperateFilesHelper.requestDownloadFile(client, token, new FileLocation("test", information.id()), 0, Long.MAX_VALUE);

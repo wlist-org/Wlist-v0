@@ -18,6 +18,8 @@ import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPublicKey;
+import java.util.ArrayList;
+import java.util.Collection;
 
 @SuppressWarnings("NativeMethod")
 public final class NetworkTransmission {
@@ -146,15 +148,14 @@ public final class NetworkTransmission {
     }
 
 
-    private static native @Nullable ByteBuffer clientEncrypt0(final @NotNull ByteBuffer key, final @NotNull ByteBuffer nonce, final @NotNull ByteBuffer message);
+    private static native @Nullable ByteBuffer clientEncrypt0(final @NotNull ByteBuffer key, final @NotNull ByteBuffer nonce, final @NotNull ByteBuffer @NotNull [] messages);
     public static @Nullable ByteBuf clientEncrypt(final @NotNull AesKeyPair key, final @NotNull ByteBuf message) {
-        final Pair.ImmutablePair<ByteBuffer, ByteBuf> directByteBuffer = NetworkTransmission.toDirectByteBuffer(message);
+        final Pair.ImmutablePair<ByteBuffer[], Runnable> directByteBuffers = NetworkTransmission.toDirectByteBuffers(message);
         final ByteBuffer encrypted;
         try {
-            encrypted = NetworkTransmission.clientEncrypt0(key.key, key.nonce, directByteBuffer.getFirst());
+            encrypted = NetworkTransmission.clientEncrypt0(key.key, key.nonce, directByteBuffers.getFirst());
         } finally {
-            if (directByteBuffer.getSecond() != null)
-                directByteBuffer.getSecond().release();
+            directByteBuffers.getSecond().run();
         }
         if (encrypted == null)
             return null;
@@ -176,15 +177,14 @@ public final class NetworkTransmission {
         return Unpooled.wrappedBuffer(decrypted);
     }
 
-    private static native @Nullable ByteBuffer[] serverEncrypt0(final @NotNull ByteBuffer key, final @NotNull ByteBuffer nonce, final @NotNull ByteBuffer message);
+    private static native @Nullable ByteBuffer[] serverEncrypt0(final @NotNull ByteBuffer key, final @NotNull ByteBuffer nonce, final @NotNull ByteBuffer @NotNull [] messages);
     public static @Nullable ByteBuf serverEncrypt(final @NotNull AesKeyPair key, final @NotNull ByteBuf message) {
-        final Pair.ImmutablePair<ByteBuffer, ByteBuf> directByteBuffer = NetworkTransmission.toDirectByteBuffer(message);
+        final Pair.ImmutablePair<ByteBuffer[], Runnable> directByteBuffers = NetworkTransmission.toDirectByteBuffers(message);
         final ByteBuffer[] encrypted;
         try {
-            encrypted = NetworkTransmission.serverEncrypt0(key.key, key.nonce, directByteBuffer.getFirst());
+            encrypted = NetworkTransmission.serverEncrypt0(key.key, key.nonce, directByteBuffers.getFirst());
         } finally {
-            if (directByteBuffer.getSecond() != null)
-                directByteBuffer.getSecond().release();
+            directByteBuffers.getSecond().run();
         }
         if (encrypted == null)
             return null;
@@ -197,28 +197,53 @@ public final class NetworkTransmission {
     private static native @Nullable ByteBuffer[] clientDecrypt0(final @NotNull ByteBuffer key, final @NotNull ByteBuffer nonce, final @NotNull ByteBuffer message);
     public static @Nullable ByteBuf clientDecrypt(final @NotNull AesKeyPair key, final @NotNull ByteBuf message) {
         final Pair.ImmutablePair<ByteBuffer, ByteBuf> directByteBuffer = NetworkTransmission.toDirectByteBuffer(message);
-        final ByteBuffer[] encrypted;
+        final ByteBuffer[] decrypted;
         try {
-            encrypted = NetworkTransmission.clientDecrypt0(key.key, key.nonce, directByteBuffer.getFirst());
+            decrypted = NetworkTransmission.clientDecrypt0(key.key, key.nonce, directByteBuffer.getFirst());
         } finally {
             if (directByteBuffer.getSecond() != null)
                 directByteBuffer.getSecond().release();
         }
-        if (encrypted == null)
+        if (decrypted == null)
             return null;
-        assert encrypted.length == 2; // (response, new_nonce)
-        assert encrypted[1].isDirect();
-        key.nonce = encrypted[1];
-        return Unpooled.wrappedBuffer(encrypted[0]);
+        assert decrypted.length == 2; // (response, new_nonce)
+        assert decrypted[1].isDirect();
+        key.nonce = decrypted[1];
+        return Unpooled.wrappedBuffer(decrypted[0]);
     }
 
 
     private static Pair.@NotNull ImmutablePair<@NotNull ByteBuffer, @Nullable ByteBuf> toDirectByteBuffer(final @NotNull ByteBuf buffer) {
         if (buffer.nioBufferCount() == 1 && buffer.nioBuffer().isDirect())
             return Pair.ImmutablePair.makeImmutablePair(buffer.nioBuffer(), null);
-        // ByteBuffer.allocateDirect(buf.readableBytes()); // Netty buffer pool. // TODO: optimise.
+        // ByteBuffer.allocateDirect(buf.readableBytes()); // Netty buffer pool.
         final ByteBuf tmp = ByteBufAllocator.DEFAULT.directBuffer(buffer.readableBytes(), buffer.readableBytes());
         tmp.writeBytes(buffer);
         return Pair.ImmutablePair.makeImmutablePair(tmp.nioBuffer(), tmp);
+    }
+
+    private static Pair.@NotNull ImmutablePair<@NotNull ByteBuffer @NotNull[], @NotNull Runnable> toDirectByteBuffers(final @NotNull ByteBuf buffer) {
+        if (buffer.nioBufferCount() <= 1) {
+            final Pair.ImmutablePair<ByteBuffer, ByteBuf> single = NetworkTransmission.toDirectByteBuffer(buffer);
+            final ByteBuffer[] buffers = new ByteBuffer[] {single.getFirst()};
+            return Pair.ImmutablePair.makeImmutablePair(buffers, () -> {
+                if (single.getSecond() != null)
+                    single.getSecond().release();
+            });
+        }
+        final ByteBuffer[] buffers = new ByteBuffer[buffer.nioBufferCount()];
+        int i = 0;
+        final Collection<ByteBuf> list = new ArrayList<>();
+        for (final ByteBuffer b: buffer.nioBuffers()) {
+            if (b.isDirect()) {
+                buffers[i++] = b;
+                continue;
+            }
+            final ByteBuf tmp = ByteBufAllocator.DEFAULT.directBuffer(b.remaining(), b.remaining());
+            tmp.writeBytes(b);
+            buffers[i++] = tmp.nioBuffer();
+            list.add(tmp);
+        }
+        return Pair.ImmutablePair.makeImmutablePair(buffers, () -> list.forEach(ByteBuf::release));
     }
 }
