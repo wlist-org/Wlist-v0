@@ -11,6 +11,7 @@ import com.xuxiaocheng.WList.Commons.Codecs.MessageServerCiphers;
 import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import com.xuxiaocheng.WList.Commons.Operations.ResponseState;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
+import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Server.Operations.ServerHandler;
 import com.xuxiaocheng.WList.Server.Operations.ServerHandlerManager;
 import io.netty.bootstrap.ServerBootstrap;
@@ -18,6 +19,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -101,7 +103,7 @@ public class WListServer {
                     @Override
                     public void channelActive(final @NotNull ChannelHandlerContext ctx) throws Exception {
                         if (WListServer.this.refuseNew.get() || WListServer.this.address.isNotInitialized()) // Closed
-                            ctx.close();
+                            ctx.close().addListener(MiscellaneousUtil.exceptionListener());
                         else
                             super.channelActive(ctx);
                     }
@@ -167,7 +169,7 @@ public class WListServer {
 
         public static void write(final @NotNull Channel channel, final @NotNull MessageProto message) {
             if (!channel.isOpen()) {
-                channel.close();
+                channel.close().addListener(MiscellaneousUtil.exceptionListener());
                 return;
             }
             final ByteBuf buffer;
@@ -175,18 +177,18 @@ public class WListServer {
             try {
                 ByteBufIOUtil.writeUTF(prefix, message.state().name());
                 buffer = message.appender() == null ? prefix : message.appender().apply(prefix);
-                buffer.retain();
+                prefix.retain();
             } catch (final CodecException | SocketException exception) {
                 channel.pipeline().fireExceptionCaught(exception);
                 return;
             } catch (final IOException exception) {
                 WListServer.logger.log(HLogLevel.ERROR, exception);
-                channel.close();
+                channel.close().addListener(MiscellaneousUtil.exceptionListener());
                 return;
             } finally {
                 prefix.release();
             }
-            channel.writeAndFlush(buffer);
+            channel.writeAndFlush(buffer).addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
         }
 
         @Override
@@ -206,7 +208,7 @@ public class WListServer {
                     WListServer.logger.log(HLogLevel.MISTAKE, "Unexpected discarded bytes: ", channel.remoteAddress(), ParametersMap.create().add("len", msg.readableBytes()));
             } catch (final IOException exception) { // Read from msg.
                 ServerChannelHandler.write(channel, MessageProto.FormatError);
-                channel.close();
+                channel.close().addListener(MiscellaneousUtil.exceptionListener());
                 return;
             }
             if (core == null)
@@ -227,7 +229,7 @@ public class WListServer {
             }
             if (cause instanceof CodecException || cause instanceof SocketException) {
                 WListServer.logger.log(HLogLevel.MISTAKE, "Codec/Socket Exception at ", channel.remoteAddress(), ": ", cause.getLocalizedMessage());
-                channel.close();
+                channel.close().addListener(MiscellaneousUtil.exceptionListener());
                 return;
             }
             WListServer.logger.log(HLogLevel.ERROR, "Exception at ", channel.remoteAddress(), ": ", cause);

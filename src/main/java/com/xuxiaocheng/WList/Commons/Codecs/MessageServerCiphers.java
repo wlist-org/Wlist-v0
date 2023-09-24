@@ -5,6 +5,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.Rust.NetworkTransmission;
+import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -35,7 +36,7 @@ public class MessageServerCiphers extends MessageToMessageCodec<ByteBuf, ByteBuf
     @Override
     protected void decode(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg, final @NotNull List<@NotNull Object> out) {
         if (this.error) {
-            ctx.channel().close();
+            ctx.close().addListener(MiscellaneousUtil.exceptionListener());
             return;
         }
         if (!this.initialized.get()) {
@@ -63,7 +64,7 @@ public class MessageServerCiphers extends MessageToMessageCodec<ByteBuf, ByteBuf
     @Override
     protected void encode(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg, final @NotNull List<@NotNull Object> out) {
         if (this.error) {
-            ctx.channel().close();
+            ctx.close().addListener(MiscellaneousUtil.exceptionListener());
             return;
         }
         assert this.aesKeyPair != null;

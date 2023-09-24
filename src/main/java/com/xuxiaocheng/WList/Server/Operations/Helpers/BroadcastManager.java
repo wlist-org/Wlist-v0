@@ -6,6 +6,7 @@ import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
+import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.User.UserInformation;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupInformation;
@@ -58,7 +59,7 @@ public final class BroadcastManager {
         } finally {
             prefix.release();
         }
-        return BroadcastManager.broadcastGroup.writeAndFlush(buffer);
+        return BroadcastManager.broadcastGroup.writeAndFlush(buffer).addListener(MiscellaneousUtil.exceptionListener());
     }
 
     public static void broadcastUser(final @NotNull String sender, final @NotNull String message) {
@@ -67,7 +68,7 @@ public final class BroadcastManager {
             ByteBufIOUtil.writeBoolean(buffer, true);
             ByteBufIOUtil.writeUTF(buffer, sender);
             ByteBufIOUtil.writeUTF(buffer, message);
-            BroadcastManager.broadcastGroup.writeAndFlush(buffer.retain());
+            BroadcastManager.broadcastGroup.writeAndFlush(buffer.retain()).addListener(MiscellaneousUtil.exceptionListener());
         } catch (final IOException exception) {
             HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, exception);
         } finally {

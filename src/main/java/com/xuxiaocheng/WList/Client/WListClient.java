@@ -6,6 +6,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.Rust.NetworkTransmission;
 import com.xuxiaocheng.WList.Commons.Codecs.MessageClientCiphers;
+import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
@@ -120,7 +121,7 @@ public class WListClient implements WListClientInterface {
         final Channel channel = this.channel.uninitializeNullable();
         if (channel == null)
             return;
-        channel.close().addListener(f -> this.clientEventLoop.shutdownGracefully());
+        channel.close().addListener(MiscellaneousUtil.exceptionListener()).addListener(f -> this.clientEventLoop.shutdownGracefully());
     }
 
     @Override
@@ -158,7 +159,7 @@ public class WListClient implements WListClientInterface {
         @Override
         public void exceptionCaught(final @NotNull ChannelHandlerContext ctx, final @NotNull Throwable cause) {
             WListClient.logger.log(HLogLevel.FAULT, "Uncaught exception. thread: ", Thread.currentThread().getName(), cause);
-            ctx.close();
+            ctx.close().addListener(MiscellaneousUtil.exceptionListener());
         }
     }
 

@@ -6,7 +6,9 @@ import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.Rust.NetworkTransmission;
+import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageCodec;
 import org.jetbrains.annotations.NotNull;
@@ -37,7 +39,7 @@ public class MessageClientCiphers extends MessageToMessageCodec<ByteBuf, ByteBuf
     public void channelActive(final @NotNull ChannelHandlerContext ctx) {
         final Pair.ImmutablePair<NetworkTransmission.RsaPrivateKey, ByteBuf> pair = NetworkTransmission.clientStartInJava();
         this.rsaPrivateKey = pair.getFirst();
-        ctx.writeAndFlush(pair.getSecond());
+        ctx.writeAndFlush(pair.getSecond()).addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
     }
 
     @Override
@@ -60,7 +62,7 @@ public class MessageClientCiphers extends MessageToMessageCodec<ByteBuf, ByteBuf
                 assert this.rsaPrivateKey != null;
                 final UnionPair<NetworkTransmission.AesKeyPair, UnionPair<String, String>> pair = NetworkTransmission.clientCheck(this.rsaPrivateKey, msg, MessageClientCiphers.application);
                 if (pair == null)
-                    throw new IllegalTargetServerException();
+                    throw new IllegalTargetServerException("Not tcp with 'network_transmission'.");
                 if (pair.isFailure())
                     if (pair.getE().isFailure())
                         throw new IllegalServerVersionException(NetworkTransmission.CipherVersion, pair.getE().getE());
@@ -70,7 +72,7 @@ public class MessageClientCiphers extends MessageToMessageCodec<ByteBuf, ByteBuf
                 this.aesKeyPair = pair.getT();
             } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable throwable) {
                 this.error.set(throwable);
-                ctx.close();
+                ctx.close().addListener(MiscellaneousUtil.exceptionListener());
             }
             synchronized (this.initialized) {
                 this.initialized.set(true);
