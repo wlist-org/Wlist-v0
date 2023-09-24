@@ -11,7 +11,7 @@ public final class IdsHelper {
         super();
     }
 
-    public static final @NotNull EventExecutorGroup CleanerExecutors = new DefaultEventExecutorGroup(2, new DefaultThreadFactory("CleanerExecutors"));
+    public static final @NotNull EventExecutorGroup CleanerExecutors = new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors(), new DefaultThreadFactory("CleanerExecutors"));
 
     public static @NotNull String randomTimerId() {
         return Long.toString(System.currentTimeMillis(), 36) + HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, HRandomHelper.AnyWords);

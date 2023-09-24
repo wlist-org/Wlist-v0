@@ -17,7 +17,7 @@ public abstract class AbstractIdBaseSharer<C extends StorageConfiguration> imple
     public void initialize(final @NotNull C configuration) throws Exception {
 //        final SqlDatabaseInterface database = SqlDatabaseManager.quicklyOpen(StorageManager.getStorageDatabaseFile(configuration.getName()));
 //        FileManager.quicklyInitialize(configuration.getName(), database, configuration.getRootDirectoryId(), null);
-//        this.configuration.reinitialize(configuration);
+        this.configuration.reinitialize(configuration);
 //        this.manager.reinitialize(FileManager.getInstance(configuration.getName()));
 //        final FileInformation information = this.manager.getInstance().selectFile(this.configuration.getInstance().getRootDirectoryId(), true, null);
 //        assert information != null;

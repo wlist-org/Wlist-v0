@@ -14,6 +14,7 @@ import com.xuxiaocheng.WList.Server.Storage.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
+import com.xuxiaocheng.WList.Server.Util.IdsHelper;
 import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -76,6 +77,7 @@ public class TempTest {
             WListServer.IOExecutors.shutdownGracefully();
             BackgroundTaskManager.BackgroundExecutors.shutdownGracefully();
             HttpNetworkHelper.CountDownExecutors.shutdownGracefully();
+            IdsHelper.CleanerExecutors.shutdownGracefully();
         }
     }
 }

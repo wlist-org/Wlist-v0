@@ -18,6 +18,7 @@ import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
+import com.xuxiaocheng.WList.Server.Util.IdsHelper;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WListTest.StaticLoader;
 import org.jetbrains.annotations.NotNull;
@@ -53,12 +54,12 @@ public class ServerWrapper {
         ConstantManager.quicklyInitialize(database, "initialize");
         UserGroupManager.quicklyInitialize(database, "initialize");
         UserManager.quicklyInitialize(database, "initialize");
-        StorageManager.initialize(new File("run/configs"),
+        StorageManager.initialize(new File(ServerWrapper.runtimeDirectory, "configs"),
                 new File(ServerWrapper.runtimeDirectory, "caches"));
         WListServer.getInstance().start(ServerConfiguration.get().port());
         final SocketAddress address = WListServer.getInstance().getAddress().getInstance();
         ServerWrapper.AdminPassword.initialize(Objects.requireNonNull(UserManager.getInstance().getAndDeleteDefaultAdminPassword()));
-        ServerWrapper.Password.initialize(PasswordGuard.generateRandomPassword());
+        ServerWrapper.Password.reinitialize(PasswordGuard.generateRandomPassword());
 
         ClientConfiguration.initialize(null);
         WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
@@ -75,6 +76,7 @@ public class ServerWrapper {
         WListServer.IOExecutors.shutdownGracefully();
         BackgroundTaskManager.BackgroundExecutors.shutdownGracefully();
         HttpNetworkHelper.CountDownExecutors.shutdownGracefully();
+        IdsHelper.CleanerExecutors.shutdownGracefully();
     }
 
     public static @NotNull Stream<WListClientInterface> client() throws IOException, InterruptedException {

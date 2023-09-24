@@ -269,7 +269,8 @@ public final class OperateFilesHandler {
             final DownloadRequirements requirements = p.getT().getT();
             final String id = DownloadIdHelper.generateId(requirements);
             HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Signed download requirements id.", ServerHandler.user(null, user.getT()),
-                    ParametersMap.create().add("file", file).add("from", from).add("to", to).add("id", id));
+                    ParametersMap.create().add("file", file).add("from", from).add("to", to).add("id", id)
+                            .add("acceptedRange", requirements.acceptedRange()).add("downloadingSize", requirements.downloadingSize()));
             WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> requirements.dumpConfirm(buf, id)));
         });
     };

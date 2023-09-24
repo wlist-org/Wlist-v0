@@ -110,14 +110,13 @@ public class LanzouSharer extends AbstractIdBaseSharer<LanzouConfiguration> {
                 javaScript.add(js);
             }
         }
-        final String ajaxUrl;
         final Map<String, Object> ajaxData;
         try {
             final Map<String, Object> ajax = JavaScriptUtil.extraOnlyAjaxData(javaScript);
             if (ajax == null)
                 throw new IOException("Null ajax.");
             assert "post".equals(ajax.get("type"));
-            ajaxUrl = (String) ajax.get("url");
+            assert "/ajaxm.php".equals(ajax.get("url"));
             ajaxData = (Map<String, Object>) ajax.get("data");
         } catch (final JavaScriptUtil.ScriptException exception) {
             throw new IOException("Failed to run share page java scripts." + parametersMap, exception);
@@ -125,7 +124,7 @@ public class LanzouSharer extends AbstractIdBaseSharer<LanzouConfiguration> {
         final FormBody.Builder builder = new FormBody.Builder();
         for (final Map.Entry<String, Object> entry: ajaxData.entrySet())
             builder.add(entry.getKey(), entry.getValue().toString());
-        final JSONObject json = LanzouSharer.requestJson(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin.newBuilder().addPathSegment(ajaxUrl).build(), "POST"), builder);
+        final JSONObject json = LanzouSharer.requestJson(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin.newBuilder().addPathSegment("ajaxm.php").build(), "POST"), builder);
         final int code = json.getIntValue("zt", -1);
         if (code != 1)
             throw new IllegalResponseCodeException(code, json.getString("inf"), parametersMap.add("json", json));
@@ -133,10 +132,11 @@ public class LanzouSharer extends AbstractIdBaseSharer<LanzouConfiguration> {
         final String para = json.getString("url");
         if (dom == null || para == null)
             return null;
-        final HttpUrl displayUrl = dom.newBuilder().addPathSegment("file").addPathSegment("?" + para).build();
+        //noinspection StringConcatenationMissingWhitespace
+        final HttpUrl displayUrl = Objects.requireNonNull(HttpUrl.parse(dom + "file/" + para));
         final String redirectPage;
         try (final Response response = HttpNetworkHelper.getWithParameters(HttpNetworkHelper.DefaultNoRedirectHttpClient, Pair.ImmutablePair.makeImmutablePair(displayUrl, "GET"), LanzouProvider.Headers, null).execute()) {
-            if (response.code() == 302) {
+            if (response.isRedirect()) {
                 final String finalUrl = response.header("Location");
                 assert finalUrl != null;
                 return Pair.ImmutablePair.makeImmutablePair(Objects.requireNonNull(HttpUrl.parse(finalUrl)), null);

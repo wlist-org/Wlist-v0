@@ -19,6 +19,7 @@ import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
+import com.xuxiaocheng.WList.Server.Util.IdsHelper;
 import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 
@@ -178,12 +179,13 @@ public final class WList {
     @SuppressWarnings("unchecked")
     private static @NotNull CountDownLatch shutdownAllExecutors() {
         WList.logger.log(HLogLevel.FINE, "Shutting down the whole application...");
-        final CountDownLatch latch = new CountDownLatch(5);
+        final CountDownLatch latch = new CountDownLatch(6);
         WListServer.CodecExecutors.shutdownGracefully().addListeners(f -> latch.countDown());
         WListServer.ServerExecutors.shutdownGracefully().addListeners(f -> latch.countDown());
         WListServer.IOExecutors.shutdownGracefully().addListeners(f -> latch.countDown());
         BackgroundTaskManager.BackgroundExecutors.shutdownGracefully().addListeners(f -> latch.countDown());
         HttpNetworkHelper.CountDownExecutors.shutdownGracefully().addListeners(f -> latch.countDown());
+        IdsHelper.CleanerExecutors.shutdownGracefully().addListeners(f -> latch.countDown());
         return latch;
     }
 }

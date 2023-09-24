@@ -82,8 +82,10 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     @Override
     protected void loginIfNot() throws IOException, IllegalParametersException {
         final LanzouConfiguration configuration = this.configuration.getInstance();
-        if (configuration.getToken() != null && configuration.getTokenExpire() != null && !MiscellaneousUtil.now().isAfter(configuration.getTokenExpire()))
+        if (configuration.getToken() != null && configuration.getTokenExpire() != null && !MiscellaneousUtil.now().isAfter(configuration.getTokenExpire())) {
+            this.headerWithToken = LanzouProvider.Headers.newBuilder().set("cookie", "phpdisk_info=" + configuration.getToken()).build();
             return;
+        }
         { // Quicker response.
             if (configuration.getPassport().isEmpty() || !ProviderUtil.PhoneNumberPattern.matcher(configuration.getPassport()).matches())
                 throw new IllegalParametersException("Invalid passport.", ParametersMap.create().add("configuration", configuration));
@@ -115,7 +117,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         }
         if (token == null || uid == null)
             throw new IllegalParametersException("No token/uid receive.", ParametersMap.create().add("configuration", configuration).add("cookies", cookies));
-        this.headerWithToken = LanzouProvider.Headers.newBuilder().set("cookie", "phpdisk_info=" + configuration.getToken()).build();
+        this.headerWithToken = LanzouProvider.Headers.newBuilder().set("cookie", "phpdisk_info=" + token.getValue()).build();
         configuration.setNickname(configuration.getPassport());
         configuration.setVip(false); // TODO: nickname and vip.
         configuration.setUid(Long.parseLong(uid.getValue()));
@@ -125,12 +127,19 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         LanzouProvider.logger.log(HLogLevel.LESS, "Logged in.", ParametersMap.create().add("storage", configuration.getName()).add("passport", configuration.getPassport()));
     }
 
-    protected @NotNull JSONObject task(final int type, final FormBody.@NotNull Builder request, final @Nullable Integer zt) throws IOException {
+    protected @NotNull JSONObject task(final int type, final FormBody.@NotNull Builder request, final @Nullable Integer zt, final boolean loginFlag) throws IOException, IllegalParametersException {
         final LanzouConfiguration configuration = this.configuration.getInstance();
         final Map<String, String> parameters = new HashMap<>();
         parameters.put("uid", String.valueOf(configuration.getUid()));
-        request.add("task", String.valueOf(type));
+        if (!loginFlag)
+            request.add("task", String.valueOf(type));
         final JSONObject json = HttpNetworkHelper.extraJsonResponseBody(HttpNetworkHelper.postWithParametersAndBody(configuration.getHttpClient(), LanzouProvider.TaskURL, this.headerWithToken, parameters, request.build()).execute());
+        if (!loginFlag && json.getIntValue("zt", 0) == 9) { // login not.
+            this.getConfiguration().setToken(null);
+            this.getConfiguration().setTokenExpire(null);
+            this.loginIfNot();
+            return this.task(type, request, zt, true);
+        }
         if (zt != null) {
             final Integer code = json.getInteger("zt");
             if (code == null || code.intValue() != zt.intValue())
@@ -140,11 +149,11 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         return json;
     }
 
-    protected @Nullable @Unmodifiable List<@NotNull FileInformation> listAllDirectory(final long directoryId) throws IOException {
+    protected @Nullable @Unmodifiable List<@NotNull FileInformation> listAllDirectory(final long directoryId) throws IOException, IllegalParametersException {
         final LanzouConfiguration configuration = this.configuration.getInstance();
         final FormBody.Builder filesBuilder = new FormBody.Builder()
                 .add("folder_id", String.valueOf(directoryId));
-        final JSONObject json = this.task(47, filesBuilder, null);
+        final JSONObject json = this.task(47, filesBuilder, null, false);
         final Integer code = json.getInteger("zt");
         if (code == null || (code.intValue() != 1 && code.intValue() != 2))
             throw new IllegalResponseCodeException(code == null ? -1 : code.intValue(), json.getString("info") == null ? json.getString("text") : json.getString("info"),
@@ -172,11 +181,11 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         return list;
     }
 
-    protected @Nullable Triad.ImmutableTriad<@NotNull HttpUrl, @NotNull String, @Nullable String> getFileShareUrl(final long fileId) throws IOException {
+    protected @Nullable Triad.ImmutableTriad<@NotNull HttpUrl, @NotNull String, @Nullable String> getFileShareUrl(final long fileId) throws IOException, IllegalParametersException {
         final LanzouConfiguration configuration = this.configuration.getInstance();
         final FormBody.Builder sharerBuilder = new FormBody.Builder()
                 .add("file_id", String.valueOf(fileId));
-        final JSONObject json = this.task(22, sharerBuilder, 1);
+        final JSONObject json = this.task(22, sharerBuilder, 1, false);
         final JSONObject info = json.getJSONObject("info");
         if (info == null)
             throw new WrongResponseException("Getting share url.", json, ParametersMap.create().add("configuration", configuration).add("fileId", fileId));
@@ -189,12 +198,12 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         return Triad.ImmutableTriad.makeImmutableTriad(domin, identifier, hasPwd.booleanValue() ? pwd : null);
     }
 
-    protected @NotNull @Unmodifiable Set<@NotNull FileInformation> listFilesInPage(final long directoryId, final int page) throws IOException, InterruptedException {
+    protected @NotNull @Unmodifiable Set<@NotNull FileInformation> listFilesInPage(final long directoryId, final int page) throws IOException, InterruptedException, IllegalParametersException {
         final LanzouConfiguration configuration = this.configuration.getInstance();
         final FormBody.Builder builder = new FormBody.Builder()
                 .add("folder_id", String.valueOf(directoryId))
                 .add("pg", String.valueOf(page));
-        final JSONObject files = this.task(5, builder, 1);
+        final JSONObject files = this.task(5, builder, 1, false);
         final JSONArray infos = files.getJSONArray("text");
         if (infos == null)
             throw new WrongResponseException("Listing files.", files, ParametersMap.create().add("configuration", configuration).add("directoryId", directoryId).add("page", page));
@@ -235,7 +244,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     @Override
-    protected @Nullable Iterator<@NotNull FileInformation> list0(final long directoryId) throws IOException {
+    protected @Nullable Iterator<@NotNull FileInformation> list0(final long directoryId) throws IOException, IllegalParametersException {
         final List<FileInformation> directories = this.listAllDirectory(directoryId);
         if (directories == null) return null;
         return ProviderUtil.wrapSuppliersInPages(page -> {
@@ -249,7 +258,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     @Override
-    protected @NotNull UnionPair<FileInformation, Boolean> update0(@NotNull final FileInformation oldInformation) throws IOException {
+    protected @NotNull UnionPair<FileInformation, Boolean> update0(@NotNull final FileInformation oldInformation) throws IOException, IllegalParametersException {
         if (oldInformation.createTime() != null || oldInformation.isDirectory())
             return AbstractIdBaseProvider.UpdateNoRequired;
         final HttpUrl url;
@@ -295,11 +304,11 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     @Override
-    protected void trash0(final @NotNull FileInformation information) throws IOException {
+    protected void trash0(final @NotNull FileInformation information) throws IOException, IllegalParametersException {
         if (information.isDirectory()) {
             final FormBody.Builder builder = new FormBody.Builder()
                     .add("folder_id", String.valueOf(information.id()));
-            final JSONObject json = this.task(3, builder, 1);
+            final JSONObject json = this.task(3, builder, 1, false);
             final String message = json.getString("info");
             if (!"\u5220\u9664\u6210\u529F".equals(message))
                 LanzouProvider.logger.log(HLogLevel.WARN, new WrongResponseException("Trashing directory.", message, ParametersMap.create()
@@ -307,7 +316,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         } else {
             final FormBody.Builder builder = new FormBody.Builder()
                     .add("file_id", String.valueOf(information.id()));
-            final JSONObject json = this.task(6, builder, 1);
+            final JSONObject json = this.task(6, builder, 1, false);
             final String message = json.getString("info");
             if (!"\u5DF2\u5220\u9664".equals(message))
                 LanzouProvider.logger.log(HLogLevel.WARN, new WrongResponseException("Trashing file.", message, ParametersMap.create()
@@ -316,7 +325,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     @Override
-    protected void download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) throws Exception {
+    protected void download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) throws IOException, IllegalParametersException {
         final HttpUrl url;
         final String id, pwd;
         if (information.others() == null) {

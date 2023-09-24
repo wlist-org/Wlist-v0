@@ -142,7 +142,7 @@ public final class RootSelector {
 
     public static void download(final @NotNull FileLocation file, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer) throws Exception {
         try {
-            if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(location.storage())) {
+            if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(file.storage())) {
                 consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(file))));
                 return;
             }
