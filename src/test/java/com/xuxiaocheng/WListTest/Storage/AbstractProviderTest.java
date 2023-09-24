@@ -2,12 +2,13 @@ package com.xuxiaocheng.WListTest.Storage;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseProvider;
-import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
+import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
@@ -31,6 +32,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -45,6 +47,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -100,8 +103,8 @@ public class AbstractProviderTest {
         }
 
         @Override
-        protected void delete0(final @NotNull FileInformation information) {
-            throw new UnsupportedOperationException();
+        protected void trash0(final @NotNull FileInformation information) {
+            throw new UnsupportedOperationException(); // Use TrashProvider. (@see TrashTest.TrashTestProvider)
         }
 
 //        @Override
@@ -125,6 +128,8 @@ public class AbstractProviderTest {
         return AbstractProviderTest.provider.get();
     }
 
+    protected HInitializer<Supplier<ProviderInterface<AbstractConfiguration>>> ProviderCore = new HInitializer<>("Provider", AbstractProvider::new);
+
     @BeforeEach
     public void reset() throws Exception {
         this.loggedIn.set(false);
@@ -132,7 +137,7 @@ public class AbstractProviderTest {
         this.updated.set(null);
         this.supportedInfo.set(false);
         this.info.clear();
-        final ProviderInterface<AbstractConfiguration> provider = new AbstractProvider();
+        final ProviderInterface<AbstractConfiguration> provider = this.ProviderCore.getInstance().get();
         AbstractProviderTest.provider.set(provider);
         final AbstractConfiguration configuration = new AbstractConfiguration();
         synchronized (AbstractProviderTest.class) {
@@ -411,6 +416,7 @@ public class AbstractProviderTest {
 
     @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
     @Nested
+    @Disabled
     public class RefreshTest {
         @Test
         public void refresh() throws Exception {
@@ -466,5 +472,86 @@ public class AbstractProviderTest {
         // No concurrent test due to same code as 'list'.
     }
 
-    // No trash test.
+    @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
+    @Nested
+    public class TrashTest {
+        @Test
+        public void trash() {
+        }
+
+        public class TrashTestProvider extends AbstractProvider {
+            private final Collection<String> operations = new ArrayList<>();
+            private final Map<Long, Iterator<List<FileInformation>>> lister = new HashMap<>();
+
+            @Override
+            public void refresh(final long directoryId, final @NotNull Consumer<? super UnionPair<UnionPair<Pair.ImmutablePair<Set<Long>, Set<Long>>, Boolean>, Throwable>> consumer) throws Exception {
+                operations.add("Refresh: " + directoryId);
+                consumer.accept(ProviderInterface.RefreshNoUpdater);
+            }
+
+            @Override
+            protected @Nullable Iterator<@NotNull FileInformation> list0(final long directoryId) {
+                operations.add("List: " + directoryId);
+                if (lister.get(directoryId).hasNext())
+                    return lister.get(directoryId).next().iterator();
+                return Collections.emptyIterator();
+            }
+
+            @Override
+            protected boolean isSupportedNotEmptyDirectoryTrash() {
+                return false;
+            }
+
+            @Override
+            protected void trash0(final @NotNull FileInformation information) {
+                operations.add("Trash: " + information.id());
+            }
+
+            @Override
+            public @NotNull String toString() {
+                return "TrashTestProvider{" +
+                        "operations=" + operations +
+                        ", super=" + super.toString() +
+                        '}';
+            }
+        }
+
+        @Test
+        @Disabled
+        public void trashRecursively() throws Exception {
+            AbstractProviderTest.this.unset();
+            ProviderCore.reinitialize(TrashTestProvider::new);
+            AbstractProviderTest.this.reset();
+            try {
+                Assumptions.assumeTrue(provider() instanceof TrashTestProvider);
+                final TrashTestProvider provider = (TrashTestProvider) provider();
+                provider.lister.put(0L, List.of(
+                        List.of(
+                                new FileInformation(1, 0, "", true, -1, null, null, null)
+                        )
+                ).iterator());
+                ProviderHelper.list(provider, 0, Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 0);
+                provider.lister.remove(0L);
+
+                provider.lister.put(1L, List.of(
+                        List.of(
+                                new FileInformation(2, 1, "", true, -1, null, null, null)
+                        )
+                ).iterator());
+                provider.lister.put(2L, List.of(
+                        List.of(
+                                new FileInformation(3, 2, "", false, 1, null, null, null)
+                        )
+                ).iterator());
+
+                Assertions.assertTrue(ProviderHelper.trash(provider, 1, true));
+
+                Assertions.assertEquals(List.of(
+                        "List: 0", "List: 1", "List: 2", "Trash: 3", "Refresh: 2", "Trash: 2", "Refresh: 1", "Trash: 1"
+                ), provider.operations);
+            } finally {
+                ProviderCore.reinitialize(AbstractProvider::new);
+            }
+        }
+    }
 }

@@ -95,4 +95,20 @@ public final class ProviderHelper {
         Assertions.assertEquals(directories, pair.getSecond());
     }
 
+    public static boolean trash(final @NotNull ProviderInterface<?> provider, final long id, final boolean isDirectory) throws Exception {
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<UnionPair<Boolean, Throwable>> result = new AtomicReference<>();
+        provider.trash(id, isDirectory, p -> {
+            result.set(p);
+            latch.countDown();
+        });
+        latch.await();
+        if (result.get().isFailure()) {
+            final Throwable throwable = result.get().getE();
+            if (throwable instanceof Exception exception)
+                throw exception;
+            throw (Error) throwable;
+        }
+        return result.get().getT().booleanValue();
+    }
 }

@@ -290,7 +290,7 @@ public class FileSqliteHelper implements FileSqlInterface {
                     if (!result.next())
                         throw new IllegalStateException("No such directory." + ParametersMap.create().add("directoryId", directoryId).add("delta", delta));
                     size = result.getLong("size");
-                    parentId = result.getLong("parent_id");
+                    parentId = FileSqliteHelper.getRealId(result.getLong("parent_id"));
                 }
             }
             if (size >= 0) {

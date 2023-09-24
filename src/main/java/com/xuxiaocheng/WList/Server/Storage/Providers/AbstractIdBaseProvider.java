@@ -1,10 +1,13 @@
 package com.xuxiaocheng.WList.Server.Storage.Providers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMultiRunHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
+import com.xuxiaocheng.HeadLibs.Logger.HLog;
+import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
@@ -29,6 +32,8 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -293,22 +298,117 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
             BackgroundTaskManager.onFinally(identifier, () -> consumer.accept(ProviderInterface.RefreshNoUpdater));
     }
 
+    @Contract(pure = true)
+    protected boolean isSupportedNotEmptyDirectoryTrash() {
+        return true;
+    }
     /**
-     * Delete file/directory.
+     * Trash file/directory.
      */
-    protected abstract void delete0(final @NotNull FileInformation information) throws Exception;
+    protected abstract void trash0(final @NotNull FileInformation information) throws Exception;
 
-    @Override
+    @Override // TODO: delete root.
     public void trash(final long id, final boolean isDirectory, final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) throws Exception {
         final FileInformation information = this.manager.getInstance().selectInfo(id, isDirectory, null);
         if (information == null) {
             consumer.accept(ProviderInterface.TrashNotAvailable);
             return;
         }
-        this.loginIfNot();
-        this.delete0(information);
-        this.manager.getInstance().deleteFileOrDirectory(id, isDirectory, null);
-        consumer.accept(ProviderInterface.TrashSuccess);
+        if (!isDirectory || this.isSupportedNotEmptyDirectoryTrash()) {
+            this.loginIfNot();
+            this.trash0(information);
+            this.manager.getInstance().deleteFileOrDirectory(id, isDirectory, null);
+            consumer.accept(ProviderInterface.TrashSuccess);
+            return;
+        }
+        if (id == this.getConfiguration().getRootDirectoryId()) {
+            consumer.accept(ProviderInterface.TrashNotAvailable);
+            return;
+        }
+        this.trashInside(information, false, consumer);
+    }
+
+    private void trashInside(final @NotNull FileInformation parent, final boolean refreshed, final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) throws Exception {
+        if (!parent.isDirectory()) {
+            this.loginIfNot();
+            this.trash0(parent);
+            this.manager.getInstance().deleteFile(parent.id(), null);
+            consumer.accept(ProviderInterface.TrashSuccess);
+            return;
+        }
+        final AtomicBoolean barrier = new AtomicBoolean(true);
+        this.list(parent.id(), Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 50, p -> {
+            if (!barrier.compareAndSet(true, false)) {
+                HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'trashInside#list'." + ParametersMap.create()
+                        .add("p", p).add("parent", parent).add("refreshed", refreshed)));
+                return;
+            }
+            try {
+                if (p.isFailure()) {
+                    consumer.accept(UnionPair.fail(p.getE()));
+                    return;
+                }
+                if (p.getT().isFailure()) {
+                    consumer.accept(ProviderInterface.TrashSuccess);
+                    return;
+                }
+                if (p.getT().getT().total() == 0) {
+                    if (refreshed) {
+                        this.loginIfNot();
+                        this.trash0(parent);
+                        this.manager.getInstance().deleteDirectoryRecursively(parent.id(), null);
+                        consumer.accept(ProviderInterface.TrashSuccess);
+                        return;
+                    }
+                    final AtomicBoolean barrier1 = new AtomicBoolean(true);
+                    this.refresh(parent.id(), u -> {
+                        if (!barrier1.compareAndSet(true, false)) {
+                            HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'trashInside#refresh'." + ParametersMap.create()
+                                    .add("u", u).add("parent", parent)));
+                            return;
+                        }
+                        try {
+                            if (u.isFailure()) {
+                                consumer.accept(UnionPair.fail(p.getE()));
+                                return;
+                            }
+                            if (u.getT().isFailure()) {
+                                consumer.accept(ProviderInterface.TrashSuccess);
+                                return;
+                            }
+                            this.trashInside(parent, true, consumer);
+                        } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                            consumer.accept(UnionPair.fail(exception));
+                        }
+                    });
+                    return;
+                }
+                final AtomicLong total = new AtomicLong(p.getT().getT().informationList().size());
+                for (final FileInformation info: p.getT().getT().informationList()) {
+                    final AtomicBoolean barrier2 = new AtomicBoolean(true);
+                    this.trashInside(info, false, u -> {
+                        if (!barrier2.compareAndSet(true, false)) {
+                            HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'trashInside#recursively'." + ParametersMap.create()
+                                    .add("u", u).add("parent", parent).add("info", info)));
+                            return;
+                        }
+                        final boolean last = total.decrementAndGet() == 0;
+                        try {
+                            if (u.isFailure()) {
+                                consumer.accept(UnionPair.fail(u.getE()));
+                                return;
+                            }
+                            if (last)
+                                this.trashInside(parent, false, consumer);
+                        } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                            consumer.accept(UnionPair.fail(exception));
+                        }
+                    });
+                }
+            } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                consumer.accept(UnionPair.fail(exception));
+            }
+        });
     }
 
 //    /**
