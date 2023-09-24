@@ -47,6 +47,41 @@ public final class OperateFilesHelper {
         }
     }
 
+    public static @Nullable VisibleFileInformation getFileOrDirectory(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation location, final boolean isDirectory) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.GetFileOrDirectory, token);
+        location.dump(send);
+        ByteBufIOUtil.writeBoolean(send, isDirectory);
+        OperateHelper.logOperating(OperationType.GetFileOrDirectory, token, p -> p.add("location", location).add("isDirectory", isDirectory));
+        final ByteBuf receive = client.send(send);
+        try {
+            final String reason = OperateHelper.handleState(receive);
+            if (reason == null) {
+                final VisibleFileInformation information = VisibleFileInformation.parse(receive);
+                OperateHelper.logOperated(OperationType.GetFileOrDirectory, OperateHelper.logReason(null).andThen(p -> p.add("information", information)));
+                return information;
+            }
+            OperateHelper.logOperated(OperationType.GetFileOrDirectory, OperateHelper.logReason(reason));
+            return null;
+        } finally {
+            receive.release();
+        }
+    }
+
+    public static boolean refreshDirectory(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation location) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.RefreshDirectory, token);
+        location.dump(send);
+        OperateHelper.logOperating(OperationType.RefreshDirectory, token, p -> p.add("location", location));
+        return OperateHelper.booleanOperation(client, send, OperationType.RefreshDirectory);
+    }
+
+    public static boolean trashFileOrDirectory(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation location, final boolean isDirectory) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.TrashFileOrDirectory, token);
+        location.dump(send);
+        ByteBufIOUtil.writeBoolean(send, isDirectory);
+        OperateHelper.logOperating(OperationType.TrashFileOrDirectory, token, p -> p.add("location", location).add("isDirectory", isDirectory));
+        return OperateHelper.booleanOperation(client, send, OperationType.TrashFileOrDirectory);
+    }
+
 //    public static @NotNull UnionPair<@NotNull VisibleFileInformation, @NotNull FailureReason> createDirectory(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
 //        final ByteBuf send = OperateHelper.operateWithToken(OperationType.CreateDirectory, token);
 //        FileLocation.dump(send, parentLocation);
@@ -65,21 +100,6 @@ public final class OperateFilesHelper {
 //            final String reason = ByteBufIOUtil.readUTF(receive);
 //            OperateHelper.logOperated(OperationType.CreateDirectory, () -> ParametersMap.create().add("success", false).add("reason", reason));
 //            return UnionPair.fail(OperateFilesHelper.handleFailureReason(reason));
-//        } finally {
-//            receive.release();
-//        }
-//    }
-//
-//    public static boolean deleteFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation fileLocation) throws IOException, InterruptedException, WrongStateException {
-//        final ByteBuf send = OperateHelper.operateWithToken(OperationType.DeleteFile, token);
-//        FileLocation.dump(send, fileLocation);
-//        OperateHelper.logOperating(OperationType.DeleteFile, () -> ParametersMap.create().add("tokenHash", token.hashCode())
-//                .add("fileLocation", fileLocation));
-//        final ByteBuf receive = client.send(send);
-//        try {
-//            final boolean success = OperateHelper.handleState(receive);
-//            OperateHelper.logOperated(OperationType.DeleteFile, () -> ParametersMap.create().add("success", false));
-//            return success;
 //        } finally {
 //            receive.release();
 //        }

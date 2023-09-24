@@ -39,8 +39,8 @@ import java.util.function.Consumer;
 
 @SuppressWarnings("OverlyBroadThrowsClause")
 public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> implements ProviderInterface<C> {
-    protected @NotNull HInitializer<C> configuration = new HInitializer<>("ProviderConfiguration");
-    protected @NotNull HInitializer<FileManager> manager = new HInitializer<>("ProviderManager");
+    protected final @NotNull HInitializer<C> configuration = new HInitializer<>("ProviderConfiguration");
+    protected final @NotNull HInitializer<FileManager> manager = new HInitializer<>("ProviderManager");
 
     @Override
     public @NotNull C getConfiguration() {
@@ -307,7 +307,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
      */
     protected abstract void trash0(final @NotNull FileInformation information) throws Exception;
 
-    @Override // TODO: delete root.
+    @Override // TODO: delete root. // TODO: into recycler.
     public synchronized void trash(final long id, final boolean isDirectory, final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) throws Exception {
         final FileInformation information = this.manager.getInstance().selectInfo(id, isDirectory, null);
         if (information == null) {

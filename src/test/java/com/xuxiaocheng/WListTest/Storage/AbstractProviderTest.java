@@ -156,7 +156,7 @@ public class AbstractProviderTest {
 
     @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
     @Nested
-    @Disabled
+    @Disabled // Ok
     public class ListTest {
         public static Stream<List<FileInformation>> list() {
             return Stream.of(null,
@@ -328,7 +328,7 @@ public class AbstractProviderTest {
 
     @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
     @Nested
-    @Disabled
+    @Disabled // Ok
     public class InfoTest {
         @Test
         public void info() throws Exception {
@@ -418,7 +418,7 @@ public class AbstractProviderTest {
 
     @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
     @Nested
-    @Disabled
+    @Disabled // Ok
     public class RefreshTest {
         @Test
         public void refresh() throws Exception {
@@ -476,6 +476,7 @@ public class AbstractProviderTest {
 
     @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
     @Nested
+    @Disabled // Ok
     public class TrashTest {
         @Test
         public void trash() throws Exception {
@@ -572,4 +573,6 @@ public class AbstractProviderTest {
             }
         }
     }
+
+
 }

@@ -14,46 +14,6 @@ public final class DriverManager_lanzou {
 //        return UnionPair.ok(DriverUtil.toCachedDownloadMethods(DriverUtil.getDownloadMethodsByUrlWithRangeHeader(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(url.getFirst(), "GET"), url.getSecond(), info.size(), from, to, DriverHelper_lanzou.headers.newBuilder())));
 //    }
 //
-//    static void trash(final @NotNull LanzouConfiguration configuration, final @NotNull FileInformation information, final @Nullable String _connectionId, final @Nullable String _trashConnectionId) throws IOException, SQLException, InterruptedException {
-//        final AtomicReference<String> connectionId = new AtomicReference<>();
-//        final AtomicReference<String> trashConnectionId = new AtomicReference<>();
-//        try (final Connection connection = FileManager.getConnection(configuration.getName(), _connectionId, connectionId); final Connection trashConnection = TrashedFileManager.getConnection(configuration.getName(), _trashConnectionId, trashConnectionId)) {
-//            final ZonedDateTime time;
-//            if (information.isDirectory()) {
-//                Triad.ImmutableTriad<Long, Long, List<FileInformation>> list;
-//                do {
-//                    list = DriverManager_lanzou.listFiles(configuration, information.id(), Options.DirectoriesOrFiles.OnlyDirectories, DriverUtil.DefaultLimitPerRequestPage, 0, DriverUtil.DefaultOrderPolicy, DriverUtil.DefaultOrderDirection, connectionId.get());
-//                    if (list == null)
-//                        return;
-//                    for (final FileInformation f: list.getC())
-//                        DriverManager_lanzou.trash(configuration, f, connectionId.get(), trashConnectionId.get());
-//                } while (list.getB().longValue() > 0);
-//                do {
-//                    list = DriverManager_lanzou.listFiles(configuration, information.id(), Options.DirectoriesOrFiles.Both, DriverUtil.DefaultLimitPerRequestPage, 0, DriverUtil.DefaultOrderPolicy, DriverUtil.DefaultOrderDirection, connectionId.get());
-//                    if (list == null)
-//                        return;
-//                    final CountDownLatch latch = new CountDownLatch(list.getC().size());
-//                    for (final FileInformation f: list.getC())
-//                        CompletableFuture.runAsync(HExceptionWrapper.wrapRunnable(() ->
-//                                                DriverManager_lanzou.trash(configuration, f, connectionId.get(), trashConnectionId.get()),
-//                                latch::countDown), WListServer.IOExecutors).exceptionally(MiscellaneousUtil.exceptionHandler());
-//                    latch.await();
-//                } while (list.getA().longValue() > 0);
-//                time = MiscellaneousUtil.now();
-//                DriverHelper_lanzou.trashDirectories(configuration, information.id());
-//            } else {
-//                time = MiscellaneousUtil.now();
-//                DriverHelper_lanzou.trashFile(configuration, information.id());
-//            }
-//            FileManager.deleteFileRecursively(configuration.getName(), information.id(), connectionId.get());
-//            FileManager.calculateDirectorySizeRecursively(configuration.getName(), information.parentId(), connectionId.get());
-//            final TrashedFileInformation trashed = TrashedFileInformation.fromFileInformation(information, time, null);
-//            TrashedFileManager.insertOrUpdateFile(configuration.getName(), trashed, trashConnectionId.get());
-//            trashConnection.commit();
-//            connection.commit();
-//        }
-//    }
-//
 //    static @NotNull UnionPair<FileInformation, FailureReason> createDirectory(final @NotNull LanzouConfiguration configuration, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @Nullable String _connectionId) throws IOException, SQLException, InterruptedException {
 //        final AtomicReference<String> connectionId = new AtomicReference<>();
 //        try (final Connection connection = FileManager.getConnection(configuration.getName(), _connectionId, connectionId)) {

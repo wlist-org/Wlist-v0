@@ -34,7 +34,7 @@ public final class OperateProvidersHandler {
     /**
      * @see com.xuxiaocheng.WList.Client.Operations.OperateProvidersHelper#addProvider(WListClientInterface, String, String, StorageTypes, StorageConfiguration)
      */
-    public static final @NotNull ServerHandler doAddProvider = (channel, buffer) -> {
+    private static final @NotNull ServerHandler doAddProvider = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> operator = OperateSelfHandler.checkToken(token, UserPermission.ServerOperate, UserPermission.ProvidersOperate);
         final String name = ByteBufIOUtil.readUTF(buffer);
@@ -70,7 +70,7 @@ public final class OperateProvidersHandler {
     /**
      * @see com.xuxiaocheng.WList.Client.Operations.OperateProvidersHelper#removeProvider(WListClientInterface, String, String, boolean)
      */
-    public static final @NotNull ServerHandler doRemoveProvider = (channel, buffer) -> {
+    private static final @NotNull ServerHandler doRemoveProvider = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> operator = OperateSelfHandler.checkToken(token, UserPermission.ServerOperate, UserPermission.ProvidersOperate);
         final String name = ByteBufIOUtil.readUTF(buffer);

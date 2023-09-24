@@ -113,6 +113,9 @@ public final class OperateFilesHandler {
         });
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#getFileOrDirectory(WListClientInterface, String, FileLocation, boolean)
+     */
     public static final @NotNull ServerHandler doGetFileOrDirectory = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileDownload);
@@ -147,6 +150,9 @@ public final class OperateFilesHandler {
         });
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#refreshDirectory(WListClientInterface, String, FileLocation)
+     */
     public static final @NotNull ServerHandler doRefreshDirectory = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FilesRefresh);
@@ -184,6 +190,9 @@ public final class OperateFilesHandler {
         });
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#trashFileOrDirectory(WListClientInterface, String, FileLocation, boolean)
+     */
     public static final @NotNull ServerHandler doTrashFileOrDirectory = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileDelete);
