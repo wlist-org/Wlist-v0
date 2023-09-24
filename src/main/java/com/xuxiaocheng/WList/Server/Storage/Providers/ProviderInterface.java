@@ -5,11 +5,14 @@ import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Ranges.IntRange;
 import com.xuxiaocheng.HeadLibs.Ranges.LongRange;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
+import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
+import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -80,17 +83,17 @@ public interface ProviderInterface<C extends StorageConfiguration> {
      */
     void trash(final long id, final boolean isDirectory, final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) throws Exception;
 
+    /**
+     * Get download methods of a specific file.
+     * @param location Only by used to create {@code FailureReason}.
+     */
+    void download(final long fileId, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) throws Exception;
+
 //    /**
 //     * Create an empty directory.
 //     * @param parentLocation Only by used to create {@code FailureReason}.
 //     */
-//    @NotNull UnionPair<FileInformation, FailureReason> createDirectory(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy, final @NotNull FileLocation parentLocation) throws Exception;
-//
-//    /**
-//     * Get download methods of a specific file.
-//     * @param location Only by used to create {@code FailureReason}.
-//     */
-//    @NotNull UnionPair<DownloadRequirements, FailureReason> download(final long fileId, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @NotNull FileLocation location) throws Exception;
+//    void createDirectory(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws Exception;
 
 //    /**
 //     * Upload file.

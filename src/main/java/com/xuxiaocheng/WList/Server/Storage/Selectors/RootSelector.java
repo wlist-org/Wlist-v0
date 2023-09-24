@@ -11,8 +11,10 @@ import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
-import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
+import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
+import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import org.jetbrains.annotations.NotNull;
@@ -89,7 +91,7 @@ public final class RootSelector {
         }
     }
 
-    public static void info(final @NotNull FileLocation location, final boolean isDirectory, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<Pair.ImmutablePair<@NotNull FileInformation, @NotNull Boolean>, Boolean>, Throwable>> consumer) throws Exception {
+    public static void info(final @NotNull FileLocation location, final boolean isDirectory, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<Pair.ImmutablePair<@NotNull FileInformation, @NotNull Boolean>, Boolean>, Throwable>> consumer) {
         try {
             if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(location.storage()))
                 throw new UnsupportedOperationException("Cannot get root information.");
@@ -138,6 +140,23 @@ public final class RootSelector {
         }
     }
 
+    public static void download(final @NotNull FileLocation file, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer) throws Exception {
+        try {
+            if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(location.storage())) {
+                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(file))));
+                return;
+            }
+            final ProviderInterface<?> real = StorageManager.getProvider(file.storage());
+            if (real == null) {
+                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(file))));
+                return;
+            }
+            real.download(file.id(), from, to, consumer.andThen(RootSelector.dumper(real.getConfiguration())), file);
+        } catch (final Throwable exception) {
+            consumer.accept(UnionPair.fail(exception));
+        }
+    }
+
 //    public static @NotNull UnionPair<FileInformation, FailureReason> createDirectory(final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws Exception {
 //        final ProviderInterface<?> real = StorageManager.getProvider(parentLocation.storage());
 //        if (real == null)
@@ -151,19 +170,6 @@ public final class RootSelector {
 //        return directory;
 //    }
 //
-//    public static @NotNull UnionPair<DownloadRequirements, FailureReason> download(final @NotNull FileLocation file, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws Exception {
-//        final ProviderInterface<?> real = StorageManager.getProvider(file.storage());
-//        if (real == null)
-//            return UnionPair.fail(FailureReason.byNoSuchFile(file));
-//        final UnionPair<DownloadRequirements, FailureReason> methods;
-//        try {
-//            methods = real.download(file.id(), from, to, file);
-//        } finally {
-//            StorageManager.dumpConfigurationIfModified(real.getConfiguration());
-//        }
-//        return methods;
-//    }
-
 //    @Override
 //    public @NotNull UnionPair<UploadMethods, FailureReason> upload(final @NotNull FileLocation parentLocation, final @NotNull String filename, final @LongRange(minimum = 0) long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws Exception {
 //        if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(parentLocation.storage()))

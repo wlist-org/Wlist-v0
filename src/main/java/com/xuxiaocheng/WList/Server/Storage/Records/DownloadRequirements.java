@@ -47,18 +47,18 @@ public record DownloadRequirements(boolean acceptedRange, long downloadingSize, 
     }
 
     @FunctionalInterface
-    public interface OrderedNode extends Function<@NotNull Consumer<@NotNull UnionPair<ByteBuf, Exception>>, @Nullable OrderedNode> {
+    public interface OrderedNode extends Function<@NotNull Consumer<@NotNull UnionPair<ByteBuf, Throwable>>, @Nullable OrderedNode> {
     }
 
     public static final @NotNull DownloadRequirements EmptyDownloadRequirements = new DownloadRequirements(true, 0, () -> DownloadRequirements.EmptyDownloadMethods);
     public static final @NotNull DownloadMethods EmptyDownloadMethods = new DownloadMethods(List.of(), RunnableE.EmptyRunnable, null);
 
 
-    public static boolean isSupportedRange(final @NotNull Headers headers) {
+    private static boolean isSupportedRange(final @NotNull Headers headers) {
         return Objects.requireNonNullElse(headers.get("Accept-Ranges"), "").contains("bytes");
     }
 
-    public static @Nullable ZonedDateTime getExpireTime(final @Nullable ZonedDateTime expires, final @NotNull Headers headers) {
+    private static @Nullable ZonedDateTime getExpireTime(final @Nullable ZonedDateTime expires, final @NotNull Headers headers) {
         if (expires != null)
             return expires;
         final Instant instant = headers.getInstant("Expires"); // TODO: Expires?
@@ -102,7 +102,7 @@ public record DownloadRequirements(boolean acceptedRange, long downloadingSize, 
         return Pair.ImmutablePair.makeImmutablePair(urlHeaders, Triad.ImmutableTriad.makeImmutableTriad(size, start, end));
     }
 
-    public static @NotNull DownloadRequirements getDownloadMethodsByRangedUrl(final @NotNull OkHttpClient client, final @NotNull HttpUrl url, final @Nullable Headers testedResponseHeader, final @Nullable Long totalSize, final Headers.@Nullable Builder requestHeaderBuilder, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @Nullable ZonedDateTime expireTime) throws IOException {
+    private static @NotNull DownloadRequirements getDownloadMethodsByRangedUrl(final @NotNull OkHttpClient client, final @NotNull HttpUrl url, final @Nullable Headers testedResponseHeader, final @Nullable Long totalSize, final Headers.@Nullable Builder requestHeaderBuilder, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @Nullable ZonedDateTime expireTime) throws IOException {
         final Pair.ImmutablePair<Headers, Triad.ImmutableTriad<Long, Long, Long>> result = DownloadRequirements.getUrlHeaders(client, url, testedResponseHeader, totalSize, requestHeaderBuilder, from, to);
         if (result == null)
             return DownloadRequirements.EmptyDownloadRequirements;

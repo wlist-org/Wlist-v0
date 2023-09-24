@@ -8,6 +8,7 @@ import com.xuxiaocheng.HeadLibs.Helpers.HMultiRunHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
@@ -15,15 +16,21 @@ import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.BackgroundTaskManager;
+import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
+import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WList.Server.WListServer;
+import okhttp3.Headers;
+import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 
 import java.sql.Connection;
+import java.time.ZonedDateTime;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -191,9 +198,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
     }
 
     @Contract(pure = true)
-    protected boolean isSupportedInfo() {
-        return false;
-    }
+    protected abstract boolean isSupportedInfo();
     /**
      * Try to get file/directory information by id.
      * @return null: unsupported / not existed. !null: information.
@@ -299,9 +304,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
     }
 
     @Contract(pure = true)
-    protected boolean isSupportedNotEmptyDirectoryTrash() {
-        return true;
-    }
+    protected abstract boolean isSupportedNotEmptyDirectoryTrash();
     /**
      * Trash file/directory.
      */
@@ -327,7 +330,6 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         }
         this.trashInside(information, false, consumer);
     }
-
     private synchronized void trashInside(final @NotNull FileInformation parent, final boolean refreshed, final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) throws Exception {
         if (!parent.isDirectory()) {
             this.loginIfNot();
@@ -411,27 +413,31 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         });
     }
 
-//    /**
-//     * Get download methods of a specific file.
-//     * @param location Only by used to create {@code FailureReason}.
-//     * @see DownloadRequirements#tryGetDownloadFromUrl(OkHttpClient, HttpUrl, Headers, Long, Headers.Builder, long, long, ZonedDateTime)
-//     */
-//    protected abstract @NotNull UnionPair<DownloadRequirements, FailureReason> download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull FileLocation location) throws Exception;
-//
-//    @Override
-//    public @NotNull UnionPair<DownloadRequirements, FailureReason> download(final long fileId, final long from, final long to, final @NotNull FileLocation location) throws Exception {
-//        final FileInformation information = this.manager.getInstance().selectInfo(fileId, false, null);
-//        if (information == null)
-//            return UnionPair.fail(FailureReason.byNoSuchFile(location));
-//        assert information.size() >= 0;
-//        final long start = Math.min(Math.max(from, 0), information.size());
-//        final long end = Math.min(Math.max(to, 0), information.size());
-//        if (start >= end)
-//            return UnionPair.ok(DownloadRequirements.EmptyDownloadRequirements);
-//        this.loginIfNot();
-//        return this.download0(information, start, end, location);
-//    }
-//
+    /**
+     * Get download methods of a specific file.
+     * @param location Only by used to create {@code FailureReason}.
+     * @see DownloadRequirements#tryGetDownloadFromUrl(OkHttpClient, HttpUrl, Headers, Long, Headers.Builder, long, long, ZonedDateTime)
+     */
+    protected abstract void download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) throws Exception;
+
+    @Override
+    public void download(final long fileId, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) throws Exception {
+        final FileInformation information = this.manager.getInstance().selectInfo(fileId, false, null);
+        if (information == null) {
+            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(location))));
+            return;
+        }
+        assert information.size() >= 0;
+        final long start = Math.min(Math.max(from, 0), information.size());
+        final long end = Math.min(Math.max(to, 0), information.size());
+        if (start >= end) {
+            consumer.accept(UnionPair.ok(UnionPair.ok(DownloadRequirements.EmptyDownloadRequirements)));
+            return;
+        }
+        this.loginIfNot();
+        this.download0(information, start, end, consumer, location);
+    }
+
 //    protected boolean checkDirectoryIndexed(final long directoryId) throws Exception {
 ////        final CountDownLatch latch = new CountDownLatch(1);
 ////        final AtomicReference<UnionPair<FilesListInformation, Throwable>> p = new AtomicReference<>();

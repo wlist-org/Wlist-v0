@@ -3,6 +3,7 @@ package com.xuxiaocheng.WListTest.Storage;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
@@ -10,6 +11,8 @@ import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseProvider;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
+import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
+import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WListTest.StaticLoader;
@@ -104,15 +107,20 @@ public class AbstractProviderTest {
         }
 
         @Override
+        protected boolean isSupportedNotEmptyDirectoryTrash() {
+            return true;
+        }
+
+        @Override
         protected void trash0(final @NotNull FileInformation information) {
             AbstractProviderTest.this.trash.initialize(information);
         }
 
-//        @Override
-//        protected @NotNull UnionPair<DownloadRequirements, FailureReason> download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull FileLocation location) {
-//            throw new UnsupportedOperationException();
-//        }
-//
+        @Override
+        protected void download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) throws Exception {
+            throw new UnsupportedOperationException();
+        }
+
 //        @Override
 //        protected @NotNull CheckRule<@NotNull String> nameChecker() {
 //            throw new UnsupportedOperationException();

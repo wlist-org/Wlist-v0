@@ -5,6 +5,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.Rust.NetworkTransmission;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
@@ -16,12 +17,16 @@ import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.Server.Databases.User.UserInformation;
 import com.xuxiaocheng.WList.Server.MessageProto;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.BroadcastManager;
+import com.xuxiaocheng.WList.Server.Operations.Helpers.DownloadIdHelper;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import com.xuxiaocheng.WList.Server.Storage.Selectors.RootSelector;
 import com.xuxiaocheng.WList.Server.WListServer;
+import io.netty.buffer.ByteBufAllocator;
 import org.jetbrains.annotations.NotNull;
 
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -34,8 +39,8 @@ public final class OperateFilesHandler {
     private static final @NotNull MessageProto FilterDataError = MessageProto.composeMessage(ResponseState.DataError, "Filter");
     private static final @NotNull MessageProto OrdersDataError = MessageProto.composeMessage(ResponseState.DataError, "Orders");
     private static final @NotNull MessageProto PolicyDataError = MessageProto.composeMessage(ResponseState.DataError, "Policy");
-    private static final @NotNull MessageProto LocationNotAvailable = MessageProto.composeMessage(ResponseState.DataError, "Available");
-    private static final @NotNull MessageProto LocationNotFound = MessageProto.composeMessage(ResponseState.DataError, "Location");
+    private static final @NotNull MessageProto LocationNotAvailable = MessageProto.composeMessage(ResponseState.DataError, "Location");
+    private static final @NotNull MessageProto IdDataError = MessageProto.composeMessage(ResponseState.DataError, "Id");
     private static @NotNull MessageProto Failure(final @NotNull FailureReason reason) {
         return new MessageProto(ResponseState.DataError, buf -> {
             ByteBufIOUtil.writeUTF(buf, "Failure");
@@ -44,7 +49,6 @@ public final class OperateFilesHandler {
             return buf;
         });
     }
-//    private static final @NotNull MessageProto InvalidId = MessageProto.composeMessage(ResponseState.DataError, "Id");
 //    private static final @NotNull MessageProto InvalidFile = MessageProto.composeMessage(ResponseState.DataError, "Content");
 
     public static void initialize() {
@@ -52,11 +56,13 @@ public final class OperateFilesHandler {
         ServerHandlerManager.register(OperationType.GetFileOrDirectory, OperateFilesHandler.doGetFileOrDirectory);
         ServerHandlerManager.register(OperationType.RefreshDirectory, OperateFilesHandler.doRefreshDirectory);
         ServerHandlerManager.register(OperationType.TrashFileOrDirectory, OperateFilesHandler.doTrashFileOrDirectory);
+        ServerHandlerManager.register(OperationType.RequestDownloadFile, OperateFilesHandler.doRequestDownloadFile);
+        ServerHandlerManager.register(OperationType.CancelDownloadFile, OperateFilesHandler.doCancelDownloadFile);
+        ServerHandlerManager.register(OperationType.ConfirmDownloadFile, OperateFilesHandler.doConfirmDownloadFile);
+        ServerHandlerManager.register(OperationType.DownloadFile, OperateFilesHandler.doDownloadFile);
+        ServerHandlerManager.register(OperationType.FinishDownloadFile, OperateFilesHandler.doFinishDownloadFile);
 //        ServerHandlerManager.register(OperationType.CreateDirectory, OperateFilesHandler.doCreateDirectory);
 //        ServerHandlerManager.register(OperationType.RenameFile, OperateFilesHandler.doRenameFile);
-//        ServerHandlerManager.register(OperationType.RequestDownloadFile, OperateFilesHandler.doRequestDownloadFile);
-//        ServerHandlerManager.register(OperationType.DownloadFile, OperateFilesHandler.doDownloadFile);
-//        ServerHandlerManager.register(OperationType.CancelDownloadFile, OperateFilesHandler.doCancelDownloadFile);
 //        ServerHandlerManager.register(OperationType.RequestUploadFile, OperateFilesHandler.doRequestUploadFile);
 //        ServerHandlerManager.register(OperationType.UploadFile, OperateFilesHandler.doUploadFile);
 //        ServerHandlerManager.register(OperationType.CancelUploadFile, OperateFilesHandler.doCancelUploadFile);
@@ -226,6 +232,139 @@ public final class OperateFilesHandler {
         });
     };
 
+    public static final @NotNull ServerHandler doRequestDownloadFile = (channel, buffer) -> {
+        final String token = ByteBufIOUtil.readUTF(buffer);
+        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FilesList, UserPermission.FileDownload);
+        final FileLocation file = FileLocation.parse(buffer);
+        final long from = ByteBufIOUtil.readVariableLenLong(buffer);
+        final long to = ByteBufIOUtil.readVariable2LenLong(buffer);
+        ServerHandler.logOperation(channel, OperationType.RequestDownloadFile, user, () -> ParametersMap.create()
+                .add("file", file).add("from", from).add("to", to));
+        MessageProto message = null;
+        if (user.isFailure())
+            message = user.getE();
+        else if (from < 0 || to < 0 || from >= to)
+            message = MessageProto.WrongParameters;
+        if (message != null) {
+            WListServer.ServerChannelHandler.write(channel, message);
+            return null;
+        }
+        final AtomicBoolean barrier = new AtomicBoolean(true);
+        return () -> RootSelector.download(file, from, to, p -> {
+            if (!barrier.compareAndSet(true, false)) {
+                HLog.getInstance("ServerLogger").log(HLogLevel.MISTAKE, "Duplicate message on 'doRequestDownloadFile'.", ParametersMap.create()
+                        .add("p", p).add("file", file).add("from", from).add("to", to));
+                return;
+            }
+            if (p.isFailure()) {
+                channel.pipeline().fireExceptionCaught(p.getE());
+                return;
+            }
+            if (p.getT().isFailure()) {
+                WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.Failure(p.getT().getE()));
+                return;
+            }
+            final DownloadRequirements requirements = p.getT().getT();
+            final String id = DownloadIdHelper.generateId(requirements);
+            HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Signed download requirements id.", ServerHandler.user(null, user.getT()),
+                    ParametersMap.create().add("file", file).add("from", from).add("to", to).add("id", id));
+            WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> {
+                ByteBufIOUtil.writeBoolean(buf, requirements.acceptedRange());
+                ByteBufIOUtil.writeVariable2LenLong(buf, requirements.downloadingSize());
+                ByteBufIOUtil.writeUTF(buf, id);
+                return buf;
+            }));
+        });
+    };
+
+    public static final @NotNull ServerHandler doCancelDownloadFile = (channel, buffer) -> {
+        final String token = ByteBufIOUtil.readUTF(buffer);
+        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileDownload);
+        final String id = ByteBufIOUtil.readUTF(buffer);
+        ServerHandler.logOperation(channel, OperationType.CancelDownloadFile, user, () -> ParametersMap.create().add("id", id));
+        if (user.isFailure()) {
+            WListServer.ServerChannelHandler.write(channel, user.getE());
+            return null;
+        }
+        return () -> WListServer.ServerChannelHandler.write(channel, DownloadIdHelper.cancel(id) ? MessageProto.Success : OperateFilesHandler.IdDataError);
+    };
+
+    public static final @NotNull ServerHandler doConfirmDownloadFile = (channel, buffer) -> {
+        final String token = ByteBufIOUtil.readUTF(buffer);
+        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileDownload);
+        final String id = ByteBufIOUtil.readUTF(buffer);
+        ServerHandler.logOperation(channel, OperationType.ConfirmDownloadFile, user, () -> ParametersMap.create().add("id", id));
+        if (user.isFailure()) {
+            WListServer.ServerChannelHandler.write(channel, user.getE());
+            return null;
+        }
+        return () -> {
+            final DownloadRequirements.DownloadMethods parallel = DownloadIdHelper.confirm(id);
+            if (parallel == null) {
+                WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.IdDataError);
+                return;
+            }
+            WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> {
+                ByteBufIOUtil.writeVariableLenInt(buf, parallel.parallelMethods().size());
+                for (final DownloadRequirements.OrderedSuppliers suppliers: parallel.parallelMethods()) {
+                    ByteBufIOUtil.writeVariable2LenLong(buf, suppliers.start());
+                    ByteBufIOUtil.writeVariable2LenLong(buf, suppliers.end());
+                }
+                ByteBufIOUtil.writeNullableDataTime(buf, parallel.expireTime(), DateTimeFormatter.ISO_DATE_TIME);
+                return buf;
+            }));
+        };
+    };
+
+    public static final @NotNull ServerHandler doDownloadFile = (channel, buffer) -> {
+        final String token = ByteBufIOUtil.readUTF(buffer);
+        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileDownload);
+        final String id = ByteBufIOUtil.readUTF(buffer);
+        final int index = ByteBufIOUtil.readVariableLenInt(buffer);
+        ServerHandler.logOperation(channel, OperationType.DownloadFile, user, () -> ParametersMap.create().add("id", id).add("index", index));
+        MessageProto message = null;
+        if (user.isFailure())
+            message = user.getE();
+        else if (index < 0)
+            message = MessageProto.WrongParameters;
+        if (message != null) {
+            WListServer.ServerChannelHandler.write(channel, message);
+            return null;
+        }
+        final AtomicBoolean barrier = new AtomicBoolean(true);
+        return () -> DownloadIdHelper.download(id, index, p -> {
+            if (!barrier.compareAndSet(true, false)) {
+                HLog.getInstance("ServerLogger").log(HLogLevel.MISTAKE, "Duplicate message on 'doDownloadFile'.", ParametersMap.create()
+                        .add("p", p).add("id", id).add("index", index));
+                return;
+            }
+            if (p == null) {
+                WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.IdDataError);
+                return;
+            }
+            if (p.isFailure()) {
+                channel.pipeline().fireExceptionCaught(p.getE());
+                return;
+            }
+            assert p.getT().readableBytes() <= NetworkTransmission.FileTransferBufferSize;
+            WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf ->
+                    ByteBufAllocator.DEFAULT.compositeBuffer(2).addComponents(true, buf, p.getT())
+            ));
+        });
+    };
+
+    public static final @NotNull ServerHandler doFinishDownloadFile = (channel, buffer) -> {
+        final String token = ByteBufIOUtil.readUTF(buffer);
+        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileDownload);
+        final String id = ByteBufIOUtil.readUTF(buffer);
+        ServerHandler.logOperation(channel, OperationType.FinishDownloadFile, user, () -> ParametersMap.create().add("id", id));
+        if (user.isFailure()) {
+            WListServer.ServerChannelHandler.write(channel, user.getE());
+            return null;
+        }
+        return () -> WListServer.ServerChannelHandler.write(channel, DownloadIdHelper.finish(id) ? MessageProto.Success : OperateFilesHandler.IdDataError);
+    };
+
 //    public static final @NotNull ServerHandler doCreateDirectory = (channel, buffer) -> {
 //        final String token = ByteBufIOUtil.readUTF(buffer);
 //        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FilesList, UserPermission.FileUpload);
@@ -287,71 +426,6 @@ public final class OperateFilesHandler {
 //            FileInformation.dumpVisible(buf, file.getT());
 //            return buf;
 //        });
-//    };
-//
-//    public static final @NotNull ServerHandler doRequestDownloadFile = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, UserPermission.FilesList, UserPermission.FileDownload);
-//        final FileLocation location = FileLocation.parse(buffer);
-//        final long from = ByteBufIOUtil.readVariableLenLong(buffer);
-//        final long to = ByteBufIOUtil.readVariable2LenLong(buffer);
-//        ServerHandler.logOperation(channel, OperationType.RequestDownloadFile, user, () -> ParametersMap.create()
-//                .add("location", location).add("from", from).add("to", to));
-//        if (user.isFailure())
-//            return user.getE();
-//        if (from < 0 || from >= to)
-//            return MessageProto.WrongParameters;
-//        final UnionPair<DownloadMethods, FailureReason> url;
-//        try {
-//            url = RootSelector.getInstance().download(location, from, to);
-//        } catch (final UnsupportedOperationException exception) {
-//            return MessageProto.Unsupported.apply(exception);
-//        } catch (final Exception exception) {
-//            throw new ServerException(exception);
-//        }
-//        if (url.isFailure()) {
-//            if (FailureReason.NoSuchFile.equals(url.getE().kind()))
-//                return OperateFilesHandler.FileNotFound;
-//            throw new ServerException("Unknown failure reason. " + url.getE(), url.getE().throwable());
-//        }
-//        final String id = DownloadIdHelper.generateId(url.getT(), user.getT().username());
-//        HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Signed download id for user: '", user.getT().username(), "' file: '", location, "' (", from, '-', to, ") id: ", id);
-//        return MessageProto.successMessage(buf -> {
-//            ByteBufIOUtil.writeVariable2LenLong(buf, url.getT().total());
-//            ByteBufIOUtil.writeUTF(buf, id);
-//            return buf;
-//        });
-//    };
-//
-//    public static final @NotNull ServerHandler doDownloadFile = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, UserPermission.FileDownload);
-//        final String id = ByteBufIOUtil.readUTF(buffer);
-//        final int chunk = ByteBufIOUtil.readVariableLenInt(buffer);
-//        ServerHandler.logOperation(channel, OperationType.DownloadFile, user, () -> ParametersMap.create()
-//                .add("id", id).add("chunk", chunk));
-//        if (user.isFailure())
-//            return user.getE();
-//        final ByteBuf file;
-//        try {
-//            file = DownloadIdHelper.download(id, user.getT().username(), chunk);
-//        } catch (final ServerException exception) {
-//            throw exception;
-//        } catch (final Exception exception) {
-//            throw new ServerException(exception);
-//        }
-//        if (file == null)
-//            return OperateFilesHandler.InvalidId;
-//        return new MessageProto(ResponseState.Success, buf ->
-//                ByteBufAllocator.DEFAULT.compositeBuffer(2).addComponents(true, buf, file));
-//    };
-//
-//    public static final @NotNull ServerHandler doCancelDownloadFile = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, UserPermission.FileDownload);
-//        final String id = ByteBufIOUtil.readUTF(buffer);
-//        ServerHandler.logOperation(channel, OperationType.CancelDownloadFile, user, () -> ParametersMap.create()
-//                .add("id", id));
-//        if (user.isFailure())
-//            return user.getE();
-//        return DownloadIdHelper.cancel(id, user.getT().username()) ? MessageProto.Success : MessageProto.DataError;
 //    };
 //
 //    public static final @NotNull ServerHandler doRequestUploadFile = (channel, buffer) -> {

@@ -17,6 +17,7 @@ import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMultiRunHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Exceptions.IllegalParametersException;
@@ -26,6 +27,8 @@ import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.ProviderUtil;
 import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseProvider;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
+import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
+import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WList.Server.Util.BrowserUtil;
 import com.xuxiaocheng.WList.Server.WListServer;
@@ -52,6 +55,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 @SuppressWarnings("SpellCheckingInspection")
@@ -247,7 +251,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     @Override
     protected @NotNull UnionPair<FileInformation, Boolean> update0(@NotNull final FileInformation oldInformation) throws IOException {
         if (oldInformation.createTime() != null || oldInformation.isDirectory())
-            return UnionPair.fail(Boolean.TRUE);
+            return AbstractIdBaseProvider.UpdateNoRequired;
         final HttpUrl url;
         final String id, pwd, others;
         if (oldInformation.others() == null) {
@@ -270,7 +274,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         try {
             final Pair.ImmutablePair<HttpUrl, Headers> downloadUrl = sharer.getSingleShareFileDownloadUrl(url, id, pwd);
             if (downloadUrl == null)
-                return UnionPair.fail(Boolean.FALSE);
+                return AbstractIdBaseProvider.UpdateNotExisted;
             final Pair<Long, ZonedDateTime> fixed = sharer.testRealSizeAndData(downloadUrl.getFirst(), downloadUrl.getSecond());
             if (fixed != null)
                 return UnionPair.ok(new FileInformation(oldInformation.id(), oldInformation.parentId(), oldInformation.name(), false, fixed.getFirst().longValue(), fixed.getSecond(), fixed.getSecond(), others));
@@ -278,6 +282,11 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
             LanzouProvider.logger.log(HLogLevel.MISTAKE, exception);
         }
         return UnionPair.ok(new FileInformation(oldInformation.id(), oldInformation.parentId(), oldInformation.name(), false, oldInformation.size(), oldInformation.createTime(), oldInformation.updateTime(), others));
+    }
+
+    @Override
+    protected boolean isSupportedInfo() {
+        return false;
     }
 
     @Override
@@ -306,11 +315,37 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         }
     }
 
-//    @Override
-//    protected @NotNull UnionPair<DownloadRequirements, FailureReason> download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull FileLocation location) throws Exception {
-//        return null;
-//    }
-//
+    @Override
+    protected void download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) throws Exception {
+        final HttpUrl url;
+        final String id, pwd;
+        if (information.others() == null) {
+            final Triad.ImmutableTriad<HttpUrl, String, String> shareUrl = this.getFileShareUrl(information.id());
+            if (shareUrl == null) {
+                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(location))));
+                return;
+            }
+            url = shareUrl.getA();
+            id = shareUrl.getB();
+            pwd = shareUrl.getC();
+        } else {
+            final JSONObject json = JSON.parseObject(information.others());
+            url = Objects.requireNonNull(HttpUrl.parse(json.getString("domin")));
+            id = Objects.requireNonNull(json.getString("id"));
+            final String p = Objects.requireNonNull(json.getString("pwd"));
+            pwd = p.isEmpty() ? null : p;
+        }
+        final LanzouSharer sharer = (LanzouSharer) StorageManager.getSharer(this.getConfiguration().getName());
+        assert sharer != null;
+        final Pair.ImmutablePair<HttpUrl, Headers> downloadUrl = sharer.getSingleShareFileDownloadUrl(url, id, pwd);
+        if (downloadUrl == null) {
+            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(location))));
+            return;
+        }
+        consumer.accept(UnionPair.ok(UnionPair.ok(DownloadRequirements.tryGetDownloadFromUrl(this.getConfiguration().getFileClient(),
+                downloadUrl.getFirst(), downloadUrl.getSecond(), information.size(), LanzouProvider.Headers.newBuilder(), from, to, null))));
+    }
+
 //    protected static @NotNull CheckRule<@NotNull String> nameChecker = new CheckRuleSet<>(
 //        new SuffixCheckRule(Set.of("doc","docx","zip","rar","apk","ipa","txt","exe","7z","e","z","ct","ke","cetrainer","db","tar","pdf","w3x","epub",
 //                "mobi","azw","azw3","osk","osz","xpa","cpk","lua","jar","dmg","ppt","pptx","xls","xlsx","mp3","iso","img","gho","ttf","ttc","txf","dwg","bat",
