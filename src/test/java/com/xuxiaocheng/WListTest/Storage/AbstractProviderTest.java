@@ -10,6 +10,7 @@ import com.xuxiaocheng.WList.Commons.Operations.FailureKind;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseProvider;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
@@ -22,6 +23,7 @@ import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WListTest.StaticLoader;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
@@ -39,6 +41,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -67,6 +70,17 @@ public class AbstractProviderTest {
         StaticLoader.load();
         ServerConfiguration.parseFromFile();
         StorageManager.initialize(new File(AbstractProviderTest.directory, "configs"), new File(AbstractProviderTest.directory, "caches"));
+    }
+
+    @AfterAll
+    public static void checker() throws NoSuchFieldException, IllegalAccessException {
+        final Field removable = BackgroundTaskManager.class.getDeclaredField("removable");
+        removable.setAccessible(true);
+        Assertions.assertEquals(Set.of(), removable.get(null));
+
+        final Field tasks = BackgroundTaskManager.class.getDeclaredField("tasks");
+        tasks.setAccessible(true);
+        Assertions.assertEquals(Map.of(), tasks.get(null));
     }
 
     public static class AbstractConfiguration extends StorageConfiguration {
@@ -149,13 +163,13 @@ public class AbstractProviderTest {
 
         @Override
         protected void uploadFile0(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) {
-
+            throw new UnsupportedOperationException("Not tested.");
         }
     }
 
-    protected static final ThreadLocal<ProviderInterface<AbstractConfiguration>> provider = new ThreadLocal<>();
+    protected final AtomicReference<ProviderInterface<AbstractConfiguration>> provider = new AtomicReference<>();
     public ProviderInterface<?> provider() {
-        return AbstractProviderTest.provider.get();
+        return this.provider.get();
     }
 
     protected HInitializer<Supplier<ProviderInterface<AbstractConfiguration>>> ProviderCore = new HInitializer<>("Provider", AbstractProvider::new);
@@ -170,7 +184,7 @@ public class AbstractProviderTest {
         this.trash.uninitializeNullable();
         this.create.set(null);
         final ProviderInterface<AbstractConfiguration> provider = this.ProviderCore.getInstance().get();
-        AbstractProviderTest.provider.set(provider);
+        this.provider.set(provider);
         final AbstractConfiguration configuration = new AbstractConfiguration();
         synchronized (AbstractProviderTest.class) {
             configuration.setName(String.valueOf(System.currentTimeMillis()));
@@ -186,7 +200,7 @@ public class AbstractProviderTest {
 
     @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
     @Nested
-    @Disabled // Ok
+//    @Disabled // Ok
     public class ListTest {
         public static Stream<List<FileInformation>> list() {
             return Stream.of(null,
@@ -358,7 +372,7 @@ public class AbstractProviderTest {
 
     @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
     @Nested
-    @Disabled // Ok
+//    @Disabled // Ok
     public class InfoTest {
         @Test
         public void info() throws Exception {
@@ -448,7 +462,8 @@ public class AbstractProviderTest {
 
     @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
     @Nested
-    @Disabled // Ok
+//    @Execution(ExecutionMode.SAME_THREAD) // FIXME: Confused. Accidental error when concurrent testing. Set 'update' twice?
+    @Disabled
     public class RefreshTest {
         @Test
         public void refresh() throws Exception {
@@ -501,12 +516,58 @@ public class AbstractProviderTest {
             ProviderHelper.testInfo(ProviderHelper.info(provider(), 2, false).getT(), file, false);
         }
 
-        // No concurrent test due to same code as 'list'.
+        @Test
+        public void concurrent() throws Exception {
+            final FileInformation info = new FileInformation(1, 0, "file", false, 1, null, null, null);
+            final CountDownLatch latch = new CountDownLatch(1);
+            final CountDownLatch latch0 = new CountDownLatch(1);
+            list.set(new Iterator<>() {
+                private final AtomicBoolean got = new AtomicBoolean(true);
+                @Override
+                public boolean hasNext() {
+                    return got.get();
+                }
+
+                @SuppressWarnings("IteratorNextCanNotThrowNoSuchElementException")
+                @Override
+                public FileInformation next() {
+                    latch.countDown();
+                    try {
+                        latch0.await();
+                    } catch (final InterruptedException ignore) {
+                    }
+                    got.set(false);
+                    return info;
+                }
+            });
+            final CountDownLatch latch1 = new CountDownLatch(1);
+            final AtomicReference<UnionPair<UnionPair<Pair.ImmutablePair<Set<Long>, Set<Long>>, Boolean>, Throwable>> result1 = new AtomicReference<>();
+            provider().refreshDirectory(0, p -> {
+                result1.set(p);
+                latch1.countDown();
+            });
+            latch.await();
+            Assumptions.assumeTrue(latch1.getCount() == 1);
+            Assertions.assertTrue(loggedIn.get());
+            list.set(List.of(info).iterator());
+            final CountDownLatch latch2 = new CountDownLatch(1);
+            final AtomicReference<UnionPair<UnionPair<Pair.ImmutablePair<Set<Long>, Set<Long>>, Boolean>, Throwable>> result2 = new AtomicReference<>();
+            provider().refreshDirectory(0, p -> {
+                result2.set(p);
+                latch2.countDown();
+            });
+            Assumptions.assumeTrue(latch2.getCount() == 1);
+            latch0.countDown();
+            latch1.await();
+            ProviderHelper.testRefresh(result1.get().getT().getT(), Set.of(), Set.of());
+            latch2.await();
+            ProviderHelper.testRefresh(result2.get().getT().getT(), Set.of(), Set.of());
+        }
     }
 
     @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
     @Nested
-    @Disabled // Ok
+//    @Disabled // Ok
     public class TrashTest {
         @Test
         public void trash() throws Exception {
