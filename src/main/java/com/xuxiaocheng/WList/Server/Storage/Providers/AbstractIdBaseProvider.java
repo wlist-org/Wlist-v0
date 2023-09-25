@@ -533,39 +533,69 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         });
     }
 
-//    @Override
-//    public void buildIndex() throws IOException, SQLException, InterruptedException {
-//        final Set<CompletableFuture<?>> futures = ConcurrentHashMap.newKeySet();
-//        final AtomicLong runningFutures = new AtomicLong(1);
-//        final AtomicBoolean interruptFlag = new AtomicBoolean(false);
-//        DriverManager_lanzou.refreshDirectoryRecursively(this.configuration, this.configuration.getRootDirectoryId(), futures, runningFutures, interruptFlag);
-//        try {
-//            synchronized (runningFutures) {
-//                while (runningFutures.get() > 0)
-//                    runningFutures.wait();
+
+//    static @NotNull UnionPair<UploadMethods, FailureReason> getUploadMethods(final @NotNull LanzouConfiguration configuration, final long parentId, final @NotNull String name, final @NotNull String md5, final long size, final Options.@NotNull DuplicatePolicy policy, final @Nullable String _connectionId) throws IOException, SQLException, InterruptedException {
+//        if (!md5.isEmpty() && !HMessageDigestHelper.MD5.pattern.matcher(md5).matches())
+//            throw new IllegalStateException("Invalid md5." + ParametersMap.create().add("md5", md5));
+//        if (!DriverHelper_lanzou.filenamePredication.test(name))
+//            return UnionPair.fail(FailureReason.byInvalidName("Uploading.", new FileLocation(configuration.getName(), parentId), name));
+//        if (size > configuration.getMaxSizePerFile())
+//            return UnionPair.fail(FailureReason.byExceedMaxSize("Uploading.", size, configuration.getMaxSizePerFile(), new FileLocation(configuration.getName(), parentId), name));
+//        final int intSize = Math.toIntExact(size);
+//        final UnionPair<UnionPair<String, FileInformation>, FailureReason> duplicate = DriverManager_lanzou.getDuplicatePolicyName(configuration, parentId, name, false, policy, "Uploading.", _connectionId);
+//        if (duplicate.isFailure()) return UnionPair.fail(duplicate.getE());
+//        final String realName = duplicate.getT().getT();
+//        final AtomicReference<UnionPair<FileInformation, FailureReason>> reference = new AtomicReference<>(null);
+//        final Pair.ImmutablePair<List<ConsumerE<ByteBuf>>, Runnable> methods;
+//        if (size == 0) {
+//            reference.set(DriverHelper_lanzou.uploadFile(configuration, realName, parentId, Unpooled.EMPTY_BUFFER, md5));
+//            methods = Pair.ImmutablePair.makeImmutablePair(List.of(), RunnableE.EmptyRunnable);
+//        } else
+//            methods = DriverUtil.splitUploadMethodEveryFileTransferBufferSize(b ->
+//                reference.set(DriverHelper_lanzou.uploadFile(configuration, realName, parentId, b, md5)), intSize);
+//        return UnionPair.ok(new UploadMethods(methods.getFirst(), () -> {
+//            final UnionPair<FileInformation, FailureReason> result = reference.get();
+//            if (result == null) return null;
+//            final FileInformation information = result.getT();
+//            final AtomicReference<String> connectionId = new AtomicReference<>();
+//            try (final Connection connection = FileManager.getConnection(configuration.getName(), _connectionId, connectionId)) {
+//                FileManager.insertFileForce(configuration.getName(), information, connectionId.get());
+//                FileManager.updateDirectoryType(configuration.getName(), parentId, false, connectionId.get());
+//                FileManager.updateDirectorySize(configuration.getName(), parentId, size, connectionId.get());
+//                connection.commit();
 //            }
-//        } catch (final InterruptedException exception) {
-//            interruptFlag.set(true);
-//            throw exception;
+//            return information;
+//        }, HExceptionWrapper.wrapRunnable(() -> methods.getSecond().run())));
+//    }
+//
+//    static @NotNull UnionPair<FileInformation, FailureReason> move(final @NotNull LanzouConfiguration configuration, final @NotNull FileInformation source, final long targetId, final Options.@NotNull DuplicatePolicy policy, final @Nullable String _connectionId) throws IOException, SQLException, InterruptedException {
+//        if (source.parentId() == targetId) return UnionPair.ok(source);
+//        if (policy == Options.DuplicatePolicy.KEEP) // TODO: vip
+//            throw new UnsupportedOperationException("Driver lanzou not support rename file while moving.");
+//        if (source.isDirectory()) // TODO: directory
+//            throw new UnsupportedOperationException("Driver lanzou not support move directory.");
+//        final AtomicReference<String> connectionId = new AtomicReference<>();
+//        try (final Connection connection = FileManager.getConnection(configuration.getName(), _connectionId, connectionId)) {
+//            final UnionPair<UnionPair<String, FileInformation>, FailureReason> duplicate = DriverManager_lanzou.getDuplicatePolicyName(configuration, targetId, source.name(), false, policy, "Moving.", connectionId.get());
+//            if (duplicate.isFailure()) {connection.commit();return UnionPair.fail(duplicate.getE());}
+//            assert duplicate.getT().getT().equals(source.name());
+//            final UnionPair<ZonedDateTime, FailureReason> information = DriverHelper_lanzou.moveFile(configuration, source.id(), targetId);
+//            if (information == null) {connection.commit();return UnionPair.ok(source);}
+//            if (information.isFailure()) {connection.commit();return UnionPair.fail(information.getE());}
+//            FileManager.mergeFile(configuration.getName(), new FileInformation(source.location(), targetId,
+//                    source.name(), source.type(), source.size(), source.createTime(), information.getT(), source.md5(), source.others()), connectionId.get());
+//            FileManager.updateDirectorySize(configuration.getName(), source.parentId(), -source.size(), connectionId.get());
+//            FileManager.updateDirectoryType(configuration.getName(), targetId, false, connectionId.get());
+//            FileManager.updateDirectorySize(configuration.getName(), targetId, source.size(), connectionId.get());
+//            connection.commit();
+//            return UnionPair.ok(source);
 //        }
-//        for (final CompletableFuture<?> future: futures)
-//            try {
-//                future.join();
-//            } catch (final CancellationException ignore) {
-//            } catch (final CompletionException exception) {
-//                Throwable throwable;
-//                try {
-//                    throwable = HExceptionWrapper.unwrapException(exception.getCause(), IOException.class, SQLException.class, InterruptedException.class);
-//                } catch (final IOException | SQLException | InterruptedException e) {
-//                    throwable = e;
-//                }
-//                HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), throwable);
-//            }
-//        final FileInformation root = FileManager.selectFile(this.configuration.getName(), this.configuration.getRootDirectoryId(), null);
-//        if (root != null)
-//            this.configuration.setSpaceUsed(root.size());
-//        this.configuration.setLastFileIndexBuildTime(ZonedDateTime.now());
-//        this.configuration.setModified(true);
+//    }
+//
+//    static @NotNull UnionPair<FileInformation, FailureReason> rename(final @NotNull LanzouConfiguration configuration, final long id, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @Nullable String _connectionId) throws IOException, SQLException {
+//        if (!DriverHelper_lanzou.filenamePredication.test(name))
+//            return UnionPair.fail(FailureReason.byInvalidName(name, new FileLocation(configuration.getName(), id), name));
+//        throw new UnsupportedOperationException("Driver lanzou not support rename."); // TODO: vip
 //    }
 
     @Override

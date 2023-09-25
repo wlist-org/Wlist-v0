@@ -5,6 +5,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
+import com.xuxiaocheng.WList.Commons.Operations.FailureKind;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
@@ -76,6 +77,7 @@ public class AbstractProviderTest {
     protected final AtomicBoolean supportedInfo = new AtomicBoolean();
     protected final Map<Long, FileInformation> info = new HashMap<>();
     protected final HInitializer<FileInformation> trash = new HInitializer<>("Trashed");
+    protected final AtomicReference<FileInformation> create = new AtomicReference<>();
 
     public class AbstractProvider extends AbstractIdBaseProvider<AbstractConfiguration> {
         @Override
@@ -129,7 +131,14 @@ public class AbstractProviderTest {
 
         @Override
         protected void createDirectory0(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws Exception {
-            throw new UnsupportedOperationException();
+            final FileInformation information = AbstractProviderTest.this.create.getAndSet(null);
+            if (information == null) {
+                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(parentLocation, directoryName, "For test."))));
+                return;
+            }
+            Assertions.assertEquals(parentId, information.parentId());
+            Assertions.assertEquals(directoryName, information.name());
+            consumer.accept(UnionPair.ok(UnionPair.ok(information)));
         }
 
 
@@ -150,6 +159,7 @@ public class AbstractProviderTest {
         this.supportedInfo.set(false);
         this.info.clear();
         this.trash.uninitializeNullable();
+        this.create.set(null);
         final ProviderInterface<AbstractConfiguration> provider = this.ProviderCore.getInstance().get();
         AbstractProviderTest.provider.set(provider);
         final AbstractConfiguration configuration = new AbstractConfiguration();
@@ -585,5 +595,34 @@ public class AbstractProviderTest {
         }
     }
 
+    @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
+    @Nested
+    public class CreateTest {
+        @Test
+        public void create() throws Exception {
+            list.set(Collections.emptyIterator());
+            final FileInformation information = new FileInformation(1, 0, "1", true, 0, null, null, null);
+            create.set(information);
+            Assertions.assertEquals(information, ProviderHelper.create(provider(), 0, "1", Options.DuplicatePolicy.ERROR).getT());
+        }
 
+        @Test
+        public void duplicate() throws Exception {
+            list.set(Collections.emptyIterator());
+            final FileInformation information = new FileInformation(1, 0, "1", true, 0, null, null, null);
+            create.set(information);
+            Assertions.assertEquals(information, ProviderHelper.create(provider(), 0, "1", Options.DuplicatePolicy.ERROR).getT());
+
+            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.create(provider(), 0, "1", Options.DuplicatePolicy.ERROR).getE().kind());
+
+            final FileInformation keep = new FileInformation(2, 0, "1(1)", true, 0, null, null, null);
+            create.set(keep);
+            Assertions.assertEquals(keep, ProviderHelper.create(provider(), 0, "1", Options.DuplicatePolicy.KEEP).getT());
+
+            final FileInformation over = new FileInformation(3, 0, "1", true, 0, null, null, "123");
+            create.set(over);
+            Assertions.assertEquals(over, ProviderHelper.create(provider(), 0, "1", Options.DuplicatePolicy.OVER).getT());
+            Assertions.assertEquals(information, trash.uninitialize());
+        }
+    }
 }

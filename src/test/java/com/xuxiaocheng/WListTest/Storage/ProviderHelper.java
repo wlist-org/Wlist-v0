@@ -5,10 +5,12 @@ import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Ranges.IntRange;
 import com.xuxiaocheng.HeadLibs.Ranges.LongRange;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
+import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Unmodifiable;
@@ -132,5 +134,27 @@ public final class ProviderHelper {
             throw (Error) throwable;
         }
         return result.get().getT().booleanValue();
+    }
+
+    public static @NotNull UnionPair<FileInformation, FailureReason> create(final @NotNull ProviderInterface<?> provider, final long id, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> result = new AtomicReference<>();
+        final AtomicBoolean barrier = new AtomicBoolean(true);
+        provider.createDirectory(id, name, policy, p -> {
+            if (!barrier.compareAndSet(true, false)) {
+                HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), new RuntimeException("Duplicate message.(create) " + p));
+                return;
+            }
+            result.set(p);
+            latch.countDown();
+        }, new FileLocation("test", id));
+        latch.await();
+        if (result.get().isFailure()) {
+            final Throwable throwable = result.get().getE();
+            if (throwable instanceof Exception exception)
+                throw exception;
+            throw (Error) throwable;
+        }
+        return result.get().getT();
     }
 }
