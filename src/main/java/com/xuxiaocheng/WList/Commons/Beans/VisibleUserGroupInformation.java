@@ -5,10 +5,12 @@ import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Unmodifiable;
 
 import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 import java.util.Objects;
 import java.util.Set;
 
@@ -39,5 +41,10 @@ public record VisibleUserGroupInformation(long id, @NotNull String name, @NotNul
         Permissions_FileDownload,
         Permissions_FileUpload,
         Permissions_FileDelete,
+    }
+
+    private static final @NotNull @Unmodifiable LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> ListEmptyOrder = new LinkedHashMap<>(0);
+    public static @NotNull @Unmodifiable LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> emptyOrder() {
+        return VisibleUserGroupInformation.ListEmptyOrder;
     }
 }

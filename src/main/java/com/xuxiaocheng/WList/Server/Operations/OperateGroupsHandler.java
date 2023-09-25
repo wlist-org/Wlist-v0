@@ -7,6 +7,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleUserInformation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import com.xuxiaocheng.WList.Commons.Operations.ResponseState;
@@ -268,7 +269,7 @@ public final class OperateGroupsHandler {
             return null;
         }
         return () -> {
-            final long count = UserManager.getInstance().selectUsersByGroups(Set.of(groupId), false, new LinkedHashMap<>(), 0, 0, null).getFirst().longValue();
+            final long count = UserManager.getInstance().selectUsersByGroups(Set.of(groupId), false, VisibleUserInformation.emptyOrder(), 0, 0, null).getFirst().longValue();
             if (count > 0) {
                 WListServer.ServerChannelHandler.write(channel, OperateGroupsHandler.UsersDataError);
                 return;

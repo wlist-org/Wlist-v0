@@ -33,7 +33,6 @@ import java.io.IOException;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -53,7 +52,7 @@ public class OperateFilesTest extends ProvidersWrapper {
         final FileLocation root = new FileLocation("test", Objects.requireNonNull(StorageManager.getProvider("test")).getConfiguration().getRootDirectoryId());
 
 //        Assumptions.assumeTrue(OperateFilesHelper.refreshDirectory(client, token, root));
-        final VisibleFilesListInformation list = OperateFilesHelper.listFiles(client, token, root, Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 2);
+        final VisibleFilesListInformation list = OperateFilesHelper.listFiles(client, token, root, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 2);
         Assumptions.assumeTrue(list != null);
         Assumptions.assumeTrue(list.informationList().size() == 1);
         final VisibleFileInformation information = list.informationList().get(0);

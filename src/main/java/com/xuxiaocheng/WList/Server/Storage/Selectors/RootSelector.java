@@ -117,13 +117,13 @@ public final class RootSelector {
                 consumer.accept(ProviderInterface.RefreshNotExisted);
                 return;
             }
-            real.refresh(directory.id(), consumer.andThen(RootSelector.dumper(real.getConfiguration())));
+            real.refreshDirectory(directory.id(), consumer.andThen(RootSelector.dumper(real.getConfiguration())));
         } catch (final Throwable exception) {
             consumer.accept(UnionPair.fail(exception));
         }
     }
 
-    public static void trash(final @NotNull FileLocation location, final boolean isDirectory, final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) throws Exception {
+    public static void trash(final @NotNull FileLocation location, final boolean isDirectory, final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) {
         try {
             if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(location.storage())) {
                 consumer.accept(ProviderInterface.TrashNotAvailable);
@@ -140,36 +140,32 @@ public final class RootSelector {
         }
     }
 
-    public static void download(final @NotNull FileLocation file, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer) throws Exception {
+    public static void download(final @NotNull FileLocation file, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer) {
         try {
-            if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(file.storage())) {
-                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(file))));
-                return;
-            }
             final ProviderInterface<?> real = StorageManager.getProvider(file.storage());
             if (real == null) {
                 consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(file))));
                 return;
             }
-            real.download(file.id(), from, to, consumer.andThen(RootSelector.dumper(real.getConfiguration())), file);
+            real.downloadFile(file.id(), from, to, consumer.andThen(RootSelector.dumper(real.getConfiguration())), file);
         } catch (final Throwable exception) {
             consumer.accept(UnionPair.fail(exception));
         }
     }
 
-//    public static @NotNull UnionPair<FileInformation, FailureReason> createDirectory(final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws Exception {
-//        final ProviderInterface<?> real = StorageManager.getProvider(parentLocation.storage());
-//        if (real == null)
-//            return UnionPair.fail(FailureReason.byNoSuchFile(parentLocation));
-//        final UnionPair<FileInformation, FailureReason> directory;
-//        try {
-//            directory = real.createDirectory(parentLocation.id(), directoryName, policy, parentLocation);
-//        } finally {
-//            StorageManager.dumpConfigurationIfModified(real.getConfiguration());
-//        }
-//        return directory;
-//    }
-//
+    public static void create(final @NotNull FileLocation parent, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) {
+        try {
+            final ProviderInterface<?> real = StorageManager.getProvider(parent.storage());
+            if (real == null) {
+                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(parent))));
+                return;
+            }
+            real.createDirectory(parent.id(), directoryName, policy, consumer.andThen(RootSelector.dumper(real.getConfiguration())), parent);
+        } catch (final Throwable exception) {
+            consumer.accept(UnionPair.fail(exception));
+        }
+    }
+
 //    @Override
 //    public @NotNull UnionPair<UploadMethods, FailureReason> upload(final @NotNull FileLocation parentLocation, final @NotNull String filename, final @LongRange(minimum = 0) long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws Exception {
 //        if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(parentLocation.storage()))
@@ -234,33 +230,5 @@ public final class RootSelector {
 //        } finally {
 //            StorageManager.dumpConfigurationIfModified(real.getConfiguration());
 //        }
-//    }
-//
-//    protected static class RootDriverConfiguration extends StorageConfiguration<RootDriverConfiguration.LocalSide, RootDriverConfiguration.WebSide, RootDriverConfiguration.CacheSide> {
-//        private RootDriverConfiguration() {
-//            super("RootSelector", LocalSide::new, WebSide::new, CacheSide::new);
-//        }
-//        private static class LocalSide extends LocalSideDriverConfiguration {
-//            protected LocalSide() {
-//                super();
-//            }
-//        }
-//        private static class WebSide extends WebSideDriverConfiguration {
-//            protected WebSide() {
-//                super();
-//            }
-//        }
-//        private static class CacheSide extends CacheSideDriverConfiguration {
-//            protected CacheSide() {
-//                super();
-//            }
-//        }
-//    }
-//
-//    @Override
-//    public @NotNull String toString() {
-//        return "RootSelector{" +
-//                "configuration=" + this.configuration +
-//                '}';
 //    }
 }

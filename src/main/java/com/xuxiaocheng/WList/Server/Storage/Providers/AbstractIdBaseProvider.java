@@ -4,6 +4,7 @@ import com.xuxiaocheng.HeadLibs.CheckRules.CheckRule;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMultiRunHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
@@ -20,6 +21,7 @@ import com.xuxiaocheng.WList.Server.Storage.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
+import com.xuxiaocheng.WList.Server.Storage.Records.UploadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WList.Server.WListServer;
 import okhttp3.Headers;
@@ -211,7 +213,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
     }
 
     @Override
-    public void refresh(final long directoryId, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<Pair.ImmutablePair<@NotNull Set<Long>, @NotNull Set<Long>>, Boolean>, Throwable>> consumer) throws Exception {
+    public void refreshDirectory(final long directoryId, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<Pair.ImmutablePair<@NotNull Set<Long>, @NotNull Set<Long>>, Boolean>, Throwable>> consumer) throws Exception {
         final FileManager manager = this.manager.getInstance();
         final FileInformation directory = manager.selectInfo(directoryId, true, null);
         if (directory == null) {
@@ -341,7 +343,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
             return;
         }
         final AtomicBoolean barrier = new AtomicBoolean(true);
-        this.list(parent.id(), Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 50, p -> {
+        this.list(parent.id(), Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 50, p -> {
             if (!barrier.compareAndSet(true, false)) {
                 HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'trashInside#list'." + ParametersMap.create()
                         .add("p", p).add("parent", parent).add("refreshed", refreshed)));
@@ -365,7 +367,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                         return;
                     }
                     final AtomicBoolean barrier1 = new AtomicBoolean(true);
-                    this.refresh(parent.id(), u -> {
+                    this.refreshDirectory(parent.id(), u -> {
                         if (!barrier1.compareAndSet(true, false)) {
                             HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'trashInside#refresh'." + ParametersMap.create()
                                     .add("u", u).add("parent", parent)));
@@ -423,7 +425,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
     protected abstract void download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) throws Exception;
 
     @Override
-    public void download(final long fileId, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) throws Exception {
+    public void downloadFile(final long fileId, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) throws Exception {
         final FileInformation information = this.manager.getInstance().selectInfo(fileId, false, null);
         if (information == null) {
             consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(location))));
@@ -440,10 +442,41 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         this.download0(information, start, end, consumer, location);
     }
 
-    private static final @NotNull Pair.ImmutablePair<@NotNull String, @NotNull String> DefaultRetryBracketPair = Pair.ImmutablePair.makeImmutablePair("(", ")");
+    private static final @NotNull Pair.ImmutablePair<@NotNull String, @NotNull String> DefaultRetryBracketPair = Pair.ImmutablePair.makeImmutablePair(" (", ")");
     @Contract(pure = true)
     protected Pair.ImmutablePair<@NotNull String, @NotNull String> retryBracketPair() {
         return AbstractIdBaseProvider.DefaultRetryBracketPair;
+    }
+
+    private @Nullable String getDuplicatedName(final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+        final FileManager manager = this.manager.getInstance();
+        FileInformation duplicate = manager.selectInfoInDirectoryByName(parentId, name, null);
+        String n = name;
+        if (duplicate != null)
+            switch (policy) {
+                case ERROR -> {
+                    return null;
+                }
+                case OVER -> {
+                    while (duplicate != null) {
+                        final CountDownLatch latch = new CountDownLatch(1);
+                        this.trash(duplicate.id(), duplicate.isDirectory(), u -> latch.countDown());
+                        latch.await();
+                        duplicate = manager.selectInfoInDirectoryByName(parentId, name, null);
+                    }
+                }
+                case KEEP -> {
+                    final int index = n.lastIndexOf('.');
+                    final Pair.ImmutablePair<String, String> bracket = this.retryBracketPair();
+                    final String left = (index < 0 ? n: n.substring(0, index)) + bracket.getFirst();
+                    final String right = bracket.getSecond() + (index < 0 ? "" : n.substring(index));
+                    int retry = 0;
+                    do {
+                        n = left + (++retry) + right;
+                    } while (manager.selectInfoInDirectoryByName(parentId, n, null) != null);
+                }
+            }
+        return n;
     }
 
     @Contract(pure = true)
@@ -463,7 +496,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
             return;
         }
         final AtomicBoolean barrier = new AtomicBoolean(true);
-        this.list(parentId, Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 0, p -> {
+        this.list(parentId, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0, p -> {
             if (!barrier.compareAndSet(true, false)) {
                 HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'createDirectory#list'." + ParametersMap.create()
                         .add("p", p).add("parentId", parentId).add("directoryName", directoryName).add("policy", policy)));
@@ -478,41 +511,20 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                     consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(parentLocation))));
                     return;
                 }
-                FileInformation duplicate = this.manager.getInstance().selectInfoInDirectoryByName(parentId, directoryName, null);
-                String name = directoryName;
-                if (duplicate != null)
-                    switch (policy) {
-                        case ERROR -> {
-                            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byDuplicateError(parentLocation))));
-                            return;
-                        }
-                        case OVER -> {
-                            while (duplicate != null) {
-                                final CountDownLatch latch = new CountDownLatch(1);
-                                this.trash(duplicate.id(), duplicate.isDirectory(), u -> latch.countDown());
-                                latch.await();
-                                duplicate = this.manager.getInstance().selectInfoInDirectoryByName(parentId, directoryName, null);
-                            }
-                        }
-                        case KEEP -> {
-                            final int index = name.lastIndexOf('.');
-                            final Pair.ImmutablePair<String, String> bracket = this.retryBracketPair();
-                            final String left = (index < 0 ? name: name.substring(0, index)) + bracket.getFirst();
-                            final String right = bracket.getSecond() + (index < 0 ? "" : name.substring(index));
-                            int retry = 0;
-                            do {
-                                name = left + (++retry) + right;
-                            } while (this.manager.getInstance().selectInfoInDirectoryByName(parentId, name, null) != null);
-                        }
-                    }
+                final String name = this.getDuplicatedName(parentId, directoryName, policy);
+                if (name == null) {
+                    consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byDuplicateError(parentLocation))));
+                    return;
+                }
                 if (!this.directoryNameChecker().test(name)) {
                     consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(parentLocation, name, this.directoryNameChecker().description()))));
                     return;
                 }
+                this.loginIfNot();
                 final AtomicBoolean barrier1 = new AtomicBoolean(true);
                 this.createDirectory0(parentId, name, Options.DuplicatePolicy.ERROR, u -> {
                     if (!barrier1.compareAndSet(true, false)) {
-                        HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'createDirectory'." + ParametersMap.create()
+                        HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'createDirectory0'." + ParametersMap.create()
                                 .add("u", u).add("parentId", parentId).add("directoryName", directoryName).add("policy", policy)));
                         return;
                     }
@@ -533,41 +545,82 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         });
     }
 
+    @Contract(pure = true)
+    protected abstract @NotNull CheckRule<@NotNull String> fileNameChecker();
 
-//    static @NotNull UnionPair<UploadMethods, FailureReason> getUploadMethods(final @NotNull LanzouConfiguration configuration, final long parentId, final @NotNull String name, final @NotNull String md5, final long size, final Options.@NotNull DuplicatePolicy policy, final @Nullable String _connectionId) throws IOException, SQLException, InterruptedException {
-//        if (!md5.isEmpty() && !HMessageDigestHelper.MD5.pattern.matcher(md5).matches())
-//            throw new IllegalStateException("Invalid md5." + ParametersMap.create().add("md5", md5));
-//        if (!DriverHelper_lanzou.filenamePredication.test(name))
-//            return UnionPair.fail(FailureReason.byInvalidName("Uploading.", new FileLocation(configuration.getName(), parentId), name));
-//        if (size > configuration.getMaxSizePerFile())
-//            return UnionPair.fail(FailureReason.byExceedMaxSize("Uploading.", size, configuration.getMaxSizePerFile(), new FileLocation(configuration.getName(), parentId), name));
-//        final int intSize = Math.toIntExact(size);
-//        final UnionPair<UnionPair<String, FileInformation>, FailureReason> duplicate = DriverManager_lanzou.getDuplicatePolicyName(configuration, parentId, name, false, policy, "Uploading.", _connectionId);
-//        if (duplicate.isFailure()) return UnionPair.fail(duplicate.getE());
-//        final String realName = duplicate.getT().getT();
-//        final AtomicReference<UnionPair<FileInformation, FailureReason>> reference = new AtomicReference<>(null);
-//        final Pair.ImmutablePair<List<ConsumerE<ByteBuf>>, Runnable> methods;
-//        if (size == 0) {
-//            reference.set(DriverHelper_lanzou.uploadFile(configuration, realName, parentId, Unpooled.EMPTY_BUFFER, md5));
-//            methods = Pair.ImmutablePair.makeImmutablePair(List.of(), RunnableE.EmptyRunnable);
-//        } else
-//            methods = DriverUtil.splitUploadMethodEveryFileTransferBufferSize(b ->
-//                reference.set(DriverHelper_lanzou.uploadFile(configuration, realName, parentId, b, md5)), intSize);
-//        return UnionPair.ok(new UploadMethods(methods.getFirst(), () -> {
-//            final UnionPair<FileInformation, FailureReason> result = reference.get();
-//            if (result == null) return null;
-//            final FileInformation information = result.getT();
-//            final AtomicReference<String> connectionId = new AtomicReference<>();
-//            try (final Connection connection = FileManager.getConnection(configuration.getName(), _connectionId, connectionId)) {
-//                FileManager.insertFileForce(configuration.getName(), information, connectionId.get());
-//                FileManager.updateDirectoryType(configuration.getName(), parentId, false, connectionId.get());
-//                FileManager.updateDirectorySize(configuration.getName(), parentId, size, connectionId.get());
-//                connection.commit();
-//            }
-//            return information;
-//        }, HExceptionWrapper.wrapRunnable(() -> methods.getSecond().run())));
-//    }
-//
+    /**
+     * Upload a file. {size >= 0}
+     * @param parentLocation Only by used to create {@code FailureReason}.
+     * @see UploadRequirements#splitUploadBuffer(ConsumerE, long, int)
+     */
+    @SuppressWarnings("SameParameterValue")
+    protected abstract void uploadFile0(final long parentId, final @NotNull String filename, final long size, final @NotNull Options.DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws Exception;
+
+    @Override
+    public void uploadFile(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws Exception {
+        if (!this.fileNameChecker().test(filename)) {
+            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(parentLocation, filename, this.fileNameChecker().description()))));
+            return;
+        }
+        if (size > this.getConfiguration().getMaxSizePerFile()) {
+            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byExceedMaxSize(parentLocation, size, this.getConfiguration().getMaxSizePerFile()))));
+        }
+        final AtomicBoolean barrier = new AtomicBoolean(true);
+        this.list(parentId, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0, p -> {
+            if (!barrier.compareAndSet(true, false)) {
+                HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'uploadFile#list'." + ParametersMap.create()
+                        .add("p", p).add("parentId", parentId).add("filename", filename).add("size", size).add("policy", policy)));
+                return;
+            }
+            try {
+                if (p.isFailure()) {
+                    consumer.accept(UnionPair.fail(p.getE()));
+                    return;
+                }
+                if (p.getT().isFailure()) {
+                    consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(parentLocation))));
+                    return;
+                }
+                final String name = this.getDuplicatedName(parentId, filename, policy);
+                if (name == null) {
+                    consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byDuplicateError(parentLocation))));
+                    return;
+                }
+                if (!this.fileNameChecker().test(name)) {
+                    consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(parentLocation, name, this.fileNameChecker().description()))));
+                    return;
+                }
+                this.loginIfNot();
+                final AtomicBoolean barrier1 = new AtomicBoolean(true);
+                this.uploadFile0(parentId, name, size, Options.DuplicatePolicy.ERROR, u -> {
+                    if (!barrier1.compareAndSet(true, false)) {
+                        HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'uploadFile0'." + ParametersMap.create()
+                                .add("u", u).add("parentId", parentId).add("filename", filename).add("size", size).add("policy", policy)));
+                        return;
+                    }
+                    if (u.isSuccess() && u.getT().isSuccess()) {
+                        final UploadRequirements requirements = u.getT().getT();
+                        consumer.accept(UnionPair.ok(UnionPair.ok(new UploadRequirements(requirements.checksums(), c -> {
+                            final UploadRequirements.UploadMethods methods = requirements.transfer().apply(c);
+                            return new UploadRequirements.UploadMethods(methods.parallelMethods(), () -> {
+                                final FileInformation information = methods.supplier().get();
+                                if (information != null) {
+                                    assert !information.isDirectory() && information.size() >= 0;
+                                    this.manager.getInstance().insertFileOrDirectory(information, null);
+                                }
+                                return information;
+                            }, methods.finisher());
+                        }))));
+                        return;
+                    }
+                    consumer.accept(u);
+                }, parentLocation);
+            } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                consumer.accept(UnionPair.fail(exception));
+            }
+        });
+    }
+
 //    static @NotNull UnionPair<FileInformation, FailureReason> move(final @NotNull LanzouConfiguration configuration, final @NotNull FileInformation source, final long targetId, final Options.@NotNull DuplicatePolicy policy, final @Nullable String _connectionId) throws IOException, SQLException, InterruptedException {
 //        if (source.parentId() == targetId) return UnionPair.ok(source);
 //        if (policy == Options.DuplicatePolicy.KEEP) // TODO: vip

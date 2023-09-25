@@ -24,7 +24,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
-import java.util.LinkedHashMap;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -118,7 +117,7 @@ public class OperateGroupsTest extends ServerWrapper {
     @MethodSource("client")
     @Order(4)
     public void listGroups(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
-        Assertions.assertEquals(3, OperateGroupsHelper.listGroups(client, this.adminToken(), new LinkedHashMap<>(), 0, 3).getFirst());
+        Assertions.assertEquals(3, OperateGroupsHelper.listGroups(client, this.adminToken(), VisibleUserGroupInformation.emptyOrder(), 0, 3).getFirst());
     }
 
     @ParameterizedTest(name = "running")
@@ -126,7 +125,7 @@ public class OperateGroupsTest extends ServerWrapper {
     @Order(4)
     public void listGroupsInPermissions(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
         Assertions.assertEquals(1, OperateGroupsHelper.listGroupsInPermissions(client, this.adminToken(),
-                UserPermission.All.stream().collect(Collectors.toMap(p -> p, p -> true)), new LinkedHashMap<>(), 0, 3).getFirst());
+                UserPermission.All.stream().collect(Collectors.toMap(p -> p, p -> true)), VisibleUserGroupInformation.emptyOrder(), 0, 3).getFirst());
     }
 
     @ParameterizedTest(name = "running")
@@ -147,7 +146,7 @@ public class OperateGroupsTest extends ServerWrapper {
     @MethodSource("client")
     @Order(4)
     public void searchGroupRegex(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
-        Assertions.assertEquals(3, OperateGroupsHelper.searchGroupsRegex(client, this.adminToken(), ".*", new LinkedHashMap<>(), 0, 3).getFirst());
+        Assertions.assertEquals(3, OperateGroupsHelper.searchGroupsRegex(client, this.adminToken(), ".*", VisibleUserGroupInformation.emptyOrder(), 0, 3).getFirst());
     }
 
     @ParameterizedTest(name = "running")

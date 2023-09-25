@@ -1,6 +1,8 @@
 package com.xuxiaocheng.WListTest.Storage.Real;
 
+import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou.LanzouConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou.LanzouProvider;
@@ -24,7 +26,6 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
-import java.util.LinkedHashMap;
 import java.util.Objects;
 
 @Execution(ExecutionMode.SAME_THREAD)
@@ -63,11 +64,13 @@ public class LanzouTest {
 
     @BeforeEach
     public void checkEmpty() throws Exception {
-        Assumptions.assumeTrue(ProviderHelper.list(this.provider(), this.root(), Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 10).getT().total() == 0);
+        Assumptions.assumeTrue(ProviderHelper.list(this.provider(), this.root(), Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 10).getT().total() == 0);
     }
 
     @Test
-    public void list() throws Exception {
+    public void curd() throws Exception {
+        final FileInformation directory = ProviderHelper.create(this.provider(), this.root(), "Curd test.", Options.DuplicatePolicy.ERROR).getT();
+
 
     }
 }

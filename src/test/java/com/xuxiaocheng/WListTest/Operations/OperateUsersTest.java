@@ -23,7 +23,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
-import java.util.LinkedHashMap;
 import java.util.Objects;
 import java.util.Set;
 
@@ -82,7 +81,7 @@ public class OperateUsersTest extends ServerWrapper {
     @MethodSource("client")
     @Order(2)
     public void listUsers(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
-        Assertions.assertEquals(2, OperateUsersHelper.listUsers(client, this.adminToken(), new LinkedHashMap<>(), 0, 2).getFirst());
+        Assertions.assertEquals(2, OperateUsersHelper.listUsers(client, this.adminToken(), VisibleUserInformation.emptyOrder(), 0, 2).getFirst());
     }
 
     @ParameterizedTest(name = "running")
@@ -90,9 +89,9 @@ public class OperateUsersTest extends ServerWrapper {
     @Order(2)
     public void listUsersInGroups(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
         Assertions.assertEquals(2, OperateUsersHelper.listUsersInGroups(client, this.adminToken(), Set.of(UserGroupManager.getInstance().getAdminId()),
-                false, new LinkedHashMap<>(), 0, 3).getFirst());
+                false, VisibleUserInformation.emptyOrder(), 0, 3).getFirst());
         Assertions.assertEquals(0, OperateUsersHelper.listUsersInGroups(client, this.adminToken(), Set.of(UserGroupManager.getInstance().getAdminId()),
-                true, new LinkedHashMap<>(), 0, 3).getFirst());
+                true, VisibleUserInformation.emptyOrder(), 0, 3).getFirst());
     }
 
     @ParameterizedTest(name = "running")
@@ -120,7 +119,7 @@ public class OperateUsersTest extends ServerWrapper {
     @MethodSource("client")
     @Order(2)
     public void searchGroupRegex(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
-        Assertions.assertEquals(2, OperateUsersHelper.searchUsersRegex(client, this.adminToken(), ".*", new LinkedHashMap<>(), 0, 2).getFirst());
+        Assertions.assertEquals(2, OperateUsersHelper.searchUsersRegex(client, this.adminToken(), ".*", VisibleUserInformation.emptyOrder(), 0, 2).getFirst());
     }
 
     @ParameterizedTest(name = "running")

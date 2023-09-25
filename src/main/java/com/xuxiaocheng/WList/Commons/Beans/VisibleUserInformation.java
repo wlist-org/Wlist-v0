@@ -4,10 +4,12 @@ import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Unmodifiable;
 
 import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 
 public record VisibleUserInformation(long id, @NotNull String username, long groupId, @NotNull String groupName,
                                      @NotNull ZonedDateTime createTime, @NotNull ZonedDateTime updateTime) {
@@ -23,5 +25,10 @@ public record VisibleUserInformation(long id, @NotNull String username, long gro
 
     public enum Order implements Options.OrderPolicy {
         Id, Name, CreateTime, UpdateTime, GroupId, GroupName,
+    }
+
+    private static final @NotNull @Unmodifiable LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> ListEmptyOrder = new LinkedHashMap<>(0);
+    public static @NotNull @Unmodifiable LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> emptyOrder() {
+        return VisibleUserInformation.ListEmptyOrder;
     }
 }

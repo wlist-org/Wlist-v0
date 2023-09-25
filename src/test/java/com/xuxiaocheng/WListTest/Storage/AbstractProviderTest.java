@@ -5,6 +5,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Operations.FailureKind;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
@@ -16,6 +17,7 @@ import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
+import com.xuxiaocheng.WList.Server.Storage.Records.UploadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WListTest.StaticLoader;
 import org.jetbrains.annotations.NotNull;
@@ -42,7 +44,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -130,7 +131,7 @@ public class AbstractProviderTest {
         }
 
         @Override
-        protected void createDirectory0(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws Exception {
+        protected void createDirectory0(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) {
             final FileInformation information = AbstractProviderTest.this.create.getAndSet(null);
             if (information == null) {
                 consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(parentLocation, directoryName, "For test."))));
@@ -141,7 +142,15 @@ public class AbstractProviderTest {
             consumer.accept(UnionPair.ok(UnionPair.ok(information)));
         }
 
+        @Override
+        protected @NotNull CheckRule<@NotNull String> fileNameChecker() {
+            return CheckRule.allAllow();
+        }
 
+        @Override
+        protected void uploadFile0(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) {
+
+        }
     }
 
     protected static final ThreadLocal<ProviderInterface<AbstractConfiguration>> provider = new ThreadLocal<>();
@@ -196,14 +205,14 @@ public class AbstractProviderTest {
         @MethodSource
         public void list(final @NotNull Collection<FileInformation> collection) throws Exception {
             list.set(collection.iterator());
-            final UnionPair<FilesListInformation, Boolean> resultD = ProviderHelper.list(provider(), 0, Options.FilterPolicy.OnlyDirectories, new LinkedHashMap<>(), 0, collection.size());
+            final UnionPair<FilesListInformation, Boolean> resultD = ProviderHelper.list(provider(), 0, Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, collection.size());
             Assertions.assertTrue(loggedIn.get());
             Assertions.assertNull(list.get());
             Assertions.assertTrue(resultD.isSuccess());
             ProviderHelper.testList(resultD.getT(), collection, Options.FilterPolicy.OnlyDirectories);
 
             loggedIn.set(false);
-            final UnionPair<FilesListInformation, Boolean> resultF = ProviderHelper.list(provider(), 0, Options.FilterPolicy.OnlyFiles, new LinkedHashMap<>(), 0, collection.size());
+            final UnionPair<FilesListInformation, Boolean> resultF = ProviderHelper.list(provider(), 0, Options.FilterPolicy.OnlyFiles, VisibleFileInformation.emptyOrder(), 0, collection.size());
             Assertions.assertFalse(loggedIn.get());
             Assertions.assertNull(list.get());
             Assertions.assertTrue(resultF.isSuccess());
@@ -213,12 +222,12 @@ public class AbstractProviderTest {
         @Test
         public void notAvailable() throws Exception {
             list.set(null);
-            final UnionPair<FilesListInformation, Boolean> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 5);
+            final UnionPair<FilesListInformation, Boolean> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 5);
             Assertions.assertTrue(loggedIn.get());
             Assertions.assertTrue(result.getE().booleanValue());
 
             loggedIn.set(false);
-            final UnionPair<FilesListInformation, Boolean> result1 = ProviderHelper.list(provider(), 1, Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 5);
+            final UnionPair<FilesListInformation, Boolean> result1 = ProviderHelper.list(provider(), 1, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 5);
             Assertions.assertFalse(loggedIn.get());
             Assertions.assertFalse(result1.getE().booleanValue());
         }
@@ -237,7 +246,7 @@ public class AbstractProviderTest {
                 }
             });
             Assertions.assertThrows(NoSuchElementException.class, () ->
-                    ProviderHelper.list(provider(), 0, Options.FilterPolicy.OnlyDirectories, new LinkedHashMap<>(), 0, 5)
+                    ProviderHelper.list(provider(), 0, Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 5)
             );
         }
 
@@ -267,7 +276,7 @@ public class AbstractProviderTest {
             });
             final CountDownLatch latch1 = new CountDownLatch(1);
             final AtomicReference<UnionPair<UnionPair<FilesListInformation, Boolean>, Throwable>> result1 = new AtomicReference<>();
-            provider().list(0, Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 5, p -> {
+            provider().list(0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 5, p -> {
                 result1.set(p);
                 latch1.countDown();
             });
@@ -277,7 +286,7 @@ public class AbstractProviderTest {
             final CountDownLatch latch2 = new CountDownLatch(1);
             loggedIn.set(false);
             final AtomicReference<UnionPair<UnionPair<FilesListInformation, Boolean>, Throwable>> result2 = new AtomicReference<>();
-            provider().list(0, Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 5, p -> {
+            provider().list(0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 5, p -> {
                 result2.set(p);
                 latch2.countDown();
             });
@@ -324,7 +333,7 @@ public class AbstractProviderTest {
             });
             final CountDownLatch latch1 = new CountDownLatch(1);
             final AtomicReference<UnionPair<UnionPair<FilesListInformation, Boolean>, Throwable>> result1 = new AtomicReference<>();
-            provider().list(0, Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 5, p -> {
+            provider().list(0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 5, p -> {
                 result1.set(p);
                 latch1.countDown();
             });
@@ -333,7 +342,7 @@ public class AbstractProviderTest {
             Assertions.assertTrue(loggedIn.get());
             final CountDownLatch latch2 = new CountDownLatch(1);
             final AtomicReference<UnionPair<UnionPair<FilesListInformation, Boolean>, Throwable>> result2 = new AtomicReference<>();
-            provider().list(0, Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 5, p -> {
+            provider().list(0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 5, p -> {
                 result2.set(p);
                 latch2.countDown();
             });
@@ -356,7 +365,7 @@ public class AbstractProviderTest {
             final FileInformation directory = new FileInformation(1, 0, "directory", true, -1, null, null, null);
             final FileInformation file = new FileInformation(1, 0, "file", false, 1, null, null, null);
             list.set(List.of(directory, file).iterator());
-            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 0);
+            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0);
             loggedIn.set(false);
 
             updated.set(() -> AbstractIdBaseProvider.UpdateNoRequired);
@@ -383,7 +392,7 @@ public class AbstractProviderTest {
             final FileInformation directory = new FileInformation(1, 0, "directory", true, -1, null, null, null);
             final FileInformation file = new FileInformation(1, 0, "file", false, 1, null, null, null);
             list.set(List.of(directory, file).iterator());
-            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 0);
+            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0);
             loggedIn.set(false);
 
             final FileInformation newFile = new FileInformation(1, 0, "file", false, 1, null, null, "123");
@@ -446,7 +455,7 @@ public class AbstractProviderTest {
             final FileInformation directory = new FileInformation(1, 0, "directory", true, -1, null, null, null);
             final FileInformation file = new FileInformation(2, 0, "file", false, 1, null, null, null);
             list.set(List.of(directory, file).iterator());
-            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 0);
+            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0);
             loggedIn.set(false);
 
             final FileInformation directory0 = new FileInformation(1, 0, "directory0", true, -1, null, null, null);
@@ -464,7 +473,7 @@ public class AbstractProviderTest {
             final FileInformation directory = new FileInformation(1, 0, "directory", true, -1, null, null, null);
             final FileInformation file = new FileInformation(2, 0, "file", false, 1, null, null, null);
             list.set(List.of(directory, file).iterator());
-            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 0);
+            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0);
             loggedIn.set(false);
 
             list.set(List.of(file).iterator());
@@ -480,7 +489,7 @@ public class AbstractProviderTest {
             final FileInformation directory = new FileInformation(1, 0, "directory", true, -1, null, null, null);
             final FileInformation file = new FileInformation(2, 0, "file", false, 1, null, null, null);
             list.set(List.of(file).iterator());
-            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 0);
+            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0);
             loggedIn.set(false);
 
             list.set(List.of(directory, file).iterator());
@@ -504,7 +513,7 @@ public class AbstractProviderTest {
             final FileInformation directory = new FileInformation(1, 0, "directory", true, -1, null, null, null);
             final FileInformation file = new FileInformation(1, 0, "file", false, 1, null, null, null);
             list.set(List.of(directory, file).iterator());
-            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 0);
+            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0);
             loggedIn.set(false);
 
             Assertions.assertTrue(ProviderHelper.trash(provider(), 1, true));
@@ -525,7 +534,7 @@ public class AbstractProviderTest {
             private final Map<Long, Iterator<List<FileInformation>>> lister = new HashMap<>();
 
             @Override
-            public void refresh(final long directoryId, final @NotNull Consumer<? super UnionPair<UnionPair<Pair.ImmutablePair<Set<Long>, Set<Long>>, Boolean>, Throwable>> consumer) {
+            public void refreshDirectory(final long directoryId, final @NotNull Consumer<? super UnionPair<UnionPair<Pair.ImmutablePair<Set<Long>, Set<Long>>, Boolean>, Throwable>> consumer) {
                 operations.add("Refresh: " + directoryId);
                 consumer.accept(ProviderInterface.RefreshNoUpdater);
             }
@@ -570,7 +579,7 @@ public class AbstractProviderTest {
                                 new FileInformation(1, 0, "", true, -1, null, null, null)
                         )
                 ).iterator());
-                ProviderHelper.list(provider, 0, Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 0);
+                ProviderHelper.list(provider, 0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0);
                 provider.lister.remove(0L);
 
                 provider.lister.put(1L, List.of(
@@ -597,6 +606,7 @@ public class AbstractProviderTest {
 
     @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
     @Nested
+//    @Disabled // Ok
     public class CreateTest {
         @Test
         public void create() throws Exception {
@@ -615,7 +625,7 @@ public class AbstractProviderTest {
 
             Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.create(provider(), 0, "1", Options.DuplicatePolicy.ERROR).getE().kind());
 
-            final FileInformation keep = new FileInformation(2, 0, "1(1)", true, 0, null, null, null);
+            final FileInformation keep = new FileInformation(2, 0, "1 (1)", true, 0, null, null, null);
             create.set(keep);
             Assertions.assertEquals(keep, ProviderHelper.create(provider(), 0, "1", Options.DuplicatePolicy.KEEP).getT());
 

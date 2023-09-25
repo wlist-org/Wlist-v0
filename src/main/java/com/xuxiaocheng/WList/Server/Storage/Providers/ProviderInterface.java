@@ -14,6 +14,7 @@ import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
+import com.xuxiaocheng.WList.Server.Storage.Records.UploadRequirements;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Unmodifiable;
@@ -73,7 +74,7 @@ public interface ProviderInterface<C extends StorageConfiguration> {
      * Force rebuild (or build) files index to synchronize with web server (not recursively).
      * @param consumer false: directory is not available. true: directory is not existed in web server. !null: inserted (into other directories) ids of files and directories.
      */
-    void refresh(final long directoryId, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<Pair.ImmutablePair<@NotNull Set<Long>, @NotNull Set<Long>>, Boolean>, Throwable>> consumer) throws Exception;
+    void refreshDirectory(final long directoryId, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<Pair.ImmutablePair<@NotNull Set<Long>, @NotNull Set<Long>>, Boolean>, Throwable>> consumer) throws Exception;
 
     @NotNull UnionPair<Boolean, Throwable> TrashNotAvailable = UnionPair.ok(Boolean.FALSE);
     @NotNull UnionPair<Boolean, Throwable> TrashSuccess = UnionPair.ok(Boolean.TRUE);
@@ -87,7 +88,7 @@ public interface ProviderInterface<C extends StorageConfiguration> {
      * Get download methods of a specific file.
      * @param location Only by used to create {@code FailureReason}.
      */
-    void download(final long fileId, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) throws Exception;
+    void downloadFile(final long fileId, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) throws Exception;
 
     /**
      * Create an empty directory.
@@ -95,10 +96,11 @@ public interface ProviderInterface<C extends StorageConfiguration> {
      */
     void createDirectory(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws Exception;
 
-//    /**
-//     * Upload file.
-//     */
-//    @NotNull UnionPair<UploadRequirements, FailureReason> upload(final @NotNull FileLocation parentLocation, final @NotNull String filename, final @LongRange(minimum = 0) long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws Exception;
+    /**
+     * Upload a file.
+     * @param parentLocation Only by used to create {@code FailureReason}.
+     */
+    void uploadFile(final long parentId, final @NotNull String filename, final @LongRange(minimum = 0) long size, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws Exception;
 
 //    /**
 //     * Copy file.

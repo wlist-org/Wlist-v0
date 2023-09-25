@@ -28,10 +28,11 @@ import org.jetbrains.annotations.Unmodifiable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
-import java.time.ZonedDateTime;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -65,7 +66,7 @@ public record DownloadRequirements(boolean acceptedRange, long downloadingSize, 
     /**
      * @param start Start byte position of the whole file.
      * @param end End byte position of the whole file.
-     * @param suppliersLink Each supplier should accept a {@code ByteBuf} whose {@code .readableBytes()} is less than {@link com.xuxiaocheng.Rust.NetworkTransmission#FileTransferBufferSize}.
+     * @param suppliersLink Each supplier should accept a {@code ByteBuf} whose {@code .readableBytes() <= }{@link com.xuxiaocheng.Rust.NetworkTransmission#FileTransferBufferSize}.
      */
     public record OrderedSuppliers(long start, long end, @NotNull OrderedNode suppliersLink) {
     }
@@ -140,14 +141,16 @@ public record DownloadRequirements(boolean acceptedRange, long downloadingSize, 
         return new DownloadRequirements(true, end - start, () -> {
             final int count = MiscellaneousUtil.calculatePartCount(size, NetworkTransmission.FileTransferBufferSize);
             final List<OrderedSuppliers> list = new ArrayList<>(count);
+            final Collection<Call> calls = new ArrayList<>(count);
             final Pair.ImmutablePair<HttpUrl, String> getUrl = Pair.ImmutablePair.makeImmutablePair(url, "GET");
             final Headers.Builder builder = Objects.requireNonNullElseGet(requestHeaderBuilder, Headers.Builder::new);
-            for (long i = start; i < end; i += NetworkTransmission.FileTransferBufferSize) {
-                final long b = i;
-                final long e = Math.min(end, i + NetworkTransmission.FileTransferBufferSize);
+            for (long b = start; b < end; b += NetworkTransmission.FileTransferBufferSize) {
+                final long e = Math.min(end, b + NetworkTransmission.FileTransferBufferSize);
+                final int length = Math.toIntExact(e - b);
+                final Call call = HttpNetworkHelper.getWithParameters(client, getUrl, builder.set("Range", String.format("bytes=%d-%d", b, e - 1)).build(), null);
+                calls.add(call);
                 list.add(new OrderedSuppliers(b - start, e - start, consumer -> {
-                    final int length = Math.toIntExact(e - b);
-                    HttpNetworkHelper.getWithParameters(client, getUrl, builder.set("Range", String.format("bytes=%d-%d", b, e - 1)).build(), null).enqueue(new Callback() {
+                    call.enqueue(new Callback() {
                         @Override
                         public void onFailure(final @NotNull Call call, final @NotNull IOException exception) {
                             consumer.accept(UnionPair.fail(exception));
@@ -165,7 +168,7 @@ public record DownloadRequirements(boolean acceptedRange, long downloadingSize, 
                     return null;
                 }));
             }
-            return new DownloadMethods(list, RunnableE.EmptyRunnable, expires);
+            return new DownloadMethods(list, () -> calls.forEach(Call::cancel), expires);
         });
     }
 
@@ -194,6 +197,7 @@ public record DownloadRequirements(boolean acceptedRange, long downloadingSize, 
                         consumer.accept(UnionPair.ok(HttpNetworkHelper.receiveDataFromStream(body, length)));
                     } catch (final IOException exception) {
                         consumer.accept(UnionPair.fail(exception));
+                        return null;
                     }
                     this.current += length;
                     return this.current >= size ? null : this;

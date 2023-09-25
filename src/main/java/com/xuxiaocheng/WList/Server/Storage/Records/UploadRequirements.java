@@ -2,6 +2,7 @@ package com.xuxiaocheng.WList.Server.Storage.Records;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
+import com.xuxiaocheng.HeadLibs.Functions.FunctionE;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.Rust.NetworkTransmission;
@@ -18,51 +19,72 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
 
-// TODO
-public record UploadRequirements(@NotNull @Unmodifiable List<@NotNull UploadChecksum> checksums, @NotNull Function<@NotNull @Unmodifiable List<@NotNull String>, @NotNull UploadMethods> transfer) {
-    public record UploadMethods(@NotNull @Unmodifiable List<@NotNull OrderedFrame> parallelMethods,
+public record UploadRequirements(@NotNull @Unmodifiable List<@NotNull UploadChecksum> checksums,
+                                 @NotNull FunctionE<@NotNull @Unmodifiable List<@NotNull String>, @NotNull UploadMethods> transfer) {
+    public record UploadMethods(@NotNull @Unmodifiable List<@NotNull OrderedConsumers> parallelMethods,
                                 @NotNull SupplierE<@Nullable FileInformation> supplier,
                                 @NotNull Runnable finisher) {
     }
 
-    public record OrderedFrame(
-            long start,
-            long end,
-            @NotNull @Unmodifiable List<@NotNull ConsumerE<@NotNull ByteBuf>> consumers
-    ) {
+    /**
+     * @param start Start byte position of the whole file.
+     * @param end End byte position of the whole file.
+     * @param consumersLink Each consumer will be supplied a {@code ByteBuf} whose {@code .readableBytes() <= }{@link com.xuxiaocheng.Rust.NetworkTransmission#FileTransferBufferSize}.
+     */
+    public record OrderedConsumers(long start, long end, @NotNull OrderedNode consumersLink) {
     }
 
-    public static Pair.@NotNull ImmutablePair<@NotNull List<@NotNull ConsumerE<@NotNull ByteBuf>>, @NotNull Runnable> splitUploadMethodEveryFileTransferBufferSize(final @NotNull ConsumerE<@NotNull ByteBuf> sourceMethod, final int totalSize) {
-        assert totalSize >= 0;
-        if (totalSize < NetworkTransmission.FileTransferBufferSize)
-            return Pair.ImmutablePair.makeImmutablePair(List.of(sourceMethod), RunnableE.EmptyRunnable);
-        final int mod = totalSize % NetworkTransmission.FileTransferBufferSize;
-        final int count = totalSize / NetworkTransmission.FileTransferBufferSize - (mod == 0 ? 1 : 0);
-        final int rest = mod == 0 ? NetworkTransmission.FileTransferBufferSize : mod;
-        final List<ConsumerE<ByteBuf>> list = new ArrayList<>(count + 1);
-        final AtomicBoolean leaked = new AtomicBoolean(true);
-        final ByteBuf[] cacher = new ByteBuf[count + 1];
-        final AtomicInteger countDown = new AtomicInteger(count);
-        for (int i = 0; i < count + 1; ++i) {
-            final int c = i;
-            list.add(b -> {
-                assert b.readableBytes() == (c == count ? rest : NetworkTransmission.FileTransferBufferSize);
-                cacher[c] = b;
-                if (countDown.getAndDecrement() == 0) {
-                    leaked.set(false);
-                    final CompositeByteBuf buf = ByteBufAllocator.DEFAULT.compositeBuffer(count + 1).addComponents(true, cacher);
-                    try {
-                        sourceMethod.accept(buf);
-                    } finally {
-                        buf.release();
-                    }
+    @FunctionalInterface
+    public interface OrderedNode extends BiFunction<@NotNull ByteBuf, @NotNull Consumer<@Nullable Throwable>, @Nullable OrderedNode> {
+    }
+
+    public static Pair.@NotNull ImmutablePair<@NotNull List<@NotNull OrderedConsumers>, @NotNull Runnable> splitUploadBuffer(final @NotNull ConsumerE<? super @NotNull ByteBuf> sourceMethod, final long start, final int size) {
+        assert size >= 0;
+        if (size <= NetworkTransmission.FileTransferBufferSize)
+            return Pair.ImmutablePair.makeImmutablePair(List.of(new OrderedConsumers(start, start + size, (content, consumer) -> {
+                try {
+                    sourceMethod.accept(content);
+                    consumer.accept(null);
+                } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                    consumer.accept(exception);
                 }
-            });
+                return null;
+            })), RunnableE.EmptyRunnable);
+        final int full = size / NetworkTransmission.FileTransferBufferSize - (size % NetworkTransmission.FileTransferBufferSize == 0 ? 1 : 0);
+        final List<OrderedConsumers> list = new ArrayList<>(full + 1);
+        final AtomicBoolean leaked = new AtomicBoolean(true);
+        final ByteBuf[] cacher = new ByteBuf[full + 1];
+        int i = 0;
+        final AtomicInteger countDown = new AtomicInteger(full);
+        for (long b = start; b < start + size; b += NetworkTransmission.FileTransferBufferSize) {
+            final long e = Math.min(start + size, b + NetworkTransmission.FileTransferBufferSize);
+            final int length = Math.toIntExact(e - b);
+            final int k = i++;
+            list.add(new OrderedConsumers(b, e, (c, consumer) -> {
+                try {
+                    assert c.readableBytes() == length;
+                    cacher[k] = c;
+                    if (countDown.getAndDecrement() == 0) {
+                        final CompositeByteBuf buf = ByteBufAllocator.DEFAULT.compositeBuffer(full + 1).addComponents(true, cacher);
+                        try {
+                            leaked.set(false);
+                            sourceMethod.accept(buf);
+                        } finally {
+                            buf.release();
+                        }
+                    }
+                    consumer.accept(null);
+                } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                    consumer.accept(exception);
+                }
+                return null;
+            }));
         }
         return Pair.ImmutablePair.makeImmutablePair(list, () -> {
-            if (leaked.get())
+            if (leaked.compareAndSet(true, false))
                 for (final ByteBuf buffer: cacher)
                     if (buffer != null)
                         buffer.release();

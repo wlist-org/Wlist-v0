@@ -92,7 +92,7 @@ public final class ProviderHelper {
         final CountDownLatch latch = new CountDownLatch(1);
         final AtomicReference<UnionPair<UnionPair<Pair.ImmutablePair<Set<Long>, Set<Long>>, Boolean>, Throwable>> result = new AtomicReference<>();
         final AtomicBoolean barrier = new AtomicBoolean(true);
-        provider.refresh(directoryId, p -> {
+        provider.refreshDirectory(directoryId, p -> {
             if (!barrier.compareAndSet(true, false)) {
                 HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), new RuntimeException("Duplicate message.(refresh) " + p));
                 return;
