@@ -89,11 +89,11 @@ public interface ProviderInterface<C extends StorageConfiguration> {
      */
     void download(final long fileId, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) throws Exception;
 
-//    /**
-//     * Create an empty directory.
-//     * @param parentLocation Only by used to create {@code FailureReason}.
-//     */
-//    void createDirectory(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws Exception;
+    /**
+     * Create an empty directory.
+     * @param parentLocation Only by used to create {@code FailureReason}.
+     */
+    void createDirectory(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws Exception;
 
 //    /**
 //     * Upload file.

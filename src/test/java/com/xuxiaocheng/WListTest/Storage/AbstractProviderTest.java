@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WListTest.Storage;
 
+import com.xuxiaocheng.HeadLibs.CheckRules.CheckRule;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
@@ -117,19 +118,21 @@ public class AbstractProviderTest {
         }
 
         @Override
-        protected void download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) throws Exception {
+        protected void download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) {
+            throw new UnsupportedOperationException("Not tested.");
+        }
+
+        @Override
+        protected @NotNull CheckRule<@NotNull String> directoryNameChecker() {
+            return CheckRule.allAllow();
+        }
+
+        @Override
+        protected void createDirectory0(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws Exception {
             throw new UnsupportedOperationException();
         }
 
-//        @Override
-//        protected @NotNull CheckRule<@NotNull String> nameChecker() {
-//            throw new UnsupportedOperationException();
-//        }
-//
-//        @Override
-//        protected @NotNull UnionPair<FileInformation, FailureReason> createDirectory0(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull FileLocation parentLocation) {
-//            throw new UnsupportedOperationException();
-//        }
+
     }
 
     protected static final ThreadLocal<ProviderInterface<AbstractConfiguration>> provider = new ThreadLocal<>();
@@ -512,7 +515,7 @@ public class AbstractProviderTest {
             private final Map<Long, Iterator<List<FileInformation>>> lister = new HashMap<>();
 
             @Override
-            public void refresh(final long directoryId, final @NotNull Consumer<? super UnionPair<UnionPair<Pair.ImmutablePair<Set<Long>, Set<Long>>, Boolean>, Throwable>> consumer) throws Exception {
+            public void refresh(final long directoryId, final @NotNull Consumer<? super UnionPair<UnionPair<Pair.ImmutablePair<Set<Long>, Set<Long>>, Boolean>, Throwable>> consumer) {
                 operations.add("Refresh: " + directoryId);
                 consumer.accept(ProviderInterface.RefreshNoUpdater);
             }

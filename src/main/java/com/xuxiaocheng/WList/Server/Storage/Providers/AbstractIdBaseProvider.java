@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Server.Storage.Providers;
 
+import com.xuxiaocheng.HeadLibs.CheckRules.CheckRule;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
@@ -39,6 +40,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -438,70 +440,98 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         this.download0(information, start, end, consumer, location);
     }
 
-//    protected boolean checkDirectoryIndexed(final long directoryId) throws Exception {
-////        final CountDownLatch latch = new CountDownLatch(1);
-////        final AtomicReference<UnionPair<FilesListInformation, Throwable>> p = new AtomicReference<>();
-////        this.list(directoryId, Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 0, l -> {
-////            p.set(l);
-////            latch.countDown();
-////        });
-////        latch.await();
-////        if (p.get() == null)
-////            return true;
-////        if (p.get().isFailure()) {
-////            if (p.get().getE() instanceof Exception exception)
-////                throw exception;
-////            throw (Error) p.get().getE();
-////        }
-//        return false;
-//    }
-//
-//    @Contract(pure = true)
-//    protected abstract @NotNull CheckRule<@NotNull String> nameChecker();
-//
-//    /**
-//     * Create an empty directory. {size == 0}
-//     * @param parentLocation Only by used to create {@code FailureReason}.
-//     */
-//    protected abstract @NotNull UnionPair<FileInformation, FailureReason> createDirectory0(final long parentId, final @NotNull String directoryName, final @NotNull Options.DuplicatePolicy ignoredPolicy, final @NotNull FileLocation parentLocation) throws Exception;
-//
-//    @Override
-//    public @NotNull UnionPair<FileInformation, FailureReason> createDirectory(final long parentId, final @NotNull String directoryName, final @NotNull Options.DuplicatePolicy policy, final @NotNull FileLocation parentLocation) throws Exception {
-//        if (!this.nameChecker().test(directoryName))
-//            return UnionPair.fail(FailureReason.byInvalidName(parentLocation, directoryName, this.nameChecker().description()));
-//        final FileInformation information = this.manager.getInstance().selectInfo(parentId, true, null);
-//        if (information == null || this.checkDirectoryIndexed(parentId))
-//            return UnionPair.fail(FailureReason.byNoSuchFile(parentLocation));
-//        String name = directoryName;
-//        FileInformation duplicate = this.manager.getInstance().selectInfoInDirectoryByName(parentId, directoryName, null);
-//        if (duplicate != null)
-//            switch (policy) {
-//                case ERROR -> {
-//                    return UnionPair.fail(FailureReason.byDuplicateError(parentLocation));
-//                }
-//                case OVER -> {
-//                    while (duplicate != null) {
-//                        this.delete(duplicate.id(), duplicate.isDirectory());
-//                        duplicate = this.manager.getInstance().selectInfoInDirectoryByName(parentId, directoryName, null);
-//                    }
-//                }
-//                case KEEP -> {
-//                    final int index = name.lastIndexOf('.');
-//                    final String left = (index < 0 ? name: name.substring(0, index)) + '(';
-//                    final String right = ')' + (index < 0 ? "" : name.substring(index));
-//                    int retry = 0;
-//                    do {
-//                        name = left + (++retry) + right;
-//                    } while (this.manager.getInstance().selectInfoInDirectoryByName(parentId, name, null) != null);
-//                }
-//            }
-//        if (!this.nameChecker().test(name))
-//            return UnionPair.fail(FailureReason.byInvalidName(parentLocation, name, this.nameChecker().description()));
-//        final UnionPair<FileInformation, FailureReason> directory = this.createDirectory0(parentId, name, policy, parentLocation);
-//        if (directory.isSuccess())
-//            this.manager.getInstance().insertFileOrDirectory(directory.getT(), null);
-//        return directory;
-//    }
+    private static final @NotNull Pair.ImmutablePair<@NotNull String, @NotNull String> DefaultRetryBracketPair = Pair.ImmutablePair.makeImmutablePair("(", ")");
+    @Contract(pure = true)
+    protected Pair.ImmutablePair<@NotNull String, @NotNull String> retryBracketPair() {
+        return AbstractIdBaseProvider.DefaultRetryBracketPair;
+    }
+
+    @Contract(pure = true)
+    protected abstract @NotNull CheckRule<@NotNull String> directoryNameChecker();
+
+    /**
+     * Create an empty directory. {size == 0}
+     * @param parentLocation Only by used to create {@code FailureReason}.
+     */
+    @SuppressWarnings("SameParameterValue")
+    protected abstract void createDirectory0(final long parentId, final @NotNull String directoryName, final @NotNull Options.DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws Exception;
+
+    @Override
+    public void createDirectory(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws Exception {
+        if (!this.directoryNameChecker().test(directoryName)) {
+            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(parentLocation, directoryName, this.directoryNameChecker().description()))));
+            return;
+        }
+        final AtomicBoolean barrier = new AtomicBoolean(true);
+        this.list(parentId, Options.FilterPolicy.Both, new LinkedHashMap<>(), 0, 0, p -> {
+            if (!barrier.compareAndSet(true, false)) {
+                HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'createDirectory#list'." + ParametersMap.create()
+                        .add("p", p).add("parentId", parentId).add("directoryName", directoryName).add("policy", policy)));
+                return;
+            }
+            try {
+                if (p.isFailure()) {
+                    consumer.accept(UnionPair.fail(p.getE()));
+                    return;
+                }
+                if (p.getT().isFailure()) {
+                    consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(parentLocation))));
+                    return;
+                }
+                FileInformation duplicate = this.manager.getInstance().selectInfoInDirectoryByName(parentId, directoryName, null);
+                String name = directoryName;
+                if (duplicate != null)
+                    switch (policy) {
+                        case ERROR -> {
+                            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byDuplicateError(parentLocation))));
+                            return;
+                        }
+                        case OVER -> {
+                            while (duplicate != null) {
+                                final CountDownLatch latch = new CountDownLatch(1);
+                                this.trash(duplicate.id(), duplicate.isDirectory(), u -> latch.countDown());
+                                latch.await();
+                                duplicate = this.manager.getInstance().selectInfoInDirectoryByName(parentId, directoryName, null);
+                            }
+                        }
+                        case KEEP -> {
+                            final int index = name.lastIndexOf('.');
+                            final Pair.ImmutablePair<String, String> bracket = this.retryBracketPair();
+                            final String left = (index < 0 ? name: name.substring(0, index)) + bracket.getFirst();
+                            final String right = bracket.getSecond() + (index < 0 ? "" : name.substring(index));
+                            int retry = 0;
+                            do {
+                                name = left + (++retry) + right;
+                            } while (this.manager.getInstance().selectInfoInDirectoryByName(parentId, name, null) != null);
+                        }
+                    }
+                if (!this.directoryNameChecker().test(name)) {
+                    consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(parentLocation, name, this.directoryNameChecker().description()))));
+                    return;
+                }
+                final AtomicBoolean barrier1 = new AtomicBoolean(true);
+                this.createDirectory0(parentId, name, Options.DuplicatePolicy.ERROR, u -> {
+                    if (!barrier1.compareAndSet(true, false)) {
+                        HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'createDirectory'." + ParametersMap.create()
+                                .add("u", u).add("parentId", parentId).add("directoryName", directoryName).add("policy", policy)));
+                        return;
+                    }
+                    try {
+                        if (u.isSuccess() && u.getT().isSuccess()) {
+                            final FileInformation information = u.getT().getT();
+                            assert information.isDirectory() && information.size() == 0;
+                            this.manager.getInstance().insertFileOrDirectory(information, null);
+                        }
+                        consumer.accept(u);
+                    } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                        consumer.accept(UnionPair.fail(exception));
+                    }
+                }, parentLocation);
+            } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                consumer.accept(UnionPair.fail(exception));
+            }
+        });
+    }
 
 //    @Override
 //    public void buildIndex() throws IOException, SQLException, InterruptedException {

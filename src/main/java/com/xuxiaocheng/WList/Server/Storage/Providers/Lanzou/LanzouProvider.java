@@ -9,6 +9,11 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.html.HtmlSpan;
 import com.gargoylesoftware.htmlunit.javascript.host.event.MouseEvent;
 import com.gargoylesoftware.htmlunit.util.Cookie;
+import com.xuxiaocheng.HeadLibs.CheckRules.CheckRule;
+import com.xuxiaocheng.HeadLibs.CheckRules.CheckRuleSet;
+import com.xuxiaocheng.HeadLibs.CheckRules.StringCheckRules.ContainsCheckRule;
+import com.xuxiaocheng.HeadLibs.CheckRules.StringCheckRules.LengthCheckRule;
+import com.xuxiaocheng.HeadLibs.CheckRules.StringCheckRules.SuffixCheckRule;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
@@ -18,6 +23,7 @@ import com.xuxiaocheng.HeadLibs.Helpers.HMultiRunHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
+import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Exceptions.IllegalParametersException;
@@ -75,8 +81,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
             Pair.ImmutablePair.makeImmutablePair(Objects.requireNonNull(HttpUrl.parse("https://up.woozooo.com/html5up.php")), "POST");
     protected static final @NotNull URL CookieUrl = LanzouProvider.LoginURL.getFirst().url();
 
-    protected static final @NotNull Headers Headers = new Headers.Builder().set("referer", "https://up.woozooo.com/u").set("accept-language", "zh-CN")
-            .set("user-agent", HttpNetworkHelper.defaultWebAgent).set("cache-control", "no-cache").build();
+    protected static final @NotNull Headers Headers = new Headers.Builder().set("user-agent", HttpNetworkHelper.DefaultWebAgent).set("referer", "https://up.woozooo.com/u").set("accept-language", "zh-CN").build();
     protected @NotNull Headers headerWithToken = LanzouProvider.Headers;
 
     @Override
@@ -127,13 +132,14 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         LanzouProvider.logger.log(HLogLevel.LESS, "Logged in.", ParametersMap.create().add("storage", configuration.getName()).add("passport", configuration.getPassport()));
     }
 
-    protected @NotNull JSONObject task(final int type, final FormBody.@NotNull Builder request, final @Nullable Integer zt, final boolean loginFlag) throws IOException, IllegalParametersException {
+    protected @NotNull JSONObject task(final int type, final @NotNull Consumer<FormBody.@NotNull Builder> request, final @Nullable Integer zt, final boolean loginFlag) throws IOException, IllegalParametersException {
         final LanzouConfiguration configuration = this.configuration.getInstance();
         final Map<String, String> parameters = new HashMap<>();
         parameters.put("uid", String.valueOf(configuration.getUid()));
-        if (!loginFlag)
-            request.add("task", String.valueOf(type));
-        final JSONObject json = HttpNetworkHelper.extraJsonResponseBody(HttpNetworkHelper.postWithParametersAndBody(configuration.getHttpClient(), LanzouProvider.TaskURL, this.headerWithToken, parameters, request.build()).execute());
+        final FormBody.Builder builder = new FormBody.Builder();
+        builder.add("task", String.valueOf(type));
+        request.accept(builder);
+        final JSONObject json = HttpNetworkHelper.extraJsonResponseBody(HttpNetworkHelper.postWithParametersAndBody(configuration.getHttpClient(), LanzouProvider.TaskURL, this.headerWithToken, parameters, builder.build()).execute());
         if (!loginFlag && json.getIntValue("zt", 0) == 9) { // login not.
             this.getConfiguration().setToken(null);
             this.getConfiguration().setTokenExpire(null);
@@ -151,9 +157,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
 
     protected @Nullable @Unmodifiable List<@NotNull FileInformation> listAllDirectory(final long directoryId) throws IOException, IllegalParametersException {
         final LanzouConfiguration configuration = this.configuration.getInstance();
-        final FormBody.Builder filesBuilder = new FormBody.Builder()
-                .add("folder_id", String.valueOf(directoryId));
-        final JSONObject json = this.task(47, filesBuilder, null, false);
+        final JSONObject json = this.task(47, f -> f.add("folder_id", String.valueOf(directoryId)), null, false);
         final Integer code = json.getInteger("zt");
         if (code == null || (code.intValue() != 1 && code.intValue() != 2))
             throw new IllegalResponseCodeException(code == null ? -1 : code.intValue(), json.getString("info") == null ? json.getString("text") : json.getString("info"),
@@ -183,9 +187,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
 
     protected @Nullable Triad.ImmutableTriad<@NotNull HttpUrl, @NotNull String, @Nullable String> getFileShareUrl(final long fileId) throws IOException, IllegalParametersException {
         final LanzouConfiguration configuration = this.configuration.getInstance();
-        final FormBody.Builder sharerBuilder = new FormBody.Builder()
-                .add("file_id", String.valueOf(fileId));
-        final JSONObject json = this.task(22, sharerBuilder, 1, false);
+        final JSONObject json = this.task(22, f -> f.add("file_id", String.valueOf(fileId)), 1, false);
         final JSONObject info = json.getJSONObject("info");
         if (info == null)
             throw new WrongResponseException("Getting share url.", json, ParametersMap.create().add("configuration", configuration).add("fileId", fileId));
@@ -200,10 +202,8 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
 
     protected @NotNull @Unmodifiable Set<@NotNull FileInformation> listFilesInPage(final long directoryId, final int page) throws IOException, InterruptedException, IllegalParametersException {
         final LanzouConfiguration configuration = this.configuration.getInstance();
-        final FormBody.Builder builder = new FormBody.Builder()
-                .add("folder_id", String.valueOf(directoryId))
-                .add("pg", String.valueOf(page));
-        final JSONObject files = this.task(5, builder, 1, false);
+        final JSONObject files = this.task(5, f -> f.add("folder_id", String.valueOf(directoryId))
+                .add("pg", String.valueOf(page)), 1, false);
         final JSONArray infos = files.getJSONArray("text");
         if (infos == null)
             throw new WrongResponseException("Listing files.", files, ParametersMap.create().add("configuration", configuration).add("directoryId", directoryId).add("page", page));
@@ -306,17 +306,13 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     @Override
     protected void trash0(final @NotNull FileInformation information) throws IOException, IllegalParametersException {
         if (information.isDirectory()) {
-            final FormBody.Builder builder = new FormBody.Builder()
-                    .add("folder_id", String.valueOf(information.id()));
-            final JSONObject json = this.task(3, builder, 1, false);
+            final JSONObject json = this.task(3, f -> f.add("folder_id", String.valueOf(information.id())), 1, false);
             final String message = json.getString("info");
             if (!"\u5220\u9664\u6210\u529F".equals(message))
                 LanzouProvider.logger.log(HLogLevel.WARN, new WrongResponseException("Trashing directory.", message, ParametersMap.create()
                         .add("configuration", this.configuration.getInstance()).add("information", information).add("json", json)));
         } else {
-            final FormBody.Builder builder = new FormBody.Builder()
-                    .add("file_id", String.valueOf(information.id()));
-            final JSONObject json = this.task(6, builder, 1, false);
+            final JSONObject json = this.task(6, f -> f.add("file_id", String.valueOf(information.id())), 1, false);
             final String message = json.getString("info");
             if (!"\u5DF2\u5220\u9664".equals(message))
                 LanzouProvider.logger.log(HLogLevel.WARN, new WrongResponseException("Trashing file.", message, ParametersMap.create()
@@ -355,47 +351,50 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                 downloadUrl.getFirst(), downloadUrl.getSecond(), information.size(), LanzouProvider.Headers.newBuilder(), from, to, null))));
     }
 
-//    protected static @NotNull CheckRule<@NotNull String> nameChecker = new CheckRuleSet<>(
-//        new SuffixCheckRule(Set.of("doc","docx","zip","rar","apk","ipa","txt","exe","7z","e","z","ct","ke","cetrainer","db","tar","pdf","w3x","epub",
-//                "mobi","azw","azw3","osk","osz","xpa","cpk","lua","jar","dmg","ppt","pptx","xls","xlsx","mp3","iso","img","gho","ttf","ttc","txf","dwg","bat",
-//                "imazingapp","dll","crx","xapk","conf","deb","rp","rpm","rplib","mobileconfig","appimage","lolgezi","flac","cad","hwt","accdb","ce","xmind",
-//                "enc","bds","bdi","ssf","it","pkg","cfg"))
-//        //TODO
-//    );
-//
-//    @Override
-//    protected @NotNull CheckRule<@NotNull String> nameChecker() {
-//        return LanzouProvider.nameChecker;
-//    }
-//
-//    @Override
-//    protected @NotNull UnionPair<FileInformation, FailureReason> createDirectory0(final long parentId, @NotNull final String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull FileLocation parentLocation) throws Exception {
-//        throw new UnsupportedOperationException();
-//    }
+    protected static final @NotNull Pair.ImmutablePair<@NotNull String, @NotNull String> RetryBracketPair = Pair.ImmutablePair.makeImmutablePair("\uFF08", "\uFF09");
+    @Override
+    protected Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> retryBracketPair() {
+        return LanzouProvider.RetryBracketPair;
+    }
 
-//    static @NotNull UnionPair<FileInformation, FailureReason> createDirectory(final @NotNull LanzouConfiguration configuration, final String name, final long parentId) throws IOException {
-//        final FormBody.Builder builder = new FormBody.Builder()
-//                .add("parent_id", String.valueOf(parentId))
-//                .add("folder_name", name);
-//        final JSONObject json;
-//        final ZonedDateTime now;
-//        try {
-//            json = DriverHelper_lanzou.task(configuration, 2, builder, 1);
-//            now = MiscellaneousUtil.now();
-//        } catch (final IllegalResponseCodeException exception) {
-//            if (exception.getCode() == 0 && "\u540D\u79F0\u542B\u6709\u7279\u6B8A\u5B57\u7B26".equals(exception.getMeaning()))
-//                return UnionPair.fail(FailureReason.byInvalidName("Creating directory.", new FileLocation(configuration.getName(), parentId), name));
-//            throw exception;
-//        }
-//        final String message = json.getString("info");
-//        final Long id = json.getLong("text");
-//        if (id == null || !"\u521B\u5EFA\u6210\u529F".equals(message))
-//            throw new WrongResponseException("Creating directories.", message, ParametersMap.create()
-//                    .add("configuration", configuration).add("name", name).add("parentId", parentId).add("json", json));
-//        return UnionPair.ok(new FileInformation(new FileLocation(configuration.getName(), id.longValue()), parentId, name,
-//                FileSqlInterface.FileSqlType.EmptyDirectory, 0, now, now, "", null));
-//    }
-//
+    protected static @NotNull CheckRule<@NotNull String> DirectoryNameChecker = new CheckRuleSet<>(new ContainsCheckRule(Set.of(
+            "/", "\\", "*", "|", "#", "$", "%", "^", "(", ")", "?", ":", "'", "\"", "`", "=", "+"
+    )), new LengthCheckRule(1, 100));
+
+    @Override
+    protected @NotNull CheckRule<@NotNull String> directoryNameChecker() {
+        return LanzouProvider.DirectoryNameChecker;
+    }
+
+    @Override
+    protected void createDirectory0(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws IOException, IllegalParametersException {
+        final JSONObject json;
+        final ZonedDateTime now;
+        try {
+            json = this.task(2, f -> f.add("parent_id", String.valueOf(parentId)).add("folder_name", directoryName), 1, false);
+            now = MiscellaneousUtil.now();
+        } catch (final IllegalResponseCodeException exception) {
+            if (exception.getCode() == 0) {
+                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(parentLocation, directoryName, exception.getMeaning()))));
+                return;
+            }
+            throw exception;
+        }
+        final Long id = json.getLong("text");
+        final String message = json.getString("info");
+        if (id == null)
+            throw new WrongResponseException("Creating directories.", message, ParametersMap.create().add("configuration", this.configuration.getInstance())
+                    .add("directoryName", directoryName).add("parentId", parentId).add("json", json));
+        consumer.accept(UnionPair.ok(UnionPair.ok(new FileInformation(id.longValue(), parentId, directoryName, true, 0, now, now, null))));
+    }
+
+    protected static @NotNull CheckRule<@NotNull String> FileNameChecker = new CheckRuleSet<>(new SuffixCheckRule(Set.of(
+            "doc","docx","zip","rar","apk","ipa","txt","exe","7z","e","z","ct","ke","cetrainer","db","tar","pdf","w3x","epub","mobi","azw","azw3","osk","osz",
+            "xpa","cpk","lua","jar","dmg","ppt","pptx","xls","xlsx","mp3","iso","img","gho","ttf","ttc","txf","dwg","bat","imazingapp","dll","crx","xapk",
+            "conf","deb","rp","rpm","rplib","mobileconfig","appimage","lolgezi","flac","cad","hwt","accdb","ce","xmind","enc","bds","bdi","ssf","it","pkg","cfg")),
+            new ContainsCheckRule(Set.of("/", "\\", "*", "|", "#", "$", "%", "^", "(", ")", "?", ":", "'", "\"", "`", "=", "+")), new LengthCheckRule(1, 100)
+    );
+
 //    static @NotNull UnionPair<FileInformation, FailureReason> uploadFile(final @NotNull LanzouConfiguration configuration, final String name, final long parentId, final @NotNull ByteBuf content, final @NotNull String md5) throws IOException {
 //        if (!DriverHelper_lanzou.filenamePredication.test(name))
 //            return UnionPair.fail(FailureReason.byInvalidName("Uploading.", new FileLocation(configuration.getName(), parentId), name));
