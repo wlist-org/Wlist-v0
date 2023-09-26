@@ -60,7 +60,7 @@ public final class UploadIdHelper {
                 return UnionPair.fail(i);
             ++i;
         }
-        assert !require.hasNext() && checker.hasNext();
+        assert !require.hasNext() && !checker.hasNext();
         final UploadRequirements.UploadMethods methods = requirements.transfer().apply(checksums);
         UploadIdHelper.data.put(id, new UploaderData(id, methods));
         return UnionPair.ok(methods);

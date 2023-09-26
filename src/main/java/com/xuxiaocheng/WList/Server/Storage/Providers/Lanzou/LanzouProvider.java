@@ -57,6 +57,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -133,6 +134,20 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         configuration.setTokenExpire(ZonedDateTime.ofInstant(token.getExpires().toInstant(), ZoneOffset.UTC));
         configuration.markModified();
         LanzouProvider.logger.log(HLogLevel.LESS, "Logged in.", ParametersMap.create().add("storage", configuration.getName()).add("passport", configuration.getPassport()));
+    }
+
+    protected static @NotNull String dumpOthers(final @NotNull HttpUrl domin, final @NotNull String identifier, final @Nullable String pwd) {
+        final Map<String, String> map = new LinkedHashMap<>();
+        map.put("d", domin.toString());
+        map.put("i", identifier);
+        if (pwd != null)
+            map.put("p", pwd);
+        return JSON.toJSONString(map);
+    }
+
+    protected static Triad.@NotNull ImmutableTriad<@NotNull HttpUrl, @NotNull String, @Nullable String> parseOthers(final @NotNull String others) {
+        final JSONObject map = JSON.parseObject(others);
+        return Triad.ImmutableTriad.makeImmutableTriad(Objects.requireNonNull(HttpUrl.parse(map.getString("d"))), map.getString("i"), map.getString("p"));
     }
 
     protected @NotNull JSONObject task(final int type, final @NotNull Consumer<FormBody.@NotNull Builder> request, final @Nullable Integer zt, final boolean loginFlag) throws IOException, IllegalParametersException {
@@ -222,11 +237,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                 try {
                     final Triad.ImmutableTriad<HttpUrl, String, String> shareUrl = this.getFileShareUrl(id.longValue());
                     if (shareUrl == null) return;
-                    others = JSON.toJSONString(Map.of(
-                            "domin", shareUrl.getA().toString(),
-                            "id", shareUrl.getB(),
-                            "pwd", Objects.requireNonNullElse(shareUrl.getC(), "")
-                    ));
+                    others = LanzouProvider.dumpOthers(shareUrl.getA(), shareUrl.getB(), shareUrl.getC());
                     final LanzouSharer sharer = (LanzouSharer) StorageManager.getSharer(this.getConfiguration().getName());
                     assert sharer != null;
                     final Pair.ImmutablePair<HttpUrl, Headers> url = sharer.getSingleShareFileDownloadUrl(shareUrl.getA(), shareUrl.getB(), shareUrl.getC());
@@ -265,26 +276,25 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         if (oldInformation.isDirectory() || (oldInformation.createTime() != null && oldInformation.others() != null))
             return AbstractIdBaseProvider.UpdateNoRequired;
         final HttpUrl url;
-        final String id, pwd, others;
+        final String identifier, pwd, others;
         if (oldInformation.others() == null) {
             final Triad.ImmutableTriad<HttpUrl, String, String> shareUrl = this.getFileShareUrl(oldInformation.id());
             if (shareUrl == null) return UnionPair.fail(Boolean.FALSE);
             url = shareUrl.getA();
-            id = shareUrl.getB();
+            identifier = shareUrl.getB();
             pwd = shareUrl.getC();
-            others = JSON.toJSONString(Map.of("domin", url.toString(), "id", id, "pwd", Objects.requireNonNullElse(pwd, "")));
+            others = LanzouProvider.dumpOthers(url, identifier, pwd);
         } else {
             others = oldInformation.others();
-            final JSONObject json = JSON.parseObject(others);
-            url = Objects.requireNonNull(HttpUrl.parse(json.getString("domin")));
-            id = Objects.requireNonNull(json.getString("id"));
-            final String p = Objects.requireNonNull(json.getString("pwd"));
-            pwd = p.isEmpty() ? null : p;
+            final Triad.ImmutableTriad<HttpUrl, String, String> map = LanzouProvider.parseOthers(others);
+            url = map.getA();
+            identifier = map.getB();
+            pwd = map.getC();
         }
         final LanzouSharer sharer = (LanzouSharer) StorageManager.getSharer(this.getConfiguration().getName());
         assert sharer != null;
         try {
-            final Pair.ImmutablePair<HttpUrl, Headers> downloadUrl = sharer.getSingleShareFileDownloadUrl(url, id, pwd);
+            final Pair.ImmutablePair<HttpUrl, Headers> downloadUrl = sharer.getSingleShareFileDownloadUrl(url, identifier, pwd);
             if (downloadUrl == null)
                 return AbstractIdBaseProvider.UpdateNotExisted;
             final Pair<Long, ZonedDateTime> fixed = sharer.testRealSizeAndData(downloadUrl.getFirst(), downloadUrl.getSecond());
@@ -331,7 +341,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     @Override
     protected void download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) throws IOException, IllegalParametersException {
         final HttpUrl url;
-        final String id, pwd;
+        final String identifier, pwd;
         if (information.others() == null) {
             final Triad.ImmutableTriad<HttpUrl, String, String> shareUrl = this.getFileShareUrl(information.id());
             if (shareUrl == null) {
@@ -339,18 +349,17 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                 return;
             }
             url = shareUrl.getA();
-            id = shareUrl.getB();
+            identifier = shareUrl.getB();
             pwd = shareUrl.getC();
         } else {
-            final JSONObject json = JSON.parseObject(information.others());
-            url = Objects.requireNonNull(HttpUrl.parse(json.getString("domin")));
-            id = Objects.requireNonNull(json.getString("id"));
-            final String p = Objects.requireNonNull(json.getString("pwd"));
-            pwd = p.isEmpty() ? null : p;
+            final Triad.ImmutableTriad<HttpUrl, String, String> map = LanzouProvider.parseOthers(information.others());
+            url = map.getA();
+            identifier = map.getB();
+            pwd = map.getC();
         }
         final LanzouSharer sharer = (LanzouSharer) StorageManager.getSharer(this.getConfiguration().getName());
         assert sharer != null;
-        final Pair.ImmutablePair<HttpUrl, Headers> downloadUrl = sharer.getSingleShareFileDownloadUrl(url, id, pwd);
+        final Pair.ImmutablePair<HttpUrl, Headers> downloadUrl = sharer.getSingleShareFileDownloadUrl(url, identifier, pwd);
         if (downloadUrl == null) {
             consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(location))));
             return;
@@ -440,8 +449,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                 information.set(new FileInformation(id, parentId, filename, false, size, now, now, null));
                 final Triad.ImmutableTriad<HttpUrl, String, String> shareUrl = this.getFileShareUrl(id);
                 if (shareUrl != null) {
-                    final String others = JSON.toJSONString(Map.of("domin", shareUrl.getA().toString(),
-                            "id", shareUrl.getB(), "pwd", Objects.requireNonNullElse(shareUrl.getC(), "")));
+                    final String others = LanzouProvider.dumpOthers(shareUrl.getA(), shareUrl.getB(), shareUrl.getC());
                     information.set(new FileInformation(id, parentId, filename, false, size, now, now, others));
                 }
             }, 0, Math.toIntExact(size));

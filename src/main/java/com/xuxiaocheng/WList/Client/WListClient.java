@@ -140,8 +140,10 @@ public class WListClient implements WListClientInterface {
         @Override
         protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) {
             synchronized (this.client.receiveLock) {
-                if (this.client.receive != null)
+                if (this.client.receive != null) {
+                    WListClient.logger.log(HLogLevel.WARN, "Discard message. ", this.client.receive.toString());
                     this.client.receive.release();
+                }
                 msg.retain();
                 this.client.receive = msg;
                 this.client.receiveLock.notify();

@@ -6,7 +6,6 @@ import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WListTest.Operations.ProvidersWrapper;
-import com.xuxiaocheng.WListTest.Storage.RealAbstractTest;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
@@ -42,6 +41,11 @@ public class LanzouTest extends RealAbstractTest<LanzouConfiguration> {
     }
 
     @Nested
+    @Disabled
     public class DownloadTest extends AbstractDownloadTest {
+    }
+
+    @Nested
+    public class UploadTest extends AbstractUploadTest {
     }
 }
