@@ -15,7 +15,9 @@ import java.util.Objects;
 
 public record VisibleFileInformation(long id, long parentId, @NotNull String name, boolean isDirectory, long size,
                                      @Nullable ZonedDateTime createTime, @Nullable ZonedDateTime updateTime) {
-
+    /**
+     * @see com.xuxiaocheng.WList.Server.Databases.File.FileInformation
+     */
     public static @NotNull VisibleFileInformation parse(final @NotNull ByteBuf buffer) throws IOException {
         final long id = ByteBufIOUtil.readVariableLenLong(buffer);
         final long parentId = ByteBufIOUtil.readVariableLenLong(buffer);

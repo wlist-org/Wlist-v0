@@ -10,6 +10,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public record VisibleFilesListInformation(long total, long filtered, @NotNull @Unmodifiable List<@NotNull VisibleFileInformation> informationList) {
+    /**
+     * @see com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation
+     */
     public static @NotNull VisibleFilesListInformation parse(final @NotNull ByteBuf buffer) throws IOException {
         final long total = ByteBufIOUtil.readVariableLenLong(buffer);
         final long filtered = ByteBufIOUtil.readVariableLenLong(buffer);

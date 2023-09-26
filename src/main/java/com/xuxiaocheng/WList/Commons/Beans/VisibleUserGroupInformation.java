@@ -16,6 +16,9 @@ import java.util.Set;
 
 public record VisibleUserGroupInformation(long id, @NotNull String name, @NotNull Set<@NotNull UserPermission> permissions,
                                           @NotNull ZonedDateTime createTime, @NotNull ZonedDateTime updateTime) {
+    /**
+     * @see com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupInformation
+     */
     public static @NotNull VisibleUserGroupInformation parse(final @NotNull ByteBuf buffer) throws IOException {
         final long id = ByteBufIOUtil.readVariableLenLong(buffer);
         final String name = ByteBufIOUtil.readUTF(buffer);

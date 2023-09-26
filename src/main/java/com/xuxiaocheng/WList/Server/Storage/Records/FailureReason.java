@@ -3,9 +3,13 @@ package com.xuxiaocheng.WList.Server.Storage.Records;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.WList.Commons.Operations.FailureKind;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
+import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
+import io.netty.buffer.ByteBuf;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
 import java.util.Objects;
 
 public class FailureReason {
@@ -28,6 +32,17 @@ public class FailureReason {
     @Deprecated
     public static @NotNull FailureReason others(final @NotNull FileLocation location, final @Nullable String message) {
         return new FailureReason(FailureKind.Others, location, message);
+    }
+
+    /**
+     * @see com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason
+     */
+    @Contract("_ -> param1")
+    public @NotNull ByteBuf dumpVisible(final @NotNull ByteBuf buffer) throws IOException {
+        ByteBufIOUtil.writeUTF(buffer, this.kind.name());
+        this.location.dump(buffer);
+        ByteBufIOUtil.writeUTF(buffer, this.message);
+        return buffer;
     }
 
     protected final @NotNull FailureKind kind;

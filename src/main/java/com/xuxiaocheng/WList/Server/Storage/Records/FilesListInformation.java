@@ -12,6 +12,9 @@ import java.util.List;
 public record FilesListInformation(long total, long filtered, @NotNull @Unmodifiable List<@NotNull FileInformation> informationList) {
     public static final @NotNull FilesListInformation Empty = new FilesListInformation(0, 0, List.of());
 
+    /**
+     * @see com.xuxiaocheng.WList.Commons.Beans.VisibleFilesListInformation
+     */
     public @NotNull ByteBuf dumpVisible(final @NotNull ByteBuf buffer) throws IOException {
         ByteBufIOUtil.writeVariableLenLong(buffer, this.total);
         ByteBufIOUtil.writeVariableLenLong(buffer, this.filtered);

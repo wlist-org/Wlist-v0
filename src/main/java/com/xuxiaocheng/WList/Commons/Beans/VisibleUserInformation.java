@@ -13,6 +13,9 @@ import java.util.LinkedHashMap;
 
 public record VisibleUserInformation(long id, @NotNull String username, long groupId, @NotNull String groupName,
                                      @NotNull ZonedDateTime createTime, @NotNull ZonedDateTime updateTime) {
+    /**
+     * @see com.xuxiaocheng.WList.Server.Databases.User.UserInformation
+     */
      public static @NotNull VisibleUserInformation parse(final @NotNull ByteBuf buffer) throws IOException {
          final long id = ByteBufIOUtil.readVariableLenLong(buffer);
          final String username = ByteBufIOUtil.readUTF(buffer);

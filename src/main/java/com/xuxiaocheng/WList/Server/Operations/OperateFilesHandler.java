@@ -51,9 +51,7 @@ public final class OperateFilesHandler {
     private static @NotNull MessageProto Failure(final @NotNull FailureReason reason) {
         return new MessageProto(ResponseState.DataError, buf -> {
             ByteBufIOUtil.writeUTF(buf, "Failure");
-            ByteBufIOUtil.writeUTF(buf, reason.kind().name());
-            ByteBufIOUtil.writeUTF(buf, reason.message());
-            return buf;
+            return reason.dumpVisible(buf);
         });
     }
     private static @NotNull MessageProto ChecksumError(final int index) {
@@ -383,6 +381,9 @@ public final class OperateFilesHandler {
         return () -> WListServer.ServerChannelHandler.write(channel, DownloadIdHelper.finish(id) ? MessageProto.Success : OperateFilesHandler.IdDataError);
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#createDirectory(WListClientInterface, String, FileLocation, String, Options.DuplicatePolicy)
+     */
     private static final @NotNull ServerHandler doCreateDirectory = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FilesList, UserPermission.FileUpload);
@@ -425,6 +426,9 @@ public final class OperateFilesHandler {
 
     private static final @NotNull HMultiInitializers<@NotNull String, @NotNull String> uploadInformationCache = new HMultiInitializers<>("UploadInformationCache");
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#requestUploadFile(WListClientInterface, String, FileLocation, String, long, Options.DuplicatePolicy)
+     */
     private static final @NotNull ServerHandler doRequestUploadFile = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FilesList, UserPermission.FileUpload);
@@ -473,6 +477,9 @@ public final class OperateFilesHandler {
         });
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#cancelUploadFile(WListClientInterface, String, String)
+     */
     private static final @NotNull ServerHandler doCancelUploadFile = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileUpload);
@@ -492,6 +499,9 @@ public final class OperateFilesHandler {
         };
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#confirmUploadFile(WListClientInterface, String, String, List)
+     */
     private static final @NotNull ServerHandler doConfirmUploadFile = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileUpload);
@@ -519,6 +529,9 @@ public final class OperateFilesHandler {
         };
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#uploadFile(WListClientInterface, String, String, int, ByteBuf)
+     */
     private static final @NotNull ServerHandler doUploadFile = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileUpload);
@@ -555,6 +568,9 @@ public final class OperateFilesHandler {
         };
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#finishUploadFile(WListClientInterface, String, String)
+     */
     private static final @NotNull ServerHandler doFinishUploadFile = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileUpload);

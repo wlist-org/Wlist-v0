@@ -1,21 +1,26 @@
 package com.xuxiaocheng.WList.Client.Operations;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.WList.Client.Exceptions.WrongStateException;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.Beans.DownloadConfirm;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
+import com.xuxiaocheng.WList.Commons.Beans.UploadConfirm;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFilesListInformation;
 import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 
 import java.io.IOException;
 import java.util.LinkedHashMap;
+import java.util.List;
 
 /**
  * @see com.xuxiaocheng.WList.Server.Operations.OperateFilesHandler
@@ -162,29 +167,104 @@ public final class OperateFilesHelper {
         }
     }
 
-//    public static @NotNull UnionPair<@NotNull VisibleFileInformation, @NotNull FailureReason> createDirectory(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
-//        final ByteBuf send = OperateHelper.operateWithToken(OperationType.CreateDirectory, token);
-//        FileLocation.dump(send, parentLocation);
-//        ByteBufIOUtil.writeUTF(send, directoryName);
-//        ByteBufIOUtil.writeUTF(send, policy.name());
-//        OperateHelper.logOperating(OperationType.CreateDirectory, () -> ParametersMap.create().add("tokenHash", token.hashCode())
-//                .add("parentLocation", parentLocation).add("directoryName", directoryName).add("policy", policy));
-//        final ByteBuf receive = client.send(send);
-//        try {
-//            if (OperateHelper.handleState(receive)) {
-//                final VisibleFileInformation information = VisibleFileInformation.parse(receive);
-//                OperateHelper.logOperated(OperationType.CreateDirectory, () -> ParametersMap.create().add("success", true)
-//                        .add("information", information));
-//                return UnionPair.ok(information);
-//            }
-//            final String reason = ByteBufIOUtil.readUTF(receive);
-//            OperateHelper.logOperated(OperationType.CreateDirectory, () -> ParametersMap.create().add("success", false).add("reason", reason));
-//            return UnionPair.fail(OperateFilesHelper.handleFailureReason(reason));
-//        } finally {
-//            receive.release();
-//        }
-//    }
-//
+    public static @Nullable UnionPair<@NotNull VisibleFileInformation, @NotNull VisibleFailureReason> createDirectory(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation parent, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.CreateDirectory, token);
+        parent.dump(send);
+        ByteBufIOUtil.writeUTF(send, directoryName);
+        ByteBufIOUtil.writeUTF(send, policy.name());
+        OperateHelper.logOperating(OperationType.CreateDirectory, token, p -> p.add("parent", parent).add("directoryName", directoryName).add("policy", policy));
+        final ByteBuf receive = client.send(send);
+        try {
+            final String reason = OperateHelper.handleState(receive);
+            if (reason == null) {
+                final VisibleFileInformation directory = VisibleFileInformation.parse(receive);
+                OperateHelper.logOperated(OperationType.CreateDirectory, null, p -> p.add("directory", directory));
+                return UnionPair.ok(directory);
+            }
+            if ("Failure".equals(reason)) {
+                final VisibleFailureReason failureReason = VisibleFailureReason.parse(receive);
+                OperateHelper.logOperated(OperationType.CreateDirectory, failureReason.toString(), null);
+                return UnionPair.fail(failureReason);
+            }
+            OperateHelper.logOperated(OperationType.CreateDirectory, reason, null);
+            return null;
+        } finally {
+            receive.release();
+        }
+    }
+
+    public static @Nullable UnionPair<@NotNull UploadConfirm, @NotNull VisibleFailureReason> requestUploadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation parent, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.RequestUploadFile, token);
+        parent.dump(send);
+        ByteBufIOUtil.writeUTF(send, filename);
+        ByteBufIOUtil.writeVariable2LenLong(send, size);
+        ByteBufIOUtil.writeUTF(send, policy.name());
+        OperateHelper.logOperating(OperationType.RequestUploadFile, token, p -> p.add("parent", parent).add("filename", filename).add("size", size).add("policy", policy));
+        final ByteBuf receive = client.send(send);
+        try {
+            final String reason = OperateHelper.handleState(receive);
+            if (reason == null) {
+                final UploadConfirm confirm = UploadConfirm.parse(receive);
+                OperateHelper.logOperated(OperationType.RequestUploadFile, null, p -> p.add("confirm", confirm));
+                return UnionPair.ok(confirm);
+            }
+            if ("Failure".equals(reason)) {
+                final VisibleFailureReason failureReason = VisibleFailureReason.parse(receive);
+                OperateHelper.logOperated(OperationType.RequestUploadFile, failureReason.toString(), null);
+                return UnionPair.fail(failureReason);
+            }
+            OperateHelper.logOperated(OperationType.RequestUploadFile, reason, null);
+            return null;
+        } finally {
+            receive.release();
+        }
+    }
+
+    public static boolean cancelUploadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String id) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.CancelUploadFile, token);
+        ByteBufIOUtil.writeUTF(send, id);
+        OperateHelper.logOperating(OperationType.CancelUploadFile, token, p -> p.add("id", id));
+        return OperateHelper.booleanOperation(client, send, OperationType.CancelUploadFile);
+    }
+
+    public static UploadConfirm.@Nullable UploadInformation confirmUploadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String id, @SuppressWarnings("TypeMayBeWeakened") final @NotNull List<@NotNull String> checksums) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.ConfirmUploadFile, token);
+        ByteBufIOUtil.writeUTF(send, id);
+        ByteBufIOUtil.writeVariableLenInt(send, checksums.size());
+        for (final String checksum: checksums)
+            ByteBufIOUtil.writeUTF(send, checksum);
+        OperateHelper.logOperating(OperationType.ConfirmUploadFile, token, p -> p.add("id", id).add("checksums", checksums));
+        final ByteBuf receive = client.send(send);
+        try {
+            final String reason = OperateHelper.handleState(receive);
+            if (reason == null) {
+                final UploadConfirm.UploadInformation information = UploadConfirm.UploadInformation.parse(receive);
+                OperateHelper.logOperated(OperationType.ConfirmUploadFile, null, p -> p.add("information", information));
+                return information;
+            }
+            OperateHelper.logOperated(OperationType.ConfirmUploadFile, reason, null);
+            return null;
+        } finally {
+            receive.release();
+        }
+    }
+
+    public static boolean uploadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String id, final int index, final @NotNull ByteBuf buffer) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf prefix = OperateHelper.operateWithToken(OperationType.UploadFile, token);
+        ByteBufIOUtil.writeUTF(prefix, id);
+        ByteBufIOUtil.writeVariableLenInt(prefix, index);
+        final ByteBuf send = ByteBufAllocator.DEFAULT.compositeBuffer(2).addComponents(true, prefix, buffer);
+        OperateHelper.logOperating(OperationType.UploadFile, token, p -> p.add("id", id).add("index", index).add("size", buffer.readableBytes()));
+        return OperateHelper.booleanOperation(client, send, OperationType.UploadFile);
+    }
+
+    public static boolean finishUploadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String id) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.FinishUploadFile, token);
+        ByteBufIOUtil.writeUTF(send, id);
+        OperateHelper.logOperating(OperationType.FinishUploadFile, token, p -> p.add("id", id));
+        return OperateHelper.booleanOperation(client, send, OperationType.FinishUploadFile);
+    }
+
 //    public static @NotNull UnionPair<@NotNull VisibleFileInformation, @NotNull FailureReason> renameFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation fileLocation, final @NotNull String newFilename, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
 //        final ByteBuf send = OperateHelper.operateWithToken(OperationType.RenameFile, token);
 //        FileLocation.dump(send, fileLocation);
@@ -203,87 +283,6 @@ public final class OperateFilesHelper {
 //            final String reason = ByteBufIOUtil.readUTF(receive);
 //            OperateHelper.logOperated(OperationType.RenameFile, () -> ParametersMap.create().add("success", false).add("reason", reason));
 //            return UnionPair.fail(OperateFilesHelper.handleFailureReason(reason));
-//        } finally {
-//            receive.release();
-//        }
-//    }
-//
-//    public static @NotNull UnionPair<@NotNull UnionPair<@NotNull VisibleFileInformation, @NotNull String>, @NotNull FailureReason> requestUploadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation parentLocation, final @NotNull String filename, final long size, final @NotNull String md5, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
-//        final ByteBuf send = OperateHelper.operateWithToken(OperationType.RequestUploadFile, token);
-//        FileLocation.dump(send, parentLocation);
-//        ByteBufIOUtil.writeUTF(send, filename);
-//        ByteBufIOUtil.writeVariable2LenLong(send, size);
-//        ByteBufIOUtil.writeUTF(send, md5);
-//        ByteBufIOUtil.writeUTF(send, policy.name());
-//        OperateHelper.logOperating(OperationType.RequestUploadFile, () -> ParametersMap.create().add("tokenHash", token.hashCode())
-//                .add("parentLocation", parentLocation).add("filename", filename).add("size", size).add("md5", md5).add("policy", policy));
-//        final ByteBuf receive = client.send(send);
-//        try {
-//            if (OperateHelper.handleState(receive))
-//                if (ByteBufIOUtil.readBoolean(receive)) {
-//                    final VisibleFileInformation information = VisibleFileInformation.parse(receive);
-//                    OperateHelper.logOperated(OperationType.RequestUploadFile, () -> ParametersMap.create().add("success", true)
-//                            .add("reuse", true).add("information", information));
-//                    return UnionPair.ok(UnionPair.ok(information));
-//                } else {
-//                    final String id = ByteBufIOUtil.readUTF(receive);
-//                    OperateHelper.logOperated(OperationType.RequestUploadFile, () -> ParametersMap.create().add("success", true)
-//                            .add("reuse", false).add("id", id));
-//                    return UnionPair.ok(UnionPair.fail(id));
-//                }
-//            final String reason = ByteBufIOUtil.readUTF(receive);
-//            OperateHelper.logOperated(OperationType.RequestUploadFile, () -> ParametersMap.create().add("success", false).add("reason", reason));
-//            return UnionPair.fail(OperateFilesHelper.handleFailureReason(reason));
-//        } finally {
-//            receive.release();
-//        }
-//    }
-//
-//    // Null: no id, failure.false: invalid content, failure.true: continue, success: complete
-//    public static @Nullable UnionPair<@NotNull VisibleFileInformation, @NotNull Boolean> uploadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String id, final int chunk, final @NotNull ByteBuf buffer) throws IOException, InterruptedException, WrongStateException {
-//        final ByteBuf prefix = ByteBufAllocator.DEFAULT.buffer();
-//        ByteBufIOUtil.writeUTF(prefix, OperationType.UploadFile.name());
-//        ByteBufIOUtil.writeUTF(prefix, token);
-//        ByteBufIOUtil.writeUTF(prefix, id);
-//        ByteBufIOUtil.writeVariableLenInt(prefix, chunk);
-//        final ByteBuf send = ByteBufAllocator.DEFAULT.compositeBuffer(2).addComponents(true, prefix, buffer);
-//        OperateHelper.logOperating(OperationType.UploadFile, () -> ParametersMap.create().add("tokenHash", token.hashCode())
-//                .add("id", id).add("chunk", chunk).add("chunkSize", buffer.readableBytes()));
-//        final ByteBuf receive = client.send(send);
-//        try {
-//            if (OperateHelper.handleState(receive))
-//                if (ByteBufIOUtil.readBoolean(receive)) {
-//                    OperateHelper.logOperated(OperationType.UploadFile, () -> ParametersMap.create().add("success", true)
-//                            .add("continue", true));
-//                    return UnionPair.fail(true);
-//                } else {
-//                    final VisibleFileInformation information = VisibleFileInformation.parse(receive);
-//                    OperateHelper.logOperated(Operation.OperationType.UploadFile, () -> ParametersMap.create().add("success", true)
-//                            .add("continue", false).add("information", information));
-//                    return UnionPair.ok(information);
-//                }
-//            final String reason = ByteBufIOUtil.readUTF(receive);
-//            OperateHelper.logOperated(Operation.OperationType.UploadFile, () -> ParametersMap.create().add("success", false).add("reason", reason));
-//            if ("Id".equals(reason))
-//                return null;
-//            if ("Content".equals(reason))
-//                return UnionPair.fail(false);
-//            throw new WrongStateException(ResponseState.DataError, reason + ParametersMap.create().add("id", id).add("chunk", chunk));
-//        } finally {
-//            receive.release();
-//        }
-//    }
-//
-//    public static boolean cancelUploadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String id) throws IOException, InterruptedException, WrongStateException {
-//        final ByteBuf send = OperateHelper.operateWithToken(Operation.OperationType.CancelUploadFile, token);
-//        ByteBufIOUtil.writeUTF(send, id);
-//        OperateHelper.logOperating(Operation.OperationType.CancelUploadFile, () -> ParametersMap.create().add("tokenHash", token.hashCode())
-//                .add("id", id));
-//        final ByteBuf receive = client.send(send);
-//        try {
-//            final boolean success = OperateHelper.handleState(receive);
-//            OperateHelper.logOperated(Operation.OperationType.CancelUploadFile, () -> ParametersMap.create().add("success", success));
-//            return success;
 //        } finally {
 //            receive.release();
 //        }

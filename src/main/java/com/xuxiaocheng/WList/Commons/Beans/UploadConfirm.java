@@ -11,6 +11,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public record UploadConfirm(@NotNull @Unmodifiable List<@NotNull UploadChecksum> checksums, @NotNull String id) {
+    /**
+     * @see com.xuxiaocheng.WList.Server.Storage.Records.UploadRequirements
+     */
     public static @NotNull UploadConfirm parse(final @NotNull ByteBuf buffer) throws IOException {
         final int length = ByteBufIOUtil.readVariableLenInt(buffer);
         final List<UploadChecksum> checksums = new ArrayList<>(length);
@@ -21,6 +24,9 @@ public record UploadConfirm(@NotNull @Unmodifiable List<@NotNull UploadChecksum>
     }
 
     public record UploadInformation(@NotNull List<Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull Long>> parallel) {
+        /**
+         * @see com.xuxiaocheng.WList.Server.Storage.Records.UploadRequirements.UploadMethods
+         */
         public static @NotNull UploadInformation parse(final @NotNull ByteBuf buffer) throws IOException {
             final int size = ByteBufIOUtil.readVariableLenInt(buffer);
             final List<Pair.ImmutablePair<Long, Long>> parallel = new ArrayList<>(size);

@@ -13,6 +13,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public record DownloadConfirm(boolean acceptedRange, long downloadingSize, @NotNull String id) {
+    /**
+     * @see com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements
+     */
     public static @NotNull DownloadConfirm parse(final @NotNull ByteBuf buffer) throws IOException {
         final boolean acceptedRange = ByteBufIOUtil.readBoolean(buffer);
         final long downloadingSize = ByteBufIOUtil.readVariable2LenLong(buffer);
@@ -21,6 +24,9 @@ public record DownloadConfirm(boolean acceptedRange, long downloadingSize, @NotN
     }
 
     public record DownloadInformation(@NotNull List<Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull Long>> parallel, @Nullable ZonedDateTime expire) {
+        /**
+         * @see com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements.DownloadMethods
+         */
         public static @NotNull DownloadInformation parse(final @NotNull ByteBuf buffer) throws IOException {
             final int size = ByteBufIOUtil.readVariableLenInt(buffer);
             final List<Pair.ImmutablePair<Long, Long>> parallel = new ArrayList<>(size);

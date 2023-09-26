@@ -12,7 +12,10 @@ import java.util.Objects;
 
 public record VisibleTrashedFileInformation(long id, @NotNull String name, boolean isDirectory, long size,
                                             @Nullable ZonedDateTime createTime, @Nullable ZonedDateTime trashedTime, @Nullable ZonedDateTime expireTime,
-                                            @NotNull String md5) {
+                                            @NotNull String md5) { // TODO
+    /**
+     * @see com.xuxiaocheng.WList.Server.Databases.TrashedFile.TrashedFileInformation
+     */
     public static @NotNull VisibleTrashedFileInformation parse(final @NotNull ByteBuf buffer) throws IOException {
         final long id = ByteBufIOUtil.readVariableLenLong(buffer);
         final String name = ByteBufIOUtil.readUTF(buffer);
