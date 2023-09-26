@@ -29,9 +29,9 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.io.CleanupMode;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.parallel.Execution;
@@ -61,6 +61,7 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 @Execution(ExecutionMode.CONCURRENT)
+@TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class AbstractProviderTest {
     @TempDir(cleanup = CleanupMode.ALWAYS)
     private static File directory;
@@ -200,7 +201,6 @@ public class AbstractProviderTest {
 
     @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
     @Nested
-//    @Disabled // Ok
     public class ListTest {
         public static Stream<List<FileInformation>> list() {
             return Stream.of(null,
@@ -372,7 +372,6 @@ public class AbstractProviderTest {
 
     @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
     @Nested
-//    @Disabled // Ok
     public class InfoTest {
         @Test
         public void info() throws Exception {
@@ -462,8 +461,6 @@ public class AbstractProviderTest {
 
     @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
     @Nested
-//    @Execution(ExecutionMode.SAME_THREAD) // FIXME: Confused. Accidental error when concurrent testing. Set 'update' twice?
-    @Disabled
     public class RefreshTest {
         @Test
         public void refresh() throws Exception {
@@ -567,7 +564,6 @@ public class AbstractProviderTest {
 
     @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
     @Nested
-//    @Disabled // Ok
     public class TrashTest {
         @Test
         public void trash() throws Exception {
@@ -667,7 +663,6 @@ public class AbstractProviderTest {
 
     @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
     @Nested
-//    @Disabled // Ok
     public class CreateTest {
         @Test
         public void create() throws Exception {

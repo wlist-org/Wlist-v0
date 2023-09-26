@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Server.Storage.Helpers;
 
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
@@ -11,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 
 public final class BackgroundTaskManager {
     private BackgroundTaskManager() {
@@ -32,17 +34,22 @@ public final class BackgroundTaskManager {
 
     public static @Nullable CompletableFuture<?> background(final @NotNull BackgroundTaskIdentifier identify, final @NotNull Runnable runnable, final boolean removeLock) {
         final boolean[] flag = {true};
+        final CountDownLatch latch = new CountDownLatch(1);
         final CompletableFuture<?> future = BackgroundTaskManager.tasks.computeIfAbsent(identify, k -> {
             flag[0] = false;
             if (!removeLock)
                 BackgroundTaskManager.removable.add(identify);
-            return CompletableFuture.runAsync(runnable, BackgroundTaskManager.BackgroundExecutors).whenCompleteAsync((v, e) -> {
+            return CompletableFuture.runAsync(HExceptionWrapper.wrapRunnable(() -> {
+                latch.await(); // wait to prevent 'java.lang.IllegalStateException: Recursive update'.
+                runnable.run();
+            }), BackgroundTaskManager.BackgroundExecutors).whenComplete((v, e) -> {
                 if (removeLock)
                     BackgroundTaskManager.tasks.remove(identify);
                 if (e != null)
                     HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), e);
-            }, BackgroundTaskManager.BackgroundExecutors); // Async to prevent 'java.lang.IllegalStateException: Recursive update'.
+            });
         });
+        latch.countDown();
         return flag[0] ? null : future;
     }
 

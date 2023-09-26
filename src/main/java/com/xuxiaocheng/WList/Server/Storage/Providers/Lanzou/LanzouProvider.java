@@ -89,7 +89,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
 
     @Override
     protected void loginIfNot() throws IOException, IllegalParametersException {
-        final LanzouConfiguration configuration = this.configuration.getInstance();
+        final LanzouConfiguration configuration = this.getConfiguration();
         if (configuration.getToken() != null && configuration.getTokenExpire() != null && !MiscellaneousUtil.now().isAfter(configuration.getTokenExpire())) {
             this.headerWithToken = LanzouProvider.Headers.newBuilder().set("cookie", "phpdisk_info=" + configuration.getToken()).build();
             return;
@@ -136,7 +136,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     protected @NotNull JSONObject task(final int type, final @NotNull Consumer<FormBody.@NotNull Builder> request, final @Nullable Integer zt, final boolean loginFlag) throws IOException, IllegalParametersException {
-        final LanzouConfiguration configuration = this.configuration.getInstance();
+        final LanzouConfiguration configuration = this.getConfiguration();
         final Map<String, String> parameters = new HashMap<>();
         parameters.put("uid", String.valueOf(configuration.getUid()));
         final FormBody.Builder builder = new FormBody.Builder();
@@ -159,7 +159,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     protected @Nullable @Unmodifiable List<@NotNull FileInformation> listAllDirectory(final long directoryId) throws IOException, IllegalParametersException {
-        final LanzouConfiguration configuration = this.configuration.getInstance();
+        final LanzouConfiguration configuration = this.getConfiguration();
         final JSONObject json = this.task(47, f -> f.add("folder_id", String.valueOf(directoryId)), null, false);
         final Integer code = json.getInteger("zt");
         if (code == null || (code.intValue() != 1 && code.intValue() != 2))
@@ -189,7 +189,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     protected @Nullable Triad.ImmutableTriad<@NotNull HttpUrl, @NotNull String, @Nullable String> getFileShareUrl(final long fileId) throws IOException, IllegalParametersException {
-        final LanzouConfiguration configuration = this.configuration.getInstance();
+        final LanzouConfiguration configuration = this.getConfiguration();
         final JSONObject json = this.task(22, f -> f.add("file_id", String.valueOf(fileId)), 1, false);
         final JSONObject info = json.getJSONObject("info");
         if (info == null)
@@ -204,7 +204,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     protected @NotNull @Unmodifiable Set<@NotNull FileInformation> listFilesInPage(final long directoryId, final int page) throws IOException, InterruptedException, IllegalParametersException {
-        final LanzouConfiguration configuration = this.configuration.getInstance();
+        final LanzouConfiguration configuration = this.getConfiguration();
         final JSONObject files = this.task(5, f -> f.add("folder_id", String.valueOf(directoryId))
                 .add("pg", String.valueOf(page)), 1, false);
         final JSONArray infos = files.getJSONArray("text");
@@ -313,13 +313,13 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
             final String message = json.getString("info");
             if (!"\u5220\u9664\u6210\u529F".equals(message))
                 LanzouProvider.logger.log(HLogLevel.WARN, new WrongResponseException("Trashing directory.", message, ParametersMap.create()
-                        .add("configuration", this.configuration.getInstance()).add("information", information).add("json", json)));
+                        .add("configuration", this.getConfiguration()).add("information", information).add("json", json)));
         } else {
             final JSONObject json = this.task(6, f -> f.add("file_id", String.valueOf(information.id())), 1, false);
             final String message = json.getString("info");
             if (!"\u5DF2\u5220\u9664".equals(message))
                 LanzouProvider.logger.log(HLogLevel.WARN, new WrongResponseException("Trashing file.", message, ParametersMap.create()
-                        .add("configuration", this.configuration.getInstance()).add("information", information).add("json", json)));
+                        .add("configuration", this.getConfiguration()).add("information", information).add("json", json)));
         }
     }
 
@@ -386,7 +386,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         final Long id = json.getLong("text");
         final String message = json.getString("info");
         if (id == null)
-            throw new WrongResponseException("Creating directories.", message, ParametersMap.create().add("configuration", this.configuration.getInstance())
+            throw new WrongResponseException("Creating directories.", message, ParametersMap.create().add("configuration", this.getConfiguration())
                     .add("directoryName", directoryName).add("parentId", parentId).add("json", json));
         consumer.accept(UnionPair.ok(UnionPair.ok(new FileInformation(id.longValue(), parentId, directoryName, true, 0, now, now, null))));
     }

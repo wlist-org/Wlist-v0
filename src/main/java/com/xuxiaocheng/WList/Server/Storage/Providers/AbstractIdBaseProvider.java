@@ -64,7 +64,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         FileManager.quicklyInitialize(configuration.getName(), database, configuration.getRootDirectoryId(), null);
         this.configuration.reinitialize(configuration);
         this.manager.reinitialize(FileManager.getInstance(configuration.getName()));
-        final FileInformation information = this.manager.getInstance().selectInfo(this.configuration.getInstance().getRootDirectoryId(), true, null);
+        final FileInformation information = this.manager.getInstance().selectInfo(configuration.getRootDirectoryId(), true, null);
         assert information != null;
         assert information.createTime() != null;
         assert information.updateTime() != null;
@@ -120,7 +120,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         }
         // Not indexed.
         final BackgroundTaskManager.BackgroundTaskIdentifier identifier = new BackgroundTaskManager.BackgroundTaskIdentifier(
-                this.configuration.getInstance().getName(), BackgroundTaskManager.SyncDirectory, String.valueOf(directoryId));
+                this.getConfiguration().getName(), BackgroundTaskManager.SyncDirectory, String.valueOf(directoryId));
         if (BackgroundTaskManager.background(identifier, () -> {
             try {
                 this.loginIfNot();
@@ -232,7 +232,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
             return;
         }
         final BackgroundTaskManager.BackgroundTaskIdentifier identifier = new BackgroundTaskManager.BackgroundTaskIdentifier(
-                this.configuration.getInstance().getName(), BackgroundTaskManager.SyncDirectory, String.valueOf(directoryId));
+                this.getConfiguration().getName(), BackgroundTaskManager.SyncDirectory, String.valueOf(directoryId));
         if (BackgroundTaskManager.background(identifier, () -> {
             try {
                 this.loginIfNot();
