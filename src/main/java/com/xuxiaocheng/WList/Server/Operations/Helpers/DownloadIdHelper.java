@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 public final class DownloadIdHelper {
@@ -61,7 +62,7 @@ public final class DownloadIdHelper {
     }
 
     public static boolean finish(final @NotNull String id) {
-        final DownloaderData data = DownloadIdHelper.data.remove(id);
+        final DownloaderData data = DownloadIdHelper.data.get(id);
         if (data == null)
             return false;
         data.close();
@@ -73,6 +74,7 @@ public final class DownloadIdHelper {
         private final DownloadRequirements.@NotNull DownloadMethods methods;
         private final DownloadRequirements.@Nullable OrderedNode @NotNull [] nodes;
         private final @NotNull Object @NotNull [] locks;
+        private final AtomicInteger counter = new AtomicInteger();
         private @NotNull ZonedDateTime expireTime;
         private final @NotNull AtomicBoolean closed = new AtomicBoolean(false);
 
@@ -86,6 +88,7 @@ public final class DownloadIdHelper {
                 this.nodes[i] = this.methods.parallelMethods().get(i).suppliersLink();
                 this.locks[i] = new Object();
             }
+            this.counter.set(this.methods.parallelMethods().size());
             if (this.methods.expireTime() == null) {
                 this.expireTime = MiscellaneousUtil.now().plusSeconds(ServerConfiguration.get().idIdleExpireTime());
                 IdsHelper.CleanerExecutors.schedule(() -> {
@@ -126,6 +129,8 @@ public final class DownloadIdHelper {
                     return;
                 }
                 this.nodes[index] = this.nodes[index].apply(consumer);
+                if (this.nodes[index] == null && this.counter.getAndDecrement() == 0)
+                    IdsHelper.CleanerExecutors.execute(this::close);
             }
         }
 

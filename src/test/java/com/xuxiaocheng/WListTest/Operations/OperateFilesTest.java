@@ -95,7 +95,7 @@ public class OperateFilesTest extends ProvidersWrapper {
                 CompletableFuture.runAsync(HExceptionWrapper.wrapRunnable(() -> {
                     try (final WListClientInterface c = WListClientManager.quicklyGetClient(client.getAddress())) {
                         ByteBuf buf;
-                        while (true){
+                        while (true) {
                             buf = OperateFilesHelper.downloadFile(c, token(), id, k);
                             if (buf == null)
                                 break;
@@ -106,6 +106,7 @@ public class OperateFilesTest extends ProvidersWrapper {
             }
             Assertions.assertEquals(size, information.size());
             latch.await();
+            OperateFilesHelper.finishDownloadFile(client, token(), id);
             final CompositeByteBuf file = ByteBufAllocator.DEFAULT.compositeBuffer();
             for (final ByteBuf buf: buffers)
                 file.addComponent(true, buf);

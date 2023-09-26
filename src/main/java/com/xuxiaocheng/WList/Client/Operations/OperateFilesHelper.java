@@ -149,11 +149,11 @@ public final class OperateFilesHelper {
         }
     }
 
-    public static boolean finishDownloadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String id) throws IOException, InterruptedException, WrongStateException {
+    public static void finishDownloadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String id) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.FinishDownloadFile, token);
         ByteBufIOUtil.writeUTF(send, id);
         OperateHelper.logOperating(OperationType.FinishDownloadFile, token, p -> p.add("id", id));
-        return OperateHelper.booleanOperation(client, send, OperationType.FinishDownloadFile);
+        OperateHelper.booleanOperation(client, send, OperationType.FinishDownloadFile);
     }
 
 //    public static @NotNull UnionPair<@NotNull VisibleFileInformation, @NotNull FailureReason> createDirectory(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
