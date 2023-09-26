@@ -3,6 +3,7 @@ package com.xuxiaocheng.WList.Server.Operations;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.Initializers.HMultiInitializers;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.Rust.NetworkTransmission;
@@ -19,14 +20,18 @@ import com.xuxiaocheng.WList.Server.Databases.User.UserInformation;
 import com.xuxiaocheng.WList.Server.MessageProto;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.BroadcastManager;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.DownloadIdHelper;
+import com.xuxiaocheng.WList.Server.Operations.Helpers.UploadIdHelper;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
+import com.xuxiaocheng.WList.Server.Storage.Records.UploadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.Selectors.RootSelector;
 import com.xuxiaocheng.WList.Server.WListServer;
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
@@ -42,6 +47,7 @@ public final class OperateFilesHandler {
     private static final @NotNull MessageProto PolicyDataError = MessageProto.composeMessage(ResponseState.DataError, "Policy");
     private static final @NotNull MessageProto LocationNotAvailable = MessageProto.composeMessage(ResponseState.DataError, "Location");
     private static final @NotNull MessageProto IdDataError = MessageProto.composeMessage(ResponseState.DataError, "Id");
+    private static final @NotNull MessageProto UploadDataError = MessageProto.composeMessage(ResponseState.DataError, "Content");
     private static @NotNull MessageProto Failure(final @NotNull FailureReason reason) {
         return new MessageProto(ResponseState.DataError, buf -> {
             ByteBufIOUtil.writeUTF(buf, "Failure");
@@ -50,7 +56,13 @@ public final class OperateFilesHandler {
             return buf;
         });
     }
-//    private static final @NotNull MessageProto InvalidFile = MessageProto.composeMessage(ResponseState.DataError, "Content");
+    private static @NotNull MessageProto ChecksumError(final int index) {
+        return new MessageProto(ResponseState.DataError, buf -> {
+            ByteBufIOUtil.writeUTF(buf, "Checksum");
+            ByteBufIOUtil.writeVariableLenInt(buf, index);
+            return buf;
+        });
+    }
 
     public static void initialize() {
         ServerHandlerManager.register(OperationType.ListFiles, OperateFilesHandler.doListFiles);
@@ -63,9 +75,11 @@ public final class OperateFilesHandler {
         ServerHandlerManager.register(OperationType.DownloadFile, OperateFilesHandler.doDownloadFile);
         ServerHandlerManager.register(OperationType.FinishDownloadFile, OperateFilesHandler.doFinishDownloadFile);
         ServerHandlerManager.register(OperationType.CreateDirectory, OperateFilesHandler.doCreateDirectory);
-//        ServerHandlerManager.register(OperationType.RequestUploadFile, OperateFilesHandler.doRequestUploadFile);
-//        ServerHandlerManager.register(OperationType.UploadFile, OperateFilesHandler.doUploadFile);
-//        ServerHandlerManager.register(OperationType.CancelUploadFile, OperateFilesHandler.doCancelUploadFile);
+        ServerHandlerManager.register(OperationType.RequestUploadFile, OperateFilesHandler.doRequestUploadFile);
+        ServerHandlerManager.register(OperationType.CancelUploadFile, OperateFilesHandler.doCancelUploadFile);
+        ServerHandlerManager.register(OperationType.ConfirmUploadFile, OperateFilesHandler.doConfirmUploadFile);
+        ServerHandlerManager.register(OperationType.UploadFile, OperateFilesHandler.doUploadFile);
+        ServerHandlerManager.register(OperationType.FinishUploadFile, OperateFilesHandler.doFinishUploadFile);
 //        ServerHandlerManager.register(OperationType.RenameFile, OperateFilesHandler.doRenameFile);
 //        ServerHandlerManager.register(OperationType.CopyFile, OperateFilesHandler.doCopyFile);
 //        ServerHandlerManager.register(OperationType.MoveFile, OperateFilesHandler.doMoveFile);
@@ -270,7 +284,7 @@ public final class OperateFilesHandler {
             }
             final DownloadRequirements requirements = p.getT().getT();
             final String id = DownloadIdHelper.generateId(requirements);
-            HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Signed download requirements id.", ServerHandler.user(null, user.getT()),
+            HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Signed download id.", ServerHandler.user(null, user.getT()),
                     ParametersMap.create().add("file", file).add("from", from).add("to", to).add("id", id)
                             .add("acceptedRange", requirements.acceptedRange()).add("downloadingSize", requirements.downloadingSize()));
             WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> requirements.dumpConfirm(buf, id)));
@@ -327,7 +341,7 @@ public final class OperateFilesHandler {
         if (user.isFailure())
             message = user.getE();
         else if (index < 0)
-            message = MessageProto.WrongParameters;
+            message = OperateFilesHandler.IdDataError;
         if (message != null) {
             WListServer.ServerChannelHandler.write(channel, message);
             return null;
@@ -404,10 +418,12 @@ public final class OperateFilesHandler {
             final FileInformation directory = p.getT().getT();
             HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Created directory.", ServerHandler.user(null, user.getT()),
                     ParametersMap.create().add("directory", directory));
-            BroadcastManager.onFileUpload(new FileLocation(parent.storage(), directory.id()), true);
+            BroadcastManager.onFileUpload(parent.storage(), directory, true);
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
         });
     };
+
+    private static final @NotNull HMultiInitializers<@NotNull String, @NotNull String> uploadInformationCache = new HMultiInitializers<>("UploadInformationCache");
 
     private static final @NotNull ServerHandler doRequestUploadFile = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
@@ -448,78 +464,136 @@ public final class OperateFilesHandler {
                 WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.Failure(p.getT().getE()));
                 return;
             }
-
+            final UploadRequirements requirements = p.getT().getT();
+            final String id = UploadIdHelper.generateId(requirements);
+            HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Signed upload id.", ServerHandler.user(null, user.getT()),
+                    ParametersMap.create().add("parent", parent).add("filename", filename).add("size", size).add("checksums", requirements.checksums()));
+            OperateFilesHandler.uploadInformationCache.initialize(id, parent.storage());
+            WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> requirements.dumpConfirm(buf, id)));
         });
-//        if (methods.getT().methods().isEmpty()) { // (reuse / empty file)
-//            final FileInformation file;
-//            try {
-//                file = methods.getT().supplier().get();
-//            } catch (final Exception exception) {
-//                throw new ServerException(exception);
-//            } finally {
-//                methods.getT().finisher().run();
-//            }
-//            if (file == null)
-//                return OperateFilesHandler.FileNotFound;
-//            return MessageProto.successMessage(buf -> {
-//                ByteBufIOUtil.writeBoolean(buf, true);
-//                FileInformation.dumpVisible(buf, file);
-//                return buf;
-//            });
-//        }
-//        assert methods.getT().methods().size() == MiscellaneousUtil.calculatePartCount(size, NetworkTransmission.FileTransferBufferSize);
-//        final String id = UploadIdHelper.generateId(methods.getT(), size, user.getT().username());
-//        HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Signed upload id for user: '", user.getT().username(), "' parent: ", parentLocation, ", name: '", filename, "' (", size, "B) id: ", id);
-//        return MessageProto.successMessage(buf -> {
-//            ByteBufIOUtil.writeBoolean(buf, false);
-//            ByteBufIOUtil.writeUTF(buf, id);
-//            return buf;
-//        });
     };
 
-//    public static final @NotNull ServerHandler doUploadFile = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, UserPermission.FileUpload);
-//        final String id = ByteBufIOUtil.readUTF(buffer);
-//        final int chunk = ByteBufIOUtil.readVariableLenInt(buffer);
-//        ServerHandler.logOperation(channel, OperationType.UploadFile, user, () -> ParametersMap.create()
-//                .add("id", id).add("chunk", chunk));
-//        if (user.isFailure())
-//            return user.getE();
-//        final UnionPair<FileInformation, Boolean> information;
-//        try {
-//            information = UploadIdHelper.upload(id, user.getT().username(), buffer.duplicate(), chunk);
-//        } catch (final ServerException exception) {
-//            throw exception;
-//        } catch (final Exception exception) {
-//            throw new ServerException(exception);
-//        }
-//        if (information == null)
-//            return OperateFilesHandler.InvalidId;
-//        if (information.isFailure() && information.getE().booleanValue())
-//            return OperateFilesHandler.InvalidFile;
-//        buffer.readerIndex(buffer.writerIndex());
-//        final FileInformation file = information.isSuccess() ? information.getT() : null;
-//        if (file != null)
-//            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Uploaded.", ServerHandler.buildUserString(user.getT().id(), user.getT().username()),
-//                    ParametersMap.create().add("file", file));
-//        return MessageProto.successMessage(buf -> {
-//            ByteBufIOUtil.writeBoolean(buf, file == null);
-//            if (file != null)
-//                FileInformation.dumpVisible(buf, file);
-//            return buf;
-//        });
-//    };
-//
-//    public static final @NotNull ServerHandler doCancelUploadFile = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, UserPermission.FileUpload);
-//        final String id = ByteBufIOUtil.readUTF(buffer);
-//        ServerHandler.logOperation(channel, OperationType.CancelUploadFile, user, () -> ParametersMap.create()
-//                .add("id", id));
-//        if (user.isFailure())
-//            return user.getE();
-//        return UploadIdHelper.cancel(id, user.getT().username()) ? MessageProto.Success : MessageProto.DataError;
-//    };
-//
+    private static final @NotNull ServerHandler doCancelUploadFile = (channel, buffer) -> {
+        final String token = ByteBufIOUtil.readUTF(buffer);
+        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileUpload);
+        final String id = ByteBufIOUtil.readUTF(buffer);
+        ServerHandler.logOperation(channel, OperationType.CancelUploadFile, user, () -> ParametersMap.create().add("id", id));
+        if (user.isFailure()) {
+            WListServer.ServerChannelHandler.write(channel, user.getE());
+            return null;
+        }
+        return () -> {
+            if (!UploadIdHelper.cancel(id)) {
+                WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.IdDataError);
+                return;
+            }
+            OperateFilesHandler.uploadInformationCache.uninitializeNullable(id);
+            WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
+        };
+    };
+
+    private static final @NotNull ServerHandler doConfirmUploadFile = (channel, buffer) -> {
+        final String token = ByteBufIOUtil.readUTF(buffer);
+        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileUpload);
+        final String id = ByteBufIOUtil.readUTF(buffer);
+        final int length = ByteBufIOUtil.readVariableLenInt(buffer);
+        final List<String> checksums = new ArrayList<>(length);
+        for (int i = 0; i < length; ++i)
+            checksums.add(ByteBufIOUtil.readUTF(buffer));
+        ServerHandler.logOperation(channel, OperationType.ConfirmUploadFile, user, () -> ParametersMap.create().add("id", id).add("checksums", checksums));
+        if (user.isFailure()) {
+            WListServer.ServerChannelHandler.write(channel, user.getE());
+            return null;
+        }
+        return () -> {
+            final UnionPair<UploadRequirements.UploadMethods, Integer> parallel = UploadIdHelper.confirm(id, checksums);
+            if (parallel == null) {
+                WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.IdDataError);
+                return;
+            }
+            if (parallel.isFailure()) {
+                WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.ChecksumError(parallel.getE().intValue()));
+                return;
+            }
+            WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(parallel.getT()::dumpInformation));
+        };
+    };
+
+    private static final @NotNull ServerHandler doUploadFile = (channel, buffer) -> {
+        final String token = ByteBufIOUtil.readUTF(buffer);
+        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileUpload);
+        final String id = ByteBufIOUtil.readUTF(buffer);
+        final int index = ByteBufIOUtil.readVariableLenInt(buffer);
+        ServerHandler.logOperation(channel, OperationType.UploadFile, user, () -> ParametersMap.create().add("id", id).add("index", index).add("size", buffer.readableBytes()));
+        MessageProto message = null;
+        if (user.isFailure())
+            message = user.getE();
+        else if (index < 0)
+            message = OperateFilesHandler.IdDataError;
+        if (message != null) {
+            WListServer.ServerChannelHandler.write(channel, message);
+            return null;
+        }
+        assert buffer.readableBytes() <= NetworkTransmission.FileTransferBufferSize;
+        final ByteBuf content = buffer.retainedDuplicate();
+        buffer.readerIndex(buffer.writerIndex());
+        final AtomicBoolean barrier = new AtomicBoolean(true);
+        return () -> {
+            if (UploadIdHelper.upload(id, content, index, p -> {
+                if (!barrier.compareAndSet(true, false)) {
+                    HLog.getInstance("ServerLogger").log(HLogLevel.MISTAKE, "Duplicate message on 'doUploadFile'.", ParametersMap.create()
+                            .add("p", p).add("id", id).add("index", index).add("size", content.capacity()));
+                    return;
+                }
+                if (p != null) {
+                    channel.pipeline().fireExceptionCaught(p);
+                    return;
+                }
+                WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
+            })) return;
+            WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.IdDataError);
+        };
+    };
+
+    private static final @NotNull ServerHandler doFinishUploadFile = (channel, buffer) -> {
+        final String token = ByteBufIOUtil.readUTF(buffer);
+        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileUpload);
+        final String id = ByteBufIOUtil.readUTF(buffer);
+        ServerHandler.logOperation(channel, OperationType.FinishUploadFile, user, () -> ParametersMap.create().add("id", id));
+        if (user.isFailure()) {
+            WListServer.ServerChannelHandler.write(channel, user.getE());
+            return null;
+        }
+        final AtomicBoolean barrier = new AtomicBoolean(true);
+        return () -> UploadIdHelper.finish(id, p -> {
+            if (!barrier.compareAndSet(true, false)) {
+                HLog.getInstance("ServerLogger").log(HLogLevel.MISTAKE, "Duplicate message on 'doFinishUploadFile'.", ParametersMap.create()
+                        .add("p", p).add("id", id));
+                return;
+            }
+            final String storage = OperateFilesHandler.uploadInformationCache.uninitializeNullable(id);
+            if (p.isFailure()) {
+                channel.pipeline().fireExceptionCaught(p.getE());
+                return;
+            }
+            if (p.getT().isFailure()) {
+                WListServer.ServerChannelHandler.write(channel, p.getT().getE().booleanValue() ? OperateFilesHandler.UploadDataError: OperateFilesHandler.IdDataError);
+                return;
+            }
+            final FileInformation file = p.getT().getT();
+            if (storage == null) {
+                HLog.getInstance("ServerLogger").log(HLogLevel.MISTAKE, "Uploaded file but no parent cached.",
+                        ServerHandler.user(null, user.getT()), ParametersMap.create().add("file", file).add("id", id));
+                WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.IdDataError);
+                return;
+            }
+            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Uploaded file.", ServerHandler.user(null, user.getT()),
+                    ParametersMap.create().add("file", file));
+            BroadcastManager.onFileUpload(storage, file, false);
+            WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
+        });
+    };
+
 //    public static final @NotNull ServerHandler doRenameFile = (channel, buffer) -> {
 //        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, UserPermission.FilesList, UserPermission.FileDownload, UserPermission.FileUpload, UserPermission.FileDelete);
 //        final FileLocation location = FileLocation.parse(buffer);

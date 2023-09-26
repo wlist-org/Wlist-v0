@@ -635,7 +635,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                     this.uploadFile0(parentId, name.getFirst(), size, Options.DuplicatePolicy.ERROR, u -> {
                         if (!barrier1.compareAndSet(true, false)) {
                             HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'uploadFile0'." + ParametersMap.create()
-                                    .add("u", u).add("parentId", parentId).add("filename", filename).add("size", size).add("policy", policy)));
+                                    .add("u", u).add("parentId", parentId).add("filename", filename).add("name", name.getFirst()).add("size", size).add("policy", policy)));
                             return;
                         }
                         BackgroundTaskManager.remove(name.getSecond());
@@ -643,13 +643,25 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                             final UploadRequirements requirements = u.getT().getT();
                             consumer.accept(UnionPair.ok(UnionPair.ok(new UploadRequirements(requirements.checksums(), c -> {
                                 final UploadRequirements.UploadMethods methods = requirements.transfer().apply(c);
-                                return new UploadRequirements.UploadMethods(methods.parallelMethods(), () -> {
-                                    final FileInformation information = methods.supplier().get();
-                                    if (information != null) {
-                                        assert !information.isDirectory() && information.size() >= 0;
-                                        this.manager.getInstance().insertFileOrDirectory(information, null);
-                                    }
-                                    return information;
+                                return new UploadRequirements.UploadMethods(methods.parallelMethods(), o -> {
+                                    final AtomicBoolean barrier2 = new AtomicBoolean(true);
+                                    methods.supplier().accept(t -> {
+                                        if (!barrier2.compareAndSet(true, false)) {
+                                            HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'uploadFile0#supplier'." + ParametersMap.create()
+                                                    .add("t", t).add("parentId", parentId).add("filename", filename).add("name", name.getFirst()).add("size", size).add("policy", policy)));
+                                            return;
+                                        }
+                                        try {
+                                            if (t.isSuccess() && t.getT().isPresent()) {
+                                                final FileInformation information = t.getT().get();
+                                                assert !information.isDirectory() && information.size() >= 0;
+                                                this.manager.getInstance().insertFileOrDirectory(information, null);
+                                            }
+                                            o.accept(t);
+                                        } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                                            o.accept(UnionPair.fail(exception));
+                                        }
+                                    });
                                 }, methods.finisher());
                             }))));
                             return;

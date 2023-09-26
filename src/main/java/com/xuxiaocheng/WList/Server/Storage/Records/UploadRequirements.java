@@ -1,22 +1,26 @@
 package com.xuxiaocheng.WList.Server.Storage.Records;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.FunctionE;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
-import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.Rust.NetworkTransmission;
 import com.xuxiaocheng.WList.Commons.Beans.UploadChecksum;
+import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.CompositeByteBuf;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
@@ -24,9 +28,33 @@ import java.util.function.Consumer;
 
 public record UploadRequirements(@NotNull @Unmodifiable List<@NotNull UploadChecksum> checksums,
                                  @NotNull FunctionE<@NotNull @Unmodifiable List<@NotNull String>, @NotNull UploadMethods> transfer) {
+    /**
+     * @see com.xuxiaocheng.WList.Commons.Beans.UploadConfirm
+     */
+    @Contract("_, _ -> param1")
+    public @NotNull ByteBuf dumpConfirm(final @NotNull ByteBuf buffer, final @NotNull String id) throws IOException {
+        ByteBufIOUtil.writeVariableLenInt(buffer, this.checksums.size());
+        for (final UploadChecksum checksum: this.checksums)
+            checksum.dump(buffer);
+        ByteBufIOUtil.writeUTF(buffer, id);
+        return buffer;
+    }
+
     public record UploadMethods(@NotNull @Unmodifiable List<@NotNull OrderedConsumers> parallelMethods,
-                                @NotNull SupplierE<@Nullable FileInformation> supplier,
+                                @NotNull Consumer<@NotNull Consumer<? super @NotNull UnionPair<Optional<FileInformation>, Throwable>>> supplier,
                                 @NotNull Runnable finisher) {
+        /**
+         * @see com.xuxiaocheng.WList.Commons.Beans.UploadConfirm.UploadInformation
+         */
+        @Contract("_ -> param1")
+        public @NotNull ByteBuf dumpInformation(final @NotNull ByteBuf buffer) throws IOException {
+            ByteBufIOUtil.writeVariableLenInt(buffer, this.parallelMethods.size());
+            for (final OrderedConsumers consumers: this.parallelMethods) {
+                ByteBufIOUtil.writeVariable2LenLong(buffer, consumers.start());
+                ByteBufIOUtil.writeVariable2LenLong(buffer, consumers.end());
+            }
+            return buffer;
+        }
     }
 
     /**

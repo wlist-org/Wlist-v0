@@ -444,7 +444,9 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                     information.set(new FileInformation(id, parentId, filename, false, size, now, now, others));
                 }
             }, 0, Math.toIntExact(size));
-            return new UploadRequirements.UploadMethods(pair.getFirst(), information::get, pair.getSecond());
+            return new UploadRequirements.UploadMethods(pair.getFirst(), c -> {
+                c.accept(UnionPair.ok(Optional.ofNullable(information.get())));
+            }, pair.getSecond());
         }))));
     }
 

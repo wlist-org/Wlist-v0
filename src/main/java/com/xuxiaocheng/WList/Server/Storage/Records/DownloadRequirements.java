@@ -44,21 +44,24 @@ public record DownloadRequirements(boolean acceptedRange, long downloadingSize, 
      */
     @Contract("_, _ -> param1")
     public @NotNull ByteBuf dumpConfirm(final @NotNull ByteBuf buffer, final @NotNull String id) throws IOException {
-        ByteBufIOUtil.writeBoolean(buffer, this.acceptedRange());
-        ByteBufIOUtil.writeVariable2LenLong(buffer, this.downloadingSize());
+        ByteBufIOUtil.writeBoolean(buffer, this.acceptedRange);
+        ByteBufIOUtil.writeVariable2LenLong(buffer, this.downloadingSize);
         ByteBufIOUtil.writeUTF(buffer, id);
         return buffer;
     }
 
     public record DownloadMethods(@NotNull @Unmodifiable List<@NotNull OrderedSuppliers> parallelMethods, @NotNull Runnable finisher, @Nullable ZonedDateTime expireTime) {
+        /**
+         * @see com.xuxiaocheng.WList.Commons.Beans.DownloadConfirm.DownloadInformation
+         */
         @Contract("_ -> param1")
         public @NotNull ByteBuf dumpInformation(final @NotNull ByteBuf buffer) throws IOException {
-            ByteBufIOUtil.writeVariableLenInt(buffer, this.parallelMethods().size());
-            for (final DownloadRequirements.OrderedSuppliers suppliers: this.parallelMethods()) {
+            ByteBufIOUtil.writeVariableLenInt(buffer, this.parallelMethods.size());
+            for (final DownloadRequirements.OrderedSuppliers suppliers: this.parallelMethods) {
                 ByteBufIOUtil.writeVariable2LenLong(buffer, suppliers.start());
                 ByteBufIOUtil.writeVariable2LenLong(buffer, suppliers.end());
             }
-            ByteBufIOUtil.writeNullableDataTime(buffer, this.expireTime(), DateTimeFormatter.ISO_DATE_TIME);
+            ByteBufIOUtil.writeNullableDataTime(buffer, this.expireTime, DateTimeFormatter.ISO_DATE_TIME);
             return buffer;
         }
     }

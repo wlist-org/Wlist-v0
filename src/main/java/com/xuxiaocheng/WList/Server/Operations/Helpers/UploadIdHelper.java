@@ -1,177 +1,186 @@
 package com.xuxiaocheng.WList.Server.Operations.Helpers;
 
-import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
-import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
-import com.xuxiaocheng.Rust.NetworkTransmission;
+import com.xuxiaocheng.WList.Commons.Beans.UploadChecksum;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Records.UploadRequirements;
+import com.xuxiaocheng.WList.Server.Util.IdsHelper;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.Closeable;
-import java.time.Duration;
 import java.time.ZonedDateTime;
-import java.util.Collection;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 public final class UploadIdHelper {
     private UploadIdHelper() {
         super();
     }
 
-    private static final @NotNull Map<@NotNull String, @NotNull UploaderData> buffers = new ConcurrentHashMap<>();
+    private static final @NotNull Map<@NotNull String, @NotNull UploadRequirements> requirements = new ConcurrentHashMap<>();
 
-    public static @NotNull String generateId(final @NotNull UploadRequirements.UploadMethods methods, final long size, final @NotNull String username) {
-        //noinspection IOResourceOpenedButNotSafelyClosed , resource // In cleaner.
-        return new UploaderData(methods, size, username).id;
+    public static @NotNull String generateId(final @NotNull UploadRequirements requirements) {
+        requirements.checksums().forEach(c -> UploadChecksum.requireRegisteredAlgorithm(c.algorithm()));
+        final String id = MiscellaneousUtil.randomKeyAndPut(UploadIdHelper.requirements, IdsHelper::randomTimerId, requirements);
+        IdsHelper.CleanerExecutors.schedule(() -> UploadIdHelper.requirements.remove(id, requirements), ServerConfiguration.get().idIdleExpireTime(), TimeUnit.SECONDS);
+        return id;
     }
 
-    public static boolean cancel(final @NotNull String id, final @NotNull String username) {
-        final UploaderData data = UploadIdHelper.buffers.get(id);
-        if (data == null || !data.username.equals(username))
-            return false;
-        data.close();
-        return true;
+    public static boolean cancel(final @NotNull String id) {
+        return UploadIdHelper.requirements.remove(id) != null;
     }
 
-    public static @Nullable UnionPair<FileInformation, Boolean> upload(final @NotNull String id, final @NotNull String username, final @NotNull ByteBuf buf, final int chunk) throws Exception {
-        final UploaderData data = UploadIdHelper.buffers.get(id);
-        if (data == null || !data.username.equals(username))
+    private static final @NotNull Map<@NotNull String, @NotNull UploaderData> data = new ConcurrentHashMap<>();
+
+    private static final @NotNull UnionPair<UploadRequirements.UploadMethods, Integer> ChecksumsInvalidSize = UnionPair.fail(-1);
+    public static @Nullable UnionPair<UploadRequirements.UploadMethods, Integer> confirm(final @NotNull String id, final @NotNull List<@NotNull String> checksums) throws Exception {
+        final UploadRequirements requirements = UploadIdHelper.requirements.remove(id);
+        if (requirements == null)
             return null;
-        return data.put(buf, chunk) ? data.tryGet() : null;
+        if (requirements.checksums().size() != checksums.size())
+            return UploadIdHelper.ChecksumsInvalidSize;
+        final Iterator<UploadChecksum> require = requirements.checksums().iterator();
+        final Iterator<String> checker = checksums.iterator();
+        int i = 0;
+        while (require.hasNext() && checker.hasNext()) {
+            final Pattern pattern = UploadChecksum.getAlgorithmPattern(require.next().algorithm());
+            final String checksum = checker.next();
+            if (!pattern.matcher(checksum).matches())
+                return UnionPair.fail(i);
+            ++i;
+        }
+        assert !require.hasNext() && checker.hasNext();
+        final UploadRequirements.UploadMethods methods = requirements.transfer().apply(checksums);
+        UploadIdHelper.data.put(id, new UploaderData(id, methods));
+        return UnionPair.ok(methods);
     }
 
-    private static class UploaderData implements Closeable {
-        private final @NotNull UploadRequirements.UploadMethods methods;
-        private final int count;
-        private final @NotNull String username;
-        private final @NotNull String id;
-        private final int rest;
-        private final @NotNull Collection<@NotNull Integer> calledSet = ConcurrentHashMap.newKeySet();
-        private @NotNull ZonedDateTime expireTime = MiscellaneousUtil.now();
-        private final @NotNull AtomicBoolean closed = new AtomicBoolean(false);
-        private final @NotNull ReadWriteLock closerLock = new ReentrantReadWriteLock();
-
-        private void appendExpireTime() {
-            this.expireTime = MiscellaneousUtil.now().plusSeconds(ServerConfiguration.get().idIdleExpireTime());
-            UploadIdHelper.checkTime.add(Pair.ImmutablePair.makeImmutablePair(this.expireTime, this));
+    public static boolean upload(final @NotNull String id, final @NotNull ByteBuf buf, final int index, final @NotNull Consumer<@Nullable Throwable> consumer) throws Exception {
+        try {
+            final UploaderData data = UploadIdHelper.data.get(id);
+            if (data == null)
+                return false;
+            return data.put(buf, index, consumer);
+        } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+            consumer.accept(exception);
         }
+        return false;
+    }
 
-        private UploaderData(final @NotNull UploadRequirements.UploadMethods methods, final long size, final @NotNull String username) {
+    private static final @NotNull UnionPair<UnionPair<FileInformation, Boolean>, Throwable> FinishNoId = UnionPair.ok(UnionPair.fail(Boolean.FALSE));
+    private static final @NotNull UnionPair<UnionPair<FileInformation, Boolean>, Throwable> FinishFailure = UnionPair.ok(UnionPair.fail(Boolean.TRUE));
+    public static void finish(final @NotNull String id, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, Boolean>, Throwable>> consumer) {
+        final UploaderData data = UploadIdHelper.data.get(id);
+        if (data == null) {
+            consumer.accept(UploadIdHelper.FinishNoId);
+            return;
+        }
+        data.finishAndClose(consumer);
+    }
+
+    private static class UploaderData implements AutoCloseable {
+        private final @NotNull String id;
+        private final UploadRequirements.@NotNull UploadMethods methods;
+        private final UploadRequirements.@Nullable OrderedNode @NotNull [] nodes;
+        private final @NotNull Object @NotNull [] locks;
+        private final AtomicInteger counter = new AtomicInteger();
+        private @NotNull ZonedDateTime expireTime;
+        private final @NotNull AtomicBoolean closed = new AtomicBoolean(false);
+
+        private UploaderData(final @NotNull String id, final UploadRequirements.@NotNull UploadMethods methods) {
             super();
+            this.id = id;
             this.methods = methods;
-            this.count = 0;//methods.methods().size();
-            this.username = username;
-            final int mod = (int) (size % NetworkTransmission.FileTransferBufferSize);
-            this.rest = mod == 0 ? NetworkTransmission.FileTransferBufferSize : mod;
-            this.id = MiscellaneousUtil.randomKeyAndPut(UploadIdHelper.buffers,
-                    () -> HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 16, HRandomHelper.AnyWords), this);
-            this.appendExpireTime();
+            this.nodes = new UploadRequirements.OrderedNode[this.methods.parallelMethods().size()];
+            this.locks = new Object[this.methods.parallelMethods().size()];
+            for (int i = 0; i < this.methods.parallelMethods().size(); ++i) {
+                this.nodes[i] = this.methods.parallelMethods().get(i).consumersLink();
+                this.locks[i] = new Object();
+            }
+            this.counter.set(this.methods.parallelMethods().size());
+            this.expireTime = MiscellaneousUtil.now().plusSeconds(ServerConfiguration.get().idIdleExpireTime());
+            IdsHelper.CleanerExecutors.schedule(() -> {
+                if (MiscellaneousUtil.now().isAfter(this.expireTime))
+                    this.close();
+            }, ServerConfiguration.get().idIdleExpireTime(), TimeUnit.SECONDS);
         }
 
         @Override
         public void close() {
-            this.closerLock.writeLock().lock();
+            if (!this.closed.compareAndSet(false, true))
+                return;
+            //noinspection resource
+            final UploaderData old = UploadIdHelper.data.remove(this.id);
+            assert old == this;
+            this.methods.finisher().run();
+        }
+
+        public boolean put(final @NotNull ByteBuf buf, final int index, final @NotNull Consumer<@Nullable Throwable> consumer) throws Exception {
+            if (this.closed.get() || index >= this.methods.parallelMethods().size())
+                return false;
+            this.expireTime = MiscellaneousUtil.now().plusSeconds(ServerConfiguration.get().idIdleExpireTime());
+            IdsHelper.CleanerExecutors.schedule(() -> {
+                if (MiscellaneousUtil.now().isAfter(this.expireTime))
+                    this.close();
+            }, ServerConfiguration.get().idIdleExpireTime(), TimeUnit.SECONDS);
+            synchronized (this.locks[index]) {
+                if (this.nodes[index] == null)
+                    return false;
+                this.nodes[index] = this.nodes[index].apply(buf, consumer);
+                if (this.nodes[index] == null)
+                    this.counter.getAndDecrement();
+            }
+            return true;
+        }
+
+        public void finishAndClose(final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, Boolean>, Throwable>> consumer) {
+            if (this.closed.get()) {
+                consumer.accept(UploadIdHelper.FinishNoId);
+                return;
+            }
             try {
-                if (!this.closed.compareAndSet(false, true))
+                if (this.counter.get() > 0) {
+                    consumer.accept(UploadIdHelper.FinishFailure);
                     return;
-                UploadIdHelper.buffers.remove(this.id, this);
-                this.methods.finisher().run();
-            } finally {
-                this.closerLock.writeLock().unlock();
-            }
-        }
-
-        public boolean put(final @NotNull ByteBuf buf, final int chunk) throws Exception {
-            this.closerLock.readLock().lock();
-            try {
-                if (this.closed.get() || chunk >= this.count || chunk < 0)
-                    return false;
-                this.appendExpireTime();
-                if (buf.readableBytes() != (chunk + 1 == this.count ? this.rest : NetworkTransmission.FileTransferBufferSize))
-                    return false;
-                synchronized (this.calledSet) {
-                    if (this.calledSet.contains(chunk))
-                        return false;
-                    this.calledSet.add(chunk);
                 }
-//                this.methods.methods().get(chunk).accept(buf.retain());
-                return true;
+                this.methods.supplier().accept(p -> {
+                    if (p.isFailure()) {
+                        consumer.accept(UnionPair.fail(p.getE()));
+                        return;
+                    }
+                    if (p.getT().isEmpty()) {
+                        consumer.accept(UploadIdHelper.FinishFailure);
+                        return;
+                    }
+                    consumer.accept(UnionPair.ok(UnionPair.ok(p.getT().get())));
+                });
+            } catch (final Throwable exception) {
+                consumer.accept(UnionPair.fail(exception));
             } finally {
-                this.closerLock.readLock().unlock();
+                IdsHelper.CleanerExecutors.submit(this::close);
             }
-        }
-
-        public @Nullable FileInformation finish() throws Exception {
-            this.closerLock.writeLock().lock();
-            try {
-                if (!this.closed.compareAndSet(false, true))
-                    return null;
-                return this.methods.supplier().get();
-            } finally {
-                this.closerLock.writeLock().unlock();
-                this.close();
-            }
-        }
-
-        public @NotNull UnionPair<FileInformation, Boolean> tryGet() throws Exception {
-            this.closerLock.readLock().lock();
-            try {
-                if (this.closed.get() || this.calledSet.size() < this.count)
-                    return UnionPair.fail(false);
-            } finally {
-                this.closerLock.readLock().unlock();
-            }
-            final FileInformation information = this.finish();
-            return information == null ? UnionPair.fail(true) : UnionPair.ok(information);
         }
 
         @Override
         public @NotNull String toString() {
             return "UploaderData{" +
-                    "count=" + this.count +
-                    ", username='" + this.username + '\'' +
-                    ", id='" + this.id + '\'' +
-                    ", rest=" + this.rest +
-                    ", calledSet=" + this.calledSet +
+                    "id='" + this.id + '\'' +
+                    ", methods=" + this.methods +
+                    ", nodes=" + Arrays.toString(this.nodes) +
                     ", expireTime=" + this.expireTime +
                     ", closed=" + this.closed +
                     '}';
         }
-    }
-
-    private static final @NotNull BlockingQueue<Pair.@NotNull ImmutablePair<@NotNull ZonedDateTime, @NotNull UploaderData>> checkTime = new LinkedBlockingQueue<>();
-    public static final Thread cleaner = new Thread(() -> {
-        while (true) {
-            try {
-                final Pair.ImmutablePair<ZonedDateTime, UploaderData> check = UploadIdHelper.checkTime.take();
-                if (check.getSecond().closed.get())
-                    continue;
-                final ZonedDateTime now = MiscellaneousUtil.now();
-                if (now.isBefore(check.getFirst()))
-                    TimeUnit.MILLISECONDS.sleep(Duration.between(now, check.getFirst()).toMillis());
-                if (check.getSecond().closed.get())
-                    continue;
-                if (MiscellaneousUtil.now().isAfter(check.getSecond().expireTime))
-                    check.getSecond().close();
-            } catch (final InterruptedException ignore) {
-                break;
-            }
-        }
-    }, "UploadData Cleaner");
-    static {
-        UploadIdHelper.cleaner.setDaemon(true);
-        UploadIdHelper.cleaner.start();
     }
 }

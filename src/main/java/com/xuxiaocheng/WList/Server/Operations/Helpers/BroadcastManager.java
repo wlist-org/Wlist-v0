@@ -7,6 +7,7 @@ import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
+import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.User.UserInformation;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupInformation;
 import com.xuxiaocheng.WList.Server.MessageProto;
@@ -185,8 +186,13 @@ public final class BroadcastManager {
         BroadcastManager.broadcast(OperationType.GetFileOrDirectory, BroadcastManager.fileDumper(location, isDirectory));
     }
 
-    public static void onFileUpload(final @NotNull FileLocation location, final boolean isDirectory) {
-        BroadcastManager.broadcast(OperationType.UploadFile, BroadcastManager.fileDumper(location, isDirectory));
+    public static void onFileUpload(final @NotNull String storage, final @NotNull FileInformation information, final boolean isDirectory) {
+        BroadcastManager.broadcast(OperationType.UploadFile, buffer -> {
+            ByteBufIOUtil.writeUTF(buffer, storage);
+            information.dumpVisible(buffer);
+            ByteBufIOUtil.writeBoolean(buffer, isDirectory);
+            return buffer;
+        });
     }
 
     public static void onDirectoryRefresh(final @NotNull FileLocation parent) {
