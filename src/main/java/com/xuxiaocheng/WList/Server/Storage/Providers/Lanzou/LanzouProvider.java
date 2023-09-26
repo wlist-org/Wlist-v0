@@ -365,9 +365,9 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         return LanzouProvider.RetryBracketPair;
     }
 
-    protected static @NotNull CheckRule<@NotNull String> DirectoryNameChecker = new CheckRuleSet<>(new ContainsCheckRule(Set.of(
-            "/", "\\", "*", "|", "#", "$", "%", "^", "(", ")", "?", ":", "'", "\"", "`", "=", "+"
-    )), new LengthCheckRule(1, 100));
+    protected static @NotNull CheckRule<@NotNull String> DirectoryNameChecker = new CheckRuleSet<>(
+            new ContainsCheckRule(Set.of("/", "\\", "*", "|", "#", "$", "%", "^", "(", ")", "?", ":", "'", "\"", "`", "=", "+"), false),
+            new LengthCheckRule(1, 100));
 
     @Override
     protected @NotNull CheckRule<@NotNull String> directoryNameChecker() {
@@ -399,8 +399,9 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     protected static @NotNull CheckRule<@NotNull String> FileNameChecker = new CheckRuleSet<>(new SuffixCheckRule(Set.of(
             "doc","docx","zip","rar","apk","ipa","txt","exe","7z","e","z","ct","ke","cetrainer","db","tar","pdf","w3x","epub","mobi","azw","azw3","osk","osz",
             "xpa","cpk","lua","jar","dmg","ppt","pptx","xls","xlsx","mp3","iso","img","gho","ttf","ttc","txf","dwg","bat","imazingapp","dll","crx","xapk",
-            "conf","deb","rp","rpm","rplib","mobileconfig","appimage","lolgezi","flac","cad","hwt","accdb","ce","xmind","enc","bds","bdi","ssf","it","pkg","cfg")),
-            new ContainsCheckRule(Set.of("/", "\\", "*", "|", "#", "$", "%", "^", "(", ")", "?", ":", "'", "\"", "`", "=", "+")), new LengthCheckRule(1, 100)
+            "conf","deb","rp","rpm","rplib","mobileconfig","appimage","lolgezi","flac","cad","hwt","accdb","ce","xmind","enc","bds","bdi","ssf","it","pkg","cfg"), true),
+            new ContainsCheckRule(Set.of("/", "\\", "*", "|", "#", "$", "%", "^", "(", ")", "?", ":", "'", "\"", "`", "=", "+"), false),
+            new LengthCheckRule(1, 100)
     );
 
     @Override
@@ -444,9 +445,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                     information.set(new FileInformation(id, parentId, filename, false, size, now, now, others));
                 }
             }, 0, Math.toIntExact(size));
-            return new UploadRequirements.UploadMethods(pair.getFirst(), c -> {
-                c.accept(UnionPair.ok(Optional.ofNullable(information.get())));
-            }, pair.getSecond());
+            return new UploadRequirements.UploadMethods(pair.getFirst(), c -> c.accept(UnionPair.ok(Optional.ofNullable(information.get()))), pair.getSecond());
         }))));
     }
 
