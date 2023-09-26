@@ -75,7 +75,7 @@ public class LanzouSharer extends AbstractIdBaseSharer<LanzouConfiguration> {
         return HttpNetworkHelper.extraJsonResponseBody(HttpNetworkHelper.postWithBody(httpClient, url, LanzouProvider.Headers, request.build()).execute());
     }
 
-    private static final @NotNull Pattern srcPattern = Pattern.compile("src=\"(/fn?[^\"]+)");
+    private static final @NotNull Pattern srcPattern = Pattern.compile("src=\"/(fn?[^\"]+)");
     @SuppressWarnings("unchecked")
     protected @Nullable Pair.ImmutablePair<@NotNull HttpUrl, @Nullable Headers> getSingleShareFileDownloadUrl(final @NotNull HttpUrl domin, final @NotNull String id, final @Nullable String pwd) throws IOException, IllegalParametersException {
         final LanzouConfiguration configuration = this.configuration.getInstance();
@@ -89,7 +89,8 @@ public class LanzouSharer extends AbstractIdBaseSharer<LanzouConfiguration> {
             if (!srcMatcher.find())
                 throw new WrongResponseException("No src matched.", sharePage, parametersMap);
             final String src = srcMatcher.group(1);
-            final String loadingPage = LanzouSharer.requestHtml(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin.newBuilder().addPathSegment(src).build(), "GET"));
+            final HttpUrl url = Objects.requireNonNull(HttpUrl.parse(domin + src));
+            final String loadingPage = LanzouSharer.requestHtml(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(url, "GET"));
             javaScript = LanzouSharer.findScripts(loadingPage);
         } else {
             parametersMap.add("pwd", pwd);

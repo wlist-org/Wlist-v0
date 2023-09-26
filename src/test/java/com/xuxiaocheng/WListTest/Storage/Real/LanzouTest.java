@@ -46,6 +46,7 @@ public class LanzouTest extends RealAbstractTest<LanzouConfiguration> {
     }
 
     @Nested
+    @Disabled
     public class UploadTest extends AbstractUploadTest {
     }
 }

@@ -301,7 +301,15 @@ public final class OperateFilesHandler {
             WListServer.ServerChannelHandler.write(channel, user.getE());
             return null;
         }
-        return () -> WListServer.ServerChannelHandler.write(channel, DownloadIdHelper.cancel(id) ? MessageProto.Success : OperateFilesHandler.IdDataError);
+        return () -> {
+            if (!DownloadIdHelper.cancel(id)) {
+                WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.IdDataError);
+                return;
+            }
+            HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Cancelled download.", ServerHandler.user(null, user.getT()),
+                    ParametersMap.create().add("id", id));
+            WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
+        };
     };
 
     /**
@@ -378,7 +386,15 @@ public final class OperateFilesHandler {
             WListServer.ServerChannelHandler.write(channel, user.getE());
             return null;
         }
-        return () -> WListServer.ServerChannelHandler.write(channel, DownloadIdHelper.finish(id) ? MessageProto.Success : OperateFilesHandler.IdDataError);
+        return () -> {
+            if (!DownloadIdHelper.finish(id)) {
+                WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.IdDataError);
+                return;
+            }
+            HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Finished download.", ServerHandler.user(null, user.getT()),
+                    ParametersMap.create().add("id", id));
+            WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
+        };
     };
 
     /**
@@ -494,6 +510,8 @@ public final class OperateFilesHandler {
                 WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.IdDataError);
                 return;
             }
+            HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Cancelled upload.", ServerHandler.user(null, user.getT()),
+                    ParametersMap.create().add("id", id));
             OperateFilesHandler.uploadInformationCache.uninitializeNullable(id);
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
         };
@@ -593,7 +611,11 @@ public final class OperateFilesHandler {
                 return;
             }
             if (p.getT().isFailure()) {
-                WListServer.ServerChannelHandler.write(channel, p.getT().getE().booleanValue() ? OperateFilesHandler.UploadDataError: OperateFilesHandler.IdDataError);
+                if (p.getT().getE().booleanValue()) {
+                    HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Failed to upload.", ServerHandler.user(null, user.getT()),
+                            ParametersMap.create().add("id", id));
+                    WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.UploadDataError);
+                } else WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.IdDataError);
                 return;
             }
             final FileInformation file = p.getT().getT();

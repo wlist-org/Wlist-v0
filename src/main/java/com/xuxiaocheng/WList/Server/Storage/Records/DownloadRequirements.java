@@ -130,7 +130,7 @@ public record DownloadRequirements(boolean acceptedRange, long downloadingSize, 
         return Pair.ImmutablePair.makeImmutablePair(urlHeaders, Triad.ImmutableTriad.makeImmutableTriad(size, start, end));
     }
 
-    private static @NotNull DownloadRequirements getDownloadMethodsByRangedUrl(final @NotNull OkHttpClient client, final @NotNull HttpUrl url, final @Nullable Headers testedResponseHeader, final @Nullable Long totalSize, final Headers.@Nullable Builder requestHeaderBuilder, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @Nullable ZonedDateTime expireTime) throws IOException {
+    public static @NotNull DownloadRequirements getDownloadMethodsByRangedUrl(final @NotNull OkHttpClient client, final @NotNull HttpUrl url, final @Nullable Headers testedResponseHeader, final @Nullable Long totalSize, final Headers.@Nullable Builder requestHeaderBuilder, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @Nullable ZonedDateTime expireTime) throws IOException {
         final Pair.ImmutablePair<Headers, Triad.ImmutableTriad<Long, Long, Long>> result = DownloadRequirements.getUrlHeaders(client, url, testedResponseHeader, totalSize, requestHeaderBuilder, from, to);
         if (result == null)
             return DownloadRequirements.EmptyDownloadRequirements;

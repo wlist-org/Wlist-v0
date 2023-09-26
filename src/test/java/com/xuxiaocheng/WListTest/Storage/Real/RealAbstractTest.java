@@ -55,6 +55,10 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 
+/**
+ * @see com.xuxiaocheng.WListTest.Storage.AbstractProviderTest
+ */
+@SuppressWarnings("OptionalGetWithoutIsPresent")
 @Execution(ExecutionMode.SAME_THREAD)
 public abstract class RealAbstractTest<C extends StorageConfiguration> extends ProvidersWrapper {
     @SuppressWarnings("unchecked")
@@ -110,7 +114,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
             this.testDownload(client, big, "0efa9c569a7f37f0c92a352042a01df7");
         }
 
-        private void testDownload(final WListClientInterface client, final @NotNull VisibleFileInformation file, final @NotNull String md5) throws InterruptedException, WrongStateException, IOException {
+        public void testDownload(final WListClientInterface client, final @NotNull VisibleFileInformation file, final @NotNull String md5) throws InterruptedException, WrongStateException, IOException {
             // Request.
             final DownloadConfirm confirm = OperateFilesHelper.requestDownloadFile(client, token(), location(file.id()), 0, Long.MAX_VALUE);
             Assertions.assertNotNull(confirm);
@@ -136,6 +140,8 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
                             if (buf == null)
                                 break;
                             buffer.addComponent(true, buf);
+                            if (buffer.readableBytes() >= pair.getSecond().longValue() - pair.getFirst().longValue())
+                                break;
                         }
                     }
                 }, latch::countDown), WListServer.IOExecutors).exceptionally(MiscellaneousUtil.exceptionHandler());
@@ -204,7 +210,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
             Assertions.assertEquals("test", ByteBufIOUtil.readUTF(smallBroadcast.getSecond()));
             final VisibleFileInformation smallInformation = VisibleFileInformation.parse(smallBroadcast.getSecond());
             Assertions.assertFalse(ByteBufIOUtil.readBoolean(smallBroadcast.getSecond()));
-            HLog.DefaultLogger.log(HLogLevel.LESS, info.getDisplayName(), ": small: ", smallInformation);
+            HLog.DefaultLogger.log(HLogLevel.LESS, info.getTestMethod().get().getName(), ": small: ", smallInformation);
             total += smallInformation.size();
             try {
                 final ByteBuf big = ByteBufAllocator.DEFAULT.buffer().writeBytes("WList test upload: big file.\nrandom: ".getBytes(StandardCharsets.UTF_8))
@@ -219,7 +225,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
                 Assertions.assertEquals("test", ByteBufIOUtil.readUTF(bigBroadcast.getSecond()));
                 final VisibleFileInformation bigInformation = VisibleFileInformation.parse(bigBroadcast.getSecond());
                 Assertions.assertFalse(ByteBufIOUtil.readBoolean(bigBroadcast.getSecond()));
-                HLog.DefaultLogger.log(HLogLevel.LESS, info.getDisplayName(), ": big: ", bigInformation);
+                HLog.DefaultLogger.log(HLogLevel.LESS, info.getTestMethod().get().getName(), ": big: ", bigInformation);
                 total += bigInformation.size();
                 try {
                     Assertions.assertEquals(total, Objects.requireNonNull(OperateFilesHelper.getFileOrDirectory(client, token(), location(root()), true)).size());
@@ -234,7 +240,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
             }
         }
 
-        private void testUpload(final WListClientInterface client, final long parent, final @NotNull String filename, final @NotNull ByteBuf file) throws InterruptedException, WrongStateException, IOException {
+        public void testUpload(final WListClientInterface client, final long parent, final @NotNull String filename, final @NotNull ByteBuf file) throws InterruptedException, WrongStateException, IOException {
             // Request.
             final UnionPair<UploadConfirm, VisibleFailureReason> confirm = OperateFilesHelper.requestUploadFile(client, token(), location(parent), filename, file.readableBytes(), Options.DuplicatePolicy.ERROR);
             Assertions.assertNotNull(confirm);
@@ -268,6 +274,35 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
             }
             latch.await();
             OperateFilesHelper.finishUploadFile(client, token(), confirm.getT().id());
+        }
+    }
+
+//    @Disabled
+    @ParameterizedTest(name = "running")
+    @MethodSource("broadcast")
+    public void uploadAndDownload(final WListClientInterface client, final WListClientInterface broadcast, final @NotNull TestInfo info) throws WrongStateException, IOException, InterruptedException {
+        final ByteBuf file = ByteBufAllocator.DEFAULT.buffer().writeBytes("WList test upload and download.\nrandom: ".getBytes(StandardCharsets.UTF_8))
+                .writeBytes(HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, NetworkTransmission.FileTransferBufferSize  + 512, HRandomHelper.AnyWords).getBytes(StandardCharsets.UTF_8));
+        final MessageDigest digest = HMessageDigestHelper.MD5.getDigester();
+        HMessageDigestHelper.updateMessageDigest(digest, new ByteBufInputStream(file));
+        final String md5 = HMessageDigestHelper.MD5.digest(digest);
+        try {
+            file.readerIndex(0);
+            new AbstractUploadTest().testUpload(client, this.root(), "3.txt", file);
+        } finally {
+            file.release();
+        }
+        final Pair.ImmutablePair<OperationType, ByteBuf> bigBroadcast = OperateServerHelper.waitBroadcast(broadcast).getT();
+        Assertions.assertEquals(OperationType.UploadFile, bigBroadcast.getFirst());
+        Assertions.assertEquals("test", ByteBufIOUtil.readUTF(bigBroadcast.getSecond()));
+        final VisibleFileInformation information = VisibleFileInformation.parse(bigBroadcast.getSecond());
+        Assertions.assertFalse(ByteBufIOUtil.readBoolean(bigBroadcast.getSecond()));
+        HLog.DefaultLogger.log(HLogLevel.LESS, info.getTestMethod().get().getName(), ": file: ", information);
+        try {
+            new AbstractDownloadTest().testDownload(client, information, md5);
+        } finally {
+            OperateFilesHelper.trashFileOrDirectory(client, this.token(), this.location(information.id()), false);
+            Assertions.assertEquals(OperationType.TrashFileOrDirectory, OperateServerHelper.waitBroadcast(broadcast).getT().getFirst());
         }
     }
 }
