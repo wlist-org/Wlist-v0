@@ -5,7 +5,7 @@
     <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/run" />
     <extension name="coverage">
       <pattern>
-        <option name="PATTERN" value="com.xuxiaocheng.WListTest.Operations.*" />
+        <option name="PATTERN" value="*" />
         <option name="ENABLED" value="true" />
       </pattern>
     </extension>
