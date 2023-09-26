@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListTest;
+package com.xuxiaocheng;
 
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;

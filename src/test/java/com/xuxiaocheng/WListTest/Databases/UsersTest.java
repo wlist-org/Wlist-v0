@@ -12,7 +12,7 @@ import com.xuxiaocheng.WList.Server.Databases.User.UserInformation;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupInformation;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
-import com.xuxiaocheng.WListTest.StaticLoader;
+import com.xuxiaocheng.StaticLoader;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;

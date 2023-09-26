@@ -5,10 +5,13 @@ import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.Rust.NetworkTransmission;
+import com.xuxiaocheng.StaticLoader;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.Unpooled;
 import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -38,6 +41,7 @@ import java.util.concurrent.TimeUnit;
 public class NetworkTransmissionTest {
     @BeforeAll
     public static void initialize() {
+        StaticLoader.load();
         NetworkTransmission.load();
         HLog.LoggerCreateCore.reinitialize(n -> HLog.createInstance(n, HLogLevel.DEBUG.getLevel(), false));
         HLog.create("DefaultLogger");
@@ -63,6 +67,31 @@ public class NetworkTransmissionTest {
             if (!Arrays.equals(ByteBufIOUtil.allToByteArray(s1), ByteBufIOUtil.allToByteArray(s3))) throw new AssertionError();
             s1.release(); s2.release(); s3.release();
         }
+    }
+
+    @Test
+    public void empty() {
+        final Pair.ImmutablePair<NetworkTransmission.RsaPrivateKey, ByteBuf> request = NetworkTransmission.clientStartInJava();
+        final Pair.ImmutablePair<ByteBuf, NetworkTransmission.AesKeyPair> response = NetworkTransmission.serverStart(request.getSecond(), "WList");
+        final UnionPair<NetworkTransmission.AesKeyPair, UnionPair<String, String>> check = NetworkTransmission.clientCheck(request.getFirst(), response.getFirst(), "WList");
+        final NetworkTransmission.AesKeyPair client = Objects.requireNonNull(check).getT(), server = Objects.requireNonNull(response.getSecond());
+
+        Objects.requireNonNull(NetworkTransmission.clientEncrypt(client, Unpooled.EMPTY_BUFFER)).release();
+        Assertions.assertNull(NetworkTransmission.serverDecrypt(server, Unpooled.EMPTY_BUFFER));
+        Objects.requireNonNull(NetworkTransmission.serverEncrypt(server, Unpooled.EMPTY_BUFFER)).release();
+        Assertions.assertNull(NetworkTransmission.clientDecrypt(client, Unpooled.EMPTY_BUFFER));
+
+        final ByteBuf buffer = ByteBufAllocator.DEFAULT.compositeBuffer().addComponents(true, Unpooled.EMPTY_BUFFER,
+                ByteBufAllocator.DEFAULT.buffer().writeBytes("Wlist test.".getBytes(StandardCharsets.UTF_8)),
+                Unpooled.EMPTY_BUFFER);
+        Objects.requireNonNull(NetworkTransmission.clientEncrypt(client, buffer)).release();
+        Objects.requireNonNull(NetworkTransmission.serverEncrypt(server, buffer)).release();
+        buffer.release();
+
+        final ByteBuf empty = ByteBufAllocator.DEFAULT.compositeBuffer().addComponents(true, Unpooled.EMPTY_BUFFER, Unpooled.EMPTY_BUFFER);
+        Objects.requireNonNull(NetworkTransmission.clientEncrypt(client, empty)).release();
+        Objects.requireNonNull(NetworkTransmission.serverEncrypt(server, empty)).release();
+        empty.release();
     }
 
     @Test

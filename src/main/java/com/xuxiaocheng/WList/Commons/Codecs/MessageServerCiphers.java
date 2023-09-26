@@ -55,7 +55,7 @@ public class MessageServerCiphers extends MessageToMessageCodec<ByteBuf, ByteBuf
         assert this.aesKeyPair != null;
         final ByteBuf decrypted = NetworkTransmission.serverDecrypt(this.aesKeyPair, msg);
         if (decrypted == null)
-            throw new IllegalStateException("Something went wrong when server decrypted message.");
+            throw new IllegalStateException("Something went wrong when server decrypted message." + ParametersMap.create().add("msg", msg));
         HLog.getInstance("ServerLogger").log(HLogLevel.VERBOSE, "Read: ", ctx.channel().remoteAddress(),
                 ParametersMap.create().add("length", decrypted.readableBytes()).add("network", msg.readableBytes()));
         out.add(decrypted);
@@ -70,7 +70,7 @@ public class MessageServerCiphers extends MessageToMessageCodec<ByteBuf, ByteBuf
         assert this.aesKeyPair != null;
         final ByteBuf encrypted = NetworkTransmission.serverEncrypt(this.aesKeyPair, msg);
         if (encrypted == null)
-            throw new IllegalStateException("Something went wrong when server encrypted message.");
+            throw new IllegalStateException("Something went wrong when server encrypted message." + ParametersMap.create().add("msg", msg));
         HLog.getInstance("ServerLogger").log(HLogLevel.VERBOSE, "Write: ", ctx.channel().remoteAddress(),
                 ParametersMap.create().add("length", msg.readableBytes()).add("network", encrypted.readableBytes()));
         out.add(encrypted);

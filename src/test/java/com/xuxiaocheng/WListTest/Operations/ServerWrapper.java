@@ -20,7 +20,7 @@ import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WList.Server.Util.IdsHelper;
 import com.xuxiaocheng.WList.Server.WListServer;
-import com.xuxiaocheng.WListTest.StaticLoader;
+import com.xuxiaocheng.StaticLoader;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;

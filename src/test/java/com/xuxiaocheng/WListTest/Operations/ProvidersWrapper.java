@@ -13,7 +13,7 @@ import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WList.Server.WListServer;
-import com.xuxiaocheng.WListTest.StaticLoader;
+import com.xuxiaocheng.StaticLoader;
 import com.xuxiaocheng.WListTest.Storage.AbstractProviderTest;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;

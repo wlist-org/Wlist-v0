@@ -20,6 +20,7 @@ import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 @SuppressWarnings("NativeMethod")
 public final class NetworkTransmission {
@@ -222,6 +223,7 @@ public final class NetworkTransmission {
         return Pair.ImmutablePair.makeImmutablePair(tmp.nioBuffer(), tmp);
     }
 
+    private static final ByteBuffer[] EmptyBufferArray = new ByteBuffer[0];
     private static Pair.@NotNull ImmutablePair<@NotNull ByteBuffer @NotNull[], @NotNull Runnable> toDirectByteBuffers(final @NotNull ByteBuf buffer) {
         if (buffer.nioBufferCount() <= 1) {
             final Pair.ImmutablePair<ByteBuffer, ByteBuf> single = NetworkTransmission.toDirectByteBuffer(buffer);
@@ -231,19 +233,20 @@ public final class NetworkTransmission {
                     single.getSecond().release();
             });
         }
-        final ByteBuffer[] buffers = new ByteBuffer[buffer.nioBufferCount()];
-        int i = 0;
+        final List<ByteBuffer> buffers = new ArrayList<>(buffer.nioBufferCount());
         final Collection<ByteBuf> list = new ArrayList<>();
         for (final ByteBuffer b: buffer.nioBuffers()) {
+            if (b.remaining() <= 0)
+                continue;
             if (b.isDirect()) {
-                buffers[i++] = b;
+                buffers.add(b);
                 continue;
             }
             final ByteBuf tmp = ByteBufAllocator.DEFAULT.directBuffer(b.remaining(), b.remaining());
             tmp.writeBytes(b);
-            buffers[i++] = tmp.nioBuffer();
+            buffers.add(tmp.nioBuffer());
             list.add(tmp);
         }
-        return Pair.ImmutablePair.makeImmutablePair(buffers, () -> list.forEach(ByteBuf::release));
+        return Pair.ImmutablePair.makeImmutablePair(buffers.toArray(NetworkTransmission.EmptyBufferArray), () -> list.forEach(ByteBuf::release));
     }
 }
