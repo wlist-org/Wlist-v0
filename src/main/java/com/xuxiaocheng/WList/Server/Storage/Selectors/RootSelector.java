@@ -16,6 +16,7 @@ import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
+import com.xuxiaocheng.WList.Server.Storage.Records.UploadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Unmodifiable;
@@ -29,6 +30,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.function.Consumer;
 
+/**
+ * @see ProviderInterface
+ */
 @SuppressWarnings("OverlyBroadCatchBlock")
 public final class RootSelector {
     private RootSelector() {
@@ -161,6 +165,19 @@ public final class RootSelector {
                 return;
             }
             real.createDirectory(parent.id(), directoryName, policy, consumer.andThen(RootSelector.dumper(real.getConfiguration())), parent);
+        } catch (final Throwable exception) {
+            consumer.accept(UnionPair.fail(exception));
+        }
+    }
+
+    public static void uploadFile(final @NotNull FileLocation parent, final @NotNull String filename, final @LongRange(minimum = 0) long size, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) {
+        try {
+            final ProviderInterface<?> real = StorageManager.getProvider(parent.storage());
+            if (real == null) {
+                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(parent))));
+                return;
+            }
+            real.uploadFile(parent.id(), filename, size, policy, consumer.andThen(RootSelector.dumper(real.getConfiguration())), parent);
         } catch (final Throwable exception) {
             consumer.accept(UnionPair.fail(exception));
         }

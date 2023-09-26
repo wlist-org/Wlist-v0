@@ -65,6 +65,33 @@ public class NetworkTransmissionTest {
         }
     }
 
+    @Test
+    public void multiEncrypt() {
+        final Pair.ImmutablePair<NetworkTransmission.RsaPrivateKey, ByteBuf> request = NetworkTransmission.clientStartInJava();
+        final Pair.ImmutablePair<ByteBuf, NetworkTransmission.AesKeyPair> response = NetworkTransmission.serverStart(request.getSecond(), "WList");
+        final UnionPair<NetworkTransmission.AesKeyPair, UnionPair<String, String>> check = NetworkTransmission.clientCheck(request.getFirst(), response.getFirst(), "WList");
+        final NetworkTransmission.AesKeyPair client = Objects.requireNonNull(check).getT(), server = Objects.requireNonNull(response.getSecond());
+        for (int i = 0; i < 10; ++i) {
+            final ByteBuf c1 = ByteBufAllocator.DEFAULT.compositeBuffer().addComponents(true,
+                    ByteBufAllocator.DEFAULT.buffer().writeBytes(("Wlist test. (from client): " + i).getBytes(StandardCharsets.UTF_8)),
+                    ByteBufAllocator.DEFAULT.buffer().writeBytes(("Double message: " + i).getBytes(StandardCharsets.UTF_8))
+            );
+            final ByteBuf c2 = Objects.requireNonNull(NetworkTransmission.clientEncrypt(client, c1));
+            final ByteBuf c3 = Objects.requireNonNull(NetworkTransmission.serverDecrypt(server, c2));
+            if (!Arrays.equals(ByteBufIOUtil.allToByteArray(c1), ByteBufIOUtil.allToByteArray(c3))) throw new AssertionError();
+            c1.release(); c2.release(); c3.release();
+
+            final ByteBuf s1 = ByteBufAllocator.DEFAULT.compositeBuffer().addComponents(true,
+                    ByteBufAllocator.DEFAULT.buffer().writeBytes(("Wlist test. (from server): " + i).getBytes(StandardCharsets.UTF_8)),
+                    ByteBufAllocator.DEFAULT.buffer().writeBytes(("Double message: " + i).getBytes(StandardCharsets.UTF_8))
+            );
+            final ByteBuf s2 = Objects.requireNonNull(NetworkTransmission.serverEncrypt(server, s1));
+            final ByteBuf s3 = Objects.requireNonNull(NetworkTransmission.clientDecrypt(client, s2));
+            if (!Arrays.equals(ByteBufIOUtil.allToByteArray(s1), ByteBufIOUtil.allToByteArray(s3))) throw new AssertionError();
+            s1.release(); s2.release(); s3.release();
+        }
+    }
+
     @BenchmarkMode(Mode.AverageTime)
     @OutputTimeUnit(TimeUnit.MILLISECONDS)
     @Fork(1)

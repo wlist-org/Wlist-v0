@@ -324,6 +324,11 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     @Override
+    protected boolean isRequiredLoginDownloading(final @NotNull FileInformation information) {
+        return information.others() == null;
+    }
+
+    @Override
     protected void download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) throws IOException, IllegalParametersException {
         final HttpUrl url;
         final String id, pwd;

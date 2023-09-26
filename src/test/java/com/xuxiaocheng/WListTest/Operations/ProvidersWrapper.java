@@ -14,6 +14,7 @@ import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WListTest.StaticLoader;
+import com.xuxiaocheng.WListTest.Storage.AbstractProviderTest;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assumptions;
@@ -36,9 +37,8 @@ public class ProvidersWrapper extends ServerWrapper {
         StorageManager.initialize(new File("run/configs"), new File("run/caches"));
         WListServer.getInstance().start(ServerConfiguration.get().port());
         final SocketAddress address = WListServer.getInstance().getAddress().getInstance();
-        //noinspection SpellCheckingInspection
-        ServerWrapper.AdminPassword.initialize("a7lsGXYF"); // random, has been generated.
 //        ServerWrapper.AdminPassword.initialize(Objects.requireNonNull(UserManager.getInstance().getAndDeleteDefaultAdminPassword()));
+        ServerWrapper.AdminPassword.initialize("Slz12ApN"); // random, has been generated.
 
         ClientConfiguration.initialize(null);
         WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
@@ -54,6 +54,7 @@ public class ProvidersWrapper extends ServerWrapper {
 
     @AfterAll
     public static void uninitialize() throws Exception {
+        AbstractProviderTest.check();
         ServerWrapper.uninitialize();
     }
 

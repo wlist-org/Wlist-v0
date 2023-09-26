@@ -224,9 +224,9 @@ public class WListServer {
                 ServerChannelHandler.write(channel, MessageProto.composeMessage(ResponseState.Unsupported, exception.getMessage()));
                 return;
             }
-            if (cause instanceof CodecException || cause instanceof SocketException) {
+            if (cause instanceof CodecException || (cause instanceof SocketException && !channel.isActive())) {
                 WListServer.logger.log(HLogLevel.MISTAKE, "Codec/Socket Exception at ", channel.remoteAddress(), ": ", cause.getLocalizedMessage());
-                channel.close().addListener(MiscellaneousUtil.exceptionListener());
+                channel.close();
                 return;
             }
             WListServer.logger.log(HLogLevel.ERROR, "Exception at ", channel.remoteAddress(), ": ", cause);

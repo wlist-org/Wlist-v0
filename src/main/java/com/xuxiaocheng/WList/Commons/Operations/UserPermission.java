@@ -30,7 +30,8 @@ public enum UserPermission {
     FilesRefresh,
     FileDownload,
     FileUpload,
-    FileDelete,
+    FileMove,
+    FileTrash,
     ;
 
     public static @NotNull UserPermission of(final @NotNull String permission) {

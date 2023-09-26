@@ -74,7 +74,7 @@ public class AbstractProviderTest {
     }
 
     @AfterAll
-    public static void checker() throws NoSuchFieldException, IllegalAccessException {
+    public static void check() throws NoSuchFieldException, IllegalAccessException {
         final Field removable = BackgroundTaskManager.class.getDeclaredField("removable");
         removable.setAccessible(true);
         Assertions.assertEquals(Set.of(), removable.get(null));

@@ -40,7 +40,8 @@ public record VisibleUserGroupInformation(long id, @NotNull String name, @NotNul
         Permissions_FilesRefresh,
         Permissions_FileDownload,
         Permissions_FileUpload,
-        Permissions_FileDelete,
+        Permissions_FileMove,
+        Permissions_FileTrash,
     }
 
     private static final @NotNull @Unmodifiable LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> ListEmptyOrder = new LinkedHashMap<>(0);

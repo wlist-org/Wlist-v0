@@ -433,6 +433,10 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         });
     }
 
+    protected boolean isRequiredLoginDownloading(final @NotNull FileInformation information) {
+        return true;
+    }
+
     /**
      * Get download methods of a specific file.
      * @param location Only by used to create {@code FailureReason}.
@@ -454,7 +458,8 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
             consumer.accept(UnionPair.ok(UnionPair.ok(DownloadRequirements.EmptyDownloadRequirements)));
             return;
         }
-        this.loginIfNot();
+        if (this.isRequiredLoginDownloading(information))
+            this.loginIfNot();
         this.download0(information, start, end, consumer, location);
     }
 

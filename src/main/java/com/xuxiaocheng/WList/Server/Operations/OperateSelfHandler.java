@@ -37,7 +37,7 @@ public final class OperateSelfHandler {
         ByteBufIOUtil.writeUTF(buf, UserPermission.Undefined.name());
         return buf;
     });
-    private static @NotNull MessageProto NoPermission(final @NotNull Collection<@NotNull UserPermission> permissions) {
+    static @NotNull MessageProto NoPermission(final @NotNull Collection<@NotNull UserPermission> permissions) {
         assert !permissions.isEmpty();
         return new MessageProto(ResponseState.NoPermission, buf -> {
             ByteBufIOUtil.writeVariableLenInt(buf, permissions.size());

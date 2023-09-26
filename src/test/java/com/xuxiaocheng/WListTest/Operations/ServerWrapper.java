@@ -79,10 +79,10 @@ public class ServerWrapper {
         IdsHelper.CleanerExecutors.shutdownGracefully();
     }
 
-    public static @NotNull Stream<WListClientInterface> client() throws IOException, InterruptedException {
+    public static Stream<WListClientInterface> client() throws IOException, InterruptedException {
         return Stream.of(WListClientManager.quicklyGetClient(ServerWrapper.address.getInstance()));
     }
-    public static @NotNull Stream<Arguments> broadcast() throws IOException, InterruptedException, WrongStateException {
+    public static Stream<Arguments> broadcast() throws IOException, InterruptedException, WrongStateException {
         final WListClient broadcast = new WListClient(ServerWrapper.address.getInstance());
         broadcast.open();
         OperateServerHelper.setBroadcastMode(broadcast, true);

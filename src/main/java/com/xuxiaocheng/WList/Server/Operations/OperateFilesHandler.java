@@ -14,6 +14,7 @@ import com.xuxiaocheng.WList.Commons.Operations.ResponseState;
 import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
+import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.User.UserInformation;
 import com.xuxiaocheng.WList.Server.MessageProto;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.BroadcastManager;
@@ -27,6 +28,7 @@ import io.netty.buffer.ByteBufAllocator;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -60,11 +62,11 @@ public final class OperateFilesHandler {
         ServerHandlerManager.register(OperationType.ConfirmDownloadFile, OperateFilesHandler.doConfirmDownloadFile);
         ServerHandlerManager.register(OperationType.DownloadFile, OperateFilesHandler.doDownloadFile);
         ServerHandlerManager.register(OperationType.FinishDownloadFile, OperateFilesHandler.doFinishDownloadFile);
-//        ServerHandlerManager.register(OperationType.CreateDirectory, OperateFilesHandler.doCreateDirectory);
-//        ServerHandlerManager.register(OperationType.RenameFile, OperateFilesHandler.doRenameFile);
+        ServerHandlerManager.register(OperationType.CreateDirectory, OperateFilesHandler.doCreateDirectory);
 //        ServerHandlerManager.register(OperationType.RequestUploadFile, OperateFilesHandler.doRequestUploadFile);
 //        ServerHandlerManager.register(OperationType.UploadFile, OperateFilesHandler.doUploadFile);
 //        ServerHandlerManager.register(OperationType.CancelUploadFile, OperateFilesHandler.doCancelUploadFile);
+//        ServerHandlerManager.register(OperationType.RenameFile, OperateFilesHandler.doRenameFile);
 //        ServerHandlerManager.register(OperationType.CopyFile, OperateFilesHandler.doCopyFile);
 //        ServerHandlerManager.register(OperationType.MoveFile, OperateFilesHandler.doMoveFile);
     }
@@ -150,7 +152,7 @@ public final class OperateFilesHandler {
                 return;
             }
             if (p.getT().getT().getSecond().booleanValue())
-                BroadcastManager.onFileUpdate(p.getT().getT().getFirst());
+                BroadcastManager.onFileUpdate(location, isDirectory);
             WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(p.getT().getT().getFirst()::dumpVisible));
         });
     };
@@ -188,9 +190,9 @@ public final class OperateFilesHandler {
             BroadcastManager.onDirectoryRefresh(directory);
             final Pair.ImmutablePair<Set<Long>, Set<Long>> ids = p.getT().getT();
             for (final Long id: ids.getFirst())
-                BroadcastManager.onFileInsert(new FileLocation(directory.storage(), id.longValue()), false);
+                BroadcastManager.onFileUpdate(new FileLocation(directory.storage(), id.longValue()), false);
             for (final Long id: ids.getSecond())
-                BroadcastManager.onFileInsert(new FileLocation(directory.storage(), id.longValue()), true);
+                BroadcastManager.onFileUpdate(new FileLocation(directory.storage(), id.longValue()), true);
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
         });
     };
@@ -200,7 +202,7 @@ public final class OperateFilesHandler {
      */
     private static final @NotNull ServerHandler doTrashFileOrDirectory = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
-        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileDelete);
+        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileTrash);
         final FileLocation location = FileLocation.parse(buffer);
         final boolean isDirectory = ByteBufIOUtil.readBoolean(buffer);
         ServerHandler.logOperation(channel, OperationType.TrashFileOrDirectory, user, () -> ParametersMap.create()
@@ -367,100 +369,87 @@ public final class OperateFilesHandler {
         return () -> WListServer.ServerChannelHandler.write(channel, DownloadIdHelper.finish(id) ? MessageProto.Success : OperateFilesHandler.IdDataError);
     };
 
-//    public static final @NotNull ServerHandler doCreateDirectory = (channel, buffer) -> {
-//        final String token = ByteBufIOUtil.readUTF(buffer);
-//        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FilesList, UserPermission.FileUpload);
-//        final FileLocation parent = FileLocation.parse(buffer);
-//        final String directoryName = ByteBufIOUtil.readUTF(buffer);
-//        final Options.DuplicatePolicy policy = Options.DuplicatePolicy.of(ByteBufIOUtil.readUTF(buffer));
-//        ServerHandler.logOperation(channel, OperationType.DeleteFileOrDirectory, user, () -> ParametersMap.create()
-//                .add("parent", parent).add("directoryName", directoryName).add("policy", policy));
-//        MessageProto message = null;
-//        if (user.isFailure())
-//            message = user.getE();
-//        else if (policy == null)
-//            message = OperateFilesHandler.PolicyDataError;
-//        if (message != null) {
-//            WListServer.ServerChannelHandler.write(channel, message);
-//            return null;
-//        }
-//        return () -> {
-//            final UnionPair<FileInformation, FailureReason> information = RootSelector.createDirectory(parent, directoryName, policy);
-//            if (information.isFailure()) {
-//                WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.Failure(information.getE()));
-//                return;
-//            }
-//            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Created directory.", ServerHandler.user(null, user.getT()),
-//                    ParametersMap.create().add("directory", information.getT()));
-//            WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(information.getT()::dumpVisible));
-//        };
-//    };
+    private static final @NotNull ServerHandler doCreateDirectory = (channel, buffer) -> {
+        final String token = ByteBufIOUtil.readUTF(buffer);
+        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FilesList, UserPermission.FileUpload);
+        final FileLocation parent = FileLocation.parse(buffer);
+        final String directoryName = ByteBufIOUtil.readUTF(buffer);
+        final Options.DuplicatePolicy policy = Options.DuplicatePolicy.of(ByteBufIOUtil.readUTF(buffer));
+        ServerHandler.logOperation(channel, OperationType.CreateDirectory, user, () -> ParametersMap.create()
+                .add("parent", parent).add("directoryName", directoryName).add("policy", policy));
+        MessageProto message = null;
+        if (user.isFailure())
+            message = user.getE();
+        else if (policy == null)
+            message = OperateFilesHandler.PolicyDataError;
+        if (message != null) {
+            WListServer.ServerChannelHandler.write(channel, message);
+            return null;
+        }
+        final AtomicBoolean barrier = new AtomicBoolean(true);
+        return () -> RootSelector.create(parent, directoryName, policy, p -> {
+            if (!barrier.compareAndSet(true, false)) {
+                HLog.getInstance("ServerLogger").log(HLogLevel.MISTAKE, "Duplicate message on 'doCreateDirectory'.", ParametersMap.create()
+                        .add("p", p).add("parent", parent).add("directoryName", directoryName).add("policy", policy));
+                return;
+            }
+            if (p.isFailure()) {
+                channel.pipeline().fireExceptionCaught(p.getE());
+                return;
+            }
+            if (p.getT().isFailure()) {
+                WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.Failure(p.getT().getE()));
+                return;
+            }
+            final FileInformation directory = p.getT().getT();
+            HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Created directory.", ServerHandler.user(null, user.getT()),
+                    ParametersMap.create().add("directory", directory));
+            BroadcastManager.onFileUpload(new FileLocation(parent.storage(), directory.id()), true);
+            WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
+        });
+    };
 
-//    public static final @NotNull ServerHandler doRenameFile = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, UserPermission.FilesList, UserPermission.FileDownload, UserPermission.FileUpload, UserPermission.FileDelete);
-//        final FileLocation location = FileLocation.parse(buffer);
-//        final String name = ByteBufIOUtil.readUTF(buffer);
-//        final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
-//        ServerHandler.logOperation(channel, OperationType.RenameFile, user, () -> ParametersMap.create()
-//                .add("location", location).add("name", name).add("duplicatePolicy", duplicatePolicy));
-//        if (user.isFailure())
-//            return user.getE();
-//        if (duplicatePolicy == null)
-//            return MessageProto.WrongParameters;
-//        final UnionPair<FileInformation, FailureReason> file;
-//        try {
-//            file = RootSelector.getInstance().rename(location, name, duplicatePolicy);
-//        } catch (final UnsupportedOperationException exception) {
-//            return MessageProto.Unsupported.apply(exception);
-//        } catch (final Exception exception) {
-//            throw new ServerException(exception);
-//        }
-//        if (file.isFailure())
-//            return switch (file.getE().kind()) {
-//                case FailureReason.InvalidFilename -> OperateFilesHandler.InvalidFilename;
-//                case FailureReason.DuplicatePolicyError -> OperateFilesHandler.DuplicateError;
-//                case FailureReason.NoSuchFile -> OperateFilesHandler.FileNotFound;
-//                default -> throw new ServerException("Unknown failure reason. " + file.getE(), file.getE().throwable());
-//            };
-//        HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Renamed.", ServerHandler.buildUserString(user.getT().id(), user.getT().username()),
-//                ParametersMap.create().add("location", location).add("name", name));
-//        return MessageProto.successMessage(buf -> {
-//            FileInformation.dumpVisible(buf, file.getT());
-//            return buf;
-//        });
-//    };
-//
-//    public static final @NotNull ServerHandler doRequestUploadFile = (channel, buffer) -> {
-//        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, UserPermission.FilesList, UserPermission.FileUpload);
-//        final FileLocation parentLocation = FileLocation.parse(buffer);
-//        final String filename = ByteBufIOUtil.readUTF(buffer);
-//        final long size = ByteBufIOUtil.readVariable2LenLong(buffer);
-//        final String md5 = ByteBufIOUtil.readUTF(buffer);
-//        final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
-//        ServerHandler.logOperation(channel, OperationType.RequestUploadFile, user, () -> ParametersMap.create()
-//                .add("parentLocation", parentLocation).add("filename", filename).add("size", size).add("md5", md5).add("duplicatePolicy", duplicatePolicy)
-//                .optionallyAddSupplier(duplicatePolicy == Options.DuplicatePolicy.OVER && user.isSuccess(), "allow", () -> user.getT().groupName().permissions().contains(UserPermission.FileDelete)));
-//        if (user.isFailure())
-//            return user.getE();
-//        if (size < 0 || !HMessageDigestHelper.MD5.pattern.matcher(md5).matches() || duplicatePolicy == null)
-//            return MessageProto.WrongParameters;
-//        if (duplicatePolicy == Options.DuplicatePolicy.OVER && !user.getT().groupName().permissions().contains(UserPermission.FileDelete))
-//            return MessageProto.NoPermission.apply(UserPermission.FileDelete);
-//        final UnionPair<UploadMethods, FailureReason> methods;
-//        try {
-//            methods = RootSelector.getInstance().upload(parentLocation, filename, size, md5, duplicatePolicy);
-//        } catch (final UnsupportedOperationException exception) {
-//            return MessageProto.Unsupported.apply(exception);
-//        } catch (final Exception exception) {
-//            throw new ServerException(exception);
-//        }
-//        if (methods.isFailure())
-//            return switch (methods.getE().kind()) {
-//                case FailureReason.InvalidFilename -> OperateFilesHandler.InvalidFilename;
-//                case FailureReason.DuplicatePolicyError -> OperateFilesHandler.DuplicateError;
-//                case FailureReason.ExceedMaxSize -> OperateFilesHandler.ExceedSize;
-//                default -> throw new ServerException("Unknown failure reason. " + methods.getE(), methods.getE().throwable());
-//            };
+    private static final @NotNull ServerHandler doRequestUploadFile = (channel, buffer) -> {
+        final String token = ByteBufIOUtil.readUTF(buffer);
+        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FilesList, UserPermission.FileUpload);
+        final FileLocation parent = FileLocation.parse(buffer);
+        final String filename = ByteBufIOUtil.readUTF(buffer);
+        final long size = ByteBufIOUtil.readVariable2LenLong(buffer);
+        final Options.DuplicatePolicy policy = Options.DuplicatePolicy.of(ByteBufIOUtil.readUTF(buffer));
+        ServerHandler.logOperation(channel, OperationType.RequestUploadFile, user, () -> ParametersMap.create()
+                .add("parent", parent).add("filename", filename).add("size", size).add("policy", policy)
+                .optionallyAddSupplier(policy == Options.DuplicatePolicy.OVER && user.isSuccess(), "allow", () ->
+                        user.getT().group().permissions().contains(UserPermission.FileTrash)));
+        MessageProto message = null;
+        if (user.isFailure())
+            message = user.getE();
+        else if (size < 0)
+            message = MessageProto.WrongParameters;
+        else if (policy == null)
+            message = OperateFilesHandler.PolicyDataError;
+        else if (policy == Options.DuplicatePolicy.OVER && user.getT().group().permissions().contains(UserPermission.FileTrash))
+            message = OperateSelfHandler.NoPermission(List.of(UserPermission.FileTrash));
+        if (message != null) {
+            WListServer.ServerChannelHandler.write(channel, message);
+            return null;
+        }
+        final AtomicBoolean barrier = new AtomicBoolean(true);
+        return () -> RootSelector.uploadFile(parent, filename, size, policy, p -> {
+            if (!barrier.compareAndSet(true, false)) {
+                HLog.getInstance("ServerLogger").log(HLogLevel.MISTAKE, "Duplicate message on 'doRequestUploadFile'.", ParametersMap.create()
+                        .add("p", p).add("parent", parent).add("filename", filename).add("size", size).add("policy", policy));
+                return;
+            }
+            if (p.isFailure()) {
+                channel.pipeline().fireExceptionCaught(p.getE());
+                return;
+            }
+            if (p.getT().isFailure()) {
+                WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.Failure(p.getT().getE()));
+                return;
+            }
+
+        });
 //        if (methods.getT().methods().isEmpty()) { // (reuse / empty file)
 //            final FileInformation file;
 //            try {
@@ -486,8 +475,8 @@ public final class OperateFilesHandler {
 //            ByteBufIOUtil.writeUTF(buf, id);
 //            return buf;
 //        });
-//    };
-//
+    };
+
 //    public static final @NotNull ServerHandler doUploadFile = (channel, buffer) -> {
 //        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, UserPermission.FileUpload);
 //        final String id = ByteBufIOUtil.readUTF(buffer);
@@ -529,6 +518,40 @@ public final class OperateFilesHandler {
 //        if (user.isFailure())
 //            return user.getE();
 //        return UploadIdHelper.cancel(id, user.getT().username()) ? MessageProto.Success : MessageProto.DataError;
+//    };
+//
+//    public static final @NotNull ServerHandler doRenameFile = (channel, buffer) -> {
+//        final UnionPair<UserInformation, MessageProto> user = OperateUsersHandler.checkToken(buffer, UserPermission.FilesList, UserPermission.FileDownload, UserPermission.FileUpload, UserPermission.FileDelete);
+//        final FileLocation location = FileLocation.parse(buffer);
+//        final String name = ByteBufIOUtil.readUTF(buffer);
+//        final Options.DuplicatePolicy duplicatePolicy = Options.valueOfDuplicatePolicy(ByteBufIOUtil.readUTF(buffer));
+//        ServerHandler.logOperation(channel, OperationType.RenameFile, user, () -> ParametersMap.create()
+//                .add("location", location).add("name", name).add("duplicatePolicy", duplicatePolicy));
+//        if (user.isFailure())
+//            return user.getE();
+//        if (duplicatePolicy == null)
+//            return MessageProto.WrongParameters;
+//        final UnionPair<FileInformation, FailureReason> file;
+//        try {
+//            file = RootSelector.getInstance().rename(location, name, duplicatePolicy);
+//        } catch (final UnsupportedOperationException exception) {
+//            return MessageProto.Unsupported.apply(exception);
+//        } catch (final Exception exception) {
+//            throw new ServerException(exception);
+//        }
+//        if (file.isFailure())
+//            return switch (file.getE().kind()) {
+//                case FailureReason.InvalidFilename -> OperateFilesHandler.InvalidFilename;
+//                case FailureReason.DuplicatePolicyError -> OperateFilesHandler.DuplicateError;
+//                case FailureReason.NoSuchFile -> OperateFilesHandler.FileNotFound;
+//                default -> throw new ServerException("Unknown failure reason. " + file.getE(), file.getE().throwable());
+//            };
+//        HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Renamed.", ServerHandler.buildUserString(user.getT().id(), user.getT().username()),
+//                ParametersMap.create().add("location", location).add("name", name));
+//        return MessageProto.successMessage(buf -> {
+//            FileInformation.dumpVisible(buf, file.getT());
+//            return buf;
+//        });
 //    };
 //
 //    public static final @NotNull ServerHandler doCopyFile = (channel, buffer) -> {
