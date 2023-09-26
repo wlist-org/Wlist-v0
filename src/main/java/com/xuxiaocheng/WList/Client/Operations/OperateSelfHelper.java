@@ -37,10 +37,10 @@ public final class OperateSelfHelper {
             final String reason = OperateHelper.handleState(receive);
             if (reason == null) {
                 final String token = ByteBufIOUtil.readUTF(receive);
-                OperateHelper.logOperated(OperationType.Login, OperateHelper.logReason(null).andThen(p -> p.add("token", token).add("tokenHash", token.hashCode())));
+                OperateHelper.logOperated(OperationType.Login, null, p -> p.add("token", token).add("tokenHash", token.hashCode()));
                 return token;
             }
-            OperateHelper.logOperated(OperationType.Login, OperateHelper.logReason(reason));
+            OperateHelper.logOperated(OperationType.Login, reason, null);
             return null;
         } finally {
             receive.release();
@@ -77,10 +77,10 @@ public final class OperateSelfHelper {
             final String reason = OperateHelper.handleState(receive);
             if (reason == null) {
                 final VisibleUserGroupInformation group = VisibleUserGroupInformation.parse(receive);
-                OperateHelper.logOperated(OperationType.GetSelfGroup, OperateHelper.logReason(null).andThen(p -> p.add("group", group)));
+                OperateHelper.logOperated(OperationType.GetSelfGroup, null, p -> p.add("group", group));
                 return group;
             }
-            OperateHelper.logOperated(OperationType.GetSelfGroup, OperateHelper.logReason(reason));
+            OperateHelper.logOperated(OperationType.GetSelfGroup, reason, null);
             return null;
         } finally {
             receive.release();

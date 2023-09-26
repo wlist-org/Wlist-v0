@@ -72,24 +72,21 @@ public final class OperateHelper {
         }
     }
 
-    static void logOperated(final @NotNull OperationType operation, final @Nullable Consumer<? super @NotNull ParametersMap> parameters) {
+    static void logOperated(final @NotNull OperationType operation, final @Nullable String reason, final @Nullable Consumer<? super @NotNull ParametersMap> parameters) {
         if (OperateHelper.logOperation.get()) {
-            final ParametersMap parametersMap = ParametersMap.create();
+            final boolean success = reason == null;
+            final ParametersMap parametersMap = ParametersMap.create().add("success", success).optionallyAdd(!success, "reason", reason);
             if (parameters != null)
                 parameters.accept(parametersMap);
-            HLog.getInstance("ClientLogger").log(HLogLevel.DEBUG, "Operated: ", operation, parametersMap);
+            HLog.getInstance("ClientLogger").log(success ? HLogLevel.DEBUG : HLogLevel.MISTAKE, "Operated: ", operation, parametersMap);
         }
-    }
-
-    static @NotNull Consumer<@NotNull ParametersMap> logReason(final @Nullable String reason) {
-        return p -> p.add("success", reason == null).optionallyAdd(reason != null, "reason", reason);
     }
 
     static boolean booleanOperation(final @NotNull WListClientInterface client, final @NotNull ByteBuf send, final @NotNull OperationType type) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf receive = client.send(send);
         try {
             final String reason = OperateHelper.handleState(receive);
-            OperateHelper.logOperated(type, OperateHelper.logReason(reason));
+            OperateHelper.logOperated(type, reason, null);
             return reason == null;
         } finally {
             receive.release();

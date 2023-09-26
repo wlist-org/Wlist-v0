@@ -64,10 +64,10 @@ public final class OperateGroupsHelper {
             final String reason = OperateHelper.handleState(receive);
             if (reason == null) {
                 final VisibleUserGroupInformation information = VisibleUserGroupInformation.parse(receive);
-                OperateHelper.logOperated(OperationType.GetGroup, OperateHelper.logReason(null).andThen(p -> p.add("information", information)));
+                OperateHelper.logOperated(OperationType.GetGroup, null, p -> p.add("information", information));
                 return information;
             }
-            OperateHelper.logOperated(OperationType.GetGroup, OperateHelper.logReason(reason));
+            OperateHelper.logOperated(OperationType.GetGroup, reason, null);
             return null;
         } finally {
             receive.release();
@@ -128,10 +128,10 @@ public final class OperateGroupsHelper {
                 final List<VisibleUserGroupInformation> list = new ArrayList<>(length);
                 for (int i = 0; i < length; ++i)
                     list.add(VisibleUserGroupInformation.parse(receive));
-                OperateHelper.logOperated(type, OperateHelper.logReason(null).andThen(p -> p.add("total", total).add("list", list)));
+                OperateHelper.logOperated(type, null, p -> p.add("total", total).add("list", list));
                 return Pair.ImmutablePair.makeImmutablePair(total, Collections.unmodifiableList(list));
             }
-            OperateHelper.logOperated(type, OperateHelper.logReason(reason));
+            OperateHelper.logOperated(type, reason, null);
             final ParametersMap map = ParametersMap.create();
             parameters.accept(map);
             throw new WrongStateException(ResponseState.DataError, reason + map);

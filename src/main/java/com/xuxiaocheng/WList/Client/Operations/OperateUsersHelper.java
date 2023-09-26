@@ -48,10 +48,10 @@ public final class OperateUsersHelper {
             final String reason = OperateHelper.handleState(receive);
             if (reason == null) {
                 final VisibleUserInformation information = VisibleUserInformation.parse(receive);
-                OperateHelper.logOperated(OperationType.GetUser, OperateHelper.logReason(null).andThen(p -> p.add("information", information)));
+                OperateHelper.logOperated(OperationType.GetUser, null, p -> p.add("information", information));
                 return information;
             }
-            OperateHelper.logOperated(OperationType.GetUser, OperateHelper.logReason(reason));
+            OperateHelper.logOperated(OperationType.GetUser, reason, null);
             return null;
         } finally {
             receive.release();
@@ -94,10 +94,10 @@ public final class OperateUsersHelper {
             final String reason = OperateHelper.handleState(receive);
             if (reason == null) {
                 final long count = ByteBufIOUtil.readVariableLenLong(receive);
-                OperateHelper.logOperated(OperationType.DeleteUsersInGroup, OperateHelper.logReason(null).andThen(p -> p.add("count", count)));
+                OperateHelper.logOperated(OperationType.DeleteUsersInGroup, null, p -> p.add("count", count));
                 return count;
             }
-            OperateHelper.logOperated(OperationType.DeleteUsersInGroup, OperateHelper.logReason(reason));
+            OperateHelper.logOperated(OperationType.DeleteUsersInGroup, reason, null);
             return -1;
         } finally {
             receive.release();
@@ -134,10 +134,10 @@ public final class OperateUsersHelper {
                 final List<VisibleUserInformation> list = new ArrayList<>(length);
                 for (int i = 0; i < length; ++i)
                     list.add(VisibleUserInformation.parse(receive));
-                OperateHelper.logOperated(type, OperateHelper.logReason(null).andThen(p -> p.add("total", total).add("list", list)));
+                OperateHelper.logOperated(type, null, p -> p.add("total", total).add("list", list));
                 return Pair.ImmutablePair.makeImmutablePair(total, Collections.unmodifiableList(list));
             }
-            OperateHelper.logOperated(type, OperateHelper.logReason(reason));
+            OperateHelper.logOperated(type, reason, null);
             final ParametersMap map = ParametersMap.create();
             parameters.accept(map);
             throw new WrongStateException(ResponseState.DataError, reason + map);

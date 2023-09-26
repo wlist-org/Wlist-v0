@@ -38,10 +38,10 @@ public final class OperateFilesHelper {
             final String reason = OperateHelper.handleState(receive);
             if (reason == null) {
                 final VisibleFilesListInformation information = VisibleFilesListInformation.parse(receive);
-                OperateHelper.logOperated(OperationType.ListFiles, OperateHelper.logReason(null).andThen(p -> p.add("information", information)));
+                OperateHelper.logOperated(OperationType.ListFiles, null, p -> p.add("information", information));
                 return information;
             }
-            OperateHelper.logOperated(OperationType.ListFiles, OperateHelper.logReason(reason));
+            OperateHelper.logOperated(OperationType.ListFiles, reason, null);
             return null;
         } finally {
             receive.release();
@@ -58,10 +58,10 @@ public final class OperateFilesHelper {
             final String reason = OperateHelper.handleState(receive);
             if (reason == null) {
                 final VisibleFileInformation information = VisibleFileInformation.parse(receive);
-                OperateHelper.logOperated(OperationType.GetFileOrDirectory, OperateHelper.logReason(null).andThen(p -> p.add("information", information)));
+                OperateHelper.logOperated(OperationType.GetFileOrDirectory, null, p -> p.add("information", information));
                 return information;
             }
-            OperateHelper.logOperated(OperationType.GetFileOrDirectory, OperateHelper.logReason(reason));
+            OperateHelper.logOperated(OperationType.GetFileOrDirectory, reason, null);
             return null;
         } finally {
             receive.release();
@@ -94,10 +94,10 @@ public final class OperateFilesHelper {
             final String reason = OperateHelper.handleState(receive);
             if (reason == null) {
                 final DownloadConfirm confirm = DownloadConfirm.parse(receive);
-                OperateHelper.logOperated(OperationType.RequestDownloadFile, OperateHelper.logReason(null).andThen(p -> p.add("confirm", confirm)));
+                OperateHelper.logOperated(OperationType.RequestDownloadFile, null, p -> p.add("confirm", confirm));
                 return confirm;
             }
-            OperateHelper.logOperated(OperationType.RequestDownloadFile, OperateHelper.logReason(reason));
+            OperateHelper.logOperated(OperationType.RequestDownloadFile, reason, null);
             return null;
         } finally {
             receive.release();
@@ -120,10 +120,10 @@ public final class OperateFilesHelper {
             final String reason = OperateHelper.handleState(receive);
             if (reason == null) {
                 final DownloadConfirm.DownloadInformation information = DownloadConfirm.DownloadInformation.parse(receive);
-                OperateHelper.logOperated(OperationType.ConfirmDownloadFile, OperateHelper.logReason(null).andThen(p -> p.add("information", information)));
+                OperateHelper.logOperated(OperationType.ConfirmDownloadFile, null, p -> p.add("information", information));
                 return information;
             }
-            OperateHelper.logOperated(OperationType.ConfirmDownloadFile, OperateHelper.logReason(reason));
+            OperateHelper.logOperated(OperationType.ConfirmDownloadFile, reason, null);
             return null;
         } finally {
             receive.release();
@@ -139,10 +139,10 @@ public final class OperateFilesHelper {
         try {
             final String reason = OperateHelper.handleState(receive);
             if (reason == null) {
-                OperateHelper.logOperated(OperationType.DownloadFile, OperateHelper.logReason(null).andThen(p -> p.add("size", receive.readableBytes())));
+                OperateHelper.logOperated(OperationType.DownloadFile, null, p -> p.add("size", receive.readableBytes()));
                 return receive.retainedDuplicate();
             }
-            OperateHelper.logOperated(OperationType.DownloadFile, OperateHelper.logReason(reason));
+            OperateHelper.logOperated(OperationType.DownloadFile, reason, null);
             return null;
         } finally {
             receive.release();
@@ -153,7 +153,13 @@ public final class OperateFilesHelper {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.FinishDownloadFile, token);
         ByteBufIOUtil.writeUTF(send, id);
         OperateHelper.logOperating(OperationType.FinishDownloadFile, token, p -> p.add("id", id));
-        OperateHelper.booleanOperation(client, send, OperationType.FinishDownloadFile);
+        final ByteBuf receive = client.send(send);
+        try {
+            OperateHelper.handleState(receive);
+            OperateHelper.logOperated(OperationType.FinishDownloadFile, null, null);
+        } finally {
+            receive.release();
+        }
     }
 
 //    public static @NotNull UnionPair<@NotNull VisibleFileInformation, @NotNull FailureReason> createDirectory(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation parentLocation, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
