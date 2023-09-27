@@ -542,7 +542,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                 }
                 final Pair.ImmutablePair<String, BackgroundTaskManager.BackgroundTaskIdentifier> name = this.getDuplicatedName(parentId, directoryName, policy);
                 if (name == null) {
-                    consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byDuplicateError(parentLocation))));
+                    consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byDuplicateError(parentLocation, directoryName))));
                     return;
                 }
                 boolean flag = true;
@@ -620,7 +620,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                 }
                 final Pair.ImmutablePair<String, BackgroundTaskManager.BackgroundTaskIdentifier> name = this.getDuplicatedName(parentId, filename, policy);
                 if (name == null) {
-                    consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byDuplicateError(parentLocation))));
+                    consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byDuplicateError(parentLocation, filename))));
                     return;
                 }
                 boolean flag = true;

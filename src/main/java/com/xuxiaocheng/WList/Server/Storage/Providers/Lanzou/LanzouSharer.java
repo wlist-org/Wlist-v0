@@ -3,7 +3,6 @@ package com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou;
 import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
-import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Server.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.Exceptions.IllegalResponseCodeException;
 import com.xuxiaocheng.WList.Server.Exceptions.WrongResponseException;
@@ -135,18 +134,21 @@ public class LanzouSharer extends AbstractIdBaseSharer<LanzouConfiguration> {
             return null;
         //noinspection StringConcatenationMissingWhitespace
         final HttpUrl displayUrl = Objects.requireNonNull(HttpUrl.parse(dom + "file/" + para));
-        final String redirectPage;
-        try (final Response response = HttpNetworkHelper.getWithParameters(HttpNetworkHelper.DefaultNoRedirectHttpClient, Pair.ImmutablePair.makeImmutablePair(displayUrl, "GET"), LanzouProvider.Headers, null).execute()) {
-            if (response.isRedirect()) {
-                final String finalUrl = response.header("Location");
-                assert finalUrl != null;
-                return Pair.ImmutablePair.makeImmutablePair(Objects.requireNonNull(HttpUrl.parse(finalUrl)), null);
-            }
-            redirectPage = LanzouSharer.removeHtmlComments(HttpNetworkHelper.extraResponseBody(response).string());
+        // A Provider Bug: 9/27/2023
+        // In Lanzou Provider, using the HEAD method for the first download after uploading will cause the file length to be reset to zero.
+        // Whether uploaded through a browser or through WList. Therefore, always use the GET method to avoid this bug.
+        try (final Response response = HttpNetworkHelper.getWithParameters(this.getConfiguration().getFileClient(), Pair.ImmutablePair.makeImmutablePair(displayUrl, "GET"), LanzouProvider.Headers, null).execute()) {
+            return Pair.ImmutablePair.makeImmutablePair(displayUrl, response.headers());
         }
-        // TODO: el
-        LanzouProvider.logger.log(HLogLevel.WARN, "Find el: " + redirectPage);
-        return Pair.ImmutablePair.makeImmutablePair(displayUrl, null);
+//        return Pair.ImmutablePair.makeImmutablePair(displayUrl, null);
+//        try (final Response response = HttpNetworkHelper.getWithParameters(HttpNetworkHelper.DefaultNoRedirectHttpClient, Pair.ImmutablePair.makeImmutablePair(displayUrl, "HEAD"), LanzouProvider.Headers, null).execute()) {
+//            if (response.isRedirect()) {
+//                final String finalUrl = response.header("Location");
+//                assert finalUrl != null;
+//                return Pair.ImmutablePair.makeImmutablePair(Objects.requireNonNull(HttpUrl.parse(finalUrl)), null);
+//            }
+//            return Pair.ImmutablePair.makeImmutablePair(displayUrl, response.headers()); // TODO: Stable? el?
+//        }
     }
 
     protected Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull ZonedDateTime> testRealSizeAndData(final @NotNull HttpUrl url, final @Nullable Headers header) throws IOException {

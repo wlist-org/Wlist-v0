@@ -38,8 +38,8 @@ public class TempTest {
         final WListClientInterface client = new WListClient(WListServer.getInstance().getAddress().getInstance());
         client.open();
         //noinspection SpellCheckingInspection
-        OperateFilesHelper.trashFileOrDirectory(client, "eyJhdWQiOiIxIiwic3ViIjoiMCIsImlzcyI6IldMaXN0IiwiZXhwIjoxNjk1Nzc3NjI0LCJqdGkiOiIxNjk1NzA1NTE0In0.rupz-NI0n7N86IUWPVNO11a8fzYPkLuKmxtrNWLrVuGLJUiC2XOkkDqRkmsGRF-CxYZ0HojAxK4LEB21J5CdNA",
-                new FileLocation("test", 139454762), false);
+        OperateFilesHelper.trashFileOrDirectory(client, "eyJhdWQiOiIxIiwic3ViIjoiMCIsImlzcyI6IldMaXN0IiwiZXhwIjoxNjk1ODM0ODg5LCJqdGkiOiIxNjk1NzA1NTE0In0.2r3ZhjLTsti_Mq8R72zGV73WGT0RmK_dFlRX8u8A5PjVhZlssLkqNrEnM7W8JnHOteusiPe692a037c7PvzhfA",
+                new FileLocation("test", 279059607 >> 1), false);
         return null;
     };
 

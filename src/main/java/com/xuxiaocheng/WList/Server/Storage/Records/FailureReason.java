@@ -17,8 +17,8 @@ public class FailureReason {
         return new FailureReason(FailureKind.InvalidName, location, ParametersMap.create().add("name", name).add("rules", rules).toString());
     }
 
-    public static @NotNull FailureReason byDuplicateError(final @NotNull FileLocation location) {
-        return new FailureReason(FailureKind.DuplicateError, location, null);
+    public static @NotNull FailureReason byDuplicateError(final @NotNull FileLocation location, final @NotNull String name) {
+        return new FailureReason(FailureKind.DuplicateError, location, ParametersMap.create().add("name", name).toString());
     }
 
     public static @NotNull FailureReason byExceedMaxSize(final @NotNull FileLocation location, final long current, final long max) {
