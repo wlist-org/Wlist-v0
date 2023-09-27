@@ -25,8 +25,8 @@ public class FailureReason {
         return new FailureReason(FailureKind.ExceedMaxSize, location, ParametersMap.create().add("current", current).add("max", max).toString());
     }
 
-    public static @NotNull FailureReason byNoSuchFile(final @NotNull FileLocation location) {
-        return new FailureReason(FailureKind.NoSuchFile, location, null);
+    public static @NotNull FailureReason byNoSuchFile(final @NotNull FileLocation location, final boolean requireDirectory) {
+        return new FailureReason(FailureKind.NoSuchFile, location, requireDirectory ? "No such directory." : "No such file.");
     }
 
     @Deprecated

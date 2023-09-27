@@ -20,6 +20,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Unmodifiable;
 
 import java.util.LinkedHashMap;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -102,16 +103,14 @@ public interface ProviderInterface<C extends StorageConfiguration> {
      */
     void uploadFile(final long parentId, final @NotNull String filename, final @LongRange(minimum = 0) long size, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws Exception;
 
-//    /**
-//     * Copy file.
-//     * @param sourceLocation The file location to copy.
-//     * @param targetParentLocation The target parent directory location.
-//     * @param targetFilename The name of target file.
-//     * @param policy Duplicate policy.
-//     * @return The information of new file.
-//     * @throws Exception Something went wrong.
-//     */
-//    @SuppressWarnings("OverlyBroadThrowsClause")
+    @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable> CopyNotSupported = UnionPair.ok(Optional.empty());
+    /**
+     * Copy a file directly. (Do NOT download and then upload. That should be done in client side.)
+     * @param location Source file location. Only by used to create {@code FailureReason}.
+     * @param parentLocation Target parent location. Only by used to create {@code FailureReason}.
+     */
+    void copyFileDirectly(final long fileId, final long parentId, final @NotNull String filename, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) throws Exception;
+
 //    default @NotNull UnionPair<FileInformation, FailureReason> copy(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final @NotNull String targetFilename, final Options.@NotNull DuplicatePolicy policy) throws Exception {
 //        HLog.getInstance("ServerLogger").log(HLogLevel.WARN, "Copying by default algorithm.", ParametersMap.create().add("sourceLocation", sourceLocation).add("targetParentLocation", targetParentLocation).add("targetFilename", targetFilename).add("policy", policy));
 //        final FileInformation source = this.info(sourceLocation);

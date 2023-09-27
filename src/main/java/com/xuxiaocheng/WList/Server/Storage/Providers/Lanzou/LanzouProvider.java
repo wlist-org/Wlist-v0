@@ -32,6 +32,7 @@ import com.xuxiaocheng.WList.Server.Exceptions.WrongResponseException;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.ProviderUtil;
 import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseProvider;
+import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
@@ -345,7 +346,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         if (information.others() == null) {
             final Triad.ImmutableTriad<HttpUrl, String, String> shareUrl = this.getFileShareUrl(information.id());
             if (shareUrl == null) {
-                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(location))));
+                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(location, false))));
                 return;
             }
             url = shareUrl.getA();
@@ -361,7 +362,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         assert sharer != null;
         final Pair.ImmutablePair<HttpUrl, Headers> downloadUrl = sharer.getSingleShareFileDownloadUrl(url, identifier, pwd);
         if (downloadUrl == null) {
-            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(location))));
+            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(location, false))));
             return;
         }
         consumer.accept(UnionPair.ok(UnionPair.ok(DownloadRequirements.tryGetDownloadFromUrl(this.getConfiguration().getFileClient(),
@@ -419,7 +420,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     @Override
-    protected void uploadFile0(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws Exception {
+    protected void uploadFile0(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) {
         consumer.accept(UnionPair.ok(UnionPair.ok(new UploadRequirements(List.of(), ignore -> {
             final AtomicReference<FileInformation> information = new AtomicReference<>(null);
             final Pair.ImmutablePair<List<UploadRequirements.OrderedConsumers>, Runnable> pair = UploadRequirements.splitUploadBuffer(content -> {
@@ -457,7 +458,17 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         }))));
     }
 
-//    static @Nullable UnionPair<ZonedDateTime, FailureReason> moveFile(final @NotNull LanzouConfiguration configuration, final long fileId, final long parentId) throws IOException {
+    @Override
+    protected boolean isSupportedCopyFileDirectly(final @NotNull FileInformation information, final long parentId) throws Exception {
+        return false;
+    }
+
+    @Override
+    protected void copyFileDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String filename, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) {
+        consumer.accept(ProviderInterface.CopyNotSupported);
+    }
+
+    //    static @Nullable UnionPair<ZonedDateTime, FailureReason> moveFile(final @NotNull LanzouConfiguration configuration, final long fileId, final long parentId) throws IOException {
 //        final FormBody.Builder builder = new FormBody.Builder()
 //                .add("file_id", String.valueOf(fileId))
 //                .add("folder_id", String.valueOf(parentId));

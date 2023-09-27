@@ -27,7 +27,7 @@ public final class ProviderUtil {
     public static final @NotNull Pattern PhoneNumberPattern = Pattern.compile("^1([38][0-9]|4[579]|5[0-3,5-9]|66|7[0135678]|9[89])\\d{8}$");
     public static final @NotNull Pattern MailAddressPattern = Pattern.compile("^\\w+@[a-zA-Z0-9]+(\\.[a-zA-Z0-9]+){1,2}$");
 
-    public static final int DefaultLimitPerRequestPage = 100;
+    private static final int DefaultLimitPerRequestPage = 100;
 
     /**
      * A tool for list in page.

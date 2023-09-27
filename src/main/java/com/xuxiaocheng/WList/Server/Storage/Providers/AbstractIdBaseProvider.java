@@ -40,6 +40,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -433,7 +434,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         });
     }
 
-    protected boolean isRequiredLoginDownloading(final @NotNull FileInformation information) {
+    protected boolean isRequiredLoginDownloading(final @NotNull FileInformation information) throws Exception {
         return true;
     }
 
@@ -448,7 +449,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
     public void downloadFile(final long fileId, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) throws Exception {
         final FileInformation information = this.manager.getInstance().selectInfo(fileId, false, null);
         if (information == null) {
-            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(location))));
+            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(location, false))));
             return;
         }
         assert information.size() >= 0;
@@ -537,7 +538,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                     return;
                 }
                 if (p.getT().isFailure()) {
-                    consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(parentLocation))));
+                    consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(parentLocation, true))));
                     return;
                 }
                 final Pair.ImmutablePair<String, BackgroundTaskManager.BackgroundTaskIdentifier> name = this.getDuplicatedName(parentId, directoryName, policy);
@@ -591,7 +592,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
      * @see UploadRequirements#splitUploadBuffer(ConsumerE, long, int)
      */
     @SuppressWarnings("SameParameterValue")
-    protected abstract void uploadFile0(final long parentId, final @NotNull String filename, final long size, final @NotNull Options.DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws Exception;
+    protected abstract void uploadFile0(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws Exception;
 
     @Override
     public void uploadFile(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws Exception {
@@ -615,7 +616,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                     return;
                 }
                 if (p.getT().isFailure()) {
-                    consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(parentLocation))));
+                    consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(parentLocation, true))));
                     return;
                 }
                 final Pair.ImmutablePair<String, BackgroundTaskManager.BackgroundTaskIdentifier> name = this.getDuplicatedName(parentId, filename, policy);
@@ -668,6 +669,94 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                         }
                         consumer.accept(u);
                     }, parentLocation);
+                } finally {
+                    if (flag)
+                        BackgroundTaskManager.remove(name.getSecond());
+                }
+            } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                consumer.accept(UnionPair.fail(exception));
+            }
+        });
+    }
+
+    protected abstract boolean isSupportedCopyFileDirectly(final @NotNull FileInformation information, final long parentId) throws Exception;
+
+    /**
+     * Copy a file.
+     * @param location Only by used to create {@code FailureReason}.
+     * @param parentLocation Only by used to create {@code FailureReason}.
+     * @see ProviderInterface#CopyNotSupported
+     */
+    protected abstract void copyFileDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String filename, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) throws Exception;
+
+    @Override
+    public void copyFileDirectly(final long fileId, final long parentId, final @NotNull String filename, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) throws Exception {
+        if (!this.fileNameChecker().test(filename)) {
+            consumer.accept(UnionPair.ok(Optional.of(UnionPair.fail(FailureReason.byInvalidName(parentLocation, filename, this.fileNameChecker().description())))));
+            return;
+        }
+        final FileInformation information = this.manager.getInstance().selectInfo(fileId, false, null);
+        if (information == null) {
+            consumer.accept(UnionPair.ok(Optional.of(UnionPair.fail(FailureReason.byNoSuchFile(location, false)))));
+            return;
+        }
+        assert information.size() >= 0;
+        if (!this.isSupportedCopyFileDirectly(information, parentId)) {
+            consumer.accept(ProviderInterface.CopyNotSupported);
+            return;
+        }
+        final AtomicBoolean barrier = new AtomicBoolean(true);
+        this.list(parentId, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0, p -> {
+            if (!barrier.compareAndSet(true, false)) {
+                HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'copyFile#list'." + ParametersMap.create()
+                        .add("p", p).add("information", information).add("parentId", parentId).add("filename", filename).add("policy", policy)));
+                return;
+            }
+            try {
+                if (p.isFailure()) {
+                    consumer.accept(UnionPair.fail(p.getE()));
+                    return;
+                }
+                if (p.getT().isFailure()) {
+                    consumer.accept(UnionPair.ok(Optional.of(UnionPair.fail(FailureReason.byNoSuchFile(parentLocation, true)))));
+                    return;
+                }
+                final Pair.ImmutablePair<String, BackgroundTaskManager.BackgroundTaskIdentifier> name = this.getDuplicatedName(parentId, filename, policy);
+                if (name == null) {
+                    consumer.accept(UnionPair.ok(Optional.of(UnionPair.fail(FailureReason.byDuplicateError(parentLocation, filename)))));
+                    return;
+                }
+                boolean flag = true;
+                try {
+                    if (!this.fileNameChecker().test(name.getFirst())) {
+                        consumer.accept(UnionPair.ok(Optional.of(UnionPair.fail(FailureReason.byInvalidName(parentLocation, name.getFirst(), this.fileNameChecker().description())))));
+                        return;
+                    }
+                    if (parentId == information.parentId() && name.getFirst().equals(information.name())) { // Copy itself.
+                        consumer.accept(UnionPair.ok(Optional.of(UnionPair.fail(FailureReason.byDuplicateError(location, name.getFirst())))));
+                        return;
+                    }
+                    this.loginIfNot();
+                    flag = false;
+                    final AtomicBoolean barrier1 = new AtomicBoolean(true);
+                    this.copyFileDirectly0(information, parentId, name.getFirst(), policy, u -> {
+                        if (!barrier1.compareAndSet(true, false)) {
+                            HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'copyFileDirectly0'." + ParametersMap.create()
+                                    .add("u", u).add("information", information).add("parentId", parentId).add("filename", filename).add("name", name.getFirst()).add("policy", policy)));
+                            return;
+                        }
+                        try {
+                            BackgroundTaskManager.remove(name.getSecond());
+                            if (u.isSuccess() && u.getT().isPresent() && u.getT().get().isSuccess()) {
+                                final FileInformation file = u.getT().get().getT();
+                                assert !file.isDirectory() && file.size() == information.size();
+                                this.manager.getInstance().insertFileOrDirectory(file, null);
+                            }
+                            consumer.accept(u);
+                        } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                            consumer.accept(UnionPair.fail(exception));
+                        }
+                    }, location, parentLocation);
                 } finally {
                     if (flag)
                         BackgroundTaskManager.remove(name.getSecond());

@@ -148,7 +148,7 @@ public final class RootSelector {
         try {
             final ProviderInterface<?> real = StorageManager.getProvider(file.storage());
             if (real == null) {
-                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(file))));
+                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(file, false))));
                 return;
             }
             real.downloadFile(file.id(), from, to, consumer.andThen(RootSelector.dumper(real.getConfiguration())), file);
@@ -161,7 +161,7 @@ public final class RootSelector {
         try {
             final ProviderInterface<?> real = StorageManager.getProvider(parent.storage());
             if (real == null) {
-                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(parent))));
+                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(parent, true))));
                 return;
             }
             real.createDirectory(parent.id(), directoryName, policy, consumer.andThen(RootSelector.dumper(real.getConfiguration())), parent);
@@ -174,7 +174,7 @@ public final class RootSelector {
         try {
             final ProviderInterface<?> real = StorageManager.getProvider(parent.storage());
             if (real == null) {
-                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(parent))));
+                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(parent, true))));
                 return;
             }
             real.uploadFile(parent.id(), filename, size, policy, consumer.andThen(RootSelector.dumper(real.getConfiguration())), parent);

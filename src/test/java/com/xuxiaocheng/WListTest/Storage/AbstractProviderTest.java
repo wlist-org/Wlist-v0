@@ -51,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -97,6 +98,7 @@ public class AbstractProviderTest {
     protected final Map<Long, FileInformation> info = new HashMap<>();
     protected final HInitializer<FileInformation> trash = new HInitializer<>("Trashed");
     protected final AtomicReference<FileInformation> create = new AtomicReference<>();
+    protected final AtomicReference<FileInformation> copy = new AtomicReference<>();
 
     public class AbstractProvider extends AbstractIdBaseProvider<AbstractConfiguration> {
         @Override
@@ -169,6 +171,20 @@ public class AbstractProviderTest {
         protected void uploadFile0(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) {
             throw new UnsupportedOperationException("Not tested.");
         }
+
+        @Override
+        protected boolean isSupportedCopyFileDirectly(final @NotNull FileInformation information, final long parentId) {
+            return true;
+        }
+
+        @Override
+        protected void copyFileDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String filename, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) {
+            final FileInformation copied = AbstractProviderTest.this.copy.getAndSet(null);
+            Assertions.assertNotNull(copied);
+            Assertions.assertEquals(filename, copied.name());
+            Assertions.assertEquals(information.size(), copied.size());
+            consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(copied))));
+        }
     }
 
     protected final AtomicReference<ProviderInterface<AbstractConfiguration>> provider = new AtomicReference<>();
@@ -187,6 +203,7 @@ public class AbstractProviderTest {
         this.info.clear();
         this.trash.uninitializeNullable();
         this.create.set(null);
+        this.copy.set(null);
         final ProviderInterface<AbstractConfiguration> provider = this.ProviderCore.getInstance().get();
         this.provider.set(provider);
         final AbstractConfiguration configuration = new AbstractConfiguration();
@@ -692,6 +709,36 @@ public class AbstractProviderTest {
             create.set(over);
             Assertions.assertEquals(over, ProviderHelper.create(provider(), 0, "1", Options.DuplicatePolicy.OVER).getT());
             Assertions.assertEquals(information, trash.uninitialize());
+        }
+    }
+
+    @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
+    @Nested
+    public class CopyTest {
+        @Test
+        public void copy() throws Exception {
+            final FileInformation information = new FileInformation(1, 0, "file", false, 0, null, null, null);
+            list.set(List.of(information).iterator());
+            ProviderHelper.refresh(provider(), 0); // list
+            final FileInformation copied = new FileInformation(2, 0, "copied", false, 0, null, null, null);
+            copy.set(copied);
+            Assertions.assertEquals(copied, ProviderHelper.copy(provider(), 1, 0, "copied", Options.DuplicatePolicy.ERROR).getT());
+        }
+
+        @Test
+        public void duplicate() throws Exception {
+            final FileInformation information = new FileInformation(1, 0, "file", false, 0, null, null, null);
+            list.set(List.of(information).iterator());
+            ProviderHelper.refresh(provider(), 0); // list
+
+            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.copy(provider(), 1, 0, "file", Options.DuplicatePolicy.ERROR).getE().kind());
+
+            final FileInformation keep = new FileInformation(2, 0, "file (1)", false, 0, null, null, null);
+            copy.set(keep);
+            Assertions.assertEquals(keep, ProviderHelper.copy(provider(), 1, 0, "file", Options.DuplicatePolicy.KEEP).getT());
+
+            // Copy itself.
+            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.copy(provider(), 1, 0, "file", Options.DuplicatePolicy.OVER).getE().kind());
         }
     }
 }

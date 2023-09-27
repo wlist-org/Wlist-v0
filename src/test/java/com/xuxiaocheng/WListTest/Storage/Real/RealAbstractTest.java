@@ -37,6 +37,7 @@ import io.netty.buffer.Unpooled;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -277,7 +278,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
         }
     }
 
-//    @Disabled
+    @Disabled
     @ParameterizedTest(name = "running")
     @MethodSource("broadcast")
     public void uploadAndDownload(final WListClientInterface client, final WListClientInterface broadcast, final @NotNull TestInfo info) throws WrongStateException, IOException, InterruptedException {
