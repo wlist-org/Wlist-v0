@@ -342,8 +342,8 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
             consumer.accept(ProviderInterface.TrashNotAvailable);
             return;
         }
+        this.loginIfNot();
         if (!isDirectory || this.isSupportedNotEmptyDirectoryTrash()) {
-            this.loginIfNot();
             this.trash0(information);
             this.manager.getInstance().deleteFileOrDirectory(id, isDirectory, null);
             consumer.accept(ProviderInterface.TrashSuccess);
@@ -353,7 +353,6 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
     }
     private synchronized void trashInside(final @NotNull FileInformation parent, final boolean refreshed, final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) throws Exception {
         if (!parent.isDirectory()) {
-            this.loginIfNot();
             this.trash0(parent);
             this.manager.getInstance().deleteFile(parent.id(), null);
             consumer.accept(ProviderInterface.TrashSuccess);
@@ -377,7 +376,6 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                 }
                 if (p.getT().getT().total() == 0) {
                     if (refreshed) {
-                        this.loginIfNot();
                         this.trash0(parent);
                         this.manager.getInstance().deleteDirectoryRecursively(parent.id(), null);
                         consumer.accept(ProviderInterface.TrashSuccess);

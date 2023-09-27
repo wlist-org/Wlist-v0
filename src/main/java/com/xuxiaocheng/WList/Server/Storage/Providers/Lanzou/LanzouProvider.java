@@ -276,8 +276,11 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     protected @NotNull UnionPair<FileInformation, Boolean> update0(@NotNull final FileInformation oldInformation) throws IOException, IllegalParametersException {
         if (oldInformation.isDirectory() || (oldInformation.createTime() != null && oldInformation.others() != null))
             return AbstractIdBaseProvider.UpdateNoRequired;
+        this.loginIfNot();
         final HttpUrl url;
-        final String identifier, pwd, others;
+        final String identifier;
+        final String pwd;
+        String others;
         if (oldInformation.others() == null) {
             final Triad.ImmutableTriad<HttpUrl, String, String> shareUrl = this.getFileShareUrl(oldInformation.id());
             if (shareUrl == null) return UnionPair.fail(Boolean.FALSE);
@@ -294,16 +297,20 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         }
         final LanzouSharer sharer = (LanzouSharer) StorageManager.getSharer(this.getConfiguration().getName());
         assert sharer != null;
+        Pair.ImmutablePair<HttpUrl, Headers> downloadUrl;
         try {
-            final Pair.ImmutablePair<HttpUrl, Headers> downloadUrl = sharer.getSingleShareFileDownloadUrl(url, identifier, pwd);
-            if (downloadUrl == null)
-                return AbstractIdBaseProvider.UpdateNotExisted;
-            final Pair<Long, ZonedDateTime> fixed = sharer.testRealSizeAndData(downloadUrl.getFirst(), downloadUrl.getSecond());
-            if (fixed != null)
-                return UnionPair.ok(new FileInformation(oldInformation.id(), oldInformation.parentId(), oldInformation.name(), false, fixed.getFirst().longValue(), fixed.getSecond(), fixed.getSecond(), others));
-        } catch (final IllegalParametersException exception) {
-            LanzouProvider.logger.log(HLogLevel.MISTAKE, exception);
+            downloadUrl = sharer.getSingleShareFileDownloadUrl(url, identifier, pwd);
+        } catch (final IllegalParametersException exception) { // Wrong password.
+            final Triad.ImmutableTriad<HttpUrl, String, String> shareUrl = this.getFileShareUrl(oldInformation.id());
+            if (shareUrl == null) return UnionPair.fail(Boolean.FALSE);
+            others = LanzouProvider.dumpOthers(shareUrl.getA(), shareUrl.getB(), shareUrl.getC());
+            downloadUrl = sharer.getSingleShareFileDownloadUrl(shareUrl.getA(), shareUrl.getB(), shareUrl.getC());
         }
+        if (downloadUrl == null)
+            return AbstractIdBaseProvider.UpdateNotExisted;
+        final Pair<Long, ZonedDateTime> fixed = sharer.testRealSizeAndData(downloadUrl.getFirst(), downloadUrl.getSecond());
+        if (fixed != null)
+            return UnionPair.ok(new FileInformation(oldInformation.id(), oldInformation.parentId(), oldInformation.name(), false, fixed.getFirst().longValue(), fixed.getSecond(), fixed.getSecond(), others));
         return UnionPair.ok(new FileInformation(oldInformation.id(), oldInformation.parentId(), oldInformation.name(), false, oldInformation.size(), oldInformation.createTime(), oldInformation.updateTime(), others));
     }
 
@@ -342,7 +349,8 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     @Override
     protected void download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) throws IOException, IllegalParametersException {
         final HttpUrl url;
-        final String identifier, pwd;
+        final String identifier;
+        final String pwd;
         if (information.others() == null) {
             final Triad.ImmutableTriad<HttpUrl, String, String> shareUrl = this.getFileShareUrl(information.id());
             if (shareUrl == null) {
@@ -360,7 +368,17 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         }
         final LanzouSharer sharer = (LanzouSharer) StorageManager.getSharer(this.getConfiguration().getName());
         assert sharer != null;
-        final Pair.ImmutablePair<HttpUrl, Headers> downloadUrl = sharer.getSingleShareFileDownloadUrl(url, identifier, pwd);
+        Pair.ImmutablePair<HttpUrl, Headers> downloadUrl;
+        try {
+            downloadUrl = sharer.getSingleShareFileDownloadUrl(url, identifier, pwd);
+        } catch (final IllegalParametersException ignore) { // Wrong password.
+            final Triad.ImmutableTriad<HttpUrl, String, String> shareUrl = this.getFileShareUrl(information.id());
+            if (shareUrl == null) {
+                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(location, false))));
+                return;
+            }
+            downloadUrl = sharer.getSingleShareFileDownloadUrl(shareUrl.getA(), shareUrl.getB(), shareUrl.getC());
+        }
         if (downloadUrl == null) {
             consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(location, false))));
             return;

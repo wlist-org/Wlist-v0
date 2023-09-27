@@ -111,48 +111,6 @@ public interface ProviderInterface<C extends StorageConfiguration> {
      */
     void copyFileDirectly(final long fileId, final long parentId, final @NotNull String filename, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) throws Exception;
 
-//    default @NotNull UnionPair<FileInformation, FailureReason> copy(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final @NotNull String targetFilename, final Options.@NotNull DuplicatePolicy policy) throws Exception {
-//        HLog.getInstance("ServerLogger").log(HLogLevel.WARN, "Copying by default algorithm.", ParametersMap.create().add("sourceLocation", sourceLocation).add("targetParentLocation", targetParentLocation).add("targetFilename", targetFilename).add("policy", policy));
-//        final FileInformation source = this.info(sourceLocation);
-//        if (source == null || source.isDirectory())
-//            return UnionPair.fail(FailureReason.byNoSuchFile("Copying.", sourceLocation));
-//        Runnable uploadFinisher = null;
-//        Runnable downloadFinisher = null;
-//        try {
-//            final UnionPair<UploadRequirements.UploadMethods, FailureReason> upload = this.upload(targetParentLocation, targetFilename, source.size(), source.md5(), policy);
-//            if (upload.isFailure())
-//                return UnionPair.fail(upload.getE());
-//            uploadFinisher = upload.getT().finisher();
-//            if (!upload.getT().methods().isEmpty()) {
-//                final UnionPair<DownloadMethods, FailureReason> download = this.download(sourceLocation, 0, Long.MAX_VALUE);
-//                if (download.isFailure())
-//                    return UnionPair.fail(download.getE());
-//                downloadFinisher = download.getT().finisher();
-//                assert source.size() == download.getT().total();
-//                if (upload.getT().methods().size() != download.getT().methods().size())
-//                    throw new AssertionError("Copying. Same size but different methods count." + ParametersMap.create()
-//                            .add("size_uploader", source.size()).add("size_downloader", download.getT().total())
-//                            .add("downloader", download.getT().methods().size()).add("uploader", upload.getT().methods().size())
-//                            .add("source", source).add("target", targetParentLocation).add("filename", targetFilename).add("policy", policy));
-//                final Iterator<ConsumerE<ByteBuf>> uploadIterator = upload.getT().methods().iterator();
-//                final Iterator<SupplierE<ByteBuf>> downloadIterator = download.getT().methods().iterator();
-//                while (uploadIterator.hasNext() && downloadIterator.hasNext())
-//                    uploadIterator.next().accept(downloadIterator.next().get());
-//                assert !uploadIterator.hasNext() && !downloadIterator.hasNext();
-//            }
-//            final FileInformation information = upload.getT().supplier().get();
-//            if (information == null)
-//                throw new IllegalStateException("Failed to copy file. Failed to get target file information." + ParametersMap.create()
-//                        .add("sourceLocation", sourceLocation).add("sourceInfo", source).add("targetParentLocation", targetParentLocation).add(targetFilename, "targetFilename").add("policy", policy));
-//            return UnionPair.ok(information);
-//        } finally {
-//            if (uploadFinisher != null)
-//                uploadFinisher.run();
-//            if (downloadFinisher != null)
-//                downloadFinisher.run();
-//        }
-//    }
-//
 //    /**
 //     * Move file/directory.
 //     * @param sourceLocation The file/directory location to move.

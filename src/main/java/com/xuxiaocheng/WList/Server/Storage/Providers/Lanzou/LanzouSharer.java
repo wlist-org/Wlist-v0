@@ -126,6 +126,8 @@ public class LanzouSharer extends AbstractIdBaseSharer<LanzouConfiguration> {
             builder.add(entry.getKey(), entry.getValue().toString());
         final JSONObject json = LanzouSharer.requestJson(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin.newBuilder().addPathSegment("ajaxm.php").build(), "POST"), builder);
         final int code = json.getIntValue("zt", -1);
+        if (code == 0 && "\u5BC6\u7801\u4E0D\u6B63\u786E".equals(json.getString("inf")))
+            throw new IllegalParametersException("Wrong password.", ParametersMap.create().add("domin", domin).add("id", id).add("pwd", pwd));
         if (code != 1)
             throw new IllegalResponseCodeException(code, json.getString("inf"), parametersMap.add("json", json));
         final HttpUrl dom = HttpUrl.parse(json.getString("dom"));
