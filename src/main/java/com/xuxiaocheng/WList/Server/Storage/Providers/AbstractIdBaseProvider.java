@@ -565,7 +565,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                         try {
                             if (u.isSuccess() && u.getT().isSuccess()) {
                                 final FileInformation information = u.getT().getT();
-                                assert information.isDirectory() && information.size() == 0;
+                                assert information.isDirectory() && information.size() == 0 && information.parentId() == parentId;
                                 this.manager.getInstance().insertFileOrDirectory(information, null);
                             }
                             consumer.accept(u);
@@ -655,7 +655,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                                         try {
                                             if (t.isSuccess() && t.getT().isPresent()) {
                                                 final FileInformation information = t.getT().get();
-                                                assert !information.isDirectory() && information.size() >= 0;
+                                                assert !information.isDirectory() && information.size() >= size && information.parentId() == parentId;
                                                 this.manager.getInstance().insertFileOrDirectory(information, null);
                                             }
                                             o.accept(t);
@@ -749,7 +749,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                             BackgroundTaskManager.remove(name.getSecond());
                             if (u.isSuccess() && u.getT().isPresent() && u.getT().get().isSuccess()) {
                                 final FileInformation file = u.getT().get().getT();
-                                assert !file.isDirectory() && file.size() == information.size();
+                                assert !file.isDirectory() && file.size() == information.size() && file.parentId() == parentId;
                                 this.manager.getInstance().insertFileOrDirectory(file, null);
                             }
                             consumer.accept(u);

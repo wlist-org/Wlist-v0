@@ -728,14 +728,23 @@ public class AbstractProviderTest {
         @Test
         public void duplicate() throws Exception {
             final FileInformation information = new FileInformation(1, 0, "file", false, 0, null, null, null);
-            list.set(List.of(information).iterator());
-            ProviderHelper.refresh(provider(), 0); // list
+            final FileInformation directory = new FileInformation(10, 0, "directory", true, -1, null, null, null);
+            list.set(List.of(information, directory).iterator());
+            ProviderHelper.refresh(provider(), 0);
 
             Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.copy(provider(), 1, 0, "file", Options.DuplicatePolicy.ERROR).getE().kind());
 
             final FileInformation keep = new FileInformation(2, 0, "file (1)", false, 0, null, null, null);
             copy.set(keep);
             Assertions.assertEquals(keep, ProviderHelper.copy(provider(), 1, 0, "file", Options.DuplicatePolicy.KEEP).getT());
+
+            final FileInformation overed = new FileInformation(3, 10, "file", false, 1, null, null, null);
+            list.set(List.of(overed).iterator());
+            ProviderHelper.refresh(provider(), 10);
+            final FileInformation over = new FileInformation(4, 10, "file", false, 0, null, null, null);
+            copy.set(over);
+            Assertions.assertEquals(over, ProviderHelper.copy(provider(), 1, 10, "file", Options.DuplicatePolicy.OVER).getT());
+            Assertions.assertEquals(overed, trash.uninitialize());
 
             // Copy itself.
             Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.copy(provider(), 1, 0, "file", Options.DuplicatePolicy.OVER).getE().kind());
