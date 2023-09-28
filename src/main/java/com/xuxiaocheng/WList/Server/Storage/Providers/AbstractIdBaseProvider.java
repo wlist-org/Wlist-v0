@@ -361,7 +361,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         final AtomicBoolean barrier = new AtomicBoolean(true);
         this.list(parent.id(), Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 50, p -> {
             if (!barrier.compareAndSet(true, false)) {
-                HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'trashInside#list'." + ParametersMap.create()
+                HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'trashInside#list'." + ParametersMap.create().add("configuration", this.getConfiguration())
                         .add("p", p).add("parent", parent).add("refreshed", refreshed)));
                 return;
             }
@@ -384,7 +384,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                     final AtomicBoolean barrier1 = new AtomicBoolean(true);
                     this.refreshDirectory(parent.id(), u -> {
                         if (!barrier1.compareAndSet(true, false)) {
-                            HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'trashInside#refresh'." + ParametersMap.create()
+                            HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'trashInside#refresh'." + ParametersMap.create().add("configuration", this.getConfiguration())
                                     .add("u", u).add("parent", parent)));
                             return;
                         }
@@ -409,7 +409,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                     final AtomicBoolean barrier2 = new AtomicBoolean(true);
                     this.trashInside(info, false, u -> {
                         if (!barrier2.compareAndSet(true, false)) {
-                            HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'trashInside#recursively'." + ParametersMap.create()
+                            HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'trashInside#recursively'." + ParametersMap.create().add("configuration", this.getConfiguration())
                                     .add("u", u).add("parent", parent).add("info", info)));
                             return;
                         }
@@ -526,7 +526,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         final AtomicBoolean barrier = new AtomicBoolean(true);
         this.list(parentId, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0, p -> {
             if (!barrier.compareAndSet(true, false)) {
-                HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'createDirectory#list'." + ParametersMap.create()
+                HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'createDirectory#list'." + ParametersMap.create().add("configuration", this.getConfiguration())
                         .add("p", p).add("parentId", parentId).add("directoryName", directoryName).add("policy", policy)));
                 return;
             }
@@ -555,7 +555,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                     final AtomicBoolean barrier1 = new AtomicBoolean(true);
                     this.createDirectory0(parentId, name.getFirst(), Options.DuplicatePolicy.ERROR, u -> {
                         if (!barrier1.compareAndSet(true, false)) {
-                            HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'createDirectory0'." + ParametersMap.create()
+                            HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'createDirectory0'." + ParametersMap.create().add("configuration", this.getConfiguration())
                                     .add("u", u).add("parentId", parentId).add("directoryName", directoryName).add("policy", policy)));
                             return;
                         }
@@ -604,7 +604,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         final AtomicBoolean barrier = new AtomicBoolean(true);
         this.list(parentId, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0, p -> {
             if (!barrier.compareAndSet(true, false)) {
-                HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'uploadFile#list'." + ParametersMap.create()
+                HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'uploadFile#list'." + ParametersMap.create().add("configuration", this.getConfiguration())
                         .add("p", p).add("parentId", parentId).add("filename", filename).add("size", size).add("policy", policy)));
                 return;
             }
@@ -633,7 +633,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                     final AtomicBoolean barrier1 = new AtomicBoolean(true);
                     this.uploadFile0(parentId, name.getFirst(), size, Options.DuplicatePolicy.ERROR, u -> {
                         if (!barrier1.compareAndSet(true, false)) {
-                            HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'uploadFile0'." + ParametersMap.create()
+                            HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'uploadFile0'." + ParametersMap.create().add("configuration", this.getConfiguration())
                                     .add("u", u).add("parentId", parentId).add("filename", filename).add("name", name.getFirst()).add("size", size).add("policy", policy)));
                             return;
                         }
@@ -646,7 +646,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                                     final AtomicBoolean barrier2 = new AtomicBoolean(true);
                                     methods.supplier().accept(t -> {
                                         if (!barrier2.compareAndSet(true, false)) {
-                                            HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'uploadFile0#supplier'." + ParametersMap.create()
+                                            HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'uploadFile0#supplier'." + ParametersMap.create().add("configuration", this.getConfiguration())
                                                     .add("t", t).add("parentId", parentId).add("filename", filename).add("name", name.getFirst()).add("size", size).add("policy", policy)));
                                             return;
                                         }
@@ -685,10 +685,10 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
      * @param parentLocation Only by used to create {@code FailureReason}.
      * @see ProviderInterface#CopyNotSupported
      */
-    protected abstract void copyFileDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String filename, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) throws Exception;
+    protected abstract void copyFileDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String filename, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) throws Exception;
 
     @Override
-    public void copyFileDirectly(final long fileId, final long parentId, final @NotNull String filename, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) throws Exception {
+    public void copyFileDirectly(final long fileId, final long parentId, final @NotNull String filename, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) throws Exception {
         if (!this.fileNameChecker().test(filename)) {
             consumer.accept(UnionPair.ok(Optional.of(UnionPair.fail(FailureReason.byInvalidName(parentLocation, filename, this.fileNameChecker().description())))));
             return;
@@ -706,7 +706,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         final AtomicBoolean barrier = new AtomicBoolean(true);
         this.list(parentId, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0, p -> {
             if (!barrier.compareAndSet(true, false)) {
-                HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'copyFile#list'." + ParametersMap.create()
+                HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'copyFile#list'." + ParametersMap.create().add("configuration", this.getConfiguration())
                         .add("p", p).add("information", information).add("parentId", parentId).add("filename", filename).add("policy", policy)));
                 return;
             }
@@ -730,8 +730,8 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                         consumer.accept(UnionPair.ok(Optional.of(UnionPair.fail(FailureReason.byInvalidName(parentLocation, name.getFirst(), this.fileNameChecker().description())))));
                         return;
                     }
-                    if (parentId == information.parentId() && name.getFirst().equals(information.name())) { // Copy itself.
-                        consumer.accept(UnionPair.ok(Optional.of(UnionPair.fail(FailureReason.byDuplicateError(location, name.getFirst())))));
+                    if (parentId == information.parentId() && name.getFirst().equals(information.name())) {
+                        consumer.accept(ProviderInterface.CopySelf);
                         return;
                     }
                     this.loginIfNot();
@@ -739,14 +739,14 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                     final AtomicBoolean barrier1 = new AtomicBoolean(true);
                     this.copyFileDirectly0(information, parentId, name.getFirst(), policy, u -> {
                         if (!barrier1.compareAndSet(true, false)) {
-                            HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'copyFileDirectly0'." + ParametersMap.create()
+                            HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'copyFileDirectly0'." + ParametersMap.create().add("configuration", this.getConfiguration())
                                     .add("u", u).add("information", information).add("parentId", parentId).add("filename", filename).add("name", name.getFirst()).add("policy", policy)));
                             return;
                         }
                         try {
                             BackgroundTaskManager.remove(name.getSecond());
-                            if (u.isSuccess() && u.getT().isPresent() && u.getT().get().isSuccess()) {
-                                final FileInformation file = u.getT().get().getT();
+                            if (u.isSuccess() && u.getT().isPresent() && u.getT().get().isSuccess() && u.getT().get().getT().isPresent()) {
+                                final FileInformation file = u.getT().get().getT().get();
                                 assert !file.isDirectory() && file.size() == information.size() && file.parentId() == parentId;
                                 this.manager.getInstance().insertFileOrDirectory(file, null);
                             }

@@ -178,12 +178,12 @@ public class AbstractProviderTest {
         }
 
         @Override
-        protected void copyFileDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String filename, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) {
+        protected void copyFileDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String filename, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) {
             final FileInformation copied = AbstractProviderTest.this.copy.getAndSet(null);
             Assertions.assertNotNull(copied);
             Assertions.assertEquals(filename, copied.name());
             Assertions.assertEquals(information.size(), copied.size());
-            consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(copied))));
+            consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(Optional.of(copied)))));
         }
     }
 

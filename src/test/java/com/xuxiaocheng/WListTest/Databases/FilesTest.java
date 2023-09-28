@@ -182,6 +182,8 @@ public class FilesTest {
         Assertions.assertFalse(this.manager().isInDirectoryRecursively(5, false, 10, null));
         Assertions.assertFalse(this.manager().isInDirectoryRecursively(0, true, 4, null));
 
+        Assertions.assertTrue(this.manager().isInDirectoryRecursively(1, true, 1, null));
+
         // Not exist.
         Assertions.assertFalse(this.manager().isInDirectoryRecursively(9, false, 2, null));
         Assertions.assertTrue(this.manager().isInDirectoryRecursively(3, false, 2, null));

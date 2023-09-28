@@ -103,13 +103,14 @@ public interface ProviderInterface<C extends StorageConfiguration> {
      */
     void uploadFile(final long parentId, final @NotNull String filename, final @LongRange(minimum = 0) long size, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws Exception;
 
-    @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable> CopyNotSupported = UnionPair.ok(Optional.empty());
+    @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable> CopyNotSupported = UnionPair.ok(Optional.empty());
+    @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable> CopySelf = UnionPair.ok(Optional.of(UnionPair.ok(Optional.empty())));
     /**
      * Copy a file directly. (Do NOT download and then upload. That should be done in client side.)
      * @param location Source file location. Only by used to create {@code FailureReason}.
      * @param parentLocation Target parent location. Only by used to create {@code FailureReason}.
      */
-    void copyFileDirectly(final long fileId, final long parentId, final @NotNull String filename, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) throws Exception;
+    void copyFileDirectly(final long fileId, final long parentId, final @NotNull String filename, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) throws Exception;
 
 //    /**
 //     * Move file/directory.
