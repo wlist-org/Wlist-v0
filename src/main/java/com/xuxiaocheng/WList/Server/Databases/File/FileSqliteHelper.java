@@ -587,6 +587,68 @@ public class FileSqliteHelper implements FileSqlInterface {
         return information;
     }
 
+    @Override
+    public boolean isInDirectoryRecursively(final long id, final boolean isDirectory, final long directoryId, final @Nullable String _connectionId) throws SQLException {
+        if ((isDirectory && id == directoryId) || directoryId == this.rootId)
+            return true;
+        final boolean success;
+        try (final Connection connection = this.getConnection(_connectionId, null)) {
+            long fileDoubleParent;
+            final long directoryDoubleId = FileSqliteHelper.getDoubleId(directoryId, true);
+            final long fileSize, directorySize;
+            try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+    SELECT parent_id, size FROM %s WHERE double_id == ? LIMIT 1;
+                """, this.tableName))) {
+                statement.setLong(1, FileSqliteHelper.getDoubleId(id, isDirectory));
+                try (final ResultSet result = statement.executeQuery()) {
+                    if (!result.next()) {
+                        connection.commit();
+                        return false;
+                    }
+                    fileDoubleParent = result.getLong(1);
+                    if (fileDoubleParent == directoryDoubleId) {
+                        connection.commit();
+                        return true;
+                    }
+                    fileSize = result.getLong(2);
+                }
+                statement.setLong(1, directoryDoubleId);
+                try (final ResultSet result = statement.executeQuery()) {
+                    if (!result.next()) {
+                        connection.commit();
+                        return true;
+                    }
+                    directorySize = result.getLong(2);
+                }
+            }
+            if (directorySize >= 0 && (fileSize == -1 || fileSize > directorySize))
+                success = false;
+            else
+                try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+    SELECT parent_id FROM %s WHERE double_id == ? LIMIT 1;
+                    """, this.tableName))) {
+                    while (true) {
+                        statement.setLong(1, fileDoubleParent);
+                        try (final ResultSet result = statement.executeQuery()) {
+                            if (!result.next())
+                                throw new IllegalStateException("Illegal files tree." + ParametersMap.create().add("id", id).add("isDirectory", isDirectory).add("parentId", FileSqliteHelper.getRealId(fileDoubleParent)));
+                            fileDoubleParent = result.getLong(1);
+                        }
+                        if (fileDoubleParent == this.doubleRootId) {
+                            success = false;
+                            break;
+                        }
+                        if (fileDoubleParent == directoryDoubleId) {
+                            success = true;
+                            break;
+                        }
+                    }
+                }
+            connection.commit();
+        }
+        return success;
+    }
+
 
     /* --- Delete --- */
 

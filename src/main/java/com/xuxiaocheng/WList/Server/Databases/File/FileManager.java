@@ -123,7 +123,6 @@ public record FileManager(@NotNull FileSqlInterface innerSqlInstance) implements
         this.innerSqlInstance.updateOrInsertFileOrDirectory(information, _connectionId);
     }
 
-
     /* --- Select --- */
 
     @Override
@@ -146,6 +145,11 @@ public record FileManager(@NotNull FileSqlInterface innerSqlInstance) implements
         return this.innerSqlInstance.selectInfoInDirectoryByName(parentId, name, _connectionId);
     }
 
+    @Override
+    public boolean isInDirectoryRecursively(final long id, final boolean isDirectory, final long directoryId, final @Nullable String _connectionId) throws SQLException {
+        return this.innerSqlInstance.isInDirectoryRecursively(id, isDirectory, directoryId, _connectionId);
+    }
+
     /* --- Delete --- */
 
     @Override
@@ -162,4 +166,7 @@ public record FileManager(@NotNull FileSqlInterface innerSqlInstance) implements
     public boolean deleteFileOrDirectory(final long id, final boolean isDirectory, final @Nullable String _connectionId) throws SQLException {
         return this.innerSqlInstance.deleteFileOrDirectory(id, isDirectory, _connectionId);
     }
+
+    /* --- Search --- */
+
 }

@@ -88,6 +88,12 @@ public interface FileSqlInterface extends DatabaseInterface {
      */
     @Nullable FileInformation selectInfoInDirectoryByName(final long parentId, final @NotNull String name, final @Nullable String _connectionId) throws SQLException;
 
+    /**
+     * Is a file/directory in directory. (For recycler detect.)
+     * @return false: not in directory / id not exist. true: in directory / directoryId not exist.
+     */
+    boolean isInDirectoryRecursively(final long id, final boolean isDirectory, final long directoryId, final @Nullable String _connectionId) throws SQLException;
+
 
     /* --- Delete --- */
 

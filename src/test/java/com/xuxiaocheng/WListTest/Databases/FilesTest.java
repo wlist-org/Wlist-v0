@@ -153,6 +153,39 @@ public class FilesTest {
         Assertions.assertEquals(1158/*123 + 234 + 345 + 456*/, Objects.requireNonNull(this.manager().selectInfo(0, true, null)).size());
     }
 
+    @Test
+    public void isInDirectoryRecursively() throws SQLException {
+        this.manager().insertIterator(List.of(
+                new FileInformation(1, 0, "1-directory1", true, -1, null, null, null),
+                new FileInformation(10, 0, "1-directory2", true, -1, null, null, null),
+                new FileInformation(2, 0, "1-file", false, 123, null, null, null)
+        ).iterator(), 0, null);
+        Assertions.assertTrue(this.manager().isInDirectoryRecursively(1, true, 0, null));
+        Assertions.assertTrue(this.manager().isInDirectoryRecursively(2, false, 0, null));
+        Assertions.assertFalse(this.manager().isInDirectoryRecursively(2, true, 1, null));
+        Assertions.assertFalse(this.manager().isInDirectoryRecursively(2, false, 1, null));
+
+        this.manager().insertIterator(List.of(
+                new FileInformation(3, 1, "2-file", false, 234, null, null, null),
+                new FileInformation(4, 1, "2-directory", true, -1, null, null, null)
+        ).iterator(), 1, null);
+        Assertions.assertTrue(this.manager().isInDirectoryRecursively(3, false, 1, null));
+        Assertions.assertTrue(this.manager().isInDirectoryRecursively(3, false, 0, null));
+        Assertions.assertFalse(this.manager().isInDirectoryRecursively(0, true, 1, null));
+
+        this.manager().insertIterator(List.of(
+                new FileInformation(5, 4, "3-file", false, 345, null, null, null)
+        ).iterator(), 4, null);
+        Assertions.assertTrue(this.manager().isInDirectoryRecursively(5, false, 4, null));
+        Assertions.assertTrue(this.manager().isInDirectoryRecursively(5, false, 1, null));
+        Assertions.assertTrue(this.manager().isInDirectoryRecursively(5, false, 0, null));
+        Assertions.assertFalse(this.manager().isInDirectoryRecursively(5, false, 10, null));
+        Assertions.assertFalse(this.manager().isInDirectoryRecursively(0, true, 4, null));
+
+        // Not exist.
+        Assertions.assertFalse(this.manager().isInDirectoryRecursively(9, false, 2, null));
+        Assertions.assertTrue(this.manager().isInDirectoryRecursively(3, false, 2, null));
+    }
 
     @Test
     public void deleteFile() throws SQLException {
