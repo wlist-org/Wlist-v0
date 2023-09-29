@@ -22,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.Map;
 
+@Deprecated // TODO
 public record ClientConfiguration(String host, int port, int limit, int threadCount) {
     private static final @NotNull HInitializer<Pair<@NotNull ClientConfiguration, @Nullable File>> instance = new HInitializer<>("ClientGlobalConfiguration");
 

@@ -7,6 +7,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.File;
 import java.io.IOException;
 
+@Deprecated
 public final class GlobalConfigurationSupporter {
     private GlobalConfigurationSupporter() {
         super();

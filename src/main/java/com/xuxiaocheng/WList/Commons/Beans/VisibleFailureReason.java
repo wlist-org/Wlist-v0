@@ -7,7 +7,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 
-public record VisibleFailureReason(@NotNull FailureKind kind,@NotNull FileLocation location,@NotNull String message) {
+public record VisibleFailureReason(@NotNull FailureKind kind, @NotNull FileLocation location, @NotNull String message) {
     /**
      * @see com.xuxiaocheng.WList.Server.Storage.Records.FailureReason
      */

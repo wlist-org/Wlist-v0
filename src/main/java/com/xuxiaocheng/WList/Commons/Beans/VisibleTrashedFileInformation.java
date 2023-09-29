@@ -10,6 +10,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
+@Deprecated // TODO
 public record VisibleTrashedFileInformation(long id, @NotNull String name, boolean isDirectory, long size,
                                             @Nullable ZonedDateTime createTime, @Nullable ZonedDateTime trashedTime, @Nullable ZonedDateTime expireTime,
                                             @NotNull String md5) { // TODO

@@ -11,6 +11,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public record DownloadConfirm(boolean acceptedRange, long downloadingSize, @NotNull String id) {
     /**
@@ -37,6 +38,10 @@ public record DownloadConfirm(boolean acceptedRange, long downloadingSize, @NotN
             }
             final ZonedDateTime expire = ByteBufIOUtil.readNullableDataTime(buffer, DateTimeFormatter.ISO_DATE_TIME);
             return new DownloadInformation(parallel, expire);
+        }
+
+        public @NotNull String expireString(final @NotNull DateTimeFormatter formatter, final @Nullable String inf) {
+            return this.expire == null ? Objects.requireNonNullElse(inf, "inf") : this.expire.format(formatter);
         }
     }
 }
