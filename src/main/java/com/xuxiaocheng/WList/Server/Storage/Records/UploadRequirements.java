@@ -27,7 +27,8 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
 public record UploadRequirements(@NotNull @Unmodifiable List<@NotNull UploadChecksum> checksums,
-                                 @NotNull FunctionE<@NotNull @Unmodifiable List<@NotNull String>, @NotNull UploadMethods> transfer) {
+                                 @NotNull FunctionE<@NotNull @Unmodifiable List<@NotNull String>, @NotNull UploadMethods> transfer,
+                                 @Nullable Runnable canceller) {
     /**
      * @see com.xuxiaocheng.WList.Commons.Beans.UploadConfirm
      */

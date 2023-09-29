@@ -38,7 +38,12 @@ public final class UploadIdHelper {
     }
 
     public static boolean cancel(final @NotNull String id) {
-        return UploadIdHelper.requirements.remove(id) != null;
+        final UploadRequirements requirements = UploadIdHelper.requirements.remove(id);
+        if (requirements == null)
+            return false;
+        if (requirements.canceller() != null)
+            requirements.canceller().run();
+        return true;
     }
 
     private static final @NotNull Map<@NotNull String, @NotNull UploaderData> data = new ConcurrentHashMap<>();

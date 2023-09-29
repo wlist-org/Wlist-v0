@@ -278,13 +278,15 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                         throw HExceptionWrapper.unwrapException(exception, Exception.class);
                     }
                 if (files.isEmpty() && directories.isEmpty()) {
-                    try (final Connection connection = manager.getConnection(null, connectionId)) {
-                        for (final Long id: deleteFiles)
-                            manager.deleteFile(id.longValue(), connectionId.get());
-                        for (final Long id: deleteDirectories)
-                            manager.deleteDirectoryRecursively(id.longValue(), connectionId.get());
-                        connection.commit();
-                    }
+                    if (!deleteFiles.isEmpty() || !deleteDirectories.isEmpty())
+                        try (final Connection connection = manager.getConnection(null, connectionId)) {
+                            for (final Long id: deleteFiles)
+                                manager.deleteFile(id.longValue(), connectionId.get());
+                            for (final Long id: deleteDirectories)
+                                manager.deleteDirectoryRecursively(id.longValue(), connectionId.get());
+                            connection.commit();
+                        }
+//                    else assert directory.size() != 0;
                     BackgroundTaskManager.BackgroundExecutors.submit(() -> consumer.accept(
                             ProviderInterface.RefreshNoUpdater));
                     return;
@@ -351,6 +353,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         }
         this.trashInside(information, false, consumer);
     }
+    // TODO: no inside
     private synchronized void trashInside(final @NotNull FileInformation parent, final boolean refreshed, final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) throws Exception {
         if (!parent.isDirectory()) {
             this.trash0(parent);
@@ -559,7 +562,6 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                                     .add("u", u).add("parentId", parentId).add("directoryName", directoryName).add("policy", policy)));
                             return;
                         }
-                        BackgroundTaskManager.remove(name.getSecond());
                         try {
                             if (u.isSuccess() && u.getT().isSuccess()) {
                                 final FileInformation information = u.getT().getT();
@@ -569,6 +571,8 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                             consumer.accept(u);
                         } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                             consumer.accept(UnionPair.fail(exception));
+                        } finally {
+                            BackgroundTaskManager.remove(name.getSecond());
                         }
                     }, parentLocation);
                 } finally {
@@ -637,7 +641,6 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                                     .add("u", u).add("parentId", parentId).add("filename", filename).add("name", name.getFirst()).add("size", size).add("policy", policy)));
                             return;
                         }
-                        BackgroundTaskManager.remove(name.getSecond());
                         if (u.isSuccess() && u.getT().isSuccess()) {
                             final UploadRequirements requirements = u.getT().getT();
                             consumer.accept(UnionPair.ok(UnionPair.ok(new UploadRequirements(requirements.checksums(), c -> {
@@ -661,10 +664,14 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                                             o.accept(UnionPair.fail(exception));
                                         }
                                     });
-                                }, methods.finisher());
-                            }))));
+                                }, () -> {
+                                    BackgroundTaskManager.remove(name.getSecond());
+                                    methods.finisher().run();
+                                });
+                            }, () -> BackgroundTaskManager.remove(name.getSecond())))));
                             return;
                         }
+                        BackgroundTaskManager.remove(name.getSecond());
                         consumer.accept(u);
                     }, parentLocation);
                 } finally {
@@ -706,7 +713,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         final AtomicBoolean barrier = new AtomicBoolean(true);
         this.list(parentId, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0, p -> {
             if (!barrier.compareAndSet(true, false)) {
-                HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'copyFile#list'." + ParametersMap.create().add("configuration", this.getConfiguration())
+                HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'copyFileDirectly#list'." + ParametersMap.create().add("configuration", this.getConfiguration())
                         .add("p", p).add("information", information).add("parentId", parentId).add("filename", filename).add("policy", policy)));
                 return;
             }
@@ -744,7 +751,6 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                             return;
                         }
                         try {
-                            BackgroundTaskManager.remove(name.getSecond());
                             if (u.isSuccess() && u.getT().isPresent() && u.getT().get().isSuccess() && u.getT().get().getT().isPresent()) {
                                 final FileInformation file = u.getT().get().getT().get();
                                 assert !file.isDirectory() && file.size() == information.size() && file.parentId() == parentId;
@@ -753,6 +759,104 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                             consumer.accept(u);
                         } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                             consumer.accept(UnionPair.fail(exception));
+                        } finally {
+                            BackgroundTaskManager.remove(name.getSecond());
+                        }
+                    }, location, parentLocation);
+                } finally {
+                    if (flag)
+                        BackgroundTaskManager.remove(name.getSecond());
+                }
+            } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                consumer.accept(UnionPair.fail(exception));
+            }
+        });
+    }
+
+    protected abstract boolean isSupportedMoveDirectly(final @NotNull FileInformation information, final long parentId) throws Exception;
+
+    /**
+     * Move a file / directory. (.size == information.size)
+     * @param location Only by used to create {@code FailureReason}.
+     * @param parentLocation Only by used to create {@code FailureReason}.
+     * @see ProviderInterface#CopyNotSupported
+     */
+    protected abstract void moveDirectly0(final @NotNull FileInformation information, final long parentId, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) throws Exception;
+
+    @Override
+    public void moveDirectly(final long id, final boolean isDirectory, final long parentId, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) throws Exception {
+        final FileInformation information;
+        UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable> res = null;
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = this.manager.getInstance().getConnection(null, connectionId)) {
+            information = this.manager.getInstance().selectInfo(id, isDirectory, connectionId.get());
+            //noinspection VariableNotUsedInsideIf
+            if (information == null) {
+                res = UnionPair.ok(Optional.of(UnionPair.fail(FailureReason.byNoSuchFile(location, isDirectory))));
+            } else
+                if (isDirectory && this.manager.getInstance().isInDirectoryRecursively(parentId, true, id, connectionId.get()))
+                    res = ProviderInterface.MoveSelf;
+            connection.commit();
+        }
+        if (res != null) {
+            consumer.accept(res);
+            return;
+        }
+        if (!this.isSupportedMoveDirectly(information, parentId)) {
+            consumer.accept(ProviderInterface.MoveNotSupported);
+            return;
+        }
+        final AtomicBoolean barrier = new AtomicBoolean(true);
+        this.list(parentId, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0, p -> {
+            if (!barrier.compareAndSet(true, false)) {
+                HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'moveDirectly#list'." + ParametersMap.create().add("configuration", this.getConfiguration())
+                        .add("p", p).add("information", information).add("parentId", parentId).add("policy", policy)));
+                return;
+            }
+            try {
+                if (p.isFailure()) {
+                    consumer.accept(UnionPair.fail(p.getE()));
+                    return;
+                }
+                if (p.getT().isFailure()) {
+                    consumer.accept(UnionPair.ok(Optional.of(UnionPair.fail(FailureReason.byNoSuchFile(parentLocation, true)))));
+                    return;
+                }
+                final Pair.ImmutablePair<String, BackgroundTaskManager.BackgroundTaskIdentifier> name = this.getDuplicatedName(parentId, information.name(), policy);
+                if (name == null) {
+                    consumer.accept(UnionPair.ok(Optional.of(UnionPair.fail(FailureReason.byDuplicateError(parentLocation, information.name())))));
+                    return;
+                }
+                boolean flag = true;
+                try {
+                    if (!this.directoryNameChecker().test(name.getFirst())) {
+                        consumer.accept(UnionPair.ok(Optional.of(UnionPair.fail(FailureReason.byInvalidName(parentLocation, name.getFirst(), this.directoryNameChecker().description())))));
+                        return;
+                    }
+                    if (!name.getFirst().equals(information.name())) { // TODO temp dir. (require move twice.)
+                        consumer.accept(ProviderInterface.MoveNotSupported);
+                        return;
+                    }
+                    this.loginIfNot();
+                    flag = false;
+                    final AtomicBoolean barrier1 = new AtomicBoolean(true);
+                    this.moveDirectly0(information, parentId, policy, u -> {
+                        if (!barrier1.compareAndSet(true, false)) {
+                            HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'moveDirectly0'." + ParametersMap.create().add("configuration", this.getConfiguration())
+                                    .add("u", u).add("information", information).add("parentId", parentId).add("name", name.getFirst()).add("policy", policy)));
+                            return;
+                        }
+                        try {
+                            if (u.isSuccess() && u.getT().isPresent() && u.getT().get().isSuccess() && u.getT().get().getT().isPresent()) {
+                                final FileInformation file = u.getT().get().getT().get();
+                                assert file.isDirectory() == isDirectory && file.size() == information.size() && file.parentId() == parentId;
+                                this.manager.getInstance().updateOrInsertFileOrDirectory(file, null);
+                            }
+                            consumer.accept(u);
+                        } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                            consumer.accept(UnionPair.fail(exception));
+                        } finally {
+                            BackgroundTaskManager.remove(name.getSecond());
                         }
                     }, location, parentLocation);
                 } finally {

@@ -4,6 +4,7 @@ import com.xuxiaocheng.HeadLibs.CheckRules.CheckRule;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
+import com.xuxiaocheng.StaticLoader;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Operations.FailureKind;
@@ -20,7 +21,6 @@ import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
 import com.xuxiaocheng.WList.Server.Storage.Records.UploadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
-import com.xuxiaocheng.StaticLoader;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.AfterAll;
@@ -78,7 +78,9 @@ public class AbstractProviderTest {
     }
 
     @AfterAll
-    public static void check() throws NoSuchFieldException, IllegalAccessException {
+    public static void check() throws NoSuchFieldException, IllegalAccessException, InterruptedException {
+        BackgroundTaskManager.BackgroundExecutors.shutdownGracefully().sync();
+
         final Field removable = BackgroundTaskManager.class.getDeclaredField("removable");
         removable.setAccessible(true);
         Assertions.assertEquals(Set.of(), removable.get(null));
@@ -99,6 +101,7 @@ public class AbstractProviderTest {
     protected final HInitializer<FileInformation> trash = new HInitializer<>("Trashed");
     protected final AtomicReference<FileInformation> create = new AtomicReference<>();
     protected final AtomicReference<FileInformation> copy = new AtomicReference<>();
+    protected final AtomicReference<FileInformation> move = new AtomicReference<>();
 
     public class AbstractProvider extends AbstractIdBaseProvider<AbstractConfiguration> {
         @Override
@@ -185,6 +188,21 @@ public class AbstractProviderTest {
             Assertions.assertEquals(information.size(), copied.size());
             consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(Optional.of(copied)))));
         }
+
+        @Override
+        protected boolean isSupportedMoveDirectly(final @NotNull FileInformation information, final long parentId) {
+            return true;
+        }
+
+        @Override
+        protected void moveDirectly0(final @NotNull FileInformation information, final long parentId, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) {
+            final FileInformation moved = AbstractProviderTest.this.move.getAndSet(null);
+            Assertions.assertNotNull(moved);
+            Assertions.assertEquals(information.name(), moved.name());
+            Assertions.assertEquals(information.size(), moved.size());
+            Assertions.assertEquals(parentId, moved.parentId());
+            consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(Optional.of(moved)))));
+        }
     }
 
     protected final AtomicReference<ProviderInterface<AbstractConfiguration>> provider = new AtomicReference<>();
@@ -204,6 +222,7 @@ public class AbstractProviderTest {
         this.trash.uninitializeNullable();
         this.create.set(null);
         this.copy.set(null);
+        this.move.set(null);
         final ProviderInterface<AbstractConfiguration> provider = this.ProviderCore.getInstance().get();
         this.provider.set(provider);
         final AbstractConfiguration configuration = new AbstractConfiguration();
@@ -489,6 +508,7 @@ public class AbstractProviderTest {
             list.set(List.of(directory, file).iterator());
             ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0);
             loggedIn.set(false);
+            TimeUnit.MILLISECONDS.sleep(100); // Refresh immediately after list will be skipped.
 
             final FileInformation directory0 = new FileInformation(1, 0, "directory0", true, -1, null, null, null);
             list.set(List.of(directory0, file).iterator());
@@ -712,7 +732,7 @@ public class AbstractProviderTest {
         }
     }
 
-    @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
+    @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess", "OptionalGetWithoutIsPresent"})
     @Nested
     public class CopyTest {
         @Test
@@ -722,7 +742,7 @@ public class AbstractProviderTest {
             ProviderHelper.refresh(provider(), 0); // list
             final FileInformation copied = new FileInformation(2, 0, "copied", false, 0, null, null, null);
             copy.set(copied);
-            Assertions.assertEquals(copied, ProviderHelper.copy(provider(), 1, 0, "copied", Options.DuplicatePolicy.ERROR).getT());
+            Assertions.assertEquals(copied, ProviderHelper.copy(provider(), 1, 0, "copied", Options.DuplicatePolicy.ERROR).getT().get());
         }
 
         @Test
@@ -736,18 +756,36 @@ public class AbstractProviderTest {
 
             final FileInformation keep = new FileInformation(2, 0, "file (1)", false, 0, null, null, null);
             copy.set(keep);
-            Assertions.assertEquals(keep, ProviderHelper.copy(provider(), 1, 0, "file", Options.DuplicatePolicy.KEEP).getT());
+            Assertions.assertEquals(keep, ProviderHelper.copy(provider(), 1, 0, "file", Options.DuplicatePolicy.KEEP).getT().get());
 
             final FileInformation overed = new FileInformation(3, 10, "file", false, 1, null, null, null);
             list.set(List.of(overed).iterator());
             ProviderHelper.refresh(provider(), 10);
             final FileInformation over = new FileInformation(4, 10, "file", false, 0, null, null, null);
             copy.set(over);
-            Assertions.assertEquals(over, ProviderHelper.copy(provider(), 1, 10, "file", Options.DuplicatePolicy.OVER).getT());
+            Assertions.assertEquals(over, ProviderHelper.copy(provider(), 1, 10, "file", Options.DuplicatePolicy.OVER).getT().get());
             Assertions.assertEquals(overed, trash.uninitialize());
 
             // Copy itself.
-            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.copy(provider(), 1, 0, "file", Options.DuplicatePolicy.OVER).getE().kind());
+            Assertions.assertTrue(ProviderHelper.copy(provider(), 1, 0, "file", Options.DuplicatePolicy.OVER).getT().isEmpty());
+        }
+    }
+
+    @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess", "OptionalGetWithoutIsPresent"})
+    @Nested
+    public class MoveTest {
+        @Test
+        public void move() throws Exception {
+            final FileInformation information = new FileInformation(1, 0, "file", false, 123, null, null, null);
+            final FileInformation directory = new FileInformation(2, 0, "directory", true, -1, null, null, null);
+            list.set(List.of(information, directory).iterator());
+            ProviderHelper.refresh(provider(), 0);
+            list.set(Collections.emptyIterator());
+            ProviderHelper.list(provider(), 2, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0);
+
+            final FileInformation moved = new FileInformation(1, 2, "file", false, 123, null, null, null);
+            move.set(moved);
+            Assertions.assertEquals(moved, ProviderHelper.move(provider(), 1, false, 2, Options.DuplicatePolicy.ERROR).getT().get());
         }
     }
 }

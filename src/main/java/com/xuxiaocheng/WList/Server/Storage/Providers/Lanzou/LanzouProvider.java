@@ -19,6 +19,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Helpers.HMultiRunHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
@@ -475,17 +476,27 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                 }
             }, 0, Math.toIntExact(size));
             return new UploadRequirements.UploadMethods(pair.getFirst(), c -> c.accept(UnionPair.ok(Optional.ofNullable(information.get()))), pair.getSecond());
-        }))));
+        }, RunnableE.EmptyRunnable))));
     }
 
     @Override
-    protected boolean isSupportedCopyFileDirectly(final @NotNull FileInformation information, final long parentId) throws Exception {
+    protected boolean isSupportedCopyFileDirectly(final @NotNull FileInformation information, final long parentId) {
         return false;
     }
 
     @Override
     protected void copyFileDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String filename, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) {
         consumer.accept(ProviderInterface.CopyNotSupported);
+    }
+
+    @Override
+    protected boolean isSupportedMoveDirectly(final @NotNull FileInformation information, final long parentId) {
+        return !information.isDirectory();
+    }
+
+    @Override
+    protected void moveDirectly0(final @NotNull FileInformation information, final long parentId, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) {
+        consumer.accept(ProviderInterface.MoveNotSupported); // TODO
     }
 
     //    static @Nullable UnionPair<ZonedDateTime, FailureReason> moveFile(final @NotNull LanzouConfiguration configuration, final long fileId, final long parentId) throws IOException {

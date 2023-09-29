@@ -159,11 +159,33 @@ public final class ProviderHelper {
         return result.get().getT();
     }
 
-    public static @NotNull UnionPair<FileInformation, FailureReason> copy(final @NotNull ProviderInterface<?> provider, final long id, final long parent, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+    public static @NotNull UnionPair<Optional<FileInformation>, FailureReason> copy(final @NotNull ProviderInterface<?> provider, final long id, final long parent, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
         final CountDownLatch latch = new CountDownLatch(1);
-        final AtomicReference<UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> result = new AtomicReference<>();
+        final AtomicReference<UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> result = new AtomicReference<>();
         final AtomicBoolean barrier = new AtomicBoolean(true);
         provider.copyFileDirectly(id, parent, name, policy, p -> {
+            if (!barrier.compareAndSet(true, false)) {
+                HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), new RuntimeException("Duplicate message.(copy) " + p));
+                return;
+            }
+            result.set(p);
+            latch.countDown();
+        }, new FileLocation("test", id), new FileLocation("test", parent));
+        latch.await();
+        if (result.get().isFailure()) {
+            final Throwable throwable = result.get().getE();
+            if (throwable instanceof Exception exception)
+                throw exception;
+            throw (Error) throwable;
+        }
+        //noinspection OptionalGetWithoutIsPresent
+        return result.get().getT().get();
+    }
+    public static @NotNull UnionPair<Optional<FileInformation>, FailureReason> move(final @NotNull ProviderInterface<?> provider, final long id, final boolean isDirectory, final long parent, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> result = new AtomicReference<>();
+        final AtomicBoolean barrier = new AtomicBoolean(true);
+        provider.moveDirectly(id, isDirectory, parent, policy, p -> {
             if (!barrier.compareAndSet(true, false)) {
                 HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), new RuntimeException("Duplicate message.(copy) " + p));
                 return;

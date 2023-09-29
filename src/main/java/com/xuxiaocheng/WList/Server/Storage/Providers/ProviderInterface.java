@@ -40,7 +40,7 @@ public interface ProviderInterface<C extends StorageConfiguration> {
 
     /**
      * Initialize the provider (and bind to the configuration). Create sql table in this method, etc.
-     * When user modify the configuration, this method will be call again automatically.
+     * NOTICE: Do NOT request a network in this method.
      * @see FileManager#quicklyInitialize(String, SqlDatabaseInterface, long, String)
      */
     void initialize(final @NotNull C configuration) throws Exception;
@@ -112,54 +112,15 @@ public interface ProviderInterface<C extends StorageConfiguration> {
      */
     void copyFileDirectly(final long fileId, final long parentId, final @NotNull String filename, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) throws Exception;
 
-//    /**
-//     * Move file/directory.
-//     * @param sourceLocation The file/directory location to move.
-//     * @param targetParentLocation The target directory location.
-//     * @param policy Duplicate policy.
-//     * @return The information of new file/directory.
-//     * @throws Exception Something went wrong.
-//     */
-//    @SuppressWarnings("OverlyBroadThrowsClause")
-//    default @NotNull UnionPair<FileInformation, FailureReason> move(final @NotNull FileLocation sourceLocation, final @NotNull FileLocation targetParentLocation, final Options.@NotNull DuplicatePolicy policy) throws Exception {
-//        HLog.getInstance("ServerLogger").log(HLogLevel.WARN, "Moving by default algorithm.", ParametersMap.create().add("sourceLocation", sourceLocation).add("targetParentLocation", targetParentLocation).add("policy", policy));
-//        final FileInformation source = this.info(sourceLocation);
-//        if (source == null)
-//            return UnionPair.fail(FailureReason.byNoSuchFile("Moving.", sourceLocation));
-//        if (source.isDirectory()) {
-//            final UnionPair<FileInformation, FailureReason> directory = this.createDirectory(targetParentLocation, source.name(), policy);
-//            if (directory.isFailure())
-//                return UnionPair.fail(directory.getE());
-//            Triad.ImmutableTriad<Long, Long, List<FileInformation>> list;
-//            do {
-//                list = this.list(sourceLocation, Options.FilterPolicy.OnlyDirectories, ProviderUtil.DefaultLimitPerRequestPage, 0, ProviderUtil.DefaultOrderPolicy, ProviderUtil.DefaultOrderDirection);
-//                if (list == null)
-//                    return directory;
-//                for (final FileInformation f: list.getC())
-//                    this.move(f.location(), directory.getT().location(), policy);
-//            } while (list.getB().longValue() > 0);
-//            this.moveFilesInDirectory(sourceLocation, policy, directory);
-//            return directory;
-//        }
-//        if (source.location().equals(targetParentLocation))
-//            return UnionPair.ok(source);
-//        final UnionPair<FileInformation, FailureReason> information = this.copy(sourceLocation, targetParentLocation, source.name(), policy);
-//        if (information.isFailure())
-//            return UnionPair.fail(information.getE());
-//        try {
-//            this.delete(sourceLocation);
-//        } catch (final Exception exception) {
-//            try {
-//                this.delete(targetParentLocation);
-//            } catch (final Exception e) {
-//                throw new IllegalStateException("Failed to delete target file after a failed deletion of source file when moving file by default algorithm." +
-//                        ParametersMap.create().add("sourceLocation", sourceLocation).add("targetParentLocation", targetParentLocation).add("policy", policy).add("exception", exception), e);
-//            }
-//            throw exception;
-//        }
-//        return information;
-//    }
-//
+    @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable> MoveNotSupported = UnionPair.ok(Optional.empty());
+    @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable> MoveSelf = UnionPair.ok(Optional.of(UnionPair.ok(Optional.empty())));
+    /**
+     * Move a file/directory. (Do NOT download and then upload. That should be done in client side.)
+     * @param location Source file location. Only by used to create {@code FailureReason}.
+     * @param parentLocation Target parent location. Only by used to create {@code FailureReason}.
+     */
+    void moveDirectly(final long id, final boolean isDirectory, final long parentId, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) throws Exception;
+
 //    /**
 //     * Rename file/directory.
 //     * @param sourceLocation The file/directory location to move.
