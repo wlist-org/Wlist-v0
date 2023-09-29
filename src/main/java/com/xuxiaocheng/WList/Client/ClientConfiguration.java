@@ -1,9 +1,9 @@
 package com.xuxiaocheng.WList.Client;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
+import com.xuxiaocheng.WList.Commons.Utils.I18NUtil;
 import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -31,7 +31,7 @@ public record ClientConfiguration(String host, int port, int limit, int threadCo
             try {
                 HFileHelper.ensureFileAccessible(file, true);
             } catch (final IOException exception) {
-                throw new IOException("Failed to create global configuration file." + ParametersMap.create().add("file", file), exception);
+                throw new IOException(I18NUtil.get("client.configuration.failed_create", file), exception);
             }
             try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(file))) {
                 config = YamlHelper.loadYaml(inputStream);
@@ -83,7 +83,7 @@ public record ClientConfiguration(String host, int port, int limit, int threadCo
             try {
                 HFileHelper.ensureFileAccessible(file, true);
             } catch (final IOException exception) {
-                throw new IOException("Failed to create global configuration file." + ParametersMap.create().add("file", file), exception);
+                throw new IOException(I18NUtil.get("client.configuration.failed_create", file), exception);
             }
         ClientConfiguration.instance.getInstance().setSecond(file);
         ClientConfiguration.dumpToFile();

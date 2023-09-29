@@ -1,13 +1,14 @@
 package com.xuxiaocheng.WList.Commons.Operations;
 
+import com.xuxiaocheng.WList.Commons.Utils.I18NUtil;
 import org.jetbrains.annotations.NotNull;
 
 public enum FailureKind {
-    InvalidName("Invalid name."),
-    DuplicateError("Duplicate name."),
-    ExceedMaxSize("Exceed max size per file."),
-    NoSuchFile("No such file or directory."),
-    Others("Unknown reason."),
+    InvalidName(I18NUtil.get("server.failure.invalid_name")),
+    DuplicateError(I18NUtil.get("server.failure.duplicate_error")),
+    ExceedMaxSize(I18NUtil.get("server.failure.exceed_max_size")),
+    NoSuchFile(I18NUtil.get("server.failure.no_such_file")),
+    Others(I18NUtil.get("server.failure.others")),
     ;
 
     public static @NotNull FailureKind of(final @NotNull String type) {

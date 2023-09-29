@@ -6,6 +6,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.Rust.NetworkTransmission;
+import com.xuxiaocheng.WList.Commons.Utils.I18NUtil;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelFutureListener;
@@ -62,7 +63,7 @@ public class MessageClientCiphers extends MessageToMessageCodec<ByteBuf, ByteBuf
                 assert this.rsaPrivateKey != null;
                 final UnionPair<NetworkTransmission.AesKeyPair, UnionPair<String, String>> pair = NetworkTransmission.clientCheck(this.rsaPrivateKey, msg, MessageClientCiphers.application);
                 if (pair == null)
-                    throw new IllegalTargetServerException("Not tcp with 'network_transmission'.");
+                    throw new IllegalTargetServerException();
                 if (pair.isFailure())
                     if (pair.getE().isFailure())
                         throw new IllegalServerVersionException(NetworkTransmission.CipherVersion, pair.getE().getE());
@@ -107,10 +108,10 @@ public class MessageClientCiphers extends MessageToMessageCodec<ByteBuf, ByteBuf
         private static final long serialVersionUID = -8608659258952829017L;
 
         public IllegalTargetServerException() {
-            super("Illegal target server.");
+            super(I18NUtil.get("client.network.illegal_server"));
         }
 
-        public IllegalTargetServerException(final @NotNull String message) {
+        protected IllegalTargetServerException(final @NotNull String message) {
             super(message);
         }
     }
@@ -124,7 +125,7 @@ public class MessageClientCiphers extends MessageToMessageCodec<ByteBuf, ByteBuf
         protected final @NotNull String received;
 
         public IllegalServerVersionException(final @NotNull String excepted, final @NotNull String received) {
-            super("Illegal server cipher version." + ParametersMap.create().add("excepted", excepted).add("received", received));
+            super(I18NUtil.get("client.network.illegal_version", excepted, received));
             this.excepted = excepted;
             this.received = received;
         }
@@ -139,7 +140,7 @@ public class MessageClientCiphers extends MessageToMessageCodec<ByteBuf, ByteBuf
         protected final @NotNull String received;
 
         public IllegalServerApplicationException(final @NotNull String excepted, final @NotNull String received) {
-            super("Illegal server application." + ParametersMap.create().add("excepted", excepted).add("received", received));
+            super(I18NUtil.get("client.network.illegal_application", excepted, received));
             this.excepted = excepted;
             this.received = received;
         }

@@ -67,7 +67,7 @@ public final class WList {
     }
 
     static {
-        HUncaughtExceptionHelper.setUncaughtExceptionListener("listener", (t, e) -> HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Uncaught exception listened by WList. thread: ", t.getName(), e));
+        HUncaughtExceptionHelper.setUncaughtExceptionListener(HUncaughtExceptionHelper.ListenerKey, (t, e) -> HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Uncaught exception listened by WList. thread: ", t.getName(), e));
         try {
             final boolean notIde = new File(WList.class.getProtectionDomain().getCodeSource().getLocation().getPath()).isFile();
             if (notIde && System.getProperty("com.xuxiaocheng.Logger.HLogLevel.color") == null) System.setProperty("com.xuxiaocheng.Logger.HLogLevel.color", "2");

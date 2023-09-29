@@ -25,6 +25,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Utils.I18NUtil;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Exceptions.IllegalParametersException;
@@ -101,9 +102,9 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         }
         { // Quicker response.
             if (configuration.getPassport().isEmpty() || !ProviderUtil.PhoneNumberPattern.matcher(configuration.getPassport()).matches())
-                throw new IllegalParametersException("Invalid passport.", ParametersMap.create().add("configuration", configuration));
+                throw new IllegalParametersException(I18NUtil.get("server.provider.invalid_passport"), ParametersMap.create().add("configuration", configuration));
             if (configuration.getPassword().length() < 6 || 20 < configuration.getPassword().length())
-                throw new IllegalParametersException("Invalid password.", ParametersMap.create().add("configuration", configuration));
+                throw new IllegalParametersException(I18NUtil.get("server.provider.invalid_password"), ParametersMap.create().add("configuration", configuration));
         }
         final Set<Cookie> cookies;
         try (final WebClient client = BrowserUtil.newWebClient()) {

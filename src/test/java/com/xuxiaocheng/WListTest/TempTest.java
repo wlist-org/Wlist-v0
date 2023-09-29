@@ -5,10 +5,7 @@ import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.StaticLoader;
-import com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper;
-import com.xuxiaocheng.WList.Client.WListClient;
-import com.xuxiaocheng.WList.Client.WListClientInterface;
-import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
+import com.xuxiaocheng.WList.Commons.Utils.I18NUtil;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
@@ -32,15 +29,10 @@ import java.sql.SQLException;
 import java.util.Map;
 
 public class TempTest {
-    private static final boolean initializeServer = true;
+    private static final boolean initializeServer = false;
     private static final @NotNull SupplierE<@Nullable Object> _main = () -> {
-        WListServer.getInstance().start(0);
-        final WListClientInterface client = new WListClient(WListServer.getInstance().getAddress().getInstance());
-        client.open();
-        //noinspection SpellCheckingInspection
-        OperateFilesHelper.trashFileOrDirectory(client, "eyJhdWQiOiIxIiwic3ViIjoiMCIsImlzcyI6IldMaXN0IiwiZXhwIjoxNjk1ODM0ODg5LCJqdGkiOiIxNjk1NzA1NTE0In0.2r3ZhjLTsti_Mq8R72zGV73WGT0RmK_dFlRX8u8A5PjVhZlssLkqNrEnM7W8JnHOteusiPe692a037c7PvzhfA",
-                new FileLocation("test", 279059607 >> 1), false);
-        return null;
+        return I18NUtil.get("test", null, 1);
+//        return null;
     };
 
     private static final @NotNull File runtimeDirectory = new File("./run");

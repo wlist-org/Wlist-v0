@@ -1,11 +1,11 @@
 package com.xuxiaocheng.WList.Client;
 
-import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.Rust.NetworkTransmission;
 import com.xuxiaocheng.WList.Commons.Codecs.MessageClientCiphers;
+import com.xuxiaocheng.WList.Commons.Utils.I18NUtil;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
@@ -94,7 +94,7 @@ public class WListClient implements WListClientInterface {
     @Override
     public @NotNull ByteBuf send(final @Nullable ByteBuf msg) throws IOException, InterruptedException {
         if (!this.isActive())
-            throw new IOException("Closed client.");
+            throw new IOException(I18NUtil.get("client.network.closed_client", this.address));
         if (msg != null) {
             final ChannelFuture future = this.channel.getInstance().writeAndFlush(msg).await();
             final Throwable throwable = future.cause();
@@ -112,7 +112,7 @@ public class WListClient implements WListClientInterface {
             this.receive = null;
         }
         if (r == null)
-            throw new IOException("Client is closed." + ParametersMap.create().add("address", this.address));
+            throw new IOException(I18NUtil.get("client.network.closed_client", this.address));
         return r;
     }
 

@@ -10,6 +10,7 @@ import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
+import com.xuxiaocheng.WList.Commons.Utils.I18NUtil;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
 import com.xuxiaocheng.WList.Server.Exceptions.IllegalParametersException;
@@ -20,6 +21,7 @@ import com.xuxiaocheng.WList.Server.Storage.Providers.RecyclerInterface;
 import com.xuxiaocheng.WList.Server.Storage.Providers.SharerInterface;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WList.Server.WListServer;
+import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
@@ -50,13 +52,13 @@ public final class StorageManager {
     private static final @NotNull HInitializer<File> CacheDirectory = new HInitializer<>("ProviderCacheDirectory");
 
     private static final @NotNull Path DirectoryRootPathCache = Path.of("").toAbsolutePath();
-    public static @Nullable String providerNameInvalidReason(final @NotNull String name) {
+    public static @Nullable @Nls String providerNameInvalidReason(final @NotNull String name) {
         if (name.isBlank())
-            return "Blank name";
+            return I18NUtil.get("server.provider.invalid_name.blank");
         if (!StorageManager.DirectoryRootPathCache.equals(Path.of(name).toAbsolutePath().getParent()))
-            return "Contain special characters.";
+            return I18NUtil.get("server.provider.invalid_name.characters");
         if (IdentifierNames.SelectorProviderName.contains(name))
-            return "Conflict with internal selector provider name.";
+            return I18NUtil.get("server.provider.invalid_name.selector");
         return null;
     }
 

@@ -293,7 +293,7 @@ public final class HttpNetworkHelper {
                 if (content.readableBytes() == 0)
                     return;
                 if (content.nioBufferCount() < 0) {
-                    HLog.getInstance("NetworkLogger").log(HLogLevel.MISTAKE, "Rewrite data from netty to okhttp by default algorithm.",
+                    HLog.getInstance("NetworkLogger").log(HLogLevel.MISTAKE, "Rewrite data from netty to okhttp by default algorithm without nio buffer.",
                             ParametersMap.create().add("content", content)); // Reachable?
                     final int bufferSize = (int) Math.min(length, 2 << 20);
                     for (final byte[] buffer = new byte[bufferSize]; content.readableBytes() > 0; ) {

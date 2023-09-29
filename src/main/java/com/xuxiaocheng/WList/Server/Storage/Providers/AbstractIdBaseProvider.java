@@ -465,7 +465,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         this.download0(information, start, end, consumer, location);
     }
 
-    private static final @NotNull Pair.ImmutablePair<@NotNull String, @NotNull String> DefaultRetryBracketPair = Pair.ImmutablePair.makeImmutablePair(" (", ")");
+    private static final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> DefaultRetryBracketPair = Pair.ImmutablePair.makeImmutablePair(" (", ")");
     @Contract(pure = true)
     protected Pair.ImmutablePair<@NotNull String, @NotNull String> retryBracketPair() {
         return AbstractIdBaseProvider.DefaultRetryBracketPair;
