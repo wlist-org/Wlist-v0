@@ -49,16 +49,12 @@ public final class DownloadIdHelper {
     }
 
     public static void download(final @NotNull String id, final int index, final @NotNull Consumer<@Nullable UnionPair<ByteBuf, Throwable>> consumer) {
-        try {
-            final DownloaderData data = DownloadIdHelper.data.get(id);
-            if (data == null) {
-                consumer.accept(null);
-                return;
-            }
-            data.get(index, consumer);
-        } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
-            consumer.accept(UnionPair.fail(exception));
+        final DownloaderData data = DownloadIdHelper.data.get(id);
+        if (data == null) {
+            consumer.accept(null);
+            return;
         }
+        data.get(index, consumer);
     }
 
     public static boolean finish(final @NotNull String id) {
@@ -111,7 +107,7 @@ public final class DownloadIdHelper {
             this.methods.finisher().run();
         }
 
-        public void get(final int index, final @NotNull Consumer<@Nullable UnionPair<ByteBuf, Throwable>> consumer) throws Exception {
+        public void get(final int index, final @NotNull Consumer<@Nullable UnionPair<ByteBuf, Throwable>> consumer) {
             if (this.closed.get() || index >= this.methods.parallelMethods().size()) {
                 consumer.accept(null);
                 return;

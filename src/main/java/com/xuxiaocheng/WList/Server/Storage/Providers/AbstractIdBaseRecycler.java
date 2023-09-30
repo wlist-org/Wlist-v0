@@ -3,9 +3,8 @@ package com.xuxiaocheng.WList.Server.Storage.Providers;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import org.jetbrains.annotations.NotNull;
 
-@SuppressWarnings("OverlyBroadThrowsClause")
 public abstract class AbstractIdBaseRecycler<C extends StorageConfiguration> implements RecyclerInterface<C> {
-    protected @NotNull HInitializer<C> configuration = new HInitializer<>("RecyclerConfiguration");
+    protected final @NotNull HInitializer<C> configuration = new HInitializer<>("RecyclerConfiguration");
 //    protected @NotNull HInitializer<FileManager> manager = new HInitializer<>("ProviderManager");
 
     @Override

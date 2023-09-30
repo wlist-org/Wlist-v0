@@ -126,7 +126,7 @@ public class OperateUsersTest extends ServerWrapper {
     @MethodSource("client")
     @Order(3)
     public void searchGroupName(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
-        Assertions.assertEquals(1, OperateUsersHelper.searchUserpsName(client, this.adminToken(), Set.of(this.username()), 0, 2).getFirst());
+        Assertions.assertEquals(1, OperateUsersHelper.searchUserName(client, this.adminToken(), Set.of(this.username()), 0, 2).getFirst());
     }
 
 

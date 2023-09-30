@@ -175,7 +175,7 @@ public final class HttpNetworkHelper {
     }
 
     public static class FrequencyControlInterceptor implements Interceptor {
-        protected final Set<@NotNull FrequencyControlPolicy> policies = new HashSet<>();
+        protected final @NotNull Collection<@NotNull FrequencyControlPolicy> policies = new HashSet<>();
 
         public FrequencyControlInterceptor(final @NotNull FrequencyControlPolicy @NotNull... policies) {
             super();

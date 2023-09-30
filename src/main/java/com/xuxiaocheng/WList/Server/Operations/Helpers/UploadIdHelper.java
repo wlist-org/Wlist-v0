@@ -71,16 +71,11 @@ public final class UploadIdHelper {
         return UnionPair.ok(methods);
     }
 
-    public static boolean upload(final @NotNull String id, final @NotNull ByteBuf buf, final int index, final @NotNull Consumer<@Nullable Throwable> consumer) throws Exception {
-        try {
-            final UploaderData data = UploadIdHelper.data.get(id);
-            if (data == null)
-                return false;
-            return data.put(buf, index, consumer);
-        } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
-            consumer.accept(exception);
-        }
-        return false;
+    public static boolean upload(final @NotNull String id, final @NotNull ByteBuf buf, final int index, final @NotNull Consumer<@Nullable Throwable> consumer) {
+        final UploaderData data = UploadIdHelper.data.get(id);
+        if (data == null)
+            return false;
+        return data.put(buf, index, consumer);
     }
 
     private static final @NotNull UnionPair<UnionPair<FileInformation, Boolean>, Throwable> FinishNoId = UnionPair.ok(UnionPair.fail(Boolean.FALSE));
@@ -131,7 +126,7 @@ public final class UploadIdHelper {
             this.methods.finisher().run();
         }
 
-        public boolean put(final @NotNull ByteBuf buf, final int index, final @NotNull Consumer<@Nullable Throwable> consumer) throws Exception {
+        public boolean put(final @NotNull ByteBuf buf, final int index, final @NotNull Consumer<@Nullable Throwable> consumer) {
             if (this.closed.get() || index >= this.methods.parallelMethods().size())
                 return false;
             this.expireTime = MiscellaneousUtil.now().plusSeconds(ServerConfiguration.get().idIdleExpireTime());

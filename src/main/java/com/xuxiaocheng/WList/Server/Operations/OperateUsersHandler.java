@@ -286,7 +286,7 @@ public final class OperateUsersHandler {
     };
 
     /**
-     * @see com.xuxiaocheng.WList.Client.Operations.OperateUsersHelper#searchUserpsName(WListClientInterface, String, Set, long, int)
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateUsersHelper#searchUserName(WListClientInterface, String, Set, long, int)
      */
     private static final @NotNull ServerHandler doSearchUserName = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);

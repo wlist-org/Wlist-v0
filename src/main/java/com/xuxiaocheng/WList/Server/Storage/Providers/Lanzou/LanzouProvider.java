@@ -403,7 +403,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         return LanzouProvider.RetryBracketPair;
     }
 
-    protected static @NotNull CheckRule<@NotNull String> DirectoryNameChecker = new CheckRuleSet<>(new LengthCheckRule(1, 100),
+    protected static final @NotNull CheckRule<@NotNull String> DirectoryNameChecker = new CheckRuleSet<>(new LengthCheckRule(1, 100),
             new ContainsCheckRule(Set.of("/", "\\", "*", "|", "#", "$", "%", "^", "(", ")", "?", ":", "'", "\"", "`", "=", "+"), false)
     );
 
@@ -434,7 +434,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         consumer.accept(UnionPair.ok(UnionPair.ok(new FileInformation(id.longValue(), parentId, directoryName, true, 0, now, now, null))));
     }
 
-    protected static @NotNull CheckRule<@NotNull String> FileNameChecker = new CheckRuleSet<>(new SuffixCheckRule(Stream.of(
+    protected static final @NotNull CheckRule<@NotNull String> FileNameChecker = new CheckRuleSet<>(new SuffixCheckRule(Stream.of(
             "doc","docx","zip","rar","apk","ipa","txt","exe","7z","e","z","ct","ke","cetrainer","db","tar","pdf","w3x","epub","mobi","azw","azw3","osk", "osz",
                     "xpa","cpk","lua","jar","dmg","ppt","pptx","xls","xlsx","mp3","iso","img","gho","ttf","ttc","txf","dwg","bat","imazingapp","dll","crx","xapk",
                     "conf","deb","rp","rpm","rplib","mobileconfig","appimage","lolgezi","flac","cad","hwt","accdb","ce","xmind","enc","bds","bdi","ssf","it","pkg","cfg"

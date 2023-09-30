@@ -20,7 +20,7 @@ dependencies {
     implementation 'org.apache.commons:commons-pool2:2.11.1' // TODO: use the object pool from netty.
     implementation 'org.xerial:sqlite-jdbc:3.43.0.0'
     implementation 'org.htmlunit:htmlunit:3.5.0'
-    implementation 'org.openjdk.nashorn:nashorn-core:15.4'
+    implementation 'org.openjdk.nashorn:nashorn-core:15.4' // TODO: use the javascript engine from htmlunit.
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.0'
     testImplementation 'org.junit.jupiter:junit-jupiter-params:5.10.0'

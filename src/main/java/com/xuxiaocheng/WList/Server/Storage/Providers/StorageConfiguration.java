@@ -21,7 +21,7 @@ public abstract class StorageConfiguration {
     public static final @NotNull DateTimeFormatter TimeFormatter = DateTimeFormatter.ISO_DATE_TIME;
 
     protected @NotNull String name = "provider";
-    protected @NotNull AtomicBoolean modified = new AtomicBoolean(false);
+    protected final @NotNull AtomicBoolean modified = new AtomicBoolean(false);
 
     public @NotNull String getName() {
         return this.name;

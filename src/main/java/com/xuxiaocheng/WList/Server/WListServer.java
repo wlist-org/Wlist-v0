@@ -58,12 +58,12 @@ public class WListServer {
 
     private static final @NotNull HLog logger = HLog.create("ServerLogger");
 
-    protected static @NotNull WListServer instance = new WListServer();
+    protected static final @NotNull WListServer instance = new WListServer();
     public static synchronized @NotNull WListServer getInstance() {
         return WListServer.instance;
     }
 
-    protected static final WListServer.@NotNull ServerChannelHandler handlerInstance = new ServerChannelHandler();
+    protected static final @NotNull ChannelHandler handlerInstance = new ServerChannelHandler();
 
     protected final @NotNull EventExecutorGroup bossGroup = new NioEventLoopGroup(Math.max(1, Runtime.getRuntime().availableProcessors() >>> 1));
     protected final @NotNull EventLoopGroup workerGroup = new NioEventLoopGroup(Runtime.getRuntime().availableProcessors() << 1);

@@ -113,7 +113,7 @@ public final class OperateUsersHelper {
         return OperateUsersHelper.pairListOperation(client, send, OperationType.SearchUserRegex, token, p -> p.add("regex", regex).add("orders", orders).add("position", position).add("limit", limit));
     }
 
-    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull VisibleUserInformation>> searchUserpsName(final @NotNull WListClientInterface client, final @NotNull String token, @SuppressWarnings("TypeMayBeWeakened") final @NotNull Set<@NotNull String> names, final long position, final int limit) throws IOException, InterruptedException, WrongStateException {
+    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull VisibleUserInformation>> searchUserName(final @NotNull WListClientInterface client, final @NotNull String token, @SuppressWarnings("TypeMayBeWeakened") final @NotNull Set<@NotNull String> names, final long position, final int limit) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.SearchUserName, token);
         ByteBufIOUtil.writeVariableLenInt(send, names.size());
         for (final String name: names)

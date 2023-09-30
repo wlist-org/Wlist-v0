@@ -3,9 +3,8 @@ package com.xuxiaocheng.WList.Server.Storage.Providers;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import org.jetbrains.annotations.NotNull;
 
-@SuppressWarnings("OverlyBroadThrowsClause")
 public abstract class AbstractIdBaseSharer<C extends StorageConfiguration> implements SharerInterface<C> {
-    protected @NotNull HInitializer<C> configuration = new HInitializer<>("SharerConfiguration");
+    protected final @NotNull HInitializer<C> configuration = new HInitializer<>("SharerConfiguration");
 //    protected @NotNull HInitializer<FileManager> manager = new HInitializer<>("ProviderManager");
 
     @Override

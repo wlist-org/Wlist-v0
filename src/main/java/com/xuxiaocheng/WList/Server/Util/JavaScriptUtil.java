@@ -91,7 +91,7 @@ public final class JavaScriptUtil {
         }
 
         @Override
-        public @NotNull IEngine build() throws ScriptException {
+        public @NotNull IEngine build() {
             final NashornScriptEngineFactory factory = new NashornScriptEngineFactory();
             final ScriptEngine engine = factory.getScriptEngine(this.allowedClass::contains);
             return new DefaultScriptEngine(engine);
