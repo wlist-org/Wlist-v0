@@ -38,7 +38,6 @@
 	<string name="page_file_option_delete_success">删除成功</string>
 	<string name="page_file_option_download_success">下载成功</string>
 	<string name="page_file_upload">上传</string>
-	<string name="page_file_upload_root">无法在根目录创建文件或文件夹</string>
 	<string name="page_file_upload_directory">创建文件夹</string>
 	<string name="page_file_upload_file">上传文件</string>
 	<string name="page_file_upload_picture">上传图片</string>

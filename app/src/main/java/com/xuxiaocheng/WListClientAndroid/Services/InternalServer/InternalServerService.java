@@ -6,7 +6,6 @@ import android.os.IBinder;
 import android.os.Process;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
-import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.WList;
@@ -16,28 +15,14 @@ import org.jetbrains.annotations.NotNull;
 
 @SuppressWarnings("ClassHasNoToStringMethod")
 public final class InternalServerService extends Service {
-    private final @NotNull Thread ServerMainThread = new Thread(() -> {
-        try {
-            InternalServerHooker.hookBefore();
-            if (Thread.interrupted())
-                return;
-            WList.main("-path:" + this.getExternalFilesDir("server"));
-        } finally {
-            this.stopSelf();
-        }
-    }, "ServerMain");
+    private final @NotNull Thread ServerMainThread = new Thread(HExceptionWrapper.wrapRunnable(WList::main, this::stopSelf), "ServerMain");
 
     @Override
     public void onCreate() {
         super.onCreate();
         HLogManager.initialize(this, HLogManager.ProcessType.Server);
-        final HLog logger = HLogManager.getInstance("DefaultLogger");
-        if (WList.getMainStageAPI() == 3)
-            logger.log(HLogLevel.ERROR, "Internal WList Server has already stopped.", ParametersMap.create().add("pid", Process.myPid()));
-        else if (WList.getMainStageAPI() != -1)
-            logger.log(HLogLevel.MISTAKE, "Internal WList Server has already started.", ParametersMap.create().add("pid", Process.myPid()));
-        else
-            logger.log(HLogLevel.FINE, "Internal WList Server is starting.", ParametersMap.create().add("pid", Process.myPid()));
+        HLogManager.getInstance("DefaultLogger").log(HLogLevel.FINE, "Internal WList Server is starting.", ParametersMap.create().add("pid", Process.myPid()));
+        InternalServerHooker.hookBefore(this);
         this.ServerMainThread.start();
     }
 
@@ -46,12 +31,7 @@ public final class InternalServerService extends Service {
         super.onDestroy();
         HLogManager.getInstance("DefaultLogger").log(HLogLevel.FINE, "Internal WList Server is stopping.");
         Main.runOnBackgroundThread(null, HExceptionWrapper.wrapRunnable(() -> {
-            InternalServerHooker.hookFinish();
-            switch (WList.getMainStageAPI()) {
-                case 0 -> this.ServerMainThread.interrupt();
-                case 1 -> WListServer.getInstance().stop();
-                default -> {}
-            }
+            WListServer.getInstance().stop();
             this.ServerMainThread.join();
             //noinspection CallToSystemExit
             System.exit(0); // Require JVM exit to reboot WList class.

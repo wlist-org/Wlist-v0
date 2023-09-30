@@ -1,7 +1,9 @@
 package com.xuxiaocheng.WListClientAndroid.Services.InternalServer;
 
+import android.app.Service;
 import com.xuxiaocheng.Rust.NativeUtil;
 import com.xuxiaocheng.WList.Server.Util.JavaScriptUtil;
+import com.xuxiaocheng.WList.WList;
 import io.netty.util.internal.PlatformDependent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -16,15 +18,13 @@ final class InternalServerHooker {
         super();
     }
 
-    static void hookBefore() {
+    static void hookBefore(final @NotNull Service service) {
+        WList.RuntimePath.initialize(service.getExternalFilesDir("server"));
         NativeUtil.ExtraPathGetterCore.reinitialize(l -> {
             final String arch = PlatformDependent.normalizedArch();
             throw new IllegalStateException("Unknown architecture: " + ("unknown".equals(arch) ? System.getProperty("os.arch") : arch));
         }); // Normally is unreachable.
         JavaScriptUtil.JavaScriptEngineCore.reinitialize(InternalServerHooker.RhinoScriptEngineBuilder::new);
-    }
-
-    static void hookFinish() {
     }
 
     private static class RhinoScriptEngineBuilder extends JavaScriptUtil.IEngineBuilder {

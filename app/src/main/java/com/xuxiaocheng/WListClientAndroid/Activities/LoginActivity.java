@@ -30,7 +30,6 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class LoginActivity extends AppCompatActivity {
-    public static final @NotNull HInitializer<InetSocketAddress> internalServerAddress = new HInitializer<>("InternalServerAddress");
 
     @Override
     protected void onCreate(final @Nullable Bundle savedInstanceState) {
@@ -41,7 +40,7 @@ public class LoginActivity extends AppCompatActivity {
         this.setContentView(R.layout.activity_login);
         final TextView internalServer = this.findViewById(R.id.activity_login_login_internal_server);
         final AtomicBoolean clickable = new AtomicBoolean(true);
-        internalServer.setOnClickListener(v -> { // TODO: Rationalize code.
+        internalServer.setOnClickListener(v -> {
             if (!clickable.compareAndSet(true, false))
                 return;
             final Intent serverIntent = new Intent(this, InternalServerService.class);
@@ -49,14 +48,15 @@ public class LoginActivity extends AppCompatActivity {
             internalServer.setText(R.string.activity_login_loading_starting_internal_server);
             this.startService(serverIntent);
             this.bindService(serverIntent, new ServiceConnection() {
+                private final @NotNull HInitializer<InetSocketAddress> address = new HInitializer<>("InternalServerAddress");
+
                 @Override
                 public void onServiceConnected(final ComponentName name, final @NotNull IBinder iService) {
                     Main.runOnBackgroundThread(LoginActivity.this, HExceptionWrapper.wrapRunnable(() -> {
                         final InetSocketAddress address = InternalServerBinder.getAddress(iService);
                         logger.log(HLogLevel.INFO, "Connecting to service: ", address);
                         Main.runOnUiThread(LoginActivity.this, () -> internalServer.setText(R.string.activity_login_loading_connecting));
-                        assert !LoginActivity.internalServerAddress.isInitialized() || LoginActivity.internalServerAddress.getInstance().equals(address);
-                        LoginActivity.internalServerAddress.initializeIfNot(() -> address);
+                        this.address.initialize(address);
                         WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
                         logger.log(HLogLevel.LESS, "Clients initialized.");
                         final String initPassword = InternalServerBinder.getAndDeleteAdminPassword(iService);
@@ -87,7 +87,7 @@ public class LoginActivity extends AppCompatActivity {
                 @Override
                 public void onServiceDisconnected(final ComponentName name) {
                     Main.runOnBackgroundThread(LoginActivity.this, () -> {
-                        final InetSocketAddress address = LoginActivity.internalServerAddress.uninitializeNullable();
+                        final InetSocketAddress address = this.address.uninitializeNullable();
                         if (address != null) {
                             logger.log(HLogLevel.INFO, "Disconnecting to service: ", address);
                             WListClientManager.quicklyUninitialize(address);

@@ -44,7 +44,6 @@ import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WListClientAndroid.Activities.CustomViews.MainTab;
-import com.xuxiaocheng.WListClientAndroid.Activities.LoginActivity;
 import com.xuxiaocheng.WListClientAndroid.Helpers.TokenManager;
 import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.R;
@@ -309,16 +308,12 @@ public class FilePage implements MainTab.MainTabPage {
         });
         page.pageFileContentUploader.setOnClickListener(u -> {
             if (this.locationStack.isEmpty()) return;
-            if (this.locationStack.size() < 2) { // Root driver
-                if (!this.address.equals(LoginActivity.internalServerAddress.getInstanceNullable())) {
-                    Main.showToast(this.activity, R.string.page_file_upload_root);
-                    return;
-                }
+            if (this.locationStack.size() < 2) { // Root selector
                 final String[] drivers = StorageTypes.getAll().keySet().toArray(new String[0]);
                 final AtomicInteger choice = new AtomicInteger(-1);
                 new AlertDialog.Builder(this.activity).setTitle(R.string.page_file_driver_add)
                         .setSingleChoiceItems(drivers, -1, (d, w) -> choice.set(w))
-                        .setNegativeButton(R.string.cancel, (d, w) -> {})
+                        .setNegativeButton(R.string.cancel, null)
                         .setPositiveButton(R.string.confirm, (d, w) -> {
                             final String identifier = drivers[choice.get()];
                             final PageFileDriverBinding driverBinding = PageFileDriverBinding.inflate(this.activity.getLayoutInflater());

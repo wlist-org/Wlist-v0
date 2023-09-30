@@ -38,7 +38,6 @@
 	<string name="page_file_option_delete_success">Deleted.</string>
 	<string name="page_file_option_download_success">Downloaded.</string>
 	<string name="page_file_upload">Upload</string>
-	<string name="page_file_upload_root">Cannot upload file to root directory.</string>
 	<string name="page_file_upload_directory">Directory</string>
 	<string name="page_file_upload_file">File</string>
 	<string name="page_file_upload_picture">Picture</string>

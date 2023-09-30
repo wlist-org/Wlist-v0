@@ -4,7 +4,6 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.os.Parcel;
 import android.os.RemoteException;
-import androidx.annotation.WorkerThread;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.WList.AndroidSupports.DatabaseSupporter;
 import com.xuxiaocheng.WList.Server.WListServer;
@@ -19,12 +18,10 @@ public final class InternalServerBinder extends Binder {
     private enum TransactOperate {
         GetAddress,
         GetAndDeleteAdminPassword,
-        GetMainStage,
     }
 
     public static final int Code = 2168877; // IBinder.FIRST_CALL_TRANSACTION <= Code=-"InternalServerBinder".hashCode()/100 <= IBinder.LAST_CALL_TRANSACTION
 
-    @WorkerThread
     public static @NotNull InetSocketAddress getAddress(final @NotNull IBinder iService) throws RemoteException {
         final InetSocketAddress[] address = new InetSocketAddress[1];
         InternalServerBinder.sendTransact(iService, TransactOperate.GetAddress, p -> {
@@ -38,7 +35,6 @@ public final class InternalServerBinder extends Binder {
         return address[0];
     }
 
-    @WorkerThread
     public static @Nullable String getAndDeleteAdminPassword(final @NotNull IBinder iService) throws RemoteException {
         final String[] password = new String[1];
         InternalServerBinder.sendTransact(iService, TransactOperate.GetAndDeleteAdminPassword, p -> {
@@ -49,13 +45,6 @@ public final class InternalServerBinder extends Binder {
                 password[0] = p.readString();
         });
         return password[0];
-    }
-
-    @WorkerThread
-    public static int getMainStage(final @NotNull IBinder iService) throws RemoteException {
-        final int[] stage = new int[1];
-        InternalServerBinder.sendTransact(iService, TransactOperate.GetMainStage, p -> stage[0] = p.readInt());
-        return stage[0];
     }
 
     private static void sendTransact(final @NotNull IBinder iService, final @NotNull TransactOperate operate, final @Nullable Consumer<? super Parcel> replyCallback) throws RemoteException {
@@ -72,24 +61,19 @@ public final class InternalServerBinder extends Binder {
         }
     }
 
-    private static boolean waitStart(final @NotNull Parcel reply) {
-        try {
-            if (WList.waitMainStageAPI(1, false))
-                return false;
-        } catch (final InterruptedException ignore) {
-        }
-        reply.writeInt(-1);
-        return true;
-    }
-
     @Override
     protected boolean onTransact(final int code, final @NotNull Parcel data, final @Nullable Parcel reply, final int flags) throws RemoteException {
         if (code != InternalServerBinder.Code)
             return super.onTransact(code, data, reply, flags);
         assert reply != null;
+        try {
+            WList.waitStarted();
+        } catch (final InterruptedException ignore) {
+            reply.writeInt(-1);
+            return true;
+        }
         switch (TransactOperate.valueOf(data.readString())) {
             case GetAddress -> {
-                if (InternalServerBinder.waitStart(reply)) break;
                 final InetSocketAddress address = WListServer.getInstance().getAddress().getInstanceNullable();
                 if (address == null)
                     reply.writeInt(1);
@@ -100,7 +84,6 @@ public final class InternalServerBinder extends Binder {
                 }
             }
             case GetAndDeleteAdminPassword -> {
-                if (InternalServerBinder.waitStart(reply)) break;
                 final String password = DatabaseSupporter.getAndDeleteDefaultAdminPassword();
                 if (password == null)
                     reply.writeInt(1);
@@ -109,7 +92,6 @@ public final class InternalServerBinder extends Binder {
                     reply.writeString(password);
                 }
             }
-            case GetMainStage -> reply.writeInt(WList.getMainStageAPI());
         }
         return true;
     }
