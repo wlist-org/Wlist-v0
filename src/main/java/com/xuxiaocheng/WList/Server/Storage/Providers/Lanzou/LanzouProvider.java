@@ -3,12 +3,6 @@ package com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
-import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.html.HtmlInput;
-import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import com.gargoylesoftware.htmlunit.html.HtmlSpan;
-import com.gargoylesoftware.htmlunit.javascript.host.event.MouseEvent;
-import com.gargoylesoftware.htmlunit.util.Cookie;
 import com.xuxiaocheng.HeadLibs.CheckRules.CheckRule;
 import com.xuxiaocheng.HeadLibs.CheckRules.CheckRuleSet;
 import com.xuxiaocheng.HeadLibs.CheckRules.StringCheckRules.ContainsCheckRule;
@@ -46,6 +40,12 @@ import okhttp3.FormBody;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okhttp3.MultipartBody;
+import org.htmlunit.WebClient;
+import org.htmlunit.html.HtmlInput;
+import org.htmlunit.html.HtmlPage;
+import org.htmlunit.html.HtmlSpan;
+import org.htmlunit.javascript.host.event.MouseEvent;
+import org.htmlunit.util.Cookie;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
@@ -73,7 +73,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@SuppressWarnings("SpellCheckingInspection")
+@SuppressWarnings({"SpellCheckingInspection", "CallToSuspiciousStringMethod"})
 public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> {
     @Override
     public @NotNull StorageTypes<LanzouConfiguration> getType() {

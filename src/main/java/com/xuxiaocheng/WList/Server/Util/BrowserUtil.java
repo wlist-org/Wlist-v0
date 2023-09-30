@@ -1,15 +1,15 @@
 package com.xuxiaocheng.WList.Server.Util;
 
-import com.gargoylesoftware.htmlunit.BrowserVersion;
-import com.gargoylesoftware.htmlunit.HttpMethod;
-import com.gargoylesoftware.htmlunit.WebClient;
-import com.gargoylesoftware.htmlunit.WebRequest;
-import com.gargoylesoftware.htmlunit.WebResponse;
-import com.gargoylesoftware.htmlunit.util.WebConnectionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
+import org.htmlunit.BrowserVersion;
+import org.htmlunit.HttpMethod;
+import org.htmlunit.WebClient;
+import org.htmlunit.WebRequest;
+import org.htmlunit.WebResponse;
+import org.htmlunit.util.WebConnectionWrapper;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
