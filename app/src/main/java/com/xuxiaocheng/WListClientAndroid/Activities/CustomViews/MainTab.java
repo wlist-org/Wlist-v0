@@ -9,23 +9,23 @@ import androidx.annotation.ColorInt;
 import androidx.annotation.ColorRes;
 import androidx.annotation.DrawableRes;
 import androidx.annotation.IdRes;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Consumer;
 
 public final class MainTab {
     public static final class ButtonGroup {
-        @NonNull private final View layout;
-        @NonNull private final ImageView button;
-        @NonNull private final TextView text;
+        private final @NotNull View layout;
+        private final @NotNull ImageView button;
+        private final @NotNull TextView text;
 
         @DrawableRes private final int image;
         @DrawableRes private final int imageChose;
         @ColorInt private final int color;
         @ColorInt private final int colorChose;
 
-        public ButtonGroup(@NonNull final Activity activity, @IdRes final int layout, @IdRes final int button, @IdRes final int text,
+        public ButtonGroup(final @NotNull Activity activity, @IdRes final int layout, @IdRes final int button, @IdRes final int text,
                            @DrawableRes final int image, @DrawableRes final int imageChose, @ColorRes final int color, @ColorRes final int colorChose) {
             super();
             this.layout = activity.findViewById(layout);
@@ -37,7 +37,7 @@ public final class MainTab {
             this.colorChose = activity.getResources().getColor(colorChose, activity.getTheme());
         }
 
-        public void setOnClickListener(@Nullable final View.OnClickListener listener) {
+        public void setOnClickListener(final View.@Nullable OnClickListener listener) {
             this.layout.setOnClickListener(listener);
             this.button.setOnClickListener(listener);
             this.text.setOnClickListener(listener);
@@ -62,7 +62,7 @@ public final class MainTab {
         }
 
         @Override
-        @NonNull public String toString() {
+        public @NotNull String toString() {
             return "MainTab$ButtonGroup{" +
                     "layout=" + this.layout +
                     ", button=" + this.button +
@@ -72,28 +72,28 @@ public final class MainTab {
     }
 
     public interface MainTabPage {
-        @NonNull View onShow();
+        @NotNull View onShow();
         boolean onBackPressed();
-        default boolean onActivityResult(final int requestCode, final int resultCode, @Nullable final Intent data) {
+        default boolean onActivityResult(final int requestCode, final int resultCode, final @Nullable Intent data) {
             return false;
         }
     }
 
-    @NonNull private final ButtonGroup fileButton;
-    @NonNull private final ButtonGroup userButton;
+    private final @NotNull ButtonGroup fileButton;
+    private final @NotNull ButtonGroup userButton;
 
     public enum TabChoice {
         File,
         User,
     }
 
-    public MainTab(@NonNull final ButtonGroup fileButton, @NonNull final ButtonGroup userButton) {
+    public MainTab(final @NotNull ButtonGroup fileButton, final @NotNull ButtonGroup userButton) {
         super();
         this.fileButton = fileButton;
         this.userButton = userButton;
     }
 
-    public void setOnChangeListener(@NonNull final Consumer<? super TabChoice> onChangeListener) {
+    public void setOnChangeListener(final @NotNull Consumer<? super TabChoice> onChangeListener) {
         this.fileButton.setOnClickListener(v -> {
             if (this.fileButton.isClicked()) return;
             this.fileButton.setClicked(true);
@@ -109,7 +109,7 @@ public final class MainTab {
     }
 
     @SuppressWarnings("UnusedReturnValue")
-    public boolean click(@NonNull final TabChoice choice) {
+    public boolean click(final @NotNull TabChoice choice) {
         if (choice == MainTab.TabChoice.File)
             return this.fileButton.callOnClick();
         if (choice == MainTab.TabChoice.User)
@@ -118,7 +118,7 @@ public final class MainTab {
     }
 
     @Override
-    @NonNull public String toString() {
+    public @NotNull String toString() {
         return "MainTab{" +
                 "fileButton=" + this.fileButton +
                 ", userButton=" + this.userButton +

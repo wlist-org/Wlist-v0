@@ -1,11 +1,11 @@
 package com.xuxiaocheng.WListClientAndroid.Client;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -26,20 +26,20 @@ public final class PasswordManager {
         super();
     }
 
-    @NonNull private static final Map<String, String> InternalPasswords = new ConcurrentHashMap<>();
+    private static final @NotNull Map<String, String> InternalPasswords = new ConcurrentHashMap<>();
 
-    public static void registerInternalPassword(@NonNull final String username, @NonNull final String password) throws IOException {
+    public static void registerInternalPassword(final @NotNull String username, final @NotNull String password) throws IOException {
         PasswordManager.InternalPasswords.put(username, password);
         PasswordManager.dumpToFile();
     }
 
-    @Nullable public static String getInternalPassword(@NonNull final String username) {
+    public static @Nullable String getInternalPassword(final @NotNull String username) {
         return PasswordManager.InternalPasswords.get(username);
     }
 
-    @NonNull private static final HInitializer<File> directory = new HInitializer<>("PasswordManagerDirectory");
+    private static final @NotNull HInitializer<File> directory = new HInitializer<>("PasswordManagerDirectory");
 
-    public static void initialize(@NonNull final File directory) throws IOException {
+    public static void initialize(final @NotNull File directory) throws IOException {
         try {
             PasswordManager.directory.initializeIfNot(HExceptionWrapper.wrapSupplier(() -> {
                 final File file = new File(directory, "internal_password.yaml");
@@ -73,13 +73,13 @@ public final class PasswordManager {
 
 
 
-    @NonNull private static final Map<InetSocketAddress, Map<String, String>> Passwords = new ConcurrentHashMap<>();
+    private static final @NotNull Map<InetSocketAddress, Map<String, String>> Passwords = new ConcurrentHashMap<>();
 
-    public static void registerPassword(@NonNull final InetSocketAddress address, @NonNull final String username, @NonNull final String password) {
+    public static void registerPassword(final @NotNull InetSocketAddress address, final @NotNull String username, final @NotNull String password) {
         PasswordManager.Passwords.computeIfAbsent(address, k -> new ConcurrentHashMap<>()).put(username, password);
     }
 
-    @Nullable public static String getPassword(@NonNull final InetSocketAddress address, @NonNull final String username) {
+    public static @Nullable String getPassword(final @NotNull InetSocketAddress address, final @NotNull String username) {
         final Map<String, String> map = PasswordManager.Passwords.get(address);
         if (map == null) return null;
         return map.get(username);

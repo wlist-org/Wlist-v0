@@ -5,8 +5,6 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
@@ -20,16 +18,18 @@ import com.xuxiaocheng.WListClientAndroid.Activities.Pages.UserPage;
 import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.R;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class MainActivity extends AppCompatActivity {
-    public static void start(@NonNull final Activity activity, @NonNull final InetSocketAddress address) {
+    public static void start(final @NotNull Activity activity, final @NotNull InetSocketAddress address) {
         final Intent intent = new Intent(activity, MainActivity.class);
         intent.putExtra("host", address.getHostName()).putExtra("port", address.getPort());
         Main.runOnUiThread(activity, () -> activity.startActivity(intent));
@@ -44,14 +44,15 @@ public class MainActivity extends AppCompatActivity {
         return new InetSocketAddress(host, port);
     }
 
-    @NonNull protected final AtomicReference<MainTab.TabChoice> minTabChoice = new AtomicReference<>();
-    @NonNull protected final HInitializer<InetSocketAddress> address = new HInitializer<>("MainActivityAddress");
-    @NonNull protected final Map<MainTab.TabChoice, MainTab.MainTabPage> pages = new EnumMap<>(MainTab.TabChoice.class);
+    protected final @NotNull AtomicReference<MainTab.TabChoice> minTabChoice = new AtomicReference<>();
+    @NotNull
+    protected final HInitializer<InetSocketAddress> address = new HInitializer<>("MainActivityAddress");
+    protected final @NotNull Map<MainTab.TabChoice, MainTab.MainTabPage> pages = new EnumMap<>(MainTab.TabChoice.class);
 
     @Override
-    protected void onCreate(@Nullable final Bundle savedInstanceState) {
+    protected void onCreate(final @Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        HLogManager.initialize(this, "Activities");
+        HLogManager.initialize(this, HLogManager.ProcessType.Activity);
         final HLog logger = HLogManager.getInstance("DefaultLogger");
         logger.log(HLogLevel.VERBOSE, "Creating MainActivity.");
         this.setContentView(R.layout.activity_main);
@@ -100,7 +101,7 @@ public class MainActivity extends AppCompatActivity {
         mainTab.click(MainTab.TabChoice.File);
     }
 
-    @Nullable protected LocalDateTime lastBackPressedTime;
+    @Nullable protected ZonedDateTime lastBackPressedTime;
     @Override
     public void onBackPressed() {
         final MainTab.TabChoice choice = this.minTabChoice.get();
@@ -110,7 +111,7 @@ public class MainActivity extends AppCompatActivity {
             if (page.onBackPressed())
                 return;
         }
-        final LocalDateTime now = LocalDateTime.now();
+        final ZonedDateTime now = ZonedDateTime.now();
         if (this.lastBackPressedTime != null && Duration.between(this.lastBackPressedTime, now).toMillis() < 2000) {
             super.onBackPressed(); // this.finish();
             return;
@@ -120,7 +121,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onActivityResult(final int requestCode, final int resultCode, @Nullable final Intent data) {
+    protected void onActivityResult(final int requestCode, final int resultCode, final @Nullable Intent data) {
         final MainTab.TabChoice choice = this.minTabChoice.get();
         if (choice != null) {
             final MainTab.MainTabPage page = this.pages.get(choice);
@@ -168,7 +169,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    @NonNull public String toString() {
+    public @NotNull String toString() {
         return "MainActivity{" +
                 "minTabChoice=" + this.minTabChoice +
                 ", address=" + this.address +

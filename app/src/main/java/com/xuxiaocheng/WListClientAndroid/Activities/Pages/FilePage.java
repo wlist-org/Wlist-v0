@@ -17,14 +17,12 @@ import android.widget.AbsListView;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.annotation.UiThread;
 import androidx.appcompat.app.AlertDialog;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import com.xuxiaocheng.HeadLibs.AndroidSupport.AIOStream;
+import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
@@ -60,6 +58,8 @@ import com.xuxiaocheng.WListClientAndroid.databinding.PageFileUploadBinding;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufOutputStream;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -82,18 +82,19 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 public class FilePage implements MainTab.MainTabPage {
-    @NonNull protected final Activity activity;
-    @NonNull protected final InetSocketAddress address;
+    @NotNull
+    protected final Activity activity;
+    protected final @NotNull InetSocketAddress address;
 
-    public FilePage(@NonNull final Activity activity, @NonNull final InetSocketAddress address) {
+    public FilePage(final @NotNull Activity activity, final @NotNull InetSocketAddress address) {
         super();
         this.activity = activity;
         this.address = address;
     }
 
-    @NonNull protected final HInitializer<PageFileContentBinding> pageCache = new HInitializer<>("FilePage");
+    protected final @NotNull HInitializer<PageFileContentBinding> pageCache = new HInitializer<>("FilePage");
     @Override
-    @NonNull public ConstraintLayout onShow() {
+    public @NotNull ConstraintLayout onShow() {
         final PageFileContentBinding cache = this.pageCache.getInstanceNullable();
         if (cache != null) return cache.getRoot();
         final PageFileContentBinding page = PageFileContentBinding.inflate(this.activity.getLayoutInflater());
@@ -107,18 +108,18 @@ public class FilePage implements MainTab.MainTabPage {
         return page.getRoot();
     }
 
-    @NonNull protected final Deque<LocationStackRecord> locationStack = new ArrayDeque<>();
+    protected final @NotNull Deque<LocationStackRecord> locationStack = new ArrayDeque<>();
     protected static class LocationStackRecord {
         protected final boolean isRoot;
-        @NonNull protected final CharSequence name;
-        @NonNull protected final AtomicLong counter;
-        @NonNull protected final FileLocation location;
-        @NonNull protected final EnhancedRecyclerViewAdapter<VisibleFileInformation, CellViewHolder> adapter;
-        @NonNull protected final RecyclerView.OnScrollListener listener;
+        protected final @NotNull CharSequence name;
+        protected final @NotNull AtomicLong counter;
+        protected final @NotNull FileLocation location;
+        protected final @NotNull EnhancedRecyclerViewAdapter<VisibleFileInformation, CellViewHolder> adapter;
+        protected final @NotNull RecyclerView.OnScrollListener listener;
 
-        protected LocationStackRecord(final boolean isRoot, @NonNull final CharSequence name, @NonNull final AtomicLong counter, @NonNull final FileLocation location,
-                                      @NonNull final EnhancedRecyclerViewAdapter<VisibleFileInformation, CellViewHolder> adapter,
-                                      @NonNull final RecyclerView.OnScrollListener listener) {
+        protected LocationStackRecord(final boolean isRoot, final @NotNull CharSequence name, final @NotNull AtomicLong counter, final @NotNull FileLocation location,
+                                      final @NotNull EnhancedRecyclerViewAdapter<VisibleFileInformation, CellViewHolder> adapter,
+                                      final @NotNull RecyclerView.OnScrollListener listener) {
             super();
             this.isRoot = isRoot;
             this.name = name;
@@ -129,7 +130,7 @@ public class FilePage implements MainTab.MainTabPage {
         }
 
         @Override
-        @NonNull public String toString() {
+        public @NotNull String toString() {
             return "LocationStackRecord{" +
                     "isRoot=" + this.isRoot +
                     ", name=" + this.name +
@@ -154,14 +155,14 @@ public class FilePage implements MainTab.MainTabPage {
         }
     }
 
-    protected void pushFileList(@NonNull final CharSequence name, @NonNull final FileLocation location) {
+    protected void pushFileList(final @NotNull CharSequence name, final @NotNull FileLocation location) {
         final PageFileContentBinding page = this.pageCache.getInstance();
         final boolean isRoot = IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(FileLocationSupporter.storage(location));
         final AtomicInteger currentPage = new AtomicInteger(0);
         final AtomicLong counter = new AtomicLong(0);
         final EnhancedRecyclerViewAdapter<VisibleFileInformation, CellViewHolder> adapterWrapper = new EnhancedRecyclerViewAdapter<>() {
             @Override
-            @NonNull protected CellViewHolder createViewHolder(@NonNull final ViewGroup parent) {
+            protected @NotNull CellViewHolder createViewHolder(final @NotNull ViewGroup parent) {
                 return new CellViewHolder(EnhancedRecyclerViewAdapter.buildView(FilePage.this.activity.getLayoutInflater(), R.layout.page_file_cell, page.pageFileContentList), information -> {
                    if (FileInformationGetter.isDirectory(information))
                         FilePage.this.pushFileList(FileInformationGetter.name(information),
@@ -176,16 +177,16 @@ public class FilePage implements MainTab.MainTabPage {
             }
 
             @Override
-            protected void bindViewHolder(@NonNull final CellViewHolder holder, @NonNull final VisibleFileInformation information) {
+            protected void bindViewHolder(final @NotNull CellViewHolder holder, final @NotNull VisibleFileInformation information) {
                 holder.onBind(information);
             }
         };
         final RecyclerView.OnScrollListener listener = new RecyclerView.OnScrollListener() {
-            @NonNull private final AtomicBoolean onLoading = new AtomicBoolean(false);
-            @NonNull private final AtomicBoolean noMore = new AtomicBoolean(false);
+            private final @NotNull AtomicBoolean onLoading = new AtomicBoolean(false);
+            private final @NotNull AtomicBoolean noMore = new AtomicBoolean(false);
             @UiThread
             @Override
-            public void onScrollStateChanged(@NonNull final RecyclerView recyclerView, final int newState) {
+            public void onScrollStateChanged(final @NotNull RecyclerView recyclerView, final int newState) {
                 super.onScrollStateChanged(recyclerView, newState);
                 // TODO: Remove the pages on the top.
                 // TODO: register broadcast listener. (auto add)
@@ -350,7 +351,7 @@ public class FilePage implements MainTab.MainTabPage {
                                             try (final InputStream stream = new BufferedInputStream(new FileInputStream(new File(this.activity.getExternalFilesDir("server"), "server.yaml")))) {
                                                 final ByteBuf buf = ByteBufAllocator.DEFAULT.heapBuffer();
                                                 try (final OutputStream os = new ByteBufOutputStream(buf)) {
-                                                    AIOStream.transferTo(stream, os);
+                                                    AndroidSupporter.transferTo(stream, os);
                                                     configuration = buf.toString(StandardCharsets.UTF_8);
                                                 } finally {
                                                     buf.release();
@@ -434,7 +435,7 @@ public class FilePage implements MainTab.MainTabPage {
     }
 
 //    @Override
-//    public boolean onActivityResult(final int requestCode, final int resultCode, @Nullable final Intent data) {
+//    public boolean onActivityResult(final int requestCode, final int resultCode, final @Nullable Intent data) {
 //        if (resultCode == Activity.RESULT_OK && requestCode == "SelectFiles".hashCode() && data != null) {
 //            final Collection<Uri> uris = new ArrayList<>();
 //            if (data.getData() != null)
@@ -515,7 +516,7 @@ public class FilePage implements MainTab.MainTabPage {
     }
 
     @UiThread
-    private static void setLoading(@NonNull final ImageView loading) {
+    private static void setLoading(final @NotNull ImageView loading) {
         final Animation loadingAnimation = new RotateAnimation(0, 360 << 10, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
         loadingAnimation.setDuration(500 << 10);
         loadingAnimation.setInterpolator(new LinearInterpolator());
@@ -524,7 +525,7 @@ public class FilePage implements MainTab.MainTabPage {
     }
 
     @Override
-    @NonNull public String toString() {
+    public @NotNull String toString() {
         return "FilePage{" +
                 "address=" + this.address +
                 ", pageCache=" + this.pageCache +
@@ -532,16 +533,16 @@ public class FilePage implements MainTab.MainTabPage {
                 '}';
     }
 
-    protected static class CellViewHolder extends EnhancedRecyclerViewAdapter.WrappedViewHolder<VisibleFileInformation, ConstraintLayout> {
-        @NonNull protected final Consumer<VisibleFileInformation> clicker;
+    protected static class CellViewHolder extends EnhancedRecyclerViewAdapter.WrappedViewHolder<ConstraintLayout> {
+        protected final @NotNull Consumer<VisibleFileInformation> clicker;
         protected final boolean isRoot;
-        @NonNull protected final FilePage page;
-        @NonNull protected final ImageView image;
-        @NonNull protected final TextView name;
-        @NonNull protected final TextView tips;
-        @NonNull protected final View option;
+        protected final @NotNull FilePage page;
+        protected final @NotNull ImageView image;
+        protected final @NotNull TextView name;
+        protected final @NotNull TextView tips;
+        protected final @NotNull View option;
 
-        protected CellViewHolder(@NonNull final ConstraintLayout cell, @NonNull final Consumer<VisibleFileInformation> clicker, final boolean isRoot, @NonNull final FilePage page) {
+        protected CellViewHolder(final @NotNull ConstraintLayout cell, final @NotNull Consumer<VisibleFileInformation> clicker, final boolean isRoot, final @NotNull FilePage page) {
             super(cell);
             this.clicker = clicker;
             this.isRoot = isRoot;
@@ -552,7 +553,7 @@ public class FilePage implements MainTab.MainTabPage {
             this.option = cell.getViewById(R.id.page_file_cell_option);
         }
 
-        public void onBind(@NonNull final VisibleFileInformation information) {
+        public void onBind(final @NotNull VisibleFileInformation information) {
             this.itemView.setOnClickListener(v -> this.clicker.accept(information)); // TODO: select on long click.
             CellViewHolder.setFileImage(this.image, information);
             this.name.setText(FileInformationGetter.name(information));
@@ -615,7 +616,7 @@ public class FilePage implements MainTab.MainTabPage {
 //                    });
 ////                    final EnhancedRecyclerViewAdapter<VisibleFileInformation, CellViewHolder> adapter = new EnhancedRecyclerViewAdapter<>() {
 ////                        @Override
-////                        @NonNull protected CellViewHolder createViewHolder(@NonNull final ViewGroup parent) {
+////                        protected @NotNull CellViewHolder createViewHolder(final @NotNull ViewGroup parent) {
 ////                            final CellViewHolder holder = new CellViewHolder(EnhancedRecyclerViewAdapter.buildView(CellViewHolder.this.page.activity.getLayoutInflater(), R.layout.page_file_cell, (RecyclerView) parent), information -> {
 //////                                FilePage.this.pushFileList(isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information),
 //////                                        FileLocationSupporter.create(isRoot ? FileInformationGetter.name(information) : FileLocationSupporter.driver(location), FileInformationGetter.id(information)));
@@ -625,7 +626,7 @@ public class FilePage implements MainTab.MainTabPage {
 ////                        }
 ////
 ////                        @Override
-////                        protected void bindViewHolder(@NonNull final CellViewHolder holder, @NonNull final VisibleFileInformation information) {
+////                        protected void bindViewHolder(final @NotNull CellViewHolder holder, final @NotNull VisibleFileInformation information) {
 ////                            holder.itemView.setOnClickListener(v -> holder.clicker.accept(information));
 ////                            CellViewHolder.setFileImage(holder.image, information);
 ////                            holder.name.setText(holder.isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information));
@@ -708,10 +709,10 @@ public class FilePage implements MainTab.MainTabPage {
         }
 
         @Override
-        public boolean equals(@Nullable final Object o) {
+        public boolean equals(final @Nullable Object o) {
             if (this == o) return true;
-            if (!(o instanceof CellViewHolder holder)) return false;
-            return this.image.equals(holder.image) && this.name.equals(holder.name) && this.tips.equals(holder.tips) && this.option.equals(holder.option);
+            if (!(o instanceof CellViewHolder that)) return false;
+            return this.image.equals(that.image) && this.name.equals(that.name) && this.tips.equals(that.tips) && this.option.equals(that.option);
         }
 
         @Override
@@ -720,7 +721,7 @@ public class FilePage implements MainTab.MainTabPage {
         }
 
         @Override
-        @NonNull public String toString() {
+        public @NotNull String toString() {
             return "FilePage$CellViewHolder{" +
                     "clicker=" + this.clicker +
                     ", image=" + this.image +
@@ -730,7 +731,7 @@ public class FilePage implements MainTab.MainTabPage {
                     '}';
         }
 
-        protected static void setFileImage(@NonNull final ImageView image, @NonNull final VisibleFileInformation information) {
+        protected static void setFileImage(final @NotNull ImageView image, final @NotNull VisibleFileInformation information) {
             if (FileInformationGetter.isDirectory(information)) {
                 image.setImageResource(R.mipmap.page_file_image_directory);
                 return;

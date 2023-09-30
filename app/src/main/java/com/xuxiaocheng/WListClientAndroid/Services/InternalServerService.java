@@ -7,8 +7,6 @@ import android.os.IBinder;
 import android.os.Parcel;
 import android.os.Process;
 import android.os.RemoteException;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -21,6 +19,7 @@ import com.xuxiaocheng.WList.WList;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
 import io.netty.util.internal.PlatformDependent;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.RhinoException;
 import org.mozilla.javascript.Scriptable;
@@ -31,7 +30,7 @@ import java.util.function.Consumer;
 
 @SuppressWarnings("ClassHasNoToStringMethod")
 public final class InternalServerService extends Service {
-    @NonNull private final Thread ServerMainThread = new Thread(() -> {
+    private final @NotNull Thread ServerMainThread = new Thread(() -> {
         try {
             NativeUtil.ExtraPathGetterCore.reinitialize(l -> {
                 final String arch = PlatformDependent.normalizedArch();
@@ -46,7 +45,7 @@ public final class InternalServerService extends Service {
 
     public static class RhinoScriptEngineBuilder extends JavaScriptUtil.IEngineBuilder {
         @Override
-        @NonNull public RhinoScriptEngineBuilder allowJavaMethod(@NotNull final Class<?> clazz) throws JavaScriptUtil.ScriptException {
+        public @NotNull RhinoScriptEngineBuilder allowJavaMethod(final @NotNull Class<?> clazz) throws JavaScriptUtil.ScriptException {
             return (RhinoScriptEngineBuilder) super.allowJavaMethod(clazz); // TODO
         }
 
@@ -57,10 +56,10 @@ public final class InternalServerService extends Service {
     }
 
     public static class RhinoScriptEngine extends JavaScriptUtil.IEngine {
-        @NonNull protected final Context context;
-        @NonNull protected final Scriptable scope;
+        protected final @NotNull Context context;
+        protected final @NotNull Scriptable scope;
 
-        public RhinoScriptEngine(@NonNull final Context context) {
+        public RhinoScriptEngine(final @NotNull Context context) {
             super();
             this.context = context;
             context.setOptimizationLevel(-1);
@@ -69,7 +68,7 @@ public final class InternalServerService extends Service {
 
         @SuppressWarnings("unchecked")
         @Override
-        @Nullable public Map<String, Object> eval(@NonNull final String script) throws JavaScriptUtil.ScriptException {
+        public @Nullable Map<String, Object> eval(final @NotNull String script) throws JavaScriptUtil.ScriptException {
             try {
                 return (Map<String, Object>) this.context.evaluateString(this.scope, script, "<eval>", 1, null);
             } catch (final RhinoException exception) {
@@ -78,7 +77,7 @@ public final class InternalServerService extends Service {
         }
 
         @Override
-        public void execute(@NotNull final String script) throws JavaScriptUtil.ScriptException {
+        public void execute(final @NotNull String script) throws JavaScriptUtil.ScriptException {
             try {
                 this.context.evaluateString(this.scope, script, "<eval>", 1, null);
             } catch (final RhinoException exception) {
@@ -95,7 +94,7 @@ public final class InternalServerService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        HLogManager.initialize(this, "Server");
+        HLogManager.initialize(this, HLogManager.ProcessType.Server);
         final HLog logger = HLogManager.getInstance("DefaultLogger");
         if (WList.getMainStageAPI() == 3)
             logger.log(HLogLevel.ERROR, "Internal WList Server has already stopped.", ParametersMap.create().add("pid", Process.myPid()));
@@ -128,7 +127,7 @@ public final class InternalServerService extends Service {
     }
 
     @Override
-    @NonNull public IBinder onBind(@NonNull final Intent intent) {
+    public @NotNull IBinder onBind(final @NotNull Intent intent) {
         return new ServerBinder();
     }
 
@@ -139,7 +138,7 @@ public final class InternalServerService extends Service {
         WaitMainStage,
     }
 
-    @NonNull public static InetSocketAddress getAddress(@NonNull final IBinder iService) throws RemoteException {
+    public static @NotNull InetSocketAddress getAddress(final @NotNull IBinder iService) throws RemoteException {
         final InetSocketAddress[] address = new InetSocketAddress[1];
         InternalServerService.sendTransact(iService, InternalServerService.TransactOperate.GetAddress, null, p -> {
             final int success = p.readInt();
@@ -152,7 +151,7 @@ public final class InternalServerService extends Service {
         return address[0];
     }
 
-    @Nullable public static String getAndDeleteAdminPassword(@NonNull final IBinder iService) throws RemoteException {
+    public static @Nullable String getAndDeleteAdminPassword(final @NotNull IBinder iService) throws RemoteException {
         final String[] password = new String[1];
         InternalServerService.sendTransact(iService, TransactOperate.GetAndDeleteAdminPassword, null, p -> {
             final int success = p.readInt();
@@ -164,13 +163,13 @@ public final class InternalServerService extends Service {
         return password[0];
     }
 
-    public static int getMainStage(@NonNull final IBinder iService) throws RemoteException {
+    public static int getMainStage(final @NotNull IBinder iService) throws RemoteException {
         final int[] stage = new int[1];
         InternalServerService.sendTransact(iService, TransactOperate.GetMainStage, null, p -> stage[0] = p.readInt());
         return stage[0];
     }
 
-    public static boolean waitMainStage(@NonNull final IBinder iService, final int stage, final boolean matNotBoot) throws RemoteException {
+    public static boolean waitMainStage(final @NotNull IBinder iService, final int stage, final boolean matNotBoot) throws RemoteException {
         final boolean[] success = new boolean[1];
         InternalServerService.sendTransact(iService, TransactOperate.GetMainStage, p -> {
             p.writeInt(stage);
@@ -179,7 +178,7 @@ public final class InternalServerService extends Service {
         return success[0];
     }
 
-    private static void sendTransact(@NonNull final IBinder iService, @NonNull final TransactOperate operate, @Nullable final Consumer<? super Parcel> dataCallback, @Nullable final Consumer<? super Parcel> replyCallback) throws RemoteException {
+    private static void sendTransact(final @NotNull IBinder iService, final @NotNull TransactOperate operate, final @Nullable Consumer<? super Parcel> dataCallback, final @Nullable Consumer<? super Parcel> replyCallback) throws RemoteException {
         final Parcel data = Parcel.obtain();
         final Parcel reply = Parcel.obtain();
         try {
@@ -195,7 +194,7 @@ public final class InternalServerService extends Service {
         }
     }
 
-    private static boolean waitStart(@NonNull final Parcel reply) {
+    private static boolean waitStart(final @NotNull Parcel reply) {
         try {
             if (WList.waitMainStageAPI(1, false))
                 return false;
@@ -207,7 +206,7 @@ public final class InternalServerService extends Service {
 
     private static final class ServerBinder extends Binder {
         @Override
-        protected boolean onTransact(final int code, @NonNull final Parcel data, @Nullable final Parcel reply, final int flags) throws RemoteException {
+        protected boolean onTransact(final int code, final @NotNull Parcel data, final @Nullable Parcel reply, final int flags) throws RemoteException {
             if (code < 1 || TransactOperate.values().length < code)
                 return super.onTransact(code, data, reply, flags);
             final TransactOperate operate = TransactOperate.values()[code - 1];

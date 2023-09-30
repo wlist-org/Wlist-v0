@@ -3,7 +3,6 @@ package com.xuxiaocheng.WListClientAndroid.Activities.Pages;
 import android.content.Intent;
 import android.view.View;
 import android.widget.TextView;
-import androidx.annotation.NonNull;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.WListClientAndroid.Activities.CustomViews.MainTab;
@@ -11,24 +10,25 @@ import com.xuxiaocheng.WListClientAndroid.Activities.LoginActivity;
 import com.xuxiaocheng.WListClientAndroid.Activities.MainActivity;
 import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageUserContentBinding;
+import org.jetbrains.annotations.NotNull;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class UserPage implements MainTab.MainTabPage {
-    @NonNull protected final MainActivity activity;
-    @NonNull protected final InetSocketAddress address;
+    protected final @NotNull MainActivity activity;
+    protected final @NotNull InetSocketAddress address;
 
-    public UserPage(@NonNull final MainActivity activity, @NonNull final InetSocketAddress address) {
+    public UserPage(final @NotNull MainActivity activity, final @NotNull InetSocketAddress address) {
         super();
         this.activity = activity;
         this.address = address;
     }
 
-    @NonNull private final AtomicReference<ConstraintLayout> pageCache = new AtomicReference<>();
+    private final @NotNull AtomicReference<ConstraintLayout> pageCache = new AtomicReference<>();
     @Override
-    @NonNull public View onShow() {
+    public @NotNull View onShow() {
         final ConstraintLayout cache = this.pageCache.get();
         if (cache != null) return cache;
         final PageUserContentBinding page = PageUserContentBinding.inflate(this.activity.getLayoutInflater());
@@ -68,7 +68,7 @@ public class UserPage implements MainTab.MainTabPage {
     }
 
     @Override
-    @NonNull public String toString() {
+    public @NotNull String toString() {
         return "UserPage{" +
                 "address=" + this.address +
                 ", pageCache=" + this.pageCache +

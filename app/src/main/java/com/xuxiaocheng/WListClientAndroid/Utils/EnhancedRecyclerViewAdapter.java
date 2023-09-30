@@ -4,11 +4,11 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.LayoutRes;
-import androidx.annotation.NonNull;
 import androidx.annotation.UiThread;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.StaggeredGridLayoutManager;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.UnmodifiableView;
 
 import java.util.ArrayList;
@@ -16,18 +16,18 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecyclerViewAdapter.WrappedViewHolder<T, ?>> extends RecyclerView.Adapter<EnhancedRecyclerViewAdapter.WrappedViewHolder<T, ?>> {
-    @NonNull protected final List<View> headers = new ArrayList<>();
-    @NonNull protected final List<View> tailors = new ArrayList<>();
-    @NonNull protected final List<T> data = new ArrayList<>();
+public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecyclerViewAdapter.WrappedViewHolder<?>> extends RecyclerView.Adapter<EnhancedRecyclerViewAdapter.WrappedViewHolder<?>> {
+    protected final @NotNull List<View> headers = new ArrayList<>();
+    protected final @NotNull List<View> tailors = new ArrayList<>();
+    protected final @NotNull List<T> data = new ArrayList<>();
 
     @SuppressWarnings("unchecked")
-    @NonNull public static <V extends View> V buildView(@NonNull final LayoutInflater inflater, @LayoutRes final int cell, @NonNull final RecyclerView parent) {
+    public static @NotNull <V extends View> V buildView(final @NotNull LayoutInflater inflater, @LayoutRes final int cell, final @NotNull RecyclerView parent) {
         return (V) inflater.inflate(cell, parent, false);
     }
 
-    public abstract static class WrappedViewHolder<T, V extends View> extends RecyclerView.ViewHolder {
-        protected WrappedViewHolder(@NonNull final V itemView) {
+    public abstract static class WrappedViewHolder<V extends View> extends RecyclerView.ViewHolder {
+        protected WrappedViewHolder(final @NotNull V itemView) {
             super(itemView);
         }
     }
@@ -41,32 +41,32 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
         return 0;
     }
 
-    protected static class HeaderAndTailorViewHolder<T, V extends View> extends WrappedViewHolder<T, V> {
-        protected HeaderAndTailorViewHolder(@NonNull final V itemView) {
+    protected static class HeaderAndTailorViewHolder<V extends View> extends WrappedViewHolder<V> {
+        protected HeaderAndTailorViewHolder(final @NotNull V itemView) {
             super(itemView);
         }
     }
 
     @Override
-    @NonNull public WrappedViewHolder<T, ?> onCreateViewHolder(@NonNull final ViewGroup parent, final int viewType) {
+    public @NotNull WrappedViewHolder<?> onCreateViewHolder(final @NotNull ViewGroup parent, final int viewType) {
         if (viewType > 0) return new HeaderAndTailorViewHolder<>(this.headers.get(viewType - 1));
         if (viewType < 0) return new HeaderAndTailorViewHolder<>(this.tailors.get(-viewType - 1));
         return this.createViewHolder(parent);
     }
 
-    @NonNull protected abstract VH createViewHolder(@NonNull final ViewGroup parent);
+    protected abstract @NotNull VH createViewHolder(final @NotNull ViewGroup parent);
 
     @SuppressWarnings("unchecked")
     @Override
-    public void onBindViewHolder(@NonNull final WrappedViewHolder<T, ?> holder, final int position) {
+    public void onBindViewHolder(final @NotNull WrappedViewHolder<?> holder, final int position) {
         if (this.getItemViewType(position) == 0)
             this.bindViewHolder((VH) holder, this.data.get(position - this.headers.size()));
     }
 
-    protected abstract void bindViewHolder(@NonNull final VH holder, @NonNull final T information);
+    protected abstract void bindViewHolder(final @NotNull VH holder, final @NotNull T information);
 
     @UiThread
-    public void addDataRange(@NonNull final Collection<? extends T> data) {
+    public void addDataRange(final @NotNull Collection<? extends T> data) {
         this.data.addAll(data);
         this.notifyItemRangeInserted(this.headers.size() + this.data.size() - data.size(), data.size());
     }
@@ -79,13 +79,13 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
     }
 
     @UiThread
-    public void addHeader(@NonNull final View header) {
+    public void addHeader(final @NotNull View header) {
         this.headers.add(header);
         super.notifyItemInserted(this.headers.size() - 1);
     }
 
     @UiThread
-    public void setHeader(final int index, @NonNull final View header) {
+    public void setHeader(final int index, final @NotNull View header) {
         this.headers.set(index, header);
         super.notifyItemChanged(index);
     }
@@ -96,7 +96,7 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
         super.notifyItemRemoved(index);
     }
 
-    @NonNull public @UnmodifiableView List<View> getHeaders() {
+    public @NotNull @UnmodifiableView List<@NotNull View> getHeaders() {
         return Collections.unmodifiableList(this.headers);
     }
 
@@ -105,13 +105,13 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
     }
 
     @UiThread
-    public void addTailor(@NonNull final View tailor) {
+    public void addTailor(final @NotNull View tailor) {
         this.tailors.add(tailor);
         super.notifyItemInserted(this.headers.size() + this.data.size() + this.tailors.size() - 1);
     }
 
     @UiThread
-    public void setTailor(final int index, @NonNull final View tailor) {
+    public void setTailor(final int index, final @NotNull View tailor) {
         this.tailors.set(index, tailor);
         super.notifyItemChanged(this.headers.size() + this.data.size() + index);
     }
@@ -122,7 +122,7 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
         super.notifyItemRemoved(this.headers.size() + this.data.size() + index);
     }
 
-    @NonNull public @UnmodifiableView List<View> getTailors() {
+    public @NotNull @UnmodifiableView List<View> getTailors() {
         return Collections.unmodifiableList(this.tailors);
     }
 
@@ -131,7 +131,7 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
     }
 
     @Override
-    public void onAttachedToRecyclerView(@NonNull final RecyclerView recyclerView) {
+    public void onAttachedToRecyclerView(final @NotNull RecyclerView recyclerView) {
         super.onAttachedToRecyclerView(recyclerView);
         final RecyclerView.LayoutManager layoutManager = recyclerView.getLayoutManager();
         if (layoutManager instanceof GridLayoutManager gridLayoutManager)
@@ -144,7 +144,7 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
     }
 
     @Override
-    public void onViewAttachedToWindow(@NonNull final WrappedViewHolder<T, ?> holder) {
+    public void onViewAttachedToWindow(final @NotNull WrappedViewHolder<?> holder) {
         super.onViewAttachedToWindow(holder);
         final ViewGroup.LayoutParams params = holder.itemView.getLayoutParams();
         if (params instanceof StaggeredGridLayoutManager.LayoutParams layoutParams)
@@ -152,7 +152,7 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
     }
 
     @Override
-    @NonNull public String toString() {
+    public @NotNull String toString() {
         return "EnhancedRecyclerViewAdapter{" +
                 "headers=" + this.headers +
                 ", tailors=" + this.tailors +

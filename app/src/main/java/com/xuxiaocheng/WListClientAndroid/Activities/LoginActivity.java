@@ -10,8 +10,6 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.widget.TextView;
 import android.widget.Toast;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -28,17 +26,19 @@ import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.R;
 import com.xuxiaocheng.WListClientAndroid.Services.InternalServerService;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class LoginActivity extends AppCompatActivity {
-    @NonNull public static final HInitializer<InetSocketAddress> internalServerAddress = new HInitializer<>("InternalServerAddress");
+    public static final @NotNull HInitializer<InetSocketAddress> internalServerAddress = new HInitializer<>("InternalServerAddress");
 
     @Override
-    protected void onCreate(@Nullable final Bundle savedInstanceState) {
+    protected void onCreate(final @Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        HLogManager.initialize(this, "Activities");
+        HLogManager.initialize(this, HLogManager.ProcessType.Activity);
         final HLog logger = HLogManager.getInstance("DefaultLogger");
         logger.log(HLogLevel.VERBOSE, "Creating LoginActivity.");
         this.setContentView(R.layout.activity_login);
@@ -53,7 +53,7 @@ public class LoginActivity extends AppCompatActivity {
             this.startService(serverIntent);
             this.bindService(serverIntent, new ServiceConnection() {
                 @Override
-                public void onServiceConnected(final ComponentName name, @NonNull final IBinder iService) {
+                public void onServiceConnected(final ComponentName name, final @NotNull IBinder iService) {
                     final AtomicBoolean finishActivity = new AtomicBoolean(true);
                     Main.runOnBackgroundThread(LoginActivity.this, HExceptionWrapper.wrapRunnable(() -> {
                         logger.log(HLogLevel.INFO, "Waiting for server start completely...");
@@ -127,7 +127,7 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onRequestPermissionsResult(final int requestCode, @NonNull final String[] permissions, @NonNull final int[] grantResults) {
+    public void onRequestPermissionsResult(final int requestCode, final String @NotNull [] permissions, final int @NotNull [] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == "EXTERNAL_STORAGE".hashCode() && grantResults.length == 2 && (grantResults[0] != PackageManager.PERMISSION_GRANTED || grantResults[1] != PackageManager.PERMISSION_GRANTED))
             Main.showToast(this, R.string.toast_no_permissions);
