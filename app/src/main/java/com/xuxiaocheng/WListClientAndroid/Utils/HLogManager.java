@@ -10,7 +10,7 @@ import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
-import com.xuxiaocheng.WListClient.Client.OperationHelpers.OperateHelper;
+import com.xuxiaocheng.WList.Client.Operations.OperateHelper;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;

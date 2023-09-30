@@ -14,9 +14,9 @@ import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.Rust.NativeUtil;
-import com.xuxiaocheng.WList.Databases.User.UserManager;
+import com.xuxiaocheng.WList.AndroidSupports.DatabaseSupporter;
+import com.xuxiaocheng.WList.Server.Util.JavaScriptUtil;
 import com.xuxiaocheng.WList.Server.WListServer;
-import com.xuxiaocheng.WList.Utils.JavaScriptUtil;
 import com.xuxiaocheng.WList.WList;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
 import io.netty.util.internal.PlatformDependent;
@@ -227,7 +227,7 @@ public final class InternalServerService extends Service {
                 }
                 case GetAndDeleteAdminPassword -> {
                     if (InternalServerService.waitStart(reply)) break;
-                    final String password = UserManager.getAndDeleteDefaultAdminPasswordAPI();
+                    final String password = DatabaseSupporter.getAndDeleteDefaultAdminPassword();
                     if (password == null)
                         reply.writeInt(1);
                     else {

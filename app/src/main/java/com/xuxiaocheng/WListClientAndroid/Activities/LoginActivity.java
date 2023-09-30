@@ -20,8 +20,8 @@ import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.WList.Databases.User.UserManager;
-import com.xuxiaocheng.WListClient.Client.WListClientManager;
+import com.xuxiaocheng.WList.Client.WListClientManager;
+import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WListClientAndroid.Client.PasswordManager;
 import com.xuxiaocheng.WListClientAndroid.Client.TokenManager;
 import com.xuxiaocheng.WListClientAndroid.Main;
@@ -80,13 +80,13 @@ public class LoginActivity extends AppCompatActivity {
                         PasswordManager.initialize(LoginActivity.this.getExternalFilesDir("passwords"));
                         final String initPassword = InternalServerService.getAndDeleteAdminPassword(iService);
                         if (initPassword != null)
-                            PasswordManager.registerInternalPassword(UserManager.ADMIN, initPassword);
-                        final String password = PasswordManager.getInternalPassword(UserManager.ADMIN);
+                            PasswordManager.registerInternalPassword(IdentifierNames.UserName.Admin.getIdentifier(), initPassword);
+                        final String password = PasswordManager.getInternalPassword(IdentifierNames.UserName.Admin.getIdentifier());
                         logger.log(HLogLevel.ENHANCED, "Got server password.", ParametersMap.create().add("init", initPassword != null).add("password", password));
                         Main.runOnUiThread(LoginActivity.this, () -> internalServer.setText(R.string.activity_login_loading_logging_in));
                         boolean success = password != null;
                         if (success)
-                            success = TokenManager.setToken(address, UserManager.ADMIN, password);
+                            success = TokenManager.setToken(address, IdentifierNames.UserName.Admin.getIdentifier(), password);
                         if (!success) {
                             // TODO get password from user.
                             Main.runOnUiThread(LoginActivity.this, () -> Toast.makeText(LoginActivity.this, "No password!!!", Toast.LENGTH_SHORT).show());

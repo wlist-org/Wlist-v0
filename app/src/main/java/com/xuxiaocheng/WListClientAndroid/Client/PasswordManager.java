@@ -5,7 +5,7 @@ import androidx.annotation.Nullable;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
-import com.xuxiaocheng.WListClient.Utils.YamlHelper;
+import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;

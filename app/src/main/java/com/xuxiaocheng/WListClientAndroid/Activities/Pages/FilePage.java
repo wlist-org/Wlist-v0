@@ -2,14 +2,9 @@ package com.xuxiaocheng.WListClientAndroid.Activities.Pages;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.database.Cursor;
-import android.net.Uri;
-import android.os.Environment;
-import android.provider.OpenableColumns;
 import android.text.Editable;
 import android.util.DisplayMetrics;
 import android.view.MotionEvent;
@@ -30,32 +25,26 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.xuxiaocheng.HeadLibs.AndroidSupport.AIOStream;
-import com.xuxiaocheng.HeadLibs.AndroidSupport.ARandomHelper;
-import com.xuxiaocheng.HeadLibs.AndroidSupport.AStreams;
-import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
-import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
-import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMathHelper;
-import com.xuxiaocheng.HeadLibs.Helpers.HMessageDigestHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.WList.WebDrivers.WebDriversType;
-import com.xuxiaocheng.WListClient.AndroidSupports.FileInformationGetter;
-import com.xuxiaocheng.WListClient.AndroidSupports.FileLocationSupporter;
-import com.xuxiaocheng.WListClient.Client.OperationHelpers.OperateFileHelper;
-import com.xuxiaocheng.WListClient.Client.OperationHelpers.OperateServerHelper;
-import com.xuxiaocheng.WListClient.Client.WListClient;
-import com.xuxiaocheng.WListClient.Client.WListClientInterface;
-import com.xuxiaocheng.WListClient.Client.WListClientManager;
-import com.xuxiaocheng.WListClient.Server.FailureReason;
-import com.xuxiaocheng.WListClient.Server.FileLocation;
-import com.xuxiaocheng.WListClient.Server.Options;
-import com.xuxiaocheng.WListClient.Server.SpecialDriverName;
-import com.xuxiaocheng.WListClient.Server.VisibleFileInformation;
+import com.xuxiaocheng.WList.AndroidSupports.FileInformationGetter;
+import com.xuxiaocheng.WList.AndroidSupports.FileLocationSupporter;
+import com.xuxiaocheng.WList.AndroidSupports.FilesListInformationGetter;
+import com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper;
+import com.xuxiaocheng.WList.Client.Operations.OperateServerHelper;
+import com.xuxiaocheng.WList.Client.WListClientInterface;
+import com.xuxiaocheng.WList.Client.WListClientManager;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleFilesListInformation;
+import com.xuxiaocheng.WList.Commons.IdentifierNames;
+import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WListClientAndroid.Activities.CustomViews.MainTab;
 import com.xuxiaocheng.WListClientAndroid.Activities.LoginActivity;
 import com.xuxiaocheng.WListClientAndroid.Client.TokenManager;
@@ -70,7 +59,6 @@ import com.xuxiaocheng.WListClientAndroid.databinding.PageFileOptionBinding;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileUploadBinding;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
 
 import java.io.BufferedInputStream;
@@ -82,17 +70,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Deque;
-import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -119,7 +102,7 @@ public class FilePage implements MainTab.MainTabPage {
         page.pageFileContentList.setLayoutManager(new LinearLayoutManager(this.activity));
         page.pageFileContentList.setHasFixedSize(true);
         Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() ->
-                        this.pushFileList(page.pageFileContentName.getText(), new FileLocation(SpecialDriverName.RootDriver.getIdentifier(), 0))));
+                        this.pushFileList(page.pageFileContentName.getText(), new FileLocation(IdentifierNames.SelectorProviderName.RootSelector.getIdentifier(), 0))));
         this.buildUploader();
         return page.getRoot();
     }
@@ -173,7 +156,7 @@ public class FilePage implements MainTab.MainTabPage {
 
     protected void pushFileList(@NonNull final CharSequence name, @NonNull final FileLocation location) {
         final PageFileContentBinding page = this.pageCache.getInstance();
-        final boolean isRoot = SpecialDriverName.RootDriver.getIdentifier().equals(FileLocationSupporter.driver(location));
+        final boolean isRoot = IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(FileLocationSupporter.storage(location));
         final AtomicInteger currentPage = new AtomicInteger(0);
         final AtomicLong counter = new AtomicLong(0);
         final EnhancedRecyclerViewAdapter<VisibleFileInformation, CellViewHolder> adapterWrapper = new EnhancedRecyclerViewAdapter<>() {
@@ -181,8 +164,8 @@ public class FilePage implements MainTab.MainTabPage {
             @NonNull protected CellViewHolder createViewHolder(@NonNull final ViewGroup parent) {
                 return new CellViewHolder(EnhancedRecyclerViewAdapter.buildView(FilePage.this.activity.getLayoutInflater(), R.layout.page_file_cell, page.pageFileContentList), information -> {
                    if (FileInformationGetter.isDirectory(information))
-                        FilePage.this.pushFileList(isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information),
-                                FileLocationSupporter.create(isRoot ? FileInformationGetter.name(information) : FileLocationSupporter.driver(location), FileInformationGetter.id(information)));
+                        FilePage.this.pushFileList(FileInformationGetter.name(information),
+                                FileLocationSupporter.create(isRoot ? FileInformationGetter.name(information) : FileLocationSupporter.storage(location), FileInformationGetter.id(information)));
                     else {
                         Main.runOnBackgroundThread(FilePage.this.activity, () -> { // Prevent exit.
                             // TODO: show file.
@@ -212,13 +195,13 @@ public class FilePage implements MainTab.MainTabPage {
                     FilePage.setLoading(loading);
                     adapterWrapper.addTailor(loadingTailor);
                     Main.runOnBackgroundThread(FilePage.this.activity, HExceptionWrapper.wrapRunnable(() -> {
-                        final Triad.ImmutableTriad<Long, Long, List<VisibleFileInformation>> list;
+                        final VisibleFilesListInformation list;
                         // TODO: loading progress.
                         this.noMore.set(false); // prevent retry forever when server error.
                         try (final WListClientInterface client = WListClientManager.quicklyGetClient(FilePage.this.address)) {
                             // TODO: more configurable params.
-                            list = OperateFileHelper.listFiles(client, TokenManager.getToken(FilePage.this.address), location,
-                                    Options.DirectoriesOrFiles.Both, 50, currentPage.getAndIncrement(), Options.OrderPolicy.FileName, Options.OrderDirection.ASCEND, false);
+                            list = OperateFilesHelper.listFiles(client, TokenManager.getToken(FilePage.this.address), location,
+                                    Options.FilterPolicy.Both, new LinkedHashMap<>(0), 50, currentPage.getAndIncrement());
                         }
                         if (list == null) {
                             Main.runOnUiThread(FilePage.this.activity, () -> {
@@ -227,13 +210,13 @@ public class FilePage implements MainTab.MainTabPage {
                             });
                             return;
                         }
-                        this.noMore.set(list.getC().isEmpty());
-                        counter.set(list.getA().longValue());
+                        this.noMore.set(FilesListInformationGetter.informationList(list).isEmpty());
+                        counter.set(FilesListInformationGetter.total(list));
                         Main.runOnUiThread(FilePage.this.activity, () -> {
-                            page.pageFileContentCounter.setText(String.valueOf(list.getA()));
+                            page.pageFileContentCounter.setText(String.valueOf(FilesListInformationGetter.total(list)));
                             page.pageFileContentCounter.setVisibility(View.VISIBLE);
                             page.pageFileContentCounterText.setVisibility(View.VISIBLE);
-                            adapterWrapper.addDataRange(list.getC());
+                            adapterWrapper.addDataRange(FilesListInformationGetter.informationList(list));
                         });
                     }, () -> {
                         this.onLoading.set(false);
@@ -330,8 +313,7 @@ public class FilePage implements MainTab.MainTabPage {
                     Main.showToast(this.activity, R.string.page_file_upload_root);
                     return;
                 }
-                final String[] drivers = AStreams.streamToList(Arrays.stream(WebDriversType.values()).map(WebDriversType::getIdentifier))
-                        .toArray(new String[WebDriversType.values().length]);
+                final String[] drivers = StorageTypes.getAll().keySet().toArray(new String[0]);
                 final AtomicInteger choice = new AtomicInteger(-1);
                 new AlertDialog.Builder(this.activity).setTitle(R.string.page_file_driver_add)
                         .setSingleChoiceItems(drivers, -1, (d, w) -> choice.set(w))
@@ -358,7 +340,7 @@ public class FilePage implements MainTab.MainTabPage {
                                             if (name.isEmpty() || passport.isEmpty() || password.isEmpty())
                                                 throw new IllegalStateException("Empty input."); // TODO input checker
                                             // TODO add driver. (WIP)
-                                            final String n = ARandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 32, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_");
+                                            final String n = HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 32, null);
                                             final File file = new File(this.activity.getExternalFilesDir("server"), "configs/" + n + ".yaml");
                                             HFileHelper.ensureFileExist(file.toPath(), false);
                                             try (final OutputStream stream = new BufferedOutputStream(new FileOutputStream(file))) {
@@ -421,7 +403,7 @@ public class FilePage implements MainTab.MainTabPage {
                                 HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Creating directory.",
                                         ParametersMap.create().add("address", this.address).add("location", location).add("name", name));
                                 try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address)) {
-                                    OperateFileHelper.createDirectory(client, TokenManager.getToken(this.address), location, name, Options.DuplicatePolicy.ERROR);
+                                    OperateFilesHelper.createDirectory(client, TokenManager.getToken(this.address), location, name, Options.DuplicatePolicy.ERROR);
                                 }
                                 Main.runOnUiThread(this.activity, () -> {
                                     Main.showToast(this.activity, R.string.page_file_upload_success_directory);
@@ -451,81 +433,81 @@ public class FilePage implements MainTab.MainTabPage {
         });
     }
 
-    @Override
-    public boolean onActivityResult(final int requestCode, final int resultCode, @Nullable final Intent data) {
-        if (resultCode == Activity.RESULT_OK && requestCode == "SelectFiles".hashCode() && data != null) {
-            final Collection<Uri> uris = new ArrayList<>();
-            if (data.getData() != null)
-                uris.add(data.getData());
-            else {
-                final ClipData clipData = data.getClipData();
-                for (int i = 0; i < clipData.getItemCount(); ++i)
-                    uris.add(clipData.getItemAt(i).getUri());
-            }
-            final ImageView loading = new ImageView(this.activity);
-            loading.setImageResource(R.mipmap.page_file_loading);
-            FilePage.setLoading(loading);
-            final AlertDialog dialog = new AlertDialog.Builder(this.activity)
-                    .setTitle(R.string.page_file_upload_file).setView(loading).setCancelable(false).show();
-            Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
-                final CountDownLatch latch = new CountDownLatch(uris.size());
-                for (final Uri uri: uris)
-                    Main.runOnNewBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
-                        // TODO: serialize uploading task.
-                        final String filename;
-                        final long size;
-                        try (final Cursor cursor = this.activity.getContentResolver().query(uri, new String[] {OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE}, null, null, null)) {
-                            if (cursor == null || !cursor.moveToFirst())
-                                return;
-                            filename = cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME));
-                            size = cursor.getLong(cursor.getColumnIndexOrThrow(OpenableColumns.SIZE));
-                        }
-                        final MessageDigest digester = HMessageDigestHelper.MD5.getDigester();
-                        try (final InputStream stream = new BufferedInputStream(this.activity.getContentResolver().openInputStream(uri))) {
-                            HMessageDigestHelper.updateMessageDigest(digester, stream);
-                        }
-                        final String md5 = HMessageDigestHelper.MD5.digest(digester);
-                        final LocationStackRecord record = this.locationStack.getFirst(); // .peek();
-                        HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Uploading file.",
-                                ParametersMap.create().add("address", this.address).add("location", record.location).add("uri", uri)
-                                        .add("filename", filename).add("size", size).add("md5", md5));
-                        final UnionPair<UnionPair<VisibleFileInformation, String>, FailureReason> request;
-                        try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address)) {
-                            request = OperateFileHelper.requestUploadFile(client, TokenManager.getToken(this.address), record.location, filename, size, md5, Options.DuplicatePolicy.KEEP);
-                            if (request.isFailure()) // TODO
-                                throw new RuntimeException(FailureReason.handleFailureReason(request.getE()));
-                            if (request.getT().isFailure()) {
-                                final String id = request.getT().getE();
-                                final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(WListClient.FileTransferBufferSize, WListClient.FileTransferBufferSize);
-                                try (final InputStream stream = new BufferedInputStream(this.activity.getContentResolver().openInputStream(uri))) {
-                                    int chunk = 0;
-                                    while (true) {
-                                        buffer.writeBytes(stream, WListClient.FileTransferBufferSize);
-                                        final UnionPair<VisibleFileInformation, Boolean> result = OperateFileHelper.uploadFile(client, TokenManager.getToken(this.address), id, chunk++, buffer.retain());
-                                        if (result == null || result.isSuccess() || !result.getE().booleanValue() || stream.available() == 0)
-                                            break;
-                                        buffer.clear();
-                                    }
-                                } finally {
-                                    buffer.release();
-                                }
-                            }
-                        }
-            }, latch::countDown));
-                latch.await();
-                Main.runOnUiThread(this.activity, () -> {
-                    dialog.cancel();
-                    Main.showToast(this.activity, R.string.page_file_upload_success_file);
-                    // TODO: auto add.
-                    final LocationStackRecord record = this.locationStack.getFirst(); // .peek();
-                    this.popFileList();
-                    this.pushFileList(record.name, record.location);
-                });
-            }));
-            return true;
-        }
-        return false;
-    }
+//    @Override
+//    public boolean onActivityResult(final int requestCode, final int resultCode, @Nullable final Intent data) {
+//        if (resultCode == Activity.RESULT_OK && requestCode == "SelectFiles".hashCode() && data != null) {
+//            final Collection<Uri> uris = new ArrayList<>();
+//            if (data.getData() != null)
+//                uris.add(data.getData());
+//            else {
+//                final ClipData clipData = data.getClipData();
+//                for (int i = 0; i < clipData.getItemCount(); ++i)
+//                    uris.add(clipData.getItemAt(i).getUri());
+//            }
+//            final ImageView loading = new ImageView(this.activity);
+//            loading.setImageResource(R.mipmap.page_file_loading);
+//            FilePage.setLoading(loading);
+//            final AlertDialog dialog = new AlertDialog.Builder(this.activity)
+//                    .setTitle(R.string.page_file_upload_file).setView(loading).setCancelable(false).show();
+//            Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
+//                final CountDownLatch latch = new CountDownLatch(uris.size());
+//                for (final Uri uri: uris)
+//                    Main.runOnNewBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
+//                        // TODO: serialize uploading task.
+//                        final String filename;
+//                        final long size;
+//                        try (final Cursor cursor = this.activity.getContentResolver().query(uri, new String[] {OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE}, null, null, null)) {
+//                            if (cursor == null || !cursor.moveToFirst())
+//                                return;
+//                            filename = cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME));
+//                            size = cursor.getLong(cursor.getColumnIndexOrThrow(OpenableColumns.SIZE));
+//                        }
+//                        final MessageDigest digester = HMessageDigestHelper.MD5.getDigester();
+//                        try (final InputStream stream = new BufferedInputStream(this.activity.getContentResolver().openInputStream(uri))) {
+//                            HMessageDigestHelper.updateMessageDigest(digester, stream);
+//                        }
+//                        final String md5 = HMessageDigestHelper.MD5.digest(digester);
+//                        final LocationStackRecord record = this.locationStack.getFirst(); // .peek();
+//                        HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Uploading file.",
+//                                ParametersMap.create().add("address", this.address).add("location", record.location).add("uri", uri)
+//                                        .add("filename", filename).add("size", size).add("md5", md5));
+//                        final UnionPair<UnionPair<VisibleFileInformation, String>, FailureReason> request;
+//                        try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address)) {
+//                            request = OperateFilesHelper.requestUploadFile(client, TokenManager.getToken(this.address), record.location, filename, size, md5, Options.DuplicatePolicy.KEEP);
+//                            if (request.isFailure()) // TODO
+//                                throw new RuntimeException(FailureReason.handleFailureReason(request.getE()));
+//                            if (request.getT().isFailure()) {
+//                                final String id = request.getT().getE();
+//                                final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(NetworkTransmission.FileTransferBufferSize, NetworkTransmission.FileTransferBufferSize);
+//                                try (final InputStream stream = new BufferedInputStream(this.activity.getContentResolver().openInputStream(uri))) {
+//                                    int chunk = 0;
+//                                    while (true) {
+//                                        buffer.writeBytes(stream, NetworkTransmission.FileTransferBufferSize);
+//                                        final UnionPair<VisibleFileInformation, Boolean> result = OperateFilesHelper.uploadFile(client, TokenManager.getToken(this.address), id, chunk++, buffer.retain());
+//                                        if (result == null || result.isSuccess() || !result.getE().booleanValue() || stream.available() == 0)
+//                                            break;
+//                                        buffer.clear();
+//                                    }
+//                                } finally {
+//                                    buffer.release();
+//                                }
+//                            }
+//                        }
+//            }, latch::countDown));
+//                latch.await();
+//                Main.runOnUiThread(this.activity, () -> {
+//                    dialog.cancel();
+//                    Main.showToast(this.activity, R.string.page_file_upload_success_file);
+//                    // TODO: auto add.
+//                    final LocationStackRecord record = this.locationStack.getFirst(); // .peek();
+//                    this.popFileList();
+//                    this.pushFileList(record.name, record.location);
+//                });
+//            }));
+//            return true;
+//        }
+//        return false;
+//    }
 
     @Override
     public boolean onBackPressed() {
@@ -573,7 +555,7 @@ public class FilePage implements MainTab.MainTabPage {
         public void onBind(@NonNull final VisibleFileInformation information) {
             this.itemView.setOnClickListener(v -> this.clicker.accept(information)); // TODO: select on long click.
             CellViewHolder.setFileImage(this.image, information);
-            this.name.setText(this.isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information));
+            this.name.setText(FileInformationGetter.name(information));
             this.tips.setText(FileInformationGetter.updateTimeString(information, DateTimeFormatter.ISO_DATE_TIME, "unknown").replace('T', ' '));
             this.option.setOnClickListener(v -> {
                 final PageFileOptionBinding optionBinding = PageFileOptionBinding.inflate(this.page.activity.getLayoutInflater());
@@ -586,141 +568,141 @@ public class FilePage implements MainTab.MainTabPage {
                         .setTitle(R.string.page_file_option).setView(optionBinding.getRoot())
                         .setPositiveButton(R.string.cancel, (d, w) -> {}).create();
                 final LocationStackRecord record = this.page.locationStack.getFirst(); // TODO: optimize
-                final FileLocation location = new FileLocation(FileLocationSupporter.driver(record.location), FileInformationGetter.id(information));
+                final FileLocation location = new FileLocation(FileLocationSupporter.storage(record.location), FileInformationGetter.id(information));
                 final AtomicBoolean clickable = new AtomicBoolean(true);
-                optionBinding.pageFileOptionRename.setOnClickListener(u -> {
-                    if (!clickable.compareAndSet(true, false)) return;
-                    modifier.cancel();
-                    final PageFileEditorBinding editor = PageFileEditorBinding.inflate(this.page.activity.getLayoutInflater());
-                    editor.pageFileEditor.setText(FileInformationGetter.name(information));
-                    if (editor.pageFileEditor.requestFocus()) {
-                        editor.pageFileEditor.setSelectAllOnFocus(true);
-                        editor.pageFileEditor.setSelection(Objects.requireNonNull(editor.pageFileEditor.getText()).length());
-                    }
-                    new AlertDialog.Builder(this.page.activity).setTitle(R.string.page_file_option_rename).setView(editor.getRoot())
-                            .setNegativeButton(R.string.cancel, (d, w) -> {})
-                            .setPositiveButton(R.string.confirm, (d, w) -> {
-                                final Editable editable = editor.pageFileEditor.getText();
-                                final String name = editable == null ? "" : editable.toString();
-                                if (FileInformationGetter.name(information).equals(name)) return;
-                                final ImageView loading = new ImageView(this.page.activity);
-                                loading.setImageResource(R.mipmap.page_file_loading);
-                                FilePage.setLoading(loading);
-                                final AlertDialog dialog = new AlertDialog.Builder(this.page.activity)
-                                        .setTitle(R.string.page_file_option_rename).setView(loading).setCancelable(false).show();
-                                Main.runOnBackgroundThread(this.page.activity, HExceptionWrapper.wrapRunnable(() -> {
-                                    HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Renaming.",
-                                            ParametersMap.create().add("address", this.page.address).add("location", location).add("name", name));
-                                    try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.page.address)) {
-                                        OperateFileHelper.renameFile(client, TokenManager.getToken(this.page.address), location, name, Options.DuplicatePolicy.ERROR);
-                                    }
-                                    Main.runOnUiThread(this.page.activity, () -> {
-                                        Main.showToast(this.page.activity, R.string.page_file_option_rename_success);
-                                        // TODO: auto refresh.
-                                        this.page.popFileList();
-                                        this.page.pushFileList(record.name, record.location);
-                                    });
-                                }, () -> Main.runOnUiThread(this.page.activity, dialog::cancel)));
-                            }).show();
-                });
-                optionBinding.pageFileOptionRenameIcon.setOnClickListener(u -> optionBinding.pageFileOptionRename.performClick());
-                optionBinding.pageFileOptionMove.setOnClickListener(u -> {
-                    if (!clickable.compareAndSet(true, false)) return;
-                    modifier.cancel();
-                    Main.runOnBackgroundThread(this.page.activity, () -> {
-                        // TODO: move file.
-                        throw new UnsupportedOperationException("Move file is unsupported now!");
-                    });
-//                    final EnhancedRecyclerViewAdapter<VisibleFileInformation, CellViewHolder> adapter = new EnhancedRecyclerViewAdapter<>() {
-//                        @Override
-//                        @NonNull protected CellViewHolder createViewHolder(@NonNull final ViewGroup parent) {
-//                            final CellViewHolder holder = new CellViewHolder(EnhancedRecyclerViewAdapter.buildView(CellViewHolder.this.page.activity.getLayoutInflater(), R.layout.page_file_cell, (RecyclerView) parent), information -> {
-////                                FilePage.this.pushFileList(isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information),
-////                                        FileLocationSupporter.create(isRoot ? FileInformationGetter.name(information) : FileLocationSupporter.driver(location), FileInformationGetter.id(information)));
-//                            }, isRoot, CellViewHolder.this.page);
-//                            holder.option.setVisibility(View.GONE);
-//                            return holder;
+//                optionBinding.pageFileOptionRename.setOnClickListener(u -> {
+//                    if (!clickable.compareAndSet(true, false)) return;
+//                    modifier.cancel();
+//                    final PageFileEditorBinding editor = PageFileEditorBinding.inflate(this.page.activity.getLayoutInflater());
+//                    editor.pageFileEditor.setText(FileInformationGetter.name(information));
+//                    if (editor.pageFileEditor.requestFocus()) {
+//                        editor.pageFileEditor.setSelectAllOnFocus(true);
+//                        editor.pageFileEditor.setSelection(Objects.requireNonNull(editor.pageFileEditor.getText()).length());
+//                    }
+//                    new AlertDialog.Builder(this.page.activity).setTitle(R.string.page_file_option_rename).setView(editor.getRoot())
+//                            .setNegativeButton(R.string.cancel, (d, w) -> {})
+//                            .setPositiveButton(R.string.confirm, (d, w) -> {
+//                                final Editable editable = editor.pageFileEditor.getText();
+//                                final String name = editable == null ? "" : editable.toString();
+//                                if (FileInformationGetter.name(information).equals(name)) return;
+//                                final ImageView loading = new ImageView(this.page.activity);
+//                                loading.setImageResource(R.mipmap.page_file_loading);
+//                                FilePage.setLoading(loading);
+//                                final AlertDialog dialog = new AlertDialog.Builder(this.page.activity)
+//                                        .setTitle(R.string.page_file_option_rename).setView(loading).setCancelable(false).show();
+//                                Main.runOnBackgroundThread(this.page.activity, HExceptionWrapper.wrapRunnable(() -> {
+//                                    HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Renaming.",
+//                                            ParametersMap.create().add("address", this.page.address).add("location", location).add("name", name));
+//                                    try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.page.address)) {
+//                                        OperateFilesHelper.renameFile(client, TokenManager.getToken(this.page.address), location, name, Options.DuplicatePolicy.ERROR);
+//                                    }
+//                                    Main.runOnUiThread(this.page.activity, () -> {
+//                                        Main.showToast(this.page.activity, R.string.page_file_option_rename_success);
+//                                        // TODO: auto refresh.
+//                                        this.page.popFileList();
+//                                        this.page.pushFileList(record.name, record.location);
+//                                    });
+//                                }, () -> Main.runOnUiThread(this.page.activity, dialog::cancel)));
+//                            }).show();
+//                });
+//                optionBinding.pageFileOptionRenameIcon.setOnClickListener(u -> optionBinding.pageFileOptionRename.performClick());
+//                optionBinding.pageFileOptionMove.setOnClickListener(u -> {
+//                    if (!clickable.compareAndSet(true, false)) return;
+//                    modifier.cancel();
+//                    Main.runOnBackgroundThread(this.page.activity, () -> {
+//                        // TODO: move file.
+//                        throw new UnsupportedOperationException("Move file is unsupported now!");
+//                    });
+////                    final EnhancedRecyclerViewAdapter<VisibleFileInformation, CellViewHolder> adapter = new EnhancedRecyclerViewAdapter<>() {
+////                        @Override
+////                        @NonNull protected CellViewHolder createViewHolder(@NonNull final ViewGroup parent) {
+////                            final CellViewHolder holder = new CellViewHolder(EnhancedRecyclerViewAdapter.buildView(CellViewHolder.this.page.activity.getLayoutInflater(), R.layout.page_file_cell, (RecyclerView) parent), information -> {
+//////                                FilePage.this.pushFileList(isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information),
+//////                                        FileLocationSupporter.create(isRoot ? FileInformationGetter.name(information) : FileLocationSupporter.driver(location), FileInformationGetter.id(information)));
+////                            }, isRoot, CellViewHolder.this.page);
+////                            holder.option.setVisibility(View.GONE);
+////                            return holder;
+////                        }
+////
+////                        @Override
+////                        protected void bindViewHolder(@NonNull final CellViewHolder holder, @NonNull final VisibleFileInformation information) {
+////                            holder.itemView.setOnClickListener(v -> holder.clicker.accept(information));
+////                            CellViewHolder.setFileImage(holder.image, information);
+////                            holder.name.setText(holder.isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information));
+////                            holder.tips.setText(FileInformationGetter.updateTimeString(information, DateTimeFormatter.ISO_DATE_TIME, "unknown").replace('T', ' '));
+////                            // TODO: same as 'onBind' except 'option'.
+////                        }
+////                    };
+////                    final AlertDialog.Builder chooser = new AlertDialog.Builder(this.page.activity).setTitle(R.string.page_file_option_move)
+////                            .setView()
+//                });
+//                optionBinding.pageFileOptionMoveIcon.setOnClickListener(u -> optionBinding.pageFileOptionMove.performClick());
+//                optionBinding.pageFileOptionCopy.setOnClickListener(u -> {
+//                    if (!clickable.compareAndSet(true, false)) return;
+//                    modifier.cancel();
+//                    Main.runOnBackgroundThread(this.page.activity, () -> {
+//                        // TODO: copy file.
+//                        throw new UnsupportedOperationException("Copy file is unsupported now!");
+//                    });
+//                });
+//                optionBinding.pageFileOptionCopyIcon.setOnClickListener(u -> optionBinding.pageFileOptionCopy.performClick());
+//                optionBinding.pageFileOptionDelete.setOnClickListener(u -> {
+//                    if (!clickable.compareAndSet(true, false)) return;
+//                    modifier.cancel();
+//                    final ImageView loading = new ImageView(this.page.activity);
+//                    loading.setImageResource(R.mipmap.page_file_loading);
+//                    FilePage.setLoading(loading);
+//                    final AlertDialog dialog = new AlertDialog.Builder(this.page.activity)
+//                            .setTitle(R.string.page_file_option_delete).setView(loading).setCancelable(false).show();
+//                    Main.runOnBackgroundThread(this.page.activity, HExceptionWrapper.wrapRunnable(() -> {
+//                        HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Deleting.",
+//                                ParametersMap.create().add("address", this.page.address).add("location", location));
+//                        try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.page.address)) {
+//                            OperateFilesHelper.trashFileOrDirectory(client, TokenManager.getToken(this.page.address), location);
 //                        }
-//
-//                        @Override
-//                        protected void bindViewHolder(@NonNull final CellViewHolder holder, @NonNull final VisibleFileInformation information) {
-//                            holder.itemView.setOnClickListener(v -> holder.clicker.accept(information));
-//                            CellViewHolder.setFileImage(holder.image, information);
-//                            holder.name.setText(holder.isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information));
-//                            holder.tips.setText(FileInformationGetter.updateTimeString(information, DateTimeFormatter.ISO_DATE_TIME, "unknown").replace('T', ' '));
-//                            // TODO: same as 'onBind' except 'option'.
+//                        Main.runOnUiThread(this.page.activity, () -> {
+//                            Main.showToast(this.page.activity, R.string.page_file_option_delete_success);
+//                            // TODO: auto remove
+//                            this.page.popFileList();
+//                            this.page.pushFileList(record.name, record.location);
+//                        });
+//                    }, () -> Main.runOnUiThread(this.page.activity, dialog::cancel)));
+//                });
+//                optionBinding.pageFileOptionDeleteIcon.setOnClickListener(u -> optionBinding.pageFileOptionDelete.performClick());
+//                optionBinding.pageFileOptionDownload.setOnClickListener(u -> {
+//                    if (!clickable.compareAndSet(true, false)) return;
+//                    modifier.cancel();
+//                    final ImageView loading = new ImageView(this.page.activity);
+//                    loading.setImageResource(R.mipmap.page_file_loading);
+//                    FilePage.setLoading(loading);
+//                    final AlertDialog dialog = new AlertDialog.Builder(this.page.activity)
+//                            .setTitle(R.string.page_file_option_download).setView(loading).setCancelable(false).show();
+//                    Main.runOnBackgroundThread(this.page.activity, HExceptionWrapper.wrapRunnable(() -> {
+//                        HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Downloading.",
+//                                ParametersMap.create().add("address", this.page.address).add("location", location));
+//                        try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.page.address)) {
+//                            final Pair.ImmutablePair<Long, String> id = OperateFilesHelper.requestDownloadFile(client, TokenManager.getToken(this.page.address), location, 0, Long.MAX_VALUE);
+//                            if (id == null)
+//                                throw new IllegalStateException("File not exist.");
+//                            final File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "wlist/" + FileInformationGetter.name(information));
+//                            HFileHelper.ensureFileExist(file.toPath(), false);
+//                            try (final OutputStream stream = new BufferedOutputStream(new FileOutputStream(file))) {
+//                                int chunk = 0;
+//                                while (true) {
+//                                    final ByteBuf buffer = OperateFilesHelper.downloadFile(client, TokenManager.getToken(this.page.address), id.getSecond(), chunk++);
+//                                    if (buffer == null) break;
+//                                    try (final InputStream buf = new ByteBufInputStream(buffer)) {
+//                                        AIOStream.transferTo(buf, stream);
+//                                    } finally {
+//                                        buffer.release();
+//                                    }
+//                                }
+//                            }
 //                        }
-//                    };
-//                    final AlertDialog.Builder chooser = new AlertDialog.Builder(this.page.activity).setTitle(R.string.page_file_option_move)
-//                            .setView()
-                });
-                optionBinding.pageFileOptionMoveIcon.setOnClickListener(u -> optionBinding.pageFileOptionMove.performClick());
-                optionBinding.pageFileOptionCopy.setOnClickListener(u -> {
-                    if (!clickable.compareAndSet(true, false)) return;
-                    modifier.cancel();
-                    Main.runOnBackgroundThread(this.page.activity, () -> {
-                        // TODO: copy file.
-                        throw new UnsupportedOperationException("Copy file is unsupported now!");
-                    });
-                });
-                optionBinding.pageFileOptionCopyIcon.setOnClickListener(u -> optionBinding.pageFileOptionCopy.performClick());
-                optionBinding.pageFileOptionDelete.setOnClickListener(u -> {
-                    if (!clickable.compareAndSet(true, false)) return;
-                    modifier.cancel();
-                    final ImageView loading = new ImageView(this.page.activity);
-                    loading.setImageResource(R.mipmap.page_file_loading);
-                    FilePage.setLoading(loading);
-                    final AlertDialog dialog = new AlertDialog.Builder(this.page.activity)
-                            .setTitle(R.string.page_file_option_delete).setView(loading).setCancelable(false).show();
-                    Main.runOnBackgroundThread(this.page.activity, HExceptionWrapper.wrapRunnable(() -> {
-                        HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Deleting.",
-                                ParametersMap.create().add("address", this.page.address).add("location", location));
-                        try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.page.address)) {
-                            OperateFileHelper.deleteFile(client, TokenManager.getToken(this.page.address), location);
-                        }
-                        Main.runOnUiThread(this.page.activity, () -> {
-                            Main.showToast(this.page.activity, R.string.page_file_option_delete_success);
-                            // TODO: auto remove
-                            this.page.popFileList();
-                            this.page.pushFileList(record.name, record.location);
-                        });
-                    }, () -> Main.runOnUiThread(this.page.activity, dialog::cancel)));
-                });
-                optionBinding.pageFileOptionDeleteIcon.setOnClickListener(u -> optionBinding.pageFileOptionDelete.performClick());
-                optionBinding.pageFileOptionDownload.setOnClickListener(u -> {
-                    if (!clickable.compareAndSet(true, false)) return;
-                    modifier.cancel();
-                    final ImageView loading = new ImageView(this.page.activity);
-                    loading.setImageResource(R.mipmap.page_file_loading);
-                    FilePage.setLoading(loading);
-                    final AlertDialog dialog = new AlertDialog.Builder(this.page.activity)
-                            .setTitle(R.string.page_file_option_download).setView(loading).setCancelable(false).show();
-                    Main.runOnBackgroundThread(this.page.activity, HExceptionWrapper.wrapRunnable(() -> {
-                        HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Downloading.",
-                                ParametersMap.create().add("address", this.page.address).add("location", location));
-                        try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.page.address)) {
-                            final Pair.ImmutablePair<Long, String> id = OperateFileHelper.requestDownloadFile(client, TokenManager.getToken(this.page.address), location, 0, Long.MAX_VALUE);
-                            if (id == null)
-                                throw new IllegalStateException("File not exist.");
-                            final File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "wlist/" + FileInformationGetter.name(information));
-                            HFileHelper.ensureFileExist(file.toPath(), false);
-                            try (final OutputStream stream = new BufferedOutputStream(new FileOutputStream(file))) {
-                                int chunk = 0;
-                                while (true) {
-                                    final ByteBuf buffer = OperateFileHelper.downloadFile(client, TokenManager.getToken(this.page.address), id.getSecond(), chunk++);
-                                    if (buffer == null) break;
-                                    try (final InputStream buf = new ByteBufInputStream(buffer)) {
-                                        AIOStream.transferTo(buf, stream);
-                                    } finally {
-                                        buffer.release();
-                                    }
-                                }
-                            }
-                        }
-                        Main.showToast(this.page.activity, R.string.page_file_option_download_success);
-                    }, () -> Main.runOnUiThread(this.page.activity, dialog::cancel)));
-                });
-                optionBinding.pageFileOptionDownloadIcon.setOnClickListener(u -> optionBinding.pageFileOptionDownload.performClick());
+//                        Main.showToast(this.page.activity, R.string.page_file_option_download_success);
+//                    }, () -> Main.runOnUiThread(this.page.activity, dialog::cancel)));
+//                });
+//                optionBinding.pageFileOptionDownloadIcon.setOnClickListener(u -> optionBinding.pageFileOptionDownload.performClick());
                 modifier.show();
             });
         }

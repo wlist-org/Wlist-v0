@@ -6,13 +6,9 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
-import com.xuxiaocheng.WListClient.Client.OperationHelpers.OperateServerHelper;
-import com.xuxiaocheng.WListClient.Client.WListClientInterface;
-import com.xuxiaocheng.WListClient.Client.WListClientManager;
 import com.xuxiaocheng.WListClientAndroid.Activities.CustomViews.MainTab;
 import com.xuxiaocheng.WListClientAndroid.Activities.LoginActivity;
 import com.xuxiaocheng.WListClientAndroid.Activities.MainActivity;
-import com.xuxiaocheng.WListClientAndroid.Client.TokenManager;
 import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageUserContentBinding;
 
@@ -45,10 +41,10 @@ public class UserPage implements MainTab.MainTabPage {
             if (!clickable.compareAndSet(true, false))
                 return;
             Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
-                final boolean success;
-                try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address)) {
-                    success = OperateServerHelper.closeServer(client, TokenManager.getToken(this.address));
-                }
+//                final boolean success;
+//                try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address)) {
+//                    success = OperateServerHelper.closeServer(client, TokenManager.getToken(this.address));
+//                }
 //                if (success)
 //                    Main.runOnUiThread(this.activity, this.activity::close);
             }, () -> clickable.set(true)));

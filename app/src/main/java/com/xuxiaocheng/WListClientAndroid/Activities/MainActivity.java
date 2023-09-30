@@ -13,7 +13,7 @@ import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.WListClient.Client.WListClientManager;
+import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WListClientAndroid.Activities.CustomViews.MainTab;
 import com.xuxiaocheng.WListClientAndroid.Activities.Pages.FilePage;
 import com.xuxiaocheng.WListClientAndroid.Activities.Pages.UserPage;

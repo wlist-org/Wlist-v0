@@ -7,17 +7,20 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-/**
- * Instrumented test, which will execute on an Android device.
- *
- * @see <a href="http://d.android.com/tools/testing">Testing documentation</a>
- */
+import java.util.ResourceBundle;
+
 @RunWith(AndroidJUnit4.class)
 public class ExampleInstrumentedTest {
     @Test
     public void useAppContext() {
         // Context of the app under test.
         final Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        Assert.assertEquals("com.xuxiaocheng.WListClientAndroid", appContext.getPackageName());
+        Assert.assertEquals("com.xuxiaocheng.wlist", appContext.getPackageName());
+    }
+
+    @Test
+    public void serverI18n() {
+        final ResourceBundle bundle = ResourceBundle.getBundle("lang/wlist");
+        bundle.getString("client.network.closed_client");
     }
 }

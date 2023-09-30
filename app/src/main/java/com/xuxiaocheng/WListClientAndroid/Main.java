@@ -12,7 +12,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
-import com.xuxiaocheng.WListClient.Utils.MiscellaneousUtil;
+import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.EventExecutorGroup;

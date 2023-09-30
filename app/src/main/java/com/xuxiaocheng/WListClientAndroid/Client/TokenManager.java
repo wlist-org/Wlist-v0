@@ -6,10 +6,10 @@ import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HMultiInitializers;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.WListClient.Client.Exceptions.WrongStateException;
-import com.xuxiaocheng.WListClient.Client.OperationHelpers.OperateUserHelper;
-import com.xuxiaocheng.WListClient.Client.WListClientInterface;
-import com.xuxiaocheng.WListClient.Client.WListClientManager;
+import com.xuxiaocheng.WList.Client.Exceptions.WrongStateException;
+import com.xuxiaocheng.WList.Client.Operations.OperateSelfHelper;
+import com.xuxiaocheng.WList.Client.WListClientInterface;
+import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
 
@@ -32,7 +32,7 @@ public final class TokenManager {
     public static boolean setToken(@NonNull final InetSocketAddress address, @NonNull final String passport, @NonNull final String password) throws InterruptedException, IOException, WrongStateException {
         final String token;
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
-            token = OperateUserHelper.login(client, passport, password);
+            token = OperateSelfHelper.login(client, passport, password);
         }
         TokenManager.tokens.reinitializeNullable(address, token);
         if (token == null) return false;
