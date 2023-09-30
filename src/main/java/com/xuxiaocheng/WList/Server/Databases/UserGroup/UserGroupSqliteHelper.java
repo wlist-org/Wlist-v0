@@ -182,8 +182,8 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
             if (result.getBoolean("permissions_" + permission.name()))
                 permissions.add(permission);
         return new UserGroupInformation(result.getLong("group_id"), result.getString("name"), permissions,
-                ZonedDateTime.of(result.getTimestamp("create_time").toLocalDateTime(), ZoneOffset.UTC),
-                ZonedDateTime.of(result.getTimestamp("update_time").toLocalDateTime(), ZoneOffset.UTC));
+                SqlHelper.toZonedDataTime(result.getTimestamp("create_time")),
+                SqlHelper.toZonedDataTime(result.getTimestamp("update_time")));
     }
 
     public static @NotNull @UnmodifiableView List<@NotNull UserGroupInformation> allGroups(final @NotNull ResultSet result) throws SQLException {

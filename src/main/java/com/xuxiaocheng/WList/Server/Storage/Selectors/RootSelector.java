@@ -1,6 +1,6 @@
 package com.xuxiaocheng.WList.Server.Storage.Selectors;
 
-import com.xuxiaocheng.HeadLibs.AndroidSupport.AStreams;
+import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
@@ -80,7 +80,7 @@ public final class RootSelector {
                     return 0;
                 });
                 StorageManager.getAllProviders().values().forEach(p -> all.add(p.getConfiguration()));
-                final List<FileInformation> list = AStreams.streamToList(all.stream().skip(position).limit(limit).map(RootSelector::getProviderInformation));
+                final List<FileInformation> list = AndroidSupporter.streamToList(all.stream().skip(position).limit(limit).map(RootSelector::getProviderInformation));
                 consumer.accept(UnionPair.ok(UnionPair.ok(new FilesListInformation(StorageManager.getProvidersCount(), StorageManager.getProvidersCount(), list))));
                 return;
             }

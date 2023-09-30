@@ -2,6 +2,7 @@ package com.xuxiaocheng.WList.Server.Storage.Helpers;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
+import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -413,7 +414,7 @@ public final class HttpNetworkHelper {
                 if (current < 0)
                     break;
                 if (current == 0)
-                    Thread.onSpinWait();
+                    AndroidSupporter.onSpinWait();
                 read += current;
             }
             return buffer.retain();

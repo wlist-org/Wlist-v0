@@ -6,6 +6,9 @@
         <element id="file-copy" path="$PROJECT_DIR$/META-INF/MANIFEST.MF" />
       </element>
       <element id="module-output" name="WList.main" />
+      <element id="directory" name="lang">
+        <element id="dir-copy" path="$PROJECT_DIR$/src/main/resources/lang" />
+      </element>
     </root>
   </artifact>
 </component>

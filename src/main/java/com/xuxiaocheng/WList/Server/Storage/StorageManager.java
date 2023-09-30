@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Server.Storage;
 
+import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
@@ -51,11 +52,11 @@ public final class StorageManager {
     private static final @NotNull HInitializer<File> ConfigurationsDirectory = new HInitializer<>("ProviderConfigurationsDirectory");
     private static final @NotNull HInitializer<File> CacheDirectory = new HInitializer<>("ProviderCacheDirectory");
 
-    private static final @NotNull Path DirectoryRootPathCache = Path.of("").toAbsolutePath();
+    private static final @NotNull Path DirectoryRootPathCache = new File("").getAbsoluteFile().toPath();
     public static @Nullable @Nls String providerNameInvalidReason(final @NotNull String name) {
-        if (name.isBlank())
+        if (AndroidSupporter.isBlank(name))
             return I18NUtil.get("server.provider.invalid_name.blank");
-        if (!StorageManager.DirectoryRootPathCache.equals(Path.of(name).toAbsolutePath().getParent()))
+        if (!StorageManager.DirectoryRootPathCache.equals(new File(name).getAbsoluteFile().getParentFile().toPath()))
             return I18NUtil.get("server.provider.invalid_name.characters");
         if (IdentifierNames.SelectorProviderName.contains(name))
             return I18NUtil.get("server.provider.invalid_name.selector");

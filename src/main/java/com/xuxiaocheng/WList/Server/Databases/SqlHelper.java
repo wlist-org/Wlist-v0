@@ -1,10 +1,13 @@
 package com.xuxiaocheng.WList.Server.Databases;
 
+import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.charset.Charset;
+import java.sql.Timestamp;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Locale;
 
@@ -25,5 +28,9 @@ public final class SqlHelper {
     @Contract(pure = true)
     public static @NotNull String likeName(final @NotNull String name) {
         return '%' + name.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + '%';
+    }
+
+    public static @NotNull ZonedDateTime toZonedDataTime(final @NotNull Timestamp timestamp) {
+        return ZonedDateTime.of(AndroidSupporter.toLocalDateTime(timestamp), ZoneOffset.UTC);
     }
 }

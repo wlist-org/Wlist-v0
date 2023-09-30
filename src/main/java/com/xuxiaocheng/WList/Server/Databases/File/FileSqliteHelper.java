@@ -180,8 +180,8 @@ public class FileSqliteHelper implements FileSqlInterface {
         final Timestamp updateTime = result.getTimestamp("update_time");
         final String others = result.getString("others");
         return new FileInformation(FileSqliteHelper.getRealId(doubleId), FileSqliteHelper.getRealId(parentId), name, directory, size,
-                createTime == null ? null : ZonedDateTime.of(createTime.toLocalDateTime(), ZoneOffset.UTC),
-                updateTime == null ? null : ZonedDateTime.of(updateTime.toLocalDateTime(), ZoneOffset.UTC),
+                createTime == null ? null : SqlHelper.toZonedDataTime(createTime),
+                updateTime == null ? null : SqlHelper.toZonedDataTime(updateTime),
                 others);
     }
 

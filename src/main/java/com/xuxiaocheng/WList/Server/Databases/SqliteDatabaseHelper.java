@@ -50,7 +50,7 @@ public class SqliteDatabaseHelper implements SqlDatabaseInterface {
         poolConfig.setJmxEnabled(AndroidSupporter.jmxEnable); // default: true
         poolConfig.setTestOnBorrow(true);
         return new SqliteDatabaseHelper(poolConfig, new SqliteDatabaseHelper.PooledDatabaseConfig(database,
-                SQLiteConfig.JournalMode.PERSIST, Connection.TRANSACTION_SERIALIZABLE));
+                SQLiteConfig.JournalMode.WAL, Connection.TRANSACTION_SERIALIZABLE));
     }
 
     public record PooledDatabaseConfig(@NotNull File path, SQLiteConfig.@NotNull JournalMode journalMode, int transactionIsolationLevel) implements SqlDatabaseManager.PooledDatabaseIConfiguration {

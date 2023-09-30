@@ -145,9 +145,9 @@ public class UserSqliteHelper implements UserSqlInterface {
             return null;
         return new UserInformation(result.getLong("id"), result.getString("username"),
                 result.getString("password"), group,
-                ZonedDateTime.of(result.getTimestamp("ct").toLocalDateTime(), ZoneOffset.UTC),
-                ZonedDateTime.of(result.getTimestamp("ut").toLocalDateTime(), ZoneOffset.UTC),
-                ZonedDateTime.of(result.getTimestamp("modify_time").toLocalDateTime(), ZoneOffset.UTC));
+                SqlHelper.toZonedDataTime(result.getTimestamp("ct")),
+                SqlHelper.toZonedDataTime(result.getTimestamp("ut")),
+                SqlHelper.toZonedDataTime(result.getTimestamp("modify_time")));
     }
 
     public static @NotNull @UnmodifiableView List<@NotNull UserInformation> allUsers(final @NotNull ResultSet result) throws SQLException {

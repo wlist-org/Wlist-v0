@@ -164,7 +164,8 @@ public final class UploadIdHelper {
                         consumer.accept(UnionPair.fail(p.getE()));
                         return;
                     }
-                    if (p.getT().isEmpty()) {
+                    //noinspection SimplifyOptionalCallChains
+                    if (!p.getT().isPresent()) { // AndroidSupporter
                         consumer.accept(UploadIdHelper.FinishFailure);
                         return;
                     }

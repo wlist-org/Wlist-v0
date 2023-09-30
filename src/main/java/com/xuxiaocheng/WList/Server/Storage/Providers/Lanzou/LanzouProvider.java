@@ -69,7 +69,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -117,8 +116,15 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
             page.<HtmlInput>getElementByName("password").setValue(configuration.getPassword());
             final HtmlPage res = page.getHtmlElementById("s3").click();
             final String result = res.asNormalizedText(); // ((DomNode) res.getByXPath("//p").get(0)).getVisibleText()
-            final Optional<String> message = Arrays.stream(result.split("\n")).dropWhile(Predicate.not("\u63D0\u793A\u4FE1\u606F"::equals)).skip(1).findFirst();
-            if (message.isEmpty() || !message.get().contains("\u767B\u5F55\u6210\u529F"))
+            boolean flag = true;
+            for (final Iterator<String> iterator = Arrays.stream(result.split("\n")).iterator(); iterator.hasNext();) {
+                if ("\u63D0\u793A\u4FE1\u606F".equals(iterator.next())) {
+                    if (iterator.hasNext() && iterator.next().contains("\u767B\u5F55\u6210\u529F"))
+                        flag = false;
+                    break;
+                }
+            }
+            if (flag)
                 throw new IllegalParametersException("Failed to login.", ParametersMap.create().add("configuration", configuration).add("page", result));
             cookies = client.getCookies(LanzouProvider.CookieUrl);
         }
