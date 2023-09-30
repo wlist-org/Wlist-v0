@@ -6,7 +6,9 @@ import com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou.LanzouRecycler;
 import com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou.LanzouSharer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -19,6 +21,10 @@ public final class StorageTypes<C extends StorageConfiguration> {
 
     public static @Nullable StorageTypes<?> get(final @Nullable String identifier) {
         return StorageTypes.providers.get(identifier);
+    }
+
+    public static @NotNull @Unmodifiable Map<@NotNull String, @NotNull StorageTypes<?>> getAll() {
+        return Collections.unmodifiableMap(StorageTypes.providers);
     }
 
     private final @NotNull String identifier;

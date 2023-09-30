@@ -28,8 +28,7 @@ import java.util.stream.Collectors;
 
 public record ServerConfiguration(int port, int maxServerBacklog,
                                   long tokenExpireTime, long idIdleExpireTime,
-                                  int maxLimitPerPage, int forwardDownloadCacheCount,
-                                  boolean allowDropIndexAfterUninitializeProvider,
+                                  int maxLimitPerPage, boolean allowDropIndexAfterUninitializeProvider,
                                   @NotNull Map<@NotNull String, @NotNull StorageTypes<?>> providers) {
     public static final @NotNull HInitializer<File> Location = new HInitializer<>("ServerConfigurationLocation");
     private static final @NotNull HInitializer<ServerConfiguration> instance = new HInitializer<>("ServerConfiguration");
@@ -64,8 +63,6 @@ public record ServerConfiguration(int port, int maxServerBacklog,
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "id_idle_expire_time", BigInteger.ONE, BigInteger.valueOf(Long.MAX_VALUE))).longValue(),
             YamlHelper.getConfig(config, "max_limit_per_page", 500,
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "max_limit_per_page", BigInteger.ONE, BigInteger.valueOf(Integer.MAX_VALUE))).intValue(),
-            YamlHelper.getConfig(config, "forward_download_cache_count", 3,
-                o -> YamlHelper.transferIntegerFromStr(o, errors, "forward_download_cache_count", BigInteger.ZERO, BigInteger.valueOf(Integer.MAX_VALUE))).intValue(),
             YamlHelper.getConfig(config, "allow_drop_index_after_uninitialize_provider", true,
                 o -> YamlHelper.transferBooleanFromStr(o, errors, "allow_drop_index_after_uninitialize_provider")).booleanValue(),
             YamlHelper.getConfig(config, "providers", LinkedHashMap::new,
@@ -101,7 +98,6 @@ public record ServerConfiguration(int port, int maxServerBacklog,
         config.put("token_expire_time", configuration.tokenExpireTime);
         config.put("id_idle_expire_time", configuration.idIdleExpireTime);
         config.put("max_limit_per_page", configuration.maxLimitPerPage);
-        config.put("forward_download_cache_count", configuration.forwardDownloadCacheCount);
         config.put("allow_drop_index_after_uninitialize_provider", configuration.allowDropIndexAfterUninitializeProvider);
         config.put("providers", configuration.providers.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, t -> t.getValue().getIdentifier())));
         YamlHelper.dumpYaml(config, stream);
