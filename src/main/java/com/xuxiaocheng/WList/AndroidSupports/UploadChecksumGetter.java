@@ -7,15 +7,19 @@ import org.jetbrains.annotations.NotNull;
  * @see UploadChecksum
  */
 public final class UploadChecksumGetter {
-    public long start(final @NotNull UploadChecksum checksum) {
+    private UploadChecksumGetter() {
+        super();
+    }
+
+    public static long start(final @NotNull UploadChecksum checksum) {
         return checksum.start();
     }
 
-    public long end(final @NotNull UploadChecksum checksum) {
+    public static long end(final @NotNull UploadChecksum checksum) {
         return checksum.end();
     }
 
-    public @NotNull String algorithm(final @NotNull UploadChecksum checksum) {
+    public static @NotNull String algorithm(final @NotNull UploadChecksum checksum) {
         return checksum.algorithm();
     }
 }

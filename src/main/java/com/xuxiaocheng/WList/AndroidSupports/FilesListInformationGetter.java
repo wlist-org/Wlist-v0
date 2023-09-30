@@ -11,15 +11,19 @@ import java.util.List;
  * @see VisibleFilesListInformation
  */
 public final class FilesListInformationGetter {
-    public long total(final @NotNull VisibleFilesListInformation information) {
+    private FilesListInformationGetter() {
+        super();
+    }
+
+    public static long total(final @NotNull VisibleFilesListInformation information) {
         return information.total();
     }
 
-    public long filtered(final @NotNull VisibleFilesListInformation information) {
+    public static long filtered(final @NotNull VisibleFilesListInformation information) {
         return information.filtered();
     }
 
-    public @NotNull @Unmodifiable List<@NotNull VisibleFileInformation> informationList(final @NotNull VisibleFilesListInformation information) {
+    public static @NotNull @Unmodifiable List<@NotNull VisibleFileInformation> informationList(final @NotNull VisibleFilesListInformation information) {
         return information.informationList();
     }
 }

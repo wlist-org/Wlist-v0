@@ -14,31 +14,35 @@ import java.util.Map;
  * @see ServerConfiguration
  */
 public final class ServerConfigurationSupporter {
-    public int port(final @NotNull ServerConfiguration configuration) {
+    private ServerConfigurationSupporter() {
+        super();
+    }
+
+    public static int port(final @NotNull ServerConfiguration configuration) {
         return configuration.port();
     }
 
-    public int maxServerBacklog(final @NotNull ServerConfiguration configuration) {
+    public static int maxServerBacklog(final @NotNull ServerConfiguration configuration) {
         return configuration.maxLimitPerPage();
     }
 
-    public long tokenExpireTime(final @NotNull ServerConfiguration configuration) {
+    public static long tokenExpireTime(final @NotNull ServerConfiguration configuration) {
         return configuration.tokenExpireTime();
     }
 
-    public long idIdleExpireTime(final @NotNull ServerConfiguration configuration) {
+    public static long idIdleExpireTime(final @NotNull ServerConfiguration configuration) {
         return configuration.idIdleExpireTime();
     }
 
-    public int maxLimitPerPage(final @NotNull ServerConfiguration configuration) {
+    public static int maxLimitPerPage(final @NotNull ServerConfiguration configuration) {
         return configuration.maxLimitPerPage();
     }
 
-    public boolean allowDropIndexAfterUninitializeProvider(final @NotNull ServerConfiguration configuration) {
+    public static boolean allowDropIndexAfterUninitializeProvider(final @NotNull ServerConfiguration configuration) {
         return configuration.allowDropIndexAfterUninitializeProvider();
     }
 
-    public @NotNull Map<@NotNull String, @NotNull StorageTypes<?>> providers(final @NotNull ServerConfiguration configuration) {
+    public static @NotNull Map<@NotNull String, @NotNull StorageTypes<?>> providers(final @NotNull ServerConfiguration configuration) {
         return configuration.providers();
     }
 

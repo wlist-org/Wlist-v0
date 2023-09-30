@@ -9,15 +9,19 @@ import org.jetbrains.annotations.NotNull;
  * @see VisibleFailureReason
  */
 public final class FailureReasonGetter {
-    public @NotNull FailureKind kind(final @NotNull VisibleFailureReason reason) {
+    private FailureReasonGetter() {
+        super();
+    }
+
+    public static @NotNull FailureKind kind(final @NotNull VisibleFailureReason reason) {
         return reason.kind();
     }
 
-    public @NotNull FileLocation location(final @NotNull VisibleFailureReason reason) {
+    public static @NotNull FileLocation location(final @NotNull VisibleFailureReason reason) {
         return reason.location();
     }
 
-    public @NotNull String message(final @NotNull VisibleFailureReason reason) {
+    public static @NotNull String message(final @NotNull VisibleFailureReason reason) {
         return reason.message();
     }
 }

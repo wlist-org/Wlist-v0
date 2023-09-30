@@ -12,11 +12,15 @@ import java.util.List;
  * @see UploadConfirm
  */
 public final class UploadConfirmGetter {
-    public @NotNull @Unmodifiable List<@NotNull UploadChecksum> checksums(final @NotNull UploadConfirm confirm) {
+    private UploadConfirmGetter() {
+        super();
+    }
+
+    public static @NotNull @Unmodifiable List<@NotNull UploadChecksum> checksums(final @NotNull UploadConfirm confirm) {
         return confirm.checksums();
     }
 
-    public @NotNull String id(final @NotNull UploadConfirm confirm) {
+    public static @NotNull String id(final @NotNull UploadConfirm confirm) {
         return confirm.id();
     }
 
@@ -24,7 +28,11 @@ public final class UploadConfirmGetter {
      * @see com.xuxiaocheng.WList.Commons.Beans.UploadConfirm.UploadInformation
      */
     public static final class UploadInformationGetter {
-        public @NotNull List<Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull Long>> parallel(final UploadConfirm.@NotNull UploadInformation information) {
+        private UploadInformationGetter() {
+            super();
+        }
+
+        public static @NotNull List<Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull Long>> parallel(final UploadConfirm.@NotNull UploadInformation information) {
             return information.parallel();
         }
     }

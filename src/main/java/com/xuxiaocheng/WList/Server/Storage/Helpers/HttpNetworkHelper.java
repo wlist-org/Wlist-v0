@@ -63,7 +63,7 @@ public final class HttpNetworkHelper {
     public static final @NotNull EventExecutorGroup CountDownExecutors = new DefaultEventExecutorGroup(2, new DefaultThreadFactory("CountDownExecutors"));
     @SuppressWarnings("SpellCheckingInspection")
     public static final @NotNull String DefaultWebAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36 Edg/117.0.2045.41";
-    public static final @NotNull String DefaultAgent = "WList/0.3.0";
+    public static final @NotNull String DefaultAgent = "WList/0.3.1";
 
     private static final @NotNull Dispatcher Dispatcher = new Dispatcher(WListServer.IOExecutors);
     private static final @NotNull @Unmodifiable Set<@NotNull String> PrivateFormNames = Set.of("password", "pwd", "passwd", "pw");
