@@ -51,22 +51,7 @@ public class LoginActivity extends AppCompatActivity {
             this.bindService(serverIntent, new ServiceConnection() {
                 @Override
                 public void onServiceConnected(final ComponentName name, final @NotNull IBinder iService) {
-                    final AtomicBoolean finishActivity = new AtomicBoolean(true);
                     Main.runOnBackgroundThread(LoginActivity.this, HExceptionWrapper.wrapRunnable(() -> {
-                        logger.log(HLogLevel.INFO, "Waiting for server start completely...");
-                        if (LoginActivity.internalServerAddress.isInitialized() && InternalServerBinder.getMainStage(iService) > 1) {
-                            Main.runOnNewBackgroundThread(LoginActivity.this, HExceptionWrapper.wrapRunnable(() -> {
-                                LoginActivity.this.unbindService(this);
-                                synchronized (LoginActivity.internalServerAddress) {
-                                    while (LoginActivity.internalServerAddress.isInitialized())
-                                        LoginActivity.internalServerAddress.wait();
-                                }
-                                LoginActivity.this.startService(serverIntent);
-                                LoginActivity.this.bindService(serverIntent, this, Context.BIND_AUTO_CREATE);
-                            }));
-                            finishActivity.set(false);
-                            return;
-                        }
                         final InetSocketAddress address = InternalServerBinder.getAddress(iService);
                         logger.log(HLogLevel.INFO, "Connecting to service: ", address);
                         Main.runOnUiThread(LoginActivity.this, () -> internalServer.setText(R.string.activity_login_loading_connecting));
@@ -102,14 +87,10 @@ public class LoginActivity extends AppCompatActivity {
                 @Override
                 public void onServiceDisconnected(final ComponentName name) {
                     Main.runOnBackgroundThread(LoginActivity.this, () -> {
-                        final InetSocketAddress address = LoginActivity.internalServerAddress.getInstanceNullable();
+                        final InetSocketAddress address = LoginActivity.internalServerAddress.uninitializeNullable();
                         if (address != null) {
                             logger.log(HLogLevel.INFO, "Disconnecting to service: ", address);
                             WListClientManager.quicklyUninitialize(address);
-                        }
-                        synchronized (LoginActivity.internalServerAddress) {
-                            LoginActivity.internalServerAddress.uninitialize();
-                            LoginActivity.internalServerAddress.notifyAll();
                         }
                     });
                 }

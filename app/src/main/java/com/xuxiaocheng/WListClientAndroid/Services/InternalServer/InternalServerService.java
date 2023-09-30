@@ -5,11 +5,12 @@ import android.content.Intent;
 import android.os.IBinder;
 import android.os.Process;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
-import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.WList;
+import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
 import org.jetbrains.annotations.NotNull;
 
@@ -18,6 +19,8 @@ public final class InternalServerService extends Service {
     private final @NotNull Thread ServerMainThread = new Thread(() -> {
         try {
             InternalServerHooker.hookBefore();
+            if (Thread.interrupted())
+                return;
             WList.main("-path:" + this.getExternalFilesDir("server"));
         } finally {
             this.stopSelf();
@@ -42,21 +45,17 @@ public final class InternalServerService extends Service {
     public void onDestroy() {
         super.onDestroy();
         HLogManager.getInstance("DefaultLogger").log(HLogLevel.FINE, "Internal WList Server is stopping.");
-        InternalServerHooker.hookFinish();
-        final int stage = WList.getMainStageAPI();
-        switch (stage) {
-            case 0 -> this.ServerMainThread.interrupt();
-            case 1 -> WListServer.getInstance().stop();
-            default -> {}
-        }
-        if (stage > 0)
-            try {
-                WListServer.getInstance().awaitStop();
-            } catch (final InterruptedException exception) {
-                HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
+        Main.runOnBackgroundThread(null, HExceptionWrapper.wrapRunnable(() -> {
+            InternalServerHooker.hookFinish();
+            switch (WList.getMainStageAPI()) {
+                case 0 -> this.ServerMainThread.interrupt();
+                case 1 -> WListServer.getInstance().stop();
+                default -> {}
             }
-        //noinspection CallToSystemExit
-        System.exit(0); // Require JVM exit to reboot WList class.
+            this.ServerMainThread.join();
+            //noinspection CallToSystemExit
+            System.exit(0); // Require JVM exit to reboot WList class.
+        }));
     }
 
     @Override

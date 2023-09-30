@@ -219,11 +219,11 @@ public class FilePage implements MainTab.MainTabPage {
                             page.pageFileContentCounterText.setVisibility(View.VISIBLE);
                             adapterWrapper.addDataRange(FilesListInformationGetter.informationList(list));
                         });
-                    }, () -> {
+                    }, e -> {
                         this.onLoading.set(false);
                         Main.runOnUiThread(FilePage.this.activity, () -> {
                             loading.clearAnimation();
-                            if (this.noMore.get()) {
+                            if (this.noMore.get() || e != null) {
                                 adapterWrapper.setTailor(0, EnhancedRecyclerViewAdapter.buildView(FilePage.this.activity.getLayoutInflater(), R.layout.page_file_tailor_no_more, page.pageFileContentList));
                                 if (page.pageFileContentList.getAdapter() == adapterWrapper) // Confuse: Why must call 'setAdapter' again?
                                     page.pageFileContentList.setAdapter(adapterWrapper);
@@ -233,7 +233,7 @@ public class FilePage implements MainTab.MainTabPage {
                                     this.onScrollStateChanged(recyclerView, newState);
                             }
                         });
-                    }));
+                    }, false));
                 }
             }
         };

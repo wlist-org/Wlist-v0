@@ -35,7 +35,7 @@ public class MainActivity extends AppCompatActivity {
         Main.runOnUiThread(activity, () -> activity.startActivity(intent));
     }
 
-    @Nullable protected InetSocketAddress extraAddress() {
+    protected @Nullable InetSocketAddress extraAddress() {
         final Intent intent = this.getIntent();
         final String host = intent.getStringExtra("host");
         final int port = intent.getIntExtra("port", -1);
@@ -45,8 +45,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     protected final @NotNull AtomicReference<MainTab.TabChoice> minTabChoice = new AtomicReference<>();
-    @NotNull
-    protected final HInitializer<InetSocketAddress> address = new HInitializer<>("MainActivityAddress");
+    protected final @NotNull HInitializer<InetSocketAddress> address = new HInitializer<>("MainActivityAddress");
     protected final @NotNull Map<MainTab.TabChoice, MainTab.MainTabPage> pages = new EnumMap<>(MainTab.TabChoice.class);
 
     @Override
@@ -109,7 +108,7 @@ public class MainActivity extends AppCompatActivity {
 //        });
     }
 
-    @Nullable protected ZonedDateTime lastBackPressedTime;
+    protected @Nullable ZonedDateTime lastBackPressedTime;
     @Override
     public void onBackPressed() {
         final MainTab.TabChoice choice = this.minTabChoice.get();

@@ -37,6 +37,7 @@ public final class TokenManager {
         }
         TokenManager.tokens.reinitializeNullable(address, token);
         if (token == null) return false;
+        // TODO
         final String payload = token.substring(0, token.indexOf('.'));
         final long exp = JSON.parseObject(Base64.getDecoder().decode(payload.getBytes(StandardCharsets.UTF_8))).getLongValue("exp");
         final Duration duration = Duration.between(ZonedDateTime.now(), ZonedDateTime.ofInstant(Instant.ofEpochSecond(exp), ZoneOffset.UTC).minusMinutes(3));
