@@ -34,7 +34,7 @@
 		<activity android:name=".Activities.MainActivity" />
 
 		<service
-			android:name=".Services.InternalServerService"
+			android:name=".Services.InternalServer.InternalServerService"
 			android:enabled="true"
 			android:process=":server" />
 

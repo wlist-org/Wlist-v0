@@ -24,7 +24,8 @@ import com.xuxiaocheng.WListClientAndroid.Client.PasswordManager;
 import com.xuxiaocheng.WListClientAndroid.Client.TokenManager;
 import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.R;
-import com.xuxiaocheng.WListClientAndroid.Services.InternalServerService;
+import com.xuxiaocheng.WListClientAndroid.Services.InternalServer.InternalServerBinder;
+import com.xuxiaocheng.WListClientAndroid.Services.InternalServer.InternalServerService;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -57,7 +58,7 @@ public class LoginActivity extends AppCompatActivity {
                     final AtomicBoolean finishActivity = new AtomicBoolean(true);
                     Main.runOnBackgroundThread(LoginActivity.this, HExceptionWrapper.wrapRunnable(() -> {
                         logger.log(HLogLevel.INFO, "Waiting for server start completely...");
-                        if (LoginActivity.internalServerAddress.isInitialized() && InternalServerService.getMainStage(iService) > 1) {
+                        if (LoginActivity.internalServerAddress.isInitialized() && InternalServerBinder.getMainStage(iService) > 1) {
                             Main.runOnNewBackgroundThread(LoginActivity.this, HExceptionWrapper.wrapRunnable(() -> {
                                 LoginActivity.this.unbindService(this);
                                 synchronized (LoginActivity.internalServerAddress) {
@@ -70,7 +71,7 @@ public class LoginActivity extends AppCompatActivity {
                             finishActivity.set(false);
                             return;
                         }
-                        final InetSocketAddress address = InternalServerService.getAddress(iService);
+                        final InetSocketAddress address = InternalServerBinder.getAddress(iService);
                         logger.log(HLogLevel.INFO, "Connecting to service: ", address);
                         Main.runOnUiThread(LoginActivity.this, () -> internalServer.setText(R.string.activity_login_loading_connecting));
                         assert !LoginActivity.internalServerAddress.isInitialized() || LoginActivity.internalServerAddress.getInstance().equals(address);
@@ -78,7 +79,7 @@ public class LoginActivity extends AppCompatActivity {
                         WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
                         logger.log(HLogLevel.LESS, "Clients initialized.");
                         PasswordManager.initialize(LoginActivity.this.getExternalFilesDir("passwords"));
-                        final String initPassword = InternalServerService.getAndDeleteAdminPassword(iService);
+                        final String initPassword = InternalServerBinder.getAndDeleteAdminPassword(iService);
                         if (initPassword != null)
                             PasswordManager.registerInternalPassword(IdentifierNames.UserName.Admin.getIdentifier(), initPassword);
                         final String password = PasswordManager.getInternalPassword(IdentifierNames.UserName.Admin.getIdentifier());
