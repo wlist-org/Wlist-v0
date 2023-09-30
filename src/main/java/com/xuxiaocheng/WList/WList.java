@@ -28,42 +28,27 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class WList {
     private WList() {
         super();
     }
 
-    private static final @NotNull AtomicInteger mainStageAPI = new AtomicInteger(-1);
-    private static void setMainStageAPI(final int stage) {
-        synchronized (WList.mainStageAPI) {
-            WList.mainStageAPI.set(stage);
-            WList.mainStageAPI.notifyAll();
+    private static final @NotNull AtomicBoolean isStarting = new AtomicBoolean(true);
+    private static void setStarted() {
+        synchronized (WList.isStarting) {
+            WList.isStarting.set(false);
+            WList.isStarting.notifyAll();
         }
     }
-    public static int getMainStageAPI() {
-        return WList.mainStageAPI.get();
-    }
-    public static boolean waitMainStageAPI(final int stage, final boolean mayNotStart) throws InterruptedException {
-        if (stage < -1 || 3 < stage)
-            throw new IllegalArgumentException("Illegal target stage." + ParametersMap.create().add("stage", stage));
-        int current = WList.mainStageAPI.get();
-        if (current == stage)
-            return true;
-        if (current == -1 && mayNotStart)
-            return false;
-        synchronized (WList.mainStageAPI) {
-            while (current != stage) {
-                if (current == 3)
-                    break;
-                WList.mainStageAPI.wait();
-                current = WList.mainStageAPI.get();
-            }
+    public static void waitStarted() throws InterruptedException {
+        if (!WList.isStarting.get())
+            return;
+        synchronized (WList.isStarting) {
+            while (WList.isStarting.get())
+                WList.isStarting.wait();
         }
-        if (current == 3 && stage == 3)
-            return true;
-        return current != 3;
     }
 
     static {
@@ -92,11 +77,11 @@ public final class WList {
                 return;
             }
         }
-        WList.RuntimePath.initialize(runtimePath);
+        final File path = runtimePath;
+        WList.RuntimePath.initializeIfNot(() -> path);
     }
 
     public static void main(final String @NotNull ... args) {
-        if (!WList.mainStageAPI.compareAndSet(-1, 0)) return;
         WList.handleArgs(args);
         if (HeadLibs.isDebugMode() && System.getProperty("io.netty.leakDetectionLevel") == null) System.setProperty("io.netty.leakDetectionLevel", "ADVANCED");
         final HLog logger = HLog.create("DefaultLogger");
@@ -109,10 +94,9 @@ public final class WList {
             WList.initializeStorageProvider();
             try {
                 WListServer.getInstance().start(ServerConfiguration.get().port());
-                WList.setMainStageAPI(1);
+                WList.setStarted();
                 WListServer.getInstance().awaitStop();
             } finally {
-                WList.setMainStageAPI(2);
                 logger.log(HLogLevel.MISTAKE, "Thanks to use WList.");
             }
         } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable throwable) {
@@ -123,8 +107,6 @@ public final class WList {
                 WList.shutdownAllExecutors().await();
             } catch (final InterruptedException exception) {
                 HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
-            } finally {
-                WList.setMainStageAPI(3);
             }
         }
     }
