@@ -1,18 +1,14 @@
 package com.xuxiaocheng.WListClientAndroid.Activities;
 
-import android.Manifest;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
@@ -20,8 +16,8 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
-import com.xuxiaocheng.WListClientAndroid.Client.PasswordManager;
-import com.xuxiaocheng.WListClientAndroid.Client.TokenManager;
+import com.xuxiaocheng.WListClientAndroid.Helpers.PasswordHelper;
+import com.xuxiaocheng.WListClientAndroid.Helpers.TokenManager;
 import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.R;
 import com.xuxiaocheng.WListClientAndroid.Services.InternalServer.InternalServerBinder;
@@ -78,11 +74,8 @@ public class LoginActivity extends AppCompatActivity {
                         LoginActivity.internalServerAddress.initializeIfNot(() -> address);
                         WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
                         logger.log(HLogLevel.LESS, "Clients initialized.");
-                        PasswordManager.initialize(LoginActivity.this.getExternalFilesDir("passwords"));
                         final String initPassword = InternalServerBinder.getAndDeleteAdminPassword(iService);
-                        if (initPassword != null)
-                            PasswordManager.registerInternalPassword(IdentifierNames.UserName.Admin.getIdentifier(), initPassword);
-                        final String password = PasswordManager.getInternalPassword(IdentifierNames.UserName.Admin.getIdentifier());
+                        final String password = PasswordHelper.updateInternalPassword(LoginActivity.this, IdentifierNames.UserName.Admin.getIdentifier(), initPassword);
                         logger.log(HLogLevel.ENHANCED, "Got server password.", ParametersMap.create().add("init", initPassword != null).add("password", password));
                         Main.runOnUiThread(LoginActivity.this, () -> internalServer.setText(R.string.activity_login_loading_logging_in));
                         boolean success = password != null;
@@ -122,16 +115,6 @@ public class LoginActivity extends AppCompatActivity {
                 }
             }, Context.BIND_AUTO_CREATE);
         });
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
-                || ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, "EXTERNAL_STORAGE".hashCode());
-    }
-
-    @Override
-    public void onRequestPermissionsResult(final int requestCode, final String @NotNull [] permissions, final int @NotNull [] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == "EXTERNAL_STORAGE".hashCode() && grantResults.length == 2 && (grantResults[0] != PackageManager.PERMISSION_GRANTED || grantResults[1] != PackageManager.PERMISSION_GRANTED))
-            Main.showToast(this, R.string.toast_no_permissions);
     }
 
     @Override

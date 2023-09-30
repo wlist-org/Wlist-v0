@@ -22,7 +22,7 @@ public final class InternalServerBinder extends Binder {
         GetMainStage,
     }
 
-    public static final int Code = "InternalServerBinder".hashCode();
+    public static final int Code = 2168877; // IBinder.FIRST_CALL_TRANSACTION <= Code=-"InternalServerBinder".hashCode()/100 <= IBinder.LAST_CALL_TRANSACTION
 
     @WorkerThread
     public static @NotNull InetSocketAddress getAddress(final @NotNull IBinder iService) throws RemoteException {

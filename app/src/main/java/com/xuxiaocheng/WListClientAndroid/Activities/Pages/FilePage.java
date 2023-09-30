@@ -45,7 +45,7 @@ import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WListClientAndroid.Activities.CustomViews.MainTab;
 import com.xuxiaocheng.WListClientAndroid.Activities.LoginActivity;
-import com.xuxiaocheng.WListClientAndroid.Client.TokenManager;
+import com.xuxiaocheng.WListClientAndroid.Helpers.TokenManager;
 import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.R;
 import com.xuxiaocheng.WListClientAndroid.Utils.EnhancedRecyclerViewAdapter;
@@ -283,7 +283,7 @@ public class FilePage implements MainTab.MainTabPage {
                 }
                 case MotionEvent.ACTION_UP -> {
                     if (scrolling.get())
-                        FilePage.this.activity.getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE).edit()
+                        FilePage.this.activity.getSharedPreferences("android.page.uploader_position", Context.MODE_PRIVATE).edit()
                                 .putFloat("x", v.getX()).putFloat("y", v.getY()).apply();
                     else return v.performClick();
                 }

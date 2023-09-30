@@ -99,6 +99,14 @@ public class MainActivity extends AppCompatActivity {
                 activity.addView(newView, contentParams);
         });
         mainTab.click(MainTab.TabChoice.File);
+//        PermissionsHelper.getPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE, success -> {
+//            if (!success.booleanValue())
+//                Main.showToast(this, R.string.toast_no_read_permissions);
+//        });
+//        PermissionsHelper.getPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE, success -> {
+//            if (!success.booleanValue())
+//                Main.showToast(this, R.string.toast_no_write_permissions);
+//        });
     }
 
     @Nullable protected ZonedDateTime lastBackPressedTime;
