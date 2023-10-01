@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Client.Operations;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Client.Exceptions.WrongStateException;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation;
@@ -10,6 +11,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * @see com.xuxiaocheng.WList.Server.Operations.OperateSelfHandler
@@ -27,7 +30,7 @@ public final class OperateSelfHelper {
         return OperateHelper.booleanOperation(client, send, OperationType.Logon);
     }
 
-    public static @Nullable String login(final @NotNull WListClientInterface client, final @NotNull String username, final @NotNull String password) throws IOException, InterruptedException, WrongStateException {
+    public static Pair.@Nullable ImmutablePair<@NotNull String, @NotNull ZonedDateTime> login(final @NotNull WListClientInterface client, final @NotNull String username, final @NotNull String password) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operate(OperationType.Login);
         ByteBufIOUtil.writeUTF(send, username);
         ByteBufIOUtil.writeUTF(send, password);
@@ -37,8 +40,9 @@ public final class OperateSelfHelper {
             final String reason = OperateHelper.handleState(receive);
             if (reason == null) {
                 final String token = ByteBufIOUtil.readUTF(receive);
-                OperateHelper.logOperated(OperationType.Login, null, p -> p.add("token", token).add("tokenHash", token.hashCode()));
-                return token;
+                final ZonedDateTime expires = ZonedDateTime.parse(ByteBufIOUtil.readUTF(receive), DateTimeFormatter.ISO_DATE_TIME);
+                OperateHelper.logOperated(OperationType.Login, null, p -> p.add("token", token).add("tokenHash", token.hashCode()).add("expires", expires));
+                return Pair.ImmutablePair.makeImmutablePair(token, expires);
             }
             OperateHelper.logOperated(OperationType.Login, reason, null);
             return null;

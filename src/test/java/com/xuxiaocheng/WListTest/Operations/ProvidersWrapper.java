@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WListTest.Operations;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Client.ClientConfiguration;
 import com.xuxiaocheng.WList.Client.Operations.OperateSelfHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.BeforeAll;
 
 import java.io.File;
 import java.net.SocketAddress;
+import java.time.ZonedDateTime;
 import java.util.Objects;
 
 @SuppressWarnings("MethodOverridesStaticMethodOfSuperclass")
@@ -43,12 +45,12 @@ public class ProvidersWrapper extends ServerWrapper {
         ClientConfiguration.parseFromFile();
         WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
         ServerWrapper.address.initialize(address);
-        final String token;
+        final Pair.ImmutablePair<String, ZonedDateTime> token;
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
             token = OperateSelfHelper.login(client, ServerWrapper.AdminUsername.getInstance(), ServerWrapper.AdminPassword.getInstance());
         }
         Assumptions.assumeTrue(token != null);
-        ServerWrapper.AdminToken.initialize(token);
+        ServerWrapper.AdminToken.initialize(token.getFirst());
     }
 
     @AfterAll

@@ -22,6 +22,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
+import java.time.ZonedDateTime;
 
 public class OperateSelfTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
@@ -45,9 +46,9 @@ public class OperateSelfTest extends ServerWrapper {
     @MethodSource("client")
     @Order(2)
     public void login(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
-        final String token = OperateSelfHelper.login(client, this.username(), this.password());
+        final Pair.ImmutablePair<String, ZonedDateTime> token = OperateSelfHelper.login(client, this.username(), this.password());
         Assertions.assertNotNull(token);
-        this.token(token);
+        this.token(token.getFirst());
     }
 
     @ParameterizedTest(name = "running")
@@ -121,9 +122,9 @@ public class OperateSelfTest extends ServerWrapper {
     @MethodSource("client")
     @Order(1)
     public void adminLogin(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
-        final String token = OperateSelfHelper.login(client, this.adminUsername(), this.adminPassword());
+        final Pair.ImmutablePair<String, ZonedDateTime> token = OperateSelfHelper.login(client, this.adminUsername(), this.adminPassword());
         Assertions.assertNotNull(token);
-        this.adminToken(token);
+        this.adminToken(token.getFirst());
     }
 
     @ParameterizedTest(name = "running")

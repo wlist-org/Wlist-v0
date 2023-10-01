@@ -23,6 +23,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
+import java.time.ZonedDateTime;
 import java.util.Objects;
 import java.util.Set;
 
@@ -32,12 +33,12 @@ public class OperateUsersTest extends ServerWrapper {
     @MethodSource("client")
     @Order(0)
     public void login(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
-        final String token = OperateSelfHelper.login(client, this.adminUsername(), this.adminPassword());
+        final Pair.ImmutablePair<String, ZonedDateTime> token = OperateSelfHelper.login(client, this.adminUsername(), this.adminPassword());
         Assumptions.assumeTrue(token != null);
-        this.adminToken(token);
+        this.adminToken(token.getFirst());
 
         Assumptions.assumeTrue(OperateSelfHelper.logon(client, this.username(), this.password()));
-        this.token(Objects.requireNonNull(OperateSelfHelper.login(client, this.username(), this.password())));
+        this.token(Objects.requireNonNull(OperateSelfHelper.login(client, this.username(), this.password())).getFirst());
         this.userId(2);
     }
 

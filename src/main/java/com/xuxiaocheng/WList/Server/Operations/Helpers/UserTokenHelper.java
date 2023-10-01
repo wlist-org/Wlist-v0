@@ -6,6 +6,7 @@ import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.Payload;
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
@@ -32,12 +33,13 @@ public final class UserTokenHelper {
     private static final JWTVerifier verifier = JWT.require(UserTokenHelper.sign).withIssuer("WList").build();
     private static final @NotNull String constPrefix = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9."; // {"typ":"JWT","alg":"HS512"}
 
-    public static @NotNull String encodeToken(final long id, final @NotNull ZonedDateTime modifyTime) {
-        return UserTokenHelper.builder.withAudience(Long.toString(id, Character.MAX_RADIX))
+    public static Pair.@NotNull ImmutablePair<@NotNull String, @NotNull ZonedDateTime> encodeToken(final long id, final @NotNull ZonedDateTime modifyTime) {
+        final ZonedDateTime expires = MiscellaneousUtil.now().plusSeconds(ServerConfiguration.get().tokenExpireTime());
+        return Pair.ImmutablePair.makeImmutablePair(UserTokenHelper.builder.withAudience(Long.toString(id, Character.MAX_RADIX))
                 .withJWTId(String.valueOf(modifyTime.toLocalDateTime().toEpochSecond(ZoneOffset.UTC)))
                 .withSubject(String.valueOf(modifyTime.getNano()))
-                .withExpiresAt(MiscellaneousUtil.now().plusSeconds(ServerConfiguration.get().tokenExpireTime()).toLocalDateTime().toInstant(ZoneOffset.UTC))
-                .sign(UserTokenHelper.sign).substring(UserTokenHelper.constPrefix.length());
+                .withExpiresAt(expires.toLocalDateTime().toInstant(ZoneOffset.UTC))
+                .sign(UserTokenHelper.sign).substring(UserTokenHelper.constPrefix.length()), expires);
     }
 
     public static @Nullable UserInformation decodeToken(final @NotNull String token) throws SQLException {

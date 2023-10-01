@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Server.Operations;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -22,6 +23,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.sql.SQLException;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
@@ -116,9 +118,13 @@ public final class OperateSelfHandler {
                 WListServer.ServerChannelHandler.write(channel, OperateSelfHandler.UserDataError);
                 return;
             }
-            final String token = UserTokenHelper.encodeToken(user.id(), user.modifyTime());
+            final Pair.ImmutablePair<String, ZonedDateTime> token = UserTokenHelper.encodeToken(user.id(), user.modifyTime());
             HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Logged in.", ServerHandler.user(null, user), ParametersMap.create().add("token", token));
-            WListServer.ServerChannelHandler.write(channel, MessageProto.composeMessage(ResponseState.Success, token));
+            WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> {
+                ByteBufIOUtil.writeUTF(buf, token.getFirst());
+                ByteBufIOUtil.writeUTF(buf, token.getSecond().format(DateTimeFormatter.ISO_DATE_TIME));
+                return buf;
+            }));
         };
     };
 

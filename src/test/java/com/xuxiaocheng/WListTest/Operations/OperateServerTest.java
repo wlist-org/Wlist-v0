@@ -20,6 +20,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.ZonedDateTime;
 
 public class OperateServerTest extends ServerWrapper {
     @DisplayName("Prepare")
@@ -27,9 +28,9 @@ public class OperateServerTest extends ServerWrapper {
     @MethodSource("client")
     @Order(0)
     public void login(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
-        final String token = OperateSelfHelper.login(client, this.adminUsername(), this.adminPassword());
+        final Pair.ImmutablePair<String, ZonedDateTime> token = OperateSelfHelper.login(client, this.adminUsername(), this.adminPassword());
         Assumptions.assumeTrue(token != null);
-        this.adminToken(token);
+        this.adminToken(token.getFirst());
     }
 
     @ParameterizedTest(name = "running")
