@@ -142,7 +142,7 @@ public class WListClient implements WListClientInterface {
             synchronized (this.client.receiveLock) {
                 if (this.client.receive != null) {
                     WListClient.logger.log(HLogLevel.WARN, "Discard message. ", this.client.receive.toString());
-                    this.client.receive.release();
+                    this.client.receive.release(); // TODO: blocking queue.
                 }
                 msg.retain();
                 this.client.receive = msg;

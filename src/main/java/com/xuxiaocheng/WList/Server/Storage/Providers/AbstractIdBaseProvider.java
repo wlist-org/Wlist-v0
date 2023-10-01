@@ -13,6 +13,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
@@ -130,19 +131,19 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                     if (directoryId != this.getConfiguration().getRootDirectoryId())
                         manager.deleteDirectoryRecursively(directoryId, null);
                     BackgroundTaskManager.BackgroundExecutors.submit(() -> consumer.accept(
-                            ProviderInterface.ListNotExisted));
+                            ProviderInterface.ListNotExisted)).addListener(MiscellaneousUtil.exceptionListener());
                     return;
                 }
                 manager.insertIterator(iterator, directoryId, null);
                 final FilesListInformation list = manager.selectInfosInDirectory(directoryId, filter, orders, position, limit, null);
                 BackgroundTaskManager.BackgroundExecutors.submit(() -> consumer.accept(
-                        UnionPair.ok(UnionPair.ok(list))));
+                        UnionPair.ok(UnionPair.ok(list)))).addListener(MiscellaneousUtil.exceptionListener());
             } catch (final NoSuchElementException exception) {
                 BackgroundTaskManager.BackgroundExecutors.submit(() -> consumer.accept(
-                        UnionPair.fail(exception.getCause() instanceof Exception e ? e : exception)));
+                        UnionPair.fail(exception.getCause() instanceof Exception e ? e : exception))).addListener(MiscellaneousUtil.exceptionListener());
             } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                 BackgroundTaskManager.BackgroundExecutors.submit(() -> consumer.accept(
-                        UnionPair.fail(exception)));
+                        UnionPair.fail(exception))).addListener(MiscellaneousUtil.exceptionListener());
             }
         }, true) == null) {
             BackgroundTaskManager.onFinally(identifier, HExceptionWrapper.wrapRunnable(() -> this.list(directoryId, filter, orders, position, limit, consumer), e -> {
@@ -177,13 +178,13 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                 final UnionPair<FileInformation, Boolean> update = this.update0(information);
                 if ((update.isFailure() && update.getE().booleanValue()) || (update.isSuccess() && information.equals(update.getT()))) {
                     BackgroundTaskManager.BackgroundExecutors.submit(() -> consumer.accept(
-                            UnionPair.ok(UnionPair.ok(Pair.ImmutablePair.makeImmutablePair(information, Boolean.FALSE)))));
+                            UnionPair.ok(UnionPair.ok(Pair.ImmutablePair.makeImmutablePair(information, Boolean.FALSE))))).addListener(MiscellaneousUtil.exceptionListener());
                     return;
                 }
                 if (update.isFailure()) { // && !update.getE().booleanValue()
                     manager.deleteFileOrDirectory(id, isDirectory, null);
                     BackgroundTaskManager.BackgroundExecutors.submit(() -> consumer.accept(
-                            ProviderInterface.InfoNotExisted));
+                            ProviderInterface.InfoNotExisted)).addListener(MiscellaneousUtil.exceptionListener());
                     return;
                 }
                 assert update.getT().isDirectory() == isDirectory;
@@ -201,10 +202,10 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                 }
                 final FileInformation callback = Objects.requireNonNullElse(realInfo, update.getT());
                 BackgroundTaskManager.BackgroundExecutors.submit(() -> consumer.accept(
-                        UnionPair.ok(UnionPair.ok(Pair.ImmutablePair.makeImmutablePair(callback, Boolean.TRUE)))));
+                        UnionPair.ok(UnionPair.ok(Pair.ImmutablePair.makeImmutablePair(callback, Boolean.TRUE))))).addListener(MiscellaneousUtil.exceptionListener());
             } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                 BackgroundTaskManager.BackgroundExecutors.submit(() -> consumer.accept(
-                        UnionPair.fail(exception)));
+                        UnionPair.fail(exception))).addListener(MiscellaneousUtil.exceptionListener());
             }
         }, true) == null)
             BackgroundTaskManager.onFinally(identifier, HExceptionWrapper.wrapRunnable(() -> this.info(id, isDirectory, consumer), e -> {
@@ -241,7 +242,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                 if (iterator == null) {
                     manager.deleteDirectoryRecursively(directoryId, null);
                     BackgroundTaskManager.BackgroundExecutors.submit(() -> consumer.accept(
-                            ProviderInterface.RefreshNotExisted));
+                            ProviderInterface.RefreshNotExisted)).addListener(MiscellaneousUtil.exceptionListener());
                     return;
                 }
                 final Set<Long> deleteFiles, deleteDirectories;
@@ -288,7 +289,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                         }
 //                    else assert directory.size() != 0;
                     BackgroundTaskManager.BackgroundExecutors.submit(() -> consumer.accept(
-                            ProviderInterface.RefreshNoUpdater));
+                            ProviderInterface.RefreshNoUpdater)).addListener(MiscellaneousUtil.exceptionListener());
                     return;
                 }
                 final Set<Long> insertedFiles = new HashSet<>(), insertedDirectories = new HashSet<>();
@@ -314,13 +315,13 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                     connection.commit();
                 }
                 BackgroundTaskManager.BackgroundExecutors.submit(() -> consumer.accept(
-                        UnionPair.ok(UnionPair.ok(Pair.ImmutablePair.makeImmutablePair(insertedFiles, insertedDirectories)))));
+                        UnionPair.ok(UnionPair.ok(Pair.ImmutablePair.makeImmutablePair(insertedFiles, insertedDirectories))))).addListener(MiscellaneousUtil.exceptionListener());
             } catch (final NoSuchElementException exception) {
                 BackgroundTaskManager.BackgroundExecutors.submit(() -> consumer.accept(
-                        UnionPair.fail(exception.getCause() instanceof Exception e ? e : exception)));
+                        UnionPair.fail(exception.getCause() instanceof Exception e ? e : exception))).addListener(MiscellaneousUtil.exceptionListener());
             } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                 BackgroundTaskManager.BackgroundExecutors.submit(() -> consumer.accept(
-                        UnionPair.fail(exception)));
+                        UnionPair.fail(exception))).addListener(MiscellaneousUtil.exceptionListener());
             }
         }, true) == null)
             BackgroundTaskManager.onFinally(identifier, () -> consumer.accept(ProviderInterface.RefreshNoUpdater));

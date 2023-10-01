@@ -90,10 +90,10 @@ public final class DownloadIdHelper {
                 IdsHelper.CleanerExecutors.schedule(() -> {
                     if (MiscellaneousUtil.now().isAfter(this.expireTime))
                         this.close();
-                }, ServerConfiguration.get().idIdleExpireTime(), TimeUnit.SECONDS);
+                }, ServerConfiguration.get().idIdleExpireTime(), TimeUnit.SECONDS).addListener(MiscellaneousUtil.exceptionListener());
             } else {
                 this.expireTime = this.methods.expireTime();
-                IdsHelper.CleanerExecutors.schedule(this::close, Duration.between(MiscellaneousUtil.now(), this.expireTime).toSeconds(), TimeUnit.SECONDS);
+                IdsHelper.CleanerExecutors.schedule(this::close, Duration.between(MiscellaneousUtil.now(), this.expireTime).toSeconds(), TimeUnit.SECONDS).addListener(MiscellaneousUtil.exceptionListener());
             }
         }
 
@@ -117,7 +117,7 @@ public final class DownloadIdHelper {
                 IdsHelper.CleanerExecutors.schedule(() -> {
                     if (MiscellaneousUtil.now().isAfter(this.expireTime))
                         this.close();
-                }, ServerConfiguration.get().idIdleExpireTime(), TimeUnit.SECONDS);
+                }, ServerConfiguration.get().idIdleExpireTime(), TimeUnit.SECONDS).addListener(MiscellaneousUtil.exceptionListener());
             }
             synchronized (this.locks[index]) {
                 if (this.nodes[index] == null) {

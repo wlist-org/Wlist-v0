@@ -128,7 +128,7 @@ public final class OperateGroupsHandler {
         final long groupId = ByteBufIOUtil.readVariableLenLong(buffer);
         final EnumSet<UserPermission> newPermissions = UserPermission.parse(ByteBufIOUtil.readUTF(buffer));
         ServerHandler.logOperation(channel, OperationType.ChangeGroupPermissions, changer, () -> ParametersMap.create()
-                .add("groupId", groupId).add("newPermissions", newPermissions).optionallyAdd(changer.isSuccess() && newPermissions != null, "denied",
+                .add("groupId", groupId).add("newPermissions", newPermissions).optionallyAddSupplier(changer.isSuccess() && newPermissions != null, "denied", () ->
                         UserGroupManager.getInstance().getAdminId() == groupId || Objects.requireNonNull(newPermissions).contains(UserPermission.Undefined)));
         MessageProto message = null;
         if (changer.isFailure())

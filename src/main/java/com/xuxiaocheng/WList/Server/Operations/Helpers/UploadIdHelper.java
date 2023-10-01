@@ -116,7 +116,7 @@ public final class UploadIdHelper {
             IdsHelper.CleanerExecutors.schedule(() -> {
                 if (MiscellaneousUtil.now().isAfter(this.expireTime))
                     this.close();
-            }, ServerConfiguration.get().idIdleExpireTime(), TimeUnit.SECONDS);
+            }, ServerConfiguration.get().idIdleExpireTime(), TimeUnit.SECONDS).addListener(MiscellaneousUtil.exceptionListener());
         }
 
         @Override
@@ -136,7 +136,7 @@ public final class UploadIdHelper {
             IdsHelper.CleanerExecutors.schedule(() -> {
                 if (MiscellaneousUtil.now().isAfter(this.expireTime))
                     this.close();
-            }, ServerConfiguration.get().idIdleExpireTime(), TimeUnit.SECONDS);
+            }, ServerConfiguration.get().idIdleExpireTime(), TimeUnit.SECONDS).addListener(MiscellaneousUtil.exceptionListener());
             synchronized (this.locks[index]) {
                 if (this.nodes[index] == null)
                     return false;
@@ -172,7 +172,7 @@ public final class UploadIdHelper {
             } catch (final Throwable exception) {
                 consumer.accept(UnionPair.fail(exception));
             } finally {
-                IdsHelper.CleanerExecutors.submit(this::close);
+                IdsHelper.CleanerExecutors.submit(this::close).addListener(MiscellaneousUtil.exceptionListener());
             }
         }
 

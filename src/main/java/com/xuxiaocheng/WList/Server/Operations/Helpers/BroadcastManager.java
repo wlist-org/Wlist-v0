@@ -15,7 +15,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.group.ChannelGroup;
-import io.netty.channel.group.ChannelGroupFuture;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.jetbrains.annotations.NotNull;
@@ -45,7 +44,7 @@ public final class BroadcastManager {
         return BroadcastManager.broadcastGroup.contains(channel);
     }
 
-    public static @Nullable ChannelGroupFuture broadcast(final @NotNull OperationType type, final MessageProto.@Nullable Appender message) {
+    private static void broadcast(final @NotNull OperationType type, final MessageProto.@Nullable Appender message) {
         final ByteBuf buffer;
         final ByteBuf prefix = ByteBufAllocator.DEFAULT.buffer();
         try {
@@ -55,11 +54,11 @@ public final class BroadcastManager {
             buffer.retain();
         } catch (final IOException exception) {
             HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, exception);
-            return null;
+            return;
         } finally {
             prefix.release();
         }
-        return BroadcastManager.broadcastGroup.writeAndFlush(buffer).addListener(MiscellaneousUtil.exceptionListener());
+        BroadcastManager.broadcastGroup.writeAndFlush(buffer).addListener(MiscellaneousUtil.exceptionListener());
     }
 
     public static void broadcastUser(final @NotNull String sender, final @NotNull String message) {
@@ -177,8 +176,7 @@ public final class BroadcastManager {
         };
     }
 
-
-    public static void onFileDelete(final @NotNull FileLocation location, final boolean isDirectory) {
+    public static void onFileTrash(final @NotNull FileLocation location, final boolean isDirectory) {
         BroadcastManager.broadcast(OperationType.TrashFileOrDirectory, BroadcastManager.fileDumper(location, isDirectory));
     }
 
@@ -194,7 +192,7 @@ public final class BroadcastManager {
         });
     }
 
-    public static void onDirectoryRefresh(final @NotNull FileLocation parent) {
-        BroadcastManager.broadcast(OperationType.RefreshDirectory, parent::dump);
+    public static void onDirectoryRefresh(final @NotNull FileLocation directory) {
+        BroadcastManager.broadcast(OperationType.RefreshDirectory, directory::dump);
     }
 }

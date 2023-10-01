@@ -124,7 +124,7 @@ public final class OperateFilesHandler {
             }
             if (p.getT().isFailure()) {
                 if (p.getT().getE().booleanValue())
-                    BroadcastManager.onFileDelete(directory, true);
+                    BroadcastManager.onFileTrash(directory, true);
                 WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.LocationNotAvailable);
                 return;
             }
@@ -159,7 +159,7 @@ public final class OperateFilesHandler {
             }
             if (p.getT().isFailure()) {
                 if (p.getT().getE().booleanValue())
-                    BroadcastManager.onFileDelete(location, isDirectory);
+                    BroadcastManager.onFileTrash(location, isDirectory);
                 WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.LocationNotAvailable);
                 return;
             }
@@ -195,7 +195,7 @@ public final class OperateFilesHandler {
             }
             if (p.getT().isFailure()) {
                 if (p.getT().getE().booleanValue())
-                    BroadcastManager.onFileDelete(directory, true);
+                    BroadcastManager.onFileTrash(directory, true);
                 WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.LocationNotAvailable);
                 return;
             }
@@ -240,7 +240,7 @@ public final class OperateFilesHandler {
             }
             HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Deleted file.", ServerHandler.user(null, user.getT()),
                     ParametersMap.create().add("location", location).add("isDirectory", isDirectory));
-            BroadcastManager.onFileDelete(location, isDirectory);
+            BroadcastManager.onFileTrash(location, isDirectory);
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
         });
     };
