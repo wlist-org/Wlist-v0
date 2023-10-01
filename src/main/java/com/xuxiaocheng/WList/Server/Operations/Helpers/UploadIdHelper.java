@@ -31,7 +31,10 @@ public final class UploadIdHelper {
     private static final @NotNull Map<@NotNull String, @NotNull UploadRequirements> requirements = new ConcurrentHashMap<>();
 
     public static @NotNull String generateId(final @NotNull UploadRequirements requirements) {
-        requirements.checksums().forEach(c -> UploadChecksum.requireRegisteredAlgorithm(c.algorithm()));
+        requirements.checksums().forEach(c -> {
+            assert c.start() < c.end();
+            UploadChecksum.requireRegisteredAlgorithm(c.algorithm());
+        });
         final String id = MiscellaneousUtil.randomKeyAndPut(UploadIdHelper.requirements, IdsHelper::randomTimerId, requirements);
         IdsHelper.CleanerExecutors.schedule(() -> UploadIdHelper.requirements.remove(id, requirements), ServerConfiguration.get().idIdleExpireTime(), TimeUnit.SECONDS);
         return id;
@@ -59,7 +62,7 @@ public final class UploadIdHelper {
         final Iterator<String> checker = checksums.iterator();
         int i = 0;
         while (require.hasNext() && checker.hasNext()) {
-            final Pattern pattern = UploadChecksum.getAlgorithmPattern(require.next().algorithm());
+            final Pattern pattern = UploadChecksum.getAlgorithm(require.next().algorithm()).pattern();
             final String checksum = checker.next();
             if (!pattern.matcher(checksum).matches())
                 return UnionPair.fail(i);
