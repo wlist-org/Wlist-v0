@@ -204,8 +204,6 @@ public final class FilesAssistant {
                     throw new IllegalStateException("Invalid download chunk." + ParametersMap.create().add("address", address).add("username", username).add("file", file)
                             .add("location", location).add("confirm", confirm).add("information", information));
                 position = pair.getSecond().longValue();
-//                final CompositeByteBuf buffer = ByteBufAllocator.DEFAULT.compositeBuffer();
-//                buffers.add(buffer);
                 final int k = i++;
                 CompletableFuture.runAsync(HExceptionWrapper.wrapRunnable(() -> {
                     long length = pair.getSecond().longValue() - pair.getFirst().longValue();
