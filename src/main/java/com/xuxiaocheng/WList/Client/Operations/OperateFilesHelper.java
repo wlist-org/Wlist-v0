@@ -88,7 +88,7 @@ public final class OperateFilesHelper {
         return OperateHelper.booleanOperation(client, send, OperationType.TrashFileOrDirectory);
     }
 
-    public static @Nullable DownloadConfirm requestDownloadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation file, final long from, final long to) throws IOException, InterruptedException, WrongStateException {
+    public static @Nullable UnionPair<DownloadConfirm, VisibleFailureReason> requestDownloadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation file, final long from, final long to) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.RequestDownloadFile, token);
         file.dump(send);
         ByteBufIOUtil.writeVariableLenLong(send, from);
@@ -100,7 +100,12 @@ public final class OperateFilesHelper {
             if (reason == null) {
                 final DownloadConfirm confirm = DownloadConfirm.parse(receive);
                 OperateHelper.logOperated(OperationType.RequestDownloadFile, null, p -> p.add("confirm", confirm));
-                return confirm;
+                return UnionPair.ok(confirm);
+            }
+            if ("Failure".equals(reason)) {
+                final VisibleFailureReason failureReason = VisibleFailureReason.parse(receive);
+                OperateHelper.logOperated(OperationType.RequestDownloadFile, failureReason.toString(), null);
+                return UnionPair.fail(failureReason);
             }
             OperateHelper.logOperated(OperationType.RequestDownloadFile, reason, null);
             return null;

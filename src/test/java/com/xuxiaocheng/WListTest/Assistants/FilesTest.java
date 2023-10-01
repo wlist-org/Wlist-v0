@@ -8,6 +8,7 @@ import com.xuxiaocheng.WList.Client.Exceptions.WrongStateException;
 import com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper;
 import com.xuxiaocheng.WList.Client.Operations.OperateServerHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import com.xuxiaocheng.WList.Commons.Options.Options;
@@ -21,12 +22,14 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.File;
 import java.io.IOException;
 
+@Disabled("Manually test")
 @SuppressWarnings("MethodOverridesStaticMethodOfSuperclass")
 public class FilesTest extends ProvidersWrapper {
     @BeforeAll
@@ -36,10 +39,12 @@ public class FilesTest extends ProvidersWrapper {
     }
 
     @AfterAll
-    public static void uninitialize() throws IOException {
+    public static void uninitialize() throws Exception {
         StorageManager.removeStorage("test", false);
+        ProvidersWrapper.uninitialize();
     }
 
+    @Disabled("Prepare 'run/test_file.zip' and then run this test.")
     @ParameterizedTest(name = "running")
     @MethodSource("broadcast")
     public void upload(final @NotNull WListClientInterface client, final @NotNull WListClientInterface broadcast) throws IOException, InterruptedException, WrongStateException {
@@ -54,5 +59,17 @@ public class FilesTest extends ProvidersWrapper {
         buffer.getSecond().release();
         HLog.DefaultLogger.log("", information);
         OperateFilesHelper.trashFileOrDirectory(client, TokenAssistant.getToken(this.address(), this.adminUsername()), this.location(information.id()), false);
+    }
+
+    @Disabled("Prepare files and then run this test.")
+    @ParameterizedTest(name = "running")
+    @MethodSource("client")
+    public void download(final @NotNull WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
+        TokenAssistant.login(this.address(), this.adminUsername(), this.adminPassword(), WListServer.IOExecutors);
+
+        Assertions.assertNull(FilesAssistant.download(this.address(), this.adminUsername(), new FileLocation("test", 278813369 >> 1),
+                c -> {HLog.DefaultLogger.log("", c);return true;}, new File("run/WListClientConsole-v0.1.1.exe")));
+        Assertions.assertNull(FilesAssistant.download(this.address(), this.adminUsername(), new FileLocation("test", 278239667 >> 1),
+                c -> {HLog.DefaultLogger.log("", c);return true;}, new File("run/WList-V0.2.0.jar")));
     }
 }

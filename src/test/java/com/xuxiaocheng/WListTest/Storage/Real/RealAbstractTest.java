@@ -78,11 +78,11 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
             Assumptions.assumeFalse(list.informationList().isEmpty());
             final VisibleFileInformation information = list.informationList().get(0);
             // Request.
-            final DownloadConfirm confirm = OperateFilesHelper.requestDownloadFile(client, token(), location(information.id()), 0, Long.MAX_VALUE);
+            final UnionPair<DownloadConfirm, VisibleFailureReason> confirm = OperateFilesHelper.requestDownloadFile(client, token(), location(information.id()), 0, Long.MAX_VALUE);
             Assumptions.assumeTrue(confirm != null);
-            Assertions.assertEquals(information.size(), confirm.downloadingSize());
+            Assertions.assertEquals(information.size(), confirm.getT().downloadingSize());
             // Test.
-            Assertions.assertTrue(OperateFilesHelper.cancelDownloadFile(client, token(), confirm.id()));
+            Assertions.assertTrue(OperateFilesHelper.cancelDownloadFile(client, token(), confirm.getT().id()));
         }
 
         @ParameterizedTest(name = "running")
@@ -117,10 +117,10 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
 
         public void testDownload(final WListClientInterface client, final @NotNull VisibleFileInformation file, final @NotNull String md5) throws InterruptedException, WrongStateException, IOException {
             // Request.
-            final DownloadConfirm confirm = OperateFilesHelper.requestDownloadFile(client, token(), location(file.id()), 0, Long.MAX_VALUE);
+            final UnionPair<DownloadConfirm, VisibleFailureReason> confirm = OperateFilesHelper.requestDownloadFile(client, token(), location(file.id()), 0, Long.MAX_VALUE);
             Assertions.assertNotNull(confirm);
-            Assertions.assertEquals(file.size(), confirm.downloadingSize());
-            final DownloadConfirm.DownloadInformation information = OperateFilesHelper.confirmDownloadFile(client, token(), confirm.id());
+            Assertions.assertEquals(file.size(), confirm.getT().downloadingSize());
+            final DownloadConfirm.DownloadInformation information = OperateFilesHelper.confirmDownloadFile(client, token(), confirm.getT().id());
             Assertions.assertNotNull(information);
             // Download.
             final CountDownLatch latch = new CountDownLatch(information.parallel().size());
@@ -137,7 +137,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
                     try (final WListClientInterface c = WListClientManager.quicklyGetClient(client.getAddress())) {
                         ByteBuf buf;
                         while (true) {
-                            buf = OperateFilesHelper.downloadFile(c, token(), confirm.id(), k);
+                            buf = OperateFilesHelper.downloadFile(c, token(), confirm.getT().id(), k);
                             if (buf == null)
                                 break;
                             buffer.addComponent(true, buf);
@@ -149,7 +149,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
             }
             Assertions.assertEquals(length, length);
             latch.await();
-            OperateFilesHelper.finishDownloadFile(client, token(), confirm.id());
+            OperateFilesHelper.finishDownloadFile(client, token(), confirm.getT().id());
             final CompositeByteBuf buf = ByteBufAllocator.DEFAULT.compositeBuffer();
             for (final ByteBuf b: buffers)
                 buf.addComponent(true, b);
