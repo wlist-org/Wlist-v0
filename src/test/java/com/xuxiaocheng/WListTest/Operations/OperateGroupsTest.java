@@ -24,6 +24,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
+import java.time.ZonedDateTime;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -33,9 +34,9 @@ public class OperateGroupsTest extends ServerWrapper {
     @MethodSource("client")
     @Order(0)
     public void login(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
-        final String token = OperateSelfHelper.login(client, this.adminUsername(), this.adminPassword());
+        final Pair.ImmutablePair<String,  ZonedDateTime> token = OperateSelfHelper.login(client, this.adminUsername(), this.adminPassword());
         Assumptions.assumeTrue(token != null);
-        this.adminToken(token);
+        this.adminToken(token.getFirst());
     }
 
     protected static final @NotNull HInitializer<String> GroupName = new HInitializer<>("GroupName", "test");

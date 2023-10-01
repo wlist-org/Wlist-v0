@@ -91,6 +91,10 @@ public class ServerWrapper {
         );
     }
 
+    public @NotNull SocketAddress address() {
+        return ServerWrapper.address.getInstance();
+    }
+
     protected static final @NotNull HInitializer<String> Username = new HInitializer<>("Username", "operate-tester");
     protected static final @NotNull HInitializer<String> Password = new HInitializer<>("Password");
     protected static final @NotNull HInitializer<String> Token = new HInitializer<>("Token");

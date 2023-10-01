@@ -67,6 +67,6 @@ public class OperateServerTest extends ServerWrapper {
         final Pair.ImmutablePair<OperationType, ByteBuf> pair = OperateServerHelper.waitBroadcast(broadcast).getT();
         pair.getSecond().release();
         Assertions.assertEquals(OperationType.CloseServer, pair.getFirst());
-        WListClientManager.quicklyUninitialize(ServerWrapper.address.getInstance());
+        WListClientManager.quicklyUninitialize(this.address());
     }
 }
