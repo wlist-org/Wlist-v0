@@ -81,7 +81,7 @@ public final class WList {
         WList.RuntimePath.initializeIfNot(() -> path);
     }
 
-    public static void main(final String @NotNull ... args) {
+    public static void main(final @NotNull String @NotNull ... args) {
         WList.handleArgs(args);
         if (HeadLibs.isDebugMode() && System.getProperty("io.netty.leakDetectionLevel") == null) System.setProperty("io.netty.leakDetectionLevel", "ADVANCED");
         final HLog logger = HLog.create("DefaultLogger");

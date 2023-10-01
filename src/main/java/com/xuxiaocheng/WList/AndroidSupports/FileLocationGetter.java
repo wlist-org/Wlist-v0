@@ -6,8 +6,8 @@ import org.jetbrains.annotations.NotNull;
 /**
  * @see FileLocation
  */
-public final class FileLocationSupporter {
-    private FileLocationSupporter() {
+public final class FileLocationGetter {
+    private FileLocationGetter() {
         super();
     }
 
@@ -17,9 +17,5 @@ public final class FileLocationSupporter {
 
     public static long id(final @NotNull FileLocation location) {
         return location.id();
-    }
-
-    public static @NotNull FileLocation create(final @NotNull String storage, final long id) {
-        return new FileLocation(storage, id);
     }
 }

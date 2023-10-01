@@ -40,10 +40,9 @@ public class ProvidersWrapper extends ServerWrapper {
 //        ServerWrapper.AdminPassword.initialize(Objects.requireNonNull(UserManager.getInstance().getAndDeleteDefaultAdminPassword()));
         ServerWrapper.AdminPassword.initialize("Slz12ApN"); // random, has been generated.
 
-        ClientConfiguration.initialize(null);
+        ClientConfiguration.parseFromFile();
         WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
         ServerWrapper.address.initialize(address);
-
         final String token;
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
             token = OperateSelfHelper.login(client, ServerWrapper.AdminUsername.getInstance(), ServerWrapper.AdminPassword.getInstance());

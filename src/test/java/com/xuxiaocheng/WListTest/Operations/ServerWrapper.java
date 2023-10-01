@@ -61,7 +61,7 @@ public class ServerWrapper {
         ServerWrapper.AdminPassword.initialize(Objects.requireNonNull(UserManager.getInstance().getAndDeleteDefaultAdminPassword()));
         ServerWrapper.Password.reinitialize(PasswordGuard.generateRandomPassword());
 
-        ClientConfiguration.initialize(null);
+        ClientConfiguration.parseFromFile();
         WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
         ServerWrapper.address.initialize(address);
     }
