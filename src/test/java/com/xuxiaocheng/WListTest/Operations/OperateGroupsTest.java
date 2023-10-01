@@ -33,7 +33,7 @@ public class OperateGroupsTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(0)
-    public void login(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void login(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         final Pair.ImmutablePair<String,  ZonedDateTime> token = OperateSelfHelper.login(client, this.adminUsername(), this.adminPassword());
         Assumptions.assumeTrue(token != null);
         this.adminToken(token.getFirst());
@@ -57,7 +57,7 @@ public class OperateGroupsTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("broadcast")
     @Order(1)
-    public void addGroup(final WListClientInterface client, final WListClientInterface broadcast) throws WrongStateException, IOException, InterruptedException {
+    public void addGroup(final WListClientInterface client, final WListClientInterface broadcast) throws IOException, InterruptedException, WrongStateException {
         Assertions.assertTrue(OperateGroupsHelper.addGroup(client, this.adminToken(), this.groupName()));
         final Pair.ImmutablePair<OperationType, ByteBuf> pair = OperateServerHelper.waitBroadcast(broadcast).getT();
         try {
@@ -74,7 +74,7 @@ public class OperateGroupsTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("broadcast")
     @Order(2)
-    public void changeGroupName(final WListClientInterface client, final WListClientInterface broadcast) throws WrongStateException, IOException, InterruptedException {
+    public void changeGroupName(final WListClientInterface client, final WListClientInterface broadcast) throws IOException, InterruptedException, WrongStateException {
         final String groupName = HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 20, null);
         Assertions.assertTrue(OperateGroupsHelper.changeGroupName(client, this.adminToken(), this.groupId(), groupName));
         this.groupName(groupName);
@@ -91,7 +91,7 @@ public class OperateGroupsTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("broadcast")
     @Order(3)
-    public void changeGroupPermissions(final WListClientInterface client, final WListClientInterface broadcast) throws WrongStateException, IOException, InterruptedException {
+    public void changeGroupPermissions(final WListClientInterface client, final WListClientInterface broadcast) throws IOException, InterruptedException, WrongStateException {
         Assertions.assertTrue(OperateGroupsHelper.changeGroupPermissions(client, this.adminToken(), this.groupId(), UserPermission.Default));
         final Pair.ImmutablePair<OperationType, ByteBuf> pair = OperateServerHelper.waitBroadcast(broadcast).getT();
         try {
@@ -106,7 +106,7 @@ public class OperateGroupsTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(4)
-    public void getGroup(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void getGroup(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         final VisibleUserGroupInformation information = OperateGroupsHelper.getGroup(client, this.adminToken(), this.groupId());
         Assertions.assertNotNull(information);
         Assertions.assertEquals(this.groupId(), information.id());
@@ -117,14 +117,14 @@ public class OperateGroupsTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(4)
-    public void listGroups(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void listGroups(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         Assertions.assertEquals(3, OperateGroupsHelper.listGroups(client, this.adminToken(), VisibleUserGroupInformation.emptyOrder(), 0, 3).getFirst());
     }
 
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(4)
-    public void listGroupsInPermissions(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void listGroupsInPermissions(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         Assertions.assertEquals(1, OperateGroupsHelper.listGroupsInPermissions(client, this.adminToken(),
                 UserPermission.All.stream().collect(Collectors.toMap(p -> p, p -> true)), VisibleUserGroupInformation.emptyOrder(), 0, 3).getFirst());
     }
@@ -132,7 +132,7 @@ public class OperateGroupsTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("broadcast")
     @Order(6)
-    public void deleteGroup(final WListClientInterface client, final WListClientInterface broadcast) throws WrongStateException, IOException, InterruptedException {
+    public void deleteGroup(final WListClientInterface client, final WListClientInterface broadcast) throws IOException, InterruptedException, WrongStateException {
         Assertions.assertTrue(OperateGroupsHelper.deleteGroup(client, this.adminToken(), this.groupId()));
         final Pair.ImmutablePair<OperationType, ByteBuf> pair = OperateServerHelper.waitBroadcast(broadcast).getT();
         try {
@@ -146,14 +146,14 @@ public class OperateGroupsTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(4)
-    public void searchGroupRegex(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void searchGroupRegex(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         Assertions.assertEquals(3, OperateGroupsHelper.searchGroupsRegex(client, this.adminToken(), ".*", VisibleUserGroupInformation.emptyOrder(), 0, 3).getFirst());
     }
 
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(4)
-    public void searchGroupName(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void searchGroupName(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         Assertions.assertEquals(1, OperateGroupsHelper.searchGroupsName(client, this.adminToken(), Set.of(this.groupName()), 0, 3).getFirst());
     }
 
@@ -161,14 +161,14 @@ public class OperateGroupsTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(1)
-    public void adminAddGroup(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void adminAddGroup(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         Assertions.assertFalse(OperateGroupsHelper.addGroup(client, this.adminToken(), IdentifierNames.UserGroupName.Admin.getIdentifier()));
     }
 
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(1)
-    public void adminChangeGroupName(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void adminChangeGroupName(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         final String groupName = HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 20, null);
         Assertions.assertFalse(OperateGroupsHelper.changeGroupName(client, this.adminToken(), UserGroupManager.getInstance().getAdminId(), groupName));
     }
@@ -176,7 +176,7 @@ public class OperateGroupsTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(1)
-    public void adminChangeGroupPermissions(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void adminChangeGroupPermissions(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         Assertions.assertFalse(OperateGroupsHelper.changeGroupPermissions(client, this.adminToken(), UserGroupManager.getInstance().getAdminId(), UserPermission.Default));
     }
 
@@ -184,14 +184,14 @@ public class OperateGroupsTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(1)
-    public void defaultAddGroup(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void defaultAddGroup(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         Assertions.assertFalse(OperateGroupsHelper.addGroup(client, this.adminToken(), IdentifierNames.UserGroupName.Default.getIdentifier()));
     }
 
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(1)
-    public void defaultChangeGroupName(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void defaultChangeGroupName(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         final String groupName = HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 20, null);
         Assertions.assertFalse(OperateGroupsHelper.changeGroupName(client, this.adminToken(), UserGroupManager.getInstance().getDefaultId(), groupName));
     }
@@ -199,7 +199,7 @@ public class OperateGroupsTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("broadcast")
     @Order(5)
-    public void defaultChangeGroupPermissions(final WListClientInterface client, final WListClientInterface broadcast) throws WrongStateException, IOException, InterruptedException {
+    public void defaultChangeGroupPermissions(final WListClientInterface client, final WListClientInterface broadcast) throws IOException, InterruptedException, WrongStateException {
         Assertions.assertTrue(OperateGroupsHelper.changeGroupPermissions(client, this.adminToken(), UserGroupManager.getInstance().getDefaultId(), UserPermission.All));
         final Pair.ImmutablePair<OperationType, ByteBuf> pair = OperateServerHelper.waitBroadcast(broadcast).getT();
         try {

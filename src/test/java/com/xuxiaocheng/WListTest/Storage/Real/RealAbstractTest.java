@@ -71,7 +71,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
     public class AbstractDownloadTest {
         @ParameterizedTest(name = "running")
         @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
-        public void cancel(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+        public void cancel(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
             // Prepare.
             final VisibleFilesListInformation list = OperateFilesHelper.listFiles(client, token(), location(root()), Options.FilterPolicy.OnlyFiles, VisibleFileInformation.emptyOrder(), 0, 2);
             Assumptions.assumeTrue(list != null);
@@ -87,7 +87,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
 
         @ParameterizedTest(name = "running")
         @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
-        public void notAvailable(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+        public void notAvailable(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
             Assertions.assertNull(OperateFilesHelper.requestDownloadFile(client, token(), location(1), 0, Long.MAX_VALUE));
             Assertions.assertFalse(OperateFilesHelper.cancelDownloadFile(client, token(), ""));
             Assertions.assertNull(OperateFilesHelper.confirmDownloadFile(client, token(), ""));
@@ -97,7 +97,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
 
         @ParameterizedTest(name = "running")
         @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
-        public void download(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+        public void download(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
             // Prepare.
             final LinkedHashMap<VisibleFileInformation.Order, Options.OrderDirection> order = new LinkedHashMap<>();
             order.put(VisibleFileInformation.Order.Size, Options.OrderDirection.ASCEND);
@@ -165,7 +165,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
     public class AbstractUploadTest {
         @ParameterizedTest(name = "running")
         @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
-        public void cancel(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+        public void cancel(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
             // Request.
             final UnionPair<UploadConfirm, VisibleFailureReason> confirm = OperateFilesHelper.requestUploadFile(client, token(), location(root()), "1.txt", 0, Options.DuplicatePolicy.ERROR);
             Assumptions.assumeTrue(confirm != null && confirm.isSuccess());
@@ -175,7 +175,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
 
         @ParameterizedTest(name = "running")
         @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
-        public void notAvailable(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+        public void notAvailable(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
             Assertions.assertEquals(FailureKind.NoSuchFile, Objects.requireNonNull(OperateFilesHelper.requestUploadFile(client, token(), location(1), "1.txt", 0, Options.DuplicatePolicy.ERROR)).getE().kind());
             Assertions.assertFalse(OperateFilesHelper.cancelUploadFile(client, token(), ""));
             Assertions.assertNull(OperateFilesHelper.confirmUploadFile(client, token(), "", List.of()));
@@ -185,7 +185,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
 
         @ParameterizedTest(name = "running")
         @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#broadcast")
-        public void upload(final WListClientInterface client, final WListClientInterface broadcast, final @NotNull TestInfo info) throws WrongStateException, IOException, InterruptedException {
+        public void upload(final WListClientInterface client, final WListClientInterface broadcast, final @NotNull TestInfo info) throws IOException, InterruptedException, WrongStateException {
             // Prepare. (Ensure filename is not duplicated.)
             final LinkedHashMap<VisibleFileInformation.Order, Options.OrderDirection> order = new LinkedHashMap<>();
             order.put(VisibleFileInformation.Order.Size, Options.OrderDirection.ASCEND);
@@ -281,7 +281,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
     @Disabled
     @ParameterizedTest(name = "running")
     @MethodSource("broadcast")
-    public void uploadAndDownload(final WListClientInterface client, final WListClientInterface broadcast, final @NotNull TestInfo info) throws WrongStateException, IOException, InterruptedException {
+    public void uploadAndDownload(final WListClientInterface client, final WListClientInterface broadcast, final @NotNull TestInfo info) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf file = ByteBufAllocator.DEFAULT.buffer().writeBytes("WList test upload and download.\nrandom: ".getBytes(StandardCharsets.UTF_8))
                 .writeBytes(HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, NetworkTransmission.FileTransferBufferSize  + 512, HRandomHelper.AnyWords).getBytes(StandardCharsets.UTF_8));
         final MessageDigest digest = HMessageDigestHelper.MD5.getDigester();

@@ -28,7 +28,7 @@ public class OperateSelfTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("broadcast")
     @Order(1)
-    public void logon(final WListClientInterface client, final WListClientInterface broadcast) throws WrongStateException, IOException, InterruptedException {
+    public void logon(final WListClientInterface client, final WListClientInterface broadcast) throws IOException, InterruptedException, WrongStateException {
         Assumptions.assumeTrue(OperateSelfHelper.logon(client, this.username(), this.password()));
         final Pair.ImmutablePair<OperationType, ByteBuf> pair = OperateServerHelper.waitBroadcast(broadcast).getT();
         try {
@@ -45,7 +45,7 @@ public class OperateSelfTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(2)
-    public void login(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void login(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         final Pair.ImmutablePair<String, ZonedDateTime> token = OperateSelfHelper.login(client, this.username(), this.password());
         Assertions.assertNotNull(token);
         this.token(token.getFirst());
@@ -54,7 +54,7 @@ public class OperateSelfTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("broadcast")
     @Order(6)
-    public void logoff(final WListClientInterface client, final WListClientInterface broadcast) throws WrongStateException, IOException, InterruptedException {
+    public void logoff(final WListClientInterface client, final WListClientInterface broadcast) throws IOException, InterruptedException, WrongStateException {
         Assertions.assertTrue(OperateSelfHelper.logoff(client, this.token(), this.password()));
         final Pair.ImmutablePair<OperationType, ByteBuf> pair = OperateServerHelper.waitBroadcast(broadcast).getT();
         try {
@@ -67,7 +67,7 @@ public class OperateSelfTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("broadcast")
     @Order(3)
-    public void changeUsername(final WListClientInterface client, final WListClientInterface broadcast) throws WrongStateException, IOException, InterruptedException {
+    public void changeUsername(final WListClientInterface client, final WListClientInterface broadcast) throws IOException, InterruptedException, WrongStateException {
         final String username = HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 20, null);
         Assertions.assertTrue(OperateSelfHelper.changeUsername(client, this.token(), username));
         this.username(username);
@@ -84,7 +84,7 @@ public class OperateSelfTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("broadcast")
     @Order(4)
-    public void changePassword(final WListClientInterface client, final WListClientInterface broadcast) throws WrongStateException, IOException, InterruptedException {
+    public void changePassword(final WListClientInterface client, final WListClientInterface broadcast) throws IOException, InterruptedException, WrongStateException {
         final String password = HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 20, null);
         Assertions.assertTrue(OperateSelfHelper.changePassword(client, this.token(), this.password(), password));
         this.password(password);
@@ -101,7 +101,7 @@ public class OperateSelfTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(5)
-    public void getSelfGroup(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void getSelfGroup(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         final VisibleUserGroupInformation information = OperateSelfHelper.getSelfGroup(client, this.token());
         Assertions.assertNotNull(information);
         Assertions.assertEquals(UserGroupManager.getInstance().getDefaultId(),  information.id());
@@ -113,7 +113,7 @@ public class OperateSelfTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(1)
-    public void adminLogon(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void adminLogon(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         final String password = HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 20, null);
         Assertions.assertFalse(OperateSelfHelper.logon(client, this.adminUsername(), password));
     }
@@ -121,7 +121,7 @@ public class OperateSelfTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(1)
-    public void adminLogin(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void adminLogin(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         final Pair.ImmutablePair<String, ZonedDateTime> token = OperateSelfHelper.login(client, this.adminUsername(), this.adminPassword());
         Assertions.assertNotNull(token);
         this.adminToken(token.getFirst());
@@ -130,14 +130,14 @@ public class OperateSelfTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(2)
-    public void adminLogoff(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void adminLogoff(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         Assertions.assertFalse(OperateSelfHelper.logoff(client, this.adminToken(), this.adminPassword()));
     }
 
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(2)
-    public void adminChangeUsername(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void adminChangeUsername(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         final String username = HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 20, null);
         Assertions.assertFalse(OperateSelfHelper.changeUsername(client, this.adminToken(), username));
     }
@@ -145,7 +145,7 @@ public class OperateSelfTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("broadcast")
     @Order(3)
-    public void adminChangePassword(final WListClientInterface client, final WListClientInterface broadcast) throws WrongStateException, IOException, InterruptedException {
+    public void adminChangePassword(final WListClientInterface client, final WListClientInterface broadcast) throws IOException, InterruptedException, WrongStateException {
         final String password = HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 20, null);
         Assertions.assertTrue(OperateSelfHelper.changePassword(client, this.adminToken(), this.adminPassword(), password));
         this.adminPassword(password);
@@ -163,7 +163,7 @@ public class OperateSelfTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(2)
-    public void adminGetSelfGroup(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void adminGetSelfGroup(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         final VisibleUserGroupInformation information = OperateSelfHelper.getSelfGroup(client, this.adminToken());
         Assertions.assertNotNull(information);
         Assertions.assertEquals(UserGroupManager.getInstance().getAdminId(),  information.id());
@@ -175,7 +175,7 @@ public class OperateSelfTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(2)
-    public void invalidLogon(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void invalidLogon(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         final String password = HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 20, null);
         Assertions.assertFalse(OperateSelfHelper.logon(client, this.username(), password));
     }

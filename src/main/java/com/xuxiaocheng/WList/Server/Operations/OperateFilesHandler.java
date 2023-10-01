@@ -435,7 +435,7 @@ public final class OperateFilesHandler {
             final FileInformation directory = p.getT().getT();
             HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Created directory.", ServerHandler.user(null, user.getT()),
                     ParametersMap.create().add("directory", directory));
-            BroadcastManager.onFileUpload(parent.storage(), directory, true);
+            BroadcastManager.onFileUpload(parent.storage(), directory);
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
         });
     };
@@ -627,7 +627,7 @@ public final class OperateFilesHandler {
             }
             HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Uploaded file.", ServerHandler.user(null, user.getT()),
                     ParametersMap.create().add("file", file));
-            BroadcastManager.onFileUpload(storage, file, false);
+            BroadcastManager.onFileUpload(storage, file);
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
         });
     };

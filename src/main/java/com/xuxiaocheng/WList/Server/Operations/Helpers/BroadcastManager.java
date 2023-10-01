@@ -186,11 +186,10 @@ public final class BroadcastManager {
         BroadcastManager.broadcast(OperationType.GetFileOrDirectory, BroadcastManager.fileDumper(location, isDirectory));
     }
 
-    public static void onFileUpload(final @NotNull String storage, final @NotNull FileInformation information, final boolean isDirectory) {
+    public static void onFileUpload(final @NotNull String storage, final @NotNull FileInformation information) {
         BroadcastManager.broadcast(OperationType.UploadFile, buffer -> {
             ByteBufIOUtil.writeUTF(buffer, storage);
             information.dumpVisible(buffer);
-            ByteBufIOUtil.writeBoolean(buffer, isDirectory);
             return buffer;
         });
     }

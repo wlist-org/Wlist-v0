@@ -32,7 +32,7 @@ public class OperateUsersTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(0)
-    public void login(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void login(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         final Pair.ImmutablePair<String, ZonedDateTime> token = OperateSelfHelper.login(client, this.adminUsername(), this.adminPassword());
         Assumptions.assumeTrue(token != null);
         this.adminToken(token.getFirst());
@@ -53,7 +53,7 @@ public class OperateUsersTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("broadcast")
     @Order(1)
-    public void changeUserGroup(final WListClientInterface client, final WListClientInterface broadcast) throws WrongStateException, IOException, InterruptedException {
+    public void changeUserGroup(final WListClientInterface client, final WListClientInterface broadcast) throws IOException, InterruptedException, WrongStateException {
         Assertions.assertTrue(OperateUsersHelper.changeUserGroup(client, this.adminToken(), this.userId(), UserGroupManager.getInstance().getAdminId()));
         final Pair.ImmutablePair<OperationType, ByteBuf> pair = OperateServerHelper.waitBroadcast(broadcast).getT();
         try {
@@ -69,7 +69,7 @@ public class OperateUsersTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(2)
-    public void getUser(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void getUser(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         final VisibleUserInformation information = OperateUsersHelper.getUser(client, this.adminToken(), this.userId());
         Assertions.assertNotNull(information);
         Assertions.assertEquals(this.userId(), information.id());
@@ -81,14 +81,14 @@ public class OperateUsersTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(2)
-    public void listUsers(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void listUsers(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         Assertions.assertEquals(2, OperateUsersHelper.listUsers(client, this.adminToken(), VisibleUserInformation.emptyOrder(), 0, 2).getFirst());
     }
 
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(2)
-    public void listUsersInGroups(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void listUsersInGroups(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         Assertions.assertEquals(2, OperateUsersHelper.listUsersInGroups(client, this.adminToken(), Set.of(UserGroupManager.getInstance().getAdminId()),
                 false, VisibleUserInformation.emptyOrder(), 0, 3).getFirst());
         Assertions.assertEquals(0, OperateUsersHelper.listUsersInGroups(client, this.adminToken(), Set.of(UserGroupManager.getInstance().getAdminId()),
@@ -98,7 +98,7 @@ public class OperateUsersTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("broadcast")
     @Order(3)
-    public void deleteUser(final WListClientInterface client, final WListClientInterface broadcast) throws WrongStateException, IOException, InterruptedException {
+    public void deleteUser(final WListClientInterface client, final WListClientInterface broadcast) throws IOException, InterruptedException, WrongStateException {
         Assertions.assertTrue(OperateUsersHelper.deleteUser(client, this.adminToken(), this.userId()));
         final Pair.ImmutablePair<OperationType, ByteBuf> pair = OperateServerHelper.waitBroadcast(broadcast).getT();
         try {
@@ -112,21 +112,21 @@ public class OperateUsersTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(4)
-    public void deleteUsersInGroup(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void deleteUsersInGroup(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         Assertions.assertEquals(0, OperateUsersHelper.deleteUsersInGroup(client, this.adminToken(), UserGroupManager.getInstance().getDefaultId()));
     }
 
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(2)
-    public void searchGroupRegex(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void searchGroupRegex(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         Assertions.assertEquals(2, OperateUsersHelper.searchUsersRegex(client, this.adminToken(), ".*", VisibleUserInformation.emptyOrder(), 0, 2).getFirst());
     }
 
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(3)
-    public void searchGroupName(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void searchGroupName(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         Assertions.assertEquals(1, OperateUsersHelper.searchUserName(client, this.adminToken(), Set.of(this.username()), 0, 2).getFirst());
     }
 
@@ -134,14 +134,14 @@ public class OperateUsersTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(1)
-    public void adminChangeUserGroup(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void adminChangeUserGroup(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         Assertions.assertFalse(OperateUsersHelper.changeUserGroup(client, this.adminToken(), UserManager.getInstance().getAdminId(), UserGroupManager.getInstance().getDefaultId()));
     }
 
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(1)
-    public void adminDeleteUsersInGroup(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void adminDeleteUsersInGroup(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         Assertions.assertEquals(-1, OperateUsersHelper.deleteUsersInGroup(client, this.adminToken(), UserGroupManager.getInstance().getAdminId()));
     }
 }

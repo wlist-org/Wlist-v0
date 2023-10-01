@@ -32,7 +32,7 @@ public class OperateProvidersTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     @Order(0)
-    public void login(final WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+    public void login(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
         final Pair.ImmutablePair<String, ZonedDateTime> token = OperateSelfHelper.login(client, this.adminUsername(), this.adminPassword());
         Assumptions.assumeTrue(token != null);
         this.adminToken(token.getFirst());
@@ -55,7 +55,7 @@ public class OperateProvidersTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("broadcast")
     @Order(1)
-    public void addProvider(final WListClientInterface client, final WListClientInterface broadcast) throws WrongStateException, IOException, InterruptedException {
+    public void addProvider(final WListClientInterface client, final WListClientInterface broadcast) throws IOException, InterruptedException, WrongStateException {
         OperateProvidersHelper.addProvider(client, this.adminToken(), this.providerName(), this.providerType(), this.providerConfiguration());
         final Pair.ImmutablePair<OperationType, ByteBuf> pair = OperateServerHelper.waitBroadcast(broadcast).getT();
         try {
@@ -71,7 +71,7 @@ public class OperateProvidersTest extends ServerWrapper {
     @ParameterizedTest(name = "running")
     @MethodSource("broadcast")
     @Order(2)
-    public void removeProvider(final WListClientInterface client, final WListClientInterface broadcast) throws WrongStateException, IOException, InterruptedException {
+    public void removeProvider(final WListClientInterface client, final WListClientInterface broadcast) throws IOException, InterruptedException, WrongStateException {
         OperateProvidersHelper.removeProvider(client, this.adminToken(), this.providerName(), true);
         final Pair.ImmutablePair<OperationType, ByteBuf> pair = OperateServerHelper.waitBroadcast(broadcast).getT();
         try {
