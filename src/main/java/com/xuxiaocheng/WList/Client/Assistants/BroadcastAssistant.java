@@ -182,6 +182,7 @@ public final class BroadcastAssistant {
         BroadcastAssistant.receiver.computeIfAbsent(address, k -> {
             final WListClientInterface client = new WListClient(address);
             BroadcastAssistant.CallbackExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
+                boolean flag = true;
                 try (client) {
                     client.open();
                     OperateServerHelper.setBroadcastMode(client, true);
@@ -203,6 +204,11 @@ public final class BroadcastAssistant {
                 } catch (final IOException exception) {
                     if (!exception.getMessage().equals(I18NUtil.get("client.network.closed_client", address)))
                         throw exception;
+                    flag = false;
+                } finally {
+                    BroadcastAssistant.stop(address);
+                    if (flag)
+                        BroadcastAssistant.start(address);
                 }
             })).addListener(MiscellaneousUtil.exceptionListener());
             return client;

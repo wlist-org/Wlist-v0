@@ -15,6 +15,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.group.ChannelGroup;
+import io.netty.channel.group.ChannelGroupFuture;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.jetbrains.annotations.NotNull;
@@ -44,7 +45,7 @@ public final class BroadcastManager {
         return BroadcastManager.broadcastGroup.contains(channel);
     }
 
-    private static void broadcast(final @NotNull OperationType type, final MessageProto.@Nullable Appender message) {
+    public static @Nullable ChannelGroupFuture broadcast(final @NotNull OperationType type, final MessageProto.@Nullable Appender message) {
         final ByteBuf buffer;
         final ByteBuf prefix = ByteBufAllocator.DEFAULT.buffer();
         try {
@@ -54,11 +55,11 @@ public final class BroadcastManager {
             buffer.retain();
         } catch (final IOException exception) {
             HLog.getInstance("DefaultLogger").log(HLogLevel.ERROR, exception);
-            return;
+            return null;
         } finally {
             prefix.release();
         }
-        BroadcastManager.broadcastGroup.writeAndFlush(buffer).addListener(MiscellaneousUtil.exceptionListener());
+        return BroadcastManager.broadcastGroup.writeAndFlush(buffer).addListener(MiscellaneousUtil.exceptionListener());
     }
 
     public static void broadcastUser(final @NotNull String sender, final @NotNull String message) {

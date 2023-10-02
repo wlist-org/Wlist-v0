@@ -28,6 +28,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -88,12 +90,11 @@ public class WListClient implements WListClientInterface {
         return this.address;
     }
 
-    private @Nullable ByteBuf receive = null;
-    protected final @NotNull Object receiveLock = new Object();
+    private final @NotNull BlockingQueue<@NotNull ByteBuf> queue = new LinkedBlockingQueue<>();
 
     @Override
     public @NotNull ByteBuf send(final @Nullable ByteBuf msg) throws IOException, InterruptedException {
-        if (!this.isActive())
+        if (!this.isActive() || this.channel.isNotInitialized())
             throw new IOException(I18NUtil.get("client.network.closed_client", this.address));
         if (msg != null) {
             final ChannelFuture future = this.channel.getInstance().writeAndFlush(msg).await();
@@ -104,16 +105,12 @@ public class WListClient implements WListClientInterface {
                 throw new IOException(throwable);
             }
         }
-        final ByteBuf r;
-        synchronized (this.receiveLock) {
-            while (this.receive == null && this.isActive())
-                this.receiveLock.wait(TimeUnit.SECONDS.toMillis(1));
-            r = this.receive;
-            this.receive = null;
-        }
-        if (r == null)
+        ByteBuf receive = null;
+        while (receive == null && this.isActive())
+            receive = this.queue.poll(1, TimeUnit.SECONDS);
+        if (receive == null)
             throw new IOException(I18NUtil.get("client.network.closed_client", this.address));
-        return r;
+        return receive;
     }
 
     @Override
@@ -122,6 +119,12 @@ public class WListClient implements WListClientInterface {
         if (channel == null)
             return;
         channel.close().addListener(MiscellaneousUtil.exceptionListener()).addListener(f -> this.clientEventLoop.shutdownGracefully());
+        while (true) {
+            final ByteBuf deleted = this.queue.poll();
+            if (deleted == null)
+                break;
+            deleted.release();
+        }
     }
 
     @Override
@@ -139,15 +142,7 @@ public class WListClient implements WListClientInterface {
 
         @Override
         protected void channelRead0(final @NotNull ChannelHandlerContext ctx, final @NotNull ByteBuf msg) {
-            synchronized (this.client.receiveLock) {
-                if (this.client.receive != null) {
-                    WListClient.logger.log(HLogLevel.WARN, "Discard message. ", this.client.receive.toString());
-                    this.client.receive.release(); // TODO: blocking queue.
-                }
-                msg.retain();
-                this.client.receive = msg;
-                this.client.receiveLock.notify();
-            }
+            this.client.queue.add(msg.retain());
         }
 
         @Override
