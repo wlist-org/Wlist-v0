@@ -18,8 +18,9 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
-public record ClientConfiguration(int limitPerPage, int threadCount) {
+public record ClientConfiguration(int limitPerPage, int threadCount, int progressInterval) {
     public static final @NotNull HInitializer<File> Location = new HInitializer<>("ClientConfigurationLocation");
     private static final @NotNull HInitializer<ClientConfiguration> instance = new HInitializer<>("ClientConfiguration");
 
@@ -39,7 +40,9 @@ public record ClientConfiguration(int limitPerPage, int threadCount) {
                 YamlHelper.getConfig(config, "limit_per_page", 20,
                         o -> YamlHelper.transferIntegerFromStr(o, errors, "limit_per_page", BigInteger.ONE, BigInteger.valueOf(100))).intValue(),
                 YamlHelper.getConfig(config, "thread_count", 4,
-                        o -> YamlHelper.transferIntegerFromStr(o, errors, "thread_count", BigInteger.ONE, YamlHelper.IntegerMax)).intValue()
+                        o -> YamlHelper.transferIntegerFromStr(o, errors, "thread_count", BigInteger.ONE, YamlHelper.IntegerMax)).intValue(),
+                YamlHelper.getConfig(config, "progress_interval", TimeUnit.MILLISECONDS.toMillis(500),
+                        o -> YamlHelper.transferIntegerFromStr(o, errors, "progress_interval", BigInteger.ONE, YamlHelper.IntegerMax)).intValue()
         );
         YamlHelper.throwErrors(errors);
         return configuration;
@@ -49,6 +52,7 @@ public record ClientConfiguration(int limitPerPage, int threadCount) {
         final Map<String, Object> config = new LinkedHashMap<>();
         config.put("limit_per_page", configuration.limitPerPage);
         config.put("thread_count", configuration.threadCount);
+        config.put("progress_interval", configuration.progressInterval);
         YamlHelper.dumpYaml(config, stream);
     }
 

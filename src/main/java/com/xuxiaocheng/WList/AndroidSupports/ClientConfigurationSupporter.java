@@ -23,6 +23,10 @@ public final class ClientConfigurationSupporter {
         return configuration.threadCount();
     }
 
+    public static int progressInterval(final @NotNull ClientConfiguration configuration) {
+        return configuration.progressInterval();
+    }
+
     public static @NotNull HInitializer<File> location() {
         return ClientConfiguration.Location;
     }

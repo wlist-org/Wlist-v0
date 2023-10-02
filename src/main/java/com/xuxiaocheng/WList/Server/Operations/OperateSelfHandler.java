@@ -34,11 +34,7 @@ public final class OperateSelfHandler {
         super();
     }
 
-    private static final @NotNull MessageProto TokenDataError = new MessageProto(ResponseState.NoPermission, buf -> {
-        ByteBufIOUtil.writeVariableLenInt(buf, 1);
-        ByteBufIOUtil.writeUTF(buf, UserPermission.Undefined.name());
-        return buf;
-    });
+    private static final @NotNull MessageProto TokenDataError = OperateSelfHandler.NoPermission(List.of(UserPermission.Undefined));
     static @NotNull MessageProto NoPermission(final @NotNull Collection<@NotNull UserPermission> permissions) {
         assert !permissions.isEmpty();
         return new MessageProto(ResponseState.NoPermission, buf -> {
