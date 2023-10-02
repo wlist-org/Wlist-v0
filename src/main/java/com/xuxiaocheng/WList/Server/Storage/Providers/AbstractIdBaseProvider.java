@@ -191,13 +191,8 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                 final FileInformation realInfo;
                 final AtomicReference<String> connectionId = new AtomicReference<>();
                 try (final Connection connection = manager.getConnection(null, connectionId)) {
-                    if (manager.selectInfo(update.getT().parentId(), true, connectionId.get()) != null) {
-                        manager.updateOrInsertFileOrDirectory(update.getT(), connectionId.get());
-                        realInfo = manager.selectInfo(id, isDirectory, connectionId.get());
-                    } else {
-                        manager.deleteFileOrDirectory(id, isDirectory, connectionId.get());
-                        realInfo = null;
-                    }
+                    manager.updateOrInsertFileOrDirectory(update.getT(), connectionId.get());
+                    realInfo = manager.selectInfo(id, isDirectory, connectionId.get());
                     connection.commit();
                 }
                 final FileInformation callback = Objects.requireNonNullElse(realInfo, update.getT());
@@ -305,7 +300,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                     }
                     for (final Long id: deleteDirectories) {
                         final FileInformation info = directories.get(id);
-                        if (info == null || manager.selectInfo(info.parentId(), true, connectionId.get()) == null)
+                        if (info == null)
                             manager.deleteDirectoryRecursively(id.longValue(), connectionId.get());
                         else {
                             manager.updateOrInsertDirectory(info, connectionId.get());

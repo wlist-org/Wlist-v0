@@ -404,28 +404,41 @@ public class FileSqliteHelper implements FileSqlInterface {
         }
     }
 
-    @Override // TODO: recycle detector
+    @Override
     public void updateOrInsertDirectory(final @NotNull FileInformation directory, final @Nullable String _connectionId) throws SQLException {
         assert directory.isDirectory();
         final AtomicReference<String> connectionId = new AtomicReference<>(_connectionId);
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
             final FileInformation old = this.selectInfo(directory.id(), true, connectionId.get());
             if (old == null) {
+                final long size;
                 try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+    SELECT size FROM %s WHERE double_id == ? LIMIT 1;
+                """, this.tableName))) {
+                    statement.setLong(1, FileSqliteHelper.getDoubleId(directory.parentId(), true));
+                    try (final ResultSet result = statement.executeQuery()) {
+                        size = result.next() ? result.getLong(1) : -2;
+                    }
+                }
+                if (size >= -1)
+                    try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     INSERT INTO %s (double_id, parent_id, name, name_order, size, create_time, update_time, others)
         VALUES (?, ?, ?, ?, -1, ?, ?, ?);
-                    """, this.tableName))) {
-                    statement.setLong(1, FileSqliteHelper.getDoubleId(directory.id(), true));
-                    statement.setLong(2, FileSqliteHelper.getDoubleId(directory.parentId(), true));
-                    statement.setString(3, directory.name());
-                    statement.setBytes(4, SqlHelper.toOrdered(directory.name()));
-                    statement.setTimestamp(5, FileSqliteHelper.getTimestamp(directory.createTime()));
-                    statement.setTimestamp(6, FileSqliteHelper.getTimestamp(directory.updateTime()));
-                    statement.setString(7, directory.others());
-                    statement.executeUpdate();
-                }
-                this.unknowDirectorySizeRecursively(directory.parentId(), connectionId.get());
+                        """, this.tableName))) {
+                        statement.setLong(1, FileSqliteHelper.getDoubleId(directory.id(), true));
+                        statement.setLong(2, FileSqliteHelper.getDoubleId(directory.parentId(), true));
+                        statement.setString(3, directory.name());
+                        statement.setBytes(4, SqlHelper.toOrdered(directory.name()));
+                        statement.setTimestamp(5, FileSqliteHelper.getTimestamp(directory.createTime()));
+                        statement.setTimestamp(6, FileSqliteHelper.getTimestamp(directory.updateTime()));
+                        statement.setString(7, directory.others());
+                        statement.executeUpdate();
+                    }
+                if (size >= 0)
+                    this.unknowDirectorySizeRecursively(directory.parentId(), connectionId.get());
             } else {
+                if (directory.id() != old.id() && this.isInDirectoryRecursively(directory.id(), true, old.id(), connectionId.get()))
+                    throw new IllegalStateException("Recycle directory tree." + ParametersMap.create().add("directory", directory).add("old", old));
                 try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     UPDATE %s SET parent_id = ?, name = ?, name_order = ?, create_time = ?, update_time = ?, others = ? WHERE double_id == ?;
                     """, this.tableName))) {

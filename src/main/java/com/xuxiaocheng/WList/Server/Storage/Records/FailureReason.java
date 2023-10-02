@@ -12,7 +12,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.util.Objects;
 
-public class FailureReason { // TODO: I18N
+public class FailureReason {
     public static @NotNull FailureReason byInvalidName(final @NotNull FileLocation location, final @NotNull String name, final @NotNull String rules) {
         return new FailureReason(FailureKind.InvalidName, location, ParametersMap.create().add("name", name).add("rules", rules).toString());
     }
