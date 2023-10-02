@@ -12,10 +12,12 @@ import com.xuxiaocheng.Rust.NetworkTransmission;
 import com.xuxiaocheng.WList.Client.ClientConfiguration;
 import com.xuxiaocheng.WList.Client.Exceptions.WrongStateException;
 import com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper;
+import com.xuxiaocheng.WList.Client.Operations.OperateProgressHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WList.Commons.Beans.DownloadConfirm;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
+import com.xuxiaocheng.WList.Commons.Beans.InstantaneousProgressState;
 import com.xuxiaocheng.WList.Commons.Beans.UploadChecksum;
 import com.xuxiaocheng.WList.Commons.Beans.UploadConfirm;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason;
@@ -50,7 +52,9 @@ import java.util.Objects;
 import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 public final class FilesAssistant {
@@ -119,7 +123,7 @@ public final class FilesAssistant {
         return List.of(checksums);
     }
 
-    public static @Nullable VisibleFailureReason upload(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull File file, final Options.@NotNull DuplicatePolicy policy, final @NotNull FileLocation parent) throws IOException, InterruptedException, WrongStateException {
+    public static @Nullable VisibleFailureReason upload(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull File file, final Options.@NotNull DuplicatePolicy policy, final @NotNull FileLocation parent, final @NotNull Predicate<? super @NotNull UploadConfirm> continuer, final @NotNull Consumer<? super @NotNull InstantaneousProgressState> callback) throws IOException, InterruptedException, WrongStateException {
         if (!file.isFile() || !file.canRead())
             throw new FileNotFoundException("Not a upload-able file." + ParametersMap.create().add("file", file));
         final UnionPair<UploadConfirm, VisibleFailureReason> confirm;
@@ -130,6 +134,8 @@ public final class FilesAssistant {
             return new VisibleFailureReason(FailureKind.Others, parent, "Requesting.");
         if (confirm.isFailure())
             return confirm.getE();
+        if (!continuer.test(confirm.getT()))
+            return null;
         final List<String> checksums = FilesAssistant.calculateChecksums(file, confirm.getT().checksums());
         HLog.getInstance("ClientLogger").log(HLogLevel.LESS, "Calculated checksums.", ParametersMap.create()
                 .add("file", file).add("checksums", checksums));
@@ -141,7 +147,7 @@ public final class FilesAssistant {
             return new VisibleFailureReason(FailureKind.Others, parent, "Confirming.");
         final EventExecutorGroup executors = new DefaultEventExecutorGroup(ClientConfiguration.get().threadCount() > 0 ?
                 ClientConfiguration.get().threadCount() : Math.min(Runtime.getRuntime().availableProcessors(), information.parallel().size()),
-                new DefaultThreadFactory("UploadingExecutor@" + file), information.parallel().size(), (t, e) ->
+                new DefaultThreadFactory("UploadingExecutor@" + file.getAbsolutePath()), information.parallel().size(), (t, e) ->
                 HLog.getInstance("ClientLogger").log(HLogLevel.MISTAKE, "Something went wrong when uploading.", ParametersMap.create()
                         .add("address", address).add("username", username).add("file", file)));
         final AtomicBoolean flag = new AtomicBoolean(false);
@@ -175,9 +181,12 @@ public final class FilesAssistant {
                     } finally {
                         buf.release();
                     }
-                }, latch::countDown), executors).exceptionally(MiscellaneousUtil.exceptionHandler());
+                }, () -> {
+                    failure.countDown();
+                    latch.countDown();
+                }), executors).exceptionally(MiscellaneousUtil.exceptionHandler());
             }
-            failure.await();
+            FilesAssistant.waitAndCallback(address, username, callback, flag, failure, confirm.getT().id());
             latch.await();
         } finally {
             final Future<?> future = executors.shutdownGracefully().await();
@@ -191,7 +200,7 @@ public final class FilesAssistant {
         return success ? null : new VisibleFailureReason(FailureKind.Others, parent, "Finishing.");
     }
 
-    public static @Nullable VisibleFailureReason download(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation location, final @NotNull Predicate<? super @NotNull DownloadConfirm> continuer, final @NotNull File file) throws IOException, InterruptedException, WrongStateException {
+    public static @Nullable VisibleFailureReason download(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation location, final @NotNull File file, final @NotNull Predicate<? super @NotNull DownloadConfirm> continuer, final @NotNull Consumer<? super @NotNull InstantaneousProgressState> callback) throws IOException, InterruptedException, WrongStateException {
         final UnionPair<DownloadConfirm, VisibleFailureReason> confirm;
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) { // TODO: record downloading progress.
             confirm = OperateFilesHelper.requestDownloadFile(client, TokenAssistant.getToken(address, username), location, 0, Long.MAX_VALUE);
@@ -214,11 +223,12 @@ public final class FilesAssistant {
         }
         final EventExecutorGroup executors = new DefaultEventExecutorGroup(ClientConfiguration.get().threadCount() > 0 ?
                 ClientConfiguration.get().threadCount() : Math.min(Runtime.getRuntime().availableProcessors(), information.parallel().size()),
-                new DefaultThreadFactory("DownloadingExecutor@" + file), information.parallel().size(), (t, e) ->
+                new DefaultThreadFactory("DownloadingExecutor@" + file.getAbsolutePath()), information.parallel().size(), (t, e) ->
                 HLog.getInstance("ClientLogger").log(HLogLevel.MISTAKE, "Something went wrong when downloading.", ParametersMap.create()
                         .add("address", address).add("username", username).add("file", file).add("location", location)));
         final AtomicBoolean flag = new AtomicBoolean(false);
         try {
+            final CountDownLatch failure = new CountDownLatch(information.parallel().size());
             final CountDownLatch latch = new CountDownLatch(information.parallel().size());
             int i = 0;
             long position = 0;
@@ -238,12 +248,12 @@ public final class FilesAssistant {
                             final ByteBuf buf = OperateFilesHelper.downloadFile(c, TokenAssistant.getToken(address, username), confirm.getT().id(), k);
                             if (buf == null) {
                                 flag.set(true);
-                                while (latch.getCount() > 0)
-                                    latch.countDown();
+                                while (failure.getCount() > 0)
+                                    failure.countDown();
                                 break;
                             }
                             try {
-                                if (latch.getCount() <= 0)
+                                if (failure.getCount() <= 0)
                                     break;
                                 length -= buf.readableBytes();
                                 buf.readBytes(channel, buf.readableBytes());
@@ -252,11 +262,15 @@ public final class FilesAssistant {
                             }
                         }
                     }
-                }, latch::countDown), executors).exceptionally(MiscellaneousUtil.exceptionHandler());
+                }, () -> {
+                    failure.countDown();
+                    latch.countDown();
+                }), executors).exceptionally(MiscellaneousUtil.exceptionHandler());
             }
             if (position != confirm.getT().downloadingSize())
                 throw new IllegalStateException("Invalid download size." + ParametersMap.create().add("address", address).add("username", username).add("file", file)
                         .add("location", location).add("confirm", confirm).add("information", information).add("position", position));
+            FilesAssistant.waitAndCallback(address, username, callback, flag, failure, confirm.getT().id());
             latch.await();
         } finally {
             final Future<?> future = executors.shutdownGracefully().await();
@@ -268,5 +282,25 @@ public final class FilesAssistant {
         if (flag.get())
             return new VisibleFailureReason(FailureKind.Others, location, "Downloading.");
         return null;
+    }
+
+    private static void waitAndCallback(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull Consumer<? super @NotNull InstantaneousProgressState> callback, final @NotNull AtomicBoolean flag, final @NotNull CountDownLatch failure, final @NotNull String id) throws InterruptedException, IOException, WrongStateException {
+        try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
+            int failed = 0;
+            while (!failure.await(ClientConfiguration.get().progressInterval(), TimeUnit.MILLISECONDS)) {
+                final InstantaneousProgressState state = OperateProgressHelper.getProgress(client, TokenAssistant.getToken(address, username), id);
+                if (state == null) {
+                    if (++failed > 3) {
+                        flag.set(true);
+                        while (failure.getCount() > 0)
+                            failure.countDown();
+                        break;
+                    }
+                } else {
+                    failed = 0;
+                    callback.accept(state);
+                }
+            }
+        }
     }
 }

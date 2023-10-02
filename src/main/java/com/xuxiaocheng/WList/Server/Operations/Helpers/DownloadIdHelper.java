@@ -28,7 +28,8 @@ public final class DownloadIdHelper {
 
     public static @NotNull String generateId(final @NotNull DownloadRequirements requirements) {
         final String id = MiscellaneousUtil.randomKeyAndPut(DownloadIdHelper.requirements, IdsHelper::randomTimerId, requirements);
-        IdsHelper.CleanerExecutors.schedule(() -> DownloadIdHelper.requirements.remove(id, requirements), ServerConfiguration.get().idIdleExpireTime(), TimeUnit.SECONDS);
+        IdsHelper.CleanerExecutors.schedule(() -> DownloadIdHelper.requirements.remove(id, requirements), ServerConfiguration.get().idIdleExpireTime(), TimeUnit.SECONDS)
+                .addListener(IdsHelper.noCancellationExceptionListener());
         return id;
     }
 
@@ -93,10 +94,12 @@ public final class DownloadIdHelper {
                 IdsHelper.CleanerExecutors.schedule(() -> {
                     if (MiscellaneousUtil.now().isAfter(this.expireTime))
                         this.close();
-                }, ServerConfiguration.get().idIdleExpireTime(), TimeUnit.SECONDS).addListener(MiscellaneousUtil.exceptionListener());
+                }, ServerConfiguration.get().idIdleExpireTime(), TimeUnit.SECONDS)
+                        .addListener(IdsHelper.noCancellationExceptionListener());
             } else {
                 this.expireTime = this.methods.expireTime();
-                IdsHelper.CleanerExecutors.schedule(this::close, Duration.between(MiscellaneousUtil.now(), this.expireTime).toSeconds(), TimeUnit.SECONDS).addListener(MiscellaneousUtil.exceptionListener());
+                IdsHelper.CleanerExecutors.schedule(this::close, Duration.between(MiscellaneousUtil.now(), this.expireTime).toSeconds(), TimeUnit.SECONDS)
+                        .addListener(IdsHelper.noCancellationExceptionListener());
             }
         }
 
@@ -121,7 +124,8 @@ public final class DownloadIdHelper {
                 IdsHelper.CleanerExecutors.schedule(() -> {
                     if (MiscellaneousUtil.now().isAfter(this.expireTime))
                         this.close();
-                }, ServerConfiguration.get().idIdleExpireTime(), TimeUnit.SECONDS).addListener(MiscellaneousUtil.exceptionListener());
+                }, ServerConfiguration.get().idIdleExpireTime(), TimeUnit.SECONDS)
+                        .addListener(IdsHelper.noCancellationExceptionListener());
             }
             synchronized (this.locks[index]) {
                 if (this.nodes[index] == null) {
@@ -130,7 +134,7 @@ public final class DownloadIdHelper {
                 }
                 this.nodes[index] = this.nodes[index].apply(consumer, delta -> this.progress.progress(index, delta));
                 if (this.nodes[index] == null && this.counter.getAndDecrement() == 0)
-                    IdsHelper.CleanerExecutors.execute(this::close);
+                    IdsHelper.CleanerExecutors.submit(this::close).addListener(MiscellaneousUtil.exceptionListener());
             }
         }
 

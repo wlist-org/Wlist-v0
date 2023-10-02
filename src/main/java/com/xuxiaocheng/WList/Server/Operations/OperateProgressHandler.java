@@ -23,6 +23,9 @@ public final class OperateProgressHandler {
         ServerHandlerManager.register(OperationType.GetProgress, OperateProgressHandler.doGetProgress);
     }
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateProgressHelper
+     */
     private static final @NotNull ServerHandler doGetProgress = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token);

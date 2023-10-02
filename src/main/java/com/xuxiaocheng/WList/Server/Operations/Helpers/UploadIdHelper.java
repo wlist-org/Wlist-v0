@@ -35,7 +35,8 @@ public final class UploadIdHelper {
             UploadChecksum.requireRegisteredAlgorithm(c.algorithm());
         });
         final String id = MiscellaneousUtil.randomKeyAndPut(UploadIdHelper.requirements, IdsHelper::randomTimerId, requirements);
-        IdsHelper.CleanerExecutors.schedule(() -> UploadIdHelper.requirements.remove(id, requirements), ServerConfiguration.get().idIdleExpireTime(), TimeUnit.SECONDS);
+        IdsHelper.CleanerExecutors.schedule(() -> UploadIdHelper.requirements.remove(id, requirements), ServerConfiguration.get().idIdleExpireTime(), TimeUnit.SECONDS)
+                .addListener(IdsHelper.noCancellationExceptionListener());
         return id;
     }
 
@@ -119,7 +120,8 @@ public final class UploadIdHelper {
             IdsHelper.CleanerExecutors.schedule(() -> {
                 if (MiscellaneousUtil.now().isAfter(this.expireTime))
                     this.close();
-            }, ServerConfiguration.get().idIdleExpireTime(), TimeUnit.SECONDS).addListener(MiscellaneousUtil.exceptionListener());
+            }, ServerConfiguration.get().idIdleExpireTime(), TimeUnit.SECONDS)
+                    .addListener(IdsHelper.noCancellationExceptionListener());
         }
 
         @Override
@@ -140,7 +142,8 @@ public final class UploadIdHelper {
             IdsHelper.CleanerExecutors.schedule(() -> {
                 if (MiscellaneousUtil.now().isAfter(this.expireTime))
                     this.close();
-            }, ServerConfiguration.get().idIdleExpireTime(), TimeUnit.SECONDS).addListener(MiscellaneousUtil.exceptionListener());
+            }, ServerConfiguration.get().idIdleExpireTime(), TimeUnit.SECONDS)
+                    .addListener(IdsHelper.noCancellationExceptionListener());
             synchronized (this.locks[index]) {
                 if (this.nodes[index] == null)
                     return false;

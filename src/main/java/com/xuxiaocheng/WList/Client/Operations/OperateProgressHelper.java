@@ -11,6 +11,9 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 
+/**
+ * @see com.xuxiaocheng.WList.Server.Operations.OperateProgressHandler
+ */
 public final class OperateProgressHelper {
     private OperateProgressHelper() {
         super();
@@ -19,17 +22,9 @@ public final class OperateProgressHelper {
     public static @Nullable InstantaneousProgressState getProgress(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String id) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.GetProgress, token);
         ByteBufIOUtil.writeUTF(send, id);
-        OperateHelper.logOperating(OperationType.GetProgress, token, p -> p.add("id", id));
         final ByteBuf receive = client.send(send);
         try {
-            final String reason = OperateHelper.handleState(receive);
-            if (reason == null) {
-                final InstantaneousProgressState state = InstantaneousProgressState.parse(receive);
-                OperateHelper.logOperated(OperationType.GetProgress, null, p -> p.add("state", state));
-                return state;
-            }
-            OperateHelper.logOperated(OperationType.GetProgress, reason, null);
-            return null;
+            return OperateHelper.handleState(receive) == null ? InstantaneousProgressState.parse(receive) : null;
         } finally {
             receive.release();
         }
