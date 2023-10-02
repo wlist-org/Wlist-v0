@@ -5,7 +5,6 @@ import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.StaticLoader;
-import com.xuxiaocheng.WList.Commons.Utils.I18NUtil;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
@@ -14,10 +13,13 @@ import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
+import com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou.LanzouConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou.LanzouSharer;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WList.Server.Util.IdsHelper;
 import com.xuxiaocheng.WList.Server.WListServer;
+import okhttp3.HttpUrl;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.BeforeAll;
@@ -27,11 +29,34 @@ import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Map;
+import java.util.Objects;
 
 public class TempTest {
     private static final boolean initializeServer = false;
     private static final @NotNull SupplierE<@Nullable Object> _main = () -> {
-        return I18NUtil.get("test", null, 1);
+        final LanzouSharer sharer = new LanzouSharer();
+        sharer.initialize(new LanzouConfiguration());
+        return sharer.getSingleShareFileDownloadUrl(Objects.requireNonNull(HttpUrl.parse("https://wwsz.lanzouw.com/")), "iEPc8148jq5e", "b0iq");
+//        final String domin = ;
+//        try (final WebClient client = BrowserUtil.newWebClient()) {
+//            client.setWebConnection(new WebConnectionWrapper(client.getWebConnection()) {
+//                @Override
+//                public @NotNull WebResponse getResponse(final @NotNull WebRequest request) throws IOException {
+//                    final String url = request.getUrl().toString();
+//                    if (url.startsWith(domin) || url.startsWith("https://assets.woozooo.com/"))
+//                        return super.getResponse(request);
+//                    return new WebResponse(new WebResponseData("(function(){})()".getBytes(StandardCharsets.UTF_8), 200, "OK",
+//                            List.of(new NameValuePair("Content-Type", "application/javascript"))), request, 0);
+//                }
+//            });
+//            final HtmlPage page = client.getPage(domin + "iEPc8148jq5e");
+//            BrowserUtil.waitJavaScriptCompleted(client);
+//            final HtmlInput input = page.getElementByName("pwd");
+//            input.setValue("b0iq");
+//            input.focus();
+//            page.pressAccessKey('\n');
+//            page.executeJavaScript("var a = 1;");
+//        }
 //        return null;
     };
 

@@ -3,6 +3,7 @@ package com.xuxiaocheng.WList.Commons.Utils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
+import io.netty.util.internal.EmptyArrays;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -23,8 +24,6 @@ public final class ByteBufIOUtil {
         super();
     }
 
-    public static final byte[] EmptyByteArray = new byte[0];
-
     public static byte readByte(final @NotNull ByteBuf buffer) throws IOException {
         try {
             return buffer.readByte();
@@ -36,7 +35,7 @@ public final class ByteBufIOUtil {
     public static byte @NotNull [] readByteArray(final @NotNull ByteBuf buffer) throws IOException {
         final int length = ByteBufIOUtil.readVariableLenInt(buffer);
         if (length <= 0)
-            return ByteBufIOUtil.EmptyByteArray;
+            return EmptyArrays.EMPTY_BYTES;
         if (buffer.readableBytes() < length)
             throw new IOException(new IndexOutOfBoundsException(length));
         final byte[] bytes = new byte[length];

@@ -1,21 +1,25 @@
 package com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou;
 
-import com.alibaba.fastjson2.JSONObject;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Server.Exceptions.IllegalParametersException;
-import com.xuxiaocheng.WList.Server.Exceptions.IllegalResponseCodeException;
-import com.xuxiaocheng.WList.Server.Exceptions.WrongResponseException;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseSharer;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
-import com.xuxiaocheng.WList.Server.Util.JavaScriptUtil;
-import okhttp3.FormBody;
+import com.xuxiaocheng.WList.Server.Util.BrowserUtil;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
-import okhttp3.OkHttpClient;
 import okhttp3.Response;
-import okhttp3.ResponseBody;
+import org.htmlunit.ElementNotFoundException;
+import org.htmlunit.WebClient;
+import org.htmlunit.WebRequest;
+import org.htmlunit.WebResponse;
+import org.htmlunit.html.FrameWindow;
+import org.htmlunit.html.HtmlElement;
+import org.htmlunit.html.HtmlInput;
+import org.htmlunit.html.HtmlPage;
+import org.htmlunit.util.WebConnectionWrapper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -23,12 +27,8 @@ import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @SuppressWarnings("SpellCheckingInspection")
 public class LanzouSharer extends AbstractIdBaseSharer<LanzouConfiguration> {
@@ -37,105 +37,75 @@ public class LanzouSharer extends AbstractIdBaseSharer<LanzouConfiguration> {
         return StorageTypes.Lanzou;
     }
 
+    protected static final @NotNull String AssertHost = Objects.requireNonNull(HttpUrl.parse("https://assets.woozooo.com/")).url().getHost();
     protected static final @NotNull DateTimeFormatter dataTimeFormatter = DateTimeFormatter.RFC_1123_DATE_TIME;
-    private static final @NotNull Iterable<@NotNull Pattern> HtmlCommentsTags = List.of(Pattern.compile("<!--.*?-->"));
-    protected static @NotNull String removeHtmlComments(final @Nullable String html) {
-        if (html == null)
-            return "";
-        String res = html;
-        for (final Pattern pattern: LanzouSharer.HtmlCommentsTags)
-            res = pattern.matcher(res).replaceAll("");
-        return res;
-    }
 
-    private static final @NotNull String scriptStartTag = "<script type=\"text/javascript\">";
-    private static final @NotNull String scriptEndTag = "</script>";
-    protected static @NotNull List<@NotNull String> findScripts(final @NotNull String html) {
-        final List<String> scripts = new ArrayList<>();
-        int index = 0;
-        while (true) {
-            index = html.indexOf(LanzouSharer.scriptStartTag, index);
-            if (index == -1) break;
-            final int endIndex = html.indexOf(LanzouSharer.scriptEndTag, index);
-            if (endIndex == -1) break;
-            scripts.add(html.substring(index + LanzouSharer.scriptStartTag.length(), endIndex));
-            index = endIndex;
-        }
-        return scripts;
-    }
-
-    static @NotNull String requestHtml(final @NotNull OkHttpClient httpClient, final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> url) throws IOException {
-        try (final ResponseBody body = HttpNetworkHelper.extraResponseBody(HttpNetworkHelper.getWithParameters(httpClient, url, LanzouProvider.Headers, null).execute())) {
-            return LanzouSharer.removeHtmlComments(body.string());
-        }
-    }
-
-    static @NotNull JSONObject requestJson(final @NotNull OkHttpClient httpClient, final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> url, final FormBody.@NotNull Builder request) throws IOException {
-        return HttpNetworkHelper.extraJsonResponseBody(HttpNetworkHelper.postWithBody(httpClient, url, LanzouProvider.Headers, request.build()).execute());
-    }
-
-    private static final @NotNull Pattern srcPattern = Pattern.compile("src=\"/(fn?[^\"]+)");
-    @SuppressWarnings("unchecked")
-    protected @Nullable Pair.ImmutablePair<@NotNull HttpUrl, @Nullable Headers> getSingleShareFileDownloadUrl(final @NotNull HttpUrl domin, final @NotNull String id, final @Nullable String pwd) throws IOException, IllegalParametersException {
-        final LanzouConfiguration configuration = this.configuration.getInstance();
-        final String sharePage = LanzouSharer.requestHtml(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin.newBuilder().addPathSegment(id).build(), "GET"));
-        if (sharePage.contains("\u6587\u4EF6\u53D6\u6D88\u5206\u4EAB\u4E86") || sharePage.contains("\u6587\u4EF6\u5730\u5740\u9519\u8BEF"))
-            return null;
-        final ParametersMap parametersMap = ParametersMap.create().add("configuration", configuration).add("domin", domin).add("id", id);
-        final List<String> javaScript;
-        if (sharePage.contains("<iframe")) {
-            final Matcher srcMatcher = LanzouSharer.srcPattern.matcher(sharePage);
-            if (!srcMatcher.find())
-                throw new WrongResponseException("No src matched.", sharePage, parametersMap);
-            final String src = srcMatcher.group(1);
-            final HttpUrl url = Objects.requireNonNull(HttpUrl.parse(domin + src));
-            final String loadingPage = LanzouSharer.requestHtml(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(url, "GET"));
-            javaScript = LanzouSharer.findScripts(loadingPage);
-        } else {
-            parametersMap.add("pwd", pwd);
-            if (pwd == null)
-                throw new IllegalParametersException("Require password.", ParametersMap.create().add("domin", domin).add("id", id));
-            final List<String> scripts = LanzouSharer.findScripts(sharePage);
-            javaScript = new ArrayList<>(scripts.size());
-            for (final String script: scripts) {
-                //noinspection ReassignedVariable,NonConstantStringShouldBeStringBuffer
-                String js = script.replace("document.getElementById('pwd').value", String.format("'%s'", pwd));
-                if (js.contains("$(document).keyup(")) {
-                    js = js.replace("$(document)", "$$()");
-                    js = "function $$(){return{keyup:function(f){f({keyCode:13});}};}" + js;
+    public @Nullable Pair.ImmutablePair<@NotNull HttpUrl, @Nullable Headers> getSingleShareFileDownloadUrl(final @NotNull HttpUrl domin, final @NotNull String identifier, final @Nullable String password) throws IOException, IllegalParametersException {
+        final HtmlElement downloading;
+        try (final WebClient client = BrowserUtil.newWebClient()) {
+            client.setWebConnection(new WebConnectionWrapper(client.getWebConnection()) {
+                @Override
+                public @NotNull WebResponse getResponse(final @NotNull WebRequest request) throws IOException {
+                    if (!request.getUrl().getHost().equals(domin.url().getHost()) && !request.getUrl().getHost().equals(LanzouSharer.AssertHost))
+                        return BrowserUtil.emptyResponse(request);
+                    return super.getResponse(request);
                 }
-                final int endIndex = js.indexOf("document.getElementById('rpt')");
-                if (endIndex > 0)
-                    js = js.substring(0, endIndex);
-                javaScript.add(js);
+            });
+            final HtmlPage page = client.getPage(domin.newBuilder().addPathSegment(identifier).build().url());
+            try {
+                page.getElementByName("description");
+            } catch (final ElementNotFoundException ignore) {
+                return null;
+            }
+            boolean onof;
+            HtmlInput input = null;
+            try {
+                input = page.getElementByName("pwd");
+                onof = true;
+            } catch (final ElementNotFoundException ignore) {
+                onof = false;
+            }
+            if (onof) {
+                if (password == null)
+                    throw new IllegalParametersException("Require password.", ParametersMap.create().add("domin", domin).add("identifier", identifier));
+                input.setValue(password);
+                boolean flag = true;
+                for (final HtmlElement element: input.getParentNode().getHtmlElementDescendants())
+                    if (element.hasAttribute("onclick")) {
+                        element.click();
+                        flag = false;
+                    }
+                if (flag)
+                    throw new IllegalStateException("No clickable element after input password." + ParametersMap.create().add("domin", domin).add("identifier", identifier).add("password", password));
+                BrowserUtil.waitJavaScriptCompleted(client);
+                final String info = page.getHtmlElementById("info").asNormalizedText();
+                if ("\u5BC6\u7801\u4E0D\u6B63\u786E".equals(info))
+                    throw new IllegalParametersException("Wrong password.", ParametersMap.create().add("domin", domin).add("identifier", identifier).add("password", password));
+                if (!info.isEmpty())
+                    throw new IllegalStateException("Unknown info after enter password." + ParametersMap.create().add("domin", domin).add("identifier", identifier).add("password", password).add("info", info));
+                downloading = page.getHtmlElementById("downajax");
+            } else {
+                BrowserUtil.waitJavaScriptCompleted(client, 1);
+                final List<FrameWindow> frames = page.getFrames();
+                if (frames.size() != 1)
+                    throw new IllegalStateException("Unclear iframe." + ParametersMap.create().add("domin", domin).add("identifier", identifier).add("password", password).add("frames", frames.size()));
+                final HtmlPage frame = (HtmlPage) page.getFrames().get(0).getFrameElement().getEnclosedPage();
+                downloading = frame.getHtmlElementById("tourl");
             }
         }
-        final Map<String, Object> ajaxData;
-        try {
-            final Map<String, Object> ajax = JavaScriptUtil.extraOnlyAjaxData(javaScript);
-            if (ajax == null)
-                throw new IOException("Null ajax.");
-            assert "post".equals(ajax.get("type"));
-            assert "/ajaxm.php".equals(ajax.get("url"));
-            ajaxData = (Map<String, Object>) ajax.get("data");
-        } catch (final JavaScriptUtil.ScriptException exception) {
-            throw new IOException("Failed to run share page java scripts." + parametersMap, exception);
+        String url = "";
+        for (final HtmlElement element: downloading.getElementsByTagName("a")) {
+            final String current = element.getAttribute("href");
+            if (url.isEmpty())
+                url = current;
+            else if (!current.isEmpty()) {
+                LanzouProvider.logger.log(HLogLevel.WARN, "Multi download urls.", ParametersMap.create().add("domin", domin).add("identifier", identifier).add("password", password).add("url", url));
+                url = current;
+            }
         }
-        final FormBody.Builder builder = new FormBody.Builder();
-        for (final Map.Entry<String, Object> entry: ajaxData.entrySet())
-            builder.add(entry.getKey(), entry.getValue().toString());
-        final JSONObject json = LanzouSharer.requestJson(configuration.getFileClient(), Pair.ImmutablePair.makeImmutablePair(domin.newBuilder().addPathSegment("ajaxm.php").build(), "POST"), builder);
-        final int code = json.getIntValue("zt", -1);
-        if (code == 0 && "\u5BC6\u7801\u4E0D\u6B63\u786E".equals(json.getString("inf")))
-            throw new IllegalParametersException("Wrong password.", ParametersMap.create().add("domin", domin).add("id", id).add("pwd", pwd));
-        if (code != 1)
-            throw new IllegalResponseCodeException(code, json.getString("inf"), parametersMap.add("json", json));
-        final HttpUrl dom = HttpUrl.parse(json.getString("dom"));
-        final String para = json.getString("url");
-        if (dom == null || para == null)
-            return null;
-        //noinspection StringConcatenationMissingWhitespace
-        final HttpUrl displayUrl = Objects.requireNonNull(HttpUrl.parse(dom + "file/" + para));
+        if (url.isEmpty())
+            throw new IllegalStateException("No download url." + ParametersMap.create().add("domin", domin).add("identifier", identifier).add("password", password));
+        final HttpUrl displayUrl = Objects.requireNonNull(HttpUrl.parse(url));
         // A Provider Bug: 9/27/2023
         // In Lanzou Provider, using the HEAD method for the first download after uploading will cause the file length to be reset to zero.
         // Whether uploaded through a browser or through WList. Therefore, always use the GET method to avoid this bug.

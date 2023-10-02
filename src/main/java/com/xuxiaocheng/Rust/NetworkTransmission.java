@@ -7,6 +7,7 @@ import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
+import io.netty.util.internal.EmptyArrays;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -223,7 +224,6 @@ public final class NetworkTransmission {
         return Pair.ImmutablePair.makeImmutablePair(tmp.nioBuffer(), tmp);
     }
 
-    private static final ByteBuffer[] EmptyBufferArray = new ByteBuffer[0];
     private static Pair.@NotNull ImmutablePair<@NotNull ByteBuffer @NotNull[], @NotNull Runnable> toDirectByteBuffers(final @NotNull ByteBuf buffer) {
         if (buffer.nioBufferCount() <= 1) {
             final Pair.ImmutablePair<ByteBuffer, ByteBuf> single = NetworkTransmission.toDirectByteBuffer(buffer);
@@ -247,6 +247,6 @@ public final class NetworkTransmission {
             buffers.add(tmp.nioBuffer());
             list.add(tmp);
         }
-        return Pair.ImmutablePair.makeImmutablePair(buffers.toArray(NetworkTransmission.EmptyBufferArray), () -> list.forEach(ByteBuf::release));
+        return Pair.ImmutablePair.makeImmutablePair(buffers.toArray(EmptyArrays.EMPTY_BYTE_BUFFERS), () -> list.forEach(ByteBuf::release));
     }
 }

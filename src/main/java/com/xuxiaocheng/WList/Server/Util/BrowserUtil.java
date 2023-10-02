@@ -4,15 +4,18 @@ import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
+import io.netty.util.internal.EmptyArrays;
 import org.htmlunit.BrowserVersion;
 import org.htmlunit.HttpMethod;
 import org.htmlunit.WebClient;
 import org.htmlunit.WebRequest;
 import org.htmlunit.WebResponse;
+import org.htmlunit.WebResponseData;
 import org.htmlunit.util.WebConnectionWrapper;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.function.Supplier;
 
 public final class BrowserUtil {
@@ -61,5 +64,17 @@ public final class BrowserUtil {
         while (true)
             if (client.waitForBackgroundJavaScript(5000) == 0)
                 break;
+    }
+
+    public static void waitJavaScriptCompleted(final @NotNull WebClient client, final int left) {
+        if (left < 0)
+            return;
+        while (true)
+            if (client.waitForBackgroundJavaScript(500) <= left)
+                break;
+    }
+
+    public static @NotNull WebResponse emptyResponse(final @NotNull WebRequest request) {
+        return new WebResponse(new WebResponseData(EmptyArrays.EMPTY_BYTES, 200, "OK", List.of()), request, 0);
     }
 }
