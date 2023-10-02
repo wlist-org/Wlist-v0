@@ -39,7 +39,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-// TODO SQLCipher (io.github.willena:sqlite-jdbc)
 public class SqliteDatabaseHelper implements SqlDatabaseInterface {
     protected final @NotNull GenericObjectPoolConfig<Connection> poolConfig;
     protected final @NotNull PooledDatabaseConfig connectionConfig;

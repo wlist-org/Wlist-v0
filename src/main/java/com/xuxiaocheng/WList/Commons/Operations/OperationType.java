@@ -57,6 +57,8 @@ public enum OperationType {
     RenameFile,
     CopyFile,
     MoveFile,
+    // Progress
+    GetProgress,
     ;
 
     public static @NotNull OperationType of(final @NotNull String type) {

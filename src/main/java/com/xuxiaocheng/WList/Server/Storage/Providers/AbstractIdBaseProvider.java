@@ -329,7 +329,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
      */
     protected abstract void trash0(final @NotNull FileInformation information) throws Exception;
 
-    @Override // TODO: delete root. // TODO: into recycler.
+    @Override // TODO: into recycler.
     public synchronized void trash(final long id, final boolean isDirectory, final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) throws Exception {
         final FileInformation information = this.manager.getInstance().selectInfo(id, isDirectory, null);
         if (information == null) {
