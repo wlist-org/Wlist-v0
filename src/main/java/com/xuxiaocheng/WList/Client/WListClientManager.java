@@ -3,9 +3,11 @@ package com.xuxiaocheng.WList.Client;
 import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.HeadLibs.Helpers.HMultiRunHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Initializers.HMultiInitializers;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.BackgroundTaskManager;
 import io.netty.buffer.ByteBuf;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.PooledObjectFactory;
@@ -18,7 +20,6 @@ import org.jetbrains.annotations.Nullable;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -47,46 +48,51 @@ public class WListClientManager implements Closeable {
         })) {
             final List<Consumer<Boolean>> list = WListClientManager.listeners.get(manager.clientConfig.address);
             if (list != null)
-                for (final Consumer<Boolean> listener : new ArrayList<>(list))
-                    listener.accept(true);
+                BackgroundTaskManager.BackgroundExecutors.submit(HExceptionWrapper.wrapRunnable(() ->
+                                HMultiRunHelper.runConsumers(BackgroundTaskManager.BackgroundExecutors, list, c -> c.accept(Boolean.TRUE))))
+                        .addListener(MiscellaneousUtil.exceptionListener());
         }
     }
 
     public static void quicklyUninitialize(final @NotNull SocketAddress address) {
         final WListClientManager manager = WListClientManager.instances.uninitializeNullable(address);
         if (manager != null) {
-            final GenericObjectPool<WListClient> pool = manager.clientPool.uninitializeNullable();
+            final GenericObjectPool<WListClientInterface> pool = manager.clientPool.uninitializeNullable();
             if (pool != null)
                 pool.close();
             for (final WrappedClient client: manager.activeClients)
-                client.closePool();
+                client.closeInside();
             assert manager.activeClients.isEmpty();
             final List<Consumer<Boolean>> list = WListClientManager.listeners.get(address);
             if (list != null)
-                for (final Consumer<Boolean> listener : new ArrayList<>(list))
-                    listener.accept(false);
+                BackgroundTaskManager.BackgroundExecutors.submit(HExceptionWrapper.wrapRunnable(() ->
+                                HMultiRunHelper.runConsumers(BackgroundTaskManager.BackgroundExecutors, list, c -> c.accept(Boolean.FALSE))))
+                        .addListener(MiscellaneousUtil.exceptionListener());
         }
     }
 
-    public static @NotNull WListClientInterface quicklyGetClient(final @NotNull SocketAddress address) throws IOException, InterruptedException {
+    public static @NotNull WListClientInterface quicklyGetClient(final @NotNull SocketAddress address) throws IOException {
         return WListClientManager.instances.getInstance(address).getClient();
     }
 
-    protected final @NotNull GenericObjectPoolConfig<WListClient> poolConfig;
+    protected final @NotNull GenericObjectPoolConfig<WListClientInterface> poolConfig;
     protected final @NotNull ClientManagerConfig clientConfig;
-    protected final @NotNull HInitializer<GenericObjectPool<@NotNull WListClient>> clientPool = new HInitializer<>("ClientPool");
+    protected final @NotNull HInitializer<GenericObjectPool<@NotNull WListClientInterface>> clientPool = new HInitializer<>("ClientPool");
 
     public record ClientManagerConfig(@NotNull SocketAddress address) {
     }
 
     public static @NotNull WListClientManager getDefault(final @NotNull SocketAddress address) {
-        final GenericObjectPoolConfig<WListClient> poolConfig = new GenericObjectPoolConfig<>();
+        final GenericObjectPoolConfig<WListClientInterface> poolConfig = new GenericObjectPoolConfig<>();
         poolConfig.setJmxEnabled(AndroidSupporter.jmxEnable);
         poolConfig.setTestOnBorrow(true);
         return new WListClientManager(poolConfig, new ClientManagerConfig(address));
     }
 
-    public WListClientManager(final @NotNull GenericObjectPoolConfig<WListClient> poolConfig, final @NotNull ClientManagerConfig clientConfig) {
+    /**
+     * @see #getDefault(SocketAddress)
+     */
+    public WListClientManager(final @NotNull GenericObjectPoolConfig<WListClientInterface> poolConfig, final @NotNull ClientManagerConfig clientConfig) {
         super();
         this.poolConfig = poolConfig;
         this.clientConfig = clientConfig;
@@ -101,9 +107,9 @@ public class WListClientManager implements Closeable {
         WListClientManager.quicklyUninitialize(this.clientConfig.address);
     }
 
-    protected record PooledClientFactory(@NotNull ClientManagerConfig configuration, @NotNull WListClientManager manager) implements PooledObjectFactory<WListClient> {
+    protected record PooledClientFactory(@NotNull ClientManagerConfig configuration, @NotNull WListClientManager manager) implements PooledObjectFactory<WListClientInterface> {
         @Override
-        public @NotNull PooledObject<@NotNull WListClient> makeObject() throws IOException, InterruptedException {
+        public @NotNull PooledObject<@NotNull WListClientInterface> makeObject() throws IOException {
             final WListClient client = new WListClient(this.configuration.address);
             try {
                 client.open();
@@ -111,24 +117,24 @@ public class WListClientManager implements Closeable {
                 client.close();
                 throw exception;
             }
-            return new DefaultPooledObject<>(client);
+            return new DefaultPooledObject<>(new WrappedClient(client, this.manager));
         }
 
         @Override
-        public void destroyObject(final @NotNull PooledObject<@NotNull WListClient> p) {
-            p.getObject().close();
+        public void destroyObject(final @NotNull PooledObject<@NotNull WListClientInterface> p) {
+            ((WrappedClient) p.getObject()).closeInside();
         }
 
         @Override
-        public void activateObject(final @NotNull PooledObject<@NotNull WListClient> p) {
+        public void activateObject(final @NotNull PooledObject<@NotNull WListClientInterface> p) {
         }
 
         @Override
-        public void passivateObject(final @NotNull PooledObject<@NotNull WListClient> p) {
+        public void passivateObject(final @NotNull PooledObject<@NotNull WListClientInterface> p) {
         }
 
         @Override
-        public boolean validateObject(final @NotNull PooledObject<@NotNull WListClient> p) {
+        public boolean validateObject(final @NotNull PooledObject<@NotNull WListClientInterface> p) {
             return p.getObject().isActive();
         }
 
@@ -142,19 +148,18 @@ public class WListClientManager implements Closeable {
 
     protected final @NotNull Set<@NotNull WrappedClient> activeClients = ConcurrentHashMap.newKeySet();
 
-    public @NotNull WListClientInterface getClient() throws IOException, InterruptedException {
-        final WListClient real;
+    public @NotNull WListClientInterface getClient() throws IOException {
+        final WrappedClient real;
         try {
-            real = this.clientPool.getInstance().borrowObject();
-        } catch (final IOException | InterruptedException exception) {
+            real = (WrappedClient) this.clientPool.getInstance().borrowObject();
+        } catch (final IOException exception) {
             this.close();
             throw exception;
         } catch (final Exception exception) {
             throw new RuntimeException("Unreachable!", exception);
         }
-        final WrappedClient client = new WrappedClient(real, this);
-        this.activeClients.add(client);
-        return client;
+        this.activeClients.add(real);
+        return real;
     }
 
     protected record WrappedClient(@NotNull WListClient client, @NotNull WListClientManager manager) implements WListClientInterface {
@@ -176,12 +181,12 @@ public class WListClientManager implements Closeable {
         @Override
         public void close() {
             this.manager.activeClients.remove(this);
-            final GenericObjectPool<WListClient> pool = this.manager.clientPool.getInstanceNullable();
-            if (pool != null)
-                pool.returnObject(this.client);
+            final GenericObjectPool<WListClientInterface> pool = this.manager.clientPool.getInstanceNullable();
+            if (pool != null) // The pool may be closed before each active client had closed.
+                pool.returnObject(this);
         }
 
-        public void closePool() {
+        public void closeInside() {
             this.manager.activeClients.remove(this);
             this.client.close();
         }

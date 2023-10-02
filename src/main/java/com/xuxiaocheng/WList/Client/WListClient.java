@@ -50,7 +50,7 @@ public class WListClient implements WListClientInterface {
      * Require call {@link #close()} even this throws any exception.
      */
     @Override
-    public void open() throws IOException, InterruptedException {
+    public void open() throws IOException {
         this.channel.requireUninitialized(null);
         final Bootstrap bootstrap = new Bootstrap();
         bootstrap.group(this.clientEventLoop);
@@ -69,20 +69,27 @@ public class WListClient implements WListClientInterface {
                 pipeline.addLast("ClientHandler", new ClientChannelInboundHandler(WListClient.this));
             }
         });
-        final ChannelFuture future = bootstrap.connect(this.address).await();
-        final Throwable throwable = future.cause();
-        if (throwable != null) {
-            if (throwable instanceof IOException ioException)
-                throw ioException;
-            throw new IOException(throwable);
+        try {
+            final ChannelFuture future = bootstrap.connect(this.address).await();
+            final Throwable throwable = future.cause();
+            if (throwable != null) {
+                if (throwable instanceof IOException ioException)
+                    throw ioException;
+                throw new IOException(throwable);
+            }
+            this.channel.initialize(future.channel());
+            synchronized (initialized) {
+                while (!initialized.get())
+                    initialized.wait();
+            }
+        } catch (final InterruptedException exception) {
+            throw new IOException(exception);
         }
-        this.channel.initialize(future.channel());
-        synchronized (initialized) {
-            while (!initialized.get())
-                initialized.wait();
+        if (error.get() != null) {
+            if (error.get() instanceof IOException exception)
+                throw exception;
+            throw new IOException(error.get());
         }
-        if (error.get() != null)
-            throw new IOException(error.get()); // TODO
     }
 
     @Override

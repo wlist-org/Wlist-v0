@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.net.SocketAddress;
 
 public interface WListClientInterface extends AutoCloseable {
-    void open() throws IOException, InterruptedException;
+    void open() throws IOException;
     @NotNull SocketAddress getAddress();
     @NotNull ByteBuf send(final @Nullable ByteBuf msg) throws IOException, InterruptedException;
     void close();

@@ -168,7 +168,7 @@ public final class FilesAssistant {
         return success ? null : new VisibleFailureReason(FailureKind.Others, parent, "Finishing.");
     }
 
-    public static @Nullable VisibleFailureReason download(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation location, final @NotNull Predicate<@NotNull DownloadConfirm> continuer, final @NotNull File file) throws IOException, InterruptedException, WrongStateException {
+    public static @Nullable VisibleFailureReason download(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation location, final @NotNull Predicate<? super @NotNull DownloadConfirm> continuer, final @NotNull File file) throws IOException, InterruptedException, WrongStateException {
         final UnionPair<DownloadConfirm, VisibleFailureReason> confirm;
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) { // TODO: record downloading progress.
             confirm = OperateFilesHelper.requestDownloadFile(client, TokenAssistant.getToken(address, username), location, 0, Long.MAX_VALUE);

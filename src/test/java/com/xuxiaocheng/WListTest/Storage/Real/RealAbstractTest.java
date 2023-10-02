@@ -247,10 +247,9 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
             Assertions.assertNotNull(confirm);
             final List<String> checksums = new ArrayList<>(confirm.getT().checksums().size());
             for (final UploadChecksum checksum: confirm.getT().checksums()) {
-                Assumptions.assumeTrue(UploadChecksum.MD5.equals(checksum.algorithm())); // TODO
-                final MessageDigest digest = HMessageDigestHelper.MD5.getDigester();
+                final MessageDigest digest = UploadChecksum.getAlgorithm(checksum.algorithm()).getDigester();
                 HMessageDigestHelper.updateMessageDigest(digest, new ByteBufInputStream(file.slice(Math.toIntExact(checksum.start()), Math.toIntExact(checksum.end() - checksum.start()))));
-                checksums.add(HMessageDigestHelper.MD5.digest(digest));
+                checksums.add(UploadChecksum.getAlgorithm(checksum.algorithm()).digest(digest));
             }
             final UploadConfirm.UploadInformation information = OperateFilesHelper.confirmUploadFile(client, token(), confirm.getT().id(), checksums);
             Assertions.assertNotNull(information);

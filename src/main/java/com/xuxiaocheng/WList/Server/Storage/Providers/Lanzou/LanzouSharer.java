@@ -40,7 +40,7 @@ public class LanzouSharer extends AbstractIdBaseSharer<LanzouConfiguration> {
     protected static final @NotNull String AssertHost = Objects.requireNonNull(HttpUrl.parse("https://assets.woozooo.com/")).url().getHost();
     protected static final @NotNull DateTimeFormatter dataTimeFormatter = DateTimeFormatter.RFC_1123_DATE_TIME;
 
-    public @Nullable Pair.ImmutablePair<@NotNull HttpUrl, @Nullable Headers> getSingleShareFileDownloadUrl(final @NotNull HttpUrl domin, final @NotNull String identifier, final @Nullable String password) throws IOException, IllegalParametersException {
+    protected @Nullable Pair.ImmutablePair<@NotNull HttpUrl, @Nullable Headers> getSingleShareFileDownloadUrl(final @NotNull HttpUrl domin, final @NotNull String identifier, final @Nullable String password) throws IOException, IllegalParametersException {
         final HtmlElement downloading;
         try (final WebClient client = BrowserUtil.newWebClient()) {
             client.setWebConnection(new WebConnectionWrapper(client.getWebConnection()) {

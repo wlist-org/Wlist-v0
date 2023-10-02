@@ -1,6 +1,7 @@
 package com.xuxiaocheng.WListTest.Operations;
 
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
+import com.xuxiaocheng.StaticLoader;
 import com.xuxiaocheng.WList.Client.ClientConfiguration;
 import com.xuxiaocheng.WList.Client.Exceptions.WrongStateException;
 import com.xuxiaocheng.WList.Client.Operations.OperateServerHelper;
@@ -14,13 +15,12 @@ import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
 import com.xuxiaocheng.WList.Server.Databases.User.PasswordGuard;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
+import com.xuxiaocheng.WList.Server.Operations.Helpers.IdsHelper;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
-import com.xuxiaocheng.WList.Server.Operations.Helpers.IdsHelper;
 import com.xuxiaocheng.WList.Server.WListServer;
-import com.xuxiaocheng.StaticLoader;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -79,7 +79,7 @@ public class ServerWrapper {
         IdsHelper.CleanerExecutors.shutdownGracefully();
     }
 
-    public static Stream<WListClientInterface> client() throws IOException, InterruptedException {
+    public static Stream<WListClientInterface> client() throws IOException {
         return Stream.of(WListClientManager.quicklyGetClient(ServerWrapper.address.getInstance()));
     }
     public static Stream<Arguments> broadcast() throws IOException, InterruptedException, WrongStateException {
