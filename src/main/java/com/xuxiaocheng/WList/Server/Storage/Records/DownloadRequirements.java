@@ -12,6 +12,7 @@ import com.xuxiaocheng.Rust.NetworkTransmission;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Server.Exceptions.NetworkException;
+import com.xuxiaocheng.WList.Server.Operations.Helpers.ProgressBar;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import io.netty.buffer.ByteBuf;
 import okhttp3.Call;
@@ -36,7 +37,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 public record DownloadRequirements(boolean acceptedRange, long downloadingSize, @NotNull SupplierE<@NotNull DownloadMethods> supplier) {
     /**
@@ -75,7 +75,8 @@ public record DownloadRequirements(boolean acceptedRange, long downloadingSize, 
     }
 
     @FunctionalInterface
-    public interface OrderedNode extends Function<@NotNull Consumer<@NotNull UnionPair<ByteBuf, Throwable>>, @Nullable OrderedNode> {
+    public interface OrderedNode {
+        @Nullable OrderedNode apply(final @NotNull Consumer<? super @NotNull UnionPair<ByteBuf, Throwable>> consumer, final ProgressBar.@NotNull ProgressListener listener);
     }
 
     public static final @NotNull DownloadRequirements EmptyDownloadRequirements = new DownloadRequirements(true, 0, () -> DownloadRequirements.EmptyDownloadMethods);
@@ -152,7 +153,7 @@ public record DownloadRequirements(boolean acceptedRange, long downloadingSize, 
                 final int length = Math.toIntExact(e - b);
                 final Call call = HttpNetworkHelper.getWithParameters(client, getUrl, builder.set("Range", String.format("bytes=%d-%d", b, e - 1)).build(), null);
                 calls.add(call);
-                list.add(new OrderedSuppliers(b - start, e - start, consumer -> {
+                list.add(new OrderedSuppliers(b - start, e - start, (consumer, listener) -> {
                     call.enqueue(new Callback() {
                         @Override
                         public void onFailure(final @NotNull Call call, final @NotNull IOException exception) {
@@ -162,7 +163,7 @@ public record DownloadRequirements(boolean acceptedRange, long downloadingSize, 
                         @Override
                         public void onResponse(final @NotNull Call call, final @NotNull Response response) {
                             try (final InputStream stream = HttpNetworkHelper.extraResponseBody(response).byteStream()) {
-                                consumer.accept(UnionPair.ok(HttpNetworkHelper.receiveDataFromStream(stream, length)));
+                                consumer.accept(UnionPair.ok(HttpNetworkHelper.receiveDataFromStream(stream, length, listener)));
                             } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                                 consumer.accept(UnionPair.fail(exception));
                             }
@@ -192,12 +193,12 @@ public record DownloadRequirements(boolean acceptedRange, long downloadingSize, 
             return new DownloadMethods(List.of(new OrderedSuppliers(0, size, new OrderedNode() {
                 private long current = 0;
                 @Override
-                public @Nullable OrderedNode apply(final @NotNull Consumer<@NotNull UnionPair<ByteBuf, Throwable>> consumer) {
+                public @Nullable OrderedNode apply(final @NotNull Consumer<? super @NotNull UnionPair<ByteBuf, Throwable>> consumer, final ProgressBar.@NotNull ProgressListener listener) {
                     final long start = this.current;
                     final long end = Math.min(start + NetworkTransmission.FileTransferBufferSize, size);
                     final int length = Math.toIntExact(end - start);
                     try {
-                        consumer.accept(UnionPair.ok(HttpNetworkHelper.receiveDataFromStream(body, length)));
+                        consumer.accept(UnionPair.ok(HttpNetworkHelper.receiveDataFromStream(body, length, listener)));
                     } catch (final IOException exception) {
                         consumer.accept(UnionPair.fail(exception));
                         return null;

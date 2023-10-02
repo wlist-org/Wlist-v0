@@ -2,13 +2,14 @@ package com.xuxiaocheng.WList.Server.Storage.Records;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
-import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
+import com.xuxiaocheng.HeadLibs.Functions.BiConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.FunctionE;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.Rust.NetworkTransmission;
 import com.xuxiaocheng.WList.Commons.Beans.UploadChecksum;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
+import com.xuxiaocheng.WList.Server.Operations.Helpers.ProgressBar;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.CompositeByteBuf;
@@ -23,7 +24,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
 public record UploadRequirements(@NotNull @Unmodifiable List<@NotNull UploadChecksum> checksums,
@@ -67,15 +67,16 @@ public record UploadRequirements(@NotNull @Unmodifiable List<@NotNull UploadChec
     }
 
     @FunctionalInterface
-    public interface OrderedNode extends BiFunction<@NotNull ByteBuf, @NotNull Consumer<@Nullable Throwable>, @Nullable OrderedNode> {
+    public interface OrderedNode {
+        @Nullable OrderedNode apply(final @NotNull ByteBuf content, final @NotNull Consumer<? super @Nullable Throwable> consumer, final ProgressBar.@NotNull ProgressListener listener);
     }
 
-    public static Pair.@NotNull ImmutablePair<@NotNull List<@NotNull OrderedConsumers>, @NotNull Runnable> splitUploadBuffer(final @NotNull ConsumerE<? super @NotNull ByteBuf> sourceMethod, final long start, final int size) {
+    public static Pair.@NotNull ImmutablePair<@NotNull List<@NotNull OrderedConsumers>, @NotNull Runnable> splitUploadBuffer(final @NotNull BiConsumerE<? super @NotNull ByteBuf, ? super ProgressBar.@NotNull ProgressListener> sourceMethod, final long start, final int size) {
         assert size >= 0;
         if (size <= NetworkTransmission.FileTransferBufferSize)
-            return Pair.ImmutablePair.makeImmutablePair(List.of(new OrderedConsumers(start, start + size, (content, consumer) -> {
+            return Pair.ImmutablePair.makeImmutablePair(List.of(new OrderedConsumers(start, start + size, (content, consumer, listener) -> {
                 try {
-                    sourceMethod.accept(content);
+                    sourceMethod.accept(content, listener);
                     consumer.accept(null);
                 } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                     consumer.accept(exception);
@@ -92,7 +93,7 @@ public record UploadRequirements(@NotNull @Unmodifiable List<@NotNull UploadChec
             final long e = Math.min(start + size, b + NetworkTransmission.FileTransferBufferSize);
             final int length = Math.toIntExact(e - b);
             final int k = i++;
-            list.add(new OrderedConsumers(b, e, (c, consumer) -> {
+            list.add(new OrderedConsumers(b, e, (c, consumer, listener) -> {
                 try {
                     assert c.readableBytes() == length;
                     cacher[k] = c;
@@ -100,7 +101,7 @@ public record UploadRequirements(@NotNull @Unmodifiable List<@NotNull UploadChec
                         final CompositeByteBuf buf = ByteBufAllocator.DEFAULT.compositeBuffer(full + 1).addComponents(true, cacher);
                         try {
                             leaked.set(false);
-                            sourceMethod.accept(buf);
+                            sourceMethod.accept(buf, listener);
                         } finally {
                             buf.release();
                         }

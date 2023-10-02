@@ -8,6 +8,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Server.Exceptions.NetworkException;
+import com.xuxiaocheng.WList.Server.Operations.Helpers.ProgressBar;
 import com.xuxiaocheng.WList.Server.WListServer;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -271,12 +272,7 @@ public final class HttpNetworkHelper {
         return RequestBody.create(JSON.toJSONBytes(obj), MediaType.parse("application/json;charset=utf-8"));
     }
 
-    @FunctionalInterface
-    public interface UploadProgressListener {
-        void onProgress(long current, long total);
-    }
-
-    public static @NotNull RequestBody createOctetStreamRequestBody(final @NotNull ByteBuf content, final @Nullable UploadProgressListener listener) {
+    public static @NotNull RequestBody createOctetStreamRequestBody(final @NotNull ByteBuf content, final @Nullable ProgressBar.ProgressListener listener) {
         final long length = content.readableBytes();
         final RequestBody body = new RequestBody() {
             @Override
@@ -323,9 +319,9 @@ public final class HttpNetworkHelper {
 
     public static class ProgressRequestBody extends RequestBody {
         protected final @NotNull RequestBody requestBody;
-        protected final @NotNull UploadProgressListener listener;
+        protected final @NotNull ProgressBar.ProgressListener listener;
 
-        public ProgressRequestBody(final @NotNull RequestBody requestBody, final @NotNull UploadProgressListener listener) {
+        public ProgressRequestBody(final @NotNull RequestBody requestBody, final @NotNull ProgressBar.ProgressListener listener) {
             super();
             this.requestBody = requestBody;
             this.listener = listener;
@@ -344,14 +340,10 @@ public final class HttpNetworkHelper {
         @Override
         public void writeTo(final @NotNull BufferedSink sink) throws IOException {
             final BufferedSink forwardingSink = Okio.buffer(new ForwardingSink(sink) {
-                private final long length = ProgressRequestBody.this.requestBody.contentLength();
-                private long written = 0;
-
                 @Override
                 public void write(final @NotNull Buffer source, final long byteCount) throws IOException {
                     super.write(source, byteCount);
-                    this.written += byteCount;
-                    ProgressRequestBody.this.listener.onProgress(this.written, this.length);
+                    ProgressRequestBody.this.listener.onProgress(byteCount);
                 }
             });
             this.requestBody.writeTo(forwardingSink);
@@ -404,18 +396,20 @@ public final class HttpNetworkHelper {
         }
     }
 
-    public static @NotNull ByteBuf receiveDataFromStream(final @NotNull InputStream stream, final int length) throws IOException {
+    public static @NotNull ByteBuf receiveDataFromStream(final @NotNull InputStream stream, final int length, final @Nullable ProgressBar.ProgressListener listener) throws IOException {
         final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(length, length);
         try {
             // stream.transferTo(new ByteBufOutputStream(buffer));
-            int read = 0;
-            while (read < length) {
-                final int current = buffer.writeBytes(stream, length - read);
-                if (current < 0)
+            int received = 0;
+            while (received < length) {
+                final int read = buffer.writeBytes(stream, length - received);
+                if (read < 0)
                     break;
-                if (current == 0)
+                if (read == 0)
                     AndroidSupporter.onSpinWait();
-                read += current;
+                received += read;
+                if (listener != null)
+                    listener.onProgress(read);
             }
             return buffer.retain();
         } finally {

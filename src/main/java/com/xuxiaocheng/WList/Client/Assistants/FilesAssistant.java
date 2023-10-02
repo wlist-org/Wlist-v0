@@ -161,15 +161,15 @@ public final class FilesAssistant {
                          final FileChannel channel = access.getChannel().position(pair.getFirst().longValue());
                          final FileLock ignoredLock = fileChannel.lock(pair.getFirst().longValue(), length, true)) {
                         while (length > 0) {
-                            final int l = buf.writeBytes(channel, Math.toIntExact(Math.min(length, NetworkTransmission.FileTransferBufferSize)));
-                            if (l < 0 || !OperateFilesHelper.uploadFile(c, TokenAssistant.getToken(address, username), confirm.getT().id(), index, buf.retain())) {
+                            final int read = buf.writeBytes(channel, Math.toIntExact(Math.min(length, NetworkTransmission.FileTransferBufferSize)));
+                            if (read < 0 || !OperateFilesHelper.uploadFile(c, TokenAssistant.getToken(address, username), confirm.getT().id(), index, buf.retain())) {
                                 flag.set(true);
                                 while (failure.getCount() > 0)
                                     failure.countDown();
                             }
                             if (failure.getCount() <= 0)
                                 break;
-                            length -= l;
+                            length -= read;
                             buf.clear();
                         }
                     } finally {

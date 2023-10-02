@@ -73,7 +73,7 @@ public final class UploadIdHelper {
         return UnionPair.ok(methods);
     }
 
-    public static boolean upload(final @NotNull String id, final @NotNull ByteBuf buf, final int index, final @NotNull Consumer<@Nullable Throwable> consumer) {
+    public static boolean upload(final @NotNull String id, final @NotNull ByteBuf buf, final int index, final @NotNull Consumer<? super @Nullable Throwable> consumer) {
         final UploaderData data = UploadIdHelper.data.get(id);
         if (data == null)
             return false;
@@ -94,6 +94,7 @@ public final class UploadIdHelper {
     private static class UploaderData implements AutoCloseable {
         private final @NotNull String id;
         private final UploadRequirements.@NotNull UploadMethods methods;
+        private final @NotNull ProgressBar progress;
         private final UploadRequirements.@Nullable OrderedNode @NotNull [] nodes;
         private final @NotNull Object @NotNull [] locks;
         private final AtomicInteger counter = new AtomicInteger();
@@ -104,6 +105,9 @@ public final class UploadIdHelper {
             super();
             this.id = id;
             this.methods = methods;
+            this.progress = IdsHelper.setProgressBar(id);
+            for (final UploadRequirements.OrderedConsumers parallel: this.methods.parallelMethods())
+                this.progress.addStage(parallel.end() - parallel.start());
             this.nodes = new UploadRequirements.OrderedNode[this.methods.parallelMethods().size()];
             this.locks = new Object[this.methods.parallelMethods().size()];
             for (int i = 0; i < this.methods.parallelMethods().size(); ++i) {
@@ -125,10 +129,11 @@ public final class UploadIdHelper {
             //noinspection resource
             final UploaderData old = UploadIdHelper.data.remove(this.id);
             assert old == this;
+            IdsHelper.removeProgressBar(this.id);
             this.methods.finisher().run();
         }
 
-        public boolean put(final @NotNull ByteBuf buf, final int index, final @NotNull Consumer<@Nullable Throwable> consumer) {
+        public boolean put(final @NotNull ByteBuf buf, final int index, final @NotNull Consumer<? super @Nullable Throwable> consumer) {
             if (this.closed.get() || index >= this.methods.parallelMethods().size())
                 return false;
             this.expireTime = MiscellaneousUtil.now().plusSeconds(ServerConfiguration.get().idIdleExpireTime());
@@ -139,7 +144,7 @@ public final class UploadIdHelper {
             synchronized (this.locks[index]) {
                 if (this.nodes[index] == null)
                     return false;
-                this.nodes[index] = this.nodes[index].apply(buf, consumer);
+                this.nodes[index] = this.nodes[index].apply(buf, consumer, delta -> this.progress.progress(index, delta));
                 if (this.nodes[index] == null)
                     this.counter.getAndDecrement();
             }

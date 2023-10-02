@@ -451,12 +451,12 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     protected void uploadFile0(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) {
         consumer.accept(UnionPair.ok(UnionPair.ok(new UploadRequirements(List.of(), ignore -> {
             final AtomicReference<FileInformation> information = new AtomicReference<>(null);
-            final Pair.ImmutablePair<List<UploadRequirements.OrderedConsumers>, Runnable> pair = UploadRequirements.splitUploadBuffer(content -> {
+            final Pair.ImmutablePair<List<UploadRequirements.OrderedConsumers>, Runnable> pair = UploadRequirements.splitUploadBuffer((content, listener) -> {
                 final MultipartBody body = new MultipartBody.Builder().setType(MultipartBody.FORM)
                         .addFormDataPart("task", "1")
                         .addFormDataPart("ve", "2")
                         .addFormDataPart("folder_id_bb_n", String.valueOf(parentId))
-                        .addFormDataPart("upload_file", filename, HttpNetworkHelper.createOctetStreamRequestBody(content, null))
+                        .addFormDataPart("upload_file", filename, HttpNetworkHelper.createOctetStreamRequestBody(content, listener))
                         .build();
                 final JSONObject json = HttpNetworkHelper.extraJsonResponseBody(HttpNetworkHelper.postWithBody(this.getConfiguration().getHttpClient(),
                         LanzouProvider.UploadURL, this.headerWithToken, body).execute());

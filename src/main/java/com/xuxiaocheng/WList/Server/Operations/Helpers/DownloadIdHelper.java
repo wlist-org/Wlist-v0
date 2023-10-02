@@ -47,7 +47,7 @@ public final class DownloadIdHelper {
         return methods;
     }
 
-    public static void download(final @NotNull String id, final int index, final @NotNull Consumer<@Nullable UnionPair<ByteBuf, Throwable>> consumer) {
+    public static void download(final @NotNull String id, final int index, final @NotNull Consumer<? super @Nullable UnionPair<ByteBuf, Throwable>> consumer) {
         final DownloaderData data = DownloadIdHelper.data.get(id);
         if (data == null) {
             consumer.accept(null);
@@ -67,6 +67,7 @@ public final class DownloadIdHelper {
     private static class DownloaderData implements Closeable {
         private final @NotNull String id;
         private final DownloadRequirements.@NotNull DownloadMethods methods;
+        private final @NotNull ProgressBar progress;
         private final DownloadRequirements.@Nullable OrderedNode @NotNull [] nodes;
         private final @NotNull Object @NotNull [] locks;
         private final AtomicInteger counter = new AtomicInteger();
@@ -77,6 +78,9 @@ public final class DownloadIdHelper {
             super();
             this.id = id;
             this.methods = methods;
+            this.progress = IdsHelper.setProgressBar(id);
+            for (final DownloadRequirements.OrderedSuppliers parallel: this.methods.parallelMethods())
+                this.progress.addStage(parallel.end() - parallel.start());
             this.nodes = new DownloadRequirements.OrderedNode[this.methods.parallelMethods().size()];
             this.locks = new Object[this.methods.parallelMethods().size()];
             for (int i = 0; i < this.methods.parallelMethods().size(); ++i) {
@@ -103,10 +107,11 @@ public final class DownloadIdHelper {
             //noinspection resource
             final DownloaderData old = DownloadIdHelper.data.remove(this.id);
             assert old == this;
+            IdsHelper.removeProgressBar(this.id);
             this.methods.finisher().run();
         }
 
-        public void get(final int index, final @NotNull Consumer<@Nullable UnionPair<ByteBuf, Throwable>> consumer) {
+        public void get(final int index, final @NotNull Consumer<? super @Nullable UnionPair<ByteBuf, Throwable>> consumer) {
             if (this.closed.get() || index >= this.methods.parallelMethods().size()) {
                 consumer.accept(null);
                 return;
@@ -123,7 +128,7 @@ public final class DownloadIdHelper {
                     consumer.accept(null);
                     return;
                 }
-                this.nodes[index] = this.nodes[index].apply(consumer);
+                this.nodes[index] = this.nodes[index].apply(consumer, delta -> this.progress.progress(index, delta));
                 if (this.nodes[index] == null && this.counter.getAndDecrement() == 0)
                     IdsHelper.CleanerExecutors.execute(this::close);
             }
