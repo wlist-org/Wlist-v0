@@ -16,11 +16,10 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.10.0'
     implementation 'com.alibaba.fastjson2:fastjson2:2.0.25'
     implementation 'com.auth0:java-jwt:4.3.0'
-    implementation 'io.netty:netty-all:4.1.99.Final'
+    implementation 'io.netty:netty-all:4.1.99.Final' // TODO: Pair and Triad from object pool.
     implementation 'org.apache.commons:commons-pool2:2.11.1'
     implementation 'org.xerial:sqlite-jdbc:3.43.0.0'
     implementation 'org.htmlunit:htmlunit:3.5.0'
-    implementation 'org.openjdk.nashorn:nashorn-core:15.4' // TODO: use the javascript engine from htmlunit.
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.0'
     testImplementation 'org.junit.jupiter:junit-jupiter-params:5.10.0'

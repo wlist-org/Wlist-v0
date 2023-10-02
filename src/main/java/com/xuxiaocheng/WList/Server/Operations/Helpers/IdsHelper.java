@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server.Util;
+package com.xuxiaocheng.WList.Server.Operations.Helpers;
 
 import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;

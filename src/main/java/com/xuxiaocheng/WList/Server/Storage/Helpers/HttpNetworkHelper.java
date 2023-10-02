@@ -106,7 +106,7 @@ public final class HttpNetworkHelper {
         return response;
     };
     /**
-     * @see com.xuxiaocheng.WList.Server.Util.BrowserUtil#WebClientCore
+     * @see BrowserUtil#WebClientCore
      */
     public static OkHttpClient.@NotNull Builder newHttpClientBuilder(){
         return new OkHttpClient.Builder()

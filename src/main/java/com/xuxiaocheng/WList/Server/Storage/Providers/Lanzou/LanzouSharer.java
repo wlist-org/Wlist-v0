@@ -7,7 +7,7 @@ import com.xuxiaocheng.WList.Server.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseSharer;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
-import com.xuxiaocheng.WList.Server.Util.BrowserUtil;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.BrowserUtil;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okhttp3.Response;

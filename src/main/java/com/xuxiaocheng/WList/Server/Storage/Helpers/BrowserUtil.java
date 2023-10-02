@@ -1,9 +1,8 @@
-package com.xuxiaocheng.WList.Server.Util;
+package com.xuxiaocheng.WList.Server.Storage.Helpers;
 
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import io.netty.util.internal.EmptyArrays;
 import org.htmlunit.BrowserVersion;
 import org.htmlunit.HttpMethod;

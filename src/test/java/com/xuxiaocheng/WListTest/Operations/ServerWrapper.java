@@ -18,7 +18,7 @@ import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
-import com.xuxiaocheng.WList.Server.Util.IdsHelper;
+import com.xuxiaocheng.WList.Server.Operations.Helpers.IdsHelper;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.StaticLoader;
 import org.jetbrains.annotations.NotNull;

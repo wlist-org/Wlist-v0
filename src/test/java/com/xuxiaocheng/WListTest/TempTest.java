@@ -17,7 +17,7 @@ import com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou.LanzouConfiguration
 import com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou.LanzouSharer;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
-import com.xuxiaocheng.WList.Server.Util.IdsHelper;
+import com.xuxiaocheng.WList.Server.Operations.Helpers.IdsHelper;
 import com.xuxiaocheng.WList.Server.WListServer;
 import okhttp3.HttpUrl;
 import org.jetbrains.annotations.NotNull;

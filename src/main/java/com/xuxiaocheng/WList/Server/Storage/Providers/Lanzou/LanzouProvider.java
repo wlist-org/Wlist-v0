@@ -34,7 +34,7 @@ import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import com.xuxiaocheng.WList.Server.Storage.Records.UploadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
-import com.xuxiaocheng.WList.Server.Util.BrowserUtil;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.BrowserUtil;
 import com.xuxiaocheng.WList.Server.WListServer;
 import okhttp3.FormBody;
 import okhttp3.Headers;
