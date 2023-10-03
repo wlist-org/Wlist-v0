@@ -87,6 +87,8 @@ public record UploadRequirements(@NotNull @Unmodifiable List<@NotNull UploadChec
         final List<OrderedConsumers> list = new ArrayList<>(full + 1);
         final AtomicBoolean leaked = new AtomicBoolean(true);
         final ByteBuf[] cacher = new ByteBuf[full + 1];
+        final long[] sizes = new long[full + 1];
+        final ProgressBar.ProgressListener[] listeners = new ProgressBar.ProgressListener[full + 1];
         int i = 0;
         final AtomicInteger countDown = new AtomicInteger(full);
         for (long b = start; b < start + size; b += NetworkTransmission.FileTransferBufferSize) {
@@ -97,11 +99,27 @@ public record UploadRequirements(@NotNull @Unmodifiable List<@NotNull UploadChec
                 try {
                     assert c.readableBytes() == length;
                     cacher[k] = c;
+                    sizes[k] = length;
+                    listeners[k] = listener;
                     if (countDown.getAndDecrement() == 0) {
                         final CompositeByteBuf buf = ByteBufAllocator.DEFAULT.compositeBuffer(full + 1).addComponents(true, cacher);
                         try {
                             leaked.set(false);
-                            sourceMethod.accept(buf, listener);
+                            final AtomicInteger index = new AtomicInteger(0);
+                            sourceMethod.accept(buf, (ProgressBar.ProgressListener) delta -> {
+                                synchronized (index) {
+                                    long left = delta;
+                                    while (left > 0) {
+                                        final long current = Math.min(left, sizes[index.get()]);
+                                        listeners[index.get()].onProgress(current);
+                                        sizes[index.get()] -= current;
+                                        left -= current;
+                                        if (sizes[index.get()] <= 0)
+                                            index.getAndIncrement();
+                                    }
+                                }
+                            });
+                            assert index.get() == listeners.length;
                         } finally {
                             buf.release();
                         }
