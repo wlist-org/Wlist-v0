@@ -50,7 +50,8 @@ public class NetworkTransmissionTest {
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     public void test(final boolean nativeStart) {
-        final Pair.ImmutablePair<NetworkTransmission.RsaPrivateKey, ByteBuf> request = nativeStart ? NetworkTransmission.clientStart() : NetworkTransmission.clientStartInJava();
+        NetworkTransmission.setClientUseNativeStart(nativeStart);
+        final Pair.ImmutablePair<NetworkTransmission.RsaPrivateKey, ByteBuf> request = NetworkTransmission.clientStart();
         final Pair.ImmutablePair<ByteBuf, NetworkTransmission.AesKeyPair> response = NetworkTransmission.serverStart(request.getSecond(), "WList");
         final UnionPair<NetworkTransmission.AesKeyPair, UnionPair<String, String>> check = NetworkTransmission.clientCheck(request.getFirst(), response.getFirst(), "WList");
         final NetworkTransmission.AesKeyPair client = Objects.requireNonNull(check).getT(), server = Objects.requireNonNull(response.getSecond());
@@ -71,7 +72,7 @@ public class NetworkTransmissionTest {
 
     @Test
     public void empty() {
-        final Pair.ImmutablePair<NetworkTransmission.RsaPrivateKey, ByteBuf> request = NetworkTransmission.clientStartInJava();
+        final Pair.ImmutablePair<NetworkTransmission.RsaPrivateKey, ByteBuf> request = NetworkTransmission.clientStart();
         final Pair.ImmutablePair<ByteBuf, NetworkTransmission.AesKeyPair> response = NetworkTransmission.serverStart(request.getSecond(), "WList");
         final UnionPair<NetworkTransmission.AesKeyPair, UnionPair<String, String>> check = NetworkTransmission.clientCheck(request.getFirst(), response.getFirst(), "WList");
         final NetworkTransmission.AesKeyPair client = Objects.requireNonNull(check).getT(), server = Objects.requireNonNull(response.getSecond());
@@ -96,7 +97,7 @@ public class NetworkTransmissionTest {
 
     @Test
     public void multiEncrypt() {
-        final Pair.ImmutablePair<NetworkTransmission.RsaPrivateKey, ByteBuf> request = NetworkTransmission.clientStartInJava();
+        final Pair.ImmutablePair<NetworkTransmission.RsaPrivateKey, ByteBuf> request = NetworkTransmission.clientStart();
         final Pair.ImmutablePair<ByteBuf, NetworkTransmission.AesKeyPair> response = NetworkTransmission.serverStart(request.getSecond(), "WList");
         final UnionPair<NetworkTransmission.AesKeyPair, UnionPair<String, String>> check = NetworkTransmission.clientCheck(request.getFirst(), response.getFirst(), "WList");
         final NetworkTransmission.AesKeyPair client = Objects.requireNonNull(check).getT(), server = Objects.requireNonNull(response.getSecond());
@@ -132,21 +133,23 @@ public class NetworkTransmissionTest {
         public void test() throws RunnerException {
             new Runner(new OptionsBuilder()
                     .include(SpeedTest.class.getSimpleName())
-                    .result("./test/NetworkTransmission.SpeedTest.json")
+                    .result("./test/network_transmission.json")
                     .resultFormat(ResultFormatType.JSON)
                     .build()).run();
         }
 
         @Benchmark
-        public void generateRsaPrivateByRust(final @NotNull Blackhole blackhole) {
+        public void rust(final @NotNull Blackhole blackhole) {
+            NetworkTransmission.setClientUseNativeStart(true);
             final Pair.ImmutablePair<NetworkTransmission.RsaPrivateKey, ByteBuf> pair = NetworkTransmission.clientStart();
             pair.getSecond().release();
             blackhole.consume(pair);
         }
 
         @Benchmark
-        public void generateRsaPrivateByJava(final @NotNull Blackhole blackhole) {
-            final Pair.ImmutablePair<NetworkTransmission.RsaPrivateKey, ByteBuf> pair = NetworkTransmission.clientStartInJava();
+        public void java(final @NotNull Blackhole blackhole) {
+            NetworkTransmission.setClientUseNativeStart(false);
+            final Pair.ImmutablePair<NetworkTransmission.RsaPrivateKey, ByteBuf> pair = NetworkTransmission.clientStart();
             pair.getSecond().release();
             blackhole.consume(pair);
         }

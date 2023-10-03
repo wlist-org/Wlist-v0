@@ -29,19 +29,30 @@ public final class NetworkTransmission {
         super();
     }
 
+    public static final int FileTransferBufferSize = 4 << 20;
+    public static final int MaxSizePerPacket = (1 << 10) + NetworkTransmission.FileTransferBufferSize;
+
+    private static boolean ClientUseNativeStart = false;
+    public static boolean isClientUseNativeStart() {
+        return NetworkTransmission.ClientUseNativeStart;
+    }
+    public static void setClientUseNativeStart(final boolean clientUseNativeStart) {
+        NetworkTransmission.ClientUseNativeStart = clientUseNativeStart;
+    }
+
     private static native void initialize();
-    public static void load() { // Just call and load native library.
+    public static void load() {
     } static {
         NativeUtil.load("network_transmission");
         NetworkTransmission.initialize();
     }
 
+    private static final @NotNull String CipherHeaderJava = "Ciphers by xuxiaocheng.";
+    private static final @NotNull String CipherVersionJava = "v0.5";
     private static native String getCipherHeader();
     private static native String getCipherVersion();
     public static final @NotNull String CipherHeader = NetworkTransmission.getCipherHeader();
     public static final @NotNull String CipherVersion = NetworkTransmission.getCipherVersion();
-    public static final int FileTransferBufferSize = 4 << 20;
-    public static final int MaxSizePerPacket = (1 << 10) + NetworkTransmission.FileTransferBufferSize;
 
     @SuppressWarnings("ClassHasNoToStringMethod")
     public static final class RsaPrivateKey {
@@ -64,13 +75,13 @@ public final class NetworkTransmission {
     }
 
     private static native Object[] clientStart0();
-    public static Pair.@NotNull ImmutablePair<@NotNull RsaPrivateKey, @NotNull ByteBuf> clientStart() {
+    private static Pair.@NotNull ImmutablePair<@NotNull RsaPrivateKey, @NotNull ByteBuf> clientStartNative() {
         final Object[] array = NetworkTransmission.clientStart0();
         assert array.length == 2; // (key, request)
         assert array[1] instanceof ByteBuffer;
         return Pair.ImmutablePair.makeImmutablePair(new RsaPrivateKey((ByteBuffer[]) array[0]), Unpooled.wrappedBuffer((ByteBuffer) array[1]));
     }
-    public static Pair.@NotNull ImmutablePair<@NotNull RsaPrivateKey, @NotNull ByteBuf> clientStartInJava() {
+    private static Pair.@NotNull ImmutablePair<@NotNull RsaPrivateKey, @NotNull ByteBuf> clientStartJava() {
         try {
             final KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
             generator.initialize(2048, HRandomHelper.DefaultSecureRandom);
@@ -95,14 +106,17 @@ public final class NetworkTransmission {
             q.put(qB);
 
             final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
-            ByteBufIOUtil.writeUTF(buffer, NetworkTransmission.CipherHeader);
-            ByteBufIOUtil.writeUTF(buffer, NetworkTransmission.CipherVersion);
+            ByteBufIOUtil.writeUTF(buffer, NetworkTransmission.CipherHeaderJava);
+            ByteBufIOUtil.writeUTF(buffer, NetworkTransmission.CipherVersionJava);
             ByteBufIOUtil.writeByteArray(buffer, publicKey.getModulus().toByteArray());
             ByteBufIOUtil.writeByteArray(buffer, publicKey.getPublicExponent().toByteArray());
             return Pair.ImmutablePair.makeImmutablePair(new RsaPrivateKey(new ByteBuffer[]{n, e, d, p, q}), buffer);
         } catch (final NoSuchAlgorithmException | IOException exception) {
             throw new RuntimeException("Unreachable!", exception);
         }
+    }
+    public static Pair.@NotNull ImmutablePair<@NotNull RsaPrivateKey, @NotNull ByteBuf> clientStart() {
+        return NetworkTransmission.ClientUseNativeStart ? NetworkTransmission.clientStartNative() : NetworkTransmission.clientStartJava();
     }
 
     private static native ByteBuffer[] serverStart0(final @NotNull ByteBuffer request, final @NotNull String application);
