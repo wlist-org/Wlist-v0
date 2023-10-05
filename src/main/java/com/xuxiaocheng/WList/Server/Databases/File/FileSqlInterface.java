@@ -104,8 +104,7 @@ public interface FileSqlInterface extends DatabaseInterface {
     boolean deleteFile(final long fileId, final @Nullable String _connectionId) throws SQLException;
 
     /**
-     * Delete directory by id. (Do NOT delete root directory.) And auto update sizes of parents recursively.
-     *
+     * Delete directory by id. (Do NOT delete root directory but delete any others.) And auto update sizes of parents recursively.
      * @return false: not found. true: deleted.
      */
     boolean deleteDirectoryRecursively(final long directoryId, final @Nullable String _connectionId) throws SQLException;
