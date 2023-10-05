@@ -30,7 +30,7 @@ import java.util.function.Consumer;
 
 public class WListClientManager implements Closeable {
     public static final @NotNull HMultiInitializers<@NotNull SocketAddress, @NotNull WListClientManager> instances = new HMultiInitializers<>("WListClientManager");
-    protected static final @NotNull Map<@NotNull SocketAddress, @NotNull List<@NotNull Consumer<@NotNull Boolean>>> listeners = new ConcurrentHashMap<>();
+    protected static final @NotNull Map<@NotNull SocketAddress, @NotNull List<@NotNull Consumer<? super @NotNull Boolean>>> listeners = new ConcurrentHashMap<>();
 
     public static void addListener(final @NotNull SocketAddress address, final @NotNull ConsumerE<? super @NotNull Boolean> listener) {
         WListClientManager.listeners.compute(address, (k, v) -> Objects.requireNonNullElseGet(v, LinkedList::new)).add(
@@ -46,7 +46,7 @@ public class WListClientManager implements Closeable {
             manager.open();
             return manager;
         })) {
-            final List<Consumer<Boolean>> list = WListClientManager.listeners.get(manager.clientConfig.address);
+            final List<Consumer<? super Boolean>> list = WListClientManager.listeners.get(manager.clientConfig.address);
             if (list != null)
                 BackgroundTaskManager.BackgroundExecutors.submit(HExceptionWrapper.wrapRunnable(() ->
                                 HMultiRunHelper.runConsumers(BackgroundTaskManager.BackgroundExecutors, list, c -> c.accept(Boolean.TRUE))))
@@ -63,7 +63,7 @@ public class WListClientManager implements Closeable {
             for (final WrappedClient client: manager.activeClients)
                 client.closeInside();
             assert manager.activeClients.isEmpty();
-            final List<Consumer<Boolean>> list = WListClientManager.listeners.get(address);
+            final List<Consumer<? super Boolean>> list = WListClientManager.listeners.get(address);
             if (list != null)
                 BackgroundTaskManager.BackgroundExecutors.submit(HExceptionWrapper.wrapRunnable(() ->
                                 HMultiRunHelper.runConsumers(BackgroundTaskManager.BackgroundExecutors, list, c -> c.accept(Boolean.FALSE))))

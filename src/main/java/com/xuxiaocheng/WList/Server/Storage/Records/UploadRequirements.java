@@ -42,7 +42,7 @@ public record UploadRequirements(@NotNull @Unmodifiable List<@NotNull UploadChec
     }
 
     public record UploadMethods(@NotNull @Unmodifiable List<@NotNull OrderedConsumers> parallelMethods,
-                                @NotNull Consumer<@NotNull Consumer<? super @NotNull UnionPair<Optional<FileInformation>, Throwable>>> supplier,
+                                @NotNull Consumer<? super @NotNull Consumer<? super @NotNull UnionPair<Optional<FileInformation>, Throwable>>> supplier,
                                 @NotNull Runnable finisher) {
         /**
          * @see com.xuxiaocheng.WList.Commons.Beans.UploadConfirm.UploadInformation

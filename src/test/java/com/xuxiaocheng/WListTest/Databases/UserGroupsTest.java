@@ -16,7 +16,6 @@ import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.CleanupMode;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -46,7 +45,7 @@ import java.util.stream.Stream;
 
 @Execution(ExecutionMode.SAME_THREAD)
 public final class UserGroupsTest {
-    @TempDir(cleanup = CleanupMode.ALWAYS)
+    @TempDir
     private static File directory;
 
     @BeforeAll
