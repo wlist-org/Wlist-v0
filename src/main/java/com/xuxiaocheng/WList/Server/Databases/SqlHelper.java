@@ -4,6 +4,7 @@ import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.nio.charset.Charset;
 import java.sql.Timestamp;
@@ -32,5 +33,11 @@ public final class SqlHelper {
 
     public static @NotNull ZonedDateTime toZonedDataTime(final @NotNull Timestamp timestamp) {
         return ZonedDateTime.of(AndroidSupporter.toLocalDateTime(timestamp), ZoneOffset.UTC);
+    }
+
+    @Contract(pure = true)
+    public static @Nullable Timestamp getTimestamp(final @Nullable ZonedDateTime time) {
+        assert time == null || ZoneOffset.UTC.equals(time.getZone());
+        return time == null ? null : Timestamp.valueOf(time.toLocalDateTime());
     }
 }

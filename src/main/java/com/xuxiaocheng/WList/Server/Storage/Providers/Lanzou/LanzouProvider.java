@@ -3,43 +3,30 @@ package com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
-import com.xuxiaocheng.HeadLibs.CheckRules.CheckRule;
-import com.xuxiaocheng.HeadLibs.CheckRules.CheckRuleSet;
-import com.xuxiaocheng.HeadLibs.CheckRules.StringCheckRules.ContainsCheckRule;
-import com.xuxiaocheng.HeadLibs.CheckRules.StringCheckRules.LengthCheckRule;
-import com.xuxiaocheng.HeadLibs.CheckRules.StringCheckRules.SuffixCheckRule;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
-import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Helpers.HMultiRunHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
-import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Commons.Utils.I18NUtil;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.Exceptions.IllegalResponseCodeException;
 import com.xuxiaocheng.WList.Server.Exceptions.WrongResponseException;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.BrowserUtil;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.ProviderUtil;
 import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseProvider;
-import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
-import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
-import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
-import com.xuxiaocheng.WList.Server.Storage.Records.UploadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
-import com.xuxiaocheng.WList.Server.Storage.Helpers.BrowserUtil;
 import com.xuxiaocheng.WList.Server.WListServer;
 import okhttp3.FormBody;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
-import okhttp3.MultipartBody;
 import org.htmlunit.WebClient;
 import org.htmlunit.html.HtmlInput;
 import org.htmlunit.html.HtmlPage;
@@ -64,13 +51,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @SuppressWarnings({"SpellCheckingInspection", "CallToSuspiciousStringMethod"})
 public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> {
@@ -161,7 +144,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         return Triad.ImmutableTriad.makeImmutableTriad(Objects.requireNonNull(HttpUrl.parse(map.getString("d"))), map.getString("i"), map.getString("p"));
     }
 
-    protected @NotNull JSONObject task(final int type, final @NotNull Consumer<FormBody.@NotNull Builder> request, final @Nullable Integer zt, final boolean loginFlag) throws IOException, IllegalParametersException {
+    protected @NotNull JSONObject task(final int type, final @NotNull Consumer<? super FormBody.@NotNull Builder> request, final @Nullable Integer zt, final boolean loginFlag) throws IOException, IllegalParametersException {
         final LanzouConfiguration configuration = this.getConfiguration();
         final Map<String, String> parameters = new HashMap<>();
         parameters.put("uid", String.valueOf(configuration.getUid()));
@@ -283,17 +266,22 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     @Override
-    protected @NotNull UnionPair<FileInformation, Boolean> update0(@NotNull final FileInformation oldInformation) throws IOException, IllegalParametersException {
-        if (oldInformation.isDirectory() || (oldInformation.createTime() != null && oldInformation.others() != null))
-            return AbstractIdBaseProvider.UpdateNoRequired;
-        this.loginIfNot();
+    protected boolean requireUpdate(@NotNull final FileInformation information) {
+        return !information.isDirectory() && (information.createTime() == null || information.others() == null);
+    }
+
+    @Override
+    protected void update0(@NotNull final FileInformation oldInformation, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, Boolean>, Throwable>> consumer) throws IOException, IllegalParametersException {
         final HttpUrl url;
         final String identifier;
         final String pwd;
         String others;
         if (oldInformation.others() == null) {
             final Triad.ImmutableTriad<HttpUrl, String, String> shareUrl = this.getFileShareUrl(oldInformation.id());
-            if (shareUrl == null) return UnionPair.fail(Boolean.FALSE);
+            if (shareUrl == null) {
+                consumer.accept(AbstractIdBaseProvider.UpdateNotExisted);
+                return;
+            }
             url = shareUrl.getA();
             identifier = shareUrl.getB();
             pwd = shareUrl.getC();
@@ -312,199 +300,207 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
             downloadUrl = sharer.getSingleShareFileDownloadUrl(url, identifier, pwd);
         } catch (final IllegalParametersException exception) { // Wrong password.
             final Triad.ImmutableTriad<HttpUrl, String, String> shareUrl = this.getFileShareUrl(oldInformation.id());
-            if (shareUrl == null) return UnionPair.fail(Boolean.FALSE);
+            if (shareUrl == null) {
+                consumer.accept(AbstractIdBaseProvider.UpdateNotExisted);
+                return;
+            }
             others = LanzouProvider.dumpOthers(shareUrl.getA(), shareUrl.getB(), shareUrl.getC());
             downloadUrl = sharer.getSingleShareFileDownloadUrl(shareUrl.getA(), shareUrl.getB(), shareUrl.getC());
         }
-        if (downloadUrl == null)
-            return AbstractIdBaseProvider.UpdateNotExisted;
-        final Pair<Long, ZonedDateTime> fixed = sharer.testRealSizeAndData(downloadUrl.getFirst(), downloadUrl.getSecond());
-        if (fixed != null)
-            return UnionPair.ok(new FileInformation(oldInformation.id(), oldInformation.parentId(), oldInformation.name(), false, fixed.getFirst().longValue(), fixed.getSecond(), fixed.getSecond(), others));
-        return UnionPair.ok(new FileInformation(oldInformation.id(), oldInformation.parentId(), oldInformation.name(), false, oldInformation.size(), oldInformation.createTime(), oldInformation.updateTime(), others));
-    }
-
-    @Override
-    protected boolean isSupportedInfo() {
-        return false;
-    }
-
-    @Override
-    protected boolean isSupportedNotEmptyDirectoryTrash() {
-        return false;
-    }
-
-    @Override
-    protected void trash0(final @NotNull FileInformation information) throws IOException, IllegalParametersException {
-        if (information.isDirectory()) {
-            final JSONObject json = this.task(3, f -> f.add("folder_id", String.valueOf(information.id())), 1, false);
-            final String message = json.getString("info");
-            if (!"\u5220\u9664\u6210\u529F".equals(message))
-                LanzouProvider.logger.log(HLogLevel.WARN, new WrongResponseException("Trashing directory.", message, ParametersMap.create()
-                        .add("configuration", this.getConfiguration()).add("information", information).add("json", json)));
-        } else {
-            final JSONObject json = this.task(6, f -> f.add("file_id", String.valueOf(information.id())), 1, false);
-            final String message = json.getString("info");
-            if (!"\u5DF2\u5220\u9664".equals(message))
-                LanzouProvider.logger.log(HLogLevel.WARN, new WrongResponseException("Trashing file.", message, ParametersMap.create()
-                        .add("configuration", this.getConfiguration()).add("information", information).add("json", json)));
-        }
-    }
-
-    @Override
-    protected boolean isRequiredLoginDownloading(final @NotNull FileInformation information) {
-        return information.others() == null;
-    }
-
-    @Override
-    protected void download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) throws IOException, IllegalParametersException {
-        final HttpUrl url;
-        final String identifier;
-        final String pwd;
-        if (information.others() == null) {
-            final Triad.ImmutableTriad<HttpUrl, String, String> shareUrl = this.getFileShareUrl(information.id());
-            if (shareUrl == null) {
-                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(location, false))));
-                return;
-            }
-            url = shareUrl.getA();
-            identifier = shareUrl.getB();
-            pwd = shareUrl.getC();
-        } else {
-            final Triad.ImmutableTriad<HttpUrl, String, String> map = LanzouProvider.parseOthers(information.others());
-            url = map.getA();
-            identifier = map.getB();
-            pwd = map.getC();
-        }
-        final LanzouSharer sharer = (LanzouSharer) StorageManager.getSharer(this.getConfiguration().getName());
-        assert sharer != null;
-        Pair.ImmutablePair<HttpUrl, Headers> downloadUrl;
-        try {
-            downloadUrl = sharer.getSingleShareFileDownloadUrl(url, identifier, pwd);
-        } catch (final IllegalParametersException ignore) { // Wrong password.
-            final Triad.ImmutableTriad<HttpUrl, String, String> shareUrl = this.getFileShareUrl(information.id());
-            if (shareUrl == null) {
-                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(location, false))));
-                return;
-            }
-            downloadUrl = sharer.getSingleShareFileDownloadUrl(shareUrl.getA(), shareUrl.getB(), shareUrl.getC());
-        }
         if (downloadUrl == null) {
-            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(location, false))));
+            consumer.accept(AbstractIdBaseProvider.UpdateNotExisted);
             return;
         }
-        consumer.accept(UnionPair.ok(UnionPair.ok(DownloadRequirements.tryGetDownloadFromUrl(this.getConfiguration().getFileClient(),
-                downloadUrl.getFirst(), downloadUrl.getSecond(), information.size(), LanzouProvider.Headers.newBuilder(), from, to, null))));
-    }
-
-    protected static final @NotNull Pair.ImmutablePair<@NotNull String, @NotNull String> RetryBracketPair = Pair.ImmutablePair.makeImmutablePair("\uFF08", "\uFF09");
-    @Override
-    protected Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> retryBracketPair() {
-        return LanzouProvider.RetryBracketPair;
-    }
-
-    protected static final @NotNull CheckRule<@NotNull String> DirectoryNameChecker = new CheckRuleSet<>(new LengthCheckRule(1, 100),
-            new ContainsCheckRule(Set.of("/", "\\", "*", "|", "#", "$", "%", "^", "(", ")", "?", ":", "'", "\"", "`", "=", "+"), false)
-    );
-
-    @Override
-    protected @NotNull CheckRule<@NotNull String> directoryNameChecker() {
-        return LanzouProvider.DirectoryNameChecker;
-    }
-
-    @Override
-    protected void createDirectory0(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws IOException, IllegalParametersException {
-        final JSONObject json;
-        final ZonedDateTime now;
-        try {
-            json = this.task(2, f -> f.add("parent_id", String.valueOf(parentId)).add("folder_name", directoryName), 1, false);
-            now = MiscellaneousUtil.now();
-        } catch (final IllegalResponseCodeException exception) {
-            if (exception.getCode() == 0) {
-                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(parentLocation, directoryName, exception.getMeaning()))));
-                return;
-            }
-            throw exception;
+        final Pair<Long, ZonedDateTime> fixed = sharer.testRealSizeAndData(downloadUrl.getFirst(), downloadUrl.getSecond());
+        if (fixed != null) {
+            consumer.accept(UnionPair.ok(UnionPair.ok(new FileInformation(oldInformation.id(), oldInformation.parentId(), oldInformation.name(), false, fixed.getFirst().longValue(), fixed.getSecond(), fixed.getSecond(), others))));
+            return;
         }
-        final Long id = json.getLong("text");
-        final String message = json.getString("info");
-        if (id == null)
-            throw new WrongResponseException("Creating directories.", message, ParametersMap.create().add("configuration", this.getConfiguration())
-                    .add("directoryName", directoryName).add("parentId", parentId).add("json", json));
-        consumer.accept(UnionPair.ok(UnionPair.ok(new FileInformation(id.longValue(), parentId, directoryName, true, 0, now, now, null))));
-    }
-
-    protected static final @NotNull CheckRule<@NotNull String> FileNameChecker = new CheckRuleSet<>(new SuffixCheckRule(Stream.of(
-            "doc","docx","zip","rar","apk","ipa","txt","exe","7z","e","z","ct","ke","cetrainer","db","tar","pdf","w3x","epub","mobi","azw","azw3","osk", "osz",
-                    "xpa","cpk","lua","jar","dmg","ppt","pptx","xls","xlsx","mp3","iso","img","gho","ttf","ttc","txf","dwg","bat","imazingapp","dll","crx","xapk",
-                    "conf","deb","rp","rpm","rplib","mobileconfig","appimage","lolgezi","flac","cad","hwt","accdb","ce","xmind","enc","bds","bdi","ssf","it","pkg","cfg"
-            ).map(s -> "." + s).collect(Collectors.toSet()), true), new LengthCheckRule(1, 100),
-            new ContainsCheckRule(Set.of("/", "\\", "*", "|", "#", "$", "%", "^", "(", ")", "?", ":", "'", "\"", "`", "=", "+"), false)
-    );
-
-    @Override
-    protected @NotNull CheckRule<@NotNull String> fileNameChecker() {
-        return LanzouProvider.FileNameChecker;
+        consumer.accept(UnionPair.ok(UnionPair.ok(new FileInformation(oldInformation.id(), oldInformation.parentId(), oldInformation.name(), false, oldInformation.size(), oldInformation.createTime(), oldInformation.updateTime(), others))));
     }
 
     @Override
-    protected void uploadFile0(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) {
-        consumer.accept(UnionPair.ok(UnionPair.ok(new UploadRequirements(List.of(), ignore -> {
-            final AtomicReference<FileInformation> information = new AtomicReference<>(null);
-            final Pair.ImmutablePair<List<UploadRequirements.OrderedConsumers>, Runnable> pair = UploadRequirements.splitUploadBuffer((content, listener) -> {
-                final MultipartBody body = new MultipartBody.Builder().setType(MultipartBody.FORM)
-                        .addFormDataPart("task", "1")
-                        .addFormDataPart("ve", "2")
-                        .addFormDataPart("folder_id_bb_n", String.valueOf(parentId))
-                        .addFormDataPart("upload_file", filename, HttpNetworkHelper.createOctetStreamRequestBody(content, listener))
-                        .build();
-                final JSONObject json = HttpNetworkHelper.extraJsonResponseBody(HttpNetworkHelper.postWithBody(this.getConfiguration().getHttpClient(),
-                        LanzouProvider.UploadURL, this.headerWithToken, body).execute());
-                final ZonedDateTime now = MiscellaneousUtil.now();
-                final int code = json.getIntValue("zt", -1);
-                if (code != 1)
-                    throw new IllegalResponseCodeException(code, json.getString("info") == null ? json.getString("text") : json.getString("info"),
-                            ParametersMap.create().add("configuration", this.getConfiguration()).add("requireZt", 1).add("json", json));
-                final String message = json.getString("info");
-                final JSONArray array = json.getJSONArray("text");
-                if (!"\u4E0A\u4F20\u6210\u529F".equals(message) || array == null || array.isEmpty())
-                    throw new WrongResponseException("Uploading file.", message, ParametersMap.create().add("configuration", this.getConfiguration())
-                            .add("parentId", parentId).add("filename", filename).add("json", json));
-                final JSONObject info = array.getJSONObject(0);
-                if (info == null || info.getLong("id") == null)
-                    throw new WrongResponseException("Uploading file.", message, ParametersMap.create().add("configuration", this.getConfiguration())
-                            .add("parentId", parentId).add("filename", filename).add("json", json));
-                final long id = info.getLongValue("id");
-                information.set(new FileInformation(id, parentId, filename, false, size, now, now, null));
-                final Triad.ImmutableTriad<HttpUrl, String, String> shareUrl = this.getFileShareUrl(id);
-                if (shareUrl != null) {
-                    final String others = LanzouProvider.dumpOthers(shareUrl.getA(), shareUrl.getB(), shareUrl.getC());
-                    information.set(new FileInformation(id, parentId, filename, false, size, now, now, others));
-                }
-            }, 0, Math.toIntExact(size));
-            return new UploadRequirements.UploadMethods(pair.getFirst(), c -> c.accept(UnionPair.ok(Optional.ofNullable(information.get()))), pair.getSecond());
-        }, RunnableE.EmptyRunnable))));
-    }
-
-    @Override
-    protected boolean isSupportedCopyFileDirectly(final @NotNull FileInformation information, final long parentId) {
+    protected boolean isSupportedInfo(final boolean isDirectory) {
         return false;
     }
 
-    @Override
-    protected void copyFileDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String filename, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) {
-        consumer.accept(ProviderInterface.CopyNotSupported);
-    }
-
-    @Override
-    protected boolean isSupportedMoveDirectly(final @NotNull FileInformation information, final long parentId) {
-        return !information.isDirectory();
-    }
-
-    @Override
-    protected void moveDirectly0(final @NotNull FileInformation information, final long parentId, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) {
-        consumer.accept(ProviderInterface.MoveNotSupported); // TODO
-    }
+//    @Override
+//    protected boolean isSupportedNotEmptyDirectoryTrash() {
+//        return false;
+//    }
+//
+//    @Override
+//    protected void trash0(final @NotNull FileInformation information, final @NotNull Consumer<? super @Nullable Throwable> consumer) throws IOException, IllegalParametersException {
+//        if (information.isDirectory()) {
+//            final JSONObject json = this.task(3, f -> f.add("folder_id", String.valueOf(information.id())), 1, false);
+//            final String message = json.getString("info");
+//            if (!"\u5220\u9664\u6210\u529F".equals(message))
+//                LanzouProvider.logger.log(HLogLevel.WARN, new WrongResponseException("Trashing directory.", message, ParametersMap.create()
+//                        .add("configuration", this.getConfiguration()).add("information", information).add("json", json)));
+//        } else {
+//            final JSONObject json = this.task(6, f -> f.add("file_id", String.valueOf(information.id())), 1, false);
+//            final String message = json.getString("info");
+//            if (!"\u5DF2\u5220\u9664".equals(message))
+//                LanzouProvider.logger.log(HLogLevel.WARN, new WrongResponseException("Trashing file.", message, ParametersMap.create()
+//                        .add("configuration", this.getConfiguration()).add("information", information).add("json", json)));
+//        }
+//        consumer.accept(null);
+//    }
+//
+//    @Override
+//    protected boolean isRequiredLoginDownloading(final @NotNull FileInformation information) {
+//        return information.others() == null;
+//    }
+//
+//    @Override
+//    protected void download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) throws IOException, IllegalParametersException {
+//        final HttpUrl url;
+//        final String identifier;
+//        final String pwd;
+//        if (information.others() == null) {
+//            final Triad.ImmutableTriad<HttpUrl, String, String> shareUrl = this.getFileShareUrl(information.id());
+//            if (shareUrl == null) {
+//                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(location, false))));
+//                return;
+//            }
+//            url = shareUrl.getA();
+//            identifier = shareUrl.getB();
+//            pwd = shareUrl.getC();
+//        } else {
+//            final Triad.ImmutableTriad<HttpUrl, String, String> map = LanzouProvider.parseOthers(information.others());
+//            url = map.getA();
+//            identifier = map.getB();
+//            pwd = map.getC();
+//        }
+//        final LanzouSharer sharer = (LanzouSharer) StorageManager.getSharer(this.getConfiguration().getName());
+//        assert sharer != null;
+//        Pair.ImmutablePair<HttpUrl, Headers> downloadUrl;
+//        try {
+//            downloadUrl = sharer.getSingleShareFileDownloadUrl(url, identifier, pwd);
+//        } catch (final IllegalParametersException ignore) { // Wrong password.
+//            final Triad.ImmutableTriad<HttpUrl, String, String> shareUrl = this.getFileShareUrl(information.id());
+//            if (shareUrl == null) {
+//                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(location, false))));
+//                return;
+//            }
+//            downloadUrl = sharer.getSingleShareFileDownloadUrl(shareUrl.getA(), shareUrl.getB(), shareUrl.getC());
+//        }
+//        if (downloadUrl == null) {
+//            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(location, false))));
+//            return;
+//        }
+//        consumer.accept(UnionPair.ok(UnionPair.ok(DownloadRequirements.tryGetDownloadFromUrl(this.getConfiguration().getFileClient(),
+//                downloadUrl.getFirst(), downloadUrl.getSecond(), information.size(), LanzouProvider.Headers.newBuilder(), from, to, null))));
+//    }
+//
+//    protected static final @NotNull Pair.ImmutablePair<@NotNull String, @NotNull String> RetryBracketPair = Pair.ImmutablePair.makeImmutablePair("\uFF08", "\uFF09");
+//    @Override
+//    protected Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> retryBracketPair() {
+//        return LanzouProvider.RetryBracketPair;
+//    }
+//
+//    protected static final @NotNull CheckRule<@NotNull String> DirectoryNameChecker = new CheckRuleSet<>(new LengthCheckRule(1, 100),
+//            new ContainsCheckRule(Set.of("/", "\\", "*", "|", "#", "$", "%", "^", "(", ")", "?", ":", "'", "\"", "`", "=", "+"), false)
+//    );
+//
+//    @Override
+//    protected @NotNull CheckRule<@NotNull String> directoryNameChecker() {
+//        return LanzouProvider.DirectoryNameChecker;
+//    }
+//
+//    @Override
+//    protected void createDirectory0(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws IOException, IllegalParametersException {
+//        final JSONObject json;
+//        final ZonedDateTime now;
+//        try {
+//            json = this.task(2, f -> f.add("parent_id", String.valueOf(parentId)).add("folder_name", directoryName), 1, false);
+//            now = MiscellaneousUtil.now();
+//        } catch (final IllegalResponseCodeException exception) {
+//            if (exception.getCode() == 0) {
+//                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(parentLocation, directoryName, exception.getMeaning()))));
+//                return;
+//            }
+//            throw exception;
+//        }
+//        final Long id = json.getLong("text");
+//        final String message = json.getString("info");
+//        if (id == null)
+//            throw new WrongResponseException("Creating directories.", message, ParametersMap.create().add("configuration", this.getConfiguration())
+//                    .add("directoryName", directoryName).add("parentId", parentId).add("json", json));
+//        consumer.accept(UnionPair.ok(UnionPair.ok(new FileInformation(id.longValue(), parentId, directoryName, true, 0, now, now, null))));
+//    }
+//
+//    protected static final @NotNull CheckRule<@NotNull String> FileNameChecker = new CheckRuleSet<>(new SuffixCheckRule(Stream.of(
+//            "doc","docx","zip","rar","apk","ipa","txt","exe","7z","e","z","ct","ke","cetrainer","db","tar","pdf","w3x","epub","mobi","azw","azw3","osk", "osz",
+//                    "xpa","cpk","lua","jar","dmg","ppt","pptx","xls","xlsx","mp3","iso","img","gho","ttf","ttc","txf","dwg","bat","imazingapp","dll","crx","xapk",
+//                    "conf","deb","rp","rpm","rplib","mobileconfig","appimage","lolgezi","flac","cad","hwt","accdb","ce","xmind","enc","bds","bdi","ssf","it","pkg","cfg"
+//            ).map(s -> "." + s).collect(Collectors.toSet()), true), new LengthCheckRule(1, 100),
+//            new ContainsCheckRule(Set.of("/", "\\", "*", "|", "#", "$", "%", "^", "(", ")", "?", ":", "'", "\"", "`", "=", "+"), false)
+//    );
+//
+//    @Override
+//    protected @NotNull CheckRule<@NotNull String> fileNameChecker() {
+//        return LanzouProvider.FileNameChecker;
+//    }
+//
+//    @Override
+//    protected void uploadFile0(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) {
+//        consumer.accept(UnionPair.ok(UnionPair.ok(new UploadRequirements(List.of(), ignore -> {
+//            final AtomicReference<FileInformation> information = new AtomicReference<>(null);
+//            final Pair.ImmutablePair<List<UploadRequirements.OrderedConsumers>, Runnable> pair = UploadRequirements.splitUploadBuffer((content, listener) -> {
+//                final MultipartBody body = new MultipartBody.Builder().setType(MultipartBody.FORM)
+//                        .addFormDataPart("task", "1")
+//                        .addFormDataPart("ve", "2")
+//                        .addFormDataPart("folder_id_bb_n", String.valueOf(parentId))
+//                        .addFormDataPart("upload_file", filename, HttpNetworkHelper.createOctetStreamRequestBody(content, listener))
+//                        .build();
+//                final JSONObject json = HttpNetworkHelper.extraJsonResponseBody(HttpNetworkHelper.postWithBody(this.getConfiguration().getHttpClient(),
+//                        LanzouProvider.UploadURL, this.headerWithToken, body).execute());
+//                final ZonedDateTime now = MiscellaneousUtil.now();
+//                final int code = json.getIntValue("zt", -1);
+//                if (code != 1)
+//                    throw new IllegalResponseCodeException(code, json.getString("info") == null ? json.getString("text") : json.getString("info"),
+//                            ParametersMap.create().add("configuration", this.getConfiguration()).add("requireZt", 1).add("json", json));
+//                final String message = json.getString("info");
+//                final JSONArray array = json.getJSONArray("text");
+//                if (!"\u4E0A\u4F20\u6210\u529F".equals(message) || array == null || array.isEmpty())
+//                    throw new WrongResponseException("Uploading file.", message, ParametersMap.create().add("configuration", this.getConfiguration())
+//                            .add("parentId", parentId).add("filename", filename).add("json", json));
+//                final JSONObject info = array.getJSONObject(0);
+//                if (info == null || info.getLong("id") == null)
+//                    throw new WrongResponseException("Uploading file.", message, ParametersMap.create().add("configuration", this.getConfiguration())
+//                            .add("parentId", parentId).add("filename", filename).add("json", json));
+//                final long id = info.getLongValue("id");
+//                information.set(new FileInformation(id, parentId, filename, false, size, now, now, null));
+//                final Triad.ImmutableTriad<HttpUrl, String, String> shareUrl = this.getFileShareUrl(id);
+//                if (shareUrl != null) {
+//                    final String others = LanzouProvider.dumpOthers(shareUrl.getA(), shareUrl.getB(), shareUrl.getC());
+//                    information.set(new FileInformation(id, parentId, filename, false, size, now, now, others));
+//                }
+//            }, 0, Math.toIntExact(size));
+//            return new UploadRequirements.UploadMethods(pair.getFirst(), c -> c.accept(UnionPair.ok(Optional.ofNullable(information.get()))), pair.getSecond());
+//        }, RunnableE.EmptyRunnable))));
+//    }
+//
+//    @Override
+//    protected boolean isSupportedCopyFileDirectly(final @NotNull FileInformation information, final long parentId) {
+//        return false;
+//    }
+//
+//    @Override
+//    protected void copyFileDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String filename, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) {
+//        consumer.accept(ProviderInterface.CopyNotSupported);
+//    }
+//
+//    @Override
+//    protected boolean isSupportedMoveDirectly(final @NotNull FileInformation information, final long parentId) {
+//        return !information.isDirectory();
+//    }
+//
+//    @Override
+//    protected void moveDirectly0(final @NotNull FileInformation information, final long parentId, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) {
+//        consumer.accept(ProviderInterface.MoveNotSupported); // TODO
+//    }
 
     //    static @Nullable UnionPair<ZonedDateTime, FailureReason> moveFile(final @NotNull LanzouConfiguration configuration, final long fileId, final long parentId) throws IOException {
 //        final FormBody.Builder builder = new FormBody.Builder()

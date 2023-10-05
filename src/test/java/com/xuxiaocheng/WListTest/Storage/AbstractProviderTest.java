@@ -1,28 +1,17 @@
 package com.xuxiaocheng.WListTest.Storage;
 
-import com.xuxiaocheng.HeadLibs.CheckRules.CheckRule;
-import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
-import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
+import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.StaticLoader;
-import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
-import com.xuxiaocheng.WList.Commons.Operations.FailureKind;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseProvider;
-import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
-import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
-import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
-import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
-import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
-import com.xuxiaocheng.WList.Server.Storage.Records.UploadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -32,7 +21,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.io.CleanupMode;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -42,15 +30,10 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -58,16 +41,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-/**
- * @see com.xuxiaocheng.WListTest.Storage.Real.RealAbstractTest
- */
 @Execution(ExecutionMode.CONCURRENT)
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class AbstractProviderTest {
-    @TempDir(cleanup = CleanupMode.ALWAYS)
+    @TempDir
     private static File directory;
 
     @BeforeAll
@@ -90,142 +69,16 @@ public class AbstractProviderTest {
         Assertions.assertEquals(Map.of(), tasks.get(null));
     }
 
-    public static class AbstractConfiguration extends StorageConfiguration {
-    }
-
-    protected final AtomicBoolean loggedIn = new AtomicBoolean();
-    protected final AtomicReference<Iterator<FileInformation>> list = new AtomicReference<>();
-    protected final AtomicReference<Supplier<UnionPair<FileInformation, Boolean>>> updated = new AtomicReference<>();
-    protected final AtomicBoolean supportedInfo = new AtomicBoolean();
-    protected final Map<Long, FileInformation> info = new HashMap<>();
-    protected final HInitializer<FileInformation> trash = new HInitializer<>("Trashed");
-    protected final AtomicReference<FileInformation> create = new AtomicReference<>();
-    protected final AtomicReference<FileInformation> copy = new AtomicReference<>();
-    protected final AtomicReference<FileInformation> move = new AtomicReference<>();
-
-    public class AbstractProvider extends AbstractIdBaseProvider<AbstractConfiguration> {
-        @Override
-        public @NotNull StorageTypes<AbstractConfiguration> getType() {
-            throw new RuntimeException("Unreachable.");
-        }
-
-        @Override
-        protected void loginIfNot() {
-            AbstractProviderTest.this.loggedIn.set(true);
-        }
-
-        @Override
-        protected @Nullable Iterator<@NotNull FileInformation> list0(final long directoryId) {
-            return AbstractProviderTest.this.list.getAndSet(null);
-        }
-
-        @Override
-        protected @NotNull UnionPair<FileInformation, Boolean> update0(final @NotNull FileInformation oldInformation) {
-            return Objects.requireNonNull(AbstractProviderTest.this.updated.getAndSet(null)).get();
-        }
-
-        @Override
-        protected boolean isSupportedInfo() {
-            return AbstractProviderTest.this.supportedInfo.get();
-        }
-        @Override
-        protected @Nullable FileInformation info0(final long id, final boolean isDirectory) {
-            return AbstractProviderTest.this.info.get(id);
-        }
-
-        @Override
-        protected boolean isSupportedNotEmptyDirectoryTrash() {
-            return true;
-        }
-
-        @Override
-        protected void trash0(final @NotNull FileInformation information) {
-            AbstractProviderTest.this.trash.initialize(information);
-        }
-
-        @Override
-        protected void download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) {
-            throw new UnsupportedOperationException("Not tested.");
-        }
-
-        @Override
-        protected @NotNull CheckRule<@NotNull String> directoryNameChecker() {
-            return CheckRule.allAllow();
-        }
-
-        @Override
-        protected void createDirectory0(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) {
-            final FileInformation information = AbstractProviderTest.this.create.getAndSet(null);
-            if (information == null) {
-                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(parentLocation, directoryName, "For test."))));
-                return;
-            }
-            Assertions.assertEquals(parentId, information.parentId());
-            Assertions.assertEquals(directoryName, information.name());
-            consumer.accept(UnionPair.ok(UnionPair.ok(information)));
-        }
-
-        @Override
-        protected @NotNull CheckRule<@NotNull String> fileNameChecker() {
-            return CheckRule.allAllow();
-        }
-
-        @Override
-        protected void uploadFile0(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) {
-            throw new UnsupportedOperationException("Not tested.");
-        }
-
-        @Override
-        protected boolean isSupportedCopyFileDirectly(final @NotNull FileInformation information, final long parentId) {
-            return true;
-        }
-
-        @Override
-        protected void copyFileDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String filename, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) {
-            final FileInformation copied = AbstractProviderTest.this.copy.getAndSet(null);
-            Assertions.assertNotNull(copied);
-            Assertions.assertEquals(filename, copied.name());
-            Assertions.assertEquals(information.size(), copied.size());
-            consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(Optional.of(copied)))));
-        }
-
-        @Override
-        protected boolean isSupportedMoveDirectly(final @NotNull FileInformation information, final long parentId) {
-            return true;
-        }
-
-        @Override
-        protected void moveDirectly0(final @NotNull FileInformation information, final long parentId, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) {
-            final FileInformation moved = AbstractProviderTest.this.move.getAndSet(null);
-            Assertions.assertNotNull(moved);
-            Assertions.assertEquals(information.name(), moved.name());
-            Assertions.assertEquals(information.size(), moved.size());
-            Assertions.assertEquals(parentId, moved.parentId());
-            consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(Optional.of(moved)))));
-        }
-    }
-
-    protected final AtomicReference<ProviderInterface<AbstractConfiguration>> provider = new AtomicReference<>();
-    public ProviderInterface<?> provider() {
+    protected final AtomicReference<AbstractProvider> provider = new AtomicReference<>();
+    public AbstractProvider provider() {
         return this.provider.get();
     }
 
-    protected HInitializer<Supplier<ProviderInterface<AbstractConfiguration>>> ProviderCore = new HInitializer<>("Provider", AbstractProvider::new);
-
     @BeforeEach
     public void reset() throws Exception {
-        this.loggedIn.set(false);
-        this.list.set(null);
-        this.updated.set(null);
-        this.supportedInfo.set(false);
-        this.info.clear();
-        this.trash.uninitializeNullable();
-        this.create.set(null);
-        this.copy.set(null);
-        this.move.set(null);
-        final ProviderInterface<AbstractConfiguration> provider = this.ProviderCore.getInstance().get();
+        final AbstractProvider provider = new AbstractProvider();
         this.provider.set(provider);
-        final AbstractConfiguration configuration = new AbstractConfiguration();
+        final AbstractProvider.AbstractConfiguration configuration = new AbstractProvider.AbstractConfiguration();
         synchronized (AbstractProviderTest.class) {
             configuration.setName(String.valueOf(System.currentTimeMillis()));
             TimeUnit.MILLISECONDS.sleep(10);
@@ -235,59 +88,88 @@ public class AbstractProviderTest {
 
     @AfterEach
     public void unset() throws Exception {
-        this.provider().uninitialize(true);
+        this.provider.getAndSet(null).uninitialize(true);
     }
 
-    @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
     @Nested
-    public class ListTest {
-        public static Stream<List<FileInformation>> list() {
-            return Stream.of(null,
-                    List.of(new FileInformation(1, 0, "directory", true, -1, null, null, null),
-                            new FileInformation(2, 0, "file", false, 1, null, null, null)),
-                    List.of(new FileInformation(1, 0, "directory", true, -1, null, null, null),
-                            new FileInformation(2, 0, "file1", false, 1, null, null, null),
-                            new FileInformation(3, 0, "file2", false, 1, null, null, null)),
-                    List.of(new FileInformation(1, 0, "directory1", true, -1, null, null, null),
-                            new FileInformation(2, 0, "directory2", true, -1, null, null, null),
-                            new FileInformation(3, 0, "file", false, 1, null, null, null))
-            ).skip(1);
+    @SuppressWarnings("UnqualifiedMethodAccess")
+    public final class ListTest {
+        public static Stream<Consumer<AbstractProvider.@NotNull AbstractProviderFile>> list() {
+            return Stream.of(root -> {
+                root.add(AbstractProvider.build(1, 0, true));
+                root.add(AbstractProvider.build(2, 0, false));
+            }, root -> {
+                root.add(AbstractProvider.build(1, 0, true));
+                root.add(AbstractProvider.build(1, 0, false));
+            }, root -> {
+                root.add(AbstractProvider.build(1, 0, true));
+                root.add(AbstractProvider.build(2, 0, false));
+                root.add(AbstractProvider.build(3, 0, false));
+            }, root -> {
+                root.add(AbstractProvider.build(1, 0, true));
+                root.add(AbstractProvider.build(2, 0, true));
+                root.add(AbstractProvider.build(3, 0, false));
+            }, root -> {
+                for (int i = 1; i < 10; ++i)
+                    root.add(AbstractProvider.build(i, 0, HRandomHelper.DefaultSecureRandom.nextBoolean()));
+            }, root -> {
+                for (int i = 1; i < 100000; ++i)
+                    root.add(AbstractProvider.build(i, 0, (i & 1) == 1));
+            });
         }
 
         @ParameterizedTest
         @MethodSource
-        public void list(final @NotNull Collection<FileInformation> collection) throws Exception {
-            list.set(collection.iterator());
-            final UnionPair<FilesListInformation, Boolean> resultD = ProviderHelper.list(provider(), 0, Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, collection.size());
-            Assertions.assertTrue(loggedIn.get());
-            Assertions.assertNull(list.get());
-            Assertions.assertTrue(resultD.isSuccess());
-            ProviderHelper.testList(resultD.getT(), collection, Options.FilterPolicy.OnlyDirectories);
+        public void list(final @NotNull Consumer<? super AbstractProvider.@NotNull AbstractProviderFile> prepare) throws Exception {
+            prepare.accept(provider().root());
+            final List<FileInformation> list = provider().root().children().stream().map(AbstractProvider.AbstractProviderFile::get).toList();
 
-            loggedIn.set(false);
-            final UnionPair<FilesListInformation, Boolean> resultF = ProviderHelper.list(provider(), 0, Options.FilterPolicy.OnlyFiles, VisibleFileInformation.emptyOrder(), 0, collection.size());
-            Assertions.assertFalse(loggedIn.get());
-            Assertions.assertNull(list.get());
-            Assertions.assertTrue(resultF.isSuccess());
-            ProviderHelper.testList(resultF.getT(), collection, Options.FilterPolicy.OnlyFiles);
+            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, list.size());
+            Assertions.assertTrue(result.isPresent());
+            ProviderHelper.testList(result.get(), list, Options.FilterPolicy.Both);
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
+
+            final Optional<FilesListInformation> resultD = ProviderHelper.list(provider(), 0, Options.FilterPolicy.OnlyDirectories, 0, list.size());
+            Assertions.assertTrue(resultD.isPresent());
+            ProviderHelper.testList(resultD.get(), list, Options.FilterPolicy.OnlyDirectories);
+            Assertions.assertEquals(List.of(), provider().checkOperations());
+
+            final Optional<FilesListInformation> resultF = ProviderHelper.list(provider(), 0, Options.FilterPolicy.OnlyFiles, 0, list.size());
+            Assertions.assertTrue(resultF.isPresent());
+            ProviderHelper.testList(resultF.get(), list, Options.FilterPolicy.OnlyFiles);
+            Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
         @Test
         public void notAvailable() throws Exception {
-            list.set(null);
-            final UnionPair<FilesListInformation, Boolean> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 5);
-            Assertions.assertTrue(loggedIn.get());
-            Assertions.assertTrue(result.getE().booleanValue());
+            final Optional<FilesListInformation> result1 = ProviderHelper.list(provider(), 1, Options.FilterPolicy.Both, 0, 5);
+            Assertions.assertFalse(result1.isPresent());
+            Assertions.assertEquals(List.of(), provider().checkOperations());
+        }
 
-            loggedIn.set(false);
-            final UnionPair<FilesListInformation, Boolean> result1 = ProviderHelper.list(provider(), 1, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 5);
-            Assertions.assertFalse(loggedIn.get());
-            Assertions.assertFalse(result1.getE().booleanValue());
+        @Test
+        public void delete() throws Exception {
+            final AbstractProvider.AbstractProviderFile directory = AbstractProvider.build(1, 0, true);
+            provider().root().add(directory);
+            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5);
+            Assertions.assertTrue(result.isPresent());
+            ProviderHelper.testList(result.get(), List.of(directory.get()), Options.FilterPolicy.Both);
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
+
+            provider().root().del(1, true);
+            final Optional<FilesListInformation> result1 = ProviderHelper.list(provider(), 1, Options.FilterPolicy.Both, 0, 5);
+            Assertions.assertFalse(result1.isPresent());
+            Assertions.assertEquals(List.of("Login.", "List: 1"), provider().checkOperations());
+
+            final Optional<FilesListInformation> result2 = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5);
+            Assertions.assertTrue(result2.isPresent());
+            ProviderHelper.testList(result2.get(), List.of(), Options.FilterPolicy.Both);
+            Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
         @Test
         public void exception() {
-            list.set(new Iterator<>() {
+            provider().list.initialize(new Iterator<>() {
                 @Override
                 public boolean hasNext() {
                     return true;
@@ -295,80 +177,71 @@ public class AbstractProviderTest {
 
                 @Override
                 public FileInformation next() {
-                    throw new NoSuchElementException("For test.");
+                    throw new NoSuchElementException(new RuntimeException());
                 }
             });
-            Assertions.assertThrows(NoSuchElementException.class, () ->
-                    ProviderHelper.list(provider(), 0, Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 5)
+            Assertions.assertThrows(RuntimeException.class, () ->
+                    ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5)
             );
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
         }
 
         @Test
         public void concurrent() throws Exception {
-            final FileInformation info = new FileInformation(1, 0, "file", false, 1, null, null, null);
+            final AbstractProvider.AbstractProviderFile info = AbstractProvider.build(1, 0, false);
             final CountDownLatch latch = new CountDownLatch(1);
-            final CountDownLatch latch0 = new CountDownLatch(1);
-            list.set(new Iterator<>() {
+            final CountDownLatch listIteratorNext = new CountDownLatch(1);
+            provider().list.initialize(new Iterator<>() {
                 private final AtomicBoolean got = new AtomicBoolean(true);
                 @Override
                 public boolean hasNext() {
-                    return got.get();
+                    return this.got.get();
                 }
 
-                @SuppressWarnings("IteratorNextCanNotThrowNoSuchElementException")
                 @Override
                 public FileInformation next() {
                     latch.countDown();
                     try {
-                        latch0.await();
-                    } catch (final InterruptedException ignore) {
+                        listIteratorNext.await();
+                    } catch (final InterruptedException exception) {
+                        throw new NoSuchElementException(exception);
                     }
-                    got.set(false);
-                    return info;
+                    this.got.set(false);
+                    return info.get();
                 }
             });
             final CountDownLatch latch1 = new CountDownLatch(1);
-            final AtomicReference<UnionPair<UnionPair<FilesListInformation, Boolean>, Throwable>> result1 = new AtomicReference<>();
+            final AtomicReference<UnionPair<Optional<FilesListInformation>, Throwable>> result1 = new AtomicReference<>();
             provider().list(0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 5, p -> {
                 result1.set(p);
                 latch1.countDown();
             });
             latch.await();
             Assumptions.assumeTrue(latch1.getCount() == 1);
-            Assertions.assertTrue(loggedIn.get());
             final CountDownLatch latch2 = new CountDownLatch(1);
-            loggedIn.set(false);
-            final AtomicReference<UnionPair<UnionPair<FilesListInformation, Boolean>, Throwable>> result2 = new AtomicReference<>();
+            final AtomicReference<UnionPair<Optional<FilesListInformation>, Throwable>> result2 = new AtomicReference<>();
             provider().list(0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 5, p -> {
                 result2.set(p);
                 latch2.countDown();
             });
             Assumptions.assumeTrue(latch2.getCount() == 1);
-            list.set(new Iterator<>() {
-                @Override
-                public boolean hasNext() {
-                    return true;
-                }
 
-                @SuppressWarnings("IteratorNextCanNotThrowNoSuchElementException")
-                @Override
-                public FileInformation next() {
-                    throw new RuntimeException("Shouldn't be got.");
-                }
-            });
-            latch0.countDown();
+            listIteratorNext.countDown();
             latch1.await();
-            ProviderHelper.testList(result1.get().getT().getT(), List.of(info), Options.FilterPolicy.Both);
+            Assertions.assertTrue(result1.get().getT().isPresent());
+            ProviderHelper.testList(result1.get().getT().get(), List.of(info.get()), Options.FilterPolicy.Both);
             latch2.await();
-            Assertions.assertFalse(loggedIn.get());
-            ProviderHelper.testList(result2.get().getT().getT(), List.of(info), Options.FilterPolicy.Both);
+            Assertions.assertTrue(result2.get().getT().isPresent());
+            ProviderHelper.testList(result2.get().getT().get(), List.of(info.get()), Options.FilterPolicy.Both);
+
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
         }
 
         @Test
         public void concurrentException() throws Exception {
             final CountDownLatch latch = new CountDownLatch(1);
-            final CountDownLatch latch0 = new CountDownLatch(1);
-            list.set(new Iterator<>() {
+            final CountDownLatch listIteratorNext = new CountDownLatch(1);
+            provider().list.initialize(new Iterator<>() {
                 @Override
                 public boolean hasNext() {
                     return true;
@@ -378,414 +251,652 @@ public class AbstractProviderTest {
                 public FileInformation next() {
                     latch.countDown();
                     try {
-                        latch0.await();
-                    } catch (final InterruptedException ignore) {
+                        listIteratorNext.await();
+                    } catch (final InterruptedException exception) {
+                        throw new NoSuchElementException(exception);
                     }
-                    throw new NoSuchElementException("For test.");
+                    throw new NoSuchElementException(new RuntimeException());
                 }
             });
             final CountDownLatch latch1 = new CountDownLatch(1);
-            final AtomicReference<UnionPair<UnionPair<FilesListInformation, Boolean>, Throwable>> result1 = new AtomicReference<>();
+            final AtomicReference<UnionPair<Optional<FilesListInformation>, Throwable>> result1 = new AtomicReference<>();
             provider().list(0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 5, p -> {
                 result1.set(p);
                 latch1.countDown();
             });
             latch.await();
             Assumptions.assumeTrue(latch1.getCount() == 1);
-            Assertions.assertTrue(loggedIn.get());
             final CountDownLatch latch2 = new CountDownLatch(1);
-            final AtomicReference<UnionPair<UnionPair<FilesListInformation, Boolean>, Throwable>> result2 = new AtomicReference<>();
+            final AtomicReference<UnionPair<Optional<FilesListInformation>, Throwable>> result2 = new AtomicReference<>();
             provider().list(0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 5, p -> {
                 result2.set(p);
                 latch2.countDown();
             });
             Assumptions.assumeTrue(latch2.getCount() == 1);
-            list.set(Collections.emptyIterator());
-            latch0.countDown();
+
+            listIteratorNext.countDown();
             latch1.await();
-            Assertions.assertInstanceOf(NoSuchElementException.class, result1.get().getE());
+            Assertions.assertSame(RuntimeException.class, result1.get().getE().getClass());
             latch2.await();
-            ProviderHelper.testList(result2.get().getT().getT(), List.of(), Options.FilterPolicy.Both);
+            Assertions.assertTrue(result2.get().getT().isPresent());
+            ProviderHelper.testList(result2.get().getT().get(), List.of(), Options.FilterPolicy.Both);
+
+            Assertions.assertEquals(List.of("Login.", "List: 0", "Login.", "List: 0"), provider().checkOperations());
         }
     }
 
-    @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
     @Nested
-    public class InfoTest {
+    @SuppressWarnings("UnqualifiedMethodAccess")
+    public final class InfoTest {
         @Test
         public void info() throws Exception {
-            final FileInformation directory = new FileInformation(1, 0, "directory", true, -1, null, null, null);
-            final FileInformation file = new FileInformation(1, 0, "file", false, 1, null, null, null);
-            list.set(List.of(directory, file).iterator());
-            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0);
-            loggedIn.set(false);
+            Assertions.assertTrue(ProviderHelper.info(provider(), 0, true).isPresent());
+            Assertions.assertEquals(List.of("Login.", "Update: 0 d"), provider().checkOperations());
 
-            updated.set(() -> AbstractIdBaseProvider.UpdateNoRequired);
-            ProviderHelper.testInfo(ProviderHelper.info(provider(), 1, true).getT(), directory, false);
-            Assertions.assertNull(updated.get());
+            final AbstractProvider.AbstractProviderFile directory = AbstractProvider.build(1, 0, true);
+            final AbstractProvider.AbstractProviderFile file = AbstractProvider.build(1, 0, false);
+            provider().root().add(directory);
+            provider().root().add(file);
+            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 0);
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
-            updated.set(() -> AbstractIdBaseProvider.UpdateNoRequired);
-            ProviderHelper.testInfo(ProviderHelper.info(provider(), 1, false).getT(), file, false);
+            final Optional<FileInformation> resultD = ProviderHelper.info(provider(), 1, true);
+            Assertions.assertTrue(resultD.isPresent());
+            Assertions.assertEquals(directory.get(), resultD.get());
+            Assertions.assertEquals(List.of("Login.", "Update: 1 d"), provider().checkOperations());
+
+            final Optional<FileInformation> resultF = ProviderHelper.info(provider(), 1, false);
+            Assertions.assertTrue(resultF.isPresent());
+            Assertions.assertEquals(file.get(), resultF.get());
+            Assertions.assertEquals(List.of("Login.", "Update: 1 f"), provider().checkOperations());
         }
 
         @Test
         public void notAvailable() throws Exception {
-            updated.set(() -> AbstractIdBaseProvider.UpdateNoRequired);
-            Assertions.assertFalse(ProviderHelper.info(provider(), 0, true).getT().getSecond().booleanValue());
-            Assertions.assertFalse(loggedIn.get());
-            Assertions.assertNull(updated.get());
-
-            Assertions.assertFalse(ProviderHelper.info(provider(), 0, false).getE().booleanValue());
-            Assertions.assertFalse(loggedIn.get());
+            Assertions.assertFalse(ProviderHelper.info(provider(), 1, true).isPresent());
+            Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
         @Test
         public void update() throws Exception {
-            final FileInformation directory = new FileInformation(1, 0, "directory", true, -1, null, null, null);
-            final FileInformation file = new FileInformation(1, 0, "file", false, 1, null, null, null);
-            list.set(List.of(directory, file).iterator());
-            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0);
-            loggedIn.set(false);
+            final AbstractProvider.AbstractProviderFile file = AbstractProvider.build(1, 0, false);
+            provider().root().add(file);
+            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 0);
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
             final FileInformation newFile = new FileInformation(1, 0, "file", false, 1, null, null, "123");
-            updated.set(() -> UnionPair.ok(newFile));
-            ProviderHelper.testInfo(ProviderHelper.info(provider(), 1, false).getT(), newFile, true);
-
-            updated.set(() -> AbstractIdBaseProvider.UpdateNotExisted);
-            Assertions.assertTrue(ProviderHelper.info(provider(), 1, false).getE().booleanValue());
-            Assertions.assertFalse(ProviderHelper.info(provider(), 1, false).getE().booleanValue());
-        }
-
-        @Test
-        public void concurrent() throws Exception {
-            updated.set(() -> AbstractIdBaseProvider.UpdateNoRequired);
-            final FileInformation info = ProviderHelper.info(provider(), 0, true).getT().getFirst();
-            final FileInformation newInfo = new FileInformation(0, 0, "123", true, info.size(),
-                    info.createTime(), info.updateTime(), "123");
-
-            final CountDownLatch latch = new CountDownLatch(1);
-            final CountDownLatch latch0 = new CountDownLatch(1);
-            updated.set(() -> {
-                latch.countDown();
-                try {
-                    latch0.await();
-                } catch (final InterruptedException ignore) {
-                }
-                return UnionPair.ok(newInfo);
-            });
-            final CountDownLatch latch1 = new CountDownLatch(1);
-            final AtomicReference<UnionPair<UnionPair<Pair.ImmutablePair<FileInformation, Boolean>, Boolean>, Throwable>> result1 = new AtomicReference<>();
-            provider().info(0, true, p -> {
-                result1.set(p);
-                latch1.countDown();
-            });
-            latch.await();
-            Assumptions.assumeTrue(latch1.getCount() == 1);
-            final CountDownLatch latch2 = new CountDownLatch(1);
-            final AtomicReference<UnionPair<UnionPair<Pair.ImmutablePair<FileInformation, Boolean>, Boolean>, Throwable>> result2 = new AtomicReference<>();
-            provider().info(0, true, p -> {
-                result2.set(p);
-                latch2.countDown();
-            });
-            Assumptions.assumeTrue(latch2.getCount() == 1);
-            updated.set(() -> AbstractIdBaseProvider.UpdateNoRequired);
-            latch0.countDown();
-            latch1.await();
-            ProviderHelper.testInfo(result1.get().getT().getT(), newInfo, true);
-            latch2.await();
-            Assertions.assertFalse(loggedIn.get());
-            ProviderHelper.testInfo(result2.get().getT().getT(), newInfo, false);
-        }
-    }
-
-    @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
-    @Nested
-    public class RefreshTest {
-        @Test
-        public void refresh() throws Exception {
-            final FileInformation directory = new FileInformation(1, 0, "directory", true, -1, null, null, null);
-            final FileInformation file = new FileInformation(2, 0, "file", false, 1, null, null, null);
-            list.set(List.of(directory, file).iterator());
-            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0);
-            loggedIn.set(false);
-            TimeUnit.MILLISECONDS.sleep(100); // Refresh immediately after list will be skipped.
-
-            final FileInformation directory0 = new FileInformation(1, 0, "directory0", true, -1, null, null, null);
-            list.set(List.of(directory0, file).iterator());
-            ProviderHelper.testRefresh(ProviderHelper.refresh(provider(), 0).getT(), Set.of(), Set.of());
-
-            updated.set(() -> AbstractIdBaseProvider.UpdateNoRequired);
-            ProviderHelper.testInfo(ProviderHelper.info(provider(), 1, true).getT(), directory0, false);
-            updated.set(() -> AbstractIdBaseProvider.UpdateNoRequired);
-            ProviderHelper.testInfo(ProviderHelper.info(provider(), 2, false).getT(), file, false);
+            provider().root().add(new AbstractProvider.AbstractProviderFile(newFile)); // replace
+            final Optional<FileInformation> resultR = ProviderHelper.info(provider(), 1, false);
+            Assertions.assertTrue(resultR.isPresent());
+            Assertions.assertEquals(newFile, resultR.get());
+            Assertions.assertEquals(List.of("Login.", "Update: 1 f"), provider().checkOperations());
         }
 
         @Test
         public void delete() throws Exception {
-            final FileInformation directory = new FileInformation(1, 0, "directory", true, -1, null, null, null);
-            final FileInformation file = new FileInformation(2, 0, "file", false, 1, null, null, null);
-            list.set(List.of(directory, file).iterator());
-            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0);
-            loggedIn.set(false);
+            final AbstractProvider.AbstractProviderFile file = AbstractProvider.build(1, 0, false);
+            provider().root().add(file);
+            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 0);
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
-            list.set(List.of(file).iterator());
-            ProviderHelper.testRefresh(ProviderHelper.refresh(provider(), 0).getT(), Set.of(), Set.of());
-
-            Assertions.assertFalse(ProviderHelper.info(provider(), 1, true).getE().booleanValue());
-            updated.set(() -> AbstractIdBaseProvider.UpdateNoRequired);
-            ProviderHelper.testInfo(ProviderHelper.info(provider(), 2, false).getT(), file, false);
+            provider().root().del(1, false);
+            final Optional<FileInformation> resultD = ProviderHelper.info(provider(), 1, false);
+            Assertions.assertFalse(resultD.isPresent());
+            Assertions.assertEquals(List.of("Login.", "Update: 1 f"), provider().checkOperations());
         }
 
         @Test
-        public void insert() throws Exception {
-            final FileInformation directory = new FileInformation(1, 0, "directory", true, -1, null, null, null);
-            final FileInformation file = new FileInformation(2, 0, "file", false, 1, null, null, null);
-            list.set(List.of(file).iterator());
-            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0);
-            loggedIn.set(false);
+        public void move() throws Exception {
+            final AbstractProvider.AbstractProviderFile directory = AbstractProvider.build(1, 0, true);
+            final AbstractProvider.AbstractProviderFile file = AbstractProvider.build(2, 0, false);
+            provider().root().add(directory);
+            provider().root().add(file);
+            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 0);
+            ProviderHelper.list(provider(), 1, Options.FilterPolicy.Both, 0, 0);
+            Assertions.assertEquals(List.of("Login.", "List: 0", "Login.", "List: 1"), provider().checkOperations());
 
-            list.set(List.of(directory, file).iterator());
-            ProviderHelper.testRefresh(ProviderHelper.refresh(provider(), 0).getT(), Set.of(), Set.of());
+            final AbstractProvider.AbstractProviderFile newFile = AbstractProvider.build(2, 1, false);
+            provider().root().del(2, false);
+            provider().root().get(1, true).add(newFile);
+            final Optional<FileInformation> result = ProviderHelper.info(provider(), 2, false);
+            Assertions.assertTrue(result.isPresent());
+            Assertions.assertEquals(newFile.get(), result.get());
+            Assertions.assertEquals(List.of("Login.", "Update: 2 f"), provider().checkOperations());
+        }
 
-            updated.set(() -> AbstractIdBaseProvider.UpdateNoRequired);
-            ProviderHelper.testInfo(ProviderHelper.info(provider(), 1, true).getT(), directory, false);
-            updated.set(() -> AbstractIdBaseProvider.UpdateNoRequired);
-            ProviderHelper.testInfo(ProviderHelper.info(provider(), 2, false).getT(), file, false);
+        @Test
+        public void moveNotIndexed() throws Exception {
+            final AbstractProvider.AbstractProviderFile directory = AbstractProvider.build(1, 0, true);
+            final AbstractProvider.AbstractProviderFile file = AbstractProvider.build(2, 0, false);
+            provider().root().add(directory);
+            provider().root().add(file);
+            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 0);
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
+
+            final AbstractProvider.AbstractProviderFile newFile = AbstractProvider.build(2, 1, false);
+            provider().root().del(2, false);
+            provider().root().get(1, true).add(newFile);
+            final Optional<FileInformation> result = ProviderHelper.info(provider(), 2, false);
+            Assertions.assertFalse(result.isPresent());
+            Assertions.assertEquals(List.of("Login.", "Update: 2 f"), provider().checkOperations());
+        }
+
+        @Test
+        public void exception() {
+            provider().update.initialize(() -> {throw new RuntimeException();});
+            Assertions.assertThrows(RuntimeException.class, () ->
+                    ProviderHelper.info(provider(), 0, true));
+            Assertions.assertEquals(List.of("Login.", "Update: 0 d"), provider().checkOperations());
+
+            provider().update.initialize(() -> UnionPair.fail(new RuntimeException()));
+            Assertions.assertThrows(RuntimeException.class, () ->
+                    ProviderHelper.info(provider(), 0, true));
+            Assertions.assertEquals(List.of("Login.", "Update: 0 d"), provider().checkOperations());
         }
 
         @Test
         public void concurrent() throws Exception {
-            final FileInformation info = new FileInformation(1, 0, "file", false, 1, null, null, null);
-            final CountDownLatch latch = new CountDownLatch(1);
-            final CountDownLatch latch0 = new CountDownLatch(1);
-            list.set(new Iterator<>() {
-                private final AtomicBoolean got = new AtomicBoolean(true);
-                @Override
-                public boolean hasNext() {
-                    return got.get();
-                }
+            final AbstractProvider.AbstractProviderFile file = AbstractProvider.build(1, 0, false);
+            provider().root().add(file);
+            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 0);
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
-                @SuppressWarnings("IteratorNextCanNotThrowNoSuchElementException")
-                @Override
-                public FileInformation next() {
-                    latch.countDown();
-                    try {
-                        latch0.await();
-                    } catch (final InterruptedException ignore) {
-                    }
-                    got.set(false);
-                    return info;
+            final CountDownLatch latch = new CountDownLatch(1);
+            final CountDownLatch updateSupplierContinue = new CountDownLatch(1);
+            provider().update.initialize(() -> {
+                latch.countDown();
+                try {
+                    updateSupplierContinue.await();
+                } catch (final InterruptedException exception) {
+                    throw new RuntimeException(exception);
                 }
+                return AbstractIdBaseProvider.UpdateNoRequired;
             });
             final CountDownLatch latch1 = new CountDownLatch(1);
-            final AtomicReference<UnionPair<UnionPair<Pair.ImmutablePair<Set<Long>, Set<Long>>, Boolean>, Throwable>> result1 = new AtomicReference<>();
-            provider().refreshDirectory(0, p -> {
+            final AtomicReference<UnionPair<Optional<FileInformation>, Throwable>> result1 = new AtomicReference<>();
+            provider().info(1, false, p -> {
                 result1.set(p);
                 latch1.countDown();
             });
             latch.await();
             Assumptions.assumeTrue(latch1.getCount() == 1);
-            Assertions.assertTrue(loggedIn.get());
-            list.set(List.of(info).iterator());
             final CountDownLatch latch2 = new CountDownLatch(1);
-            final AtomicReference<UnionPair<UnionPair<Pair.ImmutablePair<Set<Long>, Set<Long>>, Boolean>, Throwable>> result2 = new AtomicReference<>();
-            provider().refreshDirectory(0, p -> {
+            final AtomicReference<UnionPair<Optional<FileInformation>, Throwable>> result2 = new AtomicReference<>();
+            provider().info(1, false, p -> {
                 result2.set(p);
                 latch2.countDown();
             });
             Assumptions.assumeTrue(latch2.getCount() == 1);
-            latch0.countDown();
+
+            updateSupplierContinue.countDown();
             latch1.await();
-            ProviderHelper.testRefresh(result1.get().getT().getT(), Set.of(), Set.of());
+            Assertions.assertTrue(result1.get().getT().isPresent());
+            Assertions.assertEquals(file.get(), result1.get().getT().get());
             latch2.await();
-            ProviderHelper.testRefresh(result2.get().getT().getT(), Set.of(), Set.of());
+            Assertions.assertTrue(result2.get().getT().isPresent());
+            Assertions.assertEquals(file.get(), result2.get().getT().get());
+            Assertions.assertEquals(List.of("Login.", "Update: 1 f", "Login.", "Update: 1 f"), provider().checkOperations());
+        }
+
+        @Test
+        public void concurrentException() throws Exception {
+            final AbstractProvider.AbstractProviderFile file = AbstractProvider.build(1, 0, false);
+            provider().root().add(file);
+            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 0);
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
+
+            final CountDownLatch latch = new CountDownLatch(1);
+            final CountDownLatch updateSupplierContinue = new CountDownLatch(1);
+            provider().update.initialize(() -> {
+                latch.countDown();
+                try {
+                    updateSupplierContinue.await();
+                } catch (final InterruptedException exception) {
+                    throw new RuntimeException(exception);
+                }
+                throw new RuntimeException();
+            });
+            final CountDownLatch latch1 = new CountDownLatch(1);
+            final AtomicReference<UnionPair<Optional<FileInformation>, Throwable>> result1 = new AtomicReference<>();
+            provider().info(1, false, p -> {
+                result1.set(p);
+                latch1.countDown();
+            });
+            latch.await();
+            Assumptions.assumeTrue(latch1.getCount() == 1);
+            provider().update.initialize(() -> {
+                latch.countDown();
+                try {
+                    updateSupplierContinue.await();
+                } catch (final InterruptedException exception) {
+                    throw new RuntimeException(exception);
+                }
+                throw new NoSuchElementException();
+            });
+            final CountDownLatch latch2 = new CountDownLatch(1);
+            final AtomicReference<UnionPair<Optional<FileInformation>, Throwable>> result2 = new AtomicReference<>();
+            provider().info(1, false, p -> {
+                result2.set(p);
+                latch2.countDown();
+            });
+            Assumptions.assumeTrue(latch2.getCount() == 1);
+
+            updateSupplierContinue.countDown();
+            latch1.await();
+            Assertions.assertSame(RuntimeException.class, result1.get().getE().getClass());
+            latch2.await();
+            Assertions.assertSame(NoSuchElementException.class, result2.get().getE().getClass());
+            Assertions.assertEquals(List.of("Login.", "Update: 1 f", "Login.", "Update: 1 f"), provider().checkOperations());
         }
     }
 
-    @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
     @Nested
-    public class TrashTest {
-        @Test
-        public void trash() throws Exception {
-            final FileInformation directory = new FileInformation(1, 0, "directory", true, -1, null, null, null);
-            final FileInformation file = new FileInformation(1, 0, "file", false, 1, null, null, null);
-            list.set(List.of(directory, file).iterator());
-            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0);
-            loggedIn.set(false);
-
-            Assertions.assertTrue(ProviderHelper.trash(provider(), 1, true));
-            Assertions.assertEquals(directory, trash.uninitialize());
-            Assertions.assertTrue(ProviderHelper.trash(provider(), 1, false));
-            Assertions.assertEquals(file, trash.uninitialize());
+    @SuppressWarnings("UnqualifiedMethodAccess")
+    public final class RefreshTest {
+        @AfterEach
+        public void unset() throws InterruptedException {
+            TimeUnit.MILLISECONDS.sleep(500); // Wait for broadcast finish.
         }
 
         @Test
-        public void notAvailable() throws Exception {
-            Assertions.assertFalse(ProviderHelper.trash(provider(), 0, true));
-            Assertions.assertFalse(ProviderHelper.trash(provider(), 0, false));
-            Assertions.assertFalse(loggedIn.get());
-        }
+        public void refresh() throws Exception {
+            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 1);
+            Assertions.assertTrue(result.isPresent());
+            ProviderHelper.testList(result.get(), List.of(), Options.FilterPolicy.Both);
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
+            TimeUnit.MILLISECONDS.sleep(100); // Refresh immediately after list will be skipped.
 
-        public class TrashTestProvider extends AbstractProvider {
-            private final Collection<String> operations = new ArrayList<>();
-            private final Map<Long, Iterator<List<FileInformation>>> lister = new HashMap<>();
+            final AbstractProvider.AbstractProviderFile file1 = AbstractProvider.build(1, 0, false);
+            final AbstractProvider.AbstractProviderFile file2 = AbstractProvider.build(2, 0, false);
+            provider().root().add(file1);
+            provider().root().add(file2);
+            Assertions.assertTrue(ProviderHelper.refresh(provider(), 0));
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
-            @Override
-            public void refreshDirectory(final long directoryId, final @NotNull Consumer<? super UnionPair<UnionPair<Pair.ImmutablePair<Set<Long>, Set<Long>>, Boolean>, Throwable>> consumer) {
-                operations.add("Refresh: " + directoryId);
-                consumer.accept(ProviderInterface.RefreshNoUpdater);
-            }
-
-            @Override
-            protected @Nullable Iterator<@NotNull FileInformation> list0(final long directoryId) {
-                operations.add("List: " + directoryId);
-                if (lister.get(directoryId).hasNext())
-                    return lister.get(directoryId).next().iterator();
-                return Collections.emptyIterator();
-            }
-
-            @Override
-            protected boolean isSupportedNotEmptyDirectoryTrash() {
-                return false;
-            }
-
-            @Override
-            protected void trash0(final @NotNull FileInformation information) {
-                operations.add("Trash: " + information.id());
-            }
-
-            @Override
-            public @NotNull String toString() {
-                return "TrashTestProvider{" +
-                        "operations=" + operations +
-                        ", super=" + super.toString() +
-                        '}';
-            }
+            final Optional<FilesListInformation> result1 = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 3);
+            Assertions.assertTrue(result1.isPresent());
+            ProviderHelper.testList(result1.get(), List.of(file1.get(), file2.get()), Options.FilterPolicy.Both);
+            Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
         @Test
-        public void trashRecursively() throws Exception {
-            AbstractProviderTest.this.unset();
-            ProviderCore.reinitialize(TrashTestProvider::new);
-            AbstractProviderTest.this.reset();
-            try {
-                Assumptions.assumeTrue(provider() instanceof TrashTestProvider);
-                final TrashTestProvider provider = (TrashTestProvider) provider();
-                provider.lister.put(0L, List.of(
-                        List.of(
-                                new FileInformation(1, 0, "", true, -1, null, null, null)
-                        )
-                ).iterator());
-                ProviderHelper.list(provider, 0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0);
-                provider.lister.remove(0L);
+        public void update() throws Exception {
+            final AbstractProvider.AbstractProviderFile file = AbstractProvider.build(1, 0, false);
+            provider().root().add(file);
+            Assertions.assertTrue(ProviderHelper.refresh(provider(), 0));
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
-                provider.lister.put(1L, List.of(
-                        List.of(
-                                new FileInformation(2, 1, "", true, -1, null, null, null)
-                        )
-                ).iterator());
-                provider.lister.put(2L, List.of(
-                        List.of(
-                                new FileInformation(3, 2, "", false, 1, null, null, null)
-                        )
-                ).iterator());
+            final FileInformation newFile = new FileInformation(1, 0, "file", false, 1, null, null, "123");
+            provider().root().add(new AbstractProvider.AbstractProviderFile(newFile)); // replace
+            Assertions.assertTrue(ProviderHelper.refresh(provider(), 0));
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
-                Assertions.assertTrue(ProviderHelper.trash(provider, 1, true));
+            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5);
+            Assertions.assertTrue(result.isPresent());
+            ProviderHelper.testList(result.get(), List.of(newFile), Options.FilterPolicy.Both);
+            Assertions.assertEquals(List.of(), provider().checkOperations());
+        }
 
-                Assertions.assertEquals(List.of(
-                        "List: 0", "List: 1", "List: 2", "Trash: 3", "Refresh: 2", "Trash: 2", "Refresh: 1", "Trash: 1"
-                ), provider.operations);
-            } finally {
-                ProviderCore.reinitialize(AbstractProvider::new);
-            }
+        @Test
+        public void delete() throws Exception {
+            final AbstractProvider.AbstractProviderFile file1 = AbstractProvider.build(1, 0, false);
+            final AbstractProvider.AbstractProviderFile file2 = AbstractProvider.build(2, 0, false);
+            provider().root().add(file1);
+            provider().root().add(file2);
+            Assertions.assertTrue(ProviderHelper.refresh(provider(), 0));
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
+
+            provider().root().del(2, false);
+            Assertions.assertTrue(ProviderHelper.refresh(provider(), 0));
+            Assertions.assertEquals(List.of("Login.", "List: 0", "Info: 2 f"), provider().checkOperations());
+
+            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5);
+            Assertions.assertTrue(result.isPresent());
+            ProviderHelper.testList(result.get(), List.of(file1.get()), Options.FilterPolicy.Both);
+            Assertions.assertEquals(List.of(), provider().checkOperations());
+        }
+
+        @Test
+        public void insert() throws Exception {
+            final AbstractProvider.AbstractProviderFile file1 = AbstractProvider.build(1, 0, false);
+            provider().root().add(file1);
+            Assertions.assertTrue(ProviderHelper.refresh(provider(), 0));
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
+
+            final AbstractProvider.AbstractProviderFile file2 = AbstractProvider.build(2, 0, false);
+            provider().root().add(file2);
+            Assertions.assertTrue(ProviderHelper.refresh(provider(), 0));
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
+
+            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5);
+            Assertions.assertTrue(result.isPresent());
+            ProviderHelper.testList(result.get(), List.of(file1.get(), file2.get()), Options.FilterPolicy.Both);
+            Assertions.assertEquals(List.of(), provider().checkOperations());
+        }
+
+        @Test
+        public void complex() throws Exception {
+            final AbstractProvider.AbstractProviderFile file1 = AbstractProvider.build(1, 0, false);
+            final AbstractProvider.AbstractProviderFile file2 = AbstractProvider.build(2, 0, false);
+            provider().root().add(file1);
+            provider().root().add(file2);
+            Assertions.assertTrue(ProviderHelper.refresh(provider(), 0));
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
+
+            final FileInformation newFile = new FileInformation(1, 0, "file", false, 1, null, null, "123");
+            provider().root().add(new AbstractProvider.AbstractProviderFile(newFile)); // replace
+            final AbstractProvider.AbstractProviderFile file3 = AbstractProvider.build(3, 0, false);
+            provider().root().del(2, false);
+            provider().root().add(file3);
+            Assertions.assertTrue(ProviderHelper.refresh(provider(), 0));
+            Assertions.assertEquals(List.of("Login.", "List: 0", "Info: 2 f"), provider().checkOperations());
+
+            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5);
+            Assertions.assertTrue(result.isPresent());
+            ProviderHelper.testList(result.get(), List.of(newFile, file3.get()), Options.FilterPolicy.Both);
+            Assertions.assertEquals(List.of(), provider().checkOperations());
+        }
+
+        @Test
+        public void exception() {
+            provider().list.initialize(new Iterator<>() {
+                @Override
+                public boolean hasNext() {
+                    return true;
+                }
+
+                @Override
+                public FileInformation next() {
+                    throw new NoSuchElementException(new RuntimeException());
+                }
+            });
+            Assertions.assertThrows(RuntimeException.class, () ->
+                    ProviderHelper.refresh(provider(), 0)
+            );
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
+        }
+
+        @Test
+        public void concurrent() throws Exception {
+            final AbstractProvider.AbstractProviderFile info = AbstractProvider.build(1, 0, false);
+            final CountDownLatch latch = new CountDownLatch(1);
+            final CountDownLatch listIteratorNext = new CountDownLatch(1);
+            provider().list.initialize(new Iterator<>() {
+                private final AtomicBoolean got = new AtomicBoolean(true);
+                @Override
+                public boolean hasNext() {
+                    return this.got.get();
+                }
+
+                @Override
+                public FileInformation next() {
+                    latch.countDown();
+                    try {
+                        listIteratorNext.await();
+                    } catch (final InterruptedException exception) {
+                        throw new NoSuchElementException(exception);
+                    }
+                    this.got.set(false);
+                    return info.get();
+                }
+            });
+            final CountDownLatch latch1 = new CountDownLatch(1);
+            provider().refreshDirectory(0, p -> {
+                latch1.countDown();
+                Assertions.assertTrue(p.getT().booleanValue());
+            });
+            latch.await();
+            Assumptions.assumeTrue(latch1.getCount() == 1);
+            final CountDownLatch latch2 = new CountDownLatch(1);
+            provider().refreshDirectory(0, p -> {
+                latch2.countDown();
+                Assertions.assertTrue(p.getT().booleanValue());
+            });
+            Assumptions.assumeTrue(latch2.getCount() == 1);
+
+            listIteratorNext.countDown();
+            latch1.await();
+            latch2.await();
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
+
+            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5);
+            Assertions.assertTrue(result.isPresent());
+            ProviderHelper.testList(result.get(), List.of(info.get()), Options.FilterPolicy.Both);
+            Assertions.assertEquals(List.of(), provider().checkOperations());
+        }
+
+        @Test
+        public void concurrentException() throws Exception {
+            final CountDownLatch latch = new CountDownLatch(1);
+            final CountDownLatch listIteratorNext = new CountDownLatch(1);
+            provider().list.initialize(new Iterator<>() {
+                @Override
+                public boolean hasNext() {
+                    return true;
+                }
+
+                @Override
+                public FileInformation next() {
+                    latch.countDown();
+                    try {
+                        listIteratorNext.await();
+                    } catch (final InterruptedException exception) {
+                        throw new NoSuchElementException(exception);
+                    }
+                    throw new NoSuchElementException(new RuntimeException());
+                }
+            });
+            final CountDownLatch latch1 = new CountDownLatch(1);
+            provider().refreshDirectory(0,  p -> {
+                latch1.countDown();
+                Assertions.assertSame(RuntimeException.class, p.getE().getClass());
+            });
+            latch.await();
+            Assumptions.assumeTrue(latch1.getCount() == 1);
+            final CountDownLatch latch2 = new CountDownLatch(1);
+            provider().refreshDirectory(0, p -> { // Not work due to the policy that ignore rapid refresh.
+                latch2.countDown();
+                Assertions.assertTrue(p.getT().booleanValue());
+            });
+            Assumptions.assumeTrue(latch2.getCount() == 1);
+
+            listIteratorNext.countDown();
+            latch1.await();
+            latch2.await();
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
+
+            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5);
+            Assertions.assertTrue(result.isPresent());
+            ProviderHelper.testList(result.get(), List.of(), Options.FilterPolicy.Both);
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
         }
     }
 
-    @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
-    @Nested
-    public class CreateTest {
-        @Test
-        public void create() throws Exception {
-            list.set(Collections.emptyIterator());
-            final FileInformation information = new FileInformation(1, 0, "1", true, 0, null, null, null);
-            create.set(information);
-            Assertions.assertEquals(information, ProviderHelper.create(provider(), 0, "1", Options.DuplicatePolicy.ERROR).getT());
-        }
-
-        @Test
-        public void duplicate() throws Exception {
-            list.set(Collections.emptyIterator());
-            final FileInformation information = new FileInformation(1, 0, "1", true, 0, null, null, null);
-            create.set(information);
-            Assertions.assertEquals(information, ProviderHelper.create(provider(), 0, "1", Options.DuplicatePolicy.ERROR).getT());
-
-            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.create(provider(), 0, "1", Options.DuplicatePolicy.ERROR).getE().kind());
-
-            final FileInformation keep = new FileInformation(2, 0, "1 (1)", true, 0, null, null, null);
-            create.set(keep);
-            Assertions.assertEquals(keep, ProviderHelper.create(provider(), 0, "1", Options.DuplicatePolicy.KEEP).getT());
-
-            final FileInformation over = new FileInformation(3, 0, "1", true, 0, null, null, "123");
-            create.set(over);
-            Assertions.assertEquals(over, ProviderHelper.create(provider(), 0, "1", Options.DuplicatePolicy.OVER).getT());
-            Assertions.assertEquals(information, trash.uninitialize());
-        }
-    }
-
-    @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess", "OptionalGetWithoutIsPresent"})
-    @Nested
-    public class CopyTest {
-        @Test
-        public void copy() throws Exception {
-            final FileInformation information = new FileInformation(1, 0, "file", false, 0, null, null, null);
-            list.set(List.of(information).iterator());
-            ProviderHelper.refresh(provider(), 0); // list
-            final FileInformation copied = new FileInformation(2, 0, "copied", false, 0, null, null, null);
-            copy.set(copied);
-            Assertions.assertEquals(copied, ProviderHelper.copy(provider(), 1, 0, "copied", Options.DuplicatePolicy.ERROR).getT().get());
-        }
-
-        @Test
-        public void duplicate() throws Exception {
-            final FileInformation information = new FileInformation(1, 0, "file", false, 0, null, null, null);
-            final FileInformation directory = new FileInformation(10, 0, "directory", true, -1, null, null, null);
-            list.set(List.of(information, directory).iterator());
-            ProviderHelper.refresh(provider(), 0);
-
-            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.copy(provider(), 1, 0, "file", Options.DuplicatePolicy.ERROR).getE().kind());
-
-            final FileInformation keep = new FileInformation(2, 0, "file (1)", false, 0, null, null, null);
-            copy.set(keep);
-            Assertions.assertEquals(keep, ProviderHelper.copy(provider(), 1, 0, "file", Options.DuplicatePolicy.KEEP).getT().get());
-
-            final FileInformation overed = new FileInformation(3, 10, "file", false, 1, null, null, null);
-            list.set(List.of(overed).iterator());
-            ProviderHelper.refresh(provider(), 10);
-            final FileInformation over = new FileInformation(4, 10, "file", false, 0, null, null, null);
-            copy.set(over);
-            Assertions.assertEquals(over, ProviderHelper.copy(provider(), 1, 10, "file", Options.DuplicatePolicy.OVER).getT().get());
-            Assertions.assertEquals(overed, trash.uninitialize());
-
-            // Copy itself.
-            Assertions.assertTrue(ProviderHelper.copy(provider(), 1, 0, "file", Options.DuplicatePolicy.OVER).getT().isEmpty());
-        }
-    }
-
-    @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess", "OptionalGetWithoutIsPresent"})
-    @Nested
-    public class MoveTest {
-        @Test
-        public void move() throws Exception {
-            final FileInformation information = new FileInformation(1, 0, "file", false, 123, null, null, null);
-            final FileInformation directory = new FileInformation(2, 0, "directory", true, -1, null, null, null);
-            list.set(List.of(information, directory).iterator());
-            ProviderHelper.refresh(provider(), 0);
-            list.set(Collections.emptyIterator());
-            ProviderHelper.list(provider(), 2, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0);
-
-            final FileInformation moved = new FileInformation(1, 2, "file", false, 123, null, null, null);
-            move.set(moved);
-            Assertions.assertEquals(moved, ProviderHelper.move(provider(), 1, false, 2, Options.DuplicatePolicy.ERROR).getT().get());
-        }
-    }
+//    @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
+//    @Nested
+//    public class TrashTest {
+//        @Test
+//        public void trash() throws Exception {
+//            final FileInformation directory = new FileInformation(1, 0, "directory", true, -1, null, null, null);
+//            final FileInformation file = new FileInformation(1, 0, "file", false, 1, null, null, null);
+//            list.set(List.of(directory, file).iterator());
+//            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0);
+//            loggedIn.set(false);
+//
+//            Assertions.assertTrue(ProviderHelper.trash(provider(), 1, true));
+//            Assertions.assertEquals(directory, trash.uninitialize());
+//            Assertions.assertTrue(ProviderHelper.trash(provider(), 1, false));
+//            Assertions.assertEquals(file, trash.uninitialize());
+//        }
+//
+//        @Test
+//        public void notAvailable() throws Exception {
+//            Assertions.assertFalse(ProviderHelper.trash(provider(), 0, true));
+//            Assertions.assertFalse(ProviderHelper.trash(provider(), 0, false));
+//            Assertions.assertFalse(loggedIn.get());
+//        }
+//
+//        public class TrashTestProvider extends AbstractProvider {
+//            private final Collection<String> operations = new ArrayList<>();
+//            private final Map<Long, Iterator<List<FileInformation>>> lister = new HashMap<>();
+//
+//            @Override
+//            public void refreshDirectory(final long directoryId, final @NotNull Consumer<? super UnionPair<Boolean, Throwable>> consumer) {
+//                operations.add("Refresh: " + directoryId);
+//                consumer.accept(ProviderInterface.RefreshSuccess);
+//            }
+//
+//            @Override
+//            protected @Nullable Iterator<@NotNull FileInformation> list0(final long directoryId) {
+//                operations.add("List: " + directoryId);
+//                if (lister.get(directoryId).hasNext())
+//                    return lister.get(directoryId).next().iterator();
+//                return Collections.emptyIterator();
+//            }
+//
+//            @Override
+//            protected boolean isSupportedNotEmptyDirectoryTrash() {
+//                return false;
+//            }
+//
+//            @Override
+//            protected void trash0(final @NotNull FileInformation information, final @NotNull Consumer<? super @Nullable Throwable> consumer) {
+//                operations.add("Trash: " + information.id());
+//                consumer.accept(null);
+//            }
+//
+//            @Override
+//            public @NotNull String toString() {
+//                return "TrashTestProvider{" +
+//                        "operations=" + operations +
+//                        ", super=" + super.toString() +
+//                        '}';
+//            }
+//        }
+//
+//        @Test
+//        public void trashRecursively() throws Exception {
+//            AbstractProviderTest.this.unset();
+//            ProviderCore.reinitialize(TrashTestProvider::new);
+//            AbstractProviderTest.this.reset();
+//            try {
+//                Assumptions.assumeTrue(provider() instanceof TrashTestProvider);
+//                final TrashTestProvider provider = (TrashTestProvider) provider();
+//                provider.lister.put(0L, List.of(
+//                        List.of(
+//                                new FileInformation(1, 0, "", true, -1, null, null, null)
+//                        )
+//                ).iterator());
+//                ProviderHelper.list(provider, 0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0);
+//                provider.lister.remove(0L);
+//
+//                provider.lister.put(1L, List.of(
+//                        List.of(
+//                                new FileInformation(2, 1, "", true, -1, null, null, null)
+//                        )
+//                ).iterator());
+//                provider.lister.put(2L, List.of(
+//                        List.of(
+//                                new FileInformation(3, 2, "", false, 1, null, null, null)
+//                        )
+//                ).iterator());
+//
+//                Assertions.assertTrue(ProviderHelper.trash(provider, 1, true));
+//
+//                Assertions.assertEquals(List.of(
+//                        "List: 0", "List: 1", "List: 2", "Trash: 3", "Refresh: 2", "Trash: 2", "Refresh: 1", "Trash: 1"
+//                ), provider.operations);
+//            } finally {
+//                ProviderCore.reinitialize(AbstractProvider::new);
+//            }
+//        }
+//    }
+//
+//    @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
+//    @Nested
+//    public class CreateTest {
+//        @Test
+//        public void create() throws Exception {
+//            list.set(Collections.emptyIterator());
+//            final FileInformation information = new FileInformation(1, 0, "1", true, 0, null, null, null);
+//            create.set(information);
+//            Assertions.assertEquals(information, ProviderHelper.create(provider(), 0, "1", Options.DuplicatePolicy.ERROR).getT());
+//        }
+//
+//        @Test
+//        public void duplicate() throws Exception {
+//            list.set(Collections.emptyIterator());
+//            final FileInformation information = new FileInformation(1, 0, "1", true, 0, null, null, null);
+//            create.set(information);
+//            Assertions.assertEquals(information, ProviderHelper.create(provider(), 0, "1", Options.DuplicatePolicy.ERROR).getT());
+//
+//            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.create(provider(), 0, "1", Options.DuplicatePolicy.ERROR).getE().kind());
+//
+//            final FileInformation keep = new FileInformation(2, 0, "1 (1)", true, 0, null, null, null);
+//            create.set(keep);
+//            Assertions.assertEquals(keep, ProviderHelper.create(provider(), 0, "1", Options.DuplicatePolicy.KEEP).getT());
+//
+//            final FileInformation over = new FileInformation(3, 0, "1", true, 0, null, null, "123");
+//            create.set(over);
+//            Assertions.assertEquals(over, ProviderHelper.create(provider(), 0, "1", Options.DuplicatePolicy.OVER).getT());
+//            Assertions.assertEquals(information, trash.uninitialize());
+//        }
+//    }
+//
+//    @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess", "OptionalGetWithoutIsPresent"})
+//    @Nested
+//    public class CopyTest {
+//        @Test
+//        public void copy() throws Exception {
+//            final FileInformation information = new FileInformation(1, 0, "file", false, 0, null, null, null);
+//            list.set(List.of(information).iterator());
+//            ProviderHelper.refresh(provider(), 0); // list
+//            final FileInformation copied = new FileInformation(2, 0, "copied", false, 0, null, null, null);
+//            copy.set(copied);
+//            Assertions.assertEquals(copied, ProviderHelper.copy(provider(), 1, 0, "copied", Options.DuplicatePolicy.ERROR).getT().get());
+//        }
+//
+//        @Test
+//        public void duplicate() throws Exception {
+//            final FileInformation information = new FileInformation(1, 0, "file", false, 0, null, null, null);
+//            final FileInformation directory = new FileInformation(10, 0, "directory", true, -1, null, null, null);
+//            list.set(List.of(information, directory).iterator());
+//            ProviderHelper.refresh(provider(), 0);
+//
+//            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.copy(provider(), 1, 0, "file", Options.DuplicatePolicy.ERROR).getE().kind());
+//
+//            final FileInformation keep = new FileInformation(2, 0, "file (1)", false, 0, null, null, null);
+//            copy.set(keep);
+//            Assertions.assertEquals(keep, ProviderHelper.copy(provider(), 1, 0, "file", Options.DuplicatePolicy.KEEP).getT().get());
+//
+//            final FileInformation overed = new FileInformation(3, 10, "file", false, 1, null, null, null);
+//            list.set(List.of(overed).iterator());
+//            ProviderHelper.refresh(provider(), 10);
+//            final FileInformation over = new FileInformation(4, 10, "file", false, 0, null, null, null);
+//            copy.set(over);
+//            Assertions.assertEquals(over, ProviderHelper.copy(provider(), 1, 10, "file", Options.DuplicatePolicy.OVER).getT().get());
+//            Assertions.assertEquals(overed, trash.uninitialize());
+//
+//            // Copy itself.
+//            Assertions.assertTrue(ProviderHelper.copy(provider(), 1, 0, "file", Options.DuplicatePolicy.OVER).getT().isEmpty());
+//        }
+//    }
+//
+//    @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess", "OptionalGetWithoutIsPresent"})
+//    @Nested
+//    public class MoveTest {
+//        @Test
+//        public void move() throws Exception {
+//            final FileInformation information = new FileInformation(1, 0, "file", false, 123, null, null, null);
+//            final FileInformation directory = new FileInformation(2, 0, "directory", true, -1, null, null, null);
+//            list.set(List.of(information, directory).iterator());
+//            ProviderHelper.refresh(provider(), 0);
+//            list.set(Collections.emptyIterator());
+//            ProviderHelper.list(provider(), 2, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0);
+//
+//            final FileInformation moved = new FileInformation(1, 2, "file", false, 123, null, null, null);
+//            move.set(moved);
+//            Assertions.assertEquals(moved, ProviderHelper.move(provider(), 1, false, 2, Options.DuplicatePolicy.ERROR).getT().get());
+//        }
+//    }
 }

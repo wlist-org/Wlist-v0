@@ -2,6 +2,7 @@ package com.xuxiaocheng.WList.Server.Storage.Helpers;
 
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
+import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.EventExecutorGroup;
@@ -32,11 +33,16 @@ public final class BackgroundTaskManager {
     private static final @NotNull Map<@NotNull BackgroundTaskIdentifier, @NotNull CompletableFuture<?>> tasks = new ConcurrentHashMap<>();
     private static final @NotNull Set<@NotNull BackgroundTaskIdentifier> removable = ConcurrentHashMap.newKeySet();
 
-    public static @Nullable CompletableFuture<?> background(final @NotNull BackgroundTaskIdentifier identify, final @NotNull Runnable runnable, final boolean removeLock) {
-        final boolean[] flag = {true};
+    public static void background(final @NotNull BackgroundTaskIdentifier identify, final @NotNull Runnable runnable, final boolean removeLock,
+                                  final @Nullable Runnable onConflictWhenCompletedIgnoreOthersParams) {
         final CountDownLatch latch = new CountDownLatch(1);
-        final CompletableFuture<?> future = BackgroundTaskManager.tasks.computeIfAbsent(identify, k -> {
-            flag[0] = false;
+        BackgroundTaskManager.tasks.compute(identify, (k, o) -> {
+            if (o != null) {
+                if (onConflictWhenCompletedIgnoreOthersParams == null)
+                    return o;
+                return o.whenComplete((v, e) -> onConflictWhenCompletedIgnoreOthersParams.run())
+                        .exceptionally(MiscellaneousUtil.exceptionHandler());
+            }
             if (!removeLock)
                 BackgroundTaskManager.removable.add(identify);
             return CompletableFuture.runAsync(HExceptionWrapper.wrapRunnable(() -> {
@@ -50,7 +56,6 @@ public final class BackgroundTaskManager {
             });
         });
         latch.countDown();
-        return flag[0] ? null : future;
     }
 
     public static boolean isExist(final @NotNull BackgroundTaskIdentifier identify) {
