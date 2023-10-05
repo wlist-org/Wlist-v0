@@ -19,8 +19,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 import java.util.ArrayDeque;
 import java.util.Base64;
 import java.util.Collection;
@@ -73,12 +71,6 @@ public class FileSqliteHelper implements FileSqlInterface {
     @Contract(pure = true)
     public static boolean isDirectory(final long doubleId) {
         return (doubleId & 1) == 0;
-    }
-
-    @Contract(pure = true)
-    public static @Nullable Timestamp getTimestamp(final @Nullable ZonedDateTime time) {
-        assert time == null || ZoneOffset.UTC.equals(time.getZone());
-        return time == null ? null : Timestamp.valueOf(time.toLocalDateTime());
     }
 
 
@@ -213,8 +205,8 @@ public class FileSqliteHelper implements FileSqlInterface {
                 statement.setString(3, information.name());
                 statement.setBytes(4, SqlHelper.toOrdered(information.name()));
                 statement.setLong(5, information.size());
-                statement.setTimestamp(6, FileSqliteHelper.getTimestamp(information.createTime()));
-                statement.setTimestamp(7, FileSqliteHelper.getTimestamp(information.updateTime()));
+                statement.setTimestamp(6, SqlHelper.getTimestamp(information.createTime()));
+                statement.setTimestamp(7, SqlHelper.getTimestamp(information.updateTime()));
                 statement.setString(8, information.others());
                 statement.executeUpdate();
             }
@@ -249,8 +241,8 @@ public class FileSqliteHelper implements FileSqlInterface {
                         statement.setString(3, information.name());
                         statement.setBytes(4, SqlHelper.toOrdered(information.name()));
                         statement.setLong(5, information.size());
-                        statement.setTimestamp(6, FileSqliteHelper.getTimestamp(information.createTime()));
-                        statement.setTimestamp(7, FileSqliteHelper.getTimestamp(information.updateTime()));
+                        statement.setTimestamp(6, SqlHelper.getTimestamp(information.createTime()));
+                        statement.setTimestamp(7, SqlHelper.getTimestamp(information.updateTime()));
                         statement.setString(8, information.others());
                         statement.executeUpdate();
                         if (success) {
@@ -400,32 +392,33 @@ public class FileSqliteHelper implements FileSqlInterface {
         final long parentDoubleId = FileSqliteHelper.getDoubleId(file.parentId(), true);
         final AtomicReference<String> connectionId = new AtomicReference<>(_connectionId);
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
-            final FileInformation old = this.selectInfo(file.id(), false, connectionId.get());
-            if (old == null) {
-                if (this.isDirectoryIndexed(parentDoubleId, connection))
+            if (this.isDirectoryIndexed(parentDoubleId, connection)) {
+                final FileInformation old = this.selectInfo(file.id(), false, connectionId.get());
+                if (old == null)
                     this.insertFileOrDirectory(file, connectionId.get());
-            } else {
-                try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+                else {
+                    try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     UPDATE %s SET parent_id = ?, name = ?, name_order = ?, size = ?, create_time = ?, update_time = ?, others = ? WHERE double_id == ?;
-                    """, this.tableName))) {
-                    statement.setLong(1, parentDoubleId);
-                    statement.setString(2, file.name());
-                    statement.setBytes(3, SqlHelper.toOrdered(file.name()));
-                    statement.setLong(4, file.size());
-                    statement.setTimestamp(5, FileSqliteHelper.getTimestamp(file.createTime() == null ? old.createTime() : file.createTime()));
-                    statement.setTimestamp(6, FileSqliteHelper.getTimestamp(file.updateTime() == null ? old.updateTime() : file.updateTime()));
-                    statement.setString(7, file.others());
-                    statement.setLong(8, FileSqliteHelper.getDoubleId(file.id(), false));
-                    statement.executeUpdate();
+                        """, this.tableName))) {
+                        statement.setLong(1, parentDoubleId);
+                        statement.setString(2, file.name());
+                        statement.setBytes(3, SqlHelper.toOrdered(file.name()));
+                        statement.setLong(4, file.size());
+                        statement.setTimestamp(5, SqlHelper.getTimestamp(file.createTime() == null ? old.createTime() : file.createTime()));
+                        statement.setTimestamp(6, SqlHelper.getTimestamp(file.updateTime() == null ? old.updateTime() : file.updateTime()));
+                        statement.setString(7, file.others());
+                        statement.setLong(8, FileSqliteHelper.getDoubleId(file.id(), false));
+                        statement.executeUpdate();
+                    }
+                    if (file.parentId() == old.parentId()) {
+                        if (file.size() != old.size())
+                            this.updateDirectorySizeRecursively(file.parentId(), file.size() - old.size(), connectionId.get());
+                    } else {
+                        this.updateDirectorySizeRecursively(old.parentId(), -old.size(), connectionId.get());
+                        this.updateDirectorySizeRecursively(file.parentId(), file.size(), connectionId.get());
+                    }
                 }
-                if (file.parentId() == old.parentId()) {
-                    if (file.size() != old.size())
-                        this.updateDirectorySizeRecursively(file.parentId(), file.size() - old.size(), connectionId.get());
-                } else {
-                    this.updateDirectorySizeRecursively(old.parentId(), -old.size(), connectionId.get());
-                    this.updateDirectorySizeRecursively(file.parentId(), file.size(), connectionId.get());
-                }
-            }
+            } else this.deleteFile(file.id(), connectionId.get());
             connection.commit();
         }
     }
@@ -436,9 +429,9 @@ public class FileSqliteHelper implements FileSqlInterface {
         final long parentDoubleId = FileSqliteHelper.getDoubleId(directory.parentId(), true);
         final AtomicReference<String> connectionId = new AtomicReference<>(_connectionId);
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
-            final FileInformation old = this.selectInfo(directory.id(), true, connectionId.get());
-            if (old == null) {
-                if (this.isDirectoryIndexed(parentDoubleId, connection)) {
+            if (this.isDirectoryIndexed(parentDoubleId, connection)) {
+                final FileInformation old = this.selectInfo(directory.id(), true, connectionId.get());
+                if (old == null) {
                     try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     INSERT INTO %s (double_id, parent_id, name, name_order, size, create_time, update_time, others)
         VALUES (?, ?, ?, ?, -1, ?, ?, ?);
@@ -447,37 +440,37 @@ public class FileSqliteHelper implements FileSqlInterface {
                         statement.setLong(2, parentDoubleId);
                         statement.setString(3, directory.name());
                         statement.setBytes(4, SqlHelper.toOrdered(directory.name()));
-                        statement.setTimestamp(5, FileSqliteHelper.getTimestamp(directory.createTime()));
-                        statement.setTimestamp(6, FileSqliteHelper.getTimestamp(directory.updateTime()));
+                        statement.setTimestamp(5, SqlHelper.getTimestamp(directory.createTime()));
+                        statement.setTimestamp(6, SqlHelper.getTimestamp(directory.updateTime()));
                         statement.setString(7, directory.others());
                         statement.executeUpdate();
                     }
                     this.unknowDirectorySizeRecursively(directory.parentId(), connectionId.get());
-                }
-            } else {
-                if (directory.id() != old.id() && this.isInDirectoryRecursively(directory.id(), true, old.id(), connectionId.get()))
-                    throw new IllegalStateException("Recycle directory tree." + ParametersMap.create().add("directory", directory).add("old", old));
-                try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-    UPDATE %s SET parent_id = ?, name = ?, name_order = ?, create_time = ?, update_time = ?, others = ? WHERE double_id == ?;
-                    """, this.tableName))) {
-                    statement.setLong(1, parentDoubleId);
-                    statement.setString(2, directory.name());
-                    statement.setBytes(3, SqlHelper.toOrdered(directory.name()));
-                    statement.setTimestamp(4, FileSqliteHelper.getTimestamp(directory.createTime() == null ? old.createTime() : directory.createTime()));
-                    statement.setTimestamp(5, FileSqliteHelper.getTimestamp(directory.updateTime() == null ? old.updateTime() : directory.updateTime()));
-                    statement.setString(6, directory.others());
-                    statement.setLong(7, FileSqliteHelper.getDoubleId(directory.id(), true));
-                    statement.executeUpdate();
-                }
-                if (directory.parentId() != old.parentId())
-                    if (old.size() == -1) {
-                        this.updateDirectorySizeRecursively(old.parentId(), 0, connectionId.get());
-                        this.unknowDirectorySizeRecursively(directory.parentId(), connectionId.get());
-                    } else {
-                        this.updateDirectorySizeRecursively(old.parentId(), -old.size(), connectionId.get());
-                        this.updateDirectorySizeRecursively(directory.parentId(), old.size(), connectionId.get());
+                } else {
+                    if (directory.id() != old.id() && this.isInDirectoryRecursively(directory.id(), true, old.id(), connectionId.get()))
+                        throw new IllegalStateException("Recycle directory tree." + ParametersMap.create().add("directory", directory).add("old", old));
+                    try (final PreparedStatement statement = connection.prepareStatement(String.format("""
+                            UPDATE %s SET parent_id = ?, name = ?, name_order = ?, create_time = ?, update_time = ?, others = ? WHERE double_id == ?;
+                                            """, this.tableName))) {
+                        statement.setLong(1, parentDoubleId);
+                        statement.setString(2, directory.name());
+                        statement.setBytes(3, SqlHelper.toOrdered(directory.name()));
+                        statement.setTimestamp(4, SqlHelper.getTimestamp(directory.createTime() == null ? old.createTime() : directory.createTime()));
+                        statement.setTimestamp(5, SqlHelper.getTimestamp(directory.updateTime() == null ? old.updateTime() : directory.updateTime()));
+                        statement.setString(6, directory.others());
+                        statement.setLong(7, FileSqliteHelper.getDoubleId(directory.id(), true));
+                        statement.executeUpdate();
                     }
-            }
+                    if (directory.parentId() != old.parentId())
+                        if (old.size() == -1) {
+                            this.updateDirectorySizeRecursively(old.parentId(), 0, connectionId.get());
+                            this.unknowDirectorySizeRecursively(directory.parentId(), connectionId.get());
+                        } else {
+                            this.updateDirectorySizeRecursively(old.parentId(), -old.size(), connectionId.get());
+                            this.updateDirectorySizeRecursively(directory.parentId(), old.size(), connectionId.get());
+                        }
+                }
+            } else this.deleteDirectoryRecursively(directory.id(), connectionId.get());
             connection.commit();
         }
     }
