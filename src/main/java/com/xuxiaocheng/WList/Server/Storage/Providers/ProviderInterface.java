@@ -82,9 +82,8 @@ public interface ProviderInterface<C extends StorageConfiguration> {
 
     /**
      * Get download methods of a specific file.
-     * @param location Only by used to create {@code FailureReason}.
      */
-    void downloadFile(final long fileId, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) throws Exception;
+    void downloadFile(final long fileId, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer) throws Exception;
 
     /**
      * Create an empty directory.

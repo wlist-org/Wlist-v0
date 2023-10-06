@@ -23,12 +23,16 @@ import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
 import com.xuxiaocheng.WList.Server.Storage.Records.UploadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WList.Server.WListServer;
+import okhttp3.Headers;
+import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 
 import java.sql.Connection;
+import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -134,7 +138,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         }
         // Not indexed.
         BackgroundTaskManager.background(new BackgroundTaskManager.BackgroundTaskIdentifier(
-                this.getConfiguration().getName(), BackgroundTaskManager.SyncDirectory, String.valueOf(directoryId)), () -> {
+                this.getConfiguration().getName(), BackgroundTaskManager.Directory, String.valueOf(directoryId)), () -> {
             UnionPair<Optional<FilesListInformation>, Throwable> result = null;
             try {
                 this.loginIfNot();
@@ -197,7 +201,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
             return;
         }
         final BackgroundTaskManager.BackgroundTaskIdentifier identifier = new BackgroundTaskManager.BackgroundTaskIdentifier(
-                this.getConfiguration().getName(), BackgroundTaskManager.SyncInfo, (isDirectory ? "d" : "f") + id);
+                this.getConfiguration().getName(), BackgroundTaskManager.File, (isDirectory ? "d" : "f") + id);
         BackgroundTaskManager.background(identifier, () -> {
             try {
                 this.loginIfNot();
@@ -285,7 +289,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
             final AtomicBoolean barrier = new AtomicBoolean(true);
             this.list(directoryId, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0, p -> {
                 if (!barrier.compareAndSet(true, false)) {
-                    HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'refreshDirectory#list'." + ParametersMap.create().add("configuration", this.getConfiguration())
+                    AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'refreshDirectory#list'." + ParametersMap.create().add("configuration", this.getConfiguration())
                             .add("p", p).add("directoryId", directoryId)));
                     return;
                 }
@@ -307,7 +311,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
             return;
         }
         final BackgroundTaskManager.BackgroundTaskIdentifier identifier = new BackgroundTaskManager.BackgroundTaskIdentifier(
-                this.getConfiguration().getName(), BackgroundTaskManager.SyncDirectory, String.valueOf(directoryId));
+                this.getConfiguration().getName(), BackgroundTaskManager.Directory, String.valueOf(directoryId));
         BackgroundTaskManager.background(identifier, () -> {
             UnionPair<Boolean, Throwable> result = null;
             boolean flag = true;
@@ -514,7 +518,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
             final AtomicBoolean barrier = new AtomicBoolean(true);
             this.refreshDirectory(id, p -> {
                 if (!barrier.compareAndSet(true, false)) {
-                    HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'trash#refresh'." + ParametersMap.create().add("configuration", this.getConfiguration())
+                    AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'trash#refresh'." + ParametersMap.create().add("configuration", this.getConfiguration())
                             .add("p", p).add("id", id).add("isDirectory", true)));
                     return;
                 }
@@ -532,7 +536,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                     final AtomicBoolean barrier1 = new AtomicBoolean(true);
                     this.list(id, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 1, u -> {
                         if (!barrier1.compareAndSet(true, false)) {
-                            HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'trash#list'." + ParametersMap.create().add("configuration", this.getConfiguration())
+                            AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'trash#list'." + ParametersMap.create().add("configuration", this.getConfiguration())
                                     .add("u", u).add("id", id).add("isDirectory", true)));
                             return;
                         }
@@ -557,7 +561,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                                 final AtomicBoolean barrier2 = new AtomicBoolean(true);
                                 this.trash0(info, n -> {
                                     if (!barrier2.compareAndSet(true, false)) {
-                                        HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'trash#trash0'." + ParametersMap.create().add("configuration", this.getConfiguration())
+                                        AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'trash#trash0'." + ParametersMap.create().add("configuration", this.getConfiguration())
                                                 .add("n", n).add("id", id).add("isDirectory", true)));
                                         return;
                                     }
@@ -610,14 +614,14 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
             return;
         }
         final BackgroundTaskManager.BackgroundTaskIdentifier identifier = new BackgroundTaskManager.BackgroundTaskIdentifier(
-                this.getConfiguration().getName(), BackgroundTaskManager.SyncInfo, (isDirectory ? "d" : "f") + id);
+                this.getConfiguration().getName(), BackgroundTaskManager.File, (isDirectory ? "d" : "f") + id);
         BackgroundTaskManager.background(identifier, () -> {
             try {
                 this.loginIfNot();
                 final AtomicBoolean barrier = new AtomicBoolean(true);
                 this.trash0(information, p -> {
                     if (!barrier.compareAndSet(true, false)) {
-                        HLog.getInstance("ProviderLogger").log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'trash#trash0'." + ParametersMap.create().add("configuration", this.getConfiguration())
+                        AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'trash#trash0'." + ParametersMap.create().add("configuration", this.getConfiguration())
                                 .add("p", p).add("id", id).add("isDirectory", false)));
                         return;
                     }
@@ -654,34 +658,61 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
     }
 
 
-//    protected boolean isRequiredLoginDownloading(final @NotNull FileInformation information) throws Exception {
-//        return true;
-//    }
-//
-//    /**
-//     * Get download methods of a specific file.
-//     * @param location Only by used to create {@code FailureReason}.
-//     * @see DownloadRequirements#tryGetDownloadFromUrl(OkHttpClient, HttpUrl, Headers, Long, Headers.Builder, long, long, ZonedDateTime)
-//     */
-//    protected abstract void download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) throws Exception;
+    protected boolean doesRequireLoginDownloading(final @NotNull FileInformation information) throws Exception {
+        return true;
+    }
+
+    /**
+     * Get download methods of a specific file.
+     * @see #doesRequireLoginDownloading(FileInformation)
+     * @see #getLocation(long) to create {@code FailureReason}.
+     * @see DownloadRequirements#tryGetDownloadFromUrl(OkHttpClient, HttpUrl, Headers, Long, Headers.Builder, long, long, ZonedDateTime)
+     */
+    protected abstract void download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer) throws Exception;
 
     @Override
-    public void downloadFile(final long fileId, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) throws Exception {
-//        final FileInformation information = this.manager.getInstance().selectInfo(fileId, false, null);
-//        if (information == null) {
-//            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(location, false))));
-//            return;
-//        }
-//        assert information.size() >= 0;
-//        final long start = Math.min(Math.max(from, 0), information.size());
-//        final long end = Math.min(Math.max(to, 0), information.size());
-//        if (start >= end) {
-//            consumer.accept(UnionPair.ok(UnionPair.ok(DownloadRequirements.EmptyDownloadRequirements)));
-//            return;
-//        }
-//        if (this.isRequiredLoginDownloading(information))
-//            this.loginIfNot();
-//        this.download0(information, start, end, consumer, location);
+    public void downloadFile(final long fileId, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer) throws Exception {
+        final FileInformation information = this.manager.getInstance().selectInfo(fileId, false, null);
+        if (information == null) {
+            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(this.getLocation(fileId), false))));
+            return;
+        }
+        assert information.size() >= 0;
+        final long start = Math.min(Math.max(from, 0), information.size());
+        final long end = Math.min(Math.max(to, 0), information.size());
+        if (start >= end) {
+            consumer.accept(UnionPair.ok(UnionPair.ok(DownloadRequirements.EmptyDownloadRequirements)));
+            return;
+        }
+        //noinspection StringConcatenationMissingWhitespace
+        final BackgroundTaskManager.BackgroundTaskIdentifier identifier = new BackgroundTaskManager.BackgroundTaskIdentifier(
+                this.getConfiguration().getName(), BackgroundTaskManager.File, "f" + fileId);
+        BackgroundTaskManager.background(identifier, () -> {
+            boolean flag = true;
+            try {
+                if (this.doesRequireLoginDownloading(information))
+                    this.loginIfNot();
+                final AtomicBoolean barrier = new AtomicBoolean(true);
+                this.download0(information, start, end, p -> {
+                    if (!barrier.compareAndSet(true, false)) {
+                        AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'downloadFile#download0'." + ParametersMap.create().add("configuration", this.getConfiguration())
+                                .add("p", p).add("fileId", fileId).add("from", from).add("to", to)));
+                        return;
+                    }
+                    BackgroundTaskManager.remove(identifier);
+                    WListServer.ServerExecutors.submit(() -> consumer.accept(p)).addListener(MiscellaneousUtil.exceptionListener());
+                });
+                flag = false;
+            } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                WListServer.ServerExecutors.submit(() -> consumer.accept(UnionPair.fail(exception))).addListener(MiscellaneousUtil.exceptionListener());
+            } finally {
+                if (flag)
+                    BackgroundTaskManager.remove(identifier);
+            }
+        }, false, HExceptionWrapper.wrapRunnable(() -> this.downloadFile(fileId, from, to, consumer), e -> {
+            if (e != null)
+                consumer.accept(UnionPair.fail(e));
+        }, true));
     }
 
 //    private static final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> DefaultRetryBracketPair = Pair.ImmutablePair.makeImmutablePair(" (", ")");

@@ -23,9 +23,9 @@ public final class BackgroundTaskManager {
     public static final @NotNull EventExecutorGroup BackgroundExecutors =
             new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 2, new DefaultThreadFactory("BackgroundExecutors"));
 
-    public static final @NotNull String SyncDirectory = "Sync directory.";
-    public static final @NotNull String SyncInfo = "Sync info.";
-    public static final @NotNull String Uploading = "Create or upload.";
+    public static final @NotNull String Directory = "Sync directory.";
+    public static final @NotNull String File = "Sync info.";
+    public static final @NotNull String Name = "Create or upload.";
 
     public record BackgroundTaskIdentifier(@NotNull String provider, @NotNull String task, @NotNull String identifier) {
     }

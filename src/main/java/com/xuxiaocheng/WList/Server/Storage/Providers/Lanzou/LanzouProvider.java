@@ -22,6 +22,8 @@ import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.ProviderUtil;
 import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseProvider;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
+import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
+import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WList.Server.WListServer;
 import okhttp3.FormBody;
@@ -337,52 +339,52 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         consumer.accept(AbstractIdBaseProvider.TrashSuccess); // TODO: failed on trash not empty directory.
     }
 
-//    @Override
-//    protected boolean isRequiredLoginDownloading(final @NotNull FileInformation information) {
-//        return information.others() == null;
-//    }
-//
-//    @Override
-//    protected void download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) throws IOException, IllegalParametersException {
-//        final HttpUrl url;
-//        final String identifier;
-//        final String pwd;
-//        if (information.others() == null) {
-//            final Triad.ImmutableTriad<HttpUrl, String, String> shareUrl = this.getFileShareUrl(information.id());
-//            if (shareUrl == null) {
-//                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(location, false))));
-//                return;
-//            }
-//            url = shareUrl.getA();
-//            identifier = shareUrl.getB();
-//            pwd = shareUrl.getC();
-//        } else {
-//            final Triad.ImmutableTriad<HttpUrl, String, String> map = LanzouProvider.parseOthers(information.others());
-//            url = map.getA();
-//            identifier = map.getB();
-//            pwd = map.getC();
-//        }
-//        final LanzouSharer sharer = (LanzouSharer) StorageManager.getSharer(this.getConfiguration().getName());
-//        assert sharer != null;
-//        Pair.ImmutablePair<HttpUrl, Headers> downloadUrl;
-//        try {
-//            downloadUrl = sharer.getSingleShareFileDownloadUrl(url, identifier, pwd);
-//        } catch (final IllegalParametersException ignore) { // Wrong password.
-//            final Triad.ImmutableTriad<HttpUrl, String, String> shareUrl = this.getFileShareUrl(information.id());
-//            if (shareUrl == null) {
-//                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(location, false))));
-//                return;
-//            }
-//            downloadUrl = sharer.getSingleShareFileDownloadUrl(shareUrl.getA(), shareUrl.getB(), shareUrl.getC());
-//        }
-//        if (downloadUrl == null) {
-//            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(location, false))));
-//            return;
-//        }
-//        consumer.accept(UnionPair.ok(UnionPair.ok(DownloadRequirements.tryGetDownloadFromUrl(this.getConfiguration().getFileClient(),
-//                downloadUrl.getFirst(), downloadUrl.getSecond(), information.size(), LanzouProvider.Headers.newBuilder(), from, to, null))));
-//    }
-//
+    @Override
+    protected boolean doesRequireLoginDownloading(final @NotNull FileInformation information) {
+        return information.others() == null;
+    }
+
+    @Override
+    protected void download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer) throws IOException, IllegalParametersException {
+        final HttpUrl url;
+        final String identifier;
+        final String pwd;
+        if (information.others() == null) {
+            final Triad.ImmutableTriad<HttpUrl, String, String> shareUrl = this.getFileShareUrl(information.id());
+            if (shareUrl == null) {
+                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(this.getLocation(information.id()), false))));
+                return;
+            }
+            url = shareUrl.getA();
+            identifier = shareUrl.getB();
+            pwd = shareUrl.getC();
+        } else {
+            final Triad.ImmutableTriad<HttpUrl, String, String> map = LanzouProvider.parseOthers(information.others());
+            url = map.getA();
+            identifier = map.getB();
+            pwd = map.getC();
+        }
+        final LanzouSharer sharer = (LanzouSharer) StorageManager.getSharer(this.getConfiguration().getName());
+        assert sharer != null;
+        Pair.ImmutablePair<HttpUrl, Headers> downloadUrl;
+        try {
+            downloadUrl = sharer.getSingleShareFileDownloadUrl(url, identifier, pwd);
+        } catch (final IllegalParametersException ignore) { // Wrong password.
+            final Triad.ImmutableTriad<HttpUrl, String, String> shareUrl = this.getFileShareUrl(information.id());
+            if (shareUrl == null) {
+                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(this.getLocation(information.id()), false))));
+                return;
+            }
+            downloadUrl = sharer.getSingleShareFileDownloadUrl(shareUrl.getA(), shareUrl.getB(), shareUrl.getC());
+        }
+        if (downloadUrl == null) {
+            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(this.getLocation(information.id()), false))));
+            return;
+        }
+        consumer.accept(UnionPair.ok(UnionPair.ok(DownloadRequirements.tryGetDownloadFromUrl(this.getConfiguration().getFileClient(),
+                downloadUrl.getFirst(), downloadUrl.getSecond(), information.size(), LanzouProvider.Headers.newBuilder(), from, to, null))));
+    }
+
 //    protected static final @NotNull Pair.ImmutablePair<@NotNull String, @NotNull String> RetryBracketPair = Pair.ImmutablePair.makeImmutablePair("\uFF08", "\uFF09");
 //    @Override
 //    protected Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> retryBracketPair() {

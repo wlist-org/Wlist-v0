@@ -3,10 +3,11 @@ package com.xuxiaocheng.WListTest.Storage;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
-import com.xuxiaocheng.WList.Server.Databases.File.FileSqliteHelper;
 import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseProvider;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
+import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
+import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -56,7 +57,7 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
 
         public @NotNull AbstractProviderFile get(final long id, final boolean isDirectory) {
             Assertions.assertTrue(this.hasChildren());
-            final AbstractProviderFile child = this.children.get(FileSqliteHelper.getDoubleId(id, isDirectory));
+            final AbstractProviderFile child = this.children.get((id << 1) + (isDirectory ? 0 : 1));
             Assertions.assertNotNull(child, () -> id + (isDirectory ? " d" : " f"));
             return child;
         }
@@ -64,12 +65,12 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
         public void add(final @NotNull AbstractProviderFile child) {
             Assertions.assertTrue(this.hasChildren());
             Assertions.assertEquals(this.get().id(), child.get().parentId());
-            this.children.put(FileSqliteHelper.getDoubleId(child.get().id(), child.get().isDirectory()), child);
+            this.children.put((child.get().id() << 1) + (child.get().isDirectory() ? 0 : 1), child);
         }
 
         public void del(final long id, final boolean isDirectory) {
             Assertions.assertTrue(this.hasChildren());
-            final AbstractProviderFile file = this.children.remove(FileSqliteHelper.getDoubleId(id, isDirectory));
+            final AbstractProviderFile file = this.children.remove((id << 1) + (isDirectory ? 0 : 1));
             Assertions.assertNotNull(file, () -> id + (isDirectory ? " d" : " f"));
         }
 
@@ -201,6 +202,7 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
 
     public final @NotNull AtomicBoolean supportTrashRecursively = new AtomicBoolean(true);
     public final @NotNull HInitializer<Supplier<UnionPair<Boolean, Throwable>>> trash = new HInitializer<>("TrashSupplier");
+
     @Override
     protected boolean doesSupportTrashNotEmptyDirectory() {
         return this.supportTrashRecursively.get();
@@ -221,11 +223,12 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
     }
 
 
-//    @Override
-//    protected void download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) {
-//        throw new UnsupportedOperationException("Not tested.");
-//    }
-//
+    @Override
+    protected void download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer) {
+        throw new UnsupportedOperationException("Not tested.");
+    }
+
+
 //    @Override
 //    protected @NotNull CheckRule<@NotNull String> directoryNameChecker() {
 //        return CheckRule.allAllow();
