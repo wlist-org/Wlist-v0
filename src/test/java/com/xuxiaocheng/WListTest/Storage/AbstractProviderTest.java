@@ -464,15 +464,7 @@ public class AbstractProviderTest {
             });
             latch.await();
             Assumptions.assumeTrue(latch1.getCount() == 1);
-            provider().update.initialize(() -> {
-                latch.countDown();
-                try {
-                    updateSupplierContinue.await();
-                } catch (final InterruptedException exception) {
-                    throw new RuntimeException(exception);
-                }
-                throw new NoSuchElementException();
-            });
+            provider().update.initialize(() -> {throw new NoSuchElementException();});
             final CountDownLatch latch2 = new CountDownLatch(1);
             final AtomicReference<UnionPair<Optional<FileInformation>, Throwable>> result2 = new AtomicReference<>();
             provider().info(1, false, p -> {
@@ -494,7 +486,7 @@ public class AbstractProviderTest {
     @SuppressWarnings("UnqualifiedMethodAccess")
     public final class RefreshTest {
         @AfterEach
-        public void unset() throws InterruptedException {
+        public void finish() throws InterruptedException {
             TimeUnit.MILLISECONDS.sleep(500); // Wait for broadcast finish.
         }
 
@@ -516,6 +508,12 @@ public class AbstractProviderTest {
             final Optional<FilesListInformation> result1 = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 3);
             Assertions.assertTrue(result1.isPresent());
             ProviderHelper.testList(result1.get(), List.of(file1.get(), file2.get()), Options.FilterPolicy.Both);
+            Assertions.assertEquals(List.of(), provider().checkOperations());
+        }
+
+        @Test
+        public void notAvailable() throws Exception {
+            Assertions.assertFalse(ProviderHelper.refresh(provider(), 1));
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
@@ -553,6 +551,24 @@ public class AbstractProviderTest {
             final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5);
             Assertions.assertTrue(result.isPresent());
             ProviderHelper.testList(result.get(), List.of(file1.get()), Options.FilterPolicy.Both);
+            Assertions.assertEquals(List.of(), provider().checkOperations());
+        }
+
+        @Test
+        public void deleteNoInfo() throws Exception {
+            final AbstractProvider.AbstractProviderFile file1 = AbstractProvider.build(1, 0, false);
+            provider().root().add(file1);
+            Assertions.assertTrue(ProviderHelper.refresh(provider(), 0));
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
+
+            provider().supportInfo.set(false);
+            provider().root().del(1, false);
+            Assertions.assertTrue(ProviderHelper.refresh(provider(), 0));
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
+
+            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5);
+            Assertions.assertTrue(result.isPresent());
+            ProviderHelper.testList(result.get(), List.of(), Options.FilterPolicy.Both);
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
@@ -667,6 +683,9 @@ public class AbstractProviderTest {
 
         @Test
         public void concurrentException() throws Exception {
+            Assertions.assertTrue(ProviderHelper.refresh(provider(), 0));
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
+
             final CountDownLatch latch = new CountDownLatch(1);
             final CountDownLatch listIteratorNext = new CountDownLatch(1);
             provider().list.initialize(new Iterator<>() {
@@ -708,110 +727,185 @@ public class AbstractProviderTest {
             final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5);
             Assertions.assertTrue(result.isPresent());
             ProviderHelper.testList(result.get(), List.of(), Options.FilterPolicy.Both);
-            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
+            Assertions.assertEquals(List.of(), provider().checkOperations());
         }
     }
 
-//    @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
-//    @Nested
-//    public class TrashTest {
-//        @Test
-//        public void trash() throws Exception {
-//            final FileInformation directory = new FileInformation(1, 0, "directory", true, -1, null, null, null);
-//            final FileInformation file = new FileInformation(1, 0, "file", false, 1, null, null, null);
-//            list.set(List.of(directory, file).iterator());
-//            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0);
-//            loggedIn.set(false);
-//
-//            Assertions.assertTrue(ProviderHelper.trash(provider(), 1, true));
-//            Assertions.assertEquals(directory, trash.uninitialize());
-//            Assertions.assertTrue(ProviderHelper.trash(provider(), 1, false));
-//            Assertions.assertEquals(file, trash.uninitialize());
-//        }
-//
-//        @Test
-//        public void notAvailable() throws Exception {
-//            Assertions.assertFalse(ProviderHelper.trash(provider(), 0, true));
-//            Assertions.assertFalse(ProviderHelper.trash(provider(), 0, false));
-//            Assertions.assertFalse(loggedIn.get());
-//        }
-//
-//        public class TrashTestProvider extends AbstractProvider {
-//            private final Collection<String> operations = new ArrayList<>();
-//            private final Map<Long, Iterator<List<FileInformation>>> lister = new HashMap<>();
-//
-//            @Override
-//            public void refreshDirectory(final long directoryId, final @NotNull Consumer<? super UnionPair<Boolean, Throwable>> consumer) {
-//                operations.add("Refresh: " + directoryId);
-//                consumer.accept(ProviderInterface.RefreshSuccess);
-//            }
-//
-//            @Override
-//            protected @Nullable Iterator<@NotNull FileInformation> list0(final long directoryId) {
-//                operations.add("List: " + directoryId);
-//                if (lister.get(directoryId).hasNext())
-//                    return lister.get(directoryId).next().iterator();
-//                return Collections.emptyIterator();
-//            }
-//
-//            @Override
-//            protected boolean isSupportedNotEmptyDirectoryTrash() {
-//                return false;
-//            }
-//
-//            @Override
-//            protected void trash0(final @NotNull FileInformation information, final @NotNull Consumer<? super @Nullable Throwable> consumer) {
-//                operations.add("Trash: " + information.id());
-//                consumer.accept(null);
-//            }
-//
-//            @Override
-//            public @NotNull String toString() {
-//                return "TrashTestProvider{" +
-//                        "operations=" + operations +
-//                        ", super=" + super.toString() +
-//                        '}';
-//            }
-//        }
-//
-//        @Test
-//        public void trashRecursively() throws Exception {
-//            AbstractProviderTest.this.unset();
-//            ProviderCore.reinitialize(TrashTestProvider::new);
-//            AbstractProviderTest.this.reset();
-//            try {
-//                Assumptions.assumeTrue(provider() instanceof TrashTestProvider);
-//                final TrashTestProvider provider = (TrashTestProvider) provider();
-//                provider.lister.put(0L, List.of(
-//                        List.of(
-//                                new FileInformation(1, 0, "", true, -1, null, null, null)
-//                        )
-//                ).iterator());
-//                ProviderHelper.list(provider, 0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0);
-//                provider.lister.remove(0L);
-//
-//                provider.lister.put(1L, List.of(
-//                        List.of(
-//                                new FileInformation(2, 1, "", true, -1, null, null, null)
-//                        )
-//                ).iterator());
-//                provider.lister.put(2L, List.of(
-//                        List.of(
-//                                new FileInformation(3, 2, "", false, 1, null, null, null)
-//                        )
-//                ).iterator());
-//
-//                Assertions.assertTrue(ProviderHelper.trash(provider, 1, true));
-//
-//                Assertions.assertEquals(List.of(
-//                        "List: 0", "List: 1", "List: 2", "Trash: 3", "Refresh: 2", "Trash: 2", "Refresh: 1", "Trash: 1"
-//                ), provider.operations);
-//            } finally {
-//                ProviderCore.reinitialize(AbstractProvider::new);
-//            }
-//        }
-//    }
-//
+    @Nested
+    @SuppressWarnings("UnqualifiedMethodAccess")
+    public final class TrashTest {
+        @Test
+        public void trash() throws Exception {
+            final AbstractProvider.AbstractProviderFile directory = AbstractProvider.build(1, 0, true);
+            final AbstractProvider.AbstractProviderFile file = AbstractProvider.build(2, 0, false);
+            provider().root().add(directory);
+            provider().root().add(file);
+            ProviderHelper.refresh(provider(), 0);
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
+
+            final Optional<Boolean> resultF = ProviderHelper.trash(provider(), 1, true);
+            Assertions.assertTrue(resultF.isPresent() && resultF.get().booleanValue());
+            Assertions.assertEquals(List.of("Login.", "Trash: 1 d"), provider().checkOperations());
+
+            final Optional<Boolean> resultD = ProviderHelper.trash(provider(), 2, false);
+            Assertions.assertTrue(resultD.isPresent() && resultD.get().booleanValue());
+            Assertions.assertEquals(List.of("Login.", "Trash: 2 f"), provider().checkOperations());
+
+            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5);
+            Assertions.assertTrue(result.isPresent());
+            ProviderHelper.testList(result.get(), List.of(), Options.FilterPolicy.Both);
+            Assertions.assertEquals(List.of(), provider().checkOperations());
+        }
+
+        @Test
+        public void notAvailable() throws Exception {
+            final Optional<Boolean> resultF = ProviderHelper.trash(provider(), 1, false);
+            Assertions.assertTrue(resultF.isPresent() && !resultF.get().booleanValue());
+            Assertions.assertEquals(List.of(), provider().checkOperations());
+
+            final Optional<Boolean> resultD = ProviderHelper.trash(provider(), 1, true);
+            Assertions.assertTrue(resultD.isPresent() && !resultD.get().booleanValue());
+            Assertions.assertEquals(List.of(), provider().checkOperations());
+        }
+
+        @Test
+        public void root() throws Exception {
+            Assertions.assertFalse(ProviderHelper.trash(provider(), 0, true).isPresent());
+            Assertions.assertEquals(List.of(), provider().checkOperations());
+        }
+
+        @Test
+        public void recursive() throws Exception {
+            provider().root().add(AbstractProvider.build(1, 0, true));
+            provider().root().get(1, true).add(AbstractProvider.build(2, 1, false));
+            Assertions.assertTrue(ProviderHelper.refresh(provider(), 0));
+            Assertions.assertTrue(ProviderHelper.refresh(provider(), 1));
+            Assertions.assertEquals(List.of("Login.", "List: 0", "Login.", "List: 1"), provider().checkOperations());
+
+            provider().supportTrashRecursively.set(false);
+            Assertions.assertFalse(ProviderHelper.trash(provider(), 1, true).isPresent());
+            Assertions.assertEquals(List.of(), provider().checkOperations());
+        }
+
+        @Test
+        public void directory() throws Exception {
+            provider().root().add(AbstractProvider.build(1, 0, true));
+            Assertions.assertTrue(ProviderHelper.refresh(provider(), 0));
+            Assertions.assertTrue(ProviderHelper.refresh(provider(), 1));
+            Assertions.assertEquals(List.of("Login.", "List: 0", "Login.", "List: 1"), provider().checkOperations());
+
+            provider().supportTrashRecursively.set(false);
+            final Optional<Boolean> result = ProviderHelper.trash(provider(), 1, true);
+            Assertions.assertTrue(result.isPresent() && result.get().booleanValue());
+            Assertions.assertEquals(List.of("Login.", "List: 1", "Login.", "Trash: 1 d"), provider().checkOperations());
+        }
+
+        @Test
+        public void exception() throws Exception {
+            provider().root().add(AbstractProvider.build(1, 0, false));
+            Assertions.assertTrue(ProviderHelper.refresh(provider(), 0));
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
+
+            provider().trash.initialize(() -> {throw new RuntimeException();});
+            Assertions.assertThrows(RuntimeException.class, () ->
+                    ProviderHelper.trash(provider(), 1, false));
+            Assertions.assertEquals(List.of("Login.", "Trash: 1 f"), provider().checkOperations());
+
+            provider().trash.initialize(() -> UnionPair.fail(new RuntimeException()));
+            Assertions.assertThrows(RuntimeException.class, () ->
+                    ProviderHelper.trash(provider(), 1, false));
+            Assertions.assertEquals(List.of("Login.", "Trash: 1 f"), provider().checkOperations());
+        }
+
+        @Test
+        public void concurrent() throws Exception {
+            final AbstractProvider.AbstractProviderFile file = AbstractProvider.build(1, 0, false);
+            provider().root().add(file);
+            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 0);
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
+
+            final CountDownLatch latch = new CountDownLatch(1);
+            final CountDownLatch trashContinue = new CountDownLatch(1);
+            provider().trash.initialize(() -> {
+                latch.countDown();
+                try {
+                    trashContinue.await();
+                } catch (final InterruptedException exception) {
+                    throw new RuntimeException(exception);
+                }
+                provider().root().del(1, false);
+                return AbstractIdBaseProvider.TrashSuccess;
+            });
+            final CountDownLatch latch1 = new CountDownLatch(1);
+            final AtomicReference<UnionPair<Optional<Boolean>, Throwable>> result1 = new AtomicReference<>();
+            provider().trash(1, false, p -> {
+                result1.set(p);
+                latch1.countDown();
+            });
+            latch.await();
+            Assumptions.assumeTrue(latch1.getCount() == 1);
+            final CountDownLatch latch2 = new CountDownLatch(1);
+            final AtomicReference<UnionPair<Optional<Boolean>, Throwable>> result2 = new AtomicReference<>();
+            provider().trash(1, false, p -> {
+                result2.set(p);
+                latch2.countDown();
+            });
+            Assumptions.assumeTrue(latch2.getCount() == 1);
+
+            trashContinue.countDown();
+            latch1.await();
+            Assertions.assertTrue(result1.get().getT().isPresent());
+            Assertions.assertTrue(result1.get().getT().get().booleanValue());
+            latch2.await();
+            Assertions.assertTrue(result2.get().getT().isPresent());
+            Assertions.assertFalse(result2.get().getT().get().booleanValue());
+            Assertions.assertEquals(List.of("Login.", "Trash: 1 f"), provider().checkOperations());
+        }
+
+        @Test
+        public void concurrentException() throws Exception {
+            final AbstractProvider.AbstractProviderFile file = AbstractProvider.build(1, 0, false);
+            provider().root().add(file);
+            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 0);
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
+
+            final CountDownLatch latch = new CountDownLatch(1);
+            final CountDownLatch trashContinue = new CountDownLatch(1);
+            provider().trash.initialize(() -> {
+                latch.countDown();
+                try {
+                    trashContinue.await();
+                } catch (final InterruptedException exception) {
+                    throw new RuntimeException(exception);
+                }
+                throw new RuntimeException();
+            });
+            final CountDownLatch latch1 = new CountDownLatch(1);
+            final AtomicReference<UnionPair<Optional<Boolean>, Throwable>> result1 = new AtomicReference<>();
+            provider().trash(1, false, p -> {
+                result1.set(p);
+                latch1.countDown();
+            });
+            latch.await();
+            Assumptions.assumeTrue(latch1.getCount() == 1);
+            provider().trash.initialize(() -> {throw new NoSuchElementException();});
+            final CountDownLatch latch2 = new CountDownLatch(1);
+            final AtomicReference<UnionPair<Optional<Boolean>, Throwable>> result2 = new AtomicReference<>();
+            provider().trash(1, false, p -> {
+                result2.set(p);
+                latch2.countDown();
+            });
+            Assumptions.assumeTrue(latch2.getCount() == 1);
+
+            trashContinue.countDown();
+            latch1.await();
+            Assertions.assertSame(RuntimeException.class, result1.get().getE().getClass());
+            latch2.await();
+            Assertions.assertSame(NoSuchElementException.class, result2.get().getE().getClass());
+            Assertions.assertEquals(List.of("Login.", "Trash: 1 f", "Login.", "Trash: 1 f"), provider().checkOperations());
+        }
+    }
+
 //    @SuppressWarnings({"UnqualifiedMethodAccess", "UnqualifiedFieldAccess"})
 //    @Nested
 //    public class CreateTest {

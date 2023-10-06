@@ -52,14 +52,14 @@ public interface ProviderInterface<C extends StorageConfiguration> {
     @NotNull UnionPair<Optional<FilesListInformation>, Throwable> ListNotExisted = UnionPair.ok(Optional.empty());
     /**
      * Get the list of files in directory.
-     * @param consumer empty: directory is not available / is not existed in web server. present: list of files.
+     * @param consumer empty: directory is not available / does not exist in web server. present: list of files.
      */
     void list(final long directoryId, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @NotNull Consumer<? super @NotNull UnionPair<Optional<FilesListInformation>, Throwable>> consumer) throws Exception;
 
     @NotNull UnionPair<Optional<FileInformation>, Throwable> InfoNotExisted = UnionPair.ok(Optional.empty());
     /**
      * Get the file/directory information of a specific id.
-     * @param consumer empty: file/directory is not available / is not existed in web server. present: information.
+     * @param consumer empty: file/directory is not available / does not exist in web server. present: information.
      */
     void info(final long id, final boolean isDirectory, final @NotNull Consumer<? super @NotNull UnionPair<Optional<FileInformation>, Throwable>> consumer) throws Exception;
 
@@ -67,17 +67,18 @@ public interface ProviderInterface<C extends StorageConfiguration> {
     @NotNull UnionPair<Boolean, Throwable> RefreshSuccess = UnionPair.ok(Boolean.TRUE);
     /**
      * Force rebuild (or build) files index to synchronize with web server (not recursively).
-     * @param consumer false: directory is not available / is not existed in web server. true: success
+     * @param consumer false: directory is not available / does not exist in web server. true: success
      */
     void refreshDirectory(final long directoryId, final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) throws Exception;
 
-    @NotNull UnionPair<Boolean, Throwable> TrashNotSupported = UnionPair.ok(Boolean.FALSE);
-    @NotNull UnionPair<Boolean, Throwable> TrashSuccess = UnionPair.ok(Boolean.TRUE);
+    @NotNull UnionPair<Optional<Boolean>, Throwable> TrashTooComplex = UnionPair.ok(Optional.empty());
+    @NotNull UnionPair<Optional<Boolean>, Throwable> TrashNotExisted = UnionPair.ok(Optional.of(Boolean.FALSE));
+    @NotNull UnionPair<Optional<Boolean>, Throwable> TrashSuccess = UnionPair.ok(Optional.of(Boolean.TRUE));
     /**
      * Delete file/directory.
-     * @param consumer empty: not supported. false: file/directory is not available. true: deleted.
+     * @param consumer empty: trash directly is not supported. false: file/directory is not available. true: deleted.
      */
-    void trash(final long id, final boolean isDirectory, final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) throws Exception;
+    void trash(final long id, final boolean isDirectory, final @NotNull Consumer<? super @NotNull UnionPair<Optional<Boolean>, Throwable>> consumer) throws Exception;
 
     /**
      * Get download methods of a specific file.

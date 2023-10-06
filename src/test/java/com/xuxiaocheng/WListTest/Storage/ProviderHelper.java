@@ -106,28 +106,28 @@ public final class ProviderHelper {
         return result.get().getT().booleanValue();
     }
 
-//    public static boolean trash(final @NotNull ProviderInterface<?> provider, final long id, final boolean isDirectory) throws Exception {
-//        final CountDownLatch latch = new CountDownLatch(1);
-//        final AtomicReference<UnionPair<Optional<Boolean>, Throwable>> result = new AtomicReference<>();
-//        final AtomicBoolean barrier = new AtomicBoolean(true);
-//        provider.trash(id, isDirectory, p -> {
-//            if (!barrier.compareAndSet(true, false)) {
-//                HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), new RuntimeException("Duplicate message.(trash) " + p));
-//                return;
-//            }
-//            result.set(p);
-//            latch.countDown();
-//        });
-//        latch.await();
-//        if (result.get().isFailure()) {
-//            final Throwable throwable = result.get().getE();
-//            if (throwable instanceof Exception exception)
-//                throw exception;
-//            throw (Error) throwable;
-//        }
-//        return result.get().getT().get().booleanValue();
-//    }
-//
+    public static @NotNull Optional<Boolean> trash(final @NotNull ProviderInterface<?> provider, final long id, final boolean isDirectory) throws Exception {
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<UnionPair<Optional<Boolean>, Throwable>> result = new AtomicReference<>();
+        final AtomicBoolean barrier = new AtomicBoolean(true);
+        provider.trash(id, isDirectory, p -> {
+            if (!barrier.compareAndSet(true, false)) {
+                HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), new RuntimeException("Duplicate message.(trash) " + p));
+                return;
+            }
+            result.set(p);
+            latch.countDown();
+        });
+        latch.await();
+        if (result.get().isFailure()) {
+            final Throwable throwable = result.get().getE();
+            if (throwable instanceof Exception exception)
+                throw exception;
+            throw (Error) throwable;
+        }
+        return result.get().getT();
+    }
+
 //    public static @NotNull UnionPair<FileInformation, FailureReason> create(final @NotNull ProviderInterface<?> provider, final long id, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
 //        final CountDownLatch latch = new CountDownLatch(1);
 //        final AtomicReference<UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> result = new AtomicReference<>();

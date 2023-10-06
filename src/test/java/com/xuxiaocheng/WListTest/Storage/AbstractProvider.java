@@ -153,7 +153,7 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
     public final @NotNull HInitializer<Supplier<UnionPair<UnionPair<FileInformation, Boolean>, Throwable>>> update = new HInitializer<>("UpdateSupplier");
 
     @Override
-    protected boolean requireUpdate(@NotNull final FileInformation information) {
+    protected boolean doesRequireUpdate(@NotNull final FileInformation information) {
         return this.requireUpdate.get();
     }
 
@@ -178,7 +178,7 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
     public final @NotNull HInitializer<Supplier<UnionPair<Optional<FileInformation>, Throwable>>> info = new HInitializer<>("InfoSupplier");
 
     @Override
-    protected boolean isSupportedInfo(final boolean isDirectory) {
+    protected boolean doesSupportInfo(final boolean isDirectory) {
         return this.supportInfo.get();
     }
 
@@ -198,17 +198,29 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
         consumer.accept(UnionPair.ok(Optional.of(file.get())));
     }
 
-//    @Override
-//    protected boolean isSupportedNotEmptyDirectoryTrash() {
-//        return true;
-//    }
-//
-//    @Override
-//    protected void trash0(final @NotNull FileInformation information, final @NotNull Consumer<? super @Nullable Throwable> consumer) {
-//        AbstractProviderTest.this.trash.initialize(information);
-//        consumer.accept(null);
-//    }
-//
+
+    public final @NotNull AtomicBoolean supportTrashRecursively = new AtomicBoolean(true);
+    public final @NotNull HInitializer<Supplier<UnionPair<Boolean, Throwable>>> trash = new HInitializer<>("TrashSupplier");
+    @Override
+    protected boolean doesSupportTrashNotEmptyDirectory() {
+        return this.supportTrashRecursively.get();
+    }
+
+    @Override
+    protected void trash0(final @NotNull FileInformation information, final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) {
+        this.operations.add("Trash: " + information.id() + (information.isDirectory() ? " d" : " f"));
+        final Supplier<UnionPair<Boolean, Throwable>> supplier = this.trash.uninitializeNullable();
+        if (supplier != null) {
+            consumer.accept(supplier.get());
+            return;
+        }
+        final AbstractProviderFile directory = this.find(information.parentId(), true);
+        if (directory != null)
+            directory.del(information.id(), information.isDirectory());
+        consumer.accept(AbstractIdBaseProvider.TrashSuccess);
+    }
+
+
 //    @Override
 //    protected void download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation location) {
 //        throw new UnsupportedOperationException("Not tested.");

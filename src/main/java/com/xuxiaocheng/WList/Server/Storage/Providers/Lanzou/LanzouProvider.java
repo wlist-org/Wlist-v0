@@ -266,7 +266,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     @Override
-    protected boolean requireUpdate(@NotNull final FileInformation information) {
+    protected boolean doesRequireUpdate(@NotNull final FileInformation information) {
         return !information.isDirectory() && (information.createTime() == null || information.others() == null);
     }
 
@@ -320,33 +320,23 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     @Override
-    protected boolean isSupportedInfo(final boolean isDirectory) {
-        return false;
+    protected void trash0(final @NotNull FileInformation information, final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) throws IOException, IllegalParametersException {
+        if (information.isDirectory()) {
+            final JSONObject json = this.task(3, f -> f.add("folder_id", String.valueOf(information.id())), 1, false);
+            final String message = json.getString("info");
+            if (!"\u5220\u9664\u6210\u529F".equals(message))
+                LanzouProvider.logger.log(HLogLevel.WARN, new WrongResponseException("Trashing directory.", message, ParametersMap.create()
+                        .add("configuration", this.getConfiguration()).add("information", information).add("json", json)));
+        } else {
+            final JSONObject json = this.task(6, f -> f.add("file_id", String.valueOf(information.id())), 1, false);
+            final String message = json.getString("info");
+            if (!"\u5DF2\u5220\u9664".equals(message))
+                LanzouProvider.logger.log(HLogLevel.WARN, new WrongResponseException("Trashing file.", message, ParametersMap.create()
+                        .add("configuration", this.getConfiguration()).add("information", information).add("json", json)));
+        }
+        consumer.accept(AbstractIdBaseProvider.TrashSuccess); // TODO: failed on trash not empty directory.
     }
 
-//    @Override
-//    protected boolean isSupportedNotEmptyDirectoryTrash() {
-//        return false;
-//    }
-//
-//    @Override
-//    protected void trash0(final @NotNull FileInformation information, final @NotNull Consumer<? super @Nullable Throwable> consumer) throws IOException, IllegalParametersException {
-//        if (information.isDirectory()) {
-//            final JSONObject json = this.task(3, f -> f.add("folder_id", String.valueOf(information.id())), 1, false);
-//            final String message = json.getString("info");
-//            if (!"\u5220\u9664\u6210\u529F".equals(message))
-//                LanzouProvider.logger.log(HLogLevel.WARN, new WrongResponseException("Trashing directory.", message, ParametersMap.create()
-//                        .add("configuration", this.getConfiguration()).add("information", information).add("json", json)));
-//        } else {
-//            final JSONObject json = this.task(6, f -> f.add("file_id", String.valueOf(information.id())), 1, false);
-//            final String message = json.getString("info");
-//            if (!"\u5DF2\u5220\u9664".equals(message))
-//                LanzouProvider.logger.log(HLogLevel.WARN, new WrongResponseException("Trashing file.", message, ParametersMap.create()
-//                        .add("configuration", this.getConfiguration()).add("information", information).add("json", json)));
-//        }
-//        consumer.accept(null);
-//    }
-//
 //    @Override
 //    protected boolean isRequiredLoginDownloading(final @NotNull FileInformation information) {
 //        return information.others() == null;
