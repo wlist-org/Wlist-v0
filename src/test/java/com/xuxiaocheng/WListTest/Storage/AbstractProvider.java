@@ -227,6 +227,11 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
 
 
     @Override
+    protected boolean doesRequireLoginDownloading(final @NotNull FileInformation information) throws Exception {
+        return false;
+    }
+
+    @Override
     protected void download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer) {
         throw new UnsupportedOperationException("Not tested.");
     }
@@ -261,20 +266,25 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
     }
 
 
-//    @Override
-//    protected boolean isSupportedCopyFileDirectly(final @NotNull FileInformation information, final long parentId) {
-//        return true;
-//    }
-//
-//    @Override
-//    protected void copyFileDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String filename, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) {
-//        final FileInformation copied = AbstractProviderTest.this.copy.getAndSet(null);
-//        Assertions.assertNotNull(copied);
-//        Assertions.assertEquals(filename, copied.name());
-//        Assertions.assertEquals(information.size(), copied.size());
-//        consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(Optional.of(copied)))));
-//    }
-//
+    public final @NotNull AtomicBoolean supportCopyDirectly = new AtomicBoolean(true);
+    public final @NotNull HInitializer<Supplier<FileInformation>> copy = new HInitializer<>("CopySupplier");
+
+    @Override
+    protected boolean doesSupportCopyDirectly(final @NotNull FileInformation information, final long parentId) {
+        return this.supportCopyDirectly.get();
+    }
+
+    @Override
+    protected void copyDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) {
+        this.operations.add("Copy: " + information.id() + (information.isDirectory() ? " d " : " f ") + parentId + " " + name);
+        final FileInformation info = this.copy.uninitialize().get();
+        Assertions.assertEquals(parentId, info.parentId());
+        Assertions.assertEquals(name, info.name());
+        Objects.requireNonNull(this.find(parentId, true)).add(new AbstractProviderFile(info));
+        consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(info))));
+    }
+
+
 //    @Override
 //    protected boolean isSupportedMoveDirectly(final @NotNull FileInformation information, final long parentId) {
 //        return true;

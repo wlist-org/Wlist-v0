@@ -335,6 +335,16 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     @Override
+    protected boolean doesSupportInfo(final boolean isDirectory) {
+        return false;
+    }
+
+    @Override
+    protected void info0(final long id, final boolean isDirectory, @NotNull final Consumer<? super UnionPair<Optional<FileInformation>, Throwable>> consumer) {
+        consumer.accept(AbstractIdBaseProvider.InfoNotExist);
+    }
+
+    @Override
     protected void trash0(final @NotNull FileInformation information, final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) throws IOException, IllegalParametersException {
         if (information.isDirectory()) {
             final JSONObject json = this.task(3, f -> f.add("folder_id", String.valueOf(information.id())), 1, false);
@@ -487,16 +497,16 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         }, RunnableE.EmptyRunnable))));
     }
 
-//    @Override
-//    protected boolean isSupportedCopyFileDirectly(final @NotNull FileInformation information, final long parentId) {
-//        return false;
-//    }
-//
-//    @Override
-//    protected void copyFileDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String filename, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) {
-//        consumer.accept(ProviderInterface.CopyNotSupported);
-//    }
-//
+    @Override
+    protected boolean doesSupportCopyDirectly(final @NotNull FileInformation information, final long parentId) {
+        return false;
+    }
+
+    @Override
+    protected void copyDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) {
+        consumer.accept(AbstractIdBaseProvider.CopyNotSupport);
+    }
+
 //    @Override
 //    protected boolean isSupportedMoveDirectly(final @NotNull FileInformation information, final long parentId) {
 //        return !information.isDirectory();

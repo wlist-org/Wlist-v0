@@ -90,7 +90,7 @@ public interface FileSqlInterface extends DatabaseInterface {
 
     /**
      * Is a file/directory in directory. (For recycler detect.)
-     * @return false: not in directory / id not exist. true: in directory / directoryId not exist / self is in self.
+     * @return false: not in directory / id not exist. true: in directory / directoryId not exist / self is self.
      */
     boolean isInDirectoryRecursively(final long id, final boolean isDirectory, final long directoryId, final @Nullable String _connectionId) throws SQLException;
 

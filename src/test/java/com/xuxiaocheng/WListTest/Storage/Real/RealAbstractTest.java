@@ -46,6 +46,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.ArrayList;
@@ -59,7 +60,6 @@ import java.util.concurrent.CountDownLatch;
 /**
  * @see com.xuxiaocheng.WListTest.Storage.AbstractProviderTest
  */
-@SuppressWarnings("OptionalGetWithoutIsPresent")
 @Execution(ExecutionMode.SAME_THREAD)
 public abstract class RealAbstractTest<C extends StorageConfiguration> extends ProvidersWrapper {
     @SuppressWarnings("unchecked")
@@ -211,7 +211,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
             Assertions.assertEquals("test", ByteBufIOUtil.readUTF(smallBroadcast.getSecond()));
             final VisibleFileInformation smallInformation = VisibleFileInformation.parse(smallBroadcast.getSecond());
             Assertions.assertFalse(ByteBufIOUtil.readBoolean(smallBroadcast.getSecond()));
-            HLog.DefaultLogger.log(HLogLevel.LESS, info.getTestMethod().get().getName(), ": small: ", smallInformation);
+            HLog.DefaultLogger.log(HLogLevel.LESS, info.getTestMethod().map(Method::getName).orElse("unknown"), ": small: ", smallInformation);
             total += smallInformation.size();
             try {
                 final ByteBuf big = ByteBufAllocator.DEFAULT.buffer().writeBytes("WList test upload: big file.\nrandom: ".getBytes(StandardCharsets.UTF_8))
@@ -297,7 +297,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
         Assertions.assertEquals("test", ByteBufIOUtil.readUTF(bigBroadcast.getSecond()));
         final VisibleFileInformation information = VisibleFileInformation.parse(bigBroadcast.getSecond());
         Assertions.assertFalse(ByteBufIOUtil.readBoolean(bigBroadcast.getSecond()));
-        HLog.DefaultLogger.log(HLogLevel.LESS, info.getTestMethod().get().getName(), ": file: ", information);
+        HLog.DefaultLogger.log(HLogLevel.LESS, info.getTestMethod().map(Method::getName).orElse("unknown"), ": file: ", information);
         try {
             new AbstractDownloadTest().testDownload(client, information, md5);
         } finally {

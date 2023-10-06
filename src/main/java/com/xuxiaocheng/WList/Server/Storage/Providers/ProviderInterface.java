@@ -21,6 +21,12 @@ import java.util.LinkedHashMap;
 import java.util.Optional;
 import java.util.function.Consumer;
 
+/**
+ * @see AbstractIdBaseProvider
+ * @see com.xuxiaocheng.WList.Server.Operations.Helpers.BroadcastManager#onFileUpdate(FileLocation, boolean)
+ * @see com.xuxiaocheng.WList.Server.Operations.Helpers.BroadcastManager#onFileTrash(FileLocation, boolean)
+ * @see com.xuxiaocheng.WList.Server.Operations.Helpers.BroadcastManager#onFileUpload(String, FileInformation)
+ */
 public interface ProviderInterface<C extends StorageConfiguration> {
     /**
      * Get the type of the provider.
@@ -53,6 +59,7 @@ public interface ProviderInterface<C extends StorageConfiguration> {
     /**
      * Get the list of files in directory.
      * @param consumer empty: directory is not available / does not exist in web server. present: list of files.
+     * @see #ListNotExisted
      */
     void list(final long directoryId, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @NotNull Consumer<? super @NotNull UnionPair<Optional<FilesListInformation>, Throwable>> consumer) throws Exception;
 
@@ -60,6 +67,7 @@ public interface ProviderInterface<C extends StorageConfiguration> {
     /**
      * Get the file/directory information of a specific id.
      * @param consumer empty: file/directory is not available / does not exist in web server. present: information.
+     * @see #InfoNotExisted
      */
     void info(final long id, final boolean isDirectory, final @NotNull Consumer<? super @NotNull UnionPair<Optional<FileInformation>, Throwable>> consumer) throws Exception;
 
@@ -68,6 +76,8 @@ public interface ProviderInterface<C extends StorageConfiguration> {
     /**
      * Force rebuild (or build) files index to synchronize with web server (not recursively).
      * @param consumer false: directory is not available / does not exist in web server. true: success
+     * @see #RefreshNotExisted
+     * @see #RefreshSuccess
      */
     void refreshDirectory(final long directoryId, final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) throws Exception;
 
@@ -76,7 +86,10 @@ public interface ProviderInterface<C extends StorageConfiguration> {
     @NotNull UnionPair<Optional<Boolean>, Throwable> TrashSuccess = UnionPair.ok(Optional.of(Boolean.TRUE));
     /**
      * Delete file/directory.
-     * @param consumer empty: trash directly is not supported. false: file/directory is not available. true: deleted.
+     * @param consumer empty: not supported. false: file/directory is not available. true: deleted.
+     * @see #TrashTooComplex
+     * @see #TrashNotExisted
+     * @see #TrashSuccess
      */
     void trash(final long id, final boolean isDirectory, final @NotNull Consumer<? super @NotNull UnionPair<Optional<Boolean>, Throwable>> consumer) throws Exception;
 
@@ -95,14 +108,14 @@ public interface ProviderInterface<C extends StorageConfiguration> {
      */
     void uploadFile(final long parentId, final @NotNull String filename, final @LongRange(minimum = 0) long size, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) throws Exception;
 
-    @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable> CopyNotSupported = UnionPair.ok(Optional.empty());
-    @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable> CopySelf = UnionPair.ok(Optional.of(UnionPair.ok(Optional.empty())));
+    @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable> CopyTooComplex = UnionPair.ok(Optional.empty());
+    @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable> CopyToInside = UnionPair.ok(Optional.of(UnionPair.fail(Optional.empty())));
     /**
-     * Copy a file directly. (Do NOT download and then upload. That should be done in client side.)
-     * @param location Source file location. Only by used to create {@code FailureReason}.
-     * @param parentLocation Target parent location. Only by used to create {@code FailureReason}.
+     * Copy a file/directory directly.
+     * @see #CopyTooComplex
+     * @see #CopyToInside
      */
-    void copyFileDirectly(final long fileId, final long parentId, final @NotNull String filename, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) throws Exception;
+    void copyDirectly(final long id, final boolean isDirectory, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> consumer) throws Exception;
 
     @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable> MoveNotSupported = UnionPair.ok(Optional.empty());
     @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable> MoveSelf = UnionPair.ok(Optional.of(UnionPair.ok(Optional.empty())));
@@ -152,20 +165,5 @@ public interface ProviderInterface<C extends StorageConfiguration> {
 //            throw exception;
 //        }
 //        return information;
-//    }
-//
-//    @SuppressWarnings("OverlyBroadThrowsClause")
-//    private void moveFilesInDirectory(final @NotNull FileLocation sourceLocation, final Options.@NotNull DuplicatePolicy policy, final @NotNull UnionPair<FileInformation, FailureReason> directory) throws Exception {
-//        Triad.ImmutableTriad<Long, Long, List<FileInformation>> list;
-//        do {
-//            list = this.list(sourceLocation, Options.FilterPolicy.Both, 10, 0, ProviderUtil.DefaultOrderPolicy, ProviderUtil.DefaultOrderDirection);
-//            if (list == null)
-//                break;
-//            final CountDownLatch latch = new CountDownLatch(list.getC().size());
-//            for (final FileInformation f: list.getC())
-//                CompletableFuture.runAsync(HExceptionWrapper.wrapRunnable(() -> this.move(f.location(), directory.getT().location(), policy),
-//                        latch::countDown), WListServer.ServerExecutors).exceptionally(MiscellaneousUtil.exceptionHandler());
-//            latch.await();
-//        } while (list.getA().longValue() > 0);
 //    }
 }
