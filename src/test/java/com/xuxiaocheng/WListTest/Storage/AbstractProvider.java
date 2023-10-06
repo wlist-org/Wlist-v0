@@ -10,6 +10,7 @@ import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
+import com.xuxiaocheng.WList.Server.Storage.Records.UploadRequirements;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -249,16 +250,17 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
     }
 
 
-//    @Override
-//    protected @NotNull CheckRule<@NotNull String> fileNameChecker() {
-//        return CheckRule.allAllow();
-//    }
-//
-//    @Override
-//    protected void uploadFile0(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) {
-//        throw new UnsupportedOperationException("Not tested.");
-//    }
-//
+    @Override
+    protected @NotNull CheckRule<@NotNull String> fileNameChecker() {
+        return CheckRule.allAllow();
+    }
+
+    @Override
+    protected void uploadFile0(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) {
+        throw new UnsupportedOperationException("Not tested.");
+    }
+
+
 //    @Override
 //    protected boolean isSupportedCopyFileDirectly(final @NotNull FileInformation information, final long parentId) {
 //        return true;

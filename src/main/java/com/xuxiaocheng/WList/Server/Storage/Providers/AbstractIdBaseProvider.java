@@ -849,7 +849,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                 this.createDirectory0(parentId, name, Options.DuplicatePolicy.ERROR, p -> {
                     if (!barrier.compareAndSet(true, false)) {
                         AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'createDirectory#createDirectory0'." + ParametersMap.create().add("configuration", this.getConfiguration())
-                                .add("p", p).add("parentId", parentId).add("directoryName", directoryName).add("policy", policy)));
+                                .add("p", p).add("parentId", parentId).add("directoryName", directoryName).add("name", name).add("policy", policy)));
                         return;
                     }
                     UnionPair<UnionPair<FileInformation, FailureReason>, Throwable> result1 = null;
@@ -885,103 +885,88 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
     }
 
 
-//    @Contract(pure = true)
-//    protected abstract @NotNull CheckRule<@NotNull String> fileNameChecker();
-//
-//    /**
-//     * Upload a file. {size >= 0}
-//     * @param parentLocation Only by used to create {@code FailureReason}.
-//     * @see UploadRequirements#splitUploadBuffer(BiConsumerE, long, int)
-//     */
-//    @SuppressWarnings("SameParameterValue")
-//    protected abstract void uploadFile0(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws Exception;
+    @Contract(pure = true)
+    protected abstract @NotNull CheckRule<@NotNull String> fileNameChecker();
+
+    /**
+     * Upload a file. {@code size >= 0}
+     * @see UploadRequirements#splitUploadBuffer(BiConsumerE, long, int)
+     */
+    @SuppressWarnings("SameParameterValue")
+    protected abstract void uploadFile0(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) throws Exception;
 
     @Override
     public void uploadFile(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) throws Exception {
-//        if (!this.fileNameChecker().test(filename)) {
-//            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(parentLocation, filename, this.fileNameChecker().description()))));
-//            return;
-//        }
-//        if (size > this.getConfiguration().getMaxSizePerFile()) {
-//            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byExceedMaxSize(parentLocation, size, this.getConfiguration().getMaxSizePerFile()))));
-//        }
-//        final AtomicBoolean barrier = new AtomicBoolean(true);
-//        this.list(parentId, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0, p -> {
-//            if (!barrier.compareAndSet(true, false)) {
-//                AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'uploadFile#list'." + ParametersMap.create().add("configuration", this.getConfiguration())
-//                        .add("p", p).add("parentId", parentId).add("filename", filename).add("size", size).add("policy", policy)));
-//                return;
-//            }
-//            try {
-//                if (p.isFailure()) {
-//                    consumer.accept(UnionPair.fail(p.getE()));
-//                    return;
-//                }
-//                if (p.getT().isFailure()) {
-//                    consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(parentLocation, true))));
-//                    return;
-//                }
-//                final Pair.ImmutablePair<String, BackgroundTaskManager.BackgroundTaskIdentifier> name = this.getDuplicatedName(parentId, filename, policy);
-//                if (name == null) {
-//                    consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byDuplicateError(parentLocation, filename))));
-//                    return;
-//                }
-//                boolean flag = true;
-//                try {
-//                    if (!this.fileNameChecker().test(name.getFirst())) {
-//                        consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(parentLocation, name.getFirst(), this.fileNameChecker().description()))));
-//                        return;
-//                    }
-//                    this.loginIfNot();
-//                    flag = false;
-//                    final AtomicBoolean barrier1 = new AtomicBoolean(true);
-//                    this.uploadFile0(parentId, name.getFirst(), size, Options.DuplicatePolicy.ERROR, u -> {
-//                        if (!barrier1.compareAndSet(true, false)) {
-//                            AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'uploadFile0'." + ParametersMap.create().add("configuration", this.getConfiguration())
-//                                    .add("u", u).add("parentId", parentId).add("filename", filename).add("name", name.getFirst()).add("size", size).add("policy", policy)));
-//                            return;
-//                        }
-//                        if (u.isSuccess() && u.getT().isSuccess()) {
-//                            final UploadRequirements requirements = u.getT().getT();
-//                            consumer.accept(UnionPair.ok(UnionPair.ok(new UploadRequirements(requirements.checksums(), c -> {
-//                                final UploadRequirements.UploadMethods methods = requirements.transfer().apply(c);
-//                                return new UploadRequirements.UploadMethods(methods.parallelMethods(), o -> {
-//                                    final AtomicBoolean barrier2 = new AtomicBoolean(true);
-//                                    methods.supplier().accept((Consumer<? super UnionPair<Optional<FileInformation>, Throwable>>) t -> {
-//                                        if (!barrier2.compareAndSet(true, false)) {
-//                                            AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'uploadFile0#supplier'." + ParametersMap.create().add("configuration", this.getConfiguration())
-//                                                    .add("t", t).add("parentId", parentId).add("filename", filename).add("name", name.getFirst()).add("size", size).add("policy", policy)));
-//                                            return;
-//                                        }
-//                                        try {
-//                                            if (t.isSuccess() && t.getT().isPresent()) {
-//                                                final FileInformation information = t.getT().get();
-//                                                assert !information.isDirectory() && information.size() >= size && information.parentId() == parentId;
-//                                                this.manager.getInstance().insertFileOrDirectory(information, null);
-//                                            }
-//                                            o.accept(t);
-//                                        } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
-//                                            o.accept(UnionPair.fail(exception));
-//                                        }
-//                                    });
-//                                }, () -> {
-//                                    BackgroundTaskManager.remove(name.getSecond());
-//                                    methods.finisher().run();
-//                                });
-//                            }, () -> BackgroundTaskManager.remove(name.getSecond())))));
-//                            return;
-//                        }
-//                        BackgroundTaskManager.remove(name.getSecond());
-//                        consumer.accept(u);
-//                    }, parentLocation);
-//                } finally {
-//                    if (flag)
-//                        BackgroundTaskManager.remove(name.getSecond());
-//                }
-//            } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
-//                consumer.accept(UnionPair.fail(exception));
-//            }
-//        });
+        if (!this.fileNameChecker().test(filename)) {
+            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(this.getLocation(parentId), filename, this.fileNameChecker().description()))));
+            return;
+        }
+        if (size > this.getConfiguration().getMaxSizePerFile() || size < 0) {
+            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byExceedMaxSize(this.getLocation(parentId), size, this.getConfiguration().getMaxSizePerFile()))));
+            return;
+        }
+        this.getDuplicatedName(parentId, filename, policy, p -> p.add("size", size).add("caller", "uploadFile"), consumer, (name, identifier) -> {
+            UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable> result = null;
+            boolean flag = true;
+            try {
+                if (!this.fileNameChecker().test(name)) {
+                    result = UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(this.getLocation(parentId), name, this.fileNameChecker().description())));
+                    return;
+                }
+                this.loginIfNot();
+                final AtomicBoolean barrier = new AtomicBoolean(true);
+                this.uploadFile0(parentId, name, size, Options.DuplicatePolicy.ERROR, p -> {
+                    if (!barrier.compareAndSet(true, false)) {
+                        AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'uploadFile#uploadFile0'." + ParametersMap.create().add("configuration", this.getConfiguration())
+                                .add("p", p).add("parentId", parentId).add("filename", filename).add("name", name).add("size", size).add("policy", policy)));
+                        return;
+                    }
+                    if (p.isSuccess() && p.getT().isSuccess()) {
+                        final UploadRequirements requirements = p.getT().getT();
+                        WListServer.ServerExecutors.submit(() -> consumer.accept(UnionPair.ok(UnionPair.ok(new UploadRequirements(requirements.checksums(), c -> {
+                            final UploadRequirements.UploadMethods methods = requirements.transfer().apply(c);
+                            return new UploadRequirements.UploadMethods(methods.parallelMethods(), o -> {
+                                final AtomicBoolean barrier1 = new AtomicBoolean(true);
+                                methods.supplier().accept((Consumer<? super UnionPair<Optional<FileInformation>, Throwable>>) t -> {
+                                    if (!barrier1.compareAndSet(true, false)) {
+                                        AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'uploadFile0#supplier'." + ParametersMap.create().add("configuration", this.getConfiguration())
+                                                .add("t", t).add("parentId", parentId).add("filename", filename).add("name", name).add("size", size).add("policy", policy)));
+                                        return;
+                                    }
+                                    try {
+                                        if (t.isSuccess() && t.getT().isPresent()) {
+                                            final FileInformation information = t.getT().get();
+                                            assert !information.isDirectory() && information.size() == size && information.parentId() == parentId;
+                                            this.manager.getInstance().insertFileOrDirectory(information, null);
+                                            BroadcastManager.onFileUpload(this.getConfiguration().getName(), information);
+                                        }
+                                        o.accept(t);
+                                    } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                                        o.accept(UnionPair.fail(exception));
+                                    }
+                                });
+                            }, () -> {
+                                BackgroundTaskManager.remove(identifier);
+                                methods.finisher().run();
+                            });
+                        }, () -> BackgroundTaskManager.remove(identifier)))))).addListener(MiscellaneousUtil.exceptionListener());
+                        return;
+                    }
+                    BackgroundTaskManager.remove(identifier);
+                    WListServer.ServerExecutors.submit(() -> consumer.accept(p)).addListener(MiscellaneousUtil.exceptionListener());
+                });
+                flag = false;
+            } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                result = UnionPair.fail(exception);
+            } finally {
+                if (flag) {
+                    BackgroundTaskManager.remove(identifier);
+                    final UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable> res = result;
+                    assert res != null;
+                    WListServer.ServerExecutors.submit(() -> consumer.accept(res)).addListener(MiscellaneousUtil.exceptionListener());
+                }
+            }
+        });
     }
 
 //    protected abstract boolean isSupportedCopyFileDirectly(final @NotNull FileInformation information, final long parentId) throws Exception;
