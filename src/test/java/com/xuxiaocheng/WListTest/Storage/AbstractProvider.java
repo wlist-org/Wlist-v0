@@ -1,7 +1,9 @@
 package com.xuxiaocheng.WListTest.Storage;
 
+import com.xuxiaocheng.HeadLibs.CheckRules.CheckRule;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
+import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseProvider;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
@@ -229,23 +231,24 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
     }
 
 
-//    @Override
-//    protected @NotNull CheckRule<@NotNull String> directoryNameChecker() {
-//        return CheckRule.allAllow();
-//    }
-//
-//    @Override
-//    protected void createDirectory0(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) {
-//        final FileInformation information = AbstractProviderTest.this.create.getAndSet(null);
-//        if (information == null) {
-//            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(parentLocation, directoryName, "For test."))));
-//            return;
-//        }
-//        Assertions.assertEquals(parentId, information.parentId());
-//        Assertions.assertEquals(directoryName, information.name());
-//        consumer.accept(UnionPair.ok(UnionPair.ok(information)));
-//    }
-//
+    public final @NotNull HInitializer<Supplier<FileInformation>> create = new HInitializer<>("CreateSupplier");
+
+    @Override
+    protected @NotNull CheckRule<@NotNull String> directoryNameChecker() {
+        return CheckRule.allAllow();
+    }
+
+    @Override
+    protected void createDirectory0(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) {
+        this.operations.add("Create: " + parentId + " " + directoryName);
+        final FileInformation information = this.create.uninitialize().get();
+        Assertions.assertEquals(parentId, information.parentId());
+        Assertions.assertEquals(directoryName, information.name());
+        Objects.requireNonNull(this.find(parentId, true)).add(new AbstractProviderFile(information));
+        consumer.accept(UnionPair.ok(UnionPair.ok(information)));
+    }
+
+
 //    @Override
 //    protected @NotNull CheckRule<@NotNull String> fileNameChecker() {
 //        return CheckRule.allAllow();

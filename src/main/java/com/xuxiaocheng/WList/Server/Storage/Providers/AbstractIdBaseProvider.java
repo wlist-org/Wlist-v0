@@ -1,8 +1,10 @@
 package com.xuxiaocheng.WList.Server.Storage.Providers;
 
+import com.xuxiaocheng.HeadLibs.CheckRules.CheckRule;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.Functions.BiConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -44,6 +46,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 
 @SuppressWarnings("OverlyBroadThrowsClause")
 public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> implements ProviderInterface<C> {
@@ -671,7 +674,8 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
     protected abstract void download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer) throws Exception;
 
     @Override
-    public void downloadFile(final long fileId, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer) throws Exception {
+    public void downloadFile(final long fileId, final long from, final long to,
+                             final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer) throws Exception {
         final FileInformation information = this.manager.getInstance().selectInfo(fileId, false, null);
         if (information == null) {
             consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(this.getLocation(fileId), false))));
@@ -715,125 +719,171 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         }, true));
     }
 
-//    private static final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> DefaultRetryBracketPair = Pair.ImmutablePair.makeImmutablePair(" (", ")");
-//    @Contract(pure = true)
-//    protected Pair.ImmutablePair<@NotNull String, @NotNull String> retryBracketPair() {
-//        return AbstractIdBaseProvider.DefaultRetryBracketPair;
-//    }
-//
-//    private Pair.@Nullable ImmutablePair<@NotNull String, BackgroundTaskManager.@NotNull BackgroundTaskIdentifier> getDuplicatedName(final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
-//        final FileManager manager = this.manager.getInstance();
-//        final BackgroundTaskManager.BackgroundTaskIdentifier identifier = new BackgroundTaskManager.BackgroundTaskIdentifier(
-//                this.getConfiguration().getName(), BackgroundTaskManager.Uploading, String.format("%d: %s", parentId, name));
-//        FileInformation duplicate = manager.selectInfoInDirectoryByName(parentId, name, null);
-//        if (duplicate != null || BackgroundTaskManager.createIfNot(identifier))
-//            switch (policy) {
-//                case ERROR -> {
-//                    return null;
-//                }
-//                case OVER -> {
-//                    if (duplicate == null)
-//                        return null;
-//                    while (duplicate != null) {
-//                        final CountDownLatch latch = new CountDownLatch(1);
-//                        this.trash(duplicate.id(), duplicate.isDirectory(), u -> latch.countDown());
-//                        latch.await();
-//                        duplicate = manager.selectInfoInDirectoryByName(parentId, name, null);
-//                    }
-//                }
-//                case KEEP -> {
-//                    final int index = name.lastIndexOf('.');
-//                    final Pair.ImmutablePair<String, String> bracket = this.retryBracketPair();
-//                    final String left = (index < 0 ? name : name.substring(0, index)) + bracket.getFirst();
-//                    final String right = bracket.getSecond() + (index < 0 ? "" : name.substring(index));
-//                    String n;
-//                    BackgroundTaskManager.BackgroundTaskIdentifier i;
-//                    int retry = 0;
-//                    do {
-//                        n = left + (++retry) + right;
-//                        i = new BackgroundTaskManager.BackgroundTaskIdentifier(this.getConfiguration().getName(),
-//                                BackgroundTaskManager.Uploading, String.format("%d: %s", parentId, n));
-//                    } while (manager.selectInfoInDirectoryByName(parentId, n, null) != null || BackgroundTaskManager.createIfNot(i));
-//                    return Pair.ImmutablePair.makeImmutablePair(n, i);
-//                }
-//            }
-//        return Pair.ImmutablePair.makeImmutablePair(name, identifier);
-//    }
-//
-//    @Contract(pure = true)
-//    protected abstract @NotNull CheckRule<@NotNull String> directoryNameChecker();
-//
-//    /**
-//     * Create an empty directory. {size == 0}
-//     * @param parentLocation Only by used to create {@code FailureReason}.
-//     */
-//    @SuppressWarnings("SameParameterValue")
-//    protected abstract void createDirectory0(final long parentId, final @NotNull String directoryName, final @NotNull Options.DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws Exception;
+
+    private static final Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> DefaultRetryBracketPair = Pair.ImmutablePair.makeImmutablePair(" (", ")");
+    @Contract(pure = true)
+    protected Pair.ImmutablePair<@NotNull String, @NotNull String> retryBracketPair() {
+        return AbstractIdBaseProvider.DefaultRetryBracketPair;
+    }
+
+    private <R> void getDuplicatedName(final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @NotNull UnaryOperator<? super @NotNull ParametersMap> parameters, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<R, FailureReason>, Throwable>> consumer, final @NotNull BiConsumerE<? super @NotNull String, ? super BackgroundTaskManager.@NotNull BackgroundTaskIdentifier> runnable) throws Exception {
+        final AtomicBoolean barrier = new AtomicBoolean(true);
+        this.list(parentId, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0, p -> {
+            if (!barrier.compareAndSet(true, false)) {
+                AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'prepareNewFiles#list'." + parameters.apply(ParametersMap.create()
+                        .add("configuration", this.getConfiguration()).add("p", p).add("parentId", parentId).add("name", name).add("policy", policy))));
+                return;
+            }
+            try {
+                if (p.isFailure()) {
+                    consumer.accept(UnionPair.fail(p.getE()));
+                    return;
+                }
+                if (p.getT().isEmpty()) {
+                    consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(this.getLocation(parentId), true))));
+                    return;
+                }
+                final FileManager manager = this.manager.getInstance();
+                final BackgroundTaskManager.BackgroundTaskIdentifier identifier = new BackgroundTaskManager.BackgroundTaskIdentifier(
+                        this.getConfiguration().getName(), BackgroundTaskManager.Name, String.format("%d: %s", parentId, name));
+                final FileInformation duplicate = manager.selectInfoInDirectoryByName(parentId, name, null);
+                if (duplicate == null && BackgroundTaskManager.createIfNot(identifier)) {
+                    runnable.accept(name, identifier);
+                    return;
+                }
+                if (policy == Options.DuplicatePolicy.ERROR) {
+                    consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byDuplicateError(this.getLocation(parentId), name))));
+                    return;
+                }
+                if (policy == Options.DuplicatePolicy.KEEP) {
+                    final int index = name.lastIndexOf('.');
+                    final Pair.ImmutablePair<String, String> bracket = this.retryBracketPair();
+                    final String left = (index < 0 ? name : name.substring(0, index)) + bracket.getFirst();
+                    final String right = bracket.getSecond() + (index < 0 ? "" : name.substring(index));
+                    String n;
+                    BackgroundTaskManager.BackgroundTaskIdentifier i;
+                    int retry = 0;
+                    do {
+                        n = left + (++retry) + right;
+                        i = new BackgroundTaskManager.BackgroundTaskIdentifier(this.getConfiguration().getName(),
+                                BackgroundTaskManager.Name, String.format("%d: %s", parentId, n));
+                    } while (manager.selectInfoInDirectoryByName(parentId, n, null) != null || !BackgroundTaskManager.createIfNot(i));
+                    runnable.accept(n, i);
+                    return;
+                }
+                assert policy == Options.DuplicatePolicy.OVER;
+                if (duplicate == null) {
+                    consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byDuplicateError(this.getLocation(parentId), name))));
+                    return;
+                }
+                final Consumer<FileInformation> trashing = new Consumer<>() {
+                    @Override
+                    public void accept(final @NotNull FileInformation duplicate) {
+                        try {
+                            final AtomicBoolean barrier = new AtomicBoolean(true);
+                            AbstractIdBaseProvider.this.trash(duplicate.id(), duplicate.isDirectory(), p -> {
+                                if (!barrier.compareAndSet(true, false)) {
+                                    AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'prepareNewFiles#trash'." + parameters.apply(ParametersMap.create()
+                                            .add("configuration", AbstractIdBaseProvider.this.getConfiguration()).add("p", p).add("parentId", parentId).add("name", name).add("policy", policy).add("duplicate", duplicate))));
+                                    return;
+                                }
+                                try {
+                                    if (p.isFailure()) {
+                                        consumer.accept(UnionPair.fail(p.getE()));
+                                        return;
+                                    }
+                                    if (p.getT().isPresent()) {
+                                        final FileInformation d = manager.selectInfoInDirectoryByName(parentId, name, null);
+                                        if (d != null) {
+                                            this.accept(d);
+                                            return;
+                                        }
+                                        if (BackgroundTaskManager.createIfNot(identifier)) {
+                                            runnable.accept(name, identifier);
+                                            return;
+                                        }
+                                    }
+                                    consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byDuplicateError(AbstractIdBaseProvider.this.getLocation(parentId), name))));
+                                } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                                    consumer.accept(UnionPair.fail(exception));
+                                }
+                            });
+                        } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                            consumer.accept(UnionPair.fail(exception));
+                        }
+                    }
+                };
+                trashing.accept(duplicate);
+            } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                consumer.accept(UnionPair.fail(exception));
+            }
+        });
+    }
+
+
+    @Contract(pure = true)
+    protected abstract @NotNull CheckRule<@NotNull String> directoryNameChecker();
+
+    /**
+     * Create an empty directory. {@code size == 0}
+     */
+    @SuppressWarnings("SameParameterValue")
+    protected abstract void createDirectory0(final long parentId, final @NotNull String directoryName, final @NotNull Options.DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) throws Exception;
 
     @Override
-    public void createDirectory(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws Exception {
-//        if (!this.directoryNameChecker().test(directoryName)) {
-//            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(parentLocation, directoryName, this.directoryNameChecker().description()))));
-//            return;
-//        }
-//        final AtomicBoolean barrier = new AtomicBoolean(true);
-//        this.list(parentId, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0, p -> {
-//            if (!barrier.compareAndSet(true, false)) {
-//                AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'createDirectory#list'." + ParametersMap.create().add("configuration", this.getConfiguration())
-//                        .add("p", p).add("parentId", parentId).add("directoryName", directoryName).add("policy", policy)));
-//                return;
-//            }
-//            try {
-//                if (p.isFailure()) {
-//                    consumer.accept(UnionPair.fail(p.getE()));
-//                    return;
-//                }
-//                if (p.getT().isFailure()) {
-//                    consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(parentLocation, true))));
-//                    return;
-//                }
-//                final Pair.ImmutablePair<String, BackgroundTaskManager.BackgroundTaskIdentifier> name = this.getDuplicatedName(parentId, directoryName, policy);
-//                if (name == null) {
-//                    consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byDuplicateError(parentLocation, directoryName))));
-//                    return;
-//                }
-//                boolean flag = true;
-//                try {
-//                    if (!this.directoryNameChecker().test(name.getFirst())) {
-//                        consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(parentLocation, name.getFirst(), this.directoryNameChecker().description()))));
-//                        return;
-//                    }
-//                    this.loginIfNot();
-//                    flag = false;
-//                    final AtomicBoolean barrier1 = new AtomicBoolean(true);
-//                    this.createDirectory0(parentId, name.getFirst(), Options.DuplicatePolicy.ERROR, u -> {
-//                        if (!barrier1.compareAndSet(true, false)) {
-//                            AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'createDirectory0'." + ParametersMap.create().add("configuration", this.getConfiguration())
-//                                    .add("u", u).add("parentId", parentId).add("directoryName", directoryName).add("policy", policy)));
-//                            return;
-//                        }
-//                        try {
-//                            if (u.isSuccess() && u.getT().isSuccess()) {
-//                                final FileInformation information = u.getT().getT();
-//                                assert information.isDirectory() && information.size() == 0 && information.parentId() == parentId;
-//                                this.manager.getInstance().insertFileOrDirectory(information, null);
-//                            }
-//                            consumer.accept(u);
-//                        } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
-//                            consumer.accept(UnionPair.fail(exception));
-//                        } finally {
-//                            BackgroundTaskManager.remove(name.getSecond());
-//                        }
-//                    }, parentLocation);
-//                } finally {
-//                    if (flag)
-//                        BackgroundTaskManager.remove(name.getSecond());
-//                }
-//            } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
-//                consumer.accept(UnionPair.fail(exception));
-//            }
-//        });
+    public void createDirectory(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) throws Exception {
+        if (!this.directoryNameChecker().test(directoryName)) {
+            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(this.getLocation(parentId), directoryName, this.directoryNameChecker().description()))));
+            return;
+        }
+        this.getDuplicatedName(parentId, directoryName, policy, p -> p.add("caller", "createDirectory"), consumer, (name, identifier) -> {
+            UnionPair<UnionPair<FileInformation, FailureReason>, Throwable> result = null;
+            boolean flag = true;
+            try {
+                if (!this.directoryNameChecker().test(name)) {
+                    result = UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(this.getLocation(parentId), name, this.directoryNameChecker().description())));
+                    return;
+                }
+                this.loginIfNot();
+                final AtomicBoolean barrier = new AtomicBoolean(true);
+                this.createDirectory0(parentId, name, Options.DuplicatePolicy.ERROR, p -> {
+                    if (!barrier.compareAndSet(true, false)) {
+                        AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'createDirectory#createDirectory0'." + ParametersMap.create().add("configuration", this.getConfiguration())
+                                .add("p", p).add("parentId", parentId).add("directoryName", directoryName).add("policy", policy)));
+                        return;
+                    }
+                    UnionPair<UnionPair<FileInformation, FailureReason>, Throwable> result1 = null;
+                    try {
+                        if (p.isSuccess() && p.getT().isSuccess()) {
+                            final FileInformation information = p.getT().getT();
+                            assert information.isDirectory() && information.size() == 0 && information.parentId() == parentId;
+                            this.manager.getInstance().insertFileOrDirectory(information, null);
+                            BroadcastManager.onFileUpload(this.getConfiguration().getName(), information);
+                        }
+                        result1 = p;
+                    } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                        result1 = UnionPair.fail(exception);
+                    } finally {
+                        BackgroundTaskManager.remove(identifier);
+                        final UnionPair<UnionPair<FileInformation, FailureReason>, Throwable> res = result1;
+                        assert res != null;
+                        WListServer.ServerExecutors.submit(() -> consumer.accept(res)).addListener(MiscellaneousUtil.exceptionListener());
+                    }
+                });
+                flag = false;
+            } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                result = UnionPair.fail(exception);
+            } finally {
+                if (flag) {
+                    BackgroundTaskManager.remove(identifier);
+                    final UnionPair<UnionPair<FileInformation, FailureReason>, Throwable> res = result;
+                    assert res != null;
+                    WListServer.ServerExecutors.submit(() -> consumer.accept(res)).addListener(MiscellaneousUtil.exceptionListener());
+                }
+            }
+        });
     }
+
 
 //    @Contract(pure = true)
 //    protected abstract @NotNull CheckRule<@NotNull String> fileNameChecker();
@@ -847,7 +897,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
 //    protected abstract void uploadFile0(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws Exception;
 
     @Override
-    public void uploadFile(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws Exception {
+    public void uploadFile(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) throws Exception {
 //        if (!this.fileNameChecker().test(filename)) {
 //            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(parentLocation, filename, this.fileNameChecker().description()))));
 //            return;

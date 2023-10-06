@@ -3,6 +3,11 @@ package com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
+import com.xuxiaocheng.HeadLibs.CheckRules.CheckRule;
+import com.xuxiaocheng.HeadLibs.CheckRules.CheckRuleSet;
+import com.xuxiaocheng.HeadLibs.CheckRules.StringCheckRules.ContainsCheckRule;
+import com.xuxiaocheng.HeadLibs.CheckRules.StringCheckRules.LengthCheckRule;
+import com.xuxiaocheng.HeadLibs.CheckRules.StringCheckRules.SuffixCheckRule;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
@@ -11,6 +16,8 @@ import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMultiRunHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
+import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Commons.Utils.I18NUtil;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
@@ -56,6 +63,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @SuppressWarnings({"SpellCheckingInspection", "CallToSuspiciousStringMethod"})
 public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> {
@@ -385,51 +394,51 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                 downloadUrl.getFirst(), downloadUrl.getSecond(), information.size(), LanzouProvider.Headers.newBuilder(), from, to, null))));
     }
 
-//    protected static final @NotNull Pair.ImmutablePair<@NotNull String, @NotNull String> RetryBracketPair = Pair.ImmutablePair.makeImmutablePair("\uFF08", "\uFF09");
-//    @Override
-//    protected Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> retryBracketPair() {
-//        return LanzouProvider.RetryBracketPair;
-//    }
-//
-//    protected static final @NotNull CheckRule<@NotNull String> DirectoryNameChecker = new CheckRuleSet<>(new LengthCheckRule(1, 100),
-//            new ContainsCheckRule(Set.of("/", "\\", "*", "|", "#", "$", "%", "^", "(", ")", "?", ":", "'", "\"", "`", "=", "+"), false)
-//    );
-//
-//    @Override
-//    protected @NotNull CheckRule<@NotNull String> directoryNameChecker() {
-//        return LanzouProvider.DirectoryNameChecker;
-//    }
-//
-//    @Override
-//    protected void createDirectory0(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer, final @NotNull FileLocation parentLocation) throws IOException, IllegalParametersException {
-//        final JSONObject json;
-//        final ZonedDateTime now;
-//        try {
-//            json = this.task(2, f -> f.add("parent_id", String.valueOf(parentId)).add("folder_name", directoryName), 1, false);
-//            now = MiscellaneousUtil.now();
-//        } catch (final IllegalResponseCodeException exception) {
-//            if (exception.getCode() == 0) {
-//                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(parentLocation, directoryName, exception.getMeaning()))));
-//                return;
-//            }
-//            throw exception;
-//        }
-//        final Long id = json.getLong("text");
-//        final String message = json.getString("info");
-//        if (id == null)
-//            throw new WrongResponseException("Creating directories.", message, ParametersMap.create().add("configuration", this.getConfiguration())
-//                    .add("directoryName", directoryName).add("parentId", parentId).add("json", json));
-//        consumer.accept(UnionPair.ok(UnionPair.ok(new FileInformation(id.longValue(), parentId, directoryName, true, 0, now, now, null))));
-//    }
-//
-//    protected static final @NotNull CheckRule<@NotNull String> FileNameChecker = new CheckRuleSet<>(new SuffixCheckRule(Stream.of(
-//            "doc","docx","zip","rar","apk","ipa","txt","exe","7z","e","z","ct","ke","cetrainer","db","tar","pdf","w3x","epub","mobi","azw","azw3","osk", "osz",
-//                    "xpa","cpk","lua","jar","dmg","ppt","pptx","xls","xlsx","mp3","iso","img","gho","ttf","ttc","txf","dwg","bat","imazingapp","dll","crx","xapk",
-//                    "conf","deb","rp","rpm","rplib","mobileconfig","appimage","lolgezi","flac","cad","hwt","accdb","ce","xmind","enc","bds","bdi","ssf","it","pkg","cfg"
-//            ).map(s -> "." + s).collect(Collectors.toSet()), true), new LengthCheckRule(1, 100),
-//            new ContainsCheckRule(Set.of("/", "\\", "*", "|", "#", "$", "%", "^", "(", ")", "?", ":", "'", "\"", "`", "=", "+"), false)
-//    );
-//
+    protected static final @NotNull Pair.ImmutablePair<@NotNull String, @NotNull String> RetryBracketPair = Pair.ImmutablePair.makeImmutablePair("\uFF08", "\uFF09");
+    @Override
+    protected Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String> retryBracketPair() {
+        return LanzouProvider.RetryBracketPair;
+    }
+
+    protected static final @NotNull CheckRule<@NotNull String> DirectoryNameChecker = new CheckRuleSet<>(new LengthCheckRule(1, 100),
+            new ContainsCheckRule(Set.of("/", "\\", "*", "|", "#", "$", "%", "^", "(", ")", "?", ":", "'", "\"", "`", "=", "+"), false)
+    );
+
+    @Override
+    protected @NotNull CheckRule<@NotNull String> directoryNameChecker() {
+        return LanzouProvider.DirectoryNameChecker;
+    }
+
+    @Override
+    protected void createDirectory0(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) throws IOException, IllegalParametersException {
+        final JSONObject json;
+        final ZonedDateTime now;
+        try {
+            json = this.task(2, f -> f.add("parent_id", String.valueOf(parentId)).add("folder_name", directoryName), 1, false);
+            now = MiscellaneousUtil.now();
+        } catch (final IllegalResponseCodeException exception) {
+            if (exception.getCode() == 0) {
+                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(this.getLocation(parentId), directoryName, exception.getMeaning()))));
+                return;
+            }
+            throw exception;
+        }
+        final Long id = json.getLong("text");
+        final String message = json.getString("info");
+        if (id == null)
+            throw new WrongResponseException("Creating directories.", message, ParametersMap.create().add("configuration", this.getConfiguration())
+                    .add("directoryName", directoryName).add("parentId", parentId).add("json", json));
+        consumer.accept(UnionPair.ok(UnionPair.ok(new FileInformation(id.longValue(), parentId, directoryName, true, 0, now, now, null))));
+    }
+
+    protected static final @NotNull CheckRule<@NotNull String> FileNameChecker = new CheckRuleSet<>(new SuffixCheckRule(Stream.of(
+            "doc","docx","zip","rar","apk","ipa","txt","exe","7z","e","z","ct","ke","cetrainer","db","tar","pdf","w3x","epub","mobi","azw","azw3","osk", "osz",
+                    "xpa","cpk","lua","jar","dmg","ppt","pptx","xls","xlsx","mp3","iso","img","gho","ttf","ttc","txf","dwg","bat","imazingapp","dll","crx","xapk",
+                    "conf","deb","rp","rpm","rplib","mobileconfig","appimage","lolgezi","flac","cad","hwt","accdb","ce","xmind","enc","bds","bdi","ssf","it","pkg","cfg"
+            ).map(s -> "." + s).collect(Collectors.toSet()), true), new LengthCheckRule(1, 100),
+            new ContainsCheckRule(Set.of("/", "\\", "*", "|", "#", "$", "%", "^", "(", ")", "?", ":", "'", "\"", "`", "=", "+"), false)
+    );
+
 //    @Override
 //    protected @NotNull CheckRule<@NotNull String> fileNameChecker() {
 //        return LanzouProvider.FileNameChecker;

@@ -8,6 +8,7 @@ import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
+import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
@@ -128,28 +129,28 @@ public final class ProviderHelper {
         return result.get().getT();
     }
 
-//    public static @NotNull UnionPair<FileInformation, FailureReason> create(final @NotNull ProviderInterface<?> provider, final long id, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
-//        final CountDownLatch latch = new CountDownLatch(1);
-//        final AtomicReference<UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> result = new AtomicReference<>();
-//        final AtomicBoolean barrier = new AtomicBoolean(true);
-//        provider.createDirectory(id, name, policy, p -> {
-//            if (!barrier.compareAndSet(true, false)) {
-//                HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), new RuntimeException("Duplicate message.(create) " + p));
-//                return;
-//            }
-//            result.set(p);
-//            latch.countDown();
-//        }, new FileLocation("test", id));
-//        latch.await();
-//        if (result.get().isFailure()) {
-//            final Throwable throwable = result.get().getE();
-//            if (throwable instanceof Exception exception)
-//                throw exception;
-//            throw (Error) throwable;
-//        }
-//        return result.get().getT();
-//    }
-//
+    public static @NotNull UnionPair<FileInformation, FailureReason> create(final @NotNull ProviderInterface<?> provider, final long id, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> result = new AtomicReference<>();
+        final AtomicBoolean barrier = new AtomicBoolean(true);
+        provider.createDirectory(id, name, policy, p -> {
+            if (!barrier.compareAndSet(true, false)) {
+                HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), new RuntimeException("Duplicate message.(create) " + p));
+                return;
+            }
+            result.set(p);
+            latch.countDown();
+        });
+        latch.await();
+        if (result.get().isFailure()) {
+            final Throwable throwable = result.get().getE();
+            if (throwable instanceof Exception exception)
+                throw exception;
+            throw (Error) throwable;
+        }
+        return result.get().getT();
+    }
+
 //    public static @NotNull UnionPair<Optional<FileInformation>, FailureReason> copy(final @NotNull ProviderInterface<?> provider, final long id, final long parent, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
 //        final CountDownLatch latch = new CountDownLatch(1);
 //        final AtomicReference<UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> result = new AtomicReference<>();

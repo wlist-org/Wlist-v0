@@ -65,9 +65,9 @@ public final class BackgroundTaskManager {
     public static boolean createIfNot(final @NotNull BackgroundTaskIdentifier identify) {
         if (BackgroundTaskManager.tasks.putIfAbsent(identify, CompletableFuture.completedFuture(null)) == null) {
             BackgroundTaskManager.removable.add(identify);
-            return false; // Success.
+            return true;
         }
-        return true;
+        return false;
     }
 
     public static void remove(final @NotNull BackgroundTaskIdentifier identify) {
