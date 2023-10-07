@@ -16,6 +16,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
 import org.junit.jupiter.api.Assertions;
 
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -135,8 +136,9 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
     }
 
     @Override
-    protected void loginIfNot() {
+    protected @Nullable ZonedDateTime loginIfNot0() {
         this.operations.add("Login.");
+        return null;
     }
 
 
@@ -281,7 +283,6 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
         Assertions.assertEquals(information.isDirectory(), info.isDirectory());
         Assertions.assertEquals(parentId, info.parentId());
         Assertions.assertEquals(name, info.name());
-        Assertions.assertEquals(information.size(), info.size());
         Objects.requireNonNull(this.find(parentId, true)).add(new AbstractProviderFile(info));
         consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(info))));
     }

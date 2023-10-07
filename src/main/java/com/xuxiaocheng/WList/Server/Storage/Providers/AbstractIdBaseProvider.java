@@ -104,7 +104,19 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         }
     }
 
-    protected abstract void loginIfNot() throws Exception; // TODO: return expire time.
+
+    protected final @NotNull AtomicReference<ZonedDateTime> loginExpireTime = new AtomicReference<>();
+
+    protected abstract @Nullable ZonedDateTime loginIfNot0() throws Exception;
+
+    protected void loginIfNot() throws Exception {
+        synchronized (this.loginExpireTime) {
+            if (this.loginExpireTime.get() == null || MiscellaneousUtil.now().isAfter(this.loginExpireTime.get())) {
+                final ZonedDateTime time = this.loginIfNot0();
+                this.loginExpireTime.set(time == null ? null : time.plusSeconds(30));
+            }
+        }
+    }
 
 
     private <T> void consume(final @NotNull T result, final @NotNull Consumer<? super T> consumer) {
@@ -1261,6 +1273,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
     public @NotNull String toString() {
         return "AbstractIdBaseProvider{" +
                 "configuration=" + this.configuration +
+                ", loginExpireTime=" + this.loginExpireTime +
                 '}';
     }
 }

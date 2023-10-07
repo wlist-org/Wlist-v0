@@ -91,7 +91,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     protected @NotNull Headers headerWithToken = LanzouProvider.Headers;
 
     @Override
-    protected void loginIfNot() throws IOException, IllegalParametersException {
+    protected @Nullable ZonedDateTime loginIfNot0() throws IOException, IllegalParametersException {
         final LanzouConfiguration configuration = this.getConfiguration();
         if (configuration.getToken() != null && configuration.getTokenExpire() != null && !MiscellaneousUtil.now().isAfter(configuration.getTokenExpire())) {
             this.headerWithToken = LanzouProvider.Headers.newBuilder().set("cookie", "phpdisk_info=" + configuration.getToken()).build();
@@ -136,13 +136,15 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         if (token == null || uid == null)
             throw new IllegalParametersException("No token/uid receive.", ParametersMap.create().add("configuration", configuration).add("cookies", cookies));
         this.headerWithToken = LanzouProvider.Headers.newBuilder().set("cookie", "phpdisk_info=" + token.getValue()).build();
+        final ZonedDateTime expires = ZonedDateTime.ofInstant(token.getExpires().toInstant(), ZoneOffset.UTC);
         configuration.setNickname(configuration.getPassport());
         configuration.setVip(false); // TODO: nickname and vip.
         configuration.setUid(Long.parseLong(uid.getValue()));
         configuration.setToken(token.getValue());
-        configuration.setTokenExpire(ZonedDateTime.ofInstant(token.getExpires().toInstant(), ZoneOffset.UTC));
+        configuration.setTokenExpire(expires);
         configuration.markModified();
-        LanzouProvider.logger.log(HLogLevel.LESS, "Logged in.", ParametersMap.create().add("storage", configuration.getName()).add("passport", configuration.getPassport()));
+        LanzouProvider.logger.log(HLogLevel.LESS, "Logged in.", ParametersMap.create().add("storage", configuration.getName()).add("passport", configuration.getPassport()).add("expires", expires));
+        return expires;
     }
 
     protected static @NotNull String dumpOthers(final @NotNull HttpUrl domin, final @NotNull String identifier, final @Nullable String pwd) {
@@ -170,7 +172,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         if (!loginFlag && json.getIntValue("zt", 0) == 9) { // login not.
             this.getConfiguration().setToken(null);
             this.getConfiguration().setTokenExpire(null);
-            this.loginIfNot();
+            this.loginIfNot0();
             return this.task(type, request, zt, true);
         }
         if (zt != null) {
