@@ -93,9 +93,9 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     @Override
     protected @Nullable ZonedDateTime loginIfNot0() throws IOException, IllegalParametersException {
         final LanzouConfiguration configuration = this.getConfiguration();
-        if (configuration.getToken() != null && configuration.getTokenExpire() != null && !MiscellaneousUtil.now().isAfter(configuration.getTokenExpire())) {
+        if (configuration.getToken() != null && configuration.getTokenExpire() != null && !MiscellaneousUtil.now().isAfter(configuration.getTokenExpire().plusSeconds(30))) {
             this.headerWithToken = LanzouProvider.Headers.newBuilder().set("cookie", "phpdisk_info=" + configuration.getToken()).build();
-            return;
+            return configuration.getTokenExpire();
         }
         { // Quicker response.
             if (configuration.getPassport().isEmpty() || !ProviderUtil.PhoneNumberPattern.matcher(configuration.getPassport()).matches())

@@ -1,11 +1,13 @@
 package com.xuxiaocheng.Rust;
 
+import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import io.netty.util.internal.PlatformDependent;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.function.UnaryOperator;
+import java.util.stream.Stream;
 
 @SuppressWarnings("ErrorNotRethrown")
 public final class NativeUtil {
@@ -45,17 +48,26 @@ public final class NativeUtil {
         } catch (final UnsatisfiedLinkError error) {
             final String library = System.mapLibraryName(name);
             final String path = NativeUtil.ExtraPathGetterCore.getInstance().apply(library);
+            final String prefix, suffix;
+            final Path temp;
             try (final InputStream stream = NativeUtil.class.getClassLoader().getResourceAsStream(path)) {
                 if (stream == null)
                     throw new FileNotFoundException(path);
                 final int index = library.lastIndexOf('.');
-                final Path temp = Files.createTempFile(library.substring(0, index), library.substring(index));
+                prefix = library.substring(0, index);
+                suffix = library.substring(index);
+                temp = Files.createTempFile(prefix, suffix).toAbsolutePath();
                 Files.copy(stream, temp, StandardCopyOption.REPLACE_EXISTING);
-                temp.toFile().deleteOnExit();
-                System.load(temp.toAbsolutePath().toString());
+                System.load(temp.toString());
             } catch (@SuppressWarnings("OverlyBroadCatchBlock") final IOException exception) {
                 error.addSuppressed(exception);
                 throw error;
+            }
+            try (final Stream<Path> stream = Files.list(temp.getParent())) {
+                stream.map(Path::toFile).filter(f -> f.isFile() && f.getName().startsWith(prefix) && f.getName().endsWith(suffix))
+                        .forEach(File::deleteOnExit);
+            } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
             }
         }
     }
