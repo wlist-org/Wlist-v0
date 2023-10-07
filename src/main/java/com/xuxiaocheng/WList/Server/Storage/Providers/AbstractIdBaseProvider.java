@@ -982,7 +982,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
     }
 
 
-    private boolean checkCMRNameAvailable(final @NotNull String name, final boolean isDirectory, final long parentId, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> consumer) {
+    private boolean checkCMNameAvailable(final @NotNull String name, final boolean isDirectory, final long parentId, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> consumer) {
         final CheckRule<String> nameChecker = isDirectory ? this.directoryNameChecker() : this.fileNameChecker();
         if (!nameChecker.test(name)) {
             consumer.accept(UnionPair.ok(Optional.of(UnionPair.fail(Optional.of(FailureReason.byInvalidName(this.getLocation(parentId), name, nameChecker.description()))))));
@@ -1003,7 +1003,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         }
         return information;
     }
-    private @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> duplicatedNameTransferConsumer(final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> consumer) {
+    private @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> transferCMDuplicateNameConsumer(final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> consumer) {
         return p -> {
             if (p.isFailure()) {
                 consumer.accept(UnionPair.fail(p.getE()));
@@ -1033,19 +1033,19 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
 
     @Override
     public void copyDirectly(final long id, final boolean isDirectory, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> consumer) throws Exception {
-        if (this.checkCMRNameAvailable(name, isDirectory, parentId, consumer))
+        if (this.checkCMNameAvailable(name, isDirectory, parentId, consumer))
             return;
         final FileInformation information = this.checkCMAvailable(id, isDirectory, parentId, consumer);
         if (information == null)
             return;
         if (!this.doesSupportCopyDirectly(information, parentId)) {
-            consumer.accept(ProviderInterface.CMRTooComplex);
+            consumer.accept(ProviderInterface.CMTooComplex);
             return;
         }
-        this.getDuplicatedName(parentId, name, policy, p -> p.add("id", id).add("isDirectory", isDirectory).add("caller", "copyDirectly"), this.duplicatedNameTransferConsumer(consumer), (duplicatedName, identifier) -> {
+        this.getDuplicatedName(parentId, name, policy, p -> p.add("information", information).add("caller", "copyDirectly"), this.transferCMDuplicateNameConsumer(consumer), (duplicatedName, identifier) -> {
             boolean flag = true;
             try {
-                if (this.checkCMRNameAvailable(duplicatedName, isDirectory, parentId, consumer))
+                if (this.checkCMNameAvailable(duplicatedName, isDirectory, parentId, consumer))
                     return;
                 this.loginIfNot();
                 final AtomicBoolean barrier = new AtomicBoolean(true);
@@ -1112,20 +1112,20 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
             consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(information))));
             return;
         }
-        if (this.checkCMRNameAvailable(information.name(), isDirectory, parentId, consumer))
+        if (this.checkCMNameAvailable(information.name(), isDirectory, parentId, consumer))
             return;
         if (!this.doesSupportMoveDirectly(information, parentId)) {
-            consumer.accept(ProviderInterface.CMRTooComplex);
+            consumer.accept(ProviderInterface.CMTooComplex);
             return;
         }
-        this.getDuplicatedName(parentId, information.name(), policy, p -> p.add("id", id).add("isDirectory", isDirectory).add("caller", "moveDirectly"), this.duplicatedNameTransferConsumer(consumer), (name, identifier) -> {
+        this.getDuplicatedName(parentId, information.name(), policy, p -> p.add("information", information).add("caller", "moveDirectly"), this.transferCMDuplicateNameConsumer(consumer), (name, identifier) -> {
             boolean flag = true;
             try {
-                if (this.checkCMRNameAvailable(name, isDirectory, parentId, consumer))
+                if (this.checkCMNameAvailable(name, isDirectory, parentId, consumer))
                     return;
                 this.loginIfNot();
                 final AtomicBoolean barrier = new AtomicBoolean(true);
-                this.moveDirectly0(information, parentId ,name, Options.DuplicatePolicy.ERROR, p -> {
+                this.moveDirectly0(information, parentId, name, Options.DuplicatePolicy.ERROR, p -> {
                     if (!barrier.compareAndSet(true, false)) {
                         AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'moveDirectly#moveDirectly0'." + ParametersMap.create().add("configuration", this.getConfiguration())
                                 .add("p", p).add("information", information).add("parentId", parentId).add("name", name).add("policy", policy)));
@@ -1168,7 +1168,93 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
     }
 
 
+    protected boolean doesSupportRenameDirectly(final @NotNull FileInformation information) throws Exception {
+        return false;
+    }
+    public static final @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable> RenameNotSupport = UnionPair.ok(Optional.empty());
+    /**
+     * Rename a file / directory. {@code size == information.size()}
+     * @see #doesSupportRenameDirectly(FileInformation)
+     * @see #RenameNotSupport
+     */
+    @SuppressWarnings("SameParameterValue")
+    protected abstract void renameDirectly0(final @NotNull FileInformation information, final @NotNull String name, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) throws Exception;
 
+    @Override
+    public void renameDirectly(final long id, final boolean isDirectory, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) throws Exception {
+        final FileInformation information = this.manager.getInstance().selectInfo(id, isDirectory, null);
+        if (information == null) {
+            consumer.accept(UnionPair.ok(Optional.of(UnionPair.fail(FailureReason.byNoSuchFile(this.getLocation(id), false)))));
+            return;
+        }
+        if (information.name().equals(name)) {
+            consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(information))));
+            return;
+        }
+        final CheckRule<String> nameChecker = isDirectory ? this.directoryNameChecker() : this.fileNameChecker();
+        if (!nameChecker.test(name)) {
+            consumer.accept(UnionPair.ok(Optional.of(UnionPair.fail(FailureReason.byInvalidName(this.getLocation(information.parentId()), name, nameChecker.description())))));
+            return;
+        }
+        if (!this.doesSupportRenameDirectly(information)) {
+            consumer.accept(ProviderInterface.RenameTooComplex);
+            return;
+        }
+        this.getDuplicatedName(information.parentId(), name, policy, p -> p.add("id", id).add("isDirectory", isDirectory).add("caller", "renameDirectly"), p -> {
+            if (p.isFailure()) {
+                consumer.accept(UnionPair.fail(p.getE()));
+                return;
+            }
+            if (p.getT().isFailure()) {
+                consumer.accept(UnionPair.ok(Optional.of(UnionPair.fail(p.getT().getE()))));
+                return;
+            }
+//            assert false;
+            consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok((FileInformation) p.getT().getT()))));
+        }, (duplicatedName, identifier) -> {
+            boolean flag = true;
+            try {
+                if (!nameChecker.test(duplicatedName)) {
+                    consumer.accept(UnionPair.ok(Optional.of(UnionPair.fail(FailureReason.byInvalidName(this.getLocation(information.parentId()), duplicatedName, nameChecker.description())))));
+                    return;
+                }
+                this.loginIfNot();
+                final AtomicBoolean barrier = new AtomicBoolean(true);
+                this.renameDirectly0(information, duplicatedName, Options.DuplicatePolicy.ERROR, p -> {
+                    if (!barrier.compareAndSet(true, false)) {
+                        AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'moveDirectly#moveDirectly0'." + ParametersMap.create().add("configuration", this.getConfiguration())
+                                .add("p", p).add("information", information).add("name", duplicatedName).add("policy", policy)));
+                        return;
+                    }
+                    UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable> result = null;
+                    try {
+                        if (p.isFailure()) {
+                            result = UnionPair.fail(p.getE());
+                            return;
+                        }
+                        if (p.getT().isPresent() && p.getT().get().isSuccess()) {
+                            final FileInformation info = p.getT().get().getT();
+                            assert info.id() == id;
+                            assert info.isDirectory() == isDirectory && info.size() == information.size() && info.parentId() == information.parentId();
+                            this.manager.getInstance().updateOrInsertFileOrDirectory(info, null);
+                            BroadcastManager.onFileUpdate(this.getLocation(id), isDirectory);
+                        }
+                        result = p;
+                    } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                        result = UnionPair.fail(exception);
+                    } finally {
+                        BackgroundTaskManager.remove(identifier);
+                        assert result != null;
+                        this.consume(result, consumer);
+                    }
+                });
+                flag = false;
+            } finally {
+                if (flag)
+                    BackgroundTaskManager.remove(identifier);
+            }
+        });
+    }
 
 
     @Override

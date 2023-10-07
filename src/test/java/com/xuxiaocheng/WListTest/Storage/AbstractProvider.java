@@ -227,7 +227,7 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
 
 
     @Override
-    protected boolean doesRequireLoginDownloading(final @NotNull FileInformation information) throws Exception {
+    protected boolean doesRequireLoginDownloading(final @NotNull FileInformation information) {
         return false;
     }
 
@@ -278,8 +278,10 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
     protected void copyDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) {
         this.operations.add("Copy: " + information.id() + (information.isDirectory() ? " d " : " f ") + parentId + " " + name);
         final FileInformation info = this.copy.uninitialize().get();
+        Assertions.assertEquals(information.isDirectory(), info.isDirectory());
         Assertions.assertEquals(parentId, info.parentId());
         Assertions.assertEquals(name, info.name());
+        Assertions.assertEquals(information.size(), info.size());
         Objects.requireNonNull(this.find(parentId, true)).add(new AbstractProviderFile(info));
         consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(info))));
     }
@@ -298,6 +300,7 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
         this.operations.add("Move: " + information.id() + (information.isDirectory() ? " d " : " f ") + parentId + " " + name);
         final FileInformation info = this.move.uninitialize().get();
         Assertions.assertEquals(information.id(), info.id());
+        Assertions.assertEquals(information.isDirectory(), info.isDirectory());
         Assertions.assertEquals(parentId, info.parentId());
         Assertions.assertEquals(name, info.name());
         Assertions.assertEquals(information.size(), info.size());
@@ -307,4 +310,49 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
     }
 
 
+    public final @NotNull AtomicBoolean supportRenameDirectly = new AtomicBoolean(true);
+    public final @NotNull HInitializer<Supplier<FileInformation>> rename = new HInitializer<>("RenameSupplier");
+
+    @Override
+    protected boolean doesSupportRenameDirectly(final @NotNull FileInformation information) {
+        return this.supportRenameDirectly.get();
+    }
+
+    @Override
+    protected void renameDirectly0(final @NotNull FileInformation information, final @NotNull String name, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) {
+        this.operations.add("Rename: " + information.id() + (information.isDirectory() ? " d " : " f ") + name);
+        final FileInformation info = this.rename.uninitialize().get();
+        Assertions.assertEquals(information.id(), info.id());
+        Assertions.assertEquals(information.isDirectory(), info.isDirectory());
+        Assertions.assertEquals(information.parentId(), info.parentId());
+        Assertions.assertEquals(name, info.name());
+        Assertions.assertEquals(information.size(), info.size());
+        Objects.requireNonNull(this.find(information.parentId(), true)).del(information.id(), information.isDirectory());
+        Objects.requireNonNull(this.find(information.parentId(), true)).add(new AbstractProviderFile(info));
+        consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(info))));
+    }
+
+
+    @Override
+    public @NotNull String toString() {
+        return "AbstractProvider{" +
+                "root=" + this.root +
+                ", operations=" + this.operations +
+                ", list=" + this.list +
+                ", requireUpdate=" + this.requireUpdate +
+                ", update=" + this.update +
+                ", supportInfo=" + this.supportInfo +
+                ", info=" + this.info +
+                ", supportTrashRecursively=" + this.supportTrashRecursively +
+                ", trash=" + this.trash +
+                ", create=" + this.create +
+                ", supportCopyDirectly=" + this.supportCopyDirectly +
+                ", copy=" + this.copy +
+                ", supportMoveDirectly=" + this.supportMoveDirectly +
+                ", move=" + this.move +
+                ", supportRenameDirectly=" + this.supportRenameDirectly +
+                ", rename=" + this.rename +
+                ", super=" + super.toString() +
+                '}';
+    }
 }

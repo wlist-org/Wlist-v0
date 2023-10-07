@@ -195,25 +195,25 @@ public final class ProviderHelper {
         return result.get().getT();
     }
 
-//    public static @NotNull Optional<UnionPair<FileInformation, Optional<FailureReason>>> rename(final @NotNull ProviderInterface<?> provider, final long id, final boolean isDirectory, final long parent, final Options.@NotNull DuplicatePolicy policy) throws Exception {
-//        final CountDownLatch latch = new CountDownLatch(1);
-//        final AtomicReference<UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> result = new AtomicReference<>();
-//        final AtomicBoolean barrier = new AtomicBoolean(true);
-//        provider.moveDirectly(id, isDirectory, parent, policy, p -> {
-//            if (!barrier.compareAndSet(true, false)) {
-//                HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), new RuntimeException("Duplicate message.(copy) " + p));
-//                return;
-//            }
-//            result.set(p);
-//            latch.countDown();
-//        });
-//        latch.await();
-//        if (result.get().isFailure()) {
-//            final Throwable throwable = result.get().getE();
-//            if (throwable instanceof Exception exception)
-//                throw exception;
-//            throw (Error) throwable;
-//        }
-//        return result.get().getT();
-//    }
+    public static @NotNull Optional<UnionPair<FileInformation, FailureReason>> rename(final @NotNull ProviderInterface<?> provider, final long id, final boolean isDirectory, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> result = new AtomicReference<>();
+        final AtomicBoolean barrier = new AtomicBoolean(true);
+        provider.renameDirectly(id, isDirectory, name, policy, p -> {
+            if (!barrier.compareAndSet(true, false)) {
+                HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), new RuntimeException("Duplicate message.(copy) " + p));
+                return;
+            }
+            result.set(p);
+            latch.countDown();
+        });
+        latch.await();
+        if (result.get().isFailure()) {
+            final Throwable throwable = result.get().getE();
+            if (throwable instanceof Exception exception)
+                throw exception;
+            throw (Error) throwable;
+        }
+        return result.get().getT();
+    }
 }

@@ -517,7 +517,17 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         consumer.accept(AbstractIdBaseProvider.MoveNotSupport); // TODO
     }
 
-    //    static @Nullable UnionPair<ZonedDateTime, FailureReason> moveFile(final @NotNull LanzouConfiguration configuration, final long fileId, final long parentId) throws IOException {
+    @Override
+    protected boolean doesSupportRenameDirectly(final @NotNull FileInformation information) throws Exception {
+        return false;
+    }
+
+    @Override
+    protected void renameDirectly0(final @NotNull FileInformation information, final @NotNull String name, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) throws Exception {
+        consumer.accept(AbstractIdBaseProvider.RenameNotSupport);
+    }
+
+//    static @Nullable UnionPair<ZonedDateTime, FailureReason> moveFile(final @NotNull LanzouConfiguration configuration, final long fileId, final long parentId) throws IOException {
 //        final FormBody.Builder builder = new FormBody.Builder()
 //                .add("file_id", String.valueOf(fileId))
 //                .add("folder_id", String.valueOf(parentId));

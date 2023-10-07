@@ -108,56 +108,27 @@ public interface ProviderInterface<C extends StorageConfiguration> {
      */
     void uploadFile(final long parentId, final @NotNull String filename, final @LongRange(minimum = 0) long size, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) throws Exception;
 
-    @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable> CMRTooComplex = UnionPair.ok(Optional.empty());
+    @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable> CMTooComplex = UnionPair.ok(Optional.empty());
     @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable> CMToInside = UnionPair.ok(Optional.of(UnionPair.fail(Optional.empty())));
 
     /**
      * Copy a file/directory directly.
-     * @see #CMRTooComplex
+     * @see #CMTooComplex
      * @see #CMToInside
      */
     void copyDirectly(final long id, final boolean isDirectory, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> consumer) throws Exception;
 
     /**
      * Move a file/directory.
-     * @see #CMRTooComplex
+     * @see #CMTooComplex
      * @see #CMToInside
      */
     void moveDirectly(final long id, final boolean isDirectory, final long parentId, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> consumer) throws Exception;
 
-//    /**
-//     * Rename a file/directory.
-//     * @see #CMRTooComplex
-//     */
-//    default @NotNull UnionPair<FileInformation, FailureReason> rename(final @NotNull FileLocation sourceLocation, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
-//        HLog.getInstance("ServerLogger").log(HLogLevel.WARN, "Renaming by default algorithm.", ParametersMap.create().add("sourceLocation", sourceLocation).add("name", name).add("policy", policy));
-//        final FileInformation source = this.info(sourceLocation);
-//        if (source == null)
-//            return UnionPair.fail(FailureReason.byNoSuchFile("Renaming.", sourceLocation));
-//        if (source.isDirectory()) {
-//            final UnionPair<FileInformation, FailureReason> directory = this.createDirectory(new FileLocation(sourceLocation.storage(), source.parentId()), name, policy);
-//            if (directory.isFailure())
-//                return UnionPair.fail(directory.getE());
-//            this.moveFilesInDirectory(sourceLocation, policy, directory);
-//            this.delete(sourceLocation);
-//            return directory;
-//        }
-//        if (source.name().equals(name))
-//            return UnionPair.ok(source);
-//        final UnionPair<FileInformation, FailureReason> information = this.copy(sourceLocation, sourceLocation, name, policy);
-//        if (information.isFailure())
-//            return UnionPair.fail(information.getE());
-//        try {
-//            this.delete(sourceLocation);
-//        } catch (final Exception exception) {
-//            try {
-//                this.delete(information.getT().location());
-//            } catch (final Exception e) {
-//                throw new IllegalStateException("Failed to delete target file after a failed deletion of source file when renaming file by default algorithm." +
-//                        ParametersMap.create().add("sourceLocation", sourceLocation).add("name", name).add("targetLocation", information.getT().location()).add("policy", policy).add("exception", exception), e);
-//            }
-//            throw exception;
-//        }
-//        return information;
-//    }
+    @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable> RenameTooComplex = UnionPair.ok(Optional.empty());
+    /**
+     * Rename a file/directory.
+     * @see #RenameTooComplex
+     */
+    void renameDirectly(final long id, final boolean isDirectory, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) throws Exception;
 }
