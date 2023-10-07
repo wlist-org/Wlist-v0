@@ -33,7 +33,7 @@ public final class ProviderUtil {
      * A tool for list in page.
      * @param supplierInPage Get information list from by page count. Start from 0 and end when it returns null.
      * @param retry If supplier throws, the time of retry.
-     */
+     */ // TODO: async.
     public static <I> @NotNull Iterator<@NotNull I> wrapSuppliersInPages(final @NotNull FunctionE<? super @NotNull Integer, ? extends @Nullable Collection<@NotNull I>> supplierInPage, final int retry) {
         final AtomicBoolean noNext = new AtomicBoolean(false);
         final BlockingQueue<I> filesQueue = new LinkedBlockingQueue<>();

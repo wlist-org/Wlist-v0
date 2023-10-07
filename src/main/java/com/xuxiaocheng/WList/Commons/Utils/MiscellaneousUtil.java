@@ -4,6 +4,7 @@ import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import io.netty.util.concurrent.FutureListener;
 import io.netty.util.concurrent.GenericFutureListener;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -50,6 +51,17 @@ public final class MiscellaneousUtil {
         if (e != null)
             HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), e);
     };
+
+    @Contract("!null -> fail")
+    public static void throwException(final @Nullable Throwable throwable) throws Exception {
+        if (throwable == null)
+            return;
+        if (throwable instanceof Exception exception)
+            throw exception;
+        if (throwable instanceof Error error)
+            throw error;
+        throw new Exception(throwable);
+    }
 
     public static <K, V> @NotNull K randomKeyAndPut(final @NotNull Map<? super @NotNull K, V> map, final @NotNull Supplier<? extends @NotNull K> randomKey, final V value) {
         K k;

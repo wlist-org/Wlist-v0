@@ -111,10 +111,8 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
 
     protected void loginIfNot() throws Exception {
         synchronized (this.loginExpireTime) {
-            if (this.loginExpireTime.get() == null || MiscellaneousUtil.now().isAfter(this.loginExpireTime.get())) {
-                final ZonedDateTime time = this.loginIfNot0();
-                this.loginExpireTime.set(time == null ? null : time.plusSeconds(30));
-            }
+            if (this.loginExpireTime.get() == null || MiscellaneousUtil.now().isAfter(this.loginExpireTime.get()))
+                this.loginExpireTime.set(this.loginIfNot0());
         }
     }
 
@@ -288,7 +286,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
     }
     public static final @NotNull UnionPair<Optional<FileInformation>, Throwable> InfoNotExist = UnionPair.ok(Optional.empty());
     /**
-     * Try to get the file/directory information by id.
+     * Try to get the file/directory information by id. (not care size.)
      * @param consumer empty: not existed / unsupported. present: information.
      * @see #doesSupportInfo(boolean)
      * @see #InfoNotExisted

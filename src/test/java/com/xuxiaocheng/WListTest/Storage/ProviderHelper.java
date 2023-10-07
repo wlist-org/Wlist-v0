@@ -6,6 +6,7 @@ import com.xuxiaocheng.HeadLibs.Ranges.IntRange;
 import com.xuxiaocheng.HeadLibs.Ranges.LongRange;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
 import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
@@ -46,9 +47,7 @@ public final class ProviderHelper {
         latch.await();
         if (result.get().isFailure()) {
             final Throwable throwable = result.get().getE();
-            if (throwable instanceof Exception exception)
-                throw exception;
-            throw (Error) throwable;
+            MiscellaneousUtil.throwException(throwable);
         }
         return result.get().getT();
     }
@@ -78,9 +77,7 @@ public final class ProviderHelper {
         latch.await();
         if (result.get().isFailure()) {
             final Throwable throwable = result.get().getE();
-            if (throwable instanceof Exception exception)
-                throw exception;
-            throw (Error) throwable;
+            MiscellaneousUtil.throwException(throwable);
         }
         return result.get().getT();
     }
@@ -100,9 +97,7 @@ public final class ProviderHelper {
         latch.await();
         if (result.get().isFailure()) {
             final Throwable throwable = result.get().getE();
-            if (throwable instanceof Exception exception)
-                throw exception;
-            throw (Error) throwable;
+            MiscellaneousUtil.throwException(throwable);
         }
         return result.get().getT().booleanValue();
     }
@@ -122,9 +117,7 @@ public final class ProviderHelper {
         latch.await();
         if (result.get().isFailure()) {
             final Throwable throwable = result.get().getE();
-            if (throwable instanceof Exception exception)
-                throw exception;
-            throw (Error) throwable;
+            MiscellaneousUtil.throwException(throwable);
         }
         return result.get().getT();
     }
@@ -144,9 +137,7 @@ public final class ProviderHelper {
         latch.await();
         if (result.get().isFailure()) {
             final Throwable throwable = result.get().getE();
-            if (throwable instanceof Exception exception)
-                throw exception;
-            throw (Error) throwable;
+            MiscellaneousUtil.throwException(throwable);
         }
         return result.get().getT();
     }
@@ -166,9 +157,7 @@ public final class ProviderHelper {
         latch.await();
         if (result.get().isFailure()) {
             final Throwable throwable = result.get().getE();
-            if (throwable instanceof Exception exception)
-                throw exception;
-            throw (Error) throwable;
+            MiscellaneousUtil.throwException(throwable);
         }
         return result.get().getT();
     }
@@ -188,9 +177,7 @@ public final class ProviderHelper {
         latch.await();
         if (result.get().isFailure()) {
             final Throwable throwable = result.get().getE();
-            if (throwable instanceof Exception exception)
-                throw exception;
-            throw (Error) throwable;
+            MiscellaneousUtil.throwException(throwable);
         }
         return result.get().getT();
     }
@@ -210,9 +197,7 @@ public final class ProviderHelper {
         latch.await();
         if (result.get().isFailure()) {
             final Throwable throwable = result.get().getE();
-            if (throwable instanceof Exception exception)
-                throw exception;
-            throw (Error) throwable;
+            MiscellaneousUtil.throwException(throwable);
         }
         return result.get().getT();
     }
