@@ -173,9 +173,31 @@ public final class ProviderHelper {
         return result.get().getT();
     }
 
-//    public static @NotNull UnionPair<Optional<FileInformation>, FailureReason> move(final @NotNull ProviderInterface<?> provider, final long id, final boolean isDirectory, final long parent, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+    public static @NotNull Optional<UnionPair<FileInformation, Optional<FailureReason>>> move(final @NotNull ProviderInterface<?> provider, final long id, final boolean isDirectory, final long parent, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> result = new AtomicReference<>();
+        final AtomicBoolean barrier = new AtomicBoolean(true);
+        provider.moveDirectly(id, isDirectory, parent, policy, p -> {
+            if (!barrier.compareAndSet(true, false)) {
+                HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), new RuntimeException("Duplicate message.(copy) " + p));
+                return;
+            }
+            result.set(p);
+            latch.countDown();
+        });
+        latch.await();
+        if (result.get().isFailure()) {
+            final Throwable throwable = result.get().getE();
+            if (throwable instanceof Exception exception)
+                throw exception;
+            throw (Error) throwable;
+        }
+        return result.get().getT();
+    }
+
+//    public static @NotNull Optional<UnionPair<FileInformation, Optional<FailureReason>>> rename(final @NotNull ProviderInterface<?> provider, final long id, final boolean isDirectory, final long parent, final Options.@NotNull DuplicatePolicy policy) throws Exception {
 //        final CountDownLatch latch = new CountDownLatch(1);
-//        final AtomicReference<UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> result = new AtomicReference<>();
+//        final AtomicReference<UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> result = new AtomicReference<>();
 //        final AtomicBoolean barrier = new AtomicBoolean(true);
 //        provider.moveDirectly(id, isDirectory, parent, policy, p -> {
 //            if (!barrier.compareAndSet(true, false)) {
@@ -184,7 +206,7 @@ public final class ProviderHelper {
 //            }
 //            result.set(p);
 //            latch.countDown();
-//        }, new FileLocation("test", id), new FileLocation("test", parent));
+//        });
 //        latch.await();
 //        if (result.get().isFailure()) {
 //            final Throwable throwable = result.get().getE();
@@ -192,6 +214,6 @@ public final class ProviderHelper {
 //                throw exception;
 //            throw (Error) throwable;
 //        }
-//        return result.get().getT().get();
+//        return result.get().getT();
 //    }
 }

@@ -507,15 +507,15 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         consumer.accept(AbstractIdBaseProvider.CopyNotSupport);
     }
 
-//    @Override
-//    protected boolean isSupportedMoveDirectly(final @NotNull FileInformation information, final long parentId) {
-//        return !information.isDirectory();
-//    }
-//
-//    @Override
-//    protected void moveDirectly0(final @NotNull FileInformation information, final long parentId, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) {
-//        consumer.accept(ProviderInterface.MoveNotSupported); // TODO
-//    }
+    @Override
+    protected boolean doesSupportMoveDirectly(final @NotNull FileInformation information, final long parentId) {
+        return !information.isDirectory();
+    }
+
+    @Override
+    protected void moveDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) {
+        consumer.accept(AbstractIdBaseProvider.MoveNotSupport); // TODO
+    }
 
     //    static @Nullable UnionPair<ZonedDateTime, FailureReason> moveFile(final @NotNull LanzouConfiguration configuration, final long fileId, final long parentId) throws IOException {
 //        final FormBody.Builder builder = new FormBody.Builder()

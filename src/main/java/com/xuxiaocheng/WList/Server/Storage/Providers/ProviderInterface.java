@@ -108,33 +108,27 @@ public interface ProviderInterface<C extends StorageConfiguration> {
      */
     void uploadFile(final long parentId, final @NotNull String filename, final @LongRange(minimum = 0) long size, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) throws Exception;
 
-    @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable> CopyTooComplex = UnionPair.ok(Optional.empty());
-    @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable> CopyToInside = UnionPair.ok(Optional.of(UnionPair.fail(Optional.empty())));
+    @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable> CMRTooComplex = UnionPair.ok(Optional.empty());
+    @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable> CMToInside = UnionPair.ok(Optional.of(UnionPair.fail(Optional.empty())));
+
     /**
      * Copy a file/directory directly.
-     * @see #CopyTooComplex
-     * @see #CopyToInside
+     * @see #CMRTooComplex
+     * @see #CMToInside
      */
     void copyDirectly(final long id, final boolean isDirectory, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> consumer) throws Exception;
 
-    @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable> MoveNotSupported = UnionPair.ok(Optional.empty());
-    @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable> MoveSelf = UnionPair.ok(Optional.of(UnionPair.ok(Optional.empty())));
     /**
-     * Move a file/directory. (Do NOT download and then upload. That should be done in client side.)
-     * @param location Source file location. Only by used to create {@code FailureReason}.
-     * @param parentLocation Target parent location. Only by used to create {@code FailureReason}.
+     * Move a file/directory.
+     * @see #CMRTooComplex
+     * @see #CMToInside
      */
-    void moveDirectly(final long id, final boolean isDirectory, final long parentId, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) throws Exception;
+    void moveDirectly(final long id, final boolean isDirectory, final long parentId, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> consumer) throws Exception;
 
 //    /**
-//     * Rename file/directory.
-//     * @param sourceLocation The file/directory location to move.
-//     * @param name The name of new file/directory.
-//     * @param policy Duplicate policy.
-//     * @return The information of new file/directory.
-//     * @throws Exception Something went wrong.
+//     * Rename a file/directory.
+//     * @see #CMRTooComplex
 //     */
-//    @SuppressWarnings("OverlyBroadThrowsClause")
 //    default @NotNull UnionPair<FileInformation, FailureReason> rename(final @NotNull FileLocation sourceLocation, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
 //        HLog.getInstance("ServerLogger").log(HLogLevel.WARN, "Renaming by default algorithm.", ParametersMap.create().add("sourceLocation", sourceLocation).add("name", name).add("policy", policy));
 //        final FileInformation source = this.info(sourceLocation);

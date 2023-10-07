@@ -1135,21 +1135,154 @@ public class AbstractProviderTest {
         }
     }
 
-//    @Nested
-//    @SuppressWarnings("UnqualifiedMethodAccess")
-//    public class MoveTest {
-//        @Test
-//        public void move() throws Exception {
-//            final FileInformation information = new FileInformation(1, 0, "file", false, 123, null, null, null);
-//            final FileInformation directory = new FileInformation(2, 0, "directory", true, -1, null, null, null);
-//            list.set(List.of(information, directory).iterator());
-//            ProviderHelper.refresh(provider(), 0);
-//            list.set(Collections.emptyIterator());
-//            ProviderHelper.list(provider(), 2, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0);
-//
-//            final FileInformation moved = new FileInformation(1, 2, "file", false, 123, null, null, null);
-//            move.set(moved);
-//            Assertions.assertEquals(moved, ProviderHelper.move(provider(), 1, false, 2, Options.DuplicatePolicy.ERROR).getT().get());
-//        }
-//    }
+    @Nested
+    @SuppressWarnings("UnqualifiedMethodAccess")
+    public final class MoveTest {
+        @Test
+        public void moveFile() throws Exception {
+            provider().root().add(AbstractProvider.build(1, 0, true));
+            provider().root().add(AbstractProvider.build(2, 0, false));
+            ProviderHelper.refresh(provider(), 0);
+            ProviderHelper.refresh(provider(), 1);
+            Assertions.assertEquals(List.of("Login.", "List: 0", "Login.", "List: 1"), provider().checkOperations());
+
+            final FileInformation moved = AbstractProvider.build(2, 1, false).get();
+            provider().move.initialize(() -> moved);
+            final Optional<UnionPair<FileInformation, Optional<FailureReason>>> result = ProviderHelper.move(provider(), 2, false, 1, Options.DuplicatePolicy.ERROR);
+            Assertions.assertEquals(moved, result.orElseThrow().getT());
+            Assertions.assertEquals(List.of("Login.", "Move: 2 f 1"), provider().checkOperations());
+        }
+
+        @Test
+        public void moveDirectory() throws Exception {
+            provider().root().add(AbstractProvider.build(1, 0, true));
+            provider().root().add(AbstractProvider.build(2, 0, true));
+            ProviderHelper.refresh(provider(), 0);
+            ProviderHelper.refresh(provider(), 1);
+            Assertions.assertEquals(List.of("Login.", "List: 0", "Login.", "List: 1"), provider().checkOperations());
+
+            final FileInformation moved = AbstractProvider.build(2, 1, true).get();
+            provider().move.initialize(() -> moved);
+            final Optional<UnionPair<FileInformation, Optional<FailureReason>>> result = ProviderHelper.move(provider(), 2, true, 1, Options.DuplicatePolicy.ERROR);
+            Assertions.assertEquals(moved, result.orElseThrow().getT());
+            Assertions.assertEquals(List.of("Login.", "Move: 2 d 1"), provider().checkOperations());
+        }
+
+        @Test
+        public void notAvailable() throws Exception {
+            provider().root().add(AbstractProvider.build(1, 0, true));
+            ProviderHelper.refresh(provider(), 0);
+            ProviderHelper.refresh(provider(), 1);
+            Assertions.assertEquals(List.of("Login.", "List: 0", "Login.", "List: 1"), provider().checkOperations());
+
+            final Optional<UnionPair<FileInformation, Optional<FailureReason>>> resultF = ProviderHelper.copy(provider(), 2, false, 0, "", Options.DuplicatePolicy.ERROR);
+            Assertions.assertEquals(FailureKind.NoSuchFile, resultF.orElseThrow().getE().orElseThrow().kind());
+            Assertions.assertEquals(List.of(), provider().checkOperations());
+
+            final Optional<UnionPair<FileInformation, Optional<FailureReason>>> resultD = ProviderHelper.copy(provider(), 2, false, 1, "", Options.DuplicatePolicy.ERROR);
+            Assertions.assertEquals(FailureKind.NoSuchFile, resultD.orElseThrow().getE().orElseThrow().kind());
+            Assertions.assertEquals(List.of(), provider().checkOperations());
+        }
+
+        @Test
+        public void policyError() throws Exception {
+            provider().root().add(AbstractProvider.build(1, 0, true));
+            provider().root().get(1, true).add(new AbstractProvider.AbstractProviderFile(new FileInformation(4, 1, "m", false, 0, null, null, null)));
+            provider().root().add(new AbstractProvider.AbstractProviderFile(new FileInformation(2, 0, "m", true, -1, null, null, null)));
+            provider().root().add(new AbstractProvider.AbstractProviderFile(new FileInformation(3, 0, "m", false, 0, null, null, null)));
+            ProviderHelper.refresh(provider(), 0);
+            ProviderHelper.refresh(provider(), 1);
+            Assertions.assertEquals(List.of("Login.", "List: 0", "Login.", "List: 1"), provider().checkOperations());
+
+            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.move(provider(), 2, true, 1, Options.DuplicatePolicy.ERROR).orElseThrow().getE().orElseThrow().kind());
+            Assertions.assertEquals(List.of(), provider().checkOperations());
+            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.move(provider(), 3, false, 1, Options.DuplicatePolicy.ERROR).orElseThrow().getE().orElseThrow().kind());
+            Assertions.assertEquals(List.of(), provider().checkOperations());
+        }
+
+        @Test
+        public void policyKeep() throws Exception {
+            provider().root().add(AbstractProvider.build(1, 0, true));
+            provider().root().get(1, true).add(new AbstractProvider.AbstractProviderFile(new FileInformation(4, 1, "m", false, 0, null, null, null)));
+            provider().root().add(new AbstractProvider.AbstractProviderFile(new FileInformation(2, 0, "m", true, -1, null, null, null)));
+            provider().root().add(new AbstractProvider.AbstractProviderFile(new FileInformation(3, 0, "m", false, 0, null, null, null)));
+            ProviderHelper.refresh(provider(), 0);
+            ProviderHelper.refresh(provider(), 1);
+            Assertions.assertEquals(List.of("Login.", "List: 0", "Login.", "List: 1"), provider().checkOperations());
+
+            final FileInformation d = new FileInformation(2, 1, "m (1)", true, -1, null, null, null);
+            provider().move.initialize(() -> d);
+            Assertions.assertEquals(d, ProviderHelper.move(provider(), 2, true, 1, Options.DuplicatePolicy.KEEP).orElseThrow().getT());
+            Assertions.assertEquals(List.of("Login.", "Move: 2 d 1 m (1)"), provider().checkOperations());
+
+            final FileInformation f = new FileInformation(3, 1, "m (2)", false, 0, null, null, null);
+            provider().move.initialize(() -> f);
+            Assertions.assertEquals(f, ProviderHelper.move(provider(), 3, false, 1, Options.DuplicatePolicy.KEEP).orElseThrow().getT());
+            Assertions.assertEquals(List.of("Login.", "Move: 3 f 1 m (2)"), provider().checkOperations());
+        }
+
+        @Test
+        public void policyOver() throws Exception {
+            provider().root().add(AbstractProvider.build(1, 0, true));
+            provider().root().get(1, true).add(new AbstractProvider.AbstractProviderFile(new FileInformation(4, 1, "m", false, 0, null, null, null)));
+            provider().root().add(new AbstractProvider.AbstractProviderFile(new FileInformation(2, 0, "m", true, -1, null, null, null)));
+            provider().root().add(new AbstractProvider.AbstractProviderFile(new FileInformation(3, 0, "m", false, 0, null, null, null)));
+            ProviderHelper.refresh(provider(), 0);
+            ProviderHelper.refresh(provider(), 1);
+            Assertions.assertEquals(List.of("Login.", "List: 0", "Login.", "List: 1"), provider().checkOperations());
+
+            final FileInformation d = new FileInformation(2, 1, "m", true, -1, null, null, null);
+            provider().move.initialize(() -> d);
+            Assertions.assertEquals(d, ProviderHelper.move(provider(), 2, true, 1, Options.DuplicatePolicy.OVER).orElseThrow().getT());
+            Assertions.assertEquals(List.of("Login.", "Trash: 4 f", "Login.", "Move: 2 d 1 m"), provider().checkOperations());
+
+            final FileInformation f = new FileInformation(3, 1, "m", false, 0, null, null, null);
+            provider().move.initialize(() -> f);
+            Assertions.assertEquals(f, ProviderHelper.move(provider(), 3, false, 1, Options.DuplicatePolicy.OVER).orElseThrow().getT());
+            Assertions.assertEquals(List.of("Login.", "Trash: 2 d", "Login.", "Move: 3 f 1 m"), provider().checkOperations());
+        }
+
+        @Test
+        public void self() throws Exception {
+            final AbstractProvider.AbstractProviderFile file = AbstractProvider.build(1, 0, false);
+            final AbstractProvider.AbstractProviderFile directory = AbstractProvider.build(2, 0, true);
+            provider().root().add(file);
+            provider().root().add(directory);
+            ProviderHelper.refresh(provider(), 0);
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
+
+            Assertions.assertEquals(file.get(), ProviderHelper.move(provider(), 1, false, 0, Options.DuplicatePolicy.ERROR).orElseThrow().getT());
+            Assertions.assertEquals(directory.get(), ProviderHelper.move(provider(), 2, true, 0, Options.DuplicatePolicy.ERROR).orElseThrow().getT());
+            Assertions.assertEquals(List.of(), provider().checkOperations());
+        }
+
+        @Test
+        public void inside() throws Exception {
+            provider().root().add(AbstractProvider.build(1, 0, true));
+            provider().root().get(1, true).add(AbstractProvider.build(2, 1, true));
+            provider().root().get(1, true).get(2, true).add(AbstractProvider.build(3, 2, true));
+            ProviderHelper.refresh(provider(), 0);
+            ProviderHelper.refresh(provider(), 1);
+            ProviderHelper.refresh(provider(), 2);
+            Assertions.assertEquals(List.of("Login.", "List: 0", "Login.", "List: 1", "Login.", "List: 2"), provider().checkOperations());
+
+            Assertions.assertFalse(ProviderHelper.move(provider(), 1, true, 2, Options.DuplicatePolicy.ERROR).orElseThrow().getE().isPresent());
+            Assertions.assertFalse(ProviderHelper.move(provider(), 1, true, 3, Options.DuplicatePolicy.ERROR).orElseThrow().getE().isPresent());
+            Assertions.assertEquals(List.of(), provider().checkOperations());
+        }
+
+        @Test
+        public void exception() throws Exception {
+            final AbstractProvider.AbstractProviderFile file = AbstractProvider.build(2, 0, false);
+            provider().root().add(AbstractProvider.build(1, 0, true));
+            provider().root().add(file);
+            ProviderHelper.refresh(provider(), 0);
+            Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
+
+            provider().move.initialize(() -> {throw new RuntimeException();});
+            Assertions.assertThrows(RuntimeException.class, () ->
+                    ProviderHelper.move(provider(), 2, false, 1, Options.DuplicatePolicy.ERROR));
+            Assertions.assertEquals(List.of("Login.", "List: 1", "Login.", "Move: 2 f 1 " + file.get().name()), provider().checkOperations());
+        }
+    }
 }

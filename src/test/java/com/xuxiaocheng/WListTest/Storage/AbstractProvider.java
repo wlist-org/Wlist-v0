@@ -285,18 +285,26 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
     }
 
 
-//    @Override
-//    protected boolean isSupportedMoveDirectly(final @NotNull FileInformation information, final long parentId) {
-//        return true;
-//    }
-//
-//    @Override
-//    protected void moveDirectly0(final @NotNull FileInformation information, final long parentId, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<Optional<FileInformation>, FailureReason>>, Throwable>> consumer, final @NotNull FileLocation location, final @NotNull FileLocation parentLocation) {
-//        final FileInformation moved = AbstractProviderTest.this.move.getAndSet(null);
-//        Assertions.assertNotNull(moved);
-//        Assertions.assertEquals(information.name(), moved.name());
-//        Assertions.assertEquals(information.size(), moved.size());
-//        Assertions.assertEquals(parentId, moved.parentId());
-//        consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(Optional.of(moved)))));
-//    }
+    public final @NotNull AtomicBoolean supportMoveDirectly = new AtomicBoolean(true);
+    public final @NotNull HInitializer<Supplier<FileInformation>> move = new HInitializer<>("MoveSupplier");
+
+    @Override
+    protected boolean doesSupportMoveDirectly(final @NotNull FileInformation information, final long parentId) {
+        return this.supportMoveDirectly.get();
+    }
+
+    @Override
+    protected void moveDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) {
+        this.operations.add("Move: " + information.id() + (information.isDirectory() ? " d " : " f ") + parentId + " " + name);
+        final FileInformation info = this.move.uninitialize().get();
+        Assertions.assertEquals(information.id(), info.id());
+        Assertions.assertEquals(parentId, info.parentId());
+        Assertions.assertEquals(name, info.name());
+        Assertions.assertEquals(information.size(), info.size());
+        Objects.requireNonNull(this.find(information.parentId(), true)).del(information.id(), information.isDirectory());
+        Objects.requireNonNull(this.find(parentId, true)).add(new AbstractProviderFile(info));
+        consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(info))));
+    }
+
+
 }
