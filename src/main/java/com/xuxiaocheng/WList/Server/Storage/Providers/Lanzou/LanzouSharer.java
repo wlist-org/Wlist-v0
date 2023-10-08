@@ -73,7 +73,10 @@ public class LanzouSharer extends AbstractIdBaseSharer<LanzouConfiguration> {
                 for (final HtmlElement element: input.getParentNode().getHtmlElementDescendants())
                     if (element.hasAttribute("onclick")) {
                         element.click();
-                        flag = false;
+                        if (flag)
+                            flag = false;
+                        else
+                            LanzouProvider.logger.log(HLogLevel.WARN, "Multi clickable elements after input password.", ParametersMap.create().add("url", url).add("password", password));
                     }
                 if (flag)
                     throw new IllegalStateException("No clickable element after input password." + ParametersMap.create().add("url", url).add("password", password));
@@ -87,8 +90,10 @@ public class LanzouSharer extends AbstractIdBaseSharer<LanzouConfiguration> {
             } else {
                 BrowserUtil.waitJavaScriptCompleted(client, 1);
                 final List<FrameWindow> frames = page.getFrames();
+                if (frames.isEmpty())
+                    throw new IllegalStateException("No iframe." + ParametersMap.create().add("url", url).add("password", password));
                 if (frames.size() != 1)
-                    throw new IllegalStateException("Unclear iframe." + ParametersMap.create().add("url", url).add("password", password).add("frames", frames.size()));
+                    throw new IllegalStateException("Multi iframes." + ParametersMap.create().add("url", url).add("password", password).add("frames", frames.size()));
                 final HtmlPage frame = (HtmlPage) page.getFrames().get(0).getFrameElement().getEnclosedPage();
                 downloading = frame.getHtmlElementById("tourl");
             }

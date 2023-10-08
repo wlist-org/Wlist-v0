@@ -655,7 +655,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                 )))));
             });
         else
-            this.task(46, f -> f.add("file_id", String.valueOf(information.id())).add("file_name", name).add("type", "2"),
+            this.task(46, f -> f.add("file_id", String.valueOf(information.id())).add("file_name", ProviderUtil.discardFileSuffix(name)).add("type", "2"),
                     e -> consumer.accept(UnionPair.fail(e)), json -> {
                 final ZonedDateTime now = MiscellaneousUtil.now();
                 this.throwIfZt(json, "renameDirectly0", p -> p.add("information", information).add("name", name));

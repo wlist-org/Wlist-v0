@@ -132,4 +132,12 @@ public final class ProviderUtil {
             return null;
         return name.substring(index);
     }
+
+    // Example: "1.txt" ==> "1"
+    public static @NotNull String discardFileSuffix(final @NotNull String name) {
+        final int index = name.lastIndexOf('.');
+        if (index < 0)
+            return name;
+        return name.substring(0, index);
+    }
 }
