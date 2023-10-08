@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+@SuppressWarnings("ConstantConditions")
 public final class ProviderHelper {
     private ProviderHelper() {
         super();

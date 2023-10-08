@@ -35,6 +35,7 @@ import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import com.xuxiaocheng.WList.Server.Storage.Records.UploadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
+import com.xuxiaocheng.WList.Server.WListServer;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.FormBody;
@@ -69,7 +70,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -357,39 +357,23 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     @Override
-    protected @Nullable Iterator<@NotNull FileInformation> list0(final long directoryId) throws Exception {
-        final CountDownLatch countDownLatch = new CountDownLatch(1);
-        final AtomicReference<Throwable> exception = new AtomicReference<>();
+    protected void list0(final long directoryId, final @NotNull Consumer<? super UnionPair<Optional<Iterator<FileInformation>>, Throwable>> consumer) throws Exception {
         final AtomicReference<List<FileInformation>> directories = new AtomicReference<>();
-        this.listAllDirectory(directoryId, e -> {
-            exception.set(e);
-            countDownLatch.countDown();
-        }, list -> {
-            directories.set(list);
-            countDownLatch.countDown();
-        });
-        countDownLatch.await();
-        MiscellaneousUtil.throwException(exception.get());
-        if (directories.get() == null) return null;
-        return ProviderUtil.wrapSuppliersInPages(page -> {
-            if (page.intValue() == 0)
-                return directories.get();
-            final CountDownLatch latch = new CountDownLatch(1);
-            final AtomicReference<Throwable> e = new AtomicReference<>();
-            final AtomicReference<Pair.ImmutablePair<Collection<FileInformation>, Boolean>> res = new AtomicReference<>();
-            this.listFilesInPage(directoryId, page.intValue(), t -> {
-                e.set(t);
-                latch.countDown();
-            }, p -> {
-                res.set(p);
-                latch.countDown();
-            });
-            latch.await();
-            MiscellaneousUtil.throwException(e.get());
-            if (res.get().getSecond().booleanValue() && res.get().getFirst().isEmpty())
-                return null;
-            return res.get().getFirst();
-        }, this.getConfiguration().getRetry());
+        ProviderUtil.wrapSuppliersInPages(available -> this.listAllDirectory(directoryId, e -> available.accept(UnionPair.fail(e)), list -> {
+            if (list == null)
+                available.accept(ProviderUtil.WrapNotAvailable);
+            else {
+                directories.set(list);
+                available.accept(ProviderUtil.WrapAvailable);
+            }
+        }), WListServer.IOExecutors, (page, supplier) -> {
+            if (page.intValue() == 0) {
+                supplier.accept(UnionPair.ok(Pair.ImmutablePair.makeImmutablePair(directories.get(), Boolean.FALSE)));
+                return;
+            }
+            this.listFilesInPage(directoryId, page.intValue(), e -> supplier.accept(UnionPair.fail(e)),
+                    list -> supplier.accept(UnionPair.ok(list)));
+        }, consumer);
     }
 
 

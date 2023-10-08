@@ -145,13 +145,19 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
     public final @NotNull HInitializer<Iterator<@NotNull FileInformation>> list = new HInitializer<>("ListIterator");
 
     @Override
-    protected @Nullable Iterator<@NotNull FileInformation> list0(final long directoryId) {
+    protected void list0(final long directoryId, final @NotNull Consumer<? super UnionPair<Optional<Iterator<FileInformation>>, Throwable>> consumer) {
         this.operations.add("List: " + directoryId);
         final Iterator<FileInformation> iterator = this.list.uninitializeNullable();
-        if (iterator != null)
-            return iterator;
+        if (iterator != null) {
+            consumer.accept(UnionPair.ok(Optional.of(iterator)));
+            return;
+        }
         final AbstractProviderFile directory = this.find(directoryId, true);
-        return directory == null ? null : directory.children.values().stream().map(AbstractProviderFile::get).iterator();
+        if (directory == null) {
+            consumer.accept(AbstractIdBaseProvider.ListNotExisted);
+            return;
+        }
+        consumer.accept(UnionPair.ok(Optional.of(directory.children.values().stream().map(AbstractProviderFile::get).iterator())));
     }
 
 

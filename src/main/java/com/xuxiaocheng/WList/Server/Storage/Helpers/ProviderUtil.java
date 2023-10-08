@@ -1,22 +1,30 @@
 package com.xuxiaocheng.WList.Server.Storage.Helpers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.Functions.BiConsumerE;
+import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.FunctionE;
-import com.xuxiaocheng.HeadLibs.Logger.HLog;
-import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
-import com.xuxiaocheng.WList.Server.WListServer;
+import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
+import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseProvider;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
 
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 public final class ProviderUtil {
@@ -29,99 +37,122 @@ public final class ProviderUtil {
 
     private static final int DefaultLimitPerRequestPage = 100;
 
+    public static final @NotNull UnionPair<Boolean, Throwable> WrapNotAvailable = UnionPair.ok(Boolean.FALSE);
+    public static final @NotNull UnionPair<Boolean, Throwable> WrapAvailable = UnionPair.ok(Boolean.TRUE);
     /**
      * A tool for list in page.
-     * @param supplierInPage Get information list from by page count. Start from 0 and end when it returns null.
-     * @param retry If supplier throws, the time of retry.
-     */ // TODO: async.
-    public static <I> @NotNull Iterator<@NotNull I> wrapSuppliersInPages(final @NotNull FunctionE<? super @NotNull Integer, ? extends @Nullable Collection<@NotNull I>> supplierInPage, final int retry) {
-        final AtomicBoolean noNext = new AtomicBoolean(false);
-        final BlockingQueue<I> filesQueue = new LinkedBlockingQueue<>();
-        final AtomicBoolean threadRunning = new AtomicBoolean(false);
-        final AtomicInteger nextPage = new AtomicInteger(0);
-        final Runnable supplier = () -> {
-            if (threadRunning.compareAndSet(false, true))
-                CompletableFuture.runAsync(() -> {
-                    try {
-                        while (filesQueue.size() < ProviderUtil.DefaultLimitPerRequestPage) {
-                            if (noNext.get())
-                                return;
-                            Collection<I> page = null;
-                            int times = 0;
-                            Exception exception = null;
-                            do {
-                                try {
-                                    page = supplierInPage.apply(nextPage.getAndIncrement());
-                                    break;
-                                } catch (final Exception e) {
-                                    if (exception == null)
-                                        exception = e;
-                                    else
-                                        exception.addSuppressed(e);
+     * Each function will be call sequentially. {@code available(); supplierInPage(0); supplierInPage(1); ...}
+     * @param supplierInPage Get information list from by page count. Start from 0 and end when it returns true. (list, noMore)
+     */
+    public static void wrapSuppliersInPages(final @NotNull ConsumerE<? super @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>>> available, final @NotNull Executor executor, final @NotNull BiConsumerE<? super @NotNull Integer, ? super @NotNull Consumer<? super @NotNull UnionPair<Pair.@NotNull ImmutablePair<@NotNull @Unmodifiable Collection<@NotNull FileInformation>, @NotNull Boolean>, Throwable>>> supplierInPage, final @NotNull Consumer<? super UnionPair<Optional<Iterator<FileInformation>>, Throwable>> consumer) throws Exception {
+        available.accept((Consumer<? super UnionPair<Boolean, Throwable>>) a -> {
+            if (a.isFailure()) {
+                consumer.accept(UnionPair.fail(a.getE()));
+                return;
+            }
+            if (!a.getT().booleanValue()) {
+                consumer.accept(AbstractIdBaseProvider.ListNotExisted);
+                return;
+            }
+            final AtomicBoolean noNext = new AtomicBoolean(false);
+            final BlockingQueue<FileInformation> filesQueue = new LinkedBlockingQueue<>();
+            final AtomicBoolean threadRunning = new AtomicBoolean(false);
+            final AtomicInteger nextPage = new AtomicInteger(0);
+            final AtomicReference<Throwable> throwable = new AtomicReference<>();
+            final Runnable supplier = () -> {
+                if (threadRunning.compareAndSet(false, true))
+                    CompletableFuture.runAsync(new Runnable() {
+                        @Override
+                        public void run() {
+                            boolean flag = true;
+                            try {
+                                supplierInPage.accept(nextPage.getAndIncrement(), (Consumer<? super UnionPair<Pair.ImmutablePair<Collection<FileInformation>, Boolean>, Throwable>>)  p -> {
+                                    boolean flag1 = true;
+                                    try {
+                                        if (p.isFailure())
+                                            throw p.getE();
+                                        synchronized (threadRunning) {
+                                            filesQueue.addAll(p.getT().getFirst());
+                                            threadRunning.notifyAll();
+                                        }
+                                        if (p.getT().getSecond().booleanValue()) {
+                                            noNext.set(true);
+                                            return;
+                                        }
+                                        if (filesQueue.size() < ProviderUtil.DefaultLimitPerRequestPage) {
+                                            this.run();
+                                            flag1 = false;
+                                        }
+                                    } catch (final Throwable exception) {
+                                        noNext.set(true);
+                                        if (!throwable.compareAndSet(null, exception))
+                                            HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
+                                    } finally {
+                                        if (flag1) {
+                                            synchronized (threadRunning) {
+                                                threadRunning.set(false);
+                                                threadRunning.notifyAll();
+                                            }
+                                        }
+                                    }
+                                });
+                                flag = false;
+                            } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                                noNext.set(true);
+                                if (!throwable.compareAndSet(null, exception))
+                                    HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
+                            } finally {
+                                if (flag) {
+                                    synchronized (threadRunning) {
+                                        threadRunning.set(false);
+                                        threadRunning.notifyAll();
+                                    }
                                 }
-                                ++times;
-                            } while (times < retry);
-                            if (times >= retry) {
-                                noNext.set(true);
-                                throw new NoSuchElementException(exception);
                             }
-                            if (exception != null)
-                                HLog.getInstance("StorageLogger").log(HLogLevel.WARN, exception);
-                            if (page == null) {
-                                noNext.set(true);
-                                return;
-                            }
-                            synchronized (threadRunning) {
-                                filesQueue.addAll(page);
-                                threadRunning.notifyAll();
-                            }
-                            if (filesQueue.size() >= ProviderUtil.DefaultLimitPerRequestPage)
-                                break;
                         }
-                    } finally {
-                        synchronized (threadRunning) {
-                            threadRunning.set(false);
-                            threadRunning.notifyAll();
-                        }
+                    }, executor).exceptionally(MiscellaneousUtil.exceptionHandler());
+            };
+            consumer.accept(UnionPair.ok(Optional.of(new Iterator<>() {
+                @Override
+                public boolean hasNext() {
+                    if (throwable.get() != null)
+                        throw new NoSuchElementException(throwable.get());
+                    if (filesQueue.peek() != null)
+                        return true;
+                    if (noNext.get())
+                        return false;
+                    supplier.run();
+                    synchronized (threadRunning) {
+                        while (threadRunning.get() && filesQueue.peek() == null)
+                            try {
+                                threadRunning.wait();
+                            } catch (final InterruptedException ignore) {
+                                return false;
+                            }
                     }
-                }, WListServer.IOExecutors).exceptionally(MiscellaneousUtil.exceptionHandler());
-        };
-        return new Iterator<>() {
-            @Override
-            public boolean hasNext() {
-                if (filesQueue.peek() != null)
-                    return true;
-                if (noNext.get())
-                    return false;
-                supplier.run();
-                synchronized (threadRunning) {
-                    while (threadRunning.get() && filesQueue.peek() == null)
-                        try {
-                            threadRunning.wait();
-                        } catch (final InterruptedException ignore) {
-                            return false;
-                        }
+                    return this.hasNext();
                 }
-                return this.hasNext();
-            }
 
-            @Override
-            public @NotNull I next() {
-                final I item = filesQueue.poll();
-                if (item != null) {
-                    if (filesQueue.size() < ProviderUtil.DefaultLimitPerRequestPage >> 1)
-                        supplier.run();
-                    return item;
+                @Override
+                public @NotNull FileInformation next() {
+                    if (throwable.get() != null)
+                        throw new NoSuchElementException(throwable.get());
+                    final FileInformation item = filesQueue.poll();
+                    if (item != null) {
+                        if (filesQueue.size() < ProviderUtil.DefaultLimitPerRequestPage >> 1)
+                            supplier.run();
+                        return item;
+                    }
+                    if (!this.hasNext())
+                        throw new NoSuchElementException("No more information.");
+                    return this.next();
                 }
-                if (!this.hasNext())
-                    throw new NoSuchElementException("No more information in this page.");
-                return this.next();
-            }
-        };
+            })));
+        });
     }
 
     @Deprecated // TODO
-    public static <I> Pair.@NotNull ImmutablePair<@NotNull Iterator<@NotNull I>, @NotNull Runnable> wrapSuppliersInPages(final int pageCount, final @NotNull FunctionE<? super @NotNull Integer, @NotNull Collection<@NotNull I>> supplierInPage, final int retry) {
+    public static <I> Pair.@NotNull ImmutablePair<@NotNull Iterator<@NotNull I>, @NotNull Runnable> wrapSuppliersInPages(final int pageCount, final @NotNull FunctionE<? super @NotNull Integer, @NotNull Collection<@NotNull I>> supplierInPage) {
         throw new UnsupportedOperationException();
     }
 
