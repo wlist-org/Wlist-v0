@@ -220,10 +220,10 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
             throw new WrongResponseException(caller, json, parameters.apply(ParametersMap.create().add("configuration", this.getConfiguration()).add("caller", caller)));
     }
 
-    protected void throwIfZt(final @NotNull JSONObject json, @SuppressWarnings("SameParameterValue") final int require, final @NotNull String caller, final @NotNull UnaryOperator<@NotNull ParametersMap> parameters) throws WrongResponseException {
+    protected void throwIfZt(final @NotNull JSONObject json, final @NotNull String caller, final @NotNull UnaryOperator<@NotNull ParametersMap> parameters) throws WrongResponseException {
         final Integer code = json.getInteger("zt");
         this.throwIfNull(code, json, caller, parameters);
-        if (code.intValue() != require) {
+        if (code.intValue() != 1) { // "1"
             String error = json.getString("info");
             if (error == null)
                 error = json.getString("inf");
@@ -232,7 +232,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
             if (error == null)
                 error = "";
             throw new IllegalResponseCodeException(code.intValue(), error, parameters.apply(ParametersMap.create()
-                    .add("configuration", this.getConfiguration()).add("requireZt", require).add("json", json).add("caller", caller)));
+                    .add("configuration", this.getConfiguration()).add("json", json).add("caller", caller)));
         }
     }
 
@@ -252,7 +252,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                 consumer.accept(List.of());
                 return;
             }
-            this.throwIfZt(json, 1, "listAllDirectory", p -> p.add("directoryId", directoryId));
+            this.throwIfZt(json, "listAllDirectory", p -> p.add("directoryId", directoryId));
             final JSONArray infos = json.getJSONArray("text");
             this.throwIfNull(infos, json, "listAllDirectory", p -> p.add("directoryId", directoryId));
             final List<FileInformation> directories = new ArrayList<>(infos.size());
@@ -274,7 +274,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
 
     protected void getFileShareUrl(final long fileId, final @NotNull Consumer<? super @NotNull Throwable> error, final @NotNull BiConsumerE<? super @Nullable HttpUrl, ? super @Nullable String> consumer) {
         this.task(22, f -> f.add("file_id", String.valueOf(fileId)), error, json -> {
-            this.throwIfZt(json, 1, "getFileShareUrl", p -> p.add("fileId", fileId));
+            this.throwIfZt(json, "getFileShareUrl", p -> p.add("fileId", fileId));
             final JSONObject info = json.getJSONObject("info");
             this.throwIfNull(info, json, "getFileShareUrl", p -> p.add("fileId", fileId));
             final Integer onof = info.getInteger("onof");
@@ -299,7 +299,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
 
     protected void listFilesInPage(final long directoryId, final @IntRange(minimum = 1) int page, final @NotNull Consumer<? super @NotNull Throwable> error, final @NotNull Consumer<? super Pair.@NotNull ImmutablePair<@NotNull@Unmodifiable Collection<FileInformation>, @NotNull Boolean>> consumer) {
         this.task(5, f -> f.add("folder_id", String.valueOf(directoryId)).add("pg", String.valueOf(page)), error, json -> {
-            this.throwIfZt(json, 1, "listFilesInPage", p -> p.add("directoryId", directoryId).add("page", page));
+            this.throwIfZt(json, "listFilesInPage", p -> p.add("directoryId", directoryId).add("page", page));
             final JSONArray infos = json.getJSONArray("text");
             this.throwIfNull(infos, json, "listFilesInPage", p -> p.add("directoryId", directoryId).add("page", page));
             final Boolean noMore = json.getInteger("info") == null ? null : json.getIntValue("info") == 0;
@@ -460,7 +460,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     protected void trash0(final @NotNull FileInformation information, final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) {
         this.task(information.isDirectory() ? 3 : 6, f -> f.add(information.isDirectory() ? "folder_id" : "file_id", String.valueOf(information.id())),
                 e -> consumer.accept(UnionPair.fail(e)), json -> {
-            this.throwIfZt(json, 1, "trash0", p -> p.add("information", information));
+            this.throwIfZt(json, "trash0", p -> p.add("information", information));
             consumer.accept(AbstractIdBaseProvider.TrashSuccess);
         });
     }
@@ -531,11 +531,11 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     @Override
-    protected void createDirectory0(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) throws IOException, IllegalParametersException {
+    protected void createDirectory0(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) {
         this.task(2, f -> f.add("parent_id", String.valueOf(parentId)).add("folder_name", directoryName), e -> consumer.accept(UnionPair.fail(e)), json -> {
             final ZonedDateTime now = MiscellaneousUtil.now();
             try {
-                this.throwIfZt(json, 1, "createDirectory0", p -> p.add("parentId", parentId).add("directoryName", directoryName));
+                this.throwIfZt(json, "createDirectory0", p -> p.add("parentId", parentId).add("directoryName", directoryName));
             } catch (final IllegalResponseCodeException exception) {
                 if (exception.getCode() == 0) {
                     consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(this.getLocation(parentId), directoryName, exception.getMeaning()))));
@@ -577,7 +577,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                 final JSONObject json = HttpNetworkHelper.extraJsonResponseBody(HttpNetworkHelper.postWithBody(this.getConfiguration().getHttpClient(),
                         LanzouProvider.UploadURL, this.headerWithToken, body).execute());
                 final ZonedDateTime now = MiscellaneousUtil.now();
-                this.throwIfZt(json, 1, "uploadFile0", p -> p.add("parentId", parentId).add("filename", filename).add("size", size));
+                this.throwIfZt(json, "uploadFile0", p -> p.add("parentId", parentId).add("filename", filename).add("size", size));
                 final JSONArray infos = json.getJSONArray("text");
                 this.throwIfNull(infos == null || infos.isEmpty() ? null : infos, json, "uploadFile0", p -> p.add("parentId", parentId).add("filename", filename).add("size", size));
                 this.throwIfNull(infos.size() > 1 ? null : infos, json, "uploadFile0", p -> p.add("parentId", parentId).add("filename", filename).add("size", size).add("infos", infos));
@@ -602,6 +602,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         consumer.accept(AbstractIdBaseProvider.CopyNotSupport);
     }
 
+
     @Override
     protected boolean doesSupportMoveDirectly(final @NotNull FileInformation information, final long parentId) {
         return !information.isDirectory();
@@ -609,61 +610,61 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
 
     @Override
     protected void moveDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) {
-        consumer.accept(AbstractIdBaseProvider.MoveNotSupport); // TODO
+        assert this.doesSupportMoveDirectly(information, parentId);
+        this.task(20, f -> f.add("folder_id", String.valueOf(parentId)).add("file_id", String.valueOf(information.id())), e -> consumer.accept(UnionPair.fail(e)), json -> {
+            final ZonedDateTime now = MiscellaneousUtil.now();
+            try {
+                this.throwIfZt(json, "moveDirectly0", p -> p.add("information", information));
+            } catch (final IllegalResponseCodeException exception) {
+                if (exception.getCode() == 0) {
+                    consumer.accept(switch (exception.getMeaning()) {
+                        case "\u79FB\u52A8\u5931\u8D25\uFF0C\u6587\u4EF6\u5DF2\u5728\u6B64\u76EE\u5F55" -> UnionPair.ok(Optional.of(UnionPair.ok(new FileInformation(
+                                information.id(), parentId, information.name(), false, information.size(), information.createTime(), information.updateTime(), information.others()
+                        ))));
+                        case "\u6CA1\u6709\u627E\u5230\u6587\u4EF6" -> UnionPair.ok(Optional.of(UnionPair.fail(FailureReason.byNoSuchFile(this.getLocation(information.id()), false))));
+                        case "\u6CA1\u6709\u627E\u5230\u6587\u4EF6\u5939" -> UnionPair.ok(Optional.of(UnionPair.fail(FailureReason.byNoSuchFile(this.getLocation(parentId), true))));
+                        default -> UnionPair.fail(exception);
+                    });
+                    return;
+                }
+                consumer.accept(UnionPair.fail(exception));
+                return;
+            }
+            consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(new FileInformation(
+                    information.id(), parentId, information.name(), false, information.size(), information.createTime(), now, information.others()
+            )))));
+        });
+    }
+
+
+    @Override
+    protected boolean doesSupportRenameDirectly(final @NotNull FileInformation information) {
+        return this.getConfiguration().isVip() || information.isDirectory();
     }
 
     @Override
-    protected void renameDirectly0(final @NotNull FileInformation information, final @NotNull String name, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) throws Exception {
-        consumer.accept(AbstractIdBaseProvider.RenameNotSupport);
+    protected void renameDirectly0(final @NotNull FileInformation information, final @NotNull String name, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) {
+        assert this.doesSupportRenameDirectly(information);
+        if (information.isDirectory())
+            this.task(4, f -> f.add("folder_id", String.valueOf(information.id())).add("folder_name", name), e -> consumer.accept(UnionPair.fail(e)), json -> {
+                final ZonedDateTime now = MiscellaneousUtil.now();
+                this.throwIfZt(json, "renameDirectly0", p -> p.add("information", information).add("name", name));
+                consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(new FileInformation(
+                        information.id(), information.parentId(), name, true, information.size(), information.createTime(), now, information.others()
+                )))));
+            });
+        else
+            this.task(46, f -> f.add("file_id", String.valueOf(information.id())).add("file_name", name).add("type", "2"), e -> consumer.accept(UnionPair.fail(e)), json -> {
+                final ZonedDateTime now = MiscellaneousUtil.now();
+                this.throwIfZt(json, "renameDirectly0", p -> p.add("information", information).add("name", name));
+                final String real = json.getString("info");
+                this.throwIfNull(real, json, "renameDirectly0", p -> p.add("information", information).add("name", name));
+                consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(new FileInformation(
+                        information.id(), information.parentId(), real, true, information.size(), information.createTime(), now, information.others()
+                )))));
+            });
     }
 
-//    static @Nullable UnionPair<ZonedDateTime, FailureReason> moveFile(final @NotNull LanzouConfiguration configuration, final long fileId, final long parentId) throws IOException {
-//        final FormBody.Builder builder = new FormBody.Builder()
-//                .add("file_id", String.valueOf(fileId))
-//                .add("folder_id", String.valueOf(parentId));
-//        final JSONObject json;
-//        final ZonedDateTime now;
-//        try {
-//            if (parentId == 0) throw new IllegalResponseCodeException(0, "\u6CA1\u6709\u627E\u5230\u6587\u4EF6", ParametersMap.create());
-//            json = DriverHelper_lanzou.task(configuration, 20, builder, 1);
-//            now = MiscellaneousUtil.now();
-//        } catch (final IllegalResponseCodeException exception) {
-//            if (exception.getCode() == 0) {
-//                if ("\u79FB\u52A8\u5931\u8D25\uFF0C\u6587\u4EF6\u5DF2\u5728\u6B64\u76EE\u5F55".equals(exception.getMeaning()))
-//                    return null;
-//                if ("\u6CA1\u6709\u627E\u5230\u6587\u4EF6".equals(exception.getMeaning()))
-//                    return UnionPair.fail(FailureReason.byNoSuchFile("Moving (source).", new FileLocation(configuration.getName(), fileId)));
-//                if ("\u6CA1\u6709\u627E\u5230\u6587\u4EF6\u5939".equals(exception.getMeaning()))
-//                    return UnionPair.fail(FailureReason.byNoSuchFile("Moving (target).", new FileLocation(configuration.getName(), parentId)));
-//            }
-//            throw exception;
-//        }
-//        final String message = json.getString("info");
-//        if (!"\u79FB\u52A8\u6210\u529F".equals(message))
-//            throw new WrongResponseException("Moving.", message, ParametersMap.create()
-//                    .add("configuration", configuration).add("fileId", fileId).add("parentId", parentId).add("json", json));
-//        return UnionPair.ok(now);
-//    }
-//
-//    static @Nullable OptionalNullable<FailureReason> renameFile(final @NotNull LanzouConfiguration configuration, final long fileId, final @NotNull String name) throws IOException {
-//        if (!DriverHelper_lanzou.filenamePredication.test(name))
-//            return OptionalNullable.of(FailureReason.byInvalidName("Renaming.", new FileLocation(configuration.getName(), fileId), name));
-//        final FormBody.Builder builder = new FormBody.Builder()
-//                .add("file_id", String.valueOf(fileId))
-//                .add("file_name", name)
-//                .add("type", "2");
-//        final JSONObject json;
-//        try {
-//            json = DriverHelper_lanzou.task(configuration, 46, builder, 1);
-//        } catch (final IllegalResponseCodeException exception) {
-//            if (exception.getCode() == 0 && "\u6B64\u529F\u80FD\u4EC5\u4F1A\u5458\u4F7F\u7528\uFF0C\u8BF7\u5148\u5F00\u901A\u4F1A\u5458".equals(exception.getMeaning()))
-//                return null;
-//            throw exception;
-//        }
-//        // TODO: Unchecked.
-//HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Driver lanzou record: Running in vip mode (rename): ", json);
-//        return OptionalNullable.empty();
-//    }
 
     @Override
     public @NotNull String toString() {
