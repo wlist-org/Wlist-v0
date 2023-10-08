@@ -587,6 +587,9 @@ public final class OperateFilesHandler {
         });
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#copyDirectly(WListClientInterface, String, FileLocation, boolean, FileLocation, String, Options.DuplicatePolicy)
+     */
     private static final @NotNull ServerHandler doCopyFile = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileCopy);
@@ -637,6 +640,9 @@ public final class OperateFilesHandler {
         });
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#moveDirectly(WListClientInterface, String, FileLocation, boolean, FileLocation, Options.DuplicatePolicy)
+     */
     private static final @NotNull ServerHandler doMoveFile = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileMove);
@@ -686,6 +692,9 @@ public final class OperateFilesHandler {
         });
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#renameDirectly(WListClientInterface, String, FileLocation, boolean, String, Options.DuplicatePolicy)
+     */
     private static final @NotNull ServerHandler doRenameFile = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FileMove);
