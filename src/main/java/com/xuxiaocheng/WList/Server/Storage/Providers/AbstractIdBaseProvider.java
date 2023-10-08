@@ -1178,13 +1178,13 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
     }
 
 
-    protected boolean doesSupportRenameDirectly(final @NotNull FileInformation information) throws Exception {
+    protected boolean doesSupportRenameDirectly(final @NotNull FileInformation information, final @NotNull String name) throws Exception {
         return false;
     }
     public static final @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable> RenameNotSupport = UnionPair.ok(Optional.empty());
     /**
      * Rename a file / directory. {@code size == information.size()}
-     * @see #doesSupportRenameDirectly(FileInformation)
+     * @see #doesSupportRenameDirectly(FileInformation, String)
      * @see #RenameNotSupport
      */
     @SuppressWarnings("SameParameterValue")
@@ -1206,7 +1206,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
             consumer.accept(UnionPair.ok(Optional.of(UnionPair.fail(FailureReason.byInvalidName(this.getLocation(information.parentId()), name, nameChecker.description())))));
             return;
         }
-        if (!this.doesSupportRenameDirectly(information)) {
+        if (!this.doesSupportRenameDirectly(information, name)) {
             consumer.accept(ProviderInterface.RenameTooComplex);
             return;
         }

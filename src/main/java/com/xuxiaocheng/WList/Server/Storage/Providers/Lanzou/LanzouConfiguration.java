@@ -65,6 +65,12 @@ public final class LanzouConfiguration extends StorageConfiguration {
         this.tokenExpire = tokenExpire;
     }
 
+    private boolean skipNameChecker = false;
+
+    public boolean isSkipNameChecker() {
+        return this.skipNameChecker;
+    }
+
     @Override
     public void load(final @NotNull @UnmodifiableView Map<? super @NotNull String, @NotNull Object> config, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors) {
         super.name = "lanzou";
@@ -82,6 +88,8 @@ public final class LanzouConfiguration extends StorageConfiguration {
                 o -> YamlHelper.transferString(o, errors, "token"));
         this.tokenExpire = YamlHelper.getConfigNullable(config, "token_expire",
                 o -> YamlHelper.transferDateTimeFromStr(o, errors, "token_expire", StorageConfiguration.TimeFormatter));
+        this.skipNameChecker = YamlHelper.getConfig(config, "skip_name_checker", this.skipNameChecker,
+                o -> YamlHelper.transferBooleanFromStr(o, errors, "skip_name_checker")).booleanValue();
     }
 
     @Override
@@ -92,6 +100,7 @@ public final class LanzouConfiguration extends StorageConfiguration {
         config.put("uid", this.uid);
         config.put("token", this.token);
         config.put("token_expire", this.tokenExpire == null ? null : StorageConfiguration.TimeFormatter.format(this.tokenExpire));
+        config.put("skip_name_checker", this.skipNameChecker);
         return config;
     }
 
@@ -104,6 +113,7 @@ public final class LanzouConfiguration extends StorageConfiguration {
                 ", uid=" + this.uid +
                 ", token='" + this.token + '\'' +
                 ", tokenExpire=" + this.tokenExpire +
+                ", skipNameChecker=" + this.skipNameChecker +
                 '}';
     }
 }

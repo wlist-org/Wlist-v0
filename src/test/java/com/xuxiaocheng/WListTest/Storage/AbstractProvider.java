@@ -315,7 +315,7 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
     public final @NotNull HInitializer<Supplier<FileInformation>> rename = new HInitializer<>("RenameSupplier");
 
     @Override
-    protected boolean doesSupportRenameDirectly(final @NotNull FileInformation information) {
+    protected boolean doesSupportRenameDirectly(final @NotNull FileInformation information, final @NotNull String name) {
         return this.supportRenameDirectly.get();
     }
 

@@ -522,17 +522,18 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
 
 
     protected static final @NotNull CheckRule<@NotNull String> DirectoryNameChecker = new CheckRuleSet<>(new LengthCheckRule(1, 100),
-            new ContainsCheckRule(Set.of("/", "\\", "*", "|", "#", "$", "%", "^", "(", ")", "?", ":", "'", "\"", "`", "=", "+"), false)
+            new ContainsCheckRule(Set.of("/", "\\", "*", "|", "#", "$", "%", "^", "(", ")", "?", ":", "'", "\"", "`", "=", "+", "<", ">", ";", ","), false)
     );
 
     @Override
     protected @NotNull CheckRule<@NotNull String> directoryNameChecker() {
-        return LanzouProvider.DirectoryNameChecker;
+        return this.getConfiguration().isSkipNameChecker() ? CheckRule.allAllow() : LanzouProvider.DirectoryNameChecker;
     }
 
     @Override
     protected void createDirectory0(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) {
-        this.task(2, f -> f.add("parent_id", String.valueOf(parentId)).add("folder_name", directoryName), e -> consumer.accept(UnionPair.fail(e)), json -> {
+        this.task(2, f -> f.add("parent_id", String.valueOf(parentId)).add("folder_name", directoryName).add("folder_description", ""),
+                e -> consumer.accept(UnionPair.fail(e)), json -> {
             final ZonedDateTime now = MiscellaneousUtil.now();
             try {
                 this.throwIfZt(json, "createDirectory0", p -> p.add("parentId", parentId).add("directoryName", directoryName));
@@ -555,12 +556,12 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                     "xpa","cpk","lua","jar","dmg","ppt","pptx","xls","xlsx","mp3","iso","img","gho","ttf","ttc","txf","dwg","bat","imazingapp","dll","crx","xapk",
                     "conf","deb","rp","rpm","rplib","mobileconfig","appimage","lolgezi","flac","cad","hwt","accdb","ce","xmind","enc","bds","bdi","ssf","it","pkg","cfg"
             ).map(s -> "." + s).collect(Collectors.toSet()), true), new LengthCheckRule(1, 100),
-            new ContainsCheckRule(Set.of("/", "\\", "*", "|", "#", "$", "%", "^", "(", ")", "?", ":", "'", "\"", "`", "=", "+"), false)
+            new ContainsCheckRule(Set.of("/", "\\", "*", "|", "#", "$", "%", "^", "(", ")", "?", ":", "'", "\"", "`", "=", "+", "<", ">", ";", ","), false)
     );
 
     @Override
     protected @NotNull CheckRule<@NotNull String> fileNameChecker() {
-        return LanzouProvider.FileNameChecker;
+        return this.getConfiguration().isSkipNameChecker() ? CheckRule.allAllow() : LanzouProvider.FileNameChecker;
     }
 
     @Override
@@ -638,15 +639,15 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
 
 
     @Override
-    protected boolean doesSupportRenameDirectly(final @NotNull FileInformation information) {
-        return this.getConfiguration().isVip() || information.isDirectory();
+    protected boolean doesSupportRenameDirectly(final @NotNull FileInformation information, final @NotNull String name) {
+        return information.isDirectory() || (this.getConfiguration().isVip() && Objects.equals(ProviderUtil.getFileSuffix(information.name()), ProviderUtil.getFileSuffix(name)));
     }
 
     @Override
     protected void renameDirectly0(final @NotNull FileInformation information, final @NotNull String name, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) {
-        assert this.doesSupportRenameDirectly(information);
+        assert this.doesSupportRenameDirectly(information, name);
         if (information.isDirectory())
-            this.task(4, f -> f.add("folder_id", String.valueOf(information.id())).add("folder_name", name), e -> consumer.accept(UnionPair.fail(e)), json -> {
+            this.task(4, f -> f.add("folder_id", String.valueOf(information.id())).add("folder_name", name).add("folder_description", ""), e -> consumer.accept(UnionPair.fail(e)), json -> {
                 final ZonedDateTime now = MiscellaneousUtil.now();
                 this.throwIfZt(json, "renameDirectly0", p -> p.add("information", information).add("name", name));
                 consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(new FileInformation(
@@ -654,7 +655,8 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                 )))));
             });
         else
-            this.task(46, f -> f.add("file_id", String.valueOf(information.id())).add("file_name", name).add("type", "2"), e -> consumer.accept(UnionPair.fail(e)), json -> {
+            this.task(46, f -> f.add("file_id", String.valueOf(information.id())).add("file_name", name).add("type", "2"),
+                    e -> consumer.accept(UnionPair.fail(e)), json -> {
                 final ZonedDateTime now = MiscellaneousUtil.now();
                 this.throwIfZt(json, "renameDirectly0", p -> p.add("information", information).add("name", name));
                 final String real = json.getString("info");

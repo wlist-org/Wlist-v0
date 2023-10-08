@@ -124,4 +124,12 @@ public final class ProviderUtil {
     public static <I> Pair.@NotNull ImmutablePair<@NotNull Iterator<@NotNull I>, @NotNull Runnable> wrapSuppliersInPages(final int pageCount, final @NotNull FunctionE<? super @NotNull Integer, @NotNull Collection<@NotNull I>> supplierInPage, final int retry) {
         throw new UnsupportedOperationException();
     }
+
+    // Example: "1.txt" ==> ".txt"
+    public static @Nullable String getFileSuffix(final @NotNull String name) {
+        final int index = name.lastIndexOf('.');
+        if (index < 0)
+            return null;
+        return name.substring(index);
+    }
 }
