@@ -26,7 +26,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-public record ServerConfiguration(int port, int maxServerBacklog, int retryOnNetwork,
+public record ServerConfiguration(int port, int maxServerBacklog,
                                   long tokenExpireTime, long idIdleExpireTime,
                                   int maxLimitPerPage, boolean allowDropIndexAfterUninitializeProvider,
                                   @NotNull Map<@NotNull String, @NotNull StorageTypes<?>> providers) {
@@ -57,8 +57,6 @@ public record ServerConfiguration(int port, int maxServerBacklog, int retryOnNet
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "port", BigInteger.ZERO, BigInteger.valueOf(65535))).intValue(),
             YamlHelper.getConfig(config, "max_server_backlog", 128,
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "max_server_backlog", BigInteger.ONE, BigInteger.valueOf(Integer.MAX_VALUE) /*100*/)).intValue(),
-            YamlHelper.getConfig(config, "retry_on_network", 3,
-                o -> YamlHelper.transferIntegerFromStr(o, errors, "retry_on_network", BigInteger.ZERO, BigInteger.valueOf(Integer.MAX_VALUE) /*100*/)).intValue(),
             YamlHelper.getConfig(config, "token_expire_time", TimeUnit.HOURS.toSeconds(6),
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "token_expire_time", BigInteger.ONE, BigInteger.valueOf(Long.MAX_VALUE))).longValue(),
             YamlHelper.getConfig(config, "id_idle_expire_time", TimeUnit.MINUTES.toSeconds(30),
@@ -97,7 +95,6 @@ public record ServerConfiguration(int port, int maxServerBacklog, int retryOnNet
         final Map<String, Object> config = new LinkedHashMap<>();
         config.put("port", configuration.port);
         config.put("max_server_backlog", configuration.maxServerBacklog);
-        config.put("retry_on_network", configuration.retryOnNetwork);
         config.put("token_expire_time", configuration.tokenExpireTime);
         config.put("id_idle_expire_time", configuration.idIdleExpireTime);
         config.put("max_limit_per_page", configuration.maxLimitPerPage);
