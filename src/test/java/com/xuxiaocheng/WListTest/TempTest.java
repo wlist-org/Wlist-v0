@@ -14,7 +14,7 @@ import com.xuxiaocheng.WList.Server.Operations.Helpers.IdsHelper;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
-import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
+import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
@@ -66,11 +66,11 @@ public class TempTest {
                 HLog.DefaultLogger.log(HLogLevel.DEBUG, obj);
         } finally {
             if (TempTest.initializeServer)
-                for (final Map.Entry<String, ProviderInterface<?>> provider: StorageManager.getAllProviders().entrySet())
+                for (final StorageConfiguration configuration: StorageManager.getAllConfigurations())
                     try {
-                        StorageManager.dumpConfigurationIfModified(provider.getValue().getConfiguration());
+                        StorageManager.dumpConfigurationIfModified(configuration);
                     } catch (final IOException exception) {
-                        HLog.DefaultLogger.log(HLogLevel.ERROR, "Failed to dump provider configuration.", ParametersMap.create().add("name", provider.getKey()), exception);
+                        HLog.DefaultLogger.log(HLogLevel.ERROR, "Failed to dump provider configuration.", ParametersMap.create().add("name", configuration.getName()), exception);
                     }
             HLog.DefaultLogger.log(HLogLevel.FINE, "Shutting down all executors.");
             WListServer.CodecExecutors.shutdownGracefully();

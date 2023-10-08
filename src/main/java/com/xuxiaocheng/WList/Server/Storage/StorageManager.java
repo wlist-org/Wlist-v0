@@ -40,6 +40,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -235,6 +236,11 @@ public final class StorageManager {
 
     public static int getProvidersCount() {
         return StorageManager.storages.size();
+    }
+
+    public static @NotNull @Unmodifiable Set<@NotNull StorageConfiguration> getAllConfigurations() {
+        return StorageManager.storages.values().stream().filter(e -> e.getSecond() != StorageManager.ProviderPlaceholder)
+                .map(p -> p.getSecond().getA().getConfiguration()).collect(Collectors.toUnmodifiableSet());
     }
 
     public static @NotNull @Unmodifiable Map<@NotNull String, @NotNull ProviderInterface<?>> getAllProviders() {

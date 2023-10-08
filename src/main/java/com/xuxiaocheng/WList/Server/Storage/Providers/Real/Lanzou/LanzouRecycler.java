@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou;
+package com.xuxiaocheng.WList.Server.Storage.Providers.Real.Lanzou;
 
 import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseRecycler;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;

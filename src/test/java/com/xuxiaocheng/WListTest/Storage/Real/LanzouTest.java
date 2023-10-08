@@ -1,7 +1,7 @@
 package com.xuxiaocheng.WListTest.Storage.Real;
 
-import com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou.LanzouConfiguration;
-import com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou.LanzouProvider;
+import com.xuxiaocheng.WList.Server.Storage.Providers.Real.Lanzou.LanzouConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Providers.Real.Lanzou.LanzouProvider;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
@@ -33,7 +33,7 @@ public class LanzouTest extends RealAbstractTest<LanzouConfiguration> {
     @Disabled
     public void login() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         final ProviderInterface<LanzouConfiguration> provider = this.provider();
-        final Method method = LanzouProvider.class.getDeclaredMethod("loginIfNot");
+        final Method method = LanzouProvider.class.getDeclaredMethod("loginIfNot0");
         method.setAccessible(true);
         provider.getConfiguration().setToken(null);
         provider.getConfiguration().setTokenExpire(null);

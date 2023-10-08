@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou;
+package com.xuxiaocheng.WList.Server.Storage.Providers.Real.Lanzou;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;

@@ -47,19 +47,9 @@ public abstract class StorageConfiguration {
         return HttpNetworkHelper.DefaultHttpClient;
     }
 
-    protected @NotNull String displayName = "provider";
     protected @NotNull ZonedDateTime createTime = MiscellaneousUtil.now();
     protected @NotNull ZonedDateTime updateTime = MiscellaneousUtil.now();
     protected long rootDirectoryId = 0;
-    protected int retry = 3;
-
-    public @NotNull String getDisplayName() {
-        return this.displayName;
-    }
-
-    public void setDisplayName(final @NotNull String displayName) {
-        this.displayName = displayName;
-    }
 
     public @NotNull ZonedDateTime getCreateTime() {
         return this.createTime;
@@ -79,10 +69,6 @@ public abstract class StorageConfiguration {
 
     public long getRootDirectoryId() {
         return this.rootDirectoryId;
-    }
-
-    public int getRetry() {
-        return this.retry;
     }
 
     protected long spaceAll = 0;
@@ -181,16 +167,12 @@ public abstract class StorageConfiguration {
 
 
     public void load(final @NotNull @UnmodifiableView Map<? super @NotNull String, @NotNull Object> config, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors) {
-        this.displayName = YamlHelper.getConfig(config, "display_name", this.displayName,
-                o -> YamlHelper.transferString(o, errors, "display_name"));
         this.createTime = YamlHelper.getConfig(config, "create_time", this.createTime,
                 o -> YamlHelper.transferDateTimeFromStr(o, errors, "create_time", StorageConfiguration.TimeFormatter)).withNano(0);
         this.updateTime = YamlHelper.getConfig(config, "update_time", this.updateTime,
                 o -> YamlHelper.transferDateTimeFromStr(o, errors, "update_time", StorageConfiguration.TimeFormatter)).withNano(0);
         this.rootDirectoryId = YamlHelper.getConfig(config, "root_directory_id", this.rootDirectoryId,
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "root_directory_id", YamlHelper.LongMin, YamlHelper.LongMax)).longValue();
-        this.retry = YamlHelper.getConfig(config, "retry", this.retry,
-                o -> YamlHelper.transferIntegerFromStr(o, errors, "retry", BigInteger.ZERO, YamlHelper.IntegerMax)).intValue();
 
         this.spaceAll = YamlHelper.getConfig(config, "space_all", this.spaceAll,
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "space_all", BigInteger.ZERO, YamlHelper.LongMax)).longValue();
@@ -218,11 +200,9 @@ public abstract class StorageConfiguration {
 
     public @NotNull Map<@NotNull String, @NotNull Object> dump() {
         final Map<String, Object> config = new LinkedHashMap<>();
-        config.put("display_name", this.displayName);
         config.put("create_time", this.createTime.format(StorageConfiguration.TimeFormatter));
         config.put("update_time", this.updateTime.format(StorageConfiguration.TimeFormatter));
         config.put("root_directory_id", this.rootDirectoryId);
-        config.put("retry", this.retry);
 
         config.put("space_all", this.spaceAll);
         config.put("space_used", this.spaceUsed);
@@ -244,11 +224,9 @@ public abstract class StorageConfiguration {
         return "StorageConfiguration{" +
                 "name='" + this.name + '\'' +
                 ", modified=" + this.modified +
-                ", displayName='" + this.displayName + '\'' +
                 ", createTime=" + this.createTime +
                 ", updateTime=" + this.updateTime +
                 ", rootDirectoryId=" + this.rootDirectoryId +
-                ", retry=" + this.retry +
                 ", spaceAll=" + this.spaceAll +
                 ", spaceUsed=" + this.spaceUsed +
                 ", spaceGlobalAll=" + this.spaceGlobalAll +

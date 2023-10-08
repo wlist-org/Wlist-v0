@@ -1,9 +1,9 @@
 package com.xuxiaocheng.WList.Server.Storage.Providers;
 
-import com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou.LanzouConfiguration;
-import com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou.LanzouProvider;
-import com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou.LanzouRecycler;
-import com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou.LanzouSharer;
+import com.xuxiaocheng.WList.Server.Storage.Providers.Real.Lanzou.LanzouConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Providers.Real.Lanzou.LanzouProvider;
+import com.xuxiaocheng.WList.Server.Storage.Providers.Real.Lanzou.LanzouRecycler;
+import com.xuxiaocheng.WList.Server.Storage.Providers.Real.Lanzou.LanzouSharer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;

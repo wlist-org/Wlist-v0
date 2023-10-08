@@ -56,6 +56,7 @@ public interface ProviderInterface<C extends StorageConfiguration> {
     void uninitialize(final boolean dropIndex) throws Exception;
 
     @NotNull UnionPair<Optional<FilesListInformation>, Throwable> ListNotExisted = UnionPair.ok(Optional.empty());
+    @NotNull UnionPair<Optional<FilesListInformation>, Throwable> ListEmpty = UnionPair.ok(Optional.of(FilesListInformation.Empty));
     /**
      * Get the list of files in directory.
      * @param consumer empty: directory is not available / does not exist in web server. present: list of files.

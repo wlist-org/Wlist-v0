@@ -1,7 +1,6 @@
-package com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou;
+package com.xuxiaocheng.WList.Server.Storage.Providers.Real.Lanzou;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.WList.Commons.Utils.I18NUtil;
 import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
@@ -74,7 +73,6 @@ public final class LanzouConfiguration extends StorageConfiguration {
     @Override
     public void load(final @NotNull @UnmodifiableView Map<? super @NotNull String, @NotNull Object> config, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors) {
         super.name = "lanzou";
-        super.displayName = I18NUtil.get("server.provider.lanzou");
         super.maxSizePerFile = 100 << 20;
         super.rootDirectoryId = -1;
         super.load(config, errors);

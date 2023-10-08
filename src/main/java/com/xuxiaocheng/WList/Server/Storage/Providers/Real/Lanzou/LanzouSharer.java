@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WList.Server.Storage.Providers.Lanzou;
+package com.xuxiaocheng.WList.Server.Storage.Providers.Real.Lanzou;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
