@@ -76,9 +76,9 @@ public final class OperateFilesHandler {
         ServerHandlerManager.register(OperationType.ConfirmUploadFile, OperateFilesHandler.doConfirmUploadFile);
         ServerHandlerManager.register(OperationType.UploadFile, OperateFilesHandler.doUploadFile);
         ServerHandlerManager.register(OperationType.FinishUploadFile, OperateFilesHandler.doFinishUploadFile);
-        ServerHandlerManager.register(OperationType.RenameFile, OperateFilesHandler.doRenameFile);
         ServerHandlerManager.register(OperationType.CopyFile, OperateFilesHandler.doCopyFile);
         ServerHandlerManager.register(OperationType.MoveFile, OperateFilesHandler.doMoveFile);
+        ServerHandlerManager.register(OperationType.RenameFile, OperateFilesHandler.doRenameFile);
     }
 
     /**

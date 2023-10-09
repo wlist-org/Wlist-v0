@@ -42,6 +42,7 @@ import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.security.MessageDigest;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -87,7 +88,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
     }
 
     @SuppressWarnings("UnqualifiedMethodAccess")
-    public class AbstractInfoTest {
+    public abstract class AbstractInfoTest {
         @ParameterizedTest(name = "running")
         @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
         public void file(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
@@ -115,10 +116,10 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
     }
 
     @SuppressWarnings("UnqualifiedMethodAccess")
-    public class AbstractCreateTest {
+    public abstract class AbstractCreateTest {
         @ParameterizedTest(name = "running")
-        @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#broadcast")
-        public void create(final WListClientInterface client, final WListClientInterface broadcast, final @NotNull TestInfo info) throws IOException, InterruptedException, WrongStateException {
+        @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
+        public void create(final WListClientInterface client, final @NotNull TestInfo info) throws IOException, InterruptedException, WrongStateException {
             final CountDownLatch latch = new CountDownLatch(1);
             final AtomicReference<VisibleFileInformation> information = new AtomicReference<>();
             final Consumer<Pair.ImmutablePair<String, VisibleFileInformation>> callback = p -> {
@@ -145,14 +146,14 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
     }
 
     @SuppressWarnings("UnqualifiedMethodAccess")
-    public class AbstractRefreshTest {
+    public abstract class AbstractRefreshTest {
         @ParameterizedTest(name = "running")
-        @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#broadcast")
-        public void refresh(final WListClientInterface client, final WListClientInterface broadcast) throws IOException, InterruptedException, WrongStateException {
+        @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
+        public void refresh(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
             final VisibleFilesListInformation list = OperateFilesHelper.listFiles(client, token(), location(root()), Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 50);
             Assumptions.assumeTrue(list != null);
             Assumptions.assumeTrue(list.informationList().size() < 50);
-            final Set<Pair.ImmutablePair<FileLocation, Boolean>> l = new HashSet<>();
+            final Collection<Pair.ImmutablePair<FileLocation, Boolean>> l = new HashSet<>();
             for (final VisibleFileInformation info : list.informationList())
                 l.add(Pair.ImmutablePair.makeImmutablePair(location(info.id()), info.isDirectory()));
 
@@ -180,7 +181,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
     }
 
     @SuppressWarnings("UnqualifiedMethodAccess")
-    public class AbstractDownloadTest {
+    public abstract class AbstractDownloadTest {
         @ParameterizedTest(name = "running")
         @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
         public void cancel(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
@@ -239,7 +240,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
     }
 
     @SuppressWarnings("UnqualifiedMethodAccess")
-    public class AbstractUploadTest {
+    public abstract class AbstractUploadTest {
         @ParameterizedTest(name = "running")
         @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
         public void cancel(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
@@ -294,24 +295,179 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
     }
 
     @SuppressWarnings("UnqualifiedMethodAccess")
-    public class AbstractMergeTest {
+    public abstract class AbstractMergeTest {
         @ParameterizedTest(name = "running")
-        @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#broadcast")
-        public void uploadAndDownload(final WListClientInterface client, final WListClientInterface broadcast, final @NotNull TestInfo info) throws IOException, InterruptedException, WrongStateException {
+        @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
+        public void uploadAndDownload(final WListClientInterface client, final @NotNull TestInfo info) throws IOException, InterruptedException, WrongStateException {
             final File file = RealAbstractTest.bigFile();
             final MessageDigest digest = HMessageDigestHelper.MD5.getDigester();
             try (final InputStream stream = new BufferedInputStream(new FileInputStream(file))) {
                 HMessageDigestHelper.updateMessageDigest(digest, stream);
             }
             final String md5 = HMessageDigestHelper.MD5.digest(digest);
-            final VisibleFileInformation information = new AbstractUploadTest().testUpload(location(root()), file);
+            final VisibleFileInformation information = new AbstractUploadTest(){}.testUpload(location(root()), file);
             HLog.DefaultLogger.log(HLogLevel.LESS, info.getTestMethod().map(Method::getName).orElse("unknown"), ": file: ", information);
             try {
-                new AbstractDownloadTest().testDownload(location(information.id()), md5);
+                new AbstractDownloadTest(){}.testDownload(location(information.id()), md5);
             } finally {
                 OperateFilesHelper.trashFileOrDirectory(client, token(), location(information.id()), false);
             }
         }
+    }
 
+    @SuppressWarnings("UnqualifiedMethodAccess")
+    public abstract class AbstractCopyTest {
+        @ParameterizedTest(name = "running")
+        @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
+        public void file(final WListClientInterface client, final @NotNull TestInfo info) throws IOException, InterruptedException, WrongStateException {
+            final VisibleFilesListInformation l = OperateFilesHelper.listFiles(client, token(), location(root()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 1);
+            Assumptions.assumeTrue(l != null);
+            Assumptions.assumeFalse(l.informationList().isEmpty());
+            final VisibleFileInformation parent = l.informationList().get(0);
+            final VisibleFilesListInformation list = OperateFilesHelper.listFiles(client, token(), location(root()), Options.FilterPolicy.OnlyFiles, VisibleFileInformation.emptyOrder(), 0, 1);
+            Assumptions.assumeTrue(list != null);
+            Assumptions.assumeFalse(list.informationList().isEmpty());
+            final VisibleFileInformation information = list.informationList().get(0);
+
+            final CountDownLatch latch = new CountDownLatch(1);
+            final AtomicReference<Pair.ImmutablePair<FileLocation, Boolean>> r = new AtomicReference<>();
+            final Consumer<Pair.ImmutablePair<FileLocation, Boolean>> callback = p -> {
+                r.set(p);
+                latch.countDown();
+            };
+            BroadcastAssistant.get(address()).FileUpdate.register(callback);
+            final UnionPair<Boolean, VisibleFailureReason> res = OperateFilesHelper.copyDirectly(client, token(), location(information.id()), false, location(parent.id()), "temp-" + information.name(), Options.DuplicatePolicy.ERROR);
+            Assertions.assertTrue(res != null && res.isSuccess());
+            if (!res.getT().booleanValue()) {
+                BroadcastAssistant.get(address()).FileUpdate.unregister(callback);
+                HLog.DefaultLogger.log(HLogLevel.ERROR, "Unsupported operation: ", info.getTestClass().orElseThrow().getName(), "#", info.getTestMethod().orElseThrow().getName());
+                return;
+            }
+            latch.await();
+            Assertions.assertEquals(location(information.id()), r.get().getFirst());
+            Assertions.assertFalse(r.get().getSecond().booleanValue());
+            OperateFilesHelper.trashFileOrDirectory(client, token(), location(information.id()), false);
+        }
+
+        // TODO: directory
+
+        @ParameterizedTest(name = "running")
+        @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
+        public void notAvailable(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
+            Assertions.assertEquals(FailureKind.NoSuchFile, Objects.requireNonNull(OperateFilesHelper.copyDirectly(client, token(),
+                    location(-2), false, location(-3), "1.txt", Options.DuplicatePolicy.ERROR)).getE().kind());
+        }
+    }
+
+    @SuppressWarnings("UnqualifiedMethodAccess")
+    public abstract class AbstractMoveTest {
+        @ParameterizedTest(name = "running")
+        @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
+        public void file(final WListClientInterface client, final @NotNull TestInfo info) throws IOException, InterruptedException, WrongStateException {
+            final VisibleFilesListInformation l = OperateFilesHelper.listFiles(client, token(), location(root()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 1);
+            Assumptions.assumeTrue(l != null);
+            Assumptions.assumeFalse(l.informationList().isEmpty());
+            final VisibleFileInformation parent = l.informationList().get(0);
+            final VisibleFilesListInformation list = OperateFilesHelper.listFiles(client, token(), location(root()), Options.FilterPolicy.OnlyFiles, VisibleFileInformation.emptyOrder(), 0, 1);
+            Assumptions.assumeTrue(list != null);
+            Assumptions.assumeFalse(list.informationList().isEmpty());
+            final VisibleFileInformation information = list.informationList().get(0);
+
+            final CountDownLatch latch = new CountDownLatch(1);
+            final AtomicReference<Pair.ImmutablePair<FileLocation, Boolean>> r = new AtomicReference<>();
+            final Consumer<Pair.ImmutablePair<FileLocation, Boolean>> callback = p -> {
+                r.set(p);
+                latch.countDown();
+            };
+            BroadcastAssistant.get(address()).FileUpdate.register(callback);
+            final UnionPair<Boolean, VisibleFailureReason> res = OperateFilesHelper.moveDirectly(client, token(), location(information.id()), false, location(parent.id()), Options.DuplicatePolicy.ERROR);
+            Assertions.assertTrue(res != null && res.isSuccess());
+            if (!res.getT().booleanValue()) {
+                BroadcastAssistant.get(address()).FileUpdate.unregister(callback);
+                HLog.DefaultLogger.log(HLogLevel.ERROR, "Unsupported operation: ", info.getTestClass().orElseThrow().getName(), "#", info.getTestMethod().orElseThrow().getName());
+                return;
+            }
+            latch.await();
+            Assertions.assertEquals(location(information.id()), r.get().getFirst());
+            Assertions.assertFalse(r.get().getSecond().booleanValue());
+            OperateFilesHelper.moveDirectly(client, token(), location(information.id()), false, location(root()), Options.DuplicatePolicy.ERROR);
+        }
+
+        // TODO: directory
+
+        @ParameterizedTest(name = "running")
+        @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
+        public void notAvailable(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
+            Assertions.assertEquals(FailureKind.NoSuchFile, Objects.requireNonNull(OperateFilesHelper.moveDirectly(client, token(),
+                    location(-2), false, location(-3), Options.DuplicatePolicy.ERROR)).getE().kind());
+        }
+    }
+
+    @SuppressWarnings("UnqualifiedMethodAccess")
+    public abstract class AbstractRenameTest {
+        @ParameterizedTest(name = "running")
+        @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
+        public void file(final WListClientInterface client, final @NotNull TestInfo info) throws IOException, InterruptedException, WrongStateException {
+            final VisibleFilesListInformation list = OperateFilesHelper.listFiles(client, token(), location(root()), Options.FilterPolicy.OnlyFiles, VisibleFileInformation.emptyOrder(), 0, 1);
+            Assumptions.assumeTrue(list != null);
+            Assumptions.assumeFalse(list.informationList().isEmpty());
+            final VisibleFileInformation information = list.informationList().get(0);
+
+            final CountDownLatch latch = new CountDownLatch(1);
+            final AtomicReference<Pair.ImmutablePair<FileLocation, Boolean>> r = new AtomicReference<>();
+            final Consumer<Pair.ImmutablePair<FileLocation, Boolean>> callback = p -> {
+                r.set(p);
+                latch.countDown();
+            };
+            BroadcastAssistant.get(address()).FileUpdate.register(callback);
+            final UnionPair<Boolean, VisibleFailureReason> res = OperateFilesHelper.renameDirectly(client, token(), location(information.id()), false, "renamed-" + information.name(), Options.DuplicatePolicy.ERROR);
+            Assertions.assertTrue(res != null && res.isSuccess());
+            if (!res.getT().booleanValue()) {
+                BroadcastAssistant.get(address()).FileUpdate.unregister(callback);
+                HLog.DefaultLogger.log(HLogLevel.ERROR, "Unsupported operation: ", info.getTestClass().orElseThrow().getName(), "#", info.getTestMethod().orElseThrow().getName());
+                return;
+            }
+            latch.await();
+            Assertions.assertEquals(location(information.id()), r.get().getFirst());
+            Assertions.assertFalse(r.get().getSecond().booleanValue());
+            OperateFilesHelper.renameDirectly(client, token(), location(information.id()), false, information.name(), Options.DuplicatePolicy.ERROR);
+        }
+
+        @ParameterizedTest(name = "running")
+        @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
+        public void directory(final WListClientInterface client, final @NotNull TestInfo info) throws IOException, InterruptedException, WrongStateException {
+            final VisibleFilesListInformation list = OperateFilesHelper.listFiles(client, token(), location(root()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 1);
+            Assumptions.assumeTrue(list != null);
+            Assumptions.assumeFalse(list.informationList().isEmpty());
+            final VisibleFileInformation information = list.informationList().get(0);
+
+            final CountDownLatch latch = new CountDownLatch(1);
+            final AtomicReference<Pair.ImmutablePair<FileLocation, Boolean>> r = new AtomicReference<>();
+            final Consumer<Pair.ImmutablePair<FileLocation, Boolean>> callback = p -> {
+                r.set(p);
+                latch.countDown();
+            };
+            BroadcastAssistant.get(address()).FileUpdate.register(callback);
+            final UnionPair<Boolean, VisibleFailureReason> res = OperateFilesHelper.renameDirectly(client, token(), location(information.id()), true, "renamed-" + information.name(), Options.DuplicatePolicy.ERROR);
+            Assertions.assertTrue(res != null && res.isSuccess());
+            if (!res.getT().booleanValue()) {
+                BroadcastAssistant.get(address()).FileUpdate.unregister(callback);
+                HLog.DefaultLogger.log(HLogLevel.ERROR, "Unsupported operation: ", info.getTestClass().orElseThrow().getName(), "#", info.getTestMethod().orElseThrow().getName());
+                return;
+            }
+            latch.await();
+            Assertions.assertEquals(location(information.id()), r.get().getFirst());
+            Assertions.assertTrue(r.get().getSecond().booleanValue());
+            OperateFilesHelper.renameDirectly(client, token(), location(information.id()), true, information.name(), Options.DuplicatePolicy.ERROR);
+        }
+
+        @ParameterizedTest(name = "running")
+        @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
+        public void notAvailable(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
+            Assertions.assertEquals(FailureKind.NoSuchFile, Objects.requireNonNull(OperateFilesHelper.renameDirectly(client, token(),
+                    location(-2), false, "1.txt", Options.DuplicatePolicy.ERROR)).getE().kind());
+            Assertions.assertEquals(FailureKind.NoSuchFile, Objects.requireNonNull(OperateFilesHelper.renameDirectly(client, token(),
+                    location(-2), true, "a", Options.DuplicatePolicy.ERROR)).getE().kind());
+        }
     }
 }

@@ -63,4 +63,16 @@ public class LanzouTest extends RealAbstractTest<LanzouConfiguration> {
     @Nested
     public class MergeTest extends AbstractMergeTest {
     }
+
+    @Nested
+    public class CopyTest extends AbstractCopyTest {
+    }
+
+    @Nested
+    public class MoveTest extends AbstractMoveTest {
+    }
+
+    @Nested
+    public class RenameTest extends AbstractRenameTest {
+    }
 }
