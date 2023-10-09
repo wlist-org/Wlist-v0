@@ -192,8 +192,4 @@ public final class BroadcastManager {
             return buffer;
         });
     }
-
-    public static void onDirectoryRefresh(final @NotNull FileLocation directory) {
-        BroadcastManager.broadcast(OperationType.RefreshDirectory, directory::dump);
-    }
 }

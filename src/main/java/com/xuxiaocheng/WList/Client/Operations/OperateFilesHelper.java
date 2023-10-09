@@ -172,7 +172,7 @@ public final class OperateFilesHelper {
         }
     }
 
-    public static @Nullable UnionPair<@NotNull VisibleFileInformation, @NotNull VisibleFailureReason> createDirectory(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation parent, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
+    public static @Nullable UnionPair<Object, VisibleFailureReason> createDirectory(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation parent, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.CreateDirectory, token);
         parent.dump(send);
         ByteBufIOUtil.writeUTF(send, directoryName);
@@ -182,9 +182,8 @@ public final class OperateFilesHelper {
         try {
             final String reason = OperateHelper.handleState(receive);
             if (reason == null) {
-                final VisibleFileInformation directory = VisibleFileInformation.parse(receive);
-                OperateHelper.logOperated(OperationType.CreateDirectory, null, p -> p.add("directory", directory));
-                return UnionPair.ok(directory);
+                OperateHelper.logOperated(OperationType.CreateDirectory, null, null);
+                return UnionPair.ok(token); // null.
             }
             if ("Failure".equals(reason)) {
                 final VisibleFailureReason failureReason = VisibleFailureReason.parse(receive);
@@ -198,7 +197,7 @@ public final class OperateFilesHelper {
         }
     }
 
-    public static @Nullable UnionPair<@NotNull UploadConfirm, @NotNull VisibleFailureReason> requestUploadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation parent, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
+    public static @Nullable UnionPair<UploadConfirm, VisibleFailureReason> requestUploadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation parent, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.RequestUploadFile, token);
         parent.dump(send);
         ByteBufIOUtil.writeUTF(send, filename);

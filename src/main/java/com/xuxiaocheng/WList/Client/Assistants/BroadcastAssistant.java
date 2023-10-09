@@ -101,7 +101,6 @@ public final class BroadcastAssistant {
         public final @NotNull CallbackSet<Pair.@NotNull ImmutablePair<@NotNull FileLocation/*location*/, @NotNull Boolean/*isDirectory*/>> FileTrash = new CallbackSet<>("FileTrash");
         public final @NotNull CallbackSet<Pair.@NotNull ImmutablePair<@NotNull FileLocation/*location*/, @NotNull Boolean/*isDirectory*/>> FileUpdate = new CallbackSet<>("FileUpdate");
         public final @NotNull CallbackSet<Pair.@NotNull ImmutablePair<@NotNull String/*storage*/, @NotNull VisibleFileInformation/*information*/>> FileUpload = new CallbackSet<>("FileUpload");
-        public final @NotNull CallbackSet<@NotNull FileLocation/*directory*/> DirectoryRefresh = new CallbackSet<>("DirectoryRefresh");
 
         @Override
         public @NotNull String toString() {
@@ -122,7 +121,6 @@ public final class BroadcastAssistant {
                     ", FileTrash=" + this.FileTrash +
                     ", FileUpdate=" + this.FileUpdate +
                     ", FileUpload=" + this.FileUpload +
-                    ", DirectoryRefresh=" + this.DirectoryRefresh +
                     '}';
         }
     }
@@ -214,10 +212,6 @@ public final class BroadcastAssistant {
                 final String storage = ByteBufIOUtil.readUTF(buffer);
                 final VisibleFileInformation information = VisibleFileInformation.parse(buffer);
                 set.FileUpload.callback(Pair.ImmutablePair.makeImmutablePair(storage, information));
-            }
-            case RefreshDirectory -> {
-                final FileLocation directory = FileLocation.parse(buffer);
-                set.DirectoryRefresh.callback(directory);
             }
             default -> throw new IllegalStateException("Invalid broadcast type." + ParametersMap.create().add("type", type).add("buffer", buffer));
         }

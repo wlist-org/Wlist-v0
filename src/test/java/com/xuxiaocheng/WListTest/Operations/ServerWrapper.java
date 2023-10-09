@@ -1,6 +1,8 @@
 package com.xuxiaocheng.WListTest.Operations;
 
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
+import com.xuxiaocheng.HeadLibs.Logger.HLog;
+import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.StaticLoader;
 import com.xuxiaocheng.WList.Client.ClientConfiguration;
 import com.xuxiaocheng.WList.Client.Exceptions.WrongStateException;
@@ -49,8 +51,7 @@ public class ServerWrapper {
     public static void initialize() throws Exception {
         StaticLoader.load();
         ServerConfiguration.parseFromFile();
-        final File file = new File(ServerWrapper.runtimeDirectory, "data.db");
-        final SqlDatabaseInterface database = SqlDatabaseManager.quicklyOpen(file);
+        final SqlDatabaseInterface database = SqlDatabaseManager.quicklyOpen(new File(ServerWrapper.runtimeDirectory, "data.db"));
         ConstantManager.quicklyInitialize(database, "initialize");
         UserGroupManager.quicklyInitialize(database, "initialize");
         UserManager.quicklyInitialize(database, "initialize");
@@ -69,8 +70,11 @@ public class ServerWrapper {
     public static void uninitialize() throws Exception {
         WListClientManager.quicklyUninitialize(ServerWrapper.address.uninitialize());
 
-        for (final File file: new HashSet<>(SqlDatabaseManager.getOpenedDatabases()))
+        SqlDatabaseManager.quicklyClose(new File(ServerWrapper.runtimeDirectory, "data.db"));
+        for (final File file: new HashSet<>(SqlDatabaseManager.getOpenedDatabases())) {
+            HLog.DefaultLogger.log(HLogLevel.WARN, "Unclosed database: " + file.getAbsolutePath());
             SqlDatabaseManager.quicklyClose(file);
+        }
         WListServer.CodecExecutors.shutdownGracefully();
         WListServer.ServerExecutors.shutdownGracefully();
         WListServer.IOExecutors.shutdownGracefully();
