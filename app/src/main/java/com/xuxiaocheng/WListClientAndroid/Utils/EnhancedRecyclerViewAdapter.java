@@ -8,6 +8,7 @@ import androidx.annotation.UiThread;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.StaggeredGridLayoutManager;
+import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.UnmodifiableView;
 
@@ -65,17 +66,65 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
 
     protected abstract void bindViewHolder(final @NotNull VH holder, final @NotNull T information);
 
+    @Override
+    public int getItemCount() {
+        return this.headers.size() + this.data.size() + this.tailors.size();
+    }
+
+    @UiThread
+    public void addData(final @NotNull T data) {
+        this.data.add(data);
+        this.notifyItemInserted(this.headers.size() + this.data.size() - 1);
+    }
+
+    @UiThread
+    public void addData(final int index, final @NotNull T data) {
+        this.data.add(index, data);
+        this.notifyItemInserted(this.headers.size() + index);
+    }
+
     @UiThread
     public void addDataRange(final @NotNull Collection<? extends T> data) {
         this.data.addAll(data);
         this.notifyItemRangeInserted(this.headers.size() + this.data.size() - data.size(), data.size());
     }
 
-    // TODO: more data struct changer.
+    @UiThread
+    public void addDataRange(final int index, final @NotNull Collection<? extends T> data) {
+        this.data.addAll(index, data);
+        this.notifyItemRangeInserted(this.headers.size() + index, data.size());
+    }
 
-    @Override
-    public int getItemCount() {
-        return this.headers.size() + this.data.size() + this.tailors.size();
+    @UiThread
+    public void removeData(final int index) {
+        this.data.remove(index);
+        this.notifyItemRemoved(this.headers.size() + this.data.size() - 1);
+    }
+
+    @UiThread
+    public void removeDataRange(final int index, final int count) {
+        for (int i = 0; i < count; ++i)
+            this.data.remove(index);
+        this.notifyItemRangeRemoved(this.headers.size() + index, count);
+    }
+
+    @UiThread
+    public void changeData(final int index, final @NotNull T data) {
+        this.data.remove(index);
+        this.data.add(index, data);
+        this.notifyItemChanged(this.headers.size() + index);
+    }
+
+    public @NotNull @UnmodifiableView List<T> getData() {
+        return Collections.unmodifiableList(this.data);
+    }
+
+    public @NotNull T getData(final int index) {
+        return this.data.get(index);
+    }
+
+    public int dataSize() {
+        return this.data.size();
     }
 
     @UiThread
@@ -98,6 +147,10 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
 
     public @NotNull @UnmodifiableView List<@NotNull View> getHeaders() {
         return Collections.unmodifiableList(this.headers);
+    }
+
+    public @NotNull View getHeader(final int index) {
+        return this.headers.get(index);
     }
 
     public int headersSize() {
@@ -126,13 +179,24 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
         return Collections.unmodifiableList(this.tailors);
     }
 
+    public @NotNull View getTailor(final int index) {
+        return this.tailors.get(index);
+    }
+
     public int tailorsSize() {
         return this.tailors.size();
+    }
+
+    protected final @NotNull HInitializer<RecyclerView> view = new HInitializer<>("AttachedRecyclerView");
+
+    public @NotNull RecyclerView getRecyclerView() {
+        return this.view.getInstance();
     }
 
     @Override
     public void onAttachedToRecyclerView(final @NotNull RecyclerView recyclerView) {
         super.onAttachedToRecyclerView(recyclerView);
+        this.view.initialize(recyclerView);
         final RecyclerView.LayoutManager layoutManager = recyclerView.getLayoutManager();
         if (layoutManager instanceof GridLayoutManager gridLayoutManager)
             gridLayoutManager.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
@@ -141,6 +205,13 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
                     return EnhancedRecyclerViewAdapter.this.getItemViewType(position) == 0 ? 1 : gridLayoutManager.getSpanCount();
                 }
             });
+    }
+
+    @Override
+    public void onDetachedFromRecyclerView(final @NotNull RecyclerView recyclerView) {
+        super.onDetachedFromRecyclerView(recyclerView);
+        final RecyclerView old = this.view.uninitialize();
+        assert old == recyclerView;
     }
 
     @Override

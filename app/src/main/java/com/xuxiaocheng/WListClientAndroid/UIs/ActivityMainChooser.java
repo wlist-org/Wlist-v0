@@ -1,7 +1,6 @@
-package com.xuxiaocheng.WListClientAndroid.Activities.CustomViews;
+package com.xuxiaocheng.WListClientAndroid.UIs;
 
 import android.app.Activity;
-import android.content.Intent;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -14,7 +13,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Consumer;
 
-public final class MainTab {
+public final class ActivityMainChooser {
     public static final class ButtonGroup {
         private final @NotNull View layout;
         private final @NotNull ImageView button;
@@ -63,7 +62,7 @@ public final class MainTab {
 
         @Override
         public @NotNull String toString() {
-            return "MainTab$ButtonGroup{" +
+            return "ActivityMainChooser$ButtonGroup{" +
                     "layout=" + this.layout +
                     ", button=" + this.button +
                     ", text=" + this.text +
@@ -71,55 +70,52 @@ public final class MainTab {
         }
     }
 
-    public interface MainTabPage {
+    public interface MainPage {
         @NotNull View onShow();
         boolean onBackPressed();
-        default boolean onActivityResult(final int requestCode, final int resultCode, final @Nullable Intent data) {
-            return false;
-        }
     }
 
     private final @NotNull ButtonGroup fileButton;
     private final @NotNull ButtonGroup userButton;
 
-    public enum TabChoice {
+    public enum MainChoice {
         File,
         User,
     }
 
-    public MainTab(final @NotNull ButtonGroup fileButton, final @NotNull ButtonGroup userButton) {
+    public ActivityMainChooser(final @NotNull ButtonGroup fileButton, final @NotNull ButtonGroup userButton) {
         super();
         this.fileButton = fileButton;
         this.userButton = userButton;
     }
 
-    public void setOnChangeListener(final @NotNull Consumer<? super TabChoice> onChangeListener) {
+    public void setOnChangeListener(final @NotNull Consumer<? super MainChoice> onChangeListener) {
         this.fileButton.setOnClickListener(v -> {
             if (this.fileButton.isClicked()) return;
             this.fileButton.setClicked(true);
             this.userButton.setClicked(false);
-            onChangeListener.accept(TabChoice.File);
+            onChangeListener.accept(MainChoice.File);
         });
         this.userButton.setOnClickListener(v -> {
             if (this.userButton.isClicked()) return;
             this.fileButton.setClicked(false);
             this.userButton.setClicked(true);
-            onChangeListener.accept(TabChoice.User);
+            onChangeListener.accept(MainChoice.User);
         });
     }
 
     @SuppressWarnings("UnusedReturnValue")
-    public boolean click(final @NotNull TabChoice choice) {
-        if (choice == MainTab.TabChoice.File)
+    public boolean click(final @NotNull ActivityMainChooser.MainChoice choice) {
+        if (choice == MainChoice.File)
             return this.fileButton.callOnClick();
-        if (choice == MainTab.TabChoice.User)
+        if (choice == MainChoice.User)
             return this.userButton.callOnClick();
         return false;
     }
 
     @Override
     public @NotNull String toString() {
-        return "MainTab{" +
+        return "ActivityMainChooser{" +
                 "fileButton=" + this.fileButton +
                 ", userButton=" + this.userButton +
                 ", super=" + super.toString() +

@@ -21,7 +21,7 @@
 		tools:targetApi="s">
 
 		<activity
-			android:name=".Activities.LoginActivity"
+			android:name=".UIs.ActivityLogin"
 			android:exported="true"
 			android:theme="@style/Theme.WListClientAndroid.NoActionBar">
 			<intent-filter>
@@ -29,7 +29,7 @@
 				<category android:name="android.intent.category.LAUNCHER" />
 			</intent-filter>
 		</activity>
-		<activity android:name=".Activities.MainActivity" />
+		<activity android:name=".UIs.ActivityMain" />
 		<activity android:name=".Helpers.PermissionsHelper$PermissionsActivity" />
 
 		<service

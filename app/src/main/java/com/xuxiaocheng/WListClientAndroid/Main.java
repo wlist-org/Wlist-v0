@@ -46,6 +46,9 @@ public final class Main extends Application {
         Log.i("HLog", "Hello WList (Android v0.1.0)!" + ParametersMap.create().add("pid", Process.myPid()));
     }
 
+    public static final @NotNull EventExecutorGroup ClientExecutors =
+            new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 2, new DefaultThreadFactory("ClientExecutors"));
+
     private static final @NotNull EventExecutorGroup AndroidExecutors =
             new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() << 1, new DefaultThreadFactory("AndroidExecutors"));
 

@@ -5,7 +5,7 @@ import android.content.SharedPreferences;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.net.SocketAddress;
+import java.net.InetSocketAddress;
 
 public final class PasswordHelper {
     private PasswordHelper() {
@@ -21,7 +21,7 @@ public final class PasswordHelper {
         return password;
     } // Whatever the address is, identifier should be the same.
 
-    public static @Nullable String updatePassword(final @NotNull Context context, final @NotNull SocketAddress address, final @NotNull String username, final @Nullable String password) {
+    public static @Nullable String updatePassword(final @NotNull Context context, final @NotNull InetSocketAddress address, final @NotNull String username, final @Nullable String password) {
         final SharedPreferences database = context.getSharedPreferences("client.passwords", Context.MODE_PRIVATE);
         final String identifier = address + "@" + username;
         if (password == null)
