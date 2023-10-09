@@ -6,6 +6,9 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMultiRunHelper;
+import com.xuxiaocheng.HeadLibs.Initializers.HMultiInitializers;
+import com.xuxiaocheng.HeadLibs.Logger.HLog;
+import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Client.Operations.OperateServerHelper;
 import com.xuxiaocheng.WList.Client.WListClient;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
@@ -43,7 +46,12 @@ public final class BroadcastAssistant {
 
     public static final @NotNull EventExecutorGroup CallbackExecutors = new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors(), new DefaultThreadFactory("CallbackExecutors"));
 
-    protected static class CallbackSet<T> {
+    public static class CallbackSet<T> {
+        protected final @NotNull String name;
+        public CallbackSet(final @NotNull String name) {
+            super();
+            this.name = name;
+        }
         protected final @NotNull Set<Consumer<T>> callbacks = ConcurrentHashMap.newKeySet();
         public void register(final @NotNull Consumer<T> callback) {
             this.callbacks.add(callback);
@@ -52,70 +60,110 @@ public final class BroadcastAssistant {
             this.callbacks.remove(callback);
         }
         protected void callback(final @NotNull T t) throws InterruptedException {
+            if (this.callbacks.isEmpty()) {
+                HLog.getInstance("ClientLogger").log(HLogLevel.WARN, "No callbacks registered.", ParametersMap.create().add("name", this.name).add("event", t));
+            }
             HMultiRunHelper.runConsumers(BroadcastAssistant.CallbackExecutors, this.callbacks, c -> c.accept(t));
         }
         @Override
         public @NotNull String toString() {
             return "CallbackSet{" +
-                    "callbacks=" + this.callbacks +
+                    "name=" + this.name +
+                    ", callbacks=" + this.callbacks +
                     '}';
         }
     }
 
-    public static final @NotNull CallbackSet<Pair.@NotNull ImmutablePair<@NotNull String/*sender*/, @NotNull String/*message*/>> UserBroadcast = new CallbackSet<>();
+    @SuppressWarnings("PublicField")
+    public static class BroadcastSet {
+        protected BroadcastSet() {
+            super();
+        }
 
-    public static final @NotNull CallbackSet<@NotNull VisibleUserInformation/*information*/> UserLogon = new CallbackSet<>();
-    public static final @NotNull CallbackSet<@NotNull Long/*id*/> UserLogoff = new CallbackSet<>();
-    public static final @NotNull CallbackSet<Triad.@NotNull ImmutableTriad<@NotNull Long/*id*/, @NotNull String/*newName*/, @NotNull ZonedDateTime/*updateTime*/>> UserChangeName = new CallbackSet<>();
-    public static final @NotNull CallbackSet<Pair.@NotNull ImmutablePair<@NotNull Long/*id*/, @NotNull ZonedDateTime/*updateTime*/>> UserChangePassword = new CallbackSet<>();
+        public final @NotNull CallbackSet<Pair.@NotNull ImmutablePair<@NotNull String/*sender*/, @NotNull String/*message*/>> UserBroadcast = new CallbackSet<>("UserBroadcast");
 
-    public static final @NotNull CallbackSet<@NotNull VisibleUserGroupInformation/*information*/> UserGroupAdded = new CallbackSet<>();
-    public static final @NotNull CallbackSet<Triad.@NotNull ImmutableTriad<@NotNull Long/*id*/, @NotNull String/*newName*/, @NotNull ZonedDateTime/*updateTime*/>> UserGroupChangeName = new CallbackSet<>();
-    public static final @NotNull CallbackSet<Triad.@NotNull ImmutableTriad<@NotNull Long/*id*/, @NotNull Set<@NotNull UserPermission>/*newPermissions*/, @NotNull ZonedDateTime/*updateTime*/>> UserGroupChangePermissions = new CallbackSet<>();
-    public static final @NotNull CallbackSet<@NotNull Long/*id*/> UserGroupDeleted = new CallbackSet<>();
+        public final @NotNull CallbackSet<@NotNull VisibleUserInformation/*information*/> UserLogon = new CallbackSet<>("UserLogon");
+        public final @NotNull CallbackSet<@NotNull Long/*id*/> UserLogoff = new CallbackSet<>("UserLogoff");
+        public final @NotNull CallbackSet<Triad.@NotNull ImmutableTriad<@NotNull Long/*id*/, @NotNull String/*newName*/, @NotNull ZonedDateTime/*updateTime*/>> UserChangeName = new CallbackSet<>("UserChangeName");
+        public final @NotNull CallbackSet<Pair.@NotNull ImmutablePair<@NotNull Long/*id*/, @NotNull ZonedDateTime/*updateTime*/>> UserChangePassword = new CallbackSet<>("UserChangePassword");
 
-    public static final @NotNull CallbackSet<Triad.@NotNull ImmutableTriad<@NotNull Long/*id*/, Pair.@NotNull ImmutablePair<@NotNull Long/*groupId*/, @NotNull String/*groupName*/>, @NotNull ZonedDateTime/*updateTime*/>> UserChangeGroup = new CallbackSet<>();
-    public static final @NotNull CallbackSet<@NotNull Long/*groupId*/> UsersLogoff = new CallbackSet<>();
+        public final @NotNull CallbackSet<@NotNull VisibleUserGroupInformation/*information*/> UserGroupAdded = new CallbackSet<>("UserGroupAdded");
+        public final @NotNull CallbackSet<Triad.@NotNull ImmutableTriad<@NotNull Long/*id*/, @NotNull String/*newName*/, @NotNull ZonedDateTime/*updateTime*/>> UserGroupChangeName = new CallbackSet<>("UserGroupChangeName");
+        public final @NotNull CallbackSet<Triad.@NotNull ImmutableTriad<@NotNull Long/*id*/, @NotNull Set<@NotNull UserPermission>/*newPermissions*/, @NotNull ZonedDateTime/*updateTime*/>> UserGroupChangePermissions = new CallbackSet<>("UserGroupChangePermissions");
+        public final @NotNull CallbackSet<@NotNull Long/*id*/> UserGroupDeleted = new CallbackSet<>("UserGroupDeleted");
 
-    public static final @NotNull CallbackSet<@NotNull String/*name*/> ProviderInitialized = new CallbackSet<>();
-    public static final @NotNull CallbackSet<@NotNull String/*name*/> ProviderUninitialized = new CallbackSet<>();
+        public final @NotNull CallbackSet<Triad.@NotNull ImmutableTriad<@NotNull Long/*id*/, Pair.@NotNull ImmutablePair<@NotNull Long/*groupId*/, @NotNull String/*groupName*/>, @NotNull ZonedDateTime/*updateTime*/>> UserChangeGroup = new CallbackSet<>("UserChangeGroup");
+        public final @NotNull CallbackSet<@NotNull Long/*groupId*/> UsersLogoff = new CallbackSet<>("UsersLogoff");
 
-    public static final @NotNull CallbackSet<Pair.@NotNull ImmutablePair<@NotNull FileLocation/*location*/, @NotNull Boolean/*isDirectory*/>> FileTrash = new CallbackSet<>();
-    public static final @NotNull CallbackSet<Pair.@NotNull ImmutablePair<@NotNull FileLocation/*location*/, @NotNull Boolean/*isDirectory*/>> FileUpdate = new CallbackSet<>();
-    public static final @NotNull CallbackSet<Pair.@NotNull ImmutablePair<@NotNull String/*storage*/, @NotNull VisibleFileInformation/*information*/>> FileUpload = new CallbackSet<>();
-    public static final @NotNull CallbackSet<@NotNull FileLocation/*directory*/> DirectoryRefresh = new CallbackSet<>();
+        public final @NotNull CallbackSet<@NotNull String/*name*/> ProviderInitialized = new CallbackSet<>("ProviderInitialized");
+        public final @NotNull CallbackSet<@NotNull String/*name*/> ProviderUninitialized = new CallbackSet<>("ProviderUninitialized");
 
-    private static void handleBroadcast(final @NotNull OperationType type, final @NotNull ByteBuf buffer) throws IOException, InterruptedException {
+        public final @NotNull CallbackSet<Pair.@NotNull ImmutablePair<@NotNull FileLocation/*location*/, @NotNull Boolean/*isDirectory*/>> FileTrash = new CallbackSet<>("FileTrash");
+        public final @NotNull CallbackSet<Pair.@NotNull ImmutablePair<@NotNull FileLocation/*location*/, @NotNull Boolean/*isDirectory*/>> FileUpdate = new CallbackSet<>("FileUpdate");
+        public final @NotNull CallbackSet<Pair.@NotNull ImmutablePair<@NotNull String/*storage*/, @NotNull VisibleFileInformation/*information*/>> FileUpload = new CallbackSet<>("FileUpload");
+        public final @NotNull CallbackSet<@NotNull FileLocation/*directory*/> DirectoryRefresh = new CallbackSet<>("DirectoryRefresh");
+
+        @Override
+        public @NotNull String toString() {
+            return "BroadcastSet{" +
+                    "UserBroadcast=" + this.UserBroadcast +
+                    ", UserLogon=" + this.UserLogon +
+                    ", UserLogoff=" + this.UserLogoff +
+                    ", UserChangeName=" + this.UserChangeName +
+                    ", UserChangePassword=" + this.UserChangePassword +
+                    ", UserGroupAdded=" + this.UserGroupAdded +
+                    ", UserGroupChangeName=" + this.UserGroupChangeName +
+                    ", UserGroupChangePermissions=" + this.UserGroupChangePermissions +
+                    ", UserGroupDeleted=" + this.UserGroupDeleted +
+                    ", UserChangeGroup=" + this.UserChangeGroup +
+                    ", UsersLogoff=" + this.UsersLogoff +
+                    ", ProviderInitialized=" + this.ProviderInitialized +
+                    ", ProviderUninitialized=" + this.ProviderUninitialized +
+                    ", FileTrash=" + this.FileTrash +
+                    ", FileUpdate=" + this.FileUpdate +
+                    ", FileUpload=" + this.FileUpload +
+                    ", DirectoryRefresh=" + this.DirectoryRefresh +
+                    '}';
+        }
+    }
+
+    private static final @NotNull HMultiInitializers<@NotNull SocketAddress, @NotNull BroadcastSet> map = new HMultiInitializers<>("BroadcastSets");
+
+    public static @NotNull BroadcastSet get(final @NotNull SocketAddress address) {
+        return BroadcastAssistant.map.getInstance(address);
+    }
+
+    private static void handleBroadcast(final @NotNull BroadcastSet set, final @NotNull OperationType type, final @NotNull ByteBuf buffer) throws IOException, InterruptedException {
         switch (type) {
             case Logon -> {
                 final VisibleUserInformation information = VisibleUserInformation.parse(buffer);
-                BroadcastAssistant.UserLogon.callback(information);
+                set.UserLogon.callback(information);
             }
             case Logoff -> {
                 final long id = ByteBufIOUtil.readVariableLenLong(buffer);
-                BroadcastAssistant.UserLogoff.callback(id);
+                set.UserLogoff.callback(id);
             }
             case ChangeUsername -> {
                 final long id = ByteBufIOUtil.readVariableLenLong(buffer);
                 final String username = ByteBufIOUtil.readUTF(buffer);
                 final ZonedDateTime updateTime = ZonedDateTime.parse(ByteBufIOUtil.readUTF(buffer), DateTimeFormatter.ISO_DATE_TIME);
-                BroadcastAssistant.UserChangeName.callback(Triad.ImmutableTriad.makeImmutableTriad(id, username, updateTime));
+                set.UserChangeName.callback(Triad.ImmutableTriad.makeImmutableTriad(id, username, updateTime));
             }
             case ChangePassword -> {
                 final long id = ByteBufIOUtil.readVariableLenLong(buffer);
                 final ZonedDateTime updateTime = ZonedDateTime.parse(ByteBufIOUtil.readUTF(buffer), DateTimeFormatter.ISO_DATE_TIME);
-                BroadcastAssistant.UserChangePassword.callback(Pair.ImmutablePair.makeImmutablePair(id, updateTime));
+                set.UserChangePassword.callback(Pair.ImmutablePair.makeImmutablePair(id, updateTime));
             }
 
             case AddGroup -> {
                 final VisibleUserGroupInformation information = VisibleUserGroupInformation.parse(buffer);
-                BroadcastAssistant.UserGroupAdded.callback(information);
+                set.UserGroupAdded.callback(information);
             }
             case ChangeGroupName -> {
                 final long id = ByteBufIOUtil.readVariableLenLong(buffer);
                 final String name = ByteBufIOUtil.readUTF(buffer);
                 final ZonedDateTime updateTime = ZonedDateTime.parse(ByteBufIOUtil.readUTF(buffer), DateTimeFormatter.ISO_DATE_TIME);
-                BroadcastAssistant.UserGroupChangeName.callback(Triad.ImmutableTriad.makeImmutableTriad(id, name, updateTime));
+                set.UserGroupChangeName.callback(Triad.ImmutableTriad.makeImmutableTriad(id, name, updateTime));
             }
             case ChangeGroupPermissions -> {
                 final long id = ByteBufIOUtil.readVariableLenLong(buffer);
@@ -124,11 +172,11 @@ public final class BroadcastAssistant {
                 final Set<UserPermission> permissions = UserPermission.parse(permission);
                 if (permissions == null)
                     throw new IllegalStateException("Invalid permissions." + ParametersMap.create().add("id", id).add("permission", permission).add("updateTime", updateTime));
-                BroadcastAssistant.UserGroupChangePermissions.callback(Triad.ImmutableTriad.makeImmutableTriad(id, permissions, updateTime));
+                set.UserGroupChangePermissions.callback(Triad.ImmutableTriad.makeImmutableTriad(id, permissions, updateTime));
             }
             case DeleteGroup -> {
                 final long id = ByteBufIOUtil.readVariableLenLong(buffer);
-                BroadcastAssistant.UserGroupDeleted.callback(id);
+                set.UserGroupDeleted.callback(id);
             }
 
             case ChangeUserGroup -> {
@@ -136,40 +184,40 @@ public final class BroadcastAssistant {
                 final long groupId = ByteBufIOUtil.readVariableLenLong(buffer);
                 final String groupName = ByteBufIOUtil.readUTF(buffer);
                 final ZonedDateTime updateTime = ZonedDateTime.parse(ByteBufIOUtil.readUTF(buffer), DateTimeFormatter.ISO_DATE_TIME);
-                BroadcastAssistant.UserChangeGroup.callback(Triad.ImmutableTriad.makeImmutableTriad(id, Pair.ImmutablePair.makeImmutablePair(groupId, groupName), updateTime));
+                set.UserChangeGroup.callback(Triad.ImmutableTriad.makeImmutableTriad(id, Pair.ImmutablePair.makeImmutablePair(groupId, groupName), updateTime));
             }
             case DeleteUsersInGroup -> {
                 final long groupId = ByteBufIOUtil.readVariableLenLong(buffer);
-                BroadcastAssistant.UsersLogoff.callback(groupId);
+                set.UsersLogoff.callback(groupId);
             }
 
             case AddProvider -> {
                 final String name = ByteBufIOUtil.readUTF(buffer);
-                BroadcastAssistant.ProviderInitialized.callback(name);
+                set.ProviderInitialized.callback(name);
             }
             case RemoveProvider -> {
                 final String name = ByteBufIOUtil.readUTF(buffer);
-                BroadcastAssistant.ProviderUninitialized.callback(name);
+                set.ProviderUninitialized.callback(name);
             }
 
             case TrashFileOrDirectory -> {
                 final FileLocation location = FileLocation.parse(buffer);
                 final boolean isDirectory = ByteBufIOUtil.readBoolean(buffer);
-                BroadcastAssistant.FileTrash.callback(Pair.ImmutablePair.makeImmutablePair(location, isDirectory));
+                set.FileTrash.callback(Pair.ImmutablePair.makeImmutablePair(location, isDirectory));
             }
             case GetFileOrDirectory -> {
                 final FileLocation location = FileLocation.parse(buffer);
                 final boolean isDirectory = ByteBufIOUtil.readBoolean(buffer);
-                BroadcastAssistant.FileUpdate.callback(Pair.ImmutablePair.makeImmutablePair(location, isDirectory));
+                set.FileUpdate.callback(Pair.ImmutablePair.makeImmutablePair(location, isDirectory));
             }
             case UploadFile -> {
                 final String storage = ByteBufIOUtil.readUTF(buffer);
                 final VisibleFileInformation information = VisibleFileInformation.parse(buffer);
-                BroadcastAssistant.FileUpload.callback(Pair.ImmutablePair.makeImmutablePair(storage, information));
+                set.FileUpload.callback(Pair.ImmutablePair.makeImmutablePair(storage, information));
             }
             case RefreshDirectory -> {
                 final FileLocation directory = FileLocation.parse(buffer);
-                BroadcastAssistant.DirectoryRefresh.callback(directory);
+                set.DirectoryRefresh.callback(directory);
             }
             default -> throw new IllegalStateException("Invalid broadcast type." + ParametersMap.create().add("type", type).add("buffer", buffer));
         }
@@ -178,6 +226,8 @@ public final class BroadcastAssistant {
     private static final @NotNull Map<@NotNull SocketAddress, @NotNull WListClientInterface> receiver = new ConcurrentHashMap<>();
 
     public static void start(final @NotNull SocketAddress address) {
+        if (BroadcastAssistant.map.isInitialized(address))
+            return;
         //noinspection resource
         BroadcastAssistant.receiver.computeIfAbsent(address, k -> {
             final WListClientInterface client = new WListClient(address);
@@ -190,12 +240,12 @@ public final class BroadcastAssistant {
                         final UnionPair<Pair.ImmutablePair<OperationType, ByteBuf>, Pair.ImmutablePair<String, String>> pair = OperateServerHelper.waitBroadcast(client);
                         BroadcastAssistant.CallbackExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
                             if (pair.isFailure()) {
-                                BroadcastAssistant.UserBroadcast.callback(pair.getE());
+                                BroadcastAssistant.get(address).UserBroadcast.callback(pair.getE());
                                 return;
                             }
                             final ByteBuf buffer = pair.getT().getSecond();
                             try {
-                                BroadcastAssistant.handleBroadcast(pair.getT().getFirst(), buffer);
+                                BroadcastAssistant.handleBroadcast(BroadcastAssistant.get(address), pair.getT().getFirst(), buffer);
                             } finally {
                                 buffer.release();
                             }
@@ -211,13 +261,16 @@ public final class BroadcastAssistant {
                         BroadcastAssistant.start(address);
                 }
             })).addListener(MiscellaneousUtil.exceptionListener());
+            BroadcastAssistant.map.initializeIfNot(address, BroadcastSet::new);
             return client;
         });
     }
 
     public static void stop(final @NotNull SocketAddress address) {
         final WListClientInterface client = BroadcastAssistant.receiver.remove(address);
-        if (client != null)
+        if (client != null) {
             client.close();
+            BroadcastAssistant.map.uninitialize(address);
+        }
     }
 }
