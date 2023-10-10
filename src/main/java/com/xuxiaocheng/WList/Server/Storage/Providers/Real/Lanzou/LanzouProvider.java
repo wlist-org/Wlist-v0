@@ -55,7 +55,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 
 import java.io.IOException;
-import java.net.URL;
+import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -73,6 +73,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -86,13 +87,12 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
 
     protected static final @NotNull HLog logger = HLog.create("DriverLogger/lanzou");
 
-    protected static final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> LoginURL =
-            Pair.ImmutablePair.makeImmutablePair(Objects.requireNonNull(HttpUrl.parse("https://up.woozooo.com/account.php")), "POST");
+    protected static final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> DirectlyLoginURL =
+            Pair.ImmutablePair.makeImmutablePair(Objects.requireNonNull(HttpUrl.parse("https://up.woozooo.com/mlogin.php")), "POST");
     protected static final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> TaskURL =
         Pair.ImmutablePair.makeImmutablePair(Objects.requireNonNull(HttpUrl.parse("https://up.woozooo.com/doupload.php")), "POST");
     protected static final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> UploadURL =
             Pair.ImmutablePair.makeImmutablePair(Objects.requireNonNull(HttpUrl.parse("https://up.woozooo.com/html5up.php")), "POST");
-    protected static final @NotNull URL CookieUrl = LanzouProvider.LoginURL.getFirst().url();
 
     protected static final @NotNull Headers Headers = new Headers.Builder().set("user-agent", HttpNetworkHelper.DefaultWebAgent).set("referer", "https://up.woozooo.com/u").set("accept-language", "zh-CN").build();
     protected @NotNull Headers headerWithToken = LanzouProvider.Headers;
@@ -110,46 +110,76 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
             if (configuration.getPassword().length() < 6 || 20 < configuration.getPassword().length())
                 throw new IllegalParametersException(I18NUtil.get("server.provider.invalid_password"), ParametersMap.create().add("configuration", configuration));
         }
-        final Set<Cookie> cookies;
-        try (final WebClient client = BrowserUtil.newWebClient()) {
-            final HtmlPage page = client.getPage("https://up.woozooo.com/account.php?action=login");
-            BrowserUtil.waitJavaScriptCompleted(client);
-            final HtmlSpan slide = page.getHtmlElementById("nc_1_n1z");
-            slide.mouseDown();
-            slide.mouseMove(false, false, false, MouseEvent.BUTTON_RIGHT);
-            page.<HtmlInput>getElementByName("username").setValue(configuration.getPassport());
-            page.<HtmlInput>getElementByName("password").setValue(configuration.getPassword());
-            final HtmlPage res = page.getHtmlElementById("s3").click();
-            final String result = res.asNormalizedText(); // ((DomNode) res.getByXPath("//p").get(0)).getVisibleText()
-            boolean flag = true;
-            for (final Iterator<String> iterator = Arrays.stream(result.split("\n")).iterator(); iterator.hasNext();) {
-                if ("\u63D0\u793A\u4FE1\u606F".equals(iterator.next())) {
-                    if (iterator.hasNext() && iterator.next().contains("\u767B\u5F55\u6210\u529F"))
-                        flag = false;
+        final ZonedDateTime expires;
+        if (configuration.isDirectlyLogin()) {
+            final FormBody body = new FormBody.Builder()
+                    .add("task", "3")
+                    .add("uid", configuration.getPassport())
+                    .add("pwd", configuration.getPassword())
+                    .build();
+            final List<okhttp3.Cookie> cookies;
+            final JSONObject json;
+            try (final Response response = HttpNetworkHelper.postWithBody(configuration.getHttpClient(), LanzouProvider.DirectlyLoginURL, LanzouProvider.Headers, body).execute()) {
+                cookies = okhttp3.Cookie.parseAll(response.request().url(), response.headers());
+                json = HttpNetworkHelper.extraJsonResponseBody(response);
+            }
+            this.throwIfZt(json, "loginIfNot0", p -> p.add("cookies", cookies));
+            final Long id = json.getLong("id");
+            this.throwIfNull(id, json, "loginIfNot0", p -> p.add("cookies", cookies));
+            okhttp3.Cookie token = null;
+            for (final okhttp3.Cookie cookie: cookies)
+                if ("phpdisk_info".equals(cookie.name())) {
+                    token = cookie;
                     break;
                 }
+            this.throwIfNull(token, json, "loginIfNot0", p -> p.add("cookies", cookies));
+            expires = ZonedDateTime.ofInstant(Instant.ofEpochMilli(token.expiresAt()), ZoneOffset.UTC).minusSeconds(30);
+            configuration.setNickname(configuration.getPassport());
+            configuration.setVip(false); // TODO: nickname and vip.
+            configuration.setUid(id.longValue());
+            configuration.setToken(token.value());
+        } else {
+            final Set<Cookie> cookies;
+            try (final WebClient client = BrowserUtil.newWebClient()) {
+                final HtmlPage page = client.getPage("https://up.woozooo.com/account.php?action=login");
+                BrowserUtil.waitJavaScriptCompleted(client);
+                final HtmlSpan slide = page.getHtmlElementById("nc_1_n1z");
+                slide.mouseDown();
+                slide.mouseMove(false, false, false, MouseEvent.BUTTON_RIGHT);
+                page.<HtmlInput>getElementByName("username").setValue(configuration.getPassport());
+                page.<HtmlInput>getElementByName("password").setValue(configuration.getPassword());
+                final HtmlPage res = page.getHtmlElementById("s3").click();
+                final String result = res.asNormalizedText(); // ((DomNode) res.getByXPath("//p").get(0)).getVisibleText()
+                boolean flag = true;
+                for (final Iterator<String> iterator = Arrays.stream(result.split("\n")).iterator(); iterator.hasNext(); ) {
+                    if ("\u63D0\u793A\u4FE1\u606F".equals(iterator.next())) {
+                        if (iterator.hasNext() && iterator.next().contains("\u767B\u5F55\u6210\u529F"))
+                            flag = false;
+                        break;
+                    }
+                }
+                if (flag)
+                    throw new IllegalParametersException("Failed to login.", ParametersMap.create().add("configuration", configuration).add("page", result));
+                cookies = client.getCookies(Objects.requireNonNull(HttpUrl.parse("https://up.woozooo.com/")).url());
             }
-            if (flag)
-                throw new IllegalParametersException("Failed to login.", ParametersMap.create().add("configuration", configuration).add("page", result));
-            cookies = client.getCookies(LanzouProvider.CookieUrl);
+            Cookie token = null, uid = null;
+            for (final Cookie c : cookies) {
+                if ("phpdisk_info".equalsIgnoreCase(c.getName()))
+                    token = c;
+                if ("ylogin".equalsIgnoreCase(c.getName()))
+                    uid = c;
+            }
+            if (token == null || uid == null)
+                throw new IllegalParametersException("No token/uid receive.", ParametersMap.create().add("configuration", configuration).add("cookies", cookies));
+            expires = ZonedDateTime.ofInstant(token.getExpires().toInstant(), ZoneOffset.UTC).minusSeconds(30);
+            configuration.setNickname(configuration.getPassport());
+            configuration.setVip(false); // TODO: nickname and vip.
+            configuration.setUid(Long.parseLong(uid.getValue()));
+            configuration.setToken(token.getValue());
         }
-        Cookie token = null, uid = null;
-        for (final Cookie c: cookies) {
-            if ("phpdisk_info".equalsIgnoreCase(c.getName()))
-                token = c;
-            if ("ylogin".equalsIgnoreCase(c.getName()))
-                uid = c;
-        }
-        if (token == null || uid == null)
-            throw new IllegalParametersException("No token/uid receive.", ParametersMap.create().add("configuration", configuration).add("cookies", cookies));
-        this.headerWithToken = LanzouProvider.Headers.newBuilder().set("cookie", "phpdisk_info=" + token.getValue()).build();
-        final ZonedDateTime expires = ZonedDateTime.ofInstant(token.getExpires().toInstant(), ZoneOffset.UTC).minusSeconds(30);
-        configuration.setNickname(configuration.getPassport());
-        configuration.setVip(false); // TODO: nickname and vip.
-        configuration.setUid(Long.parseLong(uid.getValue()));
-        configuration.setToken(token.getValue());
         configuration.setTokenExpire(expires);
         configuration.markModified();
+        this.headerWithToken = LanzouProvider.Headers.newBuilder().set("cookie", "phpdisk_info=" + configuration.getToken()).build();
         LanzouProvider.logger.log(HLogLevel.LESS, "Logged in.", ParametersMap.create().add("storage", configuration.getName()).add("passport", configuration.getPassport()).add("expires", expires));
         return expires;
     }

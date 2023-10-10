@@ -64,7 +64,12 @@ public final class LanzouConfiguration extends StorageConfiguration {
         this.tokenExpire = tokenExpire;
     }
 
+    private boolean directlyLogin = false;
     private boolean skipNameChecker = false;
+
+    public boolean isDirectlyLogin() {
+        return this.directlyLogin;
+    }
 
     public boolean isSkipNameChecker() {
         return this.skipNameChecker;
@@ -86,6 +91,8 @@ public final class LanzouConfiguration extends StorageConfiguration {
                 o -> YamlHelper.transferString(o, errors, "token"));
         this.tokenExpire = YamlHelper.getConfigNullable(config, "token_expire",
                 o -> YamlHelper.transferDateTimeFromStr(o, errors, "token_expire", StorageConfiguration.TimeFormatter));
+        this.directlyLogin = YamlHelper.getConfig(config, "directly_login", this.directlyLogin,
+                o -> YamlHelper.transferBooleanFromStr(o, errors, "directly_login")).booleanValue();
         this.skipNameChecker = YamlHelper.getConfig(config, "skip_name_checker", this.skipNameChecker,
                 o -> YamlHelper.transferBooleanFromStr(o, errors, "skip_name_checker")).booleanValue();
     }
@@ -98,6 +105,7 @@ public final class LanzouConfiguration extends StorageConfiguration {
         config.put("uid", this.uid);
         config.put("token", this.token);
         config.put("token_expire", this.tokenExpire == null ? null : StorageConfiguration.TimeFormatter.format(this.tokenExpire));
+        config.put("directlyLogin", this.directlyLogin);
         config.put("skip_name_checker", this.skipNameChecker);
         return config;
     }
@@ -111,6 +119,7 @@ public final class LanzouConfiguration extends StorageConfiguration {
                 ", uid=" + this.uid +
                 ", token='" + this.token + '\'' +
                 ", tokenExpire=" + this.tokenExpire +
+                ", directlyLogin=" + this.directlyLogin +
                 ", skipNameChecker=" + this.skipNameChecker +
                 '}';
     }
