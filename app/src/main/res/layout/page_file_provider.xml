@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                                                   xmlns:app="http://schemas.android.com/apk/res-auto"
+                                                   android:layout_width="wrap_content"
+                                                   android:layout_height="wrap_content"
+                                                   android:minWidth="200dp"
+                                                   android:minHeight="200dp">
+
+	<androidx.appcompat.widget.AppCompatEditText
+		android:id="@+id/page_file_provider_name"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:background="@color/lighter_gray"
+		android:hint="@string/page_file_provider_name"
+		android:paddingStart="20dp"
+		android:paddingEnd="20dp"
+		android:textColor="@color/text_edited"
+		android:textColorHint="@color/text_hint"
+		android:textSize="20sp"
+		app:layout_constraintBottom_toTopOf="@id/page_file_provider_passport"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toTopOf="parent" />
+
+	<androidx.appcompat.widget.AppCompatEditText
+		android:id="@+id/page_file_provider_passport"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:background="@color/lighter_gray"
+		android:hint="@string/page_file_provider_passport"
+		android:paddingStart="20dp"
+		android:paddingEnd="20dp"
+		android:textColor="@color/text_edited"
+		android:textColorHint="@color/text_hint"
+		android:textSize="20sp"
+		app:layout_constraintBottom_toTopOf="@id/page_file_provider_password"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/page_file_provider_name" />
+
+	<androidx.appcompat.widget.AppCompatEditText
+		android:id="@+id/page_file_provider_password"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:background="@color/lighter_gray"
+		android:hint="@string/page_file_provider_password"
+		android:paddingStart="20dp"
+		android:paddingEnd="20dp"
+		android:textColor="@color/text_edited"
+		android:textColorHint="@color/text_hint"
+		android:textSize="20sp"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/page_file_provider_passport" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

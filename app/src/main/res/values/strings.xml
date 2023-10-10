@@ -46,10 +46,11 @@
 	<string name="page_file_upload_directory_hint">Directory Name.</string>
 	<string name="page_file_upload_success_directory">Created directory.</string>
 	<string name="page_file_upload_success_file">Uploaded file.</string>
-	<string name="page_file_driver_add">Add web storage.</string>
-	<string name="page_file_driver_name">Storage name: </string>
-	<string name="page_file_driver_passport">Storage passport: </string>
-	<string name="page_file_driver_password">Storage password: </string>
+	<string name="page_file_provider_add">Add web storage.</string>
+	<string name="page_file_provider_lanzou">Lanzou</string>
+	<string name="page_file_provider_name">Storage name: </string>
+	<string name="page_file_provider_passport">Storage passport: </string>
+	<string name="page_file_provider_password">Storage password: </string>
 	<string name="page_user_disconnect">Disconnection</string>
 	<string name="page_user_close_server">Close server</string>
 </resources>

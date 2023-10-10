@@ -1,6 +1,10 @@
 package com.xuxiaocheng.WListClientAndroid.UIs;
 
 import android.annotation.SuppressLint;
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.util.DisplayMetrics;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
@@ -16,12 +20,14 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.HeadLibs.Helpers.HMathHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WList.AndroidSupports.FileInformationGetter;
 import com.xuxiaocheng.WList.AndroidSupports.FileLocationGetter;
 import com.xuxiaocheng.WList.AndroidSupports.FilesListInformationGetter;
 import com.xuxiaocheng.WList.Client.Assistants.TokenAssistant;
 import com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper;
+import com.xuxiaocheng.WList.Client.Operations.OperateProvidersHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
@@ -29,17 +35,22 @@ import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFilesListInformation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.R;
 import com.xuxiaocheng.WListClientAndroid.Utils.EnhancedRecyclerViewAdapter;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileContentBinding;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileOptionBinding;
+import io.netty.util.internal.EmptyArrays;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.InetSocketAddress;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
@@ -346,6 +357,10 @@ public class PageFile implements ActivityMainChooser.MainPage {
     @UiThread
     protected boolean popFileList() {
         final PageFileContentBinding page = this.pageCache.getInstance();
+        if (this.stacks.pop() == null) {
+            this.onRootPage();
+            return false;
+        }
         final UnionPair<PageFileStacks.CachedStackRecord, PageFileStacks.NonCachedStackRecord> p = this.stacks.pop();
         if (p == null) {
             this.onRootPage();
@@ -366,113 +381,80 @@ public class PageFile implements ActivityMainChooser.MainPage {
         return true;
     }
 
+    @SuppressWarnings("unchecked")
     @SuppressLint("ClickableViewAccessibility")
-    protected void buildUploader() {
-//        final PageFileContentBinding page = this.pageCache.getInstance();
-//        final AtomicBoolean scrolling = new AtomicBoolean();
-//        final AtomicInteger startX = new AtomicInteger(), startY = new AtomicInteger();
-//        page.pageFileContentUploader.setOnTouchListener((v, e) -> {
-//            switch (e.getAction()) {
-//                case MotionEvent.ACTION_DOWN -> {
-//                    scrolling.set(false);
-//                    startX.set(Float.floatToIntBits(v.getX()));
-//                    startY.set(Float.floatToIntBits(v.getY()));
-//                }
-//                case MotionEvent.ACTION_MOVE -> {
-//                    if (scrolling.get()) {
-//                        final float parentX = page.pageFileContentList.getX(), parentY = page.pageFileContentList.getY();
-//                        v.setX(HMathHelper.clamp(v.getX() + e.getX() - parentX, 0, page.pageFileContentList.getWidth()) + parentX - v.getWidth() / 2.0f);
-//                        v.setY(HMathHelper.clamp(v.getY() + e.getY() - parentY, -50, page.pageFileContentList.getHeight()) + parentY - v.getHeight() / 2.0f);
-//                    } else if (Math.abs(v.getX() + e.getX() - Float.intBitsToFloat(startX.get())) > v.getWidth() / 2.0f || Math.abs(v.getY() + e.getY() - Float.intBitsToFloat(startY.get())) > v.getHeight() / 2.0f)
-//                        scrolling.set(true);
-//                }
-//                case MotionEvent.ACTION_UP -> {
-//                    if (scrolling.get())
-//                        PageFile.this.activity.getSharedPreferences("android.page.uploader_position", Context.MODE_PRIVATE).edit()
-//                                .putFloat("x", v.getX()).putFloat("y", v.getY()).apply();
-//                    else return v.performClick();
-//                }
-//            }
-//            return true;
-//        });
-//        Main.runOnBackgroundThread(this.activity, () -> {
-//            final float x, y;
-//            final SharedPreferences preferences = this.activity.getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE);
-//            if (preferences.contains("x") && preferences.contains("y")) {
-//                x = preferences.getFloat("x", 0);
-//                y = preferences.getFloat("y", 0);
-//            } else {
-//                final DisplayMetrics displayMetrics = this.activity.getResources().getDisplayMetrics();
-//                x = preferences.getFloat("x", (displayMetrics.widthPixels - page.pageFileContentUploader.getWidth()) * 0.7f);
-//                y = preferences.getFloat("y", displayMetrics.heightPixels * 0.6f);
-//                preferences.edit().putFloat("x", x).putFloat("y", y).apply();
-//            }
-//            Main.runOnUiThread(this.activity, () -> {
-//                page.pageFileContentUploader.setX(x);
-//                page.pageFileContentUploader.setY(y);
-//            });
-//        });
-//        page.pageFileContentUploader.setOnClickListener(u -> {
-//            if (this.locationStack.isEmpty()) return;
-//            if (this.locationStack.size() < 2) { // Root selector
-//                final String[] drivers = StorageTypes.getAll().keySet().toArray(new String[0]);
-//                final AtomicInteger choice = new AtomicInteger(-1);
-//                new AlertDialog.Builder(this.activity).setTitle(R.string.page_file_driver_add)
-//                        .setSingleChoiceItems(drivers, -1, (d, w) -> choice.set(w))
-//                        .setNegativeButton(R.string.cancel, null)
-//                        .setPositiveButton(R.string.confirm, (d, w) -> {
-//                            final String identifier = drivers[choice.get()];
-//                            final PageFileDriverBinding driverBinding = PageFileDriverBinding.inflate(this.activity.getLayoutInflater());
-//                            driverBinding.pageFileDriverName.setText(identifier);
-//                            new AlertDialog.Builder(this.activity).setTitle(identifier).setView(driverBinding.getRoot())
-//                                    .setNegativeButton(R.string.cancel, (b, h) -> {})
-//                                    .setPositiveButton(R.string.confirm, (b, h) -> {
-//                                        final Editable name_e = driverBinding.pageFileDriverName.getText();
-//                                        final Editable passport_e = driverBinding.pageFileDriverPassport.getText();
-//                                        final Editable password_e = driverBinding.pageFileDriverPassword.getText();
-//                                        final String name = name_e == null ? "" : name_e.toString();
-//                                        final String passport = passport_e == null ? "" : passport_e.toString();
-//                                        final String password = password_e == null ? "" : password_e.toString();
-//                                        final ImageView loading = new ImageView(this.activity);
-//                                        loading.setImageResource(R.mipmap.page_file_loading);
-//                                        PageFile.setLoading(loading);
-//                                        final AlertDialog dialog = new AlertDialog.Builder(this.activity)
-//                                                .setTitle(R.string.page_file_driver_add).setView(loading).setCancelable(false).show();
-//                                        Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
-//                                            if (name.isEmpty() || passport.isEmpty() || password.isEmpty())
-//                                                throw new IllegalStateException("Empty input."); // TODO input checker
-//                                            // TODO add driver. (WIP)
-//                                            final String n = HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 32, null);
-//                                            final File file = new File(this.activity.getExternalFilesDir("server"), "configs/" + n + ".yaml");
-//                                            HFileHelper.ensureFileExist(file.toPath(), false);
-//                                            try (final OutputStream stream = new BufferedOutputStream(new FileOutputStream(file))) {
-//                                                stream.write(String.format("local:\n  display_name: %s\nweb:\n  passport: '%s'\n  password: '%s'\n", name, passport, password).getBytes());
-//                                            }
-//                                            final String configuration;
-//                                            try (final InputStream stream = new BufferedInputStream(new FileInputStream(new File(this.activity.getExternalFilesDir("server"), "server.yaml")))) {
-//                                                final ByteBuf buf = ByteBufAllocator.DEFAULT.heapBuffer();
-//                                                try (final OutputStream os = new ByteBufOutputStream(buf)) {
-//                                                    AndroidSupporter.transferTo(stream, os);
-//                                                    configuration = buf.toString(StandardCharsets.UTF_8);
-//                                                } finally {
-//                                                    buf.release();
-//                                                }
-//                                            }
-//                                            try (final OutputStream stream = new BufferedOutputStream(new FileOutputStream(new File(this.activity.getExternalFilesDir("server"), "server.yaml")))) {
-//                                                stream.write(configuration.replace(" {}", "").getBytes(StandardCharsets.UTF_8));
-//                                                stream.write(String.format("  %s: %s\n", n, identifier).getBytes());
-//                                            }
-//                                            Main.runOnUiThread(this.activity, () -> {
-//                                                Toast.makeText(this.activity, "Server needs to be restarted to adapt to changes.", Toast.LENGTH_SHORT).show();
-//                                            });
-//                                            try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address())) {
-//                                               OperateServerHelper.closeServer(client, TokenAssistant.getToken(this.address(), this.username()));
-//                                            }
-//                                        }, () -> Main.runOnUiThread(this.activity, dialog::cancel)));
-//                                    }).show();
-//                        }).show();
-//                return;
-//            }
+    protected <C extends StorageConfiguration> void buildUploader() {
+        final PageFileContentBinding page = this.pageCache.getInstance();
+        final AtomicBoolean scrolling = new AtomicBoolean();
+        final AtomicInteger startX = new AtomicInteger(), startY = new AtomicInteger();
+        page.pageFileContentUploader.setOnTouchListener((v, e) -> {
+            switch (e.getAction()) {
+                case MotionEvent.ACTION_DOWN -> {
+                    scrolling.set(false);
+                    startX.set(Float.floatToIntBits(v.getX()));
+                    startY.set(Float.floatToIntBits(v.getY()));
+                }
+                case MotionEvent.ACTION_MOVE -> {
+                    if (scrolling.get()) {
+                        final float parentX = page.pageFileContentList.getX(), parentY = page.pageFileContentList.getY();
+                        v.setX(HMathHelper.clamp(v.getX() + e.getX() - parentX, 0, page.pageFileContentList.getWidth()) + parentX - v.getWidth() / 2.0f);
+                        v.setY(HMathHelper.clamp(v.getY() + e.getY() - parentY, -50, page.pageFileContentList.getHeight()) + parentY - v.getHeight() / 2.0f);
+                    } else if (Math.abs(v.getX() + e.getX() - Float.intBitsToFloat(startX.get())) > v.getWidth() / 2.0f || Math.abs(v.getY() + e.getY() - Float.intBitsToFloat(startY.get())) > v.getHeight() / 2.0f)
+                        scrolling.set(true);
+                }
+                case MotionEvent.ACTION_UP -> {
+                    if (scrolling.get())
+                        PageFile.this.activity.getSharedPreferences("android.page.uploader_position", Context.MODE_PRIVATE).edit()
+                                .putFloat("x", v.getX()).putFloat("y", v.getY()).apply();
+                    else return v.performClick();
+                }
+            }
+            return true;
+        });
+        Main.runOnBackgroundThread(this.activity, () -> {
+            final float x, y;
+            final SharedPreferences preferences = this.activity.getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE);
+            if (preferences.contains("x") && preferences.contains("y")) {
+                x = preferences.getFloat("x", 0);
+                y = preferences.getFloat("y", 0);
+            } else {
+                final DisplayMetrics displayMetrics = this.activity.getResources().getDisplayMetrics();
+                x = preferences.getFloat("x", (displayMetrics.widthPixels - page.pageFileContentUploader.getWidth()) * 0.7f);
+                y = preferences.getFloat("y", displayMetrics.heightPixels * 0.6f);
+                preferences.edit().putFloat("x", x).putFloat("y", y).apply();
+            }
+            Main.runOnUiThread(this.activity, () -> {
+                page.pageFileContentUploader.setX(x);
+                page.pageFileContentUploader.setY(y);
+            });
+        });
+        page.pageFileContentUploader.setOnClickListener(u -> {
+            if (this.stacks.isEmpty()) { // Root selector
+                final String[] storages = StorageTypes.getAll().keySet().toArray(EmptyArrays.EMPTY_STRINGS);
+                final AtomicInteger choice = new AtomicInteger(-1);
+                new AlertDialog.Builder(this.activity).setTitle(R.string.page_file_provider_add)
+                        .setSingleChoiceItems(storages, -1, (d, w) -> choice.set(w))
+                        .setNegativeButton(R.string.cancel, null)
+                        .setPositiveButton(R.string.confirm, (d, w) -> {
+                            final String identifier = storages[choice.get()];
+                            final StorageTypes<C> type = (StorageTypes<C>) Objects.requireNonNull(StorageTypes.get(identifier));
+                            PageFileProviderConfigurations.getConfiguration(PageFile.this.activity, type, null, configuration -> Main.runOnUiThread(this.activity, () -> {
+                                final ImageView loading = new ImageView(PageFile.this.activity);
+                                loading.setImageResource(R.mipmap.page_file_loading);
+                                PageFile.setLoading(loading);
+                                final AlertDialog dialog = new AlertDialog.Builder(PageFile.this.activity)
+                                        .setTitle(R.string.page_file_provider_add).setView(loading)
+                                        .setCancelable(false).show();
+                                Main.runOnBackgroundThread(PageFile.this.activity, HExceptionWrapper.wrapRunnable(() -> {
+                                    try (final WListClientInterface client = WListClientManager.quicklyGetClient(PageFile.this.address())) {
+                                        OperateProvidersHelper.addProvider(client, TokenAssistant.getToken(PageFile.this.address(), PageFile.this.username()),
+                                                configuration.getName(), type, configuration);
+                                    }
+                                }, () -> Main.runOnUiThread(PageFile.this.activity, dialog::cancel)));
+                            }));
+                        }).show();
+                return;
+            }
 //            final PageFileStacks.CachedStackRecord record = this.locationStack.getFirst();
 //            final FileLocation location = record.location;
 //            final PageFileUploadBinding upload = PageFileUploadBinding.inflate(this.activity.getLayoutInflater());
@@ -532,7 +514,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
 //            upload.pageFileUploadVideo.setOnClickListener(v -> uploadFile.accept("video/*"));
 //            upload.pageFileUploadVideoText.setOnClickListener(v -> upload.pageFileUploadVideo.performClick());
 //            uploader.show();
-//        });
+        });
     }
 
 //    @Override
@@ -617,7 +599,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
     }
 
     @UiThread
-    private static void setLoading(final @NotNull ImageView loading) {
+    static void setLoading(final @NotNull ImageView loading) {
         final Animation loadingAnimation = new RotateAnimation(0, 360 << 10, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
         loadingAnimation.setDuration(500 << 10);
         loadingAnimation.setInterpolator(new LinearInterpolator());
