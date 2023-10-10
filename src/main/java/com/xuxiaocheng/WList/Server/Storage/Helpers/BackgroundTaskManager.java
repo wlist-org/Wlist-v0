@@ -40,8 +40,10 @@ public final class BackgroundTaskManager {
             if (o != null) {
                 if (onConflictWhenCompletedIgnoreOthersParams == null)
                     return o;
-                return o.whenComplete((v, e) -> onConflictWhenCompletedIgnoreOthersParams.run())
-                        .exceptionally(MiscellaneousUtil.exceptionHandler());
+                return o.whenCompleteAsync(HExceptionWrapper.wrapBiConsumer((v, e) -> {
+                    latch.await();
+                    onConflictWhenCompletedIgnoreOthersParams.run();
+                }), BackgroundTaskManager.BackgroundExecutors).exceptionally(MiscellaneousUtil.exceptionHandler());
             }
             if (!removeLock)
                 BackgroundTaskManager.removable.add(identify);

@@ -115,7 +115,7 @@ public final class LanzouConfiguration extends StorageConfiguration {
         return "LanzouConfiguration{" +
                 "super=" + super.toString() +
                 ", passport='" + this.passport + '\'' +
-                ", password=" + "*".repeat(this.password.length()) +
+                ", password: " + "*".repeat(this.password.length()) +
                 ", uid=" + this.uid +
                 ", token='" + this.token + '\'' +
                 ", tokenExpire=" + this.tokenExpire +
