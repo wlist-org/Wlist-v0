@@ -29,19 +29,19 @@ public final class TokenAssistant {
 
     private static final @NotNull Map<@NotNull SocketAddress, @NotNull Map<@NotNull String, @NotNull Pair<@NotNull String, @NotNull ScheduledFuture<?>>>> map = new ConcurrentHashMap<>();
 
-    public static void login(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull String password, final @NotNull ScheduledExecutorService executor) throws IOException, InterruptedException, WrongStateException {
+    public static boolean login(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull String password, final @NotNull ScheduledExecutorService executor) throws IOException, InterruptedException, WrongStateException {
         final Pair.ImmutablePair<String, ZonedDateTime> token;
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
             token = OperateSelfHelper.login(client, username, password);
         }
         if (token == null) {
             TokenAssistant.removeToken(address, username);
-            return;
+            return false;
         }
         final long duration = Duration.between(MiscellaneousUtil.now(), token.getSecond().minusSeconds(30)).toMillis();
         if (duration <= 0) {
             TokenAssistant.removeToken(address, username);
-            return;
+            return false;
         }
         TokenAssistant.map.compute(address, (a, m) -> Objects.requireNonNullElseGet(m, HashMap::new))
                 .compute(username, (k, o) -> {
@@ -56,6 +56,7 @@ public final class TokenAssistant {
                             duration, TimeUnit.MILLISECONDS));
                     return t;
                 });
+        return true;
     }
 
     public static @NotNull String getToken(final @NotNull SocketAddress address, final @NotNull String username) {

@@ -82,6 +82,8 @@ public final class BroadcastAssistant {
 
         public final @NotNull CallbackSet<Pair.@NotNull ImmutablePair<@NotNull String/*sender*/, @NotNull String/*message*/>> UserBroadcast = new CallbackSet<>("UserBroadcast");
 
+        public final @NotNull CallbackSet<@NotNull Long/*userId*/> ServerClose = new CallbackSet<>("ServerClose");
+
         public final @NotNull CallbackSet<@NotNull VisibleUserInformation/*information*/> UserLogon = new CallbackSet<>("UserLogon");
         public final @NotNull CallbackSet<@NotNull Long/*id*/> UserLogoff = new CallbackSet<>("UserLogoff");
         public final @NotNull CallbackSet<Triad.@NotNull ImmutableTriad<@NotNull Long/*id*/, @NotNull String/*newName*/, @NotNull ZonedDateTime/*updateTime*/>> UserChangeName = new CallbackSet<>("UserChangeName");
@@ -133,6 +135,10 @@ public final class BroadcastAssistant {
 
     private static void handleBroadcast(final @NotNull BroadcastSet set, final @NotNull OperationType type, final @NotNull ByteBuf buffer) throws IOException, InterruptedException {
         switch (type) {
+            case CloseServer -> {
+                final long id = ByteBufIOUtil.readVariableLenLong(buffer);
+                set.ServerClose.callback(id);
+            }
             case Logon -> {
                 final VisibleUserInformation information = VisibleUserInformation.parse(buffer);
                 set.UserLogon.callback(information);

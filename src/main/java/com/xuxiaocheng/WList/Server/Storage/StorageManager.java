@@ -240,7 +240,7 @@ public final class StorageManager {
 
     public static @NotNull @Unmodifiable Set<@NotNull StorageConfiguration> getAllConfigurations() {
         return StorageManager.storages.values().stream().filter(e -> e.getSecond() != StorageManager.ProviderPlaceholder)
-                .map(p -> p.getSecond().getA().getConfiguration()).collect(Collectors.toUnmodifiableSet());
+                .map(p -> p.getSecond().getA().getConfiguration()).collect(Collectors.toSet());
     }
 
     public static @NotNull @Unmodifiable Map<@NotNull String, @NotNull ProviderInterface<?>> getAllProviders() {

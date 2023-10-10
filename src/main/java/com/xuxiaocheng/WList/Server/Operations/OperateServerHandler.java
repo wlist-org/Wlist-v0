@@ -60,7 +60,10 @@ public final class OperateServerHandler {
             WListServer.getInstance().refuseNew();
             WListServer.ServerExecutors.execute(() -> {
                 try {
-                    final ChannelGroupFuture future = BroadcastManager.broadcast(OperationType.CloseServer, null);
+                    final ChannelGroupFuture future = BroadcastManager.broadcast(OperationType.CloseServer, buf -> {
+                        ByteBufIOUtil.writeVariableLenLong(buf, user.getT().id());
+                        return buf;
+                    });
                     if (future != null)
                         future.await();
                 } catch (final InterruptedException exception) {
