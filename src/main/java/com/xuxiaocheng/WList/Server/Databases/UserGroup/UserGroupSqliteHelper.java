@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Server.Databases.UserGroup;
 
+import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation;
@@ -243,7 +244,7 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
                 statement.setString(1, name);
                 statement.setBytes(2, SqlHelper.toOrdered(name));
                 time = SqlHelper.now();
-                statement.setTimestamp(3, Timestamp.valueOf(time.toLocalDateTime()));
+                statement.setTimestamp(3, AndroidSupporter.toTimestamp(time.toLocalDateTime()));
                 statement.setLong(4, id);
                 if (statement.executeUpdate() == 0)
                     time = null;
@@ -263,7 +264,7 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
     UPDATE OR IGNORE groups SET %s, update_time = ? WHERE group_id == ?;
                 """, UserGroupSqliteHelper.permissionsUpdateValue(permissions)))) {
                 time = SqlHelper.now();
-                statement.setTimestamp(1, Timestamp.valueOf(time.toLocalDateTime()));
+                statement.setTimestamp(1, AndroidSupporter.toTimestamp(time.toLocalDateTime()));
                 statement.setLong(2, id);
                 if (statement.executeUpdate() == 0)
                     time = null;

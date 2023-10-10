@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Server.Databases.User;
 
+import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -208,7 +209,7 @@ public class UserSqliteHelper implements UserSqlInterface {
                 statement.setString(1, name);
                 statement.setBytes(2, SqlHelper.toOrdered(name));
                 time = SqlHelper.now();
-                statement.setTimestamp(3, Timestamp.valueOf(time.toLocalDateTime()));
+                statement.setTimestamp(3, AndroidSupporter.toTimestamp(time.toLocalDateTime()));
                 statement.setLong(4, id);
                 if (statement.executeUpdate() == 0)
                     time = null;
@@ -227,8 +228,8 @@ public class UserSqliteHelper implements UserSqlInterface {
                 """)) {
                 statement.setString(1, encryptedPassword);
                 time = SqlHelper.now();
-                statement.setTimestamp(2, Timestamp.valueOf(time.toLocalDateTime()));
-                statement.setTimestamp(3, Timestamp.valueOf(time.toLocalDateTime()));
+                statement.setTimestamp(2, AndroidSupporter.toTimestamp(time.toLocalDateTime()));
+                statement.setTimestamp(3, AndroidSupporter.toTimestamp(time.toLocalDateTime()));
                 statement.setLong(4, id);
                 if (statement.executeUpdate() == 0)
                     time = null;
@@ -249,8 +250,8 @@ public class UserSqliteHelper implements UserSqlInterface {
                 """)) {
                 statement.setLong(1, groupId);
                 time = SqlHelper.now();
-                statement.setTimestamp(2, Timestamp.valueOf(time.toLocalDateTime()));
-                statement.setTimestamp(3, Timestamp.valueOf(time.toLocalDateTime()));
+                statement.setTimestamp(2, AndroidSupporter.toTimestamp(time.toLocalDateTime()));
+                statement.setTimestamp(3, AndroidSupporter.toTimestamp(time.toLocalDateTime()));
                 statement.setLong(4, id);
                 if (statement.executeUpdate() == 0)
                     time = null;

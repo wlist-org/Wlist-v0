@@ -38,6 +38,6 @@ public final class SqlHelper {
     @Contract(pure = true)
     public static @Nullable Timestamp getTimestamp(final @Nullable ZonedDateTime time) {
         assert time == null || ZoneOffset.UTC.equals(time.getZone());
-        return time == null ? null : Timestamp.valueOf(time.toLocalDateTime());
+        return time == null ? null : AndroidSupporter.toTimestamp(time.toLocalDateTime());
     }
 }
