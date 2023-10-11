@@ -114,8 +114,11 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
 
     protected void loginIfNot() throws Exception {
         synchronized (this.loginExpireTime) {
-            if (this.loginExpireTime.get() == null || MiscellaneousUtil.now().isAfter(this.loginExpireTime.get()))
+            if (this.loginExpireTime.get() == null || MiscellaneousUtil.now().isAfter(this.loginExpireTime.get())) {
+                BroadcastManager.onProviderLogin(this.getConfiguration().getName(), true);
                 this.loginExpireTime.set(this.loginIfNot0());
+                BroadcastManager.onProviderLogin(this.getConfiguration().getName(), false);
+            }
         }
     }
 

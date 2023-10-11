@@ -154,16 +154,24 @@ public final class BroadcastManager {
     }
 
 
-    public static void onProviderInitialized(final @NotNull String name) {
+    public static void onProviderInitialized(final @NotNull String storage) {
         BroadcastManager.broadcast(OperationType.AddProvider, buf -> {
-            ByteBufIOUtil.writeUTF(buf, name);
+            ByteBufIOUtil.writeUTF(buf, storage);
             return buf;
         });
     }
 
-    public static void onProviderUninitialized(final @NotNull String name) {
+    public static void onProviderUninitialized(final @NotNull String storage) {
         BroadcastManager.broadcast(OperationType.RemoveProvider, buf -> {
-            ByteBufIOUtil.writeUTF(buf, name);
+            ByteBufIOUtil.writeUTF(buf, storage);
+            return buf;
+        });
+    }
+
+    public static void onProviderLogin(final @NotNull String storage, final boolean enter) {
+        BroadcastManager.broadcast(OperationType.Login, buf -> { // Not user login.
+            ByteBufIOUtil.writeUTF(buf, storage);
+            ByteBufIOUtil.writeBoolean(buf, enter);
             return buf;
         });
     }

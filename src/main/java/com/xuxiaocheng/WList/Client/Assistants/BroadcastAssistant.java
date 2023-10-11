@@ -97,8 +97,9 @@ public final class BroadcastAssistant {
         public final @NotNull CallbackSet<Triad.@NotNull ImmutableTriad<@NotNull Long/*id*/, Pair.@NotNull ImmutablePair<@NotNull Long/*groupId*/, @NotNull String/*groupName*/>, @NotNull ZonedDateTime/*updateTime*/>> UserChangeGroup = new CallbackSet<>("UserChangeGroup");
         public final @NotNull CallbackSet<@NotNull Long/*groupId*/> UsersLogoff = new CallbackSet<>("UsersLogoff");
 
-        public final @NotNull CallbackSet<@NotNull String/*name*/> ProviderInitialized = new CallbackSet<>("ProviderInitialized");
-        public final @NotNull CallbackSet<@NotNull String/*name*/> ProviderUninitialized = new CallbackSet<>("ProviderUninitialized");
+        public final @NotNull CallbackSet<@NotNull String/*storage*/> ProviderInitialized = new CallbackSet<>("ProviderInitialized");
+        public final @NotNull CallbackSet<@NotNull String/*storage*/> ProviderUninitialized = new CallbackSet<>("ProviderUninitialized");
+        public final @NotNull CallbackSet<Pair.@NotNull ImmutablePair<@NotNull String/*storage*/, @NotNull Boolean/*enter*/>> ProviderLogin = new CallbackSet<>("ProviderLogin");
 
         public final @NotNull CallbackSet<Pair.@NotNull ImmutablePair<@NotNull FileLocation/*location*/, @NotNull Boolean/*isDirectory*/>> FileTrash = new CallbackSet<>("FileTrash");
         public final @NotNull CallbackSet<Pair.@NotNull ImmutablePair<@NotNull FileLocation/*location*/, @NotNull Boolean/*isDirectory*/>> FileUpdate = new CallbackSet<>("FileUpdate");
@@ -120,6 +121,7 @@ public final class BroadcastAssistant {
                     ", UsersLogoff=" + this.UsersLogoff +
                     ", ProviderInitialized=" + this.ProviderInitialized +
                     ", ProviderUninitialized=" + this.ProviderUninitialized +
+                    ", ProviderLogin=" + this.ProviderLogin +
                     ", FileTrash=" + this.FileTrash +
                     ", FileUpdate=" + this.FileUpdate +
                     ", FileUpload=" + this.FileUpload +
@@ -196,12 +198,17 @@ public final class BroadcastAssistant {
             }
 
             case AddProvider -> {
-                final String name = ByteBufIOUtil.readUTF(buffer);
-                set.ProviderInitialized.callback(name);
+                final String storage = ByteBufIOUtil.readUTF(buffer);
+                set.ProviderInitialized.callback(storage);
             }
             case RemoveProvider -> {
-                final String name = ByteBufIOUtil.readUTF(buffer);
-                set.ProviderUninitialized.callback(name);
+                final String storage = ByteBufIOUtil.readUTF(buffer);
+                set.ProviderUninitialized.callback(storage);
+            }
+            case Login -> {
+                final String storage = ByteBufIOUtil.readUTF(buffer);
+                final boolean enter = ByteBufIOUtil.readBoolean(buffer);
+                set.ProviderLogin.callback(Pair.ImmutablePair.makeImmutablePair(storage, enter));
             }
 
             case TrashFileOrDirectory -> {
