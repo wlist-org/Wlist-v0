@@ -17,7 +17,6 @@ import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.HeadLibs.Ranges.IntRange;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Commons.Utils.I18NUtil;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
@@ -26,6 +25,7 @@ import com.xuxiaocheng.WList.Server.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.Exceptions.IllegalResponseCodeException;
 import com.xuxiaocheng.WList.Server.Exceptions.WrongResponseException;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.BroadcastManager;
+import com.xuxiaocheng.WList.Server.Operations.Helpers.ProgressBar;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.BrowserUtil;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.ProviderUtil;
@@ -77,7 +77,7 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@SuppressWarnings({"SpellCheckingInspection", "CallToSuspiciousStringMethod", "OverlyBroadThrowsClause"})
+@SuppressWarnings({"SpellCheckingInspection", "CallToSuspiciousStringMethod"})
 public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> {
     @Override
     public @NotNull StorageTypes<LanzouConfiguration> getType() {
@@ -326,7 +326,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         });
     }
 
-    protected void listFilesInPage(final long directoryId, final @IntRange(minimum = 1) int page, final @NotNull Consumer<? super @NotNull Throwable> error, final @NotNull Consumer<? super Pair.@NotNull ImmutablePair<@NotNull@Unmodifiable Collection<FileInformation>, @NotNull Boolean>> consumer) {
+    protected void listFilesInPage(final long directoryId, final int page, final @Nullable ProgressBar progress, final @NotNull Consumer<? super @NotNull Throwable> error, final @NotNull Consumer<? super Pair.@NotNull ImmutablePair<@NotNull@Unmodifiable Collection<FileInformation>, @NotNull Boolean>> consumer) {
         this.task(5, f -> f.add("folder_id", String.valueOf(directoryId)).add("pg", String.valueOf(page)), error, json -> {
             this.throwIfZt(json, "listFilesInPage", p -> p.add("directoryId", directoryId).add("page", page));
             final JSONArray infos = json.getJSONArray("text");
@@ -336,9 +336,13 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                 consumer.accept(Pair.ImmutablePair.makeImmutablePair(List.of(), noMore == null || noMore.booleanValue()));
                 return;
             }
+            if (progress != null)
+                progress.addTotal(0, infos.size());
             final AtomicInteger counter = new AtomicInteger(infos.size());
             final Map<Long, FileInformation> map = new ConcurrentHashMap<>(infos.size());
             final Runnable finisher = () -> {
+                if (progress != null)
+                    progress.progress(0, 1);
                 if (counter.getAndDecrement() <= 1) {
                     consumer.accept(Pair.ImmutablePair.makeImmutablePair(map.values(), noMore == null ? map.isEmpty() : noMore.booleanValue()));
                 }
@@ -356,7 +360,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                 }
                 this.getFileShareUrl(id.longValue(), e -> {
                     HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), e);
-                    map.put(id, new FileInformation(id.longValue(), directoryId, name, false, 0, null, null, null));
+                    map.putIfAbsent(id, new FileInformation(id.longValue(), directoryId, name, false, 0, null, null, null));
                     finisher.run();
                 }, (url, pwd) -> {
                     if (url == null) {
@@ -376,9 +380,9 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                         if (fixed == null) return;
                         size = fixed.getFirst().longValue();
                         time = fixed.getSecond();
+                        finisher.run();
                     } finally {
                         map.put(id, new FileInformation(id.longValue(), directoryId, name, false, size, time, time, others));
-                        finisher.run();
                     }
                 });
             }
@@ -386,22 +390,26 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     @Override
-    protected void list0(final long directoryId, final @NotNull Consumer<? super UnionPair<Optional<Iterator<FileInformation>>, Throwable>> consumer) throws Exception {
+    protected void list0(final long directoryId, final @Nullable ProgressBar progress, final @NotNull Consumer<? super UnionPair<Optional<Iterator<FileInformation>>, Throwable>> consumer) throws Exception {
         final AtomicReference<List<FileInformation>> directories = new AtomicReference<>();
         ProviderUtil.wrapSuppliersInPages(available -> this.listAllDirectory(directoryId, e -> available.accept(UnionPair.fail(e)), list -> {
             if (list == null)
                 available.accept(ProviderUtil.WrapNotAvailable);
             else {
                 directories.set(list);
+                if (progress != null)
+                    progress.addStage(list.size());
                 available.accept(ProviderUtil.WrapAvailable);
             }
         }), WListServer.IOExecutors, (page, supplier) -> {
             if (page.intValue() == 0) {
+                if (progress != null)
+                    progress.progress(0, directories.get().size());
                 supplier.accept(UnionPair.ok(Pair.ImmutablePair.makeImmutablePair(directories.get(), Boolean.FALSE)));
                 return;
             }
-            this.listFilesInPage(directoryId, page.intValue(), e -> supplier.accept(UnionPair.fail(e)),
-                    list -> supplier.accept(UnionPair.ok(list)));
+            this.listFilesInPage(directoryId, page.intValue(), progress,
+                    e -> supplier.accept(UnionPair.fail(e)), list -> supplier.accept(UnionPair.ok(list)));
         }, consumer);
     }
 

@@ -1,8 +1,9 @@
 package com.xuxiaocheng.WList.Server.Storage.Records;
 
-import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
+import com.xuxiaocheng.HeadLibs.Functions.BiConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
+import com.xuxiaocheng.WList.Server.Operations.Helpers.ProgressBar;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -11,7 +12,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.util.function.Consumer;
 
-public record RefreshRequirements(@NotNull ConsumerE<? super @NotNull Consumer<? super @Nullable Throwable>> runner,
+public record RefreshRequirements(@NotNull BiConsumerE<? super @NotNull Consumer<? super @Nullable Throwable>, ? super @Nullable ProgressBar> runner,
                                   @NotNull Runnable canceller) {
     /**
      * @see com.xuxiaocheng.WList.Commons.Beans.RefreshConfirm
@@ -22,5 +23,5 @@ public record RefreshRequirements(@NotNull ConsumerE<? super @NotNull Consumer<?
         return buffer;
     }
 
-    public static final @NotNull RefreshRequirements NoRequired = new RefreshRequirements(c -> c.accept(null), RunnableE.EmptyRunnable);
+    public static final @NotNull RefreshRequirements NoRequired = new RefreshRequirements((c, p) -> c.accept(null), RunnableE.EmptyRunnable);
 }

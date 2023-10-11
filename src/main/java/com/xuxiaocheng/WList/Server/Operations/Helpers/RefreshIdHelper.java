@@ -22,6 +22,7 @@ public final class RefreshIdHelper {
         final String id = MiscellaneousUtil.randomKeyAndPut(RefreshIdHelper.data, IdsHelper::randomTimerId, requirements);
         IdsHelper.CleanerExecutors.schedule(() -> RefreshIdHelper.data.remove(id, requirements), ServerConfiguration.get().idIdleExpireTime(), TimeUnit.SECONDS)
                 .addListener(IdsHelper.noCancellationExceptionListener());
+        IdsHelper.setProgressBar(id);
         return id;
     }
 
@@ -29,6 +30,7 @@ public final class RefreshIdHelper {
         final RefreshRequirements requirements = RefreshIdHelper.data.remove(id);
         if (requirements == null)
             return false;
+        IdsHelper.removeProgressBar(id);
         requirements.canceller().run();
         return true;
     }
@@ -37,7 +39,11 @@ public final class RefreshIdHelper {
         final RefreshRequirements requirements = RefreshIdHelper.data.remove(id);
         if (requirements == null)
             return true;
-        requirements.runner().accept(consumer);
+        try {
+            requirements.runner().accept(consumer, IdsHelper.getProgressBar(id));
+        } finally {
+            IdsHelper.removeProgressBar(id);
+        }
         return false;
     }
 }

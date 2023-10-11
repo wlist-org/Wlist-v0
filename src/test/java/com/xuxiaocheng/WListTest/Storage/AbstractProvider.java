@@ -5,6 +5,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
+import com.xuxiaocheng.WList.Server.Operations.Helpers.ProgressBar;
 import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseProvider;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
@@ -145,7 +146,7 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
     public final @NotNull HInitializer<Iterator<@NotNull FileInformation>> list = new HInitializer<>("ListIterator");
 
     @Override
-    protected void list0(final long directoryId, final @NotNull Consumer<? super UnionPair<Optional<Iterator<FileInformation>>, Throwable>> consumer) {
+    protected void list0(final long directoryId, final @Nullable ProgressBar progress, final @NotNull Consumer<? super UnionPair<Optional<Iterator<FileInformation>>, Throwable>> consumer) {
         this.operations.add("List: " + directoryId);
         final Iterator<FileInformation> iterator = this.list.uninitializeNullable();
         if (iterator != null) {

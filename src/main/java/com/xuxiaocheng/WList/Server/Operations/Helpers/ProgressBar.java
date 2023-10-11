@@ -19,12 +19,16 @@ public class ProgressBar {
         this.stages.add(Pair.ImmutablePair.makeImmutablePair(new AtomicLong(0), total));
     }
 
-    public long progress(final int index, final long delta) {
-        return this.stages.get(index).getFirst().addAndGet(delta);
+    public void progress(final int index, final long delta) {
+        this.stages.get(index).getFirst().addAndGet(delta);
     }
 
     public long getTotal(final int index) {
         return this.stages.get(index).getSecond().longValue();
+    }
+
+    public void addTotal(final int index, final int delta) {
+        this.stages.get(index).getFirst().getAndAdd(delta);
     }
 
     public int getStages() {

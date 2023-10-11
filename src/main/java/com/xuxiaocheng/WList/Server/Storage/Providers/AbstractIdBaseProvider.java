@@ -20,6 +20,7 @@ import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.BroadcastManager;
+import com.xuxiaocheng.WList.Server.Operations.Helpers.ProgressBar;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
@@ -188,12 +189,13 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
     public static final @NotNull UnionPair<Optional<Iterator<FileInformation>>, Throwable> ListNotExisted = UnionPair.ok(Optional.empty());
     /**
      * List the files in the directory.
+     * @param progress {@link ProgressBar#progress(int, long)} or {@link ProgressBar#addTotal(int, int)} when iterating.
      * @param consumer empty: directory is not existed. present: list of files.
-     * @exception Exception: Any iterating exception can be wrapped in {@link NoSuchElementException} and then thrown in method {@code next()}.
+     * @throws Exception: Any iterating exception can be wrapped in {@link NoSuchElementException} and then thrown in method {@code next()}.
      * @see #ListNotExisted
      * @see com.xuxiaocheng.WList.Server.Storage.Helpers.ProviderUtil#wrapSuppliersInPages(ConsumerE, Executor, BiConsumerE, Consumer)
      */
-    protected abstract void list0(final long directoryId, final @NotNull Consumer<? super UnionPair<Optional<Iterator<FileInformation>>, Throwable>> consumer) throws Exception;
+    protected abstract void list0(final long directoryId, final @Nullable ProgressBar progress, final @NotNull Consumer<? super UnionPair<Optional<Iterator<FileInformation>>, Throwable>> consumer) throws Exception;
 
     @Override
     public void list(final long directoryId, final Options.@NotNull FilterPolicy filter,
@@ -330,7 +332,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
             c.accept(ProviderInterface.RefreshNotExisted);
             return;
         }
-        c.accept(UnionPair.ok(Optional.of(new RefreshRequirements(consumer -> {
+        c.accept(UnionPair.ok(Optional.of(new RefreshRequirements((consumer, progress) -> {
             final FileInformation directory = this.manager.getInstance().selectInfo(directoryId, true, null);
             if (directory == null) {
                 consumer.accept(null);
@@ -344,7 +346,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                 try {
                     this.loginIfNot();
                     final AtomicBoolean barrier = new AtomicBoolean(true);
-                    this.list0(directoryId, t -> {
+                    this.list0(directoryId, progress, t -> {
                         if (this.checkBarrier(barrier, t, "refreshDirectory#list0", p -> p.add("directoryId", directoryId))) return;
                         Throwable result1 = null;
                         boolean flag1 = true;
@@ -629,7 +631,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                             } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                                 this.consume(UnionPair.fail(exception), consumer);
                             }
-                        });
+                        }, null);
                         flag = false;
                     } else result = ProviderInterface.TrashNotExisted;
                 } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
@@ -832,7 +834,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                                 this.consume(UnionPair.fail(h), consumer);
                             else
                                 handler.run();
-                        });
+                        }, new ProgressBar()); // TODO: progress when CMR... and ensure user's permission.
                     } else handler.run();
                     flag = false;
                 } else result = UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(this.getLocation(parentId), true)));
