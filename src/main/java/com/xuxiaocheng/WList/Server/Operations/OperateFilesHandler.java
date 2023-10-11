@@ -217,6 +217,9 @@ public final class OperateFilesHandler {
         });
     };
 
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#cancelRefresh(WListClientInterface, String, String)
+     */
     private static final @NotNull ServerHandler doCancelRefresh = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FilesRefresh);

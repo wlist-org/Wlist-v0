@@ -7,13 +7,13 @@ import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
-import com.xuxiaocheng.WList.Server.Operations.Helpers.BroadcastManager;
+import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Server.Databases.User.UserInformation;
 import com.xuxiaocheng.WList.Server.MessageProto;
+import com.xuxiaocheng.WList.Server.Operations.Helpers.BroadcastManager;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.WListServer;
 import io.netty.buffer.ByteBufInputStream;
-import io.netty.channel.group.ChannelGroupFuture;
 import org.jetbrains.annotations.NotNull;
 
 public final class OperateServerHandler {
@@ -60,12 +60,10 @@ public final class OperateServerHandler {
             WListServer.getInstance().refuseNew();
             WListServer.ServerExecutors.execute(() -> {
                 try {
-                    final ChannelGroupFuture future = BroadcastManager.broadcast(OperationType.CloseServer, buf -> {
+                    BroadcastManager.broadcast(OperationType.CloseServer, buf -> {
                         ByteBufIOUtil.writeVariableLenLong(buf, user.getT().id());
                         return buf;
-                    });
-                    if (future != null)
-                        future.await();
+                    }, false).await().addListener(MiscellaneousUtil.exceptionListener());
                 } catch (final InterruptedException exception) {
                     HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
                 } finally {
