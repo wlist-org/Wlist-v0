@@ -65,14 +65,24 @@ public final class LanzouConfiguration extends StorageConfiguration {
     }
 
     private boolean directlyLogin = false;
-    private boolean skipNameChecker = false;
+    private boolean directlyDownload = false;
+    private boolean skipUsernameChecker = false;
+    private boolean skipFileNameChecker = false;
 
     public boolean isDirectlyLogin() {
         return this.directlyLogin;
     }
 
-    public boolean isSkipNameChecker() {
-        return this.skipNameChecker;
+    public boolean isDirectlyDownload() { // TODO
+        return this.directlyDownload;
+    }
+
+    public boolean isSkipUsernameChecker() {
+        return this.skipUsernameChecker;
+    }
+
+    public boolean isSkipFileNameChecker() {
+        return this.skipFileNameChecker;
     }
 
     @Override
@@ -93,8 +103,12 @@ public final class LanzouConfiguration extends StorageConfiguration {
                 o -> YamlHelper.transferDateTimeFromStr(o, errors, "token_expire", StorageConfiguration.TimeFormatter));
         this.directlyLogin = YamlHelper.getConfig(config, "directly_login", this.directlyLogin,
                 o -> YamlHelper.transferBooleanFromStr(o, errors, "directly_login")).booleanValue();
-        this.skipNameChecker = YamlHelper.getConfig(config, "skip_name_checker", this.skipNameChecker,
-                o -> YamlHelper.transferBooleanFromStr(o, errors, "skip_name_checker")).booleanValue();
+        this.directlyDownload = YamlHelper.getConfig(config, "directly_download", this.directlyDownload,
+                o -> YamlHelper.transferBooleanFromStr(o, errors, "directly_download")).booleanValue();
+        this.skipUsernameChecker = YamlHelper.getConfig(config, "skip_username_checker", this.skipUsernameChecker,
+                o -> YamlHelper.transferBooleanFromStr(o, errors, "skip_username_checker")).booleanValue();
+        this.skipFileNameChecker = YamlHelper.getConfig(config, "skip_file_name_checker", this.skipFileNameChecker,
+                o -> YamlHelper.transferBooleanFromStr(o, errors, "skip_file_name_checker")).booleanValue();
     }
 
     @Override
@@ -106,7 +120,9 @@ public final class LanzouConfiguration extends StorageConfiguration {
         config.put("token", this.token);
         config.put("token_expire", this.tokenExpire == null ? null : StorageConfiguration.TimeFormatter.format(this.tokenExpire));
         config.put("directlyLogin", this.directlyLogin);
-        config.put("skip_name_checker", this.skipNameChecker);
+        config.put("directly_download", this.directlyDownload);
+        config.put("skip_username_checker", this.skipUsernameChecker);
+        config.put("skip_file_name_checker", this.skipFileNameChecker);
         return config;
     }
 
@@ -120,7 +136,9 @@ public final class LanzouConfiguration extends StorageConfiguration {
                 ", token='" + this.token + '\'' +
                 ", tokenExpire=" + this.tokenExpire +
                 ", directlyLogin=" + this.directlyLogin +
-                ", skipNameChecker=" + this.skipNameChecker +
+                ", directlyDownload=" + this.directlyDownload +
+                ", skipUsernameChecker=" + this.skipUsernameChecker +
+                ", skipFileNameChecker=" + this.skipFileNameChecker +
                 '}';
     }
 }

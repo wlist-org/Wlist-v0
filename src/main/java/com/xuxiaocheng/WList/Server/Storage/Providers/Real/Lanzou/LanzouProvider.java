@@ -103,7 +103,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
             this.headerWithToken = LanzouProvider.Headers.newBuilder().set("cookie", "phpdisk_info=" + configuration.getToken()).build();
             return configuration.getTokenExpire();
         }
-        { // Quicker response.
+        if (!configuration.isSkipUsernameChecker()) { // Quicker response.
             if (configuration.getPassport().isEmpty() || !ProviderUtil.PhoneNumberPattern.matcher(configuration.getPassport()).matches())
                 throw new IllegalParametersException(I18NUtil.get("server.provider.invalid_passport"), ParametersMap.create().add("configuration", configuration));
             if (configuration.getPassword().length() < 6 || 20 < configuration.getPassword().length())
@@ -540,7 +540,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
 
     @Override
     protected @NotNull CheckRule<@NotNull String> directoryNameChecker() {
-        return this.getConfiguration().isSkipNameChecker() ? CheckRule.allAllow() : LanzouProvider.DirectoryNameChecker;
+        return this.getConfiguration().isSkipFileNameChecker() ? CheckRule.allAllow() : LanzouProvider.DirectoryNameChecker;
     }
 
     @Override
@@ -574,7 +574,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
 
     @Override
     protected @NotNull CheckRule<@NotNull String> fileNameChecker() {
-        return this.getConfiguration().isSkipNameChecker() ? CheckRule.allAllow() : LanzouProvider.FileNameChecker;
+        return this.getConfiguration().isSkipFileNameChecker() ? CheckRule.allAllow() : LanzouProvider.FileNameChecker;
     }
 
     @Override
