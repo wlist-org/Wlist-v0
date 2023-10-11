@@ -18,9 +18,12 @@ import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WList.Commons.Beans.DownloadConfirm;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.InstantaneousProgressState;
+import com.xuxiaocheng.WList.Commons.Beans.RefreshConfirm;
 import com.xuxiaocheng.WList.Commons.Beans.UploadChecksum;
 import com.xuxiaocheng.WList.Commons.Beans.UploadConfirm;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleFilesListInformation;
 import com.xuxiaocheng.WList.Commons.Operations.FailureKind;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
@@ -45,15 +48,20 @@ import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Objects;
 import java.util.TreeMap;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -302,5 +310,56 @@ public final class FilesAssistant {
                 }
             }
         }
+    }
+
+    public static @Nullable VisibleFilesListInformation list(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation directory, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @NotNull ScheduledExecutorService executor, final @NotNull Consumer<? super @Nullable InstantaneousProgressState> callback) throws IOException, InterruptedException, WrongStateException {
+        final UnionPair<VisibleFilesListInformation, RefreshConfirm> confirm;
+        try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
+            confirm = OperateFilesHelper.listFiles(client, TokenAssistant.getToken(address, username), directory, filter, orders, position, limit);
+        }
+        if (confirm == null)
+            return null;
+        if (confirm.isSuccess())
+            return confirm.getT();
+        final String id = confirm.getE().id();
+        final ScheduledFuture<?> future = FilesAssistant.delayAndWait(address, username, id, executor, callback);
+        try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
+            OperateFilesHelper.confirmRefresh(client, TokenAssistant.getToken(address, username), id);
+        } finally {
+            future.cancel(true);
+        }
+        callback.accept(null);
+        return FilesAssistant.list(address, username, directory, filter, orders, position, limit, executor, callback);
+    }
+
+    public static boolean refresh(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation directory, final @NotNull ScheduledExecutorService executor, final @NotNull Consumer<? super @NotNull InstantaneousProgressState> callback) throws IOException, InterruptedException, WrongStateException {
+        final RefreshConfirm confirm;
+        try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
+            confirm = OperateFilesHelper.refreshDirectory(client, TokenAssistant.getToken(address, username), directory);
+        }
+        if (confirm == null)
+            return false;
+        final String id = confirm.id();
+        final ScheduledFuture<?> future = FilesAssistant.delayAndWait(address, username, id, executor, callback);
+        try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
+            OperateFilesHelper.confirmRefresh(client, TokenAssistant.getToken(address, username), id);
+        } finally {
+            future.cancel(true);
+        }
+        return true;
+    }
+
+    private static @NotNull ScheduledFuture<?> delayAndWait(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull String id, final @NotNull ScheduledExecutorService executor, final @NotNull Consumer<? super @NotNull InstantaneousProgressState> callback) {
+        final AtomicInteger failed = new AtomicInteger(0);
+        return executor.scheduleWithFixedDelay(HExceptionWrapper.wrapRunnable(() -> {
+            try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
+                final InstantaneousProgressState state = OperateProgressHelper.getProgress(client, TokenAssistant.getToken(address, username), id);
+                if (state != null) {
+                    failed.set(0);
+                    callback.accept(state);
+                } else if (failed.incrementAndGet() >= 3)
+                    throw new CancellationException();
+            }
+        }), 300, ClientConfiguration.get().progressInterval(), TimeUnit.MILLISECONDS);
     }
 }
