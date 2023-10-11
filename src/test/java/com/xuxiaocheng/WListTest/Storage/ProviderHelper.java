@@ -11,6 +11,7 @@ import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
 import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
+import com.xuxiaocheng.WList.Server.Storage.Records.RefreshRequirements;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 
@@ -22,6 +23,7 @@ import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -33,7 +35,7 @@ public final class ProviderHelper {
 
     public static @NotNull Optional<FilesListInformation> list(final @NotNull ProviderInterface<?> provider, final long directoryId, final Options.@NotNull FilterPolicy filter, final @LongRange(minimum = 0) long position, final @IntRange(minimum = 0) int limit) throws Exception {
         final CountDownLatch latch = new CountDownLatch(1);
-        final AtomicReference<UnionPair<Optional<FilesListInformation>, Throwable>> result = new AtomicReference<>();
+        final AtomicReference<UnionPair<Optional<UnionPair<FilesListInformation, RefreshRequirements>>, Throwable>> result = new AtomicReference<>();
         final AtomicBoolean barrier = new AtomicBoolean(true);
         final LinkedHashMap<VisibleFileInformation.Order, Options.OrderDirection> orders = new LinkedHashMap<>();
         orders.put(VisibleFileInformation.Order.Id, Options.OrderDirection.ASCEND);
@@ -50,7 +52,21 @@ public final class ProviderHelper {
             final Throwable throwable = result.get().getE();
             MiscellaneousUtil.throwException(throwable);
         }
-        return result.get().getT();
+        if (result.get().getT().isEmpty())
+            return Optional.empty();
+        if (result.get().getT().get().isSuccess())
+            return Optional.of(result.get().getT().get().getT());
+        final RefreshRequirements requirements = result.get().getT().get().getE();
+        final CountDownLatch latch2 = new CountDownLatch(1);
+        final AtomicReference<Throwable> result2 = new AtomicReference<>();
+        requirements.runner().accept((Consumer<? super Throwable>) c -> {
+            result2.set(c);
+            latch2.countDown();
+        });
+        latch2.await();
+        if (result.get() != null)
+            MiscellaneousUtil.throwException(result2.get());
+        return ProviderHelper.list(provider, directoryId, filter, position, limit);
     }
     public static void testList(final @NotNull FilesListInformation list, final @NotNull Collection<@NotNull FileInformation> collection, final Options.@NotNull FilterPolicy filter) {
         Assertions.assertEquals(collection.size(), list.total());
@@ -85,7 +101,7 @@ public final class ProviderHelper {
 
     public static boolean refresh(final @NotNull ProviderInterface<?> provider, final long directoryId) throws Exception {
         final CountDownLatch latch = new CountDownLatch(1);
-        final AtomicReference<UnionPair<Boolean, Throwable>> result = new AtomicReference<>();
+        final AtomicReference<UnionPair<Optional<RefreshRequirements>, Throwable>> result = new AtomicReference<>();
         final AtomicBoolean barrier = new AtomicBoolean(true);
         provider.refreshDirectory(directoryId, p -> {
             if (!barrier.compareAndSet(true, false)) {
@@ -100,7 +116,19 @@ public final class ProviderHelper {
             final Throwable throwable = result.get().getE();
             MiscellaneousUtil.throwException(throwable);
         }
-        return result.get().getT().booleanValue();
+        if (result.get().getT().isEmpty())
+            return false;
+        final RefreshRequirements requirements = result.get().getT().get();
+        final CountDownLatch latch2 = new CountDownLatch(1);
+        final AtomicReference<Throwable> result2 = new AtomicReference<>();
+        requirements.runner().accept((Consumer<? super Throwable>) c -> {
+            result2.set(c);
+            latch2.countDown();
+        });
+        latch2.await();
+        if (result2.get() != null)
+            MiscellaneousUtil.throwException(result2.get());
+        return true;
     }
 
     public static @NotNull Optional<Boolean> trash(final @NotNull ProviderInterface<?> provider, final long id, final boolean isDirectory) throws Exception {

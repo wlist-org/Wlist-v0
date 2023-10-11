@@ -16,6 +16,7 @@ import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
+import com.xuxiaocheng.WList.Server.Storage.Records.RefreshRequirements;
 import com.xuxiaocheng.WList.Server.Storage.Records.UploadRequirements;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -55,11 +56,11 @@ public final class RootSelector {
     /**
      * @see ProviderInterface#list(long, Options.FilterPolicy, LinkedHashMap, long, int, Consumer)
      */
-    public static void list(final @NotNull FileLocation directory, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final @LongRange(minimum = 0) long position, final @IntRange(minimum = 0) int limit, final @NotNull Consumer<? super @NotNull UnionPair<Optional<FilesListInformation>, Throwable>> consumer) {
+    public static void list(final @NotNull FileLocation directory, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final @LongRange(minimum = 0) long position, final @IntRange(minimum = 0) int limit, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FilesListInformation, RefreshRequirements>>, Throwable>> consumer) {
         try {
             if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(directory.storage())) {
                 if (filter == Options.FilterPolicy.OnlyFiles) {
-                    consumer.accept(UnionPair.ok(Optional.of(new FilesListInformation(StorageManager.getProvidersCount(), 0L, List.of()))));
+                    consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(new FilesListInformation(StorageManager.getProvidersCount(), 0L, List.of())))));
                     return;
                 }
                 Comparator<StorageConfiguration> comparators = null;
@@ -86,12 +87,12 @@ public final class RootSelector {
                 final List<FileInformation> list = AndroidSupporter.streamToList(all.stream().skip(position).limit(limit)
                         .map(configuration -> new FileInformation(configuration.getRootDirectoryId(), 0, configuration.getName(), true,
                                 configuration.getSpaceUsed(), configuration.getCreateTime(), configuration.getUpdateTime(), null)));
-                consumer.accept(UnionPair.ok(Optional.of(new FilesListInformation(StorageManager.getProvidersCount(), StorageManager.getProvidersCount(), list))));
+                consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(new FilesListInformation(StorageManager.getProvidersCount(), StorageManager.getProvidersCount(), list)))));
                 return;
             }
             final ProviderInterface<?> real = StorageManager.getProvider(directory.storage());
             if (real == null) {
-                consumer.accept(ProviderInterface.ListEmpty);
+                consumer.accept(ProviderInterface.ListNotExisted);
                 return;
             }
             real.list(directory.id(), filter, orders, position, limit, RootSelector.wrapConsumer(consumer, real.getConfiguration()));
@@ -119,10 +120,10 @@ public final class RootSelector {
     /**
      * @see ProviderInterface#refreshDirectory(long, Consumer)
      */
-    public static void refreshDirectory(final @NotNull FileLocation directory, final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) {
+    public static void refreshDirectory(final @NotNull FileLocation directory, final @NotNull Consumer<? super @NotNull UnionPair<Optional<RefreshRequirements>, Throwable>> consumer) {
         try {
             if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(directory.storage())) {
-                consumer.accept(ProviderInterface.RefreshSuccess);
+                consumer.accept(ProviderInterface.RefreshNoRequire);
                 return;
             }
             final ProviderInterface<?> real = StorageManager.getProvider(directory.storage());

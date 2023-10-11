@@ -111,17 +111,17 @@ public final class OperateFilesHandler {
         }
         final AtomicBoolean barrier = new AtomicBoolean(true);
         return () -> RootSelector.list(directory, filter, orders.getT(), position, limit, p -> {
-            if (!barrier.compareAndSet(true, false)) {
-                HLog.getInstance("ServerLogger").log(HLogLevel.MISTAKE, "Duplicate message on 'doListFiles'.", ParametersMap.create()
-                        .add("p", p).add("directory", directory).add("filter", filter).add("orders", orders).add("position", position).add("limit", limit));
-                return;
-            }
-            if (p.isFailure()) {
-                channel.pipeline().fireExceptionCaught(p.getE());
-                return;
-            }
-            WListServer.ServerChannelHandler.write(channel, p.getT().isPresent() ?
-                    MessageProto.successMessage(p.getT().get()::dumpVisible) : OperateFilesHandler.LocationNotAvailable);
+//            if (!barrier.compareAndSet(true, false)) {
+//                HLog.getInstance("ServerLogger").log(HLogLevel.MISTAKE, "Duplicate message on 'doListFiles'.", ParametersMap.create()
+//                        .add("p", p).add("directory", directory).add("filter", filter).add("orders", orders).add("position", position).add("limit", limit));
+//                return;
+//            }
+//            if (p.isFailure()) {
+//                channel.pipeline().fireExceptionCaught(p.getE());
+//                return;
+//            }
+//            WListServer.ServerChannelHandler.write(channel, p.getT().isPresent() ?
+//                    MessageProto.successMessage(p.getT().get()::dumpVisible) : OperateFilesHandler.LocationNotAvailable);
         });
     };
 
@@ -170,16 +170,16 @@ public final class OperateFilesHandler {
         }
         final AtomicBoolean barrier = new AtomicBoolean(true);
         return () -> RootSelector.refreshDirectory(directory, p -> {
-            if (!barrier.compareAndSet(true, false)) {
-                HLog.getInstance("ServerLogger").log(HLogLevel.MISTAKE, "Duplicate message on 'doRefreshDirectory'.", ParametersMap.create()
-                        .add("p", p).add("directory", directory));
-                return;
-            }
-            if (p.isFailure()) {
-                channel.pipeline().fireExceptionCaught(p.getE());
-                return;
-            }
-            WListServer.ServerChannelHandler.write(channel, p.getT().booleanValue() ? MessageProto.Success : OperateFilesHandler.LocationNotAvailable);
+//            if (!barrier.compareAndSet(true, false)) {
+//                HLog.getInstance("ServerLogger").log(HLogLevel.MISTAKE, "Duplicate message on 'doRefreshDirectory'.", ParametersMap.create()
+//                        .add("p", p).add("directory", directory));
+//                return;
+//            }
+//            if (p.isFailure()) {
+//                channel.pipeline().fireExceptionCaught(p.getE());
+//                return;
+//            }
+//            WListServer.ServerChannelHandler.write(channel, p.getT().booleanValue() ? MessageProto.Success : OperateFilesHandler.LocationNotAvailable);
         });
     };
 

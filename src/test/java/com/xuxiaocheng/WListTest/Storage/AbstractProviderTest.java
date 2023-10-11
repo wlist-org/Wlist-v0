@@ -1,11 +1,13 @@
 package com.xuxiaocheng.WListTest.Storage;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
+import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.StaticLoader;
-import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Operations.FailureKind;
 import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.BackgroundTaskManager;
@@ -13,6 +15,7 @@ import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseProvider;
 import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
+import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -23,6 +26,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.io.TempDir;
@@ -80,7 +84,7 @@ public class AbstractProviderTest {
     }
 
     @BeforeEach
-    public void reset() throws Exception {
+    public void reset(final @NotNull TestInfo info) throws Exception {
         final AbstractProvider provider = new AbstractProvider();
         this.provider.set(provider);
         final AbstractProvider.AbstractConfiguration configuration = new AbstractProvider.AbstractConfiguration();
@@ -93,6 +97,7 @@ public class AbstractProviderTest {
 
     @AfterEach
     public void unset() throws Exception {
+        TimeUnit.MILLISECONDS.sleep(500); // Wait for broadcast finish.
         this.provider.getAndSet(null).uninitialize(true);
     }
 
@@ -211,26 +216,26 @@ public class AbstractProviderTest {
                 }
             });
             final CountDownLatch latch1 = new CountDownLatch(1);
-            final AtomicReference<UnionPair<Optional<FilesListInformation>, Throwable>> result1 = new AtomicReference<>();
-            provider().list(0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 5, p -> {
-                result1.set(p);
+            final AtomicReference<Optional<FilesListInformation>> result1 = new AtomicReference<>();
+            WListServer.IOExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
+                result1.set(ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5));
                 latch1.countDown();
-            });
+            })).addListener(MiscellaneousUtil.exceptionListener());
             latch.await();
             Assumptions.assumeTrue(latch1.getCount() == 1);
             final CountDownLatch latch2 = new CountDownLatch(1);
-            final AtomicReference<UnionPair<Optional<FilesListInformation>, Throwable>> result2 = new AtomicReference<>();
-            provider().list(0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 5, p -> {
-                result2.set(p);
+            final AtomicReference<Optional<FilesListInformation>> result2 = new AtomicReference<>();
+            WListServer.IOExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
+                result2.set(ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5));
                 latch2.countDown();
-            });
+            })).addListener(MiscellaneousUtil.exceptionListener());
             Assumptions.assumeTrue(latch2.getCount() == 1);
 
             listIteratorNext.countDown();
             latch1.await();
-            ProviderHelper.testList(result1.get().getT().orElseThrow(), List.of(info.get()), Options.FilterPolicy.Both);
+            ProviderHelper.testList(result1.get().orElseThrow(), List.of(info.get()), Options.FilterPolicy.Both);
             latch2.await();
-            ProviderHelper.testList(result2.get().getT().orElseThrow(), List.of(info.get()), Options.FilterPolicy.Both);
+            ProviderHelper.testList(result2.get().orElseThrow(), List.of(info.get()), Options.FilterPolicy.Both);
 
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
         }
@@ -257,27 +262,24 @@ public class AbstractProviderTest {
                 }
             });
             final CountDownLatch latch1 = new CountDownLatch(1);
-            final AtomicReference<UnionPair<Optional<FilesListInformation>, Throwable>> result1 = new AtomicReference<>();
-            provider().list(0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 5, p -> {
-                result1.set(p);
-                latch1.countDown();
-            });
+            WListServer.IOExecutors.submit(() -> Assertions.assertThrows(RuntimeException.class, () ->
+                            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5)))
+                    .addListener(f -> {if (!f.isSuccess()) HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), f.cause());
+                        latch1.countDown();});
             latch.await();
             Assumptions.assumeTrue(latch1.getCount() == 1);
             final CountDownLatch latch2 = new CountDownLatch(1);
-            final AtomicReference<UnionPair<Optional<FilesListInformation>, Throwable>> result2 = new AtomicReference<>();
-            provider().list(0, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 5, p -> {
-                result2.set(p);
+            final AtomicReference<Optional<FilesListInformation>> result2 = new AtomicReference<>();
+            WListServer.IOExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
+                result2.set(ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5));
                 latch2.countDown();
-            });
+            })).addListener(MiscellaneousUtil.exceptionListener());
             Assumptions.assumeTrue(latch2.getCount() == 1);
 
             listIteratorNext.countDown();
             latch1.await();
-            Assertions.assertSame(RuntimeException.class, result1.get().getE().getClass());
             latch2.await();
-            Assertions.assertTrue(result2.get().getT().isPresent());
-            ProviderHelper.testList(result2.get().getT().get(), List.of(), Options.FilterPolicy.Both);
+            ProviderHelper.testList(result2.get().orElseThrow(), List.of(), Options.FilterPolicy.Both);
 
             Assertions.assertEquals(List.of("Login.", "List: 0", "Login.", "List: 0"), provider().checkOperations());
         }
@@ -483,11 +485,6 @@ public class AbstractProviderTest {
     @Nested
     @SuppressWarnings("UnqualifiedMethodAccess")
     public final class RefreshTest {
-        @AfterEach
-        public void finish() throws InterruptedException {
-            TimeUnit.MILLISECONDS.sleep(500); // Wait for broadcast finish.
-        }
-
         @Test
         public void refresh() throws Exception {
             final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 1);
@@ -655,19 +652,20 @@ public class AbstractProviderTest {
                 }
             });
             final CountDownLatch latch1 = new CountDownLatch(1);
-            provider().refreshDirectory(0, p -> {
+            WListServer.IOExecutors.submit(HExceptionWrapper.wrapRunnable(() -> Assertions.assertTrue(ProviderHelper.refresh(provider(), 0)))).addListener(f -> {
+                if (f.cause() != null) HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), f.cause());
                 latch1.countDown();
-                Assertions.assertTrue(p.getT().booleanValue());
             });
             latch.await();
             Assumptions.assumeTrue(latch1.getCount() == 1);
             final CountDownLatch latch2 = new CountDownLatch(1);
-            provider().refreshDirectory(0, p -> {
+            WListServer.IOExecutors.submit(HExceptionWrapper.wrapRunnable(() -> Assertions.assertTrue(ProviderHelper.refresh(provider(), 0)))).addListener(f -> {
+                if (f.cause() != null) HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), f.cause());
                 latch2.countDown();
-                Assertions.assertTrue(p.getT().booleanValue());
             });
             Assumptions.assumeTrue(latch2.getCount() == 1);
 
+            TimeUnit.MILLISECONDS.sleep(300); // Wait to ensure the second thread is waiting.
             listIteratorNext.countDown();
             latch1.await();
             latch2.await();
@@ -704,19 +702,16 @@ public class AbstractProviderTest {
                 }
             });
             final CountDownLatch latch1 = new CountDownLatch(1);
-            provider().refreshDirectory(0,  p -> {
-                latch1.countDown();
-                Assertions.assertSame(RuntimeException.class, p.getE().getClass());
-            });
+            WListServer.IOExecutors.submit(() -> Assertions.assertThrows(RuntimeException.class, () -> ProviderHelper.refresh(provider(), 0)))
+                    .addListener(f -> {if (f.cause() != null) HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), f.cause());latch1.countDown();});
             latch.await();
             Assumptions.assumeTrue(latch1.getCount() == 1);
             final CountDownLatch latch2 = new CountDownLatch(1);
-            provider().refreshDirectory(0, p -> { // Not work due to the policy that ignore rapid refresh.
-                latch2.countDown();
-                Assertions.assertTrue(p.getT().booleanValue());
-            });
+            WListServer.IOExecutors.submit(HExceptionWrapper.wrapRunnable(() -> Assertions.assertTrue(ProviderHelper.refresh(provider(), 0))))
+                    .addListener(f -> {if (f.cause() != null) HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), f.cause());latch2.countDown();});
             Assumptions.assumeTrue(latch2.getCount() == 1);
 
+            TimeUnit.MILLISECONDS.sleep(300);
             listIteratorNext.countDown();
             latch1.await();
             latch2.await();
@@ -751,8 +746,8 @@ public class AbstractProviderTest {
 
             final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5);
             Assertions.assertTrue(result.isPresent());
-            ProviderHelper.testList(result.get(), List.of(), Options.FilterPolicy.Both);
             Assertions.assertEquals(List.of(), provider().checkOperations());
+            ProviderHelper.testList(result.get(), List.of(), Options.FilterPolicy.Both);
         }
 
         @Test

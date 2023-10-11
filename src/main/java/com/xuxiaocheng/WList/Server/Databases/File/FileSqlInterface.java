@@ -63,6 +63,8 @@ public interface FileSqlInterface extends DatabaseInterface {
             this.updateOrInsertFile(information, _connectionId);
     }
 
+    void calculateDirectorySize(final long directoryId, final @Nullable String _connectionId) throws SQLException;
+
 
     /* --- Select --- */
 

@@ -7,6 +7,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.BiConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
@@ -23,6 +24,7 @@ import com.xuxiaocheng.WList.Server.Storage.Helpers.BackgroundTaskManager;
 import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
+import com.xuxiaocheng.WList.Server.Storage.Records.RefreshRequirements;
 import com.xuxiaocheng.WList.Server.Storage.Records.UploadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WList.Server.WListServer;
@@ -51,7 +53,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 
-@SuppressWarnings("OverlyBroadThrowsClause")
+@SuppressWarnings({"OverlyBroadThrowsClause", "SameParameterValue"})
 public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> implements ProviderInterface<C> {
     protected static final @NotNull HLog logger = HLog.create("ProviderLogger");
 
@@ -118,8 +120,65 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
     }
 
 
-    private <T> void consume(final @NotNull T result, final @NotNull Consumer<? super T> consumer) {
+    private <T> boolean checkBarrier(final @NotNull AtomicBoolean barrier, final T t, final @NotNull String caller, final @NotNull UnaryOperator<? super @NotNull ParametersMap> parameters) {
+        if (!barrier.compareAndSet(true, false)) {
+            AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when '" + caller + "'." + parameters.apply(ParametersMap.create()
+                    .add("configuration", this.getConfiguration()).add("msg", t))));
+            return true;
+        }
+        return false;
+    }
+
+    private <T, U> boolean transferException(final @NotNull UnionPair<T, ? extends Throwable> t, final BackgroundTaskManager.@Nullable BackgroundTaskIdentifier identifier, final @NotNull Consumer<? super @NotNull UnionPair<U, Throwable>> consumer) {
+        if (t.isFailure()) {
+            if (identifier != null)
+                BackgroundTaskManager.remove(identifier);
+            consumer.accept(UnionPair.fail(t.getE()));
+            return true;
+        }
+        return false;
+    }
+
+    private <T> void consume(final @NotNull T result, final @NotNull Consumer<? super @NotNull T> consumer) {
         WListServer.ServerExecutors.submit(() -> consumer.accept(result)).addListener(MiscellaneousUtil.exceptionListener());
+    }
+
+    private <T> @NotNull Runnable wrapComplete(final @NotNull RunnableE runnable, final @NotNull Consumer<? super @NotNull UnionPair<T, Throwable>> consumer) {
+        return HExceptionWrapper.wrapRunnable(runnable, e -> {
+            if (e != null)
+                 consumer.accept(UnionPair.fail(e));
+        }, true);
+    }
+
+
+    protected void onTrash(final long id, final boolean isDirectory, final @Nullable String _connectionId) throws SQLException {
+        final FileManager manager = this.manager.getInstance();
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = manager.getConnection(_connectionId, connectionId)) {
+            manager.deleteFileOrDirectory(id, isDirectory, connectionId.get());
+            connection.commit();
+        }
+        WListServer.IOExecutors.execute(() -> BroadcastManager.onFileTrash(this.getLocation(id), isDirectory));
+    }
+
+    protected void onUpdate(final @NotNull FileInformation information, final @Nullable String _connectionId) throws SQLException {
+        final FileManager manager = this.manager.getInstance();
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = manager.getConnection(_connectionId, connectionId)) {
+            manager.updateOrInsertFileOrDirectory(information, connectionId.get());
+            connection.commit();
+        }
+        WListServer.IOExecutors.execute(() -> BroadcastManager.onFileUpdate(this.getLocation(information.id()), information.isDirectory()));
+    }
+
+    protected void onUpload(final @NotNull FileInformation information, final @Nullable String _connectionId) throws SQLException {
+        final FileManager manager = this.manager.getInstance();
+        final AtomicReference<String> connectionId = new AtomicReference<>();
+        try (final Connection connection = manager.getConnection(_connectionId, connectionId)) {
+            manager.insertFileOrDirectory(information, connectionId.get());
+            connection.commit();
+        }
+        WListServer.IOExecutors.execute(() -> BroadcastManager.onFileUpload(this.getConfiguration().getName(), information));
     }
 
 
@@ -137,7 +196,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
     public void list(final long directoryId, final Options.@NotNull FilterPolicy filter,
                      final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders,
                      final long position, final int limit,
-                     final @NotNull Consumer<? super @NotNull UnionPair<Optional<FilesListInformation>, Throwable>> consumer) throws Exception {
+                     final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FilesListInformation, RefreshRequirements>>, Throwable>> consumer) throws Exception {
         final FileManager manager = this.manager.getInstance();
         final FilesListInformation information, indexed;
         final AtomicReference<String> connectionId = new AtomicReference<>();
@@ -157,76 +216,16 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
             return;
         }
         if (information != null) {
-            consumer.accept(UnionPair.ok(Optional.of(information)));
+            consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(information))));
             return;
         }
         // Not indexed.
-        final BackgroundTaskManager.BackgroundTaskIdentifier identifier = new BackgroundTaskManager.BackgroundTaskIdentifier(
-                this.getConfiguration().getName(), BackgroundTaskManager.Directory, String.valueOf(directoryId));
-        BackgroundTaskManager.background(identifier, () -> {
-            UnionPair<Optional<FilesListInformation>, Throwable> result = null;
-            boolean flag = true;
-            try {
-                this.loginIfNot();
-                final AtomicBoolean barrier = new AtomicBoolean(true);
-                this.list0(directoryId, p -> {
-                    if (!barrier.compareAndSet(true, false)) {
-                        AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'list#list0'." + ParametersMap.create().add("configuration", this.getConfiguration())
-                                .add("p", p).add("directoryId", directoryId)));
-                        return;
-                    }
-                    UnionPair<Optional<FilesListInformation>, Throwable> result1 = null;
-                    try {
-                        if (p.isFailure()) {
-                            result1 = UnionPair.fail(p.getE());
-                            return;
-                        }
-                        if (p.getT().isPresent()) {
-                            final Iterator<FileInformation> iterator = p.getT().get();
-                            final FilesListInformation list;
-                            try (final Connection connection = manager.getConnection(null, connectionId)) {
-                                try {
-                                    manager.insertIterator(iterator, directoryId, connectionId.get());
-                                } catch (final NoSuchElementException exception) {
-                                    if (exception.getCause() != null) {
-                                        result1 = UnionPair.fail(exception.getCause() instanceof Exception e ? e : exception);
-                                        return;
-                                    }
-                                    AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, "No more elements when 'list#list0'.", ParametersMap.create().add("configuration", this.getConfiguration())
-                                            .add("p", p).add("directoryId", directoryId), exception);
-                                }
-                                list = manager.selectInfosInDirectory(directoryId, filter, orders, position, limit, connectionId.get());
-                                connection.commit();
-                            }
-                            result1 = UnionPair.ok(Optional.of(list));
-                            return;
-                        }
-                        manager.deleteDirectoryRecursively(directoryId, null);
-                        BroadcastManager.onFileTrash(this.getLocation(directoryId), true);
-                        result1 = ProviderInterface.ListNotExisted;
-                    } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
-                        result1 = UnionPair.fail(exception);
-                    } finally {
-                        BackgroundTaskManager.remove(identifier);
-                        assert result1 != null;
-                        this.consume(result1, consumer);
-                    }
-                });
-                flag = false;
-            } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
-                result = UnionPair.fail(exception);
-            } finally {
-                if (flag) {
-                    BackgroundTaskManager.remove(identifier);
-                    assert result != null;
-                    this.consume(result, consumer);
-                }
-            }
-        }, false, HExceptionWrapper.wrapRunnable(() ->
-                this.list(directoryId, filter, orders, position, limit, consumer), e -> {
-            if (e != null)
-                consumer.accept(UnionPair.fail(e));
-        }, true));
+        final AtomicBoolean barrier = new AtomicBoolean(true);
+        this.refreshDirectory(directoryId, t -> {
+            if (this.checkBarrier(barrier, t, "list#refreshDirectory", p -> p.add("directoryId", directoryId))
+                    || this.transferException(t, null, consumer)) return;
+            this.consume(t.getT().isPresent() ? UnionPair.ok(Optional.of(UnionPair.fail(t.getT().get()))) : ProviderInterface.ListNotExisted, consumer);
+        });
     }
 
 
@@ -262,35 +261,27 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
             try {
                 this.loginIfNot();
                 final AtomicBoolean barrier = new AtomicBoolean(true);
-                this.update0(information, p -> {
-                    if (!barrier.compareAndSet(true, false)) {
-                        AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'info#update0'." + ParametersMap.create().add("configuration", this.getConfiguration())
-                                .add("p", p).add("information", information)));
-                        return;
-                    }
+                this.update0(information, t -> {
+                    if (this.checkBarrier(barrier, t, "info#update0", p -> p.add("information", information))
+                        || this.transferException(t, identifier, consumer)) return;
                     UnionPair<Optional<FileInformation>, Throwable> result = null;
                     try {
-                        if (p.isFailure()) {
-                            result = UnionPair.fail(p.getE());
-                            return;
-                        }
-                        if ((p.getT().isFailure() && !p.getT().getE().booleanValue()) || (p.getT().isSuccess() && information.equals(p.getT().getT()))) {
+                        if ((t.getT().isFailure() && !t.getT().getE().booleanValue()) || (t.getT().isSuccess() && information.equals(t.getT().getT()))) {
                             result = UnionPair.ok(Optional.of(information));
                             return;
                         }
-                        if (p.getT().isFailure()) { // && p.getT().getE().booleanValue()
-                            this.manager.getInstance().deleteFileOrDirectory(id, isDirectory, null);
-                            BroadcastManager.onFileTrash(this.getLocation(id), isDirectory);
+                        if (t.getT().isFailure()) { // && t.getT().getE().booleanValue()
+                            this.onTrash(id, isDirectory, null);
                             result = ProviderInterface.InfoNotExisted;
                             return;
                         }
-                        final FileInformation updated = p.getT().getT();
+                        final FileInformation updated = t.getT().getT();
                         assert updated.isDirectory() == isDirectory;
                         final FileInformation realInfo;
                         final FileManager manager = this.manager.getInstance();
                         final AtomicReference<String> connectionId = new AtomicReference<>();
                         try (final Connection connection = manager.getConnection(null, connectionId)) {
-                            manager.updateOrInsertFileOrDirectory(updated, connectionId.get());
+                            this.onUpdate(updated, connectionId.get());
                             realInfo = manager.selectInfo(id, isDirectory, connectionId.get());
                             connection.commit();
                         }
@@ -311,10 +302,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                 BackgroundTaskManager.remove(identifier);
                 this.consume(UnionPair.fail(exception), consumer);
             }
-        }, false, HExceptionWrapper.wrapRunnable(() -> this.info(id, isDirectory, consumer), e -> {
-            if (e != null)
-                consumer.accept(UnionPair.fail(e));
-        }, true));
+        }, false, this.wrapComplete(() -> this.info(id, isDirectory, consumer), consumer));
     }
 
 
@@ -333,237 +321,203 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
 
     @Override
     public void refreshDirectory(final long directoryId,
-                                 final @NotNull Consumer<? super @NotNull UnionPair<Boolean, Throwable>> consumer) throws Exception {
-        final FileInformation directory = this.manager.getInstance().selectInfo(directoryId, true, null);
-        if (directory == null) {
-            consumer.accept(ProviderInterface.RefreshNotExisted);
+                                 final @NotNull Consumer<? super @NotNull UnionPair<Optional<RefreshRequirements>, Throwable>> c) throws Exception {
+        final FileInformation d = this.manager.getInstance().selectInfo(directoryId, true, null);
+        if (d == null) {
+            c.accept(ProviderInterface.RefreshNotExisted);
             return;
         }
-        if (directory.size() == -1 && this.manager.getInstance().selectInfosInDirectory(directoryId, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0, null).total() == 0) { // Not indexed.
-            final AtomicBoolean barrier = new AtomicBoolean(true);
-            this.list(directoryId, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0, p -> {
-                if (!barrier.compareAndSet(true, false)) {
-                    AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'refreshDirectory#list'." + ParametersMap.create().add("configuration", this.getConfiguration())
-                            .add("p", p).add("directoryId", directoryId)));
-                    return;
-                }
-                UnionPair<Boolean, Throwable> result = null;
+        c.accept(UnionPair.ok(Optional.of(new RefreshRequirements(consumer -> {
+            final FileInformation directory = this.manager.getInstance().selectInfo(directoryId, true, null);
+            if (directory == null) {
+                consumer.accept(null);
+                return;
+            }
+            final BackgroundTaskManager.BackgroundTaskIdentifier identifier = new BackgroundTaskManager.BackgroundTaskIdentifier(
+                    this.getConfiguration().getName(), BackgroundTaskManager.Directory, String.valueOf(directoryId));
+            BackgroundTaskManager.background(identifier, () -> {
+                Throwable result = null;
+                boolean flag = true;
                 try {
-                    if (p.isFailure()) {
-                        result = UnionPair.fail(p.getE());
-                        return;
-                    }
-                    result = p.getT().isPresent() ? ProviderInterface.RefreshSuccess : ProviderInterface.RefreshNotExisted;
-                } catch (final Throwable exception) {
-                    result = UnionPair.fail(exception);
-                } finally {
-                    assert result != null;
-                    this.consume(result, consumer);
-                }
-            });
-            return;
-        }
-        final BackgroundTaskManager.BackgroundTaskIdentifier identifier = new BackgroundTaskManager.BackgroundTaskIdentifier(
-                this.getConfiguration().getName(), BackgroundTaskManager.Directory, String.valueOf(directoryId));
-        BackgroundTaskManager.background(identifier, () -> {
-            UnionPair<Boolean, Throwable> result = null;
-            boolean flag = true;
-            try {
-                this.loginIfNot();
-                final AtomicBoolean barrier = new AtomicBoolean(true);
-                this.list0(directoryId, p -> {
-                    if (!barrier.compareAndSet(true, false)) {
-                        AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'refreshDirectory#list0'." + ParametersMap.create().add("configuration", this.getConfiguration())
-                                .add("p", p).add("directoryId", directoryId)));
-                        return;
-                    }
-                    UnionPair<Boolean, Throwable> result1 = null;
-                    boolean flag1 = true;
-                    try {
-                        if (p.isFailure()) {
-                            result1 = UnionPair.fail(p.getE());
-                            return;
-                        }
-                        if (p.getT().isPresent()) {
-                            final Iterator<FileInformation> iterator = p.getT().get();
-                            final Set<Long> extraFiles, extraDirectories;
-                            final Collection<Long> updatedFiles = new HashSet<>(), updatedDirectories = new HashSet<>();
-                            final FileManager manager = this.manager.getInstance();
-                            final AtomicReference<String> connectionId = new AtomicReference<>();
-                            try (final Connection connection = manager.getConnection(null, connectionId)) {
-                                final Pair.ImmutablePair<Set<Long>, Set<Long>> old = manager.selectIdsInDirectory(directoryId, connectionId.get());
-                                extraFiles = old.getFirst();
-                                extraDirectories = old.getSecond();
-                                try {
-                                    while (iterator.hasNext()) {
-                                        final FileInformation information = iterator.next();
-                                        if (information.isDirectory()) {
-                                            updatedDirectories.add(information.id());
-                                            extraDirectories.remove(information.id());
-                                            manager.updateOrInsertDirectory(information, connectionId.get());
-                                        } else {
-                                            updatedFiles.add(information.id());
-                                            extraFiles.remove(information.id());
-                                            manager.updateOrInsertFile(information, connectionId.get());
-                                        }
-                                    }
-                                } catch (final NoSuchElementException exception) {
-                                    if (exception.getCause() != null) {
-                                        result1 = UnionPair.fail(exception.getCause() instanceof Exception e ? e : exception);
-                                        return;
-                                    }
-                                    AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, "No more elements when 'refreshDirectory#list0'.", ParametersMap.create().add("configuration", this.getConfiguration())
-                                            .add("p", p).add("directoryId", directoryId), exception);
-                                }
-                                connection.commit();
-                            }
-                            result1 = ProviderInterface.RefreshSuccess;
-                            if (extraFiles.isEmpty() && extraDirectories.isEmpty()) {
-                                WListServer.CodecExecutors.submit(() -> {
-                                    for (final Long id: updatedFiles)
-                                        BroadcastManager.onFileUpdate(this.getLocation(id.longValue()), false);
-                                    for (final Long id: updatedDirectories)
-                                        BroadcastManager.onFileUpdate(this.getLocation(id.longValue()), true);
-                                }).addListener(MiscellaneousUtil.exceptionListener());
+                    this.loginIfNot();
+                    final AtomicBoolean barrier = new AtomicBoolean(true);
+                    this.list0(directoryId, t -> {
+                        if (this.checkBarrier(barrier, t, "refreshDirectory#list0", p -> p.add("directoryId", directoryId))) return;
+                        Throwable result1 = null;
+                        boolean flag1 = true;
+                        try {
+                            if (t.isFailure()) {
+                                result1 = t.getE();
                                 return;
                             }
-                            final Collection<Long> deleteFiles = new HashSet<>(), deleteDirectories = new HashSet<>();
-                            final AtomicBoolean consumed = new AtomicBoolean(false);
-                            final AtomicLong total = new AtomicLong(1 + (this.doesSupportInfo(false) ? extraFiles.size() : 0) + (this.doesSupportInfo(true) ? extraDirectories.size() : 0));
-                            final Runnable finisher = () -> {
-                                if (total.getAndDecrement() <= 1) {
-                                    BackgroundTaskManager.remove(identifier);
-                                    WListServer.CodecExecutors.submit(() -> {
-                                        for (final Long id: updatedFiles)
-                                            BroadcastManager.onFileUpdate(this.getLocation(id.longValue()), false);
+                            if (t.getT().isPresent()) {
+                                final Iterator<FileInformation> iterator = t.getT().get();
+                                final Set<Long> extraFiles, extraDirectories;
+                                final Collection<Long> updatedFiles = new HashSet<>(), updatedDirectories = new HashSet<>();
+                                final FileManager manager = this.manager.getInstance();
+                                final AtomicReference<String> connectionId = new AtomicReference<>();
+                                try (final Connection connection = manager.getConnection(null, connectionId)) {
+                                    final Pair.ImmutablePair<Set<Long>, Set<Long>> old = manager.selectIdsInDirectory(directoryId, connectionId.get());
+                                    extraFiles = old.getFirst();
+                                    extraDirectories = old.getSecond();
+                                    if (directory.size() == -1 && extraFiles.isEmpty() && extraDirectories.isEmpty()) // Not indexed.
+                                        manager.calculateDirectorySize(directoryId, connectionId.get());
+                                    try {
+                                        while (iterator.hasNext()) {
+                                            final FileInformation information = iterator.next();
+                                            if (information.isDirectory()) {
+                                                updatedDirectories.add(information.id());
+                                                extraDirectories.remove(information.id());
+                                                manager.updateOrInsertDirectory(information, connectionId.get());
+                                            } else {
+                                                updatedFiles.add(information.id());
+                                                extraFiles.remove(information.id());
+                                                manager.updateOrInsertFile(information, connectionId.get());
+                                            }
+                                        }
+                                    } catch (final NoSuchElementException exception) {
+                                        if (exception.getCause() != null) {
+                                            result1 = exception.getCause() instanceof Exception e ? e : exception;
+                                            return;
+                                        }
+                                        AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, "No more elements when 'refreshDirectory#list0'.", ParametersMap.create().add("configuration", this.getConfiguration())
+                                                .add("t", t).add("directoryId", directoryId), exception);
+                                    }
+                                    connection.commit();
+                                }
+                                if (extraFiles.isEmpty() && extraDirectories.isEmpty()) {
+                                    WListServer.IOExecutors.submit(() -> {
+                                        BackgroundTaskManager.remove(identifier);
                                         for (final Long id: updatedDirectories)
                                             BroadcastManager.onFileUpdate(this.getLocation(id.longValue()), true);
-                                        for (final Long id: deleteFiles)
-                                            BroadcastManager.onFileTrash(this.getLocation(id.longValue()), false);
-                                        for (final Long id: deleteDirectories)
-                                            BroadcastManager.onFileTrash(this.getLocation(id.longValue()), true);
+                                        for (final Long id: updatedFiles)
+                                            BroadcastManager.onFileUpdate(this.getLocation(id.longValue()), false);
+                                        consumer.accept(null);
                                     }).addListener(MiscellaneousUtil.exceptionListener());
-                                    if (consumed.compareAndSet(false, true))
-                                        this.consume(ProviderInterface.RefreshSuccess, consumer);
+                                    flag1 = false;
+                                    return;
                                 }
-                            };
-                            try (final Connection connection = manager.getConnection(null, connectionId)) {
-                                if (this.doesSupportInfo(false))
-                                    for (final Long id: extraFiles) {
-                                        final AtomicBoolean barrier1 = new AtomicBoolean(true);
-                                        final Consumer<UnionPair<Optional<FileInformation>, Throwable>> handler = u -> {
-                                            if (!barrier1.compareAndSet(true, false)) {
-                                                AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'refreshDirectory#info0'." + ParametersMap.create().add("configuration", this.getConfiguration())
-                                                        .add("u", u).add("directoryId", directoryId).add("id", id).add("isDirectory", false)));
-                                                return;
-                                            }
-                                            try (connection) {
-                                                if (u.isFailure())
-                                                    AbstractIdBaseProvider.logger.log(HLogLevel.WARN, "Failed to get file information after refreshing.", ParametersMap.create()
-                                                            .add("directoryId", directoryId).add("id", id).add("isDirectory", false), u.getE());
-                                                if (u.isSuccess() && u.getT().isPresent()) {
-                                                    manager.updateOrInsertFile(u.getT().get(), connectionId.get());
-                                                    updatedFiles.add(id);
-                                                } else {
-                                                    manager.deleteFile(id.longValue(), connectionId.get());
-                                                    deleteFiles.add(id);
-                                                }
-                                                connection.commit();
-                                            } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
-                                                if (consumed.compareAndSet(false, true))
-                                                    this.consume(UnionPair.fail(exception), consumer);
-                                                else
-                                                    AbstractIdBaseProvider.logger.log(HLogLevel.WARN, "Failed to update file information after refreshing and getting.", ParametersMap.create()
+                                final Collection<Long> deleteFiles = new HashSet<>(), deleteDirectories = new HashSet<>();
+                                final AtomicLong total = new AtomicLong(1);
+                                final Runnable finisher = () -> {
+                                    if (total.getAndDecrement() <= 1) {
+                                        BackgroundTaskManager.remove(identifier);
+                                        WListServer.IOExecutors.submit(() -> {
+                                            for (final Long id: deleteDirectories)
+                                                BroadcastManager.onFileTrash(this.getLocation(id.longValue()), true);
+                                            for (final Long id: deleteFiles)
+                                                BroadcastManager.onFileTrash(this.getLocation(id.longValue()), false);
+                                            for (final Long id: updatedDirectories)
+                                                BroadcastManager.onFileUpdate(this.getLocation(id.longValue()), true);
+                                            for (final Long id: updatedFiles)
+                                                BroadcastManager.onFileUpdate(this.getLocation(id.longValue()), false);
+                                            consumer.accept(null);
+                                        }).addListener(MiscellaneousUtil.exceptionListener());
+                                    }
+                                };
+                                try (final Connection connection = manager.getConnection(null, connectionId)) {
+                                    if (this.doesSupportInfo(false)) {
+                                        total.getAndAdd(extraFiles.size());
+                                        for (final Long id: extraFiles) {
+                                            final AtomicBoolean barrier1 = new AtomicBoolean(true);
+                                            final Consumer<UnionPair<Optional<FileInformation>, Throwable>> handler = u -> {
+                                                if (this.checkBarrier(barrier1, u, "refreshDirectory#info0", p -> p.add("directoryId", directoryId).add("id", id).add("isDirectory", false))) return;
+                                                try (connection) {
+                                                    if (u.isFailure())
+                                                        AbstractIdBaseProvider.logger.log(HLogLevel.WARN, "Failed to get the information after refreshing.", ParametersMap.create()
+                                                                .add("directoryId", directoryId).add("id", id).add("isDirectory", false), u.getE());
+                                                    if (u.isSuccess() && u.getT().isPresent()) {
+                                                        manager.updateOrInsertFile(u.getT().get(), connectionId.get());
+                                                        updatedFiles.add(id);
+                                                    } else {
+                                                        manager.deleteFile(id.longValue(), connectionId.get());
+                                                        deleteFiles.add(id);
+                                                    }
+                                                    connection.commit();
+                                                } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                                                    AbstractIdBaseProvider.logger.log(HLogLevel.WARN, "Failed to update the information after refreshing and getting.", ParametersMap.create()
                                                             .add("directoryId", directoryId).add("id", id).add("isDirectory", false), exception);
-                                            } finally {
-                                                finisher.run();
-                                            }
-                                        };
-                                        manager.getConnection(connectionId.get(), null);
-                                        try {
-                                            this.info0(id.longValue(), false, handler);
-                                        } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
-                                            handler.accept(UnionPair.fail(exception));
-                                        }
-                                    }
-                                else {
-                                    for (final Long id: extraFiles)
-                                        manager.deleteFile(id.longValue(), connectionId.get());
-                                    deleteFiles.addAll(extraFiles);
-                                }
-                                if (this.doesSupportInfo(true))
-                                    for (final Long id: extraDirectories) {
-                                        final AtomicBoolean barrier1 = new AtomicBoolean(true);
-                                        final Consumer<UnionPair<Optional<FileInformation>, Throwable>> handler = u -> {
-                                            if (!barrier1.compareAndSet(true, false)) {
-                                                AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'refreshDirectory#info0'." + ParametersMap.create().add("configuration", this.getConfiguration())
-                                                        .add("u", u).add("directoryId", directoryId).add("id", id).add("isDirectory", true)));
-                                                return;
-                                            }
-                                            try (connection) {
-                                                if (u.isFailure())
-                                                    AbstractIdBaseProvider.logger.log(HLogLevel.WARN, "Failed to get directory information after refreshing.", ParametersMap.create()
-                                                            .add("directoryId", directoryId).add("id", id).add("isDirectory", true), u.getE());
-                                                if (u.isSuccess() && u.getT().isPresent()) {
-                                                    manager.updateOrInsertDirectory(u.getT().get(), connectionId.get());
-                                                    updatedDirectories.add(id);
-                                                } else {
-                                                    manager.deleteDirectoryRecursively(id.longValue(), connectionId.get());
-                                                    deleteDirectories.add(id);
+                                                } finally {
+                                                    finisher.run();
                                                 }
-                                                connection.commit();
+                                            };
+                                            manager.getConnection(connectionId.get(), null);
+                                            try {
+                                                this.info0(id.longValue(), false, handler);
                                             } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
-                                                if (consumed.compareAndSet(false, true))
-                                                    this.consume(UnionPair.fail(exception), consumer);
-                                                else
-                                                    AbstractIdBaseProvider.logger.log(HLogLevel.WARN, "Failed to update directory information after refreshing and getting.", ParametersMap.create()
-                                                            .add("directoryId", directoryId).add("id", id).add("isDirectory", true), exception);
-                                            } finally {
-                                                finisher.run();
+                                                handler.accept(UnionPair.fail(exception));
                                             }
-                                        };
-                                        manager.getConnection(connectionId.get(), null);
-                                        try {
-                                            this.info0(id.longValue(), true, handler);
-                                        } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
-                                            handler.accept(UnionPair.fail(exception));
                                         }
+                                    } else {
+                                        for (final Long id: extraFiles)
+                                            manager.deleteFile(id.longValue(), connectionId.get());
+                                        deleteFiles.addAll(extraFiles);
                                     }
-                                else {
-                                    for (final Long id: extraDirectories)
-                                        manager.deleteDirectoryRecursively(id.longValue(), connectionId.get());
-                                    deleteDirectories.addAll(extraDirectories);
+                                    if (this.doesSupportInfo(true)) {
+                                        total.getAndAdd(extraDirectories.size());
+                                        for (final Long id: extraDirectories) {
+                                            final AtomicBoolean barrier1 = new AtomicBoolean(true);
+                                            final Consumer<UnionPair<Optional<FileInformation>, Throwable>> handler = u -> {
+                                                if (this.checkBarrier(barrier1, u, "refreshDirectory#info0", p -> p.add("directoryId", directoryId).add("id", id).add("isDirectory", true))) return;
+                                                try (connection) {
+                                                    if (u.isFailure())
+                                                        AbstractIdBaseProvider.logger.log(HLogLevel.WARN, "Failed to get the information after refreshing.", ParametersMap.create()
+                                                                .add("directoryId", directoryId).add("id", id).add("isDirectory", true), u.getE());
+                                                    if (u.isSuccess() && u.getT().isPresent()) {
+                                                        manager.updateOrInsertDirectory(u.getT().get(), connectionId.get());
+                                                        updatedDirectories.add(id);
+                                                    } else {
+                                                        manager.deleteDirectoryRecursively(id.longValue(), connectionId.get());
+                                                        deleteDirectories.add(id);
+                                                    }
+                                                    connection.commit();
+                                                } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                                                    AbstractIdBaseProvider.logger.log(HLogLevel.WARN, "Failed to update the information after refreshing and getting.", ParametersMap.create()
+                                                            .add("directoryId", directoryId).add("id", id).add("isDirectory", true), exception);
+                                                } finally {
+                                                    finisher.run();
+                                                }
+                                            };
+                                            manager.getConnection(connectionId.get(), null);
+                                            try {
+                                                this.info0(id.longValue(), true, handler);
+                                            } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                                                handler.accept(UnionPair.fail(exception));
+                                            }
+                                        }
+                                    } else {
+                                        for (final Long id: extraDirectories)
+                                            manager.deleteDirectoryRecursively(id.longValue(), connectionId.get());
+                                        deleteDirectories.addAll(extraDirectories);
+                                    }
+                                    connection.commit();
                                 }
-                                connection.commit();
+                                finisher.run();
+                                flag1 = false;
+                            } else
+                                this.onTrash(directoryId, true, null);
+                        } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                            result1 = exception;
+                        } finally {
+                            if (flag1) {
+                                BackgroundTaskManager.remove(identifier);
+                                final Throwable res = result1;
+                                WListServer.ServerExecutors.submit(() -> consumer.accept(res)).addListener(MiscellaneousUtil.exceptionListener());
                             }
-                            finisher.run();
-                            flag1 = false;
-                            return;
                         }
-                        this.manager.getInstance().deleteDirectoryRecursively(directoryId, null);
-                        BroadcastManager.onFileTrash(this.getLocation(directoryId), true);
-                        result1 = ProviderInterface.RefreshNotExisted;
-                    } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
-                        result1 = UnionPair.fail(exception);
-                    } finally {
-                        if (flag1) {
-                            BackgroundTaskManager.remove(identifier);
-                            assert result1 != null;
-                            this.consume(result1, consumer);
-                        }
+                    });
+                    flag = false;
+                } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                    result = exception;
+                } finally {
+                    if (flag) {
+                        BackgroundTaskManager.remove(identifier);
+                        final Throwable res = result;
+                        WListServer.ServerExecutors.submit(() -> consumer.accept(res)).addListener(MiscellaneousUtil.exceptionListener());
                     }
-                });
-                flag = false;
-            } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
-                result = UnionPair.fail(exception);
-            } finally {
-                if (flag) {
-                    BackgroundTaskManager.remove(identifier);
-                    assert result != null;
-                    this.consume(result, consumer);
                 }
-            }
-        }, false, () -> consumer.accept(ProviderInterface.RefreshSuccess));
+            }, false, () -> consumer.accept(null));
+        }, RunnableE.EmptyRunnable))));
     }
 
 
@@ -602,89 +556,79 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                 return;
             }
             final AtomicBoolean barrier = new AtomicBoolean(true);
-            this.refreshDirectory(id, p -> {
-                if (!barrier.compareAndSet(true, false)) {
-                    AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'trash#refresh'." + ParametersMap.create().add("configuration", this.getConfiguration())
-                            .add("p", p).add("id", id).add("isDirectory", true)));
-                    return;
-                }
+            this.refreshDirectory(id, t -> {
+                if (this.checkBarrier(barrier, t, "trash#refresh", p -> p.add("id", id)) || this.transferException(t, null, consumer)) return;
                 UnionPair<Optional<Boolean>, Throwable> result = null;
                 boolean flag = true;
                 try {
-                    if (p.isFailure()) {
-                        result = UnionPair.fail(p.getE());
-                        return;
-                    }
-                    if (!p.getT().booleanValue()) {
-                        result = ProviderInterface.TrashNotExisted;
-                        return;
-                    }
-                    final AtomicBoolean barrier1 = new AtomicBoolean(true);
-                    this.list(id, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 1, u -> {
-                        if (!barrier1.compareAndSet(true, false)) {
-                            AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'trash#list'." + ParametersMap.create().add("configuration", this.getConfiguration())
-                                    .add("u", u).add("id", id).add("isDirectory", true)));
-                            return;
-                        }
-                        UnionPair<Optional<Boolean>, Throwable> result1 = null;
-                        boolean flag1 = true;
-                        try {
-                            if (u.isFailure()) {
-                                result1 = UnionPair.fail(u.getE());
+                    if (t.getT().isPresent()) {
+                        final AtomicBoolean barrier1 = new AtomicBoolean(true);
+                        t.getT().get().runner().accept((Consumer<? super Throwable>) h -> {
+                            if (this.checkBarrier(barrier1, h, "trash#refresh#runner", p -> p.add("id", id))) return;
+                            if (h != null) {
+                                this.consume(UnionPair.fail(h), consumer);
                                 return;
                             }
-                            if (u.getT().isPresent()) {
-                                if (u.getT().get().total() != 0) {
-                                    result1 = ProviderInterface.TrashTooComplex;
-                                    return;
-                                }
-                                final FileInformation info = this.manager.getInstance().selectInfo(id, true, null);
-                                if (info == null) {
-                                    result1 = ProviderInterface.TrashNotExisted;
-                                    return;
-                                }
-                                this.loginIfNot();
+                            try {
                                 final AtomicBoolean barrier2 = new AtomicBoolean(true);
-                                this.trash0(info, n -> {
-                                    if (!barrier2.compareAndSet(true, false)) {
-                                        AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'trash#trash0'." + ParametersMap.create().add("configuration", this.getConfiguration())
-                                                .add("n", n).add("id", id).add("isDirectory", true)));
-                                        return;
-                                    }
-                                    UnionPair<Optional<Boolean>, Throwable> result2 = null;
+                                this.list(id, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 1, u -> {
+                                    if (this.checkBarrier(barrier2, u, "trash#list", p -> p.add("id", id)) || this.transferException(u, null, consumer)) return;
+                                    UnionPair<Optional<Boolean>, Throwable> result1 = null;
+                                    boolean flag1 = true;
                                     try {
-                                        if (n.isFailure()) {
-                                            result2 = UnionPair.fail(n.getE());
+                                        if (u.getT().isPresent()) {
+                                            if (u.getT().get().isFailure()) {
+                                                u.getT().get().getE().canceller().run();
+                                                result1 = ProviderInterface.TrashTooComplex;
+                                                return;
+                                            }
+                                            if (u.getT().get().getT().total() != 0) {
+                                                result1 = ProviderInterface.TrashTooComplex;
+                                                return;
+                                            }
+                                            final FileInformation info = this.manager.getInstance().selectInfo(id, true, null);
+                                            if (info == null) {
+                                                result1 = ProviderInterface.TrashNotExisted;
+                                                return;
+                                            }
+                                            this.loginIfNot();
+                                            final AtomicBoolean barrier3 = new AtomicBoolean(true);
+                                            this.trash0(info, n -> {
+                                                if (this.checkBarrier(barrier3, n, "trash#trash0", p -> p.add("information", info)) || this.transferException(n, null, consumer)) return;
+                                                UnionPair<Optional<Boolean>, Throwable> result2 = null;
+                                                try {
+                                                    if (!n.getT().booleanValue()) {
+                                                        result2 = ProviderInterface.TrashTooComplex;
+                                                        return;
+                                                    }
+                                                    this.onTrash(id, true, null);
+                                                    result2 = ProviderInterface.TrashSuccess;
+                                                } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                                                    result2 = UnionPair.fail(exception);
+                                                } finally {
+                                                    assert result2 != null;
+                                                    this.consume(result2, consumer);
+                                                }
+                                            });
+                                            flag1 = false;
                                             return;
                                         }
-                                        if (!n.getT().booleanValue()) {
-                                            result2 = ProviderInterface.TrashTooComplex;
-                                            return;
-                                        }
-                                        this.manager.getInstance().deleteDirectoryRecursively(id, null);
-                                        BroadcastManager.onFileTrash(this.getLocation(id), true);
-                                        result2 = ProviderInterface.TrashSuccess;
+                                        result1 = ProviderInterface.TrashSuccess;
                                     } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
-                                        result2 = UnionPair.fail(exception);
+                                        result1 = UnionPair.fail(exception);
                                     } finally {
-                                        assert result2 != null;
-                                        this.consume(result2, consumer);
+                                        if (flag1) {
+                                            assert result1 != null;
+                                            this.consume(result1, consumer);
+                                        }
                                     }
                                 });
-                                flag1 = false;
-                                return;
+                            } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                                this.consume(UnionPair.fail(exception), consumer);
                             }
-                            result1 = ProviderInterface.TrashSuccess;
-                        } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
-                            result1 = UnionPair.fail(exception);
-                        } finally {
-                            if (flag1) {
-                                assert result1 != null;
-                                this.consume(result1, consumer);
-                            }
-                        }
-                    });
-                    flag = false;
+                        });
+                        flag = false;
+                    } else result = ProviderInterface.TrashNotExisted;
                 } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                     result = UnionPair.fail(exception);
                 } finally {
@@ -702,24 +646,15 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
             try {
                 this.loginIfNot();
                 final AtomicBoolean barrier = new AtomicBoolean(true);
-                this.trash0(information, p -> {
-                    if (!barrier.compareAndSet(true, false)) {
-                        AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'trash#trash0'." + ParametersMap.create().add("configuration", this.getConfiguration())
-                                .add("p", p).add("id", id).add("isDirectory", false)));
-                        return;
-                    }
+                this.trash0(information, t -> {
+                    if (this.checkBarrier(barrier, t, "trash#trash0", p -> p.add("information", information)) || this.transferException(t, identifier, consumer)) return;
                     UnionPair<Optional<Boolean>, Throwable> result = null;
                     try {
-                        if (p.isFailure()) {
-                            result = UnionPair.fail(p.getE());
-                            return;
-                        }
-                        if (!p.getT().booleanValue()) {
+                        if (!t.getT().booleanValue()) {
                             result = ProviderInterface.TrashTooComplex;
                             return;
                         }
-                        this.manager.getInstance().deleteFileOrDirectory(id, isDirectory, null);
-                        BroadcastManager.onFileTrash(this.getLocation(id), isDirectory);
+                        this.onTrash(id, isDirectory, null);
                         result = ProviderInterface.TrashSuccess;
                     } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                         result = UnionPair.fail(exception);
@@ -733,10 +668,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                 BackgroundTaskManager.remove(identifier);
                 this.consume(UnionPair.fail(exception), consumer);
             }
-        }, false, HExceptionWrapper.wrapRunnable(() -> this.trash(id, isDirectory, consumer), e -> {
-            if (e != null)
-                consumer.accept(UnionPair.fail(e));
-        }, true));
+        }, false, this.wrapComplete(() -> this.trash(id, isDirectory, consumer), consumer));
     }
 
 
@@ -775,14 +707,10 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                 if (this.doesRequireLoginDownloading(information))
                     this.loginIfNot();
                 final AtomicBoolean barrier = new AtomicBoolean(true);
-                this.download0(information, start, end, p -> {
-                    if (!barrier.compareAndSet(true, false)) {
-                        AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'downloadFile#download0'." + ParametersMap.create().add("configuration", this.getConfiguration())
-                                .add("p", p).add("fileId", fileId).add("from", from).add("to", to)));
-                        return;
-                    }
+                this.download0(information, start, end, t -> {
+                    if (this.checkBarrier(barrier, t, "downloadFile#download0", p -> p.add("information", information).add("start", start).add("end", end))) return;
                     BackgroundTaskManager.remove(identifier);
-                    this.consume(p, consumer);
+                    this.consume(t, consumer);
                 });
                 flag = false;
             } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
@@ -791,10 +719,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                 if (flag)
                     BackgroundTaskManager.remove(identifier);
             }
-        }, false, HExceptionWrapper.wrapRunnable(() -> this.downloadFile(fileId, from, to, consumer), e -> {
-            if (e != null)
-                consumer.accept(UnionPair.fail(e));
-        }, true));
+        }, false, this.wrapComplete(() -> this.downloadFile(fileId, from, to, consumer), consumer));
     }
 
 
@@ -804,104 +729,110 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         return AbstractIdBaseProvider.DefaultRetryBracketPair;
     }
 
-    private <R> void getDuplicatedName(final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @NotNull UnaryOperator<? super @NotNull ParametersMap> parameters, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<R, FailureReason>, Throwable>> consumer, final @NotNull BiConsumerE<? super @NotNull String, ? super BackgroundTaskManager.@NotNull BackgroundTaskIdentifier> runnable) throws Exception {
+    private <R> void getDuplicatedName(final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @NotNull UnaryOperator<@NotNull ParametersMap> parameters, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<R, FailureReason>, Throwable>> consumer, final @NotNull BiConsumerE<? super @NotNull String, ? super BackgroundTaskManager.@NotNull BackgroundTaskIdentifier> runnable) throws Exception {
         final AtomicBoolean barrier = new AtomicBoolean(true);
-        this.list(parentId, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0, p -> {
-            if (!barrier.compareAndSet(true, false)) {
-                AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'prepareNewFiles#list'." + parameters.apply(ParametersMap.create()
-                        .add("configuration", this.getConfiguration()).add("p", p).add("parentId", parentId).add("name", name).add("policy", policy))));
-                return;
-            }
+        this.list(parentId, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0, t -> {
+            if (this.checkBarrier(barrier, t, "getDuplicatedName#list", p -> parameters.apply(p.add("parentId", parentId))) || this.transferException(t, null, consumer)) return;
             UnionPair<UnionPair<R, FailureReason>, Throwable> result = null;
             boolean flag = true;
             try {
-                if (p.isFailure()) {
-                    result = UnionPair.fail(p.getE());
-                    return;
-                }
-                if (p.getT().isEmpty()) {
-                    result = UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(this.getLocation(parentId), true)));
-                    return;
-                }
-                final FileManager manager = this.manager.getInstance();
-                final BackgroundTaskManager.BackgroundTaskIdentifier identifier = new BackgroundTaskManager.BackgroundTaskIdentifier(
-                        this.getConfiguration().getName(), BackgroundTaskManager.Name, String.format("%d: %s", parentId, name));
-                final FileInformation duplicate = manager.selectInfoInDirectoryByName(parentId, name, null);
-                if (duplicate == null && BackgroundTaskManager.createIfNot(identifier)) {
-                    runnable.accept(name, identifier);
-                    flag = false;
-                    return;
-                }
-                if (policy == Options.DuplicatePolicy.ERROR) {
-                    result = UnionPair.ok(UnionPair.fail(FailureReason.byDuplicateError(this.getLocation(parentId), name)));
-                    return;
-                }
-                if (policy == Options.DuplicatePolicy.KEEP) {
-                    final int index = name.lastIndexOf('.');
-                    final Pair.ImmutablePair<String, String> bracket = this.retryBracketPair();
-                    final String left = (index < 0 ? name : name.substring(0, index)) + bracket.getFirst();
-                    final String right = bracket.getSecond() + (index < 0 ? "" : name.substring(index));
-                    String n;
-                    BackgroundTaskManager.BackgroundTaskIdentifier i;
-                    int retry = 0;
-                    do {
-                        n = left + (++retry) + right;
-                        i = new BackgroundTaskManager.BackgroundTaskIdentifier(this.getConfiguration().getName(),
-                                BackgroundTaskManager.Name, String.format("%d: %s", parentId, n));
-                    } while (manager.selectInfoInDirectoryByName(parentId, n, null) != null || !BackgroundTaskManager.createIfNot(i));
-                    runnable.accept(n, i);
-                    flag = false;
-                    return;
-                }
-                assert policy == Options.DuplicatePolicy.OVER;
-                if (duplicate == null) {
-                    result = UnionPair.ok(UnionPair.fail(FailureReason.byDuplicateError(this.getLocation(parentId), name)));
-                    return;
-                }
-                final ConsumerE<FileInformation> trashing = new ConsumerE<>() {
-                    @Override
-                    public void accept(final @NotNull FileInformation duplicate) throws Exception {
-                        final AtomicBoolean barrier = new AtomicBoolean(true);
-                        AbstractIdBaseProvider.this.trash(duplicate.id(), duplicate.isDirectory(), p -> {
-                            if (!barrier.compareAndSet(true, false)) {
-                                AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'prepareNewFiles#trash'." + parameters.apply(ParametersMap.create()
-                                        .add("configuration", AbstractIdBaseProvider.this.getConfiguration()).add("p", p).add("parentId", parentId).add("name", name).add("policy", policy).add("duplicate", duplicate))));
+                if (t.getT().isPresent()) {
+                    final Runnable handler = () -> {
+                        UnionPair<UnionPair<R, FailureReason>, Throwable> result1 = null;
+                        boolean flag1 = true;
+                        try {
+                            final FileManager manager = this.manager.getInstance();
+                            final BackgroundTaskManager.BackgroundTaskIdentifier identifier = new BackgroundTaskManager.BackgroundTaskIdentifier(
+                                    this.getConfiguration().getName(), BackgroundTaskManager.Name, String.format("%d: %s", parentId, name));
+                            final FileInformation duplicate = manager.selectInfoInDirectoryByName(parentId, name, null);
+                            if (duplicate == null && BackgroundTaskManager.createIfNot(identifier)) {
+                                runnable.accept(name, identifier);
+                                flag1 = false;
                                 return;
                             }
-                            UnionPair<UnionPair<R, FailureReason>, Throwable> result = null;
-                            boolean flag = true;
-                            try {
-                                if (p.isFailure()) {
-                                    result = UnionPair.fail(p.getE());
-                                    return;
-                                }
-                                if (p.getT().isPresent()) {
-                                    final FileInformation d = manager.selectInfoInDirectoryByName(parentId, name, null);
-                                    if (d != null) {
-                                        this.accept(d);
-                                        flag = false;
-                                        return;
-                                    }
-                                    if (BackgroundTaskManager.createIfNot(identifier)) {
-                                        runnable.accept(name, identifier);
-                                        flag = false;
-                                        return;
-                                    }
-                                }
-                                result = UnionPair.ok(UnionPair.fail(FailureReason.byDuplicateError(AbstractIdBaseProvider.this.getLocation(parentId), name)));
-                            } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
-                                result = UnionPair.fail(exception);
-                            } finally {
-                                if (flag) {
-                                    assert result != null;
-                                    AbstractIdBaseProvider.this.consume(result, consumer);
-                                }
+                            if (policy == Options.DuplicatePolicy.ERROR) {
+                                result1 = UnionPair.ok(UnionPair.fail(FailureReason.byDuplicateError(this.getLocation(parentId), name)));
+                                return;
                             }
+                            if (policy == Options.DuplicatePolicy.KEEP) {
+                                final int index = name.lastIndexOf('.');
+                                final Pair.ImmutablePair<String, String> bracket = this.retryBracketPair();
+                                final String left = (index < 0 ? name : name.substring(0, index)) + bracket.getFirst();
+                                final String right = bracket.getSecond() + (index < 0 ? "" : name.substring(index));
+                                String n;
+                                BackgroundTaskManager.BackgroundTaskIdentifier i;
+                                int retry = 0;
+                                do {
+                                    n = left + (++retry) + right;
+                                    i = new BackgroundTaskManager.BackgroundTaskIdentifier(this.getConfiguration().getName(),
+                                            BackgroundTaskManager.Name, String.format("%d: %s", parentId, n));
+                                } while (manager.selectInfoInDirectoryByName(parentId, n, null) != null || !BackgroundTaskManager.createIfNot(i));
+                                runnable.accept(n, i);
+                                flag1 = false;
+                                return;
+                            }
+                            assert policy == Options.DuplicatePolicy.OVER;
+                            if (duplicate == null) {
+                                result1 = UnionPair.ok(UnionPair.fail(FailureReason.byDuplicateError(this.getLocation(parentId), name)));
+                                return;
+                            }
+                            final ConsumerE<FileInformation> trashing = new ConsumerE<>() {
+                                @Override
+                                public void accept(final @NotNull FileInformation duplicate) throws Exception {
+                                    final AtomicBoolean barrier = new AtomicBoolean(true);
+                                    AbstractIdBaseProvider.this.trash(duplicate.id(), duplicate.isDirectory(), t -> {
+                                        if (AbstractIdBaseProvider.this.checkBarrier(barrier, t, "getDuplicatedName#trash", p -> parameters.apply(p.add("duplicate", duplicate)))
+                                                || AbstractIdBaseProvider.this.transferException(t, null, consumer))
+                                            return;
+                                        UnionPair<UnionPair<R, FailureReason>, Throwable> result = null;
+                                        boolean flag = true;
+                                        try {
+                                            if (t.getT().isPresent()) {
+                                                final FileInformation d = manager.selectInfoInDirectoryByName(parentId, name, null);
+                                                if (d != null) {
+                                                    this.accept(d);
+                                                    flag = false;
+                                                    return;
+                                                }
+                                                if (BackgroundTaskManager.createIfNot(identifier)) {
+                                                    runnable.accept(name, identifier);
+                                                    flag = false;
+                                                    return;
+                                                }
+                                            }
+                                            result = UnionPair.ok(UnionPair.fail(FailureReason.byDuplicateError(AbstractIdBaseProvider.this.getLocation(parentId), name)));
+                                        } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                                            result = UnionPair.fail(exception);
+                                        } finally {
+                                            if (flag) {
+                                                assert result != null;
+                                                AbstractIdBaseProvider.this.consume(result, consumer);
+                                            }
+                                        }
+                                    });
+                                }
+                            };
+                            trashing.accept(duplicate);
+                            flag1 = false;
+                        } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                            result1 = UnionPair.fail(exception);
+                        } finally {
+                            if (flag1) {
+                                assert result1 != null;
+                                this.consume(result1, consumer);
+                            }
+                        }
+                    };
+                    if (t.getT().get().isFailure()) {
+                        t.getT().get().getE().runner().accept((Consumer<? super Throwable>) h -> {
+                            if (h != null)
+                                this.consume(UnionPair.fail(h), consumer);
+                            else
+                                handler.run();
                         });
-                    }
-                };
-                trashing.accept(duplicate);
-                flag = false;
+                    } else handler.run();
+                    flag = false;
+                } else result = UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(this.getLocation(parentId), true)));
             } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                 result = UnionPair.fail(exception);
             } finally {
@@ -920,8 +851,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
     /**
      * Create an empty directory. {@code size == 0}
      */
-    @SuppressWarnings("SameParameterValue")
-    protected abstract void createDirectory0(final long parentId, final @NotNull String directoryName, final @NotNull Options.DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) throws Exception;
+    protected abstract void create0(final long parentId, final @NotNull String directoryName, final @NotNull Options.DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) throws Exception;
 
     @Override
     public void createDirectory(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) throws Exception {
@@ -940,21 +870,16 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                 }
                 this.loginIfNot();
                 final AtomicBoolean barrier = new AtomicBoolean(true);
-                this.createDirectory0(parentId, name, Options.DuplicatePolicy.ERROR, p -> {
-                    if (!barrier.compareAndSet(true, false)) {
-                        AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'createDirectory#createDirectory0'." + ParametersMap.create().add("configuration", this.getConfiguration())
-                                .add("p", p).add("parentId", parentId).add("directoryName", directoryName).add("name", name).add("policy", policy)));
-                        return;
-                    }
+                this.create0(parentId, name, Options.DuplicatePolicy.ERROR, t -> {
+                    if (this.checkBarrier(barrier, t, "createDirectory#create0", p -> p.add("parentId", parentId))) return;
                     UnionPair<UnionPair<FileInformation, FailureReason>, Throwable> result1 = null;
                     try {
-                        if (p.isSuccess() && p.getT().isSuccess()) {
-                            final FileInformation information = p.getT().getT();
+                        if (t.isSuccess() && t.getT().isSuccess()) {
+                            final FileInformation information = t.getT().getT();
                             assert information.isDirectory() && information.size() == 0 && information.parentId() == parentId;
-                            this.manager.getInstance().insertFileOrDirectory(information, null);
-                            BroadcastManager.onFileUpload(this.getConfiguration().getName(), information);
+                            this.onUpload(information, null);
                         }
-                        result1 = p;
+                        result1 = t;
                     } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                         result1 = UnionPair.fail(exception);
                     } finally {
@@ -984,8 +909,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
      * Upload a file. {@code size >= 0}
      * @see UploadRequirements#splitUploadBuffer(BiConsumerE, long, int)
      */
-    @SuppressWarnings("SameParameterValue")
-    protected abstract void uploadFile0(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) throws Exception;
+    protected abstract void upload0(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) throws Exception;
 
     @Override
     public void uploadFile(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) throws Exception {
@@ -1008,32 +932,23 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                 }
                 this.loginIfNot();
                 final AtomicBoolean barrier = new AtomicBoolean(true);
-                this.uploadFile0(parentId, name, size, Options.DuplicatePolicy.ERROR, p -> {
-                    if (!barrier.compareAndSet(true, false)) {
-                        AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'uploadFile#uploadFile0'." + ParametersMap.create().add("configuration", this.getConfiguration())
-                                .add("p", p).add("parentId", parentId).add("filename", filename).add("name", name).add("size", size).add("policy", policy)));
-                        return;
-                    }
-                    if (p.isSuccess() && p.getT().isSuccess()) {
-                        final UploadRequirements requirements = p.getT().getT();
+                this.upload0(parentId, name, size, Options.DuplicatePolicy.ERROR, t -> {
+                    if (this.checkBarrier(barrier, t, "uploadFile#upload0", p -> p.add("parentId", parentId).add("filename", filename).add("size", size))) return;
+                    if (t.isSuccess() && t.getT().isSuccess()) {
+                        final UploadRequirements requirements = t.getT().getT();
                         this.consume(UnionPair.ok(UnionPair.ok(new UploadRequirements(requirements.checksums(), c -> {
                             final UploadRequirements.UploadMethods methods = requirements.transfer().apply(c);
                             return new UploadRequirements.UploadMethods(methods.parallelMethods(), o -> {
                                 final AtomicBoolean barrier1 = new AtomicBoolean(true);
-                                methods.supplier().accept((Consumer<? super UnionPair<Optional<FileInformation>, Throwable>>) t -> {
-                                    if (!barrier1.compareAndSet(true, false)) {
-                                        AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'uploadFile0#supplier'." + ParametersMap.create().add("configuration", this.getConfiguration())
-                                                .add("t", t).add("parentId", parentId).add("filename", filename).add("name", name).add("size", size).add("policy", policy)));
-                                        return;
-                                    }
+                                methods.supplier().accept((Consumer<? super UnionPair<Optional<FileInformation>, Throwable>>) u -> {
+                                    if (this.checkBarrier(barrier1, u, "uploadFile#supplier", p -> p.add("parentId", parentId).add("filename", filename).add("size", size))) return;
                                     try {
-                                        if (t.isSuccess() && t.getT().isPresent()) {
-                                            final FileInformation information = t.getT().get();
+                                        if (u.isSuccess() && u.getT().isPresent()) {
+                                            final FileInformation information = u.getT().get();
                                             assert !information.isDirectory() && information.size() == size && information.parentId() == parentId;
-                                            this.manager.getInstance().insertFileOrDirectory(information, null);
-                                            BroadcastManager.onFileUpload(this.getConfiguration().getName(), information);
+                                            this.onUpload(information, null);
                                         }
-                                        o.accept(t);
+                                        o.accept(u);
                                     } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                                         o.accept(UnionPair.fail(exception));
                                     }
@@ -1046,7 +961,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                         return;
                     }
                     BackgroundTaskManager.remove(identifier);
-                    this.consume(p, consumer);
+                    this.consume(t, consumer);
                 });
                 flag = false;
             } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
@@ -1108,7 +1023,6 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
      * @see #doesSupportCopyDirectly(FileInformation, long)
      * @see #CopyNotSupport
      */
-    @SuppressWarnings("SameParameterValue")
     protected abstract void copyDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) throws Exception;
 
     @Override
@@ -1129,31 +1043,23 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                     return;
                 this.loginIfNot();
                 final AtomicBoolean barrier = new AtomicBoolean(true);
-                this.copyDirectly0(information, parentId, duplicatedName, Options.DuplicatePolicy.ERROR, p -> {
-                    if (!barrier.compareAndSet(true, false)) {
-                        AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'copyDirectly#copyDirectly0'." + ParametersMap.create().add("configuration", this.getConfiguration())
-                                .add("p", p).add("information", information).add("parentId", parentId).add("name", duplicatedName).add("policy", policy)));
-                        return;
-                    }
+                this.copyDirectly0(information, parentId, duplicatedName, Options.DuplicatePolicy.ERROR, t -> {
+                    if (this.checkBarrier(barrier, t, "copyDirectly#copyDirectly0", p -> p.add("information", information).add("parentId", parentId).add("name", duplicatedName))
+                            || this.transferException(t, identifier, consumer)) return;
                     UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable> result = null;
                     try {
-                        if (p.isFailure()) {
-                            result = UnionPair.fail(p.getE());
-                            return;
-                        }
-                        if (p.getT().isPresent()) {
-                            if (p.getT().get().isFailure()) {
-                                result = UnionPair.ok(Optional.of(UnionPair.fail(Optional.of(p.getT().get().getE()))));
+                        if (t.getT().isPresent()) {
+                            if (t.getT().get().isFailure()) {
+                                result = UnionPair.ok(Optional.of(UnionPair.fail(Optional.of(t.getT().get().getE()))));
                                 return;
                             }
-                            final FileInformation info = p.getT().get().getT();
+                            final FileInformation info = t.getT().get().getT();
                             assert info.isDirectory() == isDirectory && info.size() == (isDirectory ? -1 : information.size()) && info.parentId() == parentId;
-                            this.manager.getInstance().updateOrInsertFileOrDirectory(info, null);
+                            // this.onUpload(info, null);
+                            this.manager.getInstance().updateOrInsertFileOrDirectory(info, null); // size != 0.
                             BroadcastManager.onFileUpload(this.getConfiguration().getName(), info);
                             result = UnionPair.ok(Optional.of(UnionPair.ok(info)));
-                            return;
-                        }
-                        result = UnionPair.ok(Optional.empty());
+                        } else result = UnionPair.ok(Optional.empty());
                     } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                         result = UnionPair.fail(exception);
                     } finally {
@@ -1180,7 +1086,6 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
      * @see #doesSupportMoveDirectly(FileInformation, long)
      * @see #MoveNotSupport
      */
-    @SuppressWarnings("SameParameterValue")
     protected abstract void moveDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) throws Exception;
 
     @Override
@@ -1205,28 +1110,20 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                     return;
                 this.loginIfNot();
                 final AtomicBoolean barrier = new AtomicBoolean(true);
-                this.moveDirectly0(information, parentId, name, Options.DuplicatePolicy.ERROR, p -> {
-                    if (!barrier.compareAndSet(true, false)) {
-                        AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'moveDirectly#moveDirectly0'." + ParametersMap.create().add("configuration", this.getConfiguration())
-                                .add("p", p).add("information", information).add("parentId", parentId).add("name", name).add("policy", policy)));
-                        return;
-                    }
+                this.moveDirectly0(information, parentId, name, Options.DuplicatePolicy.ERROR, t -> {
+                    if (this.checkBarrier(barrier, t, "moveDirectly#moveDirectly0", p -> p.add("information", information).add("parentId", parentId).add("name", name))
+                            || this.transferException(t, identifier, consumer)) return;
                     UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable> result = null;
                     try {
-                        if (p.isFailure()) {
-                            result = UnionPair.fail(p.getE());
-                            return;
-                        }
-                        if (p.getT().isPresent()) {
-                            if (p.getT().get().isFailure()) {
-                                result = UnionPair.ok(Optional.of(UnionPair.fail(Optional.of(p.getT().get().getE()))));
+                        if (t.getT().isPresent()) {
+                            if (t.getT().get().isFailure()) {
+                                result = UnionPair.ok(Optional.of(UnionPair.fail(Optional.of(t.getT().get().getE()))));
                                 return;
                             }
-                            final FileInformation info = p.getT().get().getT();
+                            final FileInformation info = t.getT().get().getT();
                             assert info.id() == id;
                             assert info.isDirectory() == isDirectory && info.size() == information.size() && info.parentId() == parentId;
-                            this.manager.getInstance().updateOrInsertFileOrDirectory(info, null);
-                            BroadcastManager.onFileUpdate(this.getLocation(id), isDirectory);
+                            this.onUpdate(info, null);
                             result = UnionPair.ok(Optional.of(UnionPair.ok(info)));
                             return;
                         }
@@ -1257,7 +1154,6 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
      * @see #doesSupportRenameDirectly(FileInformation, String)
      * @see #RenameNotSupport
      */
-    @SuppressWarnings("SameParameterValue")
     protected abstract void renameDirectly0(final @NotNull FileInformation information, final @NotNull String name, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) throws Exception;
 
     @Override
@@ -1300,26 +1196,18 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                 }
                 this.loginIfNot();
                 final AtomicBoolean barrier = new AtomicBoolean(true);
-                this.renameDirectly0(information, duplicatedName, Options.DuplicatePolicy.ERROR, p -> {
-                    if (!barrier.compareAndSet(true, false)) {
-                        AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, new RuntimeException("Duplicate message when 'moveDirectly#moveDirectly0'." + ParametersMap.create().add("configuration", this.getConfiguration())
-                                .add("p", p).add("information", information).add("name", duplicatedName).add("policy", policy)));
-                        return;
-                    }
+                this.renameDirectly0(information, duplicatedName, Options.DuplicatePolicy.ERROR, t -> {
+                    if (this.checkBarrier(barrier, t, "moveDirectly#moveDirectly0", p -> p.add("information", information).add("name", duplicatedName))
+                            || this.transferException(t, identifier, consumer)) return;
                     UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable> result = null;
                     try {
-                        if (p.isFailure()) {
-                            result = UnionPair.fail(p.getE());
-                            return;
-                        }
-                        if (p.getT().isPresent() && p.getT().get().isSuccess()) {
-                            final FileInformation info = p.getT().get().getT();
+                        if (t.getT().isPresent() && t.getT().get().isSuccess()) {
+                            final FileInformation info = t.getT().get().getT();
                             assert info.id() == id;
                             assert info.isDirectory() == isDirectory && info.size() == information.size() && info.parentId() == information.parentId();
-                            this.manager.getInstance().updateOrInsertFileOrDirectory(info, null);
-                            BroadcastManager.onFileUpdate(this.getLocation(id), isDirectory);
+                            this.onUpdate(info, null);
                         }
-                        result = p;
+                        result = t;
                     } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                         result = UnionPair.fail(exception);
                     } finally {

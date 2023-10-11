@@ -253,7 +253,7 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
     }
 
     @Override
-    protected void createDirectory0(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) {
+    protected void create0(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) {
         this.operations.add("Create: " + parentId + " " + directoryName);
         final FileInformation information = this.create.uninitialize().get();
         Assertions.assertEquals(parentId, information.parentId());
@@ -269,7 +269,7 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
     }
 
     @Override
-    protected void uploadFile0(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) {
+    protected void upload0(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) {
         throw new UnsupportedOperationException("Not tested.");
     }
 

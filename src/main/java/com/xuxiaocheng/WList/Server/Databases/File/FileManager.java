@@ -123,6 +123,11 @@ public record FileManager(@NotNull FileSqlInterface innerSqlInstance) implements
         this.innerSqlInstance.updateOrInsertFileOrDirectory(information, _connectionId);
     }
 
+    @Override
+    public void calculateDirectorySize(final long directoryId, final @Nullable String _connectionId) throws SQLException {
+        this.innerSqlInstance.calculateDirectorySize(directoryId, _connectionId);
+    }
+
     /* --- Select --- */
 
     @Override

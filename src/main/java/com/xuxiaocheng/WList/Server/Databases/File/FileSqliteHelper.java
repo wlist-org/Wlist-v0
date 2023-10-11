@@ -332,7 +332,7 @@ public class FileSqliteHelper implements FileSqlInterface {
         }
     }
 
-    protected void unknowDirectorySizeRecursively(final long directoryId, final @Nullable String _connectionId) throws SQLException {
+    protected void unknownDirectorySizeRecursively(final long directoryId, final @Nullable String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>(_connectionId);
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
             final long doubleId = FileSqliteHelper.getDoubleId(directoryId, true);
@@ -356,7 +356,7 @@ public class FileSqliteHelper implements FileSqlInterface {
                     statement.executeUpdate();
                 }
                 if (directoryId != this.rootId)
-                    this.unknowDirectorySizeRecursively(parentId, connectionId.get());
+                    this.unknownDirectorySizeRecursively(parentId, connectionId.get());
             }
             connection.commit();
         }
@@ -445,7 +445,7 @@ public class FileSqliteHelper implements FileSqlInterface {
                         statement.setString(7, directory.others());
                         statement.executeUpdate();
                     }
-                    this.unknowDirectorySizeRecursively(directory.parentId(), connectionId.get());
+                    this.unknownDirectorySizeRecursively(directory.parentId(), connectionId.get());
                 } else {
                     if (directory.id() != old.id() && this.isInDirectoryRecursively(directory.id(), true, old.id(), connectionId.get()))
                         throw new IllegalStateException("Recycle directory tree." + ParametersMap.create().add("directory", directory).add("old", old));
@@ -464,7 +464,7 @@ public class FileSqliteHelper implements FileSqlInterface {
                     if (directory.parentId() != old.parentId())
                         if (old.size() == -1) {
                             this.updateDirectorySizeRecursively(old.parentId(), 0, connectionId.get());
-                            this.unknowDirectorySizeRecursively(directory.parentId(), connectionId.get());
+                            this.unknownDirectorySizeRecursively(directory.parentId(), connectionId.get());
                         } else {
                             this.updateDirectorySizeRecursively(old.parentId(), -old.size(), connectionId.get());
                             this.updateDirectorySizeRecursively(directory.parentId(), old.size(), connectionId.get());
@@ -473,6 +473,11 @@ public class FileSqliteHelper implements FileSqlInterface {
             } else this.deleteDirectoryRecursively(directory.id(), connectionId.get());
             connection.commit();
         }
+    }
+
+    @Override
+    public void calculateDirectorySize(final long directoryId, final @Nullable String _connectionId) throws SQLException {
+        this.updateDirectorySizeRecursively(directoryId, 0, _connectionId);
     }
 
 
@@ -645,7 +650,7 @@ public class FileSqliteHelper implements FileSqlInterface {
                     directorySize = result.getLong(2);
                 }
             }
-            if (directorySize >= 0 && (fileSize == -1 || fileSize > directorySize))
+            if (directorySize >= 0 && (fileSize > directorySize || (!isDirectory && fileSize == -1)))
                 success = false;
             else
                 try (final PreparedStatement statement = connection.prepareStatement(String.format("""
