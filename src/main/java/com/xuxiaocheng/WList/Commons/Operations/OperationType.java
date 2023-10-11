@@ -41,6 +41,7 @@ public enum OperationType {
     // Files
     ListFiles,
     RefreshDirectory,
+    CancelRefresh,
     ConfirmRefresh,
     GetFileOrDirectory,
     TrashFileOrDirectory,

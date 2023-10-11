@@ -67,6 +67,7 @@ public final class OperateFilesHandler {
         ServerHandlerManager.register(OperationType.ListFiles, OperateFilesHandler.doListFiles);
         ServerHandlerManager.register(OperationType.GetFileOrDirectory, OperateFilesHandler.doGetFileOrDirectory);
         ServerHandlerManager.register(OperationType.RefreshDirectory, OperateFilesHandler.doRefreshDirectory);
+        ServerHandlerManager.register(OperationType.CancelRefresh, OperateFilesHandler.doCancelRefresh);
         ServerHandlerManager.register(OperationType.ConfirmRefresh, OperateFilesHandler.doConfirmRefresh);
         ServerHandlerManager.register(OperationType.TrashFileOrDirectory, OperateFilesHandler.doTrashFileOrDirectory);
         ServerHandlerManager.register(OperationType.RequestDownloadFile, OperateFilesHandler.doRequestDownloadFile);
@@ -214,6 +215,26 @@ public final class OperateFilesHandler {
             }
             WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.LocationNotAvailable);
         });
+    };
+
+    private static final @NotNull ServerHandler doCancelRefresh = (channel, buffer) -> {
+        final String token = ByteBufIOUtil.readUTF(buffer);
+        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FilesRefresh);
+        final String id = ByteBufIOUtil.readUTF(buffer);
+        ServerHandler.logOperation(channel, OperationType.CancelRefresh, user, () -> ParametersMap.create().add("id", id));
+        if (user.isFailure()) {
+            WListServer.ServerChannelHandler.write(channel, user.getE());
+            return null;
+        }
+        return () -> {
+            if (!RefreshIdHelper.cancel(id)) {
+                WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.IdDataError);
+                return;
+            }
+            HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Cancelled refresh.", ServerHandler.user(null, user.getT()),
+                    ParametersMap.create().add("id", id));
+            WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
+        };
     };
 
     /**

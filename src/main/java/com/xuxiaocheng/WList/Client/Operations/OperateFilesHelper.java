@@ -98,6 +98,13 @@ public final class OperateFilesHelper {
         }
     }
 
+    public static boolean cancelRefresh(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String id) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.CancelRefresh, token);
+        ByteBufIOUtil.writeUTF(send, id);
+        OperateHelper.logOperating(OperationType.CancelRefresh, token, p -> p.add("id", id));
+        return OperateHelper.booleanOperation(client, send, OperationType.CancelRefresh);
+    }
+
     public static void confirmRefresh(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String id) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.ConfirmRefresh, token);
         ByteBufIOUtil.writeUTF(send, id);
@@ -184,17 +191,11 @@ public final class OperateFilesHelper {
         }
     }
 
-    public static void finishDownloadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String id) throws IOException, InterruptedException, WrongStateException {
+    public static boolean finishDownloadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String id) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.FinishDownloadFile, token);
         ByteBufIOUtil.writeUTF(send, id);
         OperateHelper.logOperating(OperationType.FinishDownloadFile, token, p -> p.add("id", id));
-        final ByteBuf receive = client.send(send);
-        try {
-            OperateHelper.handleState(receive);
-            OperateHelper.logOperated(OperationType.FinishDownloadFile, null, null);
-        } finally {
-            receive.release();
-        }
+        return OperateHelper.booleanOperation(client, send, OperationType.FinishDownloadFile);
     }
 
     public static @Nullable UnionPair<Object, VisibleFailureReason> createDirectory(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation parent, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
