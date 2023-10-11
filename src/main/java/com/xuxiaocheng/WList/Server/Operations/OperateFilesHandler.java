@@ -17,10 +17,13 @@ import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.User.UserInformation;
 import com.xuxiaocheng.WList.Server.MessageProto;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.DownloadIdHelper;
+import com.xuxiaocheng.WList.Server.Operations.Helpers.RefreshIdHelper;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.UploadIdHelper;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
+import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
+import com.xuxiaocheng.WList.Server.Storage.Records.RefreshRequirements;
 import com.xuxiaocheng.WList.Server.Storage.Records.UploadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.RootSelector;
 import com.xuxiaocheng.WList.Server.WListServer;
@@ -64,6 +67,7 @@ public final class OperateFilesHandler {
         ServerHandlerManager.register(OperationType.ListFiles, OperateFilesHandler.doListFiles);
         ServerHandlerManager.register(OperationType.GetFileOrDirectory, OperateFilesHandler.doGetFileOrDirectory);
         ServerHandlerManager.register(OperationType.RefreshDirectory, OperateFilesHandler.doRefreshDirectory);
+        ServerHandlerManager.register(OperationType.ConfirmRefresh, OperateFilesHandler.doConfirmRefresh);
         ServerHandlerManager.register(OperationType.TrashFileOrDirectory, OperateFilesHandler.doTrashFileOrDirectory);
         ServerHandlerManager.register(OperationType.RequestDownloadFile, OperateFilesHandler.doRequestDownloadFile);
         ServerHandlerManager.register(OperationType.CancelDownloadFile, OperateFilesHandler.doCancelDownloadFile);
@@ -111,17 +115,40 @@ public final class OperateFilesHandler {
         }
         final AtomicBoolean barrier = new AtomicBoolean(true);
         return () -> RootSelector.list(directory, filter, orders.getT(), position, limit, p -> {
-//            if (!barrier.compareAndSet(true, false)) {
-//                HLog.getInstance("ServerLogger").log(HLogLevel.MISTAKE, "Duplicate message on 'doListFiles'.", ParametersMap.create()
-//                        .add("p", p).add("directory", directory).add("filter", filter).add("orders", orders).add("position", position).add("limit", limit));
-//                return;
-//            }
-//            if (p.isFailure()) {
-//                channel.pipeline().fireExceptionCaught(p.getE());
-//                return;
-//            }
-//            WListServer.ServerChannelHandler.write(channel, p.getT().isPresent() ?
-//                    MessageProto.successMessage(p.getT().get()::dumpVisible) : OperateFilesHandler.LocationNotAvailable);
+            if (!barrier.compareAndSet(true, false)) {
+                HLog.getInstance("ServerLogger").log(HLogLevel.MISTAKE, "Duplicate message on 'doListFiles'.", ParametersMap.create()
+                        .add("p", p).add("directory", directory).add("filter", filter).add("orders", orders).add("position", position).add("limit", limit));
+                return;
+            }
+            if (p.isFailure()) {
+                channel.pipeline().fireExceptionCaught(p.getE());
+                return;
+            }
+            if (p.getT().isPresent()) {
+                if (p.getT().isPresent()) {
+                    final FilesListInformation list = p.getT().get().getT();
+                    WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> {
+                        ByteBufIOUtil.writeBoolean(buf, true);
+                        return list.dumpVisible(buf);
+                    }));
+                } else {
+                    final RefreshRequirements requirements = p.getT().get().getE();
+                    if (user.getT().group().permissions().contains(UserPermission.FilesRefresh)) {
+                        final String id = RefreshIdHelper.generateId(requirements);
+                        HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Signed refresh id.", ServerHandler.user(null, user.getT()),
+                                ParametersMap.create().add("caller", "list").add("directory", directory).add("id", id));
+                        WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> {
+                            ByteBufIOUtil.writeBoolean(buf, false);
+                            return requirements.dumpConfirm(buf, id);
+                        }));
+                    } else { // Quickly cancel.
+                        requirements.canceller().run();
+                        WListServer.ServerChannelHandler.write(channel, OperateSelfHandler.NoPermission(List.of(UserPermission.FilesRefresh)));
+                    }
+                }
+                return;
+            }
+            WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.LocationNotAvailable);
         });
     };
 
@@ -170,17 +197,52 @@ public final class OperateFilesHandler {
         }
         final AtomicBoolean barrier = new AtomicBoolean(true);
         return () -> RootSelector.refreshDirectory(directory, p -> {
-//            if (!barrier.compareAndSet(true, false)) {
-//                HLog.getInstance("ServerLogger").log(HLogLevel.MISTAKE, "Duplicate message on 'doRefreshDirectory'.", ParametersMap.create()
-//                        .add("p", p).add("directory", directory));
-//                return;
-//            }
-//            if (p.isFailure()) {
-//                channel.pipeline().fireExceptionCaught(p.getE());
-//                return;
-//            }
-//            WListServer.ServerChannelHandler.write(channel, p.getT().booleanValue() ? MessageProto.Success : OperateFilesHandler.LocationNotAvailable);
+            if (!barrier.compareAndSet(true, false)) {
+                HLog.getInstance("ServerLogger").log(HLogLevel.MISTAKE, "Duplicate message on 'doRefreshDirectory'.", ParametersMap.create()
+                        .add("p", p).add("directory", directory));
+                return;
+            }
+            if (p.isFailure()) {
+                channel.pipeline().fireExceptionCaught(p.getE());
+                return;
+            }
+            if (p.getT().isPresent()) {
+                final RefreshRequirements requirements = p.getT().get();
+                final String id = RefreshIdHelper.generateId(requirements);
+                WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> requirements.dumpConfirm(buf, id)));
+                return;
+            }
+            WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.LocationNotAvailable);
         });
+    };
+
+    /**
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#confirmRefresh(com.xuxiaocheng.WList.Client.WListClientInterface, String, String)
+     */
+    private static final @NotNull ServerHandler doConfirmRefresh = (channel, buffer) -> {
+        final String token = ByteBufIOUtil.readUTF(buffer);
+        final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FilesRefresh);
+        final String id = ByteBufIOUtil.readUTF(buffer);
+        ServerHandler.logOperation(channel, OperationType.ConfirmRefresh, user, () -> ParametersMap.create().add("id", id));
+        if (user.isFailure()) {
+            WListServer.ServerChannelHandler.write(channel, user.getE());
+            return null;
+        }
+        return () -> {
+            final AtomicBoolean barrier = new AtomicBoolean(true);
+            if (RefreshIdHelper.confirm(id, p -> {
+                if (!barrier.compareAndSet(true, false)) {
+                    HLog.getInstance("ServerLogger").log(HLogLevel.MISTAKE, "Duplicate message on 'doConfirmRefresh'.", ParametersMap.create()
+                            .add("p", p).add("id", id));
+                    return;
+                }
+                if (p != null) {
+                    channel.pipeline().fireExceptionCaught(p);
+                    return;
+                }
+                WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
+            })) WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.IdDataError);
+        };
     };
 
     /**

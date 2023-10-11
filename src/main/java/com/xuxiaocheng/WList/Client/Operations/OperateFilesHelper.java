@@ -5,6 +5,7 @@ import com.xuxiaocheng.WList.Client.Exceptions.WrongStateException;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.Beans.DownloadConfirm;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
+import com.xuxiaocheng.WList.Commons.Beans.RefreshConfirm;
 import com.xuxiaocheng.WList.Commons.Beans.UploadConfirm;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
@@ -30,7 +31,7 @@ public final class OperateFilesHelper {
         super();
     }
 
-    public static @Nullable VisibleFilesListInformation listFiles(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation directory, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.Order, Options.OrderDirection> orders, final long position, final int limit) throws IOException, InterruptedException, WrongStateException {
+    public static @Nullable UnionPair<VisibleFilesListInformation, RefreshConfirm> listFiles(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation directory, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.Order, Options.OrderDirection> orders, final long position, final int limit) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.ListFiles, token);
         directory.dump(send);
         ByteBufIOUtil.writeByte(send, (byte) filter.ordinal());
@@ -42,9 +43,14 @@ public final class OperateFilesHelper {
         try {
             final String reason = OperateHelper.handleState(receive);
             if (reason == null) {
-                final VisibleFilesListInformation information = VisibleFilesListInformation.parse(receive);
-                OperateHelper.logOperated(OperationType.ListFiles, null, p -> p.add("information", information));
-                return information;
+                if (ByteBufIOUtil.readBoolean(receive)) {
+                    final VisibleFilesListInformation information = VisibleFilesListInformation.parse(receive);
+                    OperateHelper.logOperated(OperationType.ListFiles, null, p -> p.add("information", information));
+                    return UnionPair.ok(information);
+                }
+                final RefreshConfirm confirm = RefreshConfirm.parse(receive);
+                OperateHelper.logOperated(OperationType.ListFiles, null, p -> p.add("confirm", confirm));
+                return UnionPair.fail(confirm);
             }
             OperateHelper.logOperated(OperationType.ListFiles, reason, null);
             return null;
@@ -73,11 +79,30 @@ public final class OperateFilesHelper {
         }
     }
 
-    public static boolean refreshDirectory(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation location) throws IOException, InterruptedException, WrongStateException {
+    public static @Nullable RefreshConfirm refreshDirectory(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation location) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.RefreshDirectory, token);
         location.dump(send);
         OperateHelper.logOperating(OperationType.RefreshDirectory, token, p -> p.add("location", location));
-        return OperateHelper.booleanOperation(client, send, OperationType.RefreshDirectory);
+        final ByteBuf receive = client.send(send);
+        try {
+            final String reason = OperateHelper.handleState(receive);
+            if (reason == null) {
+                final RefreshConfirm confirm = RefreshConfirm.parse(receive);
+                OperateHelper.logOperated(OperationType.RefreshDirectory, null, p -> p.add("confirm", confirm));
+                return confirm;
+            }
+            OperateHelper.logOperated(OperationType.RefreshDirectory, reason, null);
+            return null;
+        } finally {
+            receive.release();
+        }
+    }
+
+    public static void confirmRefresh(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String id) throws IOException, InterruptedException, WrongStateException {
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.ConfirmRefresh, token);
+        ByteBufIOUtil.writeUTF(send, id);
+        OperateHelper.logOperating(OperationType.ConfirmRefresh, token, p -> p.add("id", id));
+        OperateHelper.booleanOperation(client, send, OperationType.ConfirmRefresh);
     }
 
     public static boolean trashFileOrDirectory(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation location, final boolean isDirectory) throws IOException, InterruptedException, WrongStateException {
