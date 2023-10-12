@@ -36,4 +36,22 @@ public final class UserInformationGetter {
     public static @NotNull ZonedDateTime updateTime(final @NotNull VisibleUserInformation information) {
         return information.updateTime();
     }
+
+    @SuppressWarnings("ClassHasNoToStringMethod")
+    public enum Order {
+        Id(VisibleUserInformation.Order.Id),
+        Name(VisibleUserInformation.Order.Name),
+        CreateTime(VisibleUserInformation.Order.CreateTime),
+        UpdateTime(VisibleUserInformation.Order.UpdateTime),
+        GroupId(VisibleUserInformation.Order.GroupId),
+        GroupName(VisibleUserInformation.Order.GroupName),
+        ;
+        private final VisibleUserInformation.Order order;
+        Order(final VisibleUserInformation.Order order) {
+            this.order = order;
+        }
+        public VisibleUserInformation.Order order() {
+            return this.order;
+        }
+    }
 }

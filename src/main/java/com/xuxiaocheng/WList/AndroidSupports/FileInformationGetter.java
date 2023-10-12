@@ -50,4 +50,22 @@ public final class FileInformationGetter {
     public static @NotNull String updateTimeString(final @NotNull VisibleFileInformation information, final @NotNull DateTimeFormatter formatter, final @Nullable String unknown) {
         return information.updateTimeString(formatter, unknown);
     }
+
+    @SuppressWarnings("ClassHasNoToStringMethod")
+    public enum Order {
+        Id(VisibleFileInformation.Order.Id),
+        Name(VisibleFileInformation.Order.Name),
+        Directory(VisibleFileInformation.Order.Directory),
+        Size(VisibleFileInformation.Order.Size),
+        CreateTime(VisibleFileInformation.Order.CreateTime),
+        UpdateTime(VisibleFileInformation.Order.UpdateTime),
+        ;
+        private final VisibleFileInformation.Order order;
+        Order(final VisibleFileInformation.Order order) {
+            this.order = order;
+        }
+        public VisibleFileInformation.Order order() {
+            return this.order;
+        }
+    }
 }
