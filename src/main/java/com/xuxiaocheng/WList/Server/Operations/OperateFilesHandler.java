@@ -127,7 +127,7 @@ public final class OperateFilesHandler {
                 return;
             }
             if (p.getT().isPresent()) {
-                if (p.getT().isPresent()) {
+                if (p.getT().get().isSuccess()) {
                     final FilesListInformation list = p.getT().get().getT();
                     WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> {
                         ByteBufIOUtil.writeBoolean(buf, true);

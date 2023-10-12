@@ -119,7 +119,7 @@ public final class LanzouConfiguration extends StorageConfiguration {
         config.put("uid", this.uid);
         config.put("token", this.token);
         config.put("token_expire", this.tokenExpire == null ? null : StorageConfiguration.TimeFormatter.format(this.tokenExpire));
-        config.put("directlyLogin", this.directlyLogin);
+        config.put("directly_login", this.directlyLogin);
         config.put("skip_qr_code", this.skipQRCode);
         config.put("skip_username_checker", this.skipUsernameChecker);
         config.put("skip_file_name_checker", this.skipFileNameChecker);

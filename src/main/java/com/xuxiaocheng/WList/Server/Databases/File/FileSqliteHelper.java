@@ -164,14 +164,14 @@ public class FileSqliteHelper implements FileSqlInterface {
         if (!result.next())
             return null;
         final long doubleId = result.getLong("double_id");
-        final long parentId = result.getLong("parent_id");
+        final long doubleParentId = result.getLong("parent_id");
         final boolean directory = FileSqliteHelper.isDirectory(doubleId);
         final String name = result.getString("name");
         final long size = result.getLong("size");
         final Timestamp createTime = result.getTimestamp("create_time");
         final Timestamp updateTime = result.getTimestamp("update_time");
         final String others = result.getString("others");
-        return new FileInformation(FileSqliteHelper.getRealId(doubleId), FileSqliteHelper.getRealId(parentId), name, directory, size,
+        return new FileInformation(FileSqliteHelper.getRealId(doubleId), FileSqliteHelper.getRealId(doubleParentId), name, directory, size,
                 createTime == null ? null : SqlHelper.toZonedDataTime(createTime),
                 updateTime == null ? null : SqlHelper.toZonedDataTime(updateTime),
                 others);
@@ -345,7 +345,7 @@ public class FileSqliteHelper implements FileSqlInterface {
                     if (!result.next())
                         throw new IllegalStateException("No such directory." + ParametersMap.create().add("directoryId", directoryId));
                     size = result.getLong("size");
-                    parentId = result.getLong("parent_id");
+                    parentId = FileSqliteHelper.getRealId(result.getLong("parent_id"));
                 }
             }
             if (size >= 0) {
@@ -589,8 +589,8 @@ public class FileSqliteHelper implements FileSqlInterface {
                 statement.setLong(1, FileSqliteHelper.getDoubleId(directoryId, true));
                 try (final ResultSet result = statement.executeQuery()) {
                     while (result.next()) {
-                        final long id = result.getLong(1);
-                        (FileSqliteHelper.isDirectory(id) ? directories : files).add(FileSqliteHelper.getRealId(id));
+                        final long doubleId = result.getLong(1);
+                        (FileSqliteHelper.isDirectory(doubleId) ? directories : files).add(FileSqliteHelper.getRealId(doubleId));
                     }
                 }
             }
