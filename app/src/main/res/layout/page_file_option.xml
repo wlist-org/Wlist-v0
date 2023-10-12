@@ -27,11 +27,15 @@
 		app:layout_constraintRight_toLeftOf="@id/page_file_option_guideline_hint"
 		app:layout_constraintTop_toTopOf="parent" />
 
-	<androidx.appcompat.widget.AppCompatTextView
+	<androidx.appcompat.widget.AppCompatEditText
 		android:id="@+id/page_file_option_name"
-		android:layout_width="wrap_content"
+		android:layout_width="0dp"
 		android:layout_height="wrap_content"
-		android:lines="1"
+		android:background="@android:color/transparent"
+		android:cursorVisible="false"
+		android:focusable="false"
+		android:gravity="center"
+		android:singleLine="true"
 		android:text="name"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
@@ -56,12 +60,16 @@
 		app:layout_constraintRight_toLeftOf="@id/page_file_option_guideline_hint"
 		app:layout_constraintTop_toBottomOf="@id/page_file_option_name_text" />
 
-	<androidx.appcompat.widget.AppCompatTextView
+	<androidx.appcompat.widget.AppCompatEditText
 		android:id="@+id/page_file_option_size"
-		android:layout_width="wrap_content"
+		android:layout_width="0dp"
 		android:layout_height="wrap_content"
-		android:lines="1"
-		android:text="0"
+		android:background="@android:color/transparent"
+		android:cursorVisible="false"
+		android:focusable="false"
+		android:gravity="center"
+		android:singleLine="true"
+		android:text="0 B"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
 		app:layout_constraintBottom_toBottomOf="@id/page_file_option_size_text"
@@ -85,11 +93,15 @@
 		app:layout_constraintRight_toLeftOf="@id/page_file_option_guideline_hint"
 		app:layout_constraintTop_toBottomOf="@id/page_file_option_size_text" />
 
-	<androidx.appcompat.widget.AppCompatTextView
+	<androidx.appcompat.widget.AppCompatEditText
 		android:id="@+id/page_file_option_create"
-		android:layout_width="wrap_content"
+		android:layout_width="0dp"
 		android:layout_height="wrap_content"
-		android:lines="1"
+		android:background="@android:color/transparent"
+		android:cursorVisible="false"
+		android:focusable="false"
+		android:gravity="center"
+		android:singleLine="true"
 		android:text="unknown"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
@@ -114,11 +126,15 @@
 		app:layout_constraintRight_toLeftOf="@id/page_file_option_guideline_hint"
 		app:layout_constraintTop_toBottomOf="@id/page_file_option_create_text" />
 
-	<androidx.appcompat.widget.AppCompatTextView
+	<androidx.appcompat.widget.AppCompatEditText
 		android:id="@+id/page_file_option_update"
-		android:layout_width="wrap_content"
+		android:layout_width="0dp"
 		android:layout_height="wrap_content"
-		android:lines="1"
+		android:background="@android:color/transparent"
+		android:cursorVisible="false"
+		android:focusable="false"
+		android:gravity="center"
+		android:singleLine="true"
 		android:text="unknown"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"

@@ -27,7 +27,7 @@
 	<string name="page_file_option_name">Name: </string>
 	<string name="page_file_option_size">Size: </string>
 	<string name="page_file_option_create">Create time: </string>
-	<string name="page_file_option_update">Last update time: </string>
+	<string name="page_file_option_update">Update time: </string>
 	<string name="page_file_option_rename">Rename</string>
 	<string name="page_file_option_move">Move</string>
 	<string name="page_file_option_copy">Copy</string>
