@@ -347,7 +347,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                 }
             };
             for (final JSONObject info: infos.toList(JSONObject.class)) {
-                final String name = info.getString("name");
+                final String name = info.getString("name_all") == null ? info.getString("name") : info.getString("name_all");
                 final Long id = info.getLong("id");
                 try {
                     this.throwIfNull(name, json, "listFilesInPage", p -> p.add("directoryId", directoryId));
