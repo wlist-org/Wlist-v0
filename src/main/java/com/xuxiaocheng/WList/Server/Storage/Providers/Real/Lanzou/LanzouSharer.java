@@ -4,10 +4,10 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Server.Exceptions.IllegalParametersException;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.BrowserUtil;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseSharer;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
-import com.xuxiaocheng.WList.Server.Storage.Helpers.BrowserUtil;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okhttp3.Response;
@@ -15,15 +15,18 @@ import org.htmlunit.ElementNotFoundException;
 import org.htmlunit.WebClient;
 import org.htmlunit.WebRequest;
 import org.htmlunit.WebResponse;
+import org.htmlunit.WebResponseData;
 import org.htmlunit.html.FrameWindow;
 import org.htmlunit.html.HtmlElement;
 import org.htmlunit.html.HtmlInput;
 import org.htmlunit.html.HtmlPage;
+import org.htmlunit.util.NameValuePair;
 import org.htmlunit.util.WebConnectionWrapper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -40,14 +43,19 @@ public class LanzouSharer extends AbstractIdBaseSharer<LanzouConfiguration> {
     protected static final @NotNull String AssertHost = Objects.requireNonNull(HttpUrl.parse("https://assets.woozooo.com/")).url().getHost();
     protected static final @NotNull DateTimeFormatter dataTimeFormatter = DateTimeFormatter.RFC_1123_DATE_TIME;
 
-    protected @Nullable Pair.ImmutablePair<@NotNull HttpUrl, @Nullable Headers> getSingleShareFileDownloadUrl(final @NotNull HttpUrl url, final @Nullable String password) throws IOException, IllegalParametersException {
+    public @Nullable Pair.ImmutablePair<@NotNull HttpUrl, @Nullable Headers> getSingleShareFileDownloadUrl(final @NotNull HttpUrl url, final @Nullable String password) throws IOException, IllegalParametersException {
         final HtmlElement downloading;
         try (final WebClient client = BrowserUtil.newWebClient()) {
             client.setWebConnection(new WebConnectionWrapper(client.getWebConnection()) {
                 @Override
                 public @NotNull WebResponse getResponse(final @NotNull WebRequest request) throws IOException {
-                    if (!request.getUrl().getHost().equals(url.url().getHost()) && !request.getUrl().getHost().equals(LanzouSharer.AssertHost))
-                        return BrowserUtil.emptyResponse(request);
+                    if (LanzouSharer.this.configuration.getInstance().isSkipQRCode()) {
+                        if (!request.getUrl().getHost().equals(url.url().getHost()) && !request.getUrl().getHost().equals(LanzouSharer.AssertHost))
+                            return BrowserUtil.emptyResponse(request);
+                        if (request.getUrl().toString().endsWith("/qrcode.min.js"))
+                            return new WebResponse(new WebResponseData("QRCode=function(a,b){};QRCode.CorrectLevel={L:1,M:0,Q:3,H:2};"
+                                    .getBytes(StandardCharsets.UTF_8), 200, "OK", List.of(new NameValuePair("Content-Type", "application/x-javascript"))), request, 0);
+                    }
                     return super.getResponse(request);
                 }
             });
