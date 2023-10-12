@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Client;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
@@ -126,6 +127,8 @@ public class WListClient implements WListClientInterface {
         if (channel == null)
             return;
         channel.close().addListener(MiscellaneousUtil.exceptionListener()).addListener(f -> this.clientEventLoop.shutdownGracefully());
+        if (!this.queue.isEmpty())
+            HLog.getInstance("ClientLogger").log(HLogLevel.ERROR, "Still something in receiving queue.", ParametersMap.create().add("queue", this.queue));
         while (true) {
             final ByteBuf deleted = this.queue.poll();
             if (deleted == null)

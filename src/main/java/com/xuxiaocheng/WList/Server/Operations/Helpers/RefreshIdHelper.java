@@ -39,11 +39,7 @@ public final class RefreshIdHelper {
         final RefreshRequirements requirements = RefreshIdHelper.data.remove(id);
         if (requirements == null)
             return true;
-        try {
-            requirements.runner().accept(consumer, IdsHelper.getProgressBar(id));
-        } finally {
-            IdsHelper.removeProgressBar(id);
-        }
+        requirements.runner().accept(consumer, IdsHelper.getProgressBar(id));
         return false;
     }
 }

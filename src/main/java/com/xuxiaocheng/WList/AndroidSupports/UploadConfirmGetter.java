@@ -25,7 +25,7 @@ public final class UploadConfirmGetter {
     }
 
     /**
-     * @see com.xuxiaocheng.WList.Commons.Beans.UploadConfirm.UploadInformation
+     * @see UploadConfirm.UploadInformation
      */
     public static final class UploadInformationGetter {
         private UploadInformationGetter() {

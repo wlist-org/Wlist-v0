@@ -34,7 +34,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.function.Consumer;
 
 /**
- * @see com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface
+ * @see ProviderInterface
  */
 @SuppressWarnings("OverlyBroadCatchBlock")
 public final class RootSelector {

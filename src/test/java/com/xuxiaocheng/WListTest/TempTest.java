@@ -18,6 +18,8 @@ import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WList.Server.WListServer;
+import io.netty.util.concurrent.DefaultEventExecutorGroup;
+import io.netty.util.concurrent.EventExecutorGroup;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.BeforeAll;
@@ -28,24 +30,22 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class TempTest {
     private static final boolean initializeServer = false;
     private static final @NotNull SupplierE<@Nullable Object> _main = () -> {
-        final BackgroundTaskManager.BackgroundTaskIdentifier identifier = new BackgroundTaskManager.BackgroundTaskIdentifier("", "", "");
-        final Runnable runnable = new Runnable() {
-            @Override
-            public void run() {
-                BackgroundTaskManager.background(identifier, HExceptionWrapper.wrapRunnable(() -> {
-                    TimeUnit.MILLISECONDS.sleep(500);
-                    WListServer.IOExecutors.schedule(() -> BackgroundTaskManager.remove(identifier), 500, TimeUnit.MILLISECONDS);
-                }), false, this);
+        final EventExecutorGroup executors = new DefaultEventExecutorGroup(2);
+        final AtomicInteger integer = new AtomicInteger(0);
+        executors.submit(HExceptionWrapper.wrapRunnable(() -> {
+            while (integer.incrementAndGet() < 7) {
+                HLog.DefaultLogger.log(HLogLevel.INFO, integer);
+                executors.submit(HExceptionWrapper.wrapRunnable(() -> {
+                    TimeUnit.MILLISECONDS.sleep(100);
+                })).await();
             }
-        };
-        runnable.run();
-        TimeUnit.SECONDS.sleep(1);
-        runnable.run();
-        TimeUnit.SECONDS.sleep(5);
+        }));
+        executors.shutdownGracefully();
         return null;
     };
 

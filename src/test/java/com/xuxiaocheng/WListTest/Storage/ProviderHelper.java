@@ -62,7 +62,7 @@ public final class ProviderHelper {
         requirements.runner().accept((Consumer<? super Throwable>) c -> {
             result2.set(c);
             latch2.countDown();
-        });
+        }, null);
         latch2.await();
         if (result.get() != null)
             MiscellaneousUtil.throwException(result2.get());
@@ -124,7 +124,7 @@ public final class ProviderHelper {
         requirements.runner().accept((Consumer<? super Throwable>) c -> {
             result2.set(c);
             latch2.countDown();
-        });
+        }, null);
         latch2.await();
         if (result2.get() != null)
             MiscellaneousUtil.throwException(result2.get());

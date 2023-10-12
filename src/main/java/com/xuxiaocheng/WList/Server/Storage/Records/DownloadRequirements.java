@@ -69,7 +69,7 @@ public record DownloadRequirements(boolean acceptedRange, long downloadingSize, 
     /**
      * @param start Start byte position of the whole file.
      * @param end End byte position of the whole file.
-     * @param suppliersLink Each supplier should accept a {@code ByteBuf} whose {@code .readableBytes() <= }{@link com.xuxiaocheng.Rust.NetworkTransmission#FileTransferBufferSize}.
+     * @param suppliersLink Each supplier should accept a {@code ByteBuf} whose {@code .readableBytes() <= }{@link NetworkTransmission#FileTransferBufferSize}.
      */
     public record OrderedSuppliers(long start, long end, @NotNull OrderedNode suppliersLink) {
     }

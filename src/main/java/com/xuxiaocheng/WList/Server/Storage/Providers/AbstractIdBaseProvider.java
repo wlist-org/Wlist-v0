@@ -189,7 +189,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
     public static final @NotNull UnionPair<Optional<Iterator<FileInformation>>, Throwable> ListNotExisted = UnionPair.ok(Optional.empty());
     /**
      * List the files in the directory.
-     * @param progress {@link ProgressBar#progress(int, long)} or {@link ProgressBar#addTotal(int, int)} when iterating.
+     * @param progress {@link ProgressBar#progress(int, long)} or {@link ProgressBar#addStage(long)} when iterating.
      * @param consumer empty: directory is not existed. present: list of files.
      * @throws Exception: Any iterating exception can be wrapped in {@link NoSuchElementException} and then thrown in method {@code next()}.
      * @see #ListNotExisted

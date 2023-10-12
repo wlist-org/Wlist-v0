@@ -21,6 +21,7 @@ import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.Commons.Utils.I18NUtil;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
+import com.xuxiaocheng.WList.Server.WListServer;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
@@ -61,8 +62,10 @@ public final class BroadcastAssistant {
         }
         protected void callback(final @NotNull T t) throws InterruptedException {
             if (this.callbacks.isEmpty()) {
-                HLog.getInstance("ClientLogger").log(HLogLevel.WARN, "No callbacks registered.", ParametersMap.create().add("name", this.name).add("event", t));
+                HLog.getInstance("ClientLogger").log(HLogLevel.WARN, "No broadcast callbacks registered.", ParametersMap.create().add("name", this.name).add("event", t));
+                return;
             }
+            HLog.getInstance("ClientLogger").log(HLogLevel.LESS, "Broadcast callback: ", ParametersMap.create().add("name", this.name).add("event", t));
             HMultiRunHelper.runConsumers(BroadcastAssistant.CallbackExecutors, this.callbacks, c -> c.accept(t));
         }
         @Override
@@ -245,7 +248,7 @@ public final class BroadcastAssistant {
                     OperateServerHelper.setBroadcastMode(client, true);
                     while (client.isActive()) {
                         final UnionPair<Pair.ImmutablePair<OperationType, ByteBuf>, Pair.ImmutablePair<String, String>> pair = OperateServerHelper.waitBroadcast(client);
-                        BroadcastAssistant.CallbackExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
+                        WListServer.IOExecutors.submit(HExceptionWrapper.wrapRunnable(() -> { // TODO: Why cannot use 'CallbackExecutors'.
                             if (pair.isFailure()) {
                                 BroadcastAssistant.get(address).UserBroadcast.callback(pair.getE());
                                 return;

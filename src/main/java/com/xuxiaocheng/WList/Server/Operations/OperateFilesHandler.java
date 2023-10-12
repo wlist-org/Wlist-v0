@@ -17,6 +17,7 @@ import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.User.UserInformation;
 import com.xuxiaocheng.WList.Server.MessageProto;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.DownloadIdHelper;
+import com.xuxiaocheng.WList.Server.Operations.Helpers.IdsHelper;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.RefreshIdHelper;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.UploadIdHelper;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
@@ -241,7 +242,7 @@ public final class OperateFilesHandler {
     };
 
     /**
-     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#confirmRefresh(com.xuxiaocheng.WList.Client.WListClientInterface, String, String)
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#confirmRefresh(WListClientInterface, String, String)
      */
     private static final @NotNull ServerHandler doConfirmRefresh = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
@@ -260,6 +261,7 @@ public final class OperateFilesHandler {
                             .add("p", p).add("id", id));
                     return;
                 }
+                IdsHelper.removeProgressBar(id);
                 if (p != null) {
                     channel.pipeline().fireExceptionCaught(p);
                     return;

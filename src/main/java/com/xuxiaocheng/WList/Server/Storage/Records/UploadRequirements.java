@@ -61,7 +61,7 @@ public record UploadRequirements(@NotNull @Unmodifiable List<@NotNull UploadChec
     /**
      * @param start Start byte position of the whole file.
      * @param end End byte position of the whole file.
-     * @param consumersLink Each consumer will be supplied a {@code ByteBuf} whose {@code .readableBytes() <= }{@link com.xuxiaocheng.Rust.NetworkTransmission#FileTransferBufferSize}.
+     * @param consumersLink Each consumer will be supplied a {@code ByteBuf} whose {@code .readableBytes() <= }{@link NetworkTransmission#FileTransferBufferSize}.
      */
     public record OrderedConsumers(long start, long end, @NotNull OrderedNode consumersLink) {
     }

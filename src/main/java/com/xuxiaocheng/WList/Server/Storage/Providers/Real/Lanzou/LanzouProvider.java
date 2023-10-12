@@ -216,7 +216,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                         configuration.setToken(null);
                         configuration.setTokenExpire(null);
                         LanzouProvider.this.loginExpireTime.set(null);
-                        LanzouProvider.this.loginIfNot0();
+                        LanzouProvider.this.loginIfNot();
                         HttpNetworkHelper.postWithParametersAndBody(configuration.getHttpClient(), LanzouProvider.TaskURL, LanzouProvider.this.headerWithToken,
                                 Map.of("uid", String.valueOf(configuration.getUid())), body).enqueue(new Callback() {
                             @Override
@@ -336,13 +336,12 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                 consumer.accept(Pair.ImmutablePair.makeImmutablePair(List.of(), noMore == null || noMore.booleanValue()));
                 return;
             }
-            if (progress != null)
-                progress.addTotal(0, infos.size());
+            final int index = progress != null ? progress.addStage(infos.size()) : -1;
             final AtomicInteger counter = new AtomicInteger(infos.size());
             final Map<Long, FileInformation> map = new ConcurrentHashMap<>(infos.size());
             final Runnable finisher = () -> {
                 if (progress != null)
-                    progress.progress(0, 1);
+                    progress.progress(index, 1);
                 if (counter.getAndDecrement() <= 1) {
                     consumer.accept(Pair.ImmutablePair.makeImmutablePair(map.values(), noMore == null ? map.isEmpty() : noMore.booleanValue()));
                 }
@@ -375,15 +374,17 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                         final LanzouSharer sharer = (LanzouSharer) StorageManager.getSharer(this.getConfiguration().getName());
                         assert sharer != null;
                         final Pair.ImmutablePair<HttpUrl, Headers> downloadUrl = sharer.getSingleShareFileDownloadUrl(url, pwd);
-                        if (downloadUrl == null) return;
-                        final Pair<Long, ZonedDateTime> fixed = sharer.testRealSizeAndData(downloadUrl.getFirst(), downloadUrl.getSecond());
-                        if (fixed == null) return;
-                        size = fixed.getFirst().longValue();
-                        time = fixed.getSecond();
-                        finisher.run();
+                        if (downloadUrl != null) {
+                            final Pair<Long, ZonedDateTime> fixed = sharer.testRealSizeAndData(downloadUrl.getFirst(), downloadUrl.getSecond());
+                            if (fixed != null) {
+                                size = fixed.getFirst().longValue();
+                                time = fixed.getSecond();
+                            }
+                        }
                     } finally {
                         map.put(id, new FileInformation(id.longValue(), directoryId, name, false, size, time, time, others));
                     }
+                    finisher.run();
                 });
             }
         });

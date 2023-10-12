@@ -1,6 +1,5 @@
 package com.xuxiaocheng.WList.Server.Operations.Helpers;
 
-import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
@@ -18,6 +17,7 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.util.concurrent.FailedFuture;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.jetbrains.annotations.NotNull;
@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Set;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public final class BroadcastManager {
@@ -48,28 +49,28 @@ public final class BroadcastManager {
         return BroadcastManager.broadcastGroup.contains(channel);
     }
 
-    private static final @NotNull ReentrantLock lock = new ReentrantLock(true);
+    private static final @NotNull Lock lock = new ReentrantLock(true);
     public static @NotNull Future<?> broadcast(final @NotNull OperationType type, final MessageProto.@Nullable Appender message, final boolean needOrder) {
-        return BackgroundTaskManager.BackgroundExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
-            final ByteBuf buffer;
-            final ByteBuf prefix = ByteBufAllocator.DEFAULT.buffer();
-            try {
-                ByteBufIOUtil.writeBoolean(prefix, false);
-                ByteBufIOUtil.writeUTF(prefix, type.name());
-                buffer = message == null ? prefix : message.apply(prefix);
-                if (needOrder) {
-                    BroadcastManager.lock.lock();
-                    try {
-                        BroadcastManager.broadcastGroup.writeAndFlush(buffer.retain()).addListener(MiscellaneousUtil.exceptionListener()).await();
-                    } finally {
-                        BroadcastManager.lock.unlock();
-                    }
-                } else
-                    BroadcastManager.broadcastGroup.writeAndFlush(buffer.retain()).addListener(MiscellaneousUtil.exceptionListener());
-            } finally {
-                prefix.release();
+        final ByteBuf buffer;
+        final ByteBuf prefix = ByteBufAllocator.DEFAULT.buffer();
+        try {
+            ByteBufIOUtil.writeBoolean(prefix, false);
+            ByteBufIOUtil.writeUTF(prefix, type.name());
+            buffer = message == null ? prefix : message.apply(prefix);
+            if (needOrder) {
+                BroadcastManager.lock.lock();
+                try {
+                    return BroadcastManager.broadcastGroup.writeAndFlush(buffer.retain()).addListener(MiscellaneousUtil.exceptionListener()).await();
+                } finally {
+                    BroadcastManager.lock.unlock();
+                }
             }
-        }, MiscellaneousUtil.exceptionCallback, true));
+            return BroadcastManager.broadcastGroup.writeAndFlush(buffer.retain()).addListener(MiscellaneousUtil.exceptionListener());
+        } catch (final IOException | InterruptedException exception) {
+            return new FailedFuture<>(BackgroundTaskManager.BackgroundExecutors.next(), exception);
+        } finally {
+            prefix.release();
+        }
     }
 
     public static void broadcastUser(final @NotNull String sender, final @NotNull String message) {
@@ -88,14 +89,14 @@ public final class BroadcastManager {
 
 
     public static void onUserLogon(final @NotNull UserInformation information) {
-        BroadcastManager.broadcast(OperationType.Logon, information::dumpVisible, false);
+        BroadcastManager.broadcast(OperationType.Logon, information::dumpVisible, false).addListener(MiscellaneousUtil.exceptionListener());
     }
 
     public static void onUserLogoff(final long id) {
         BroadcastManager.broadcast(OperationType.Logoff, buf -> {
             ByteBufIOUtil.writeVariableLenLong(buf, id);
             return buf;
-        }, false);
+        }, false).addListener(MiscellaneousUtil.exceptionListener());
     }
 
     public static void onUserChangeName(final long id, final @NotNull String newName, final @NotNull ZonedDateTime updateTime) {
@@ -104,7 +105,7 @@ public final class BroadcastManager {
             ByteBufIOUtil.writeUTF(buf, newName);
             ByteBufIOUtil.writeUTF(buf, updateTime.format(DateTimeFormatter.ISO_DATE_TIME));
             return buf;
-        }, false);
+        }, false).addListener(MiscellaneousUtil.exceptionListener());
     }
 
     public static void onUserChangePassword(final long id, final @NotNull ZonedDateTime updateTime) {
@@ -112,12 +113,12 @@ public final class BroadcastManager {
             ByteBufIOUtil.writeVariableLenLong(buf, id);
             ByteBufIOUtil.writeUTF(buf, updateTime.format(DateTimeFormatter.ISO_DATE_TIME));
             return buf;
-        }, false);
+        }, false).addListener(MiscellaneousUtil.exceptionListener());
     }
 
 
     public static void onUserGroupAdded(final @NotNull UserGroupInformation information) {
-        BroadcastManager.broadcast(OperationType.AddGroup, information::dumpVisible, false);
+        BroadcastManager.broadcast(OperationType.AddGroup, information::dumpVisible, false).addListener(MiscellaneousUtil.exceptionListener());
     }
 
     public static void onUserGroupChangeName(final long id, final @NotNull String newName, final @NotNull ZonedDateTime updateTime) {
@@ -126,7 +127,7 @@ public final class BroadcastManager {
             ByteBufIOUtil.writeUTF(buf, newName);
             ByteBufIOUtil.writeUTF(buf, updateTime.format(DateTimeFormatter.ISO_DATE_TIME));
             return buf;
-        }, false);
+        }, false).addListener(MiscellaneousUtil.exceptionListener());
     }
 
     public static void onUserGroupChangePermissions(final long id, final @NotNull Set<@NotNull UserPermission> newPermissions, final @NotNull ZonedDateTime updateTime) {
@@ -135,14 +136,14 @@ public final class BroadcastManager {
             ByteBufIOUtil.writeUTF(buf, UserPermission.dump(newPermissions));
             ByteBufIOUtil.writeUTF(buf, updateTime.format(DateTimeFormatter.ISO_DATE_TIME));
             return buf;
-        }, false);
+        }, false).addListener(MiscellaneousUtil.exceptionListener());
     }
 
     public static void onUserGroupDeleted(final long id) {
         BroadcastManager.broadcast(OperationType.DeleteGroup, buf -> {
             ByteBufIOUtil.writeVariableLenLong(buf, id);
             return buf;
-        }, false);
+        }, false).addListener(MiscellaneousUtil.exceptionListener());
     }
 
 
@@ -153,14 +154,14 @@ public final class BroadcastManager {
             ByteBufIOUtil.writeUTF(buf, groupName);
             ByteBufIOUtil.writeUTF(buf, updateTime.format(DateTimeFormatter.ISO_DATE_TIME));
             return buf;
-        }, false);
+        }, false).addListener(MiscellaneousUtil.exceptionListener());
     }
 
     public static void onUsersLogoff(final long groupId) {
         BroadcastManager.broadcast(OperationType.DeleteUsersInGroup, buf -> {
             ByteBufIOUtil.writeVariableLenLong(buf, groupId);
             return buf;
-        }, false);
+        }, false).addListener(MiscellaneousUtil.exceptionListener());
     }
 
 
@@ -168,14 +169,14 @@ public final class BroadcastManager {
         BroadcastManager.broadcast(OperationType.AddProvider, buf -> {
             ByteBufIOUtil.writeUTF(buf, storage);
             return buf;
-        }, false);
+        }, true).addListener(MiscellaneousUtil.exceptionListener());
     }
 
     public static void onProviderUninitialized(final @NotNull String storage) {
         BroadcastManager.broadcast(OperationType.RemoveProvider, buf -> {
             ByteBufIOUtil.writeUTF(buf, storage);
             return buf;
-        }, true);
+        }, true).addListener(MiscellaneousUtil.exceptionListener());
     }
 
     public static void onProviderLogin(final @NotNull String storage, final boolean enter) {
@@ -183,7 +184,7 @@ public final class BroadcastManager {
             ByteBufIOUtil.writeUTF(buf, storage);
             ByteBufIOUtil.writeBoolean(buf, enter);
             return buf;
-        }, true);
+        }, true).addListener(MiscellaneousUtil.exceptionListener());
     }
 
 
@@ -196,11 +197,11 @@ public final class BroadcastManager {
     }
 
     public static void onFileTrash(final @NotNull FileLocation location, final boolean isDirectory) {
-        BroadcastManager.broadcast(OperationType.TrashFileOrDirectory, BroadcastManager.fileDumper(location, isDirectory), false);
+        BroadcastManager.broadcast(OperationType.TrashFileOrDirectory, BroadcastManager.fileDumper(location, isDirectory), false).addListener(MiscellaneousUtil.exceptionListener());
     }
 
     public static void onFileUpdate(final @NotNull FileLocation location, final boolean isDirectory) {
-        BroadcastManager.broadcast(OperationType.GetFileOrDirectory, BroadcastManager.fileDumper(location, isDirectory), false);
+        BroadcastManager.broadcast(OperationType.GetFileOrDirectory, BroadcastManager.fileDumper(location, isDirectory), false).addListener(MiscellaneousUtil.exceptionListener());
     }
 
     public static void onFileUpload(final @NotNull String storage, final @NotNull FileInformation information) {
@@ -208,6 +209,6 @@ public final class BroadcastManager {
             ByteBufIOUtil.writeUTF(buffer, storage);
             information.dumpVisible(buffer);
             return buffer;
-        }, false);
+        }, false).addListener(MiscellaneousUtil.exceptionListener());
     }
 }

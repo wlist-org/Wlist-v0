@@ -1,6 +1,7 @@
 package com.xuxiaocheng.WListTest.Assistants;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Helpers.HMessageDigestHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -136,13 +137,12 @@ public class FilesTest extends ProvidersWrapper {
         return information;
     }
 
-    @ParameterizedTest(name = "running")
-    @MethodSource("client")
-    public void download(final @NotNull WListClientInterface client) throws IOException, InterruptedException, WrongStateException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+    @Test
+    public void download() throws IOException, InterruptedException, WrongStateException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         TokenAssistant.login(this.address(), this.adminUsername(), this.adminPassword(), WListServer.IOExecutors);
         final LinkedHashMap<VisibleFileInformation.Order, Options.OrderDirection> order = new LinkedHashMap<>();
         order.put(VisibleFileInformation.Order.Size, Options.OrderDirection.ASCEND);
-        final VisibleFilesListInformation list = OperateFilesHelper.listFiles(client, this.token(), this.location(this.root()), Options.FilterPolicy.OnlyFiles, order, 0, 3);
+        final VisibleFilesListInformation list = FilesAssistant.list(this.address(), this.adminUsername(), this.location(this.root()), Options.FilterPolicy.OnlyFiles, order, 0, 3, WListServer.IOExecutors, ConsumerE.emptyConsumer());
         Assumptions.assumeTrue(list != null);
         Assumptions.assumeTrue(list.informationList().size() == 2);
 

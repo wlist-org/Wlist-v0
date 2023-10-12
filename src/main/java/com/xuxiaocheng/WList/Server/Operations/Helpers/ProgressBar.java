@@ -14,9 +14,12 @@ import java.util.concurrent.atomic.AtomicLong;
 public class ProgressBar {
     protected final @NotNull List<Pair.@NotNull ImmutablePair<@NotNull AtomicLong, @NotNull Long>> stages = new ArrayList<>();
 
-    public void addStage(final long total) {
+    public int addStage(final long total) {
         assert total >= 0;
-        this.stages.add(Pair.ImmutablePair.makeImmutablePair(new AtomicLong(0), total));
+        synchronized (this.stages) {
+            this.stages.add(Pair.ImmutablePair.makeImmutablePair(new AtomicLong(0), total));
+            return this.stages.size() - 1;
+        }
     }
 
     public void progress(final int index, final long delta) {
@@ -25,10 +28,6 @@ public class ProgressBar {
 
     public long getTotal(final int index) {
         return this.stages.get(index).getSecond().longValue();
-    }
-
-    public void addTotal(final int index, final int delta) {
-        this.stages.get(index).getFirst().getAndAdd(delta);
     }
 
     public int getStages() {
