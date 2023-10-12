@@ -8,7 +8,6 @@ import androidx.annotation.UiThread;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.StaggeredGridLayoutManager;
-import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.UnmodifiableView;
 
@@ -187,16 +186,9 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
         return this.tailors.size();
     }
 
-    protected final @NotNull HInitializer<RecyclerView> view = new HInitializer<>("AttachedRecyclerView");
-
-    public @NotNull RecyclerView getRecyclerView() {
-        return this.view.getInstance();
-    }
-
     @Override
     public void onAttachedToRecyclerView(final @NotNull RecyclerView recyclerView) {
         super.onAttachedToRecyclerView(recyclerView);
-        this.view.initialize(recyclerView);
         final RecyclerView.LayoutManager layoutManager = recyclerView.getLayoutManager();
         if (layoutManager instanceof GridLayoutManager gridLayoutManager)
             gridLayoutManager.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
@@ -205,13 +197,6 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
                     return EnhancedRecyclerViewAdapter.this.getItemViewType(position) == 0 ? 1 : gridLayoutManager.getSpanCount();
                 }
             });
-    }
-
-    @Override
-    public void onDetachedFromRecyclerView(final @NotNull RecyclerView recyclerView) {
-        super.onDetachedFromRecyclerView(recyclerView);
-        final RecyclerView old = this.view.uninitialize();
-        assert old == recyclerView;
     }
 
     @Override

@@ -12,14 +12,13 @@ import android.view.animation.LinearInterpolator;
 import android.view.animation.RotateAnimation;
 import android.widget.AbsListView;
 import android.widget.ImageView;
-import android.widget.TextView;
 import androidx.annotation.UiThread;
 import androidx.appcompat.app.AlertDialog;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMathHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
@@ -32,6 +31,7 @@ import com.xuxiaocheng.WList.Client.Assistants.BroadcastAssistant;
 import com.xuxiaocheng.WList.Client.Assistants.FilesAssistant;
 import com.xuxiaocheng.WList.Client.Assistants.TokenAssistant;
 import com.xuxiaocheng.WList.Client.ClientConfiguration;
+import com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper;
 import com.xuxiaocheng.WList.Client.Operations.OperateProvidersHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Client.WListClientManager;
@@ -44,6 +44,7 @@ import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.R;
+import com.xuxiaocheng.WListClientAndroid.Utils.EmptyRecyclerAdapter;
 import com.xuxiaocheng.WListClientAndroid.Utils.EnhancedRecyclerViewAdapter;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileContentBinding;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileOptionBinding;
@@ -53,6 +54,8 @@ import org.jetbrains.annotations.NotNull;
 import java.net.InetSocketAddress;
 import java.text.MessageFormat;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -87,7 +90,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
         this.pageCache.initialize(page);
         page.pageFileContentList.setLayoutManager(new LinearLayoutManager(this.activity));
         page.pageFileContentList.setHasFixedSize(true);
-        this.onRootPage();
+        this.onRootPage(new AtomicLong(0));
         this.buildUploader();
         Main.runOnBackgroundThread(this.activity, () -> {
             final BroadcastAssistant.BroadcastSet set = BroadcastAssistant.get(this.address());
@@ -145,31 +148,30 @@ public class PageFile implements ActivityMainChooser.MainPage {
         }
     }
 
+    private int getCurrentPosition() {
+        final RecyclerView list = this.pageCache.getInstance().pageFileContentList;
+        final RecyclerView.LayoutManager manager = list.getLayoutManager();
+        final RecyclerView.Adapter adapter = list.getAdapter();
+        assert manager instanceof LinearLayoutManager;
+        assert adapter instanceof EnhancedRecyclerViewAdapter<?,?>;
+        return ((LinearLayoutManager) manager).findFirstVisibleItemPosition() - ((EnhancedRecyclerViewAdapter<?, ?>) adapter).headersSize();
+    }
 
-    protected final @NotNull PageFileStacks stacks = new PageFileStacks();
+
+    protected final @NotNull Deque<Triad.@NotNull ImmutableTriad<@NotNull FileLocation, @NotNull VisibleFileInformation, @NotNull AtomicLong>> stacks = new ArrayDeque<>();
 
     @UiThread
-    protected void updatePage(final boolean isRoot, final @NotNull CharSequence name, final @NotNull FileLocation location,
-                              final @NotNull Consumer<? super @NotNull VisibleFileInformation> clicker, final @NotNull Consumer<@NotNull VisibleFileInformation> option) {
+    private void updatePage(final @NotNull FileLocation location, final @NotNull AtomicLong position,
+                              final @NotNull Consumer<? super @NotNull VisibleFileInformation> clicker, final @NotNull Consumer<? super @NotNull VisibleFileInformation> option) {
         final PageFileContentBinding page = this.pageCache.getInstance();
-        final ImageView backer = page.pageFileContentBacker;
-        if (isRoot) {
-            backer.setImageResource(R.mipmap.page_file_backer_nonclickable);
-            backer.setOnClickListener(null);
-            backer.setClickable(false);
-        } else {
-            backer.setImageResource(R.mipmap.page_file_backer);
-            backer.setOnClickListener(v -> this.popFileList());
-            backer.setClickable(true);
-        }
-        page.pageFileContentName.setText(name);
-        final AtomicLong counter = new AtomicLong();
-        final HInitializer<RecyclerView.OnScrollListener> listenerHInitializer = new HInitializer<>("OnScrollListener");
         final EnhancedRecyclerViewAdapter<VisibleFileInformation, PageFileViewHolder> adapter = new EnhancedRecyclerViewAdapter<>() {
             @Override
             protected @NotNull PageFileViewHolder createViewHolder(final @NotNull ViewGroup parent) {
-                return new PageFileViewHolder(EnhancedRecyclerViewAdapter.buildView(PageFile.this.activity.getLayoutInflater(), R.layout.page_file_cell, page.pageFileContentList),
-                        information -> {PageFile.this.stacks.push(name, counter, location, this, listenerHInitializer.getInstance());clicker.accept(information);}, option);
+                return new PageFileViewHolder(EnhancedRecyclerViewAdapter.buildView(PageFile.this.activity.getLayoutInflater(), R.layout.page_file_cell, page.pageFileContentList), information -> {
+                    final int p = PageFile.this.getCurrentPosition();
+                    PageFile.this.stacks.push(Triad.ImmutableTriad.makeImmutableTriad(location, this.getData(p), new AtomicLong(p)));
+                    clicker.accept(information);
+                }, option::accept);
             }
 
             @Override
@@ -179,7 +181,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
         };
         page.pageFileContentCounter.setVisibility(View.GONE);
         page.pageFileContentCounterText.setVisibility(View.GONE); // Set visible in listener.
-        final AtomicLong position = new AtomicLong(0);
+        final AtomicLong loaded = new AtomicLong(position.get());
         final RecyclerView.OnScrollListener listener = new RecyclerView.OnScrollListener() {
             private final @NotNull AtomicBoolean onLoading = new AtomicBoolean(false);
             private final @NotNull AtomicBoolean noMore = new AtomicBoolean(false);
@@ -200,7 +202,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
                         final Options.FilterPolicy filter = ClientConfigurationSupporter.filterPolicy(configuration);
                         final LinkedHashMap<VisibleFileInformation.Order, Options.OrderDirection> orders = ClientConfigurationSupporter.fileOrders(configuration);
                         final int limit = ClientConfigurationSupporter.limitPerPage(configuration);
-                        list = FilesAssistant.list(PageFile.this.address(), PageFile.this.username(), location, filter, orders, position.getAndAdd(limit), limit, Main.ClientExecutors, s -> {
+                        list = FilesAssistant.list(PageFile.this.address(), PageFile.this.username(), location, filter, orders, loaded.getAndAdd(limit), limit, Main.ClientExecutors, s -> {
                             if (s == null) return;
                             long current = 0, total = 0;
                             for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
@@ -219,7 +221,6 @@ public class PageFile implements ActivityMainChooser.MainPage {
                         return;
                     }
                     this.noMore.set(FilesListInformationGetter.informationList(list).isEmpty());
-                    counter.set(FilesListInformationGetter.total(list));
                     Main.runOnUiThread(PageFile.this.activity, () -> {
                         page.pageFileContentCounter.setText(String.valueOf(FilesListInformationGetter.total(list)));
                         page.pageFileContentCounter.setVisibility(View.VISIBLE);
@@ -242,33 +243,36 @@ public class PageFile implements ActivityMainChooser.MainPage {
                 }, false));
             }
         };
-        listenerHInitializer.initialize(listener);
-        final RecyclerView content = page.pageFileContentList;
-        content.setAdapter(adapter);
-        content.clearOnScrollListeners();
-        content.addOnScrollListener(listener);
-        listener.onScrollStateChanged(content, AbsListView.OnScrollListener.SCROLL_STATE_IDLE);
+        page.pageFileContentList.setAdapter(adapter);
+        page.pageFileContentList.clearOnScrollListeners();
+        page.pageFileContentList.addOnScrollListener(listener);
+        listener.onScrollStateChanged(page.pageFileContentList, AbsListView.OnScrollListener.SCROLL_STATE_IDLE);
     }
 
     @UiThread
-    protected void onRootPage() {
+    protected void onRootPage(final @NotNull AtomicLong position) {
         final PageFileContentBinding page = this.pageCache.getInstance();
+        this.stacks.clear();
+        page.pageFileContentBacker.setImageResource(R.mipmap.page_file_backer_nonclickable);
+        page.pageFileContentBacker.setOnClickListener(null);
+        page.pageFileContentBacker.setClickable(false);
         page.pageFileContentName.setText(R.string.app_name);
-        this.stacks.nonCachedStacks.clear();
-        this.stacks.cachedStacks.clear();
-        this.updatePage(true, ((TextView) page.pageFileContentName).getText(),
-                new FileLocation(IdentifierNames.SelectorProviderName.RootSelector.getIdentifier(), 0),
-                information -> this.onInsidePage(FileInformationGetter.name(information),
-                        new FileLocation(FileInformationGetter.name(information), FileInformationGetter.id(information))), information ->
-                        Main.runOnBackgroundThread(this.activity, () -> {throw new UnsupportedOperationException("WIP");}) // TODO
+        this.updatePage(new FileLocation(IdentifierNames.RootSelector, 0), position, information ->
+                this.onInsidePage(FileInformationGetter.name(information), new FileLocation(FileInformationGetter.name(information), FileInformationGetter.id(information)), new AtomicLong(0)), information ->
+                Main.runOnBackgroundThread(this.activity, () -> {throw new UnsupportedOperationException("WIP");}) // TODO
         );
     }
 
     @UiThread
-    protected void onInsidePage(final @NotNull CharSequence name, final @NotNull FileLocation location) {
-        this.updatePage(false, name, location, information -> {
+    protected void onInsidePage(final @NotNull CharSequence name, final @NotNull FileLocation location, final @NotNull AtomicLong position) {
+        final PageFileContentBinding page = this.pageCache.getInstance();
+        page.pageFileContentBacker.setImageResource(R.mipmap.page_file_backer);
+        page.pageFileContentBacker.setOnClickListener(v -> this.popFileList());
+        page.pageFileContentBacker.setClickable(true);
+        page.pageFileContentName.setText(name);
+        this.updatePage(location, position, information -> {
             if (FileInformationGetter.isDirectory(information))
-                this.onInsidePage(FileInformationGetter.name(information), new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.id(information)));
+                this.onInsidePage(FileInformationGetter.name(information), new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.id(information)), new AtomicLong(0));
             else
                 Main.runOnBackgroundThread(this.activity, () -> {throw new UnsupportedOperationException("WIP");}); // TODO
         }, information -> {
@@ -421,24 +425,29 @@ public class PageFile implements ActivityMainChooser.MainPage {
 
     @UiThread
     protected boolean popFileList() {
+        final Triad.ImmutableTriad<FileLocation, VisibleFileInformation, AtomicLong> p = this.stacks.poll();
+        if (p == null) return false;
         final PageFileContentBinding page = this.pageCache.getInstance();
-        final UnionPair<PageFileStacks.CachedStackRecord, PageFileStacks.NonCachedStackRecord> p = this.stacks.pop();
-        if (p == null) {
-            this.onRootPage();
-            return false;
-        }
-        if (p.isSuccess()) {
-            final PageFileStacks.CachedStackRecord record = p.getT();
-            page.pageFileContentName.setText(record.name);
-            page.pageFileContentCounter.setText(String.valueOf(record.counter.get()));
-            final RecyclerView content = page.pageFileContentList;
-            content.setAdapter(record.adapter);
-            content.clearOnScrollListeners();
-            content.addOnScrollListener(record.listener);
-        } else {
-            final PageFileStacks.NonCachedStackRecord record = p.getE();
-            this.onInsidePage(record.name, record.location); // TODO: keep position.
-        }
+        this.listLoadingAnimation(true, 0, 0);
+        page.pageFileContentBacker.setClickable(false);
+        page.pageFileContentCounter.setVisibility(View.GONE);
+        page.pageFileContentCounterText.setVisibility(View.GONE);
+        page.pageFileContentList.clearOnScrollListeners();
+        page.pageFileContentList.setAdapter(EmptyRecyclerAdapter.Instance);
+        Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
+            final VisibleFileInformation directory;
+            try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address())) {
+                directory = OperateFilesHelper.getFileOrDirectory(client, TokenAssistant.getToken(this.address(), this.username()), p.getA(), true);
+            }
+            Main.runOnUiThread(this.activity, () -> {
+                if (directory == null)
+                    this.popFileList();
+                else if (IdentifierNames.RootSelector.equals(FileInformationGetter.name(directory)))
+                    this.onRootPage(p.getC());
+                else
+                    this.onInsidePage(FileInformationGetter.name(directory), p.getA(), p.getC());
+            });
+        }));
         return true;
     }
 
