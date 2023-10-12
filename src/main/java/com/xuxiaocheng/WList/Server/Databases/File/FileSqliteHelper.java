@@ -656,7 +656,11 @@ public class FileSqliteHelper implements FileSqlInterface {
                 try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     SELECT parent_id FROM %s WHERE double_id == ? LIMIT 1;
                     """, this.tableName))) {
+                    final Set<Long> book = new HashSet<>();
                     while (true) {
+                        if (book.contains(fileDoubleParent))
+                            throw new IllegalStateException("Recycling files tree." + ParametersMap.create().add("id", id).add("isDirectory", isDirectory).add("parentId", FileSqliteHelper.getRealId(fileDoubleParent)));
+                        book.add(fileDoubleParent);
                         statement.setLong(1, fileDoubleParent);
                         try (final ResultSet result = statement.executeQuery()) {
                             if (!result.next())
@@ -753,11 +757,15 @@ public class FileSqliteHelper implements FileSqlInterface {
                     final Collection<Long> directories = new HashSet<>();
                     directories.add(directoryId);
                     final Queue<Long> processingDirectories = new ArrayDeque<>(directories);
+                    final Collection<Long> book = new HashSet<>();
                     while (!processingDirectories.isEmpty()) {
-                        final Pair.ImmutablePair<Set<Long>, Set<Long>> children = this.selectIdsInDirectory(processingDirectories.remove().longValue(), connectionId.get());
+                        final Long current = processingDirectories.remove();
+                        book.add(current);
+                        final Pair.ImmutablePair<Set<Long>, Set<Long>> children = this.selectIdsInDirectory(current.longValue(), connectionId.get());
                         files.addAll(children.getFirst());
                         directories.addAll(children.getSecond());
                         processingDirectories.addAll(children.getSecond());
+                        processingDirectories.removeAll(book);
                     }
                     try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     DELETE FROM %s WHERE double_id == ?;
