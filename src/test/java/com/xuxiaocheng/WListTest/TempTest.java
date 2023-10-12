@@ -1,7 +1,6 @@
 package com.xuxiaocheng.WListTest;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
-import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Functions.SupplierE;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
@@ -18,8 +17,6 @@ import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WList.Server.WListServer;
-import io.netty.util.concurrent.DefaultEventExecutorGroup;
-import io.netty.util.concurrent.EventExecutorGroup;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.BeforeAll;
@@ -29,23 +26,11 @@ import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class TempTest {
     private static final boolean initializeServer = false;
     private static final @NotNull SupplierE<@Nullable Object> _main = () -> {
-        final EventExecutorGroup executors = new DefaultEventExecutorGroup(2);
-        final AtomicInteger integer = new AtomicInteger(0);
-        executors.submit(HExceptionWrapper.wrapRunnable(() -> {
-            while (integer.incrementAndGet() < 7) {
-                HLog.DefaultLogger.log(HLogLevel.INFO, integer);
-                executors.submit(HExceptionWrapper.wrapRunnable(() -> {
-                    TimeUnit.MILLISECONDS.sleep(100);
-                })).await();
-            }
-        }));
-        executors.shutdownGracefully();
+
         return null;
     };
 

@@ -6,6 +6,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMultiRunHelper;
+import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HMultiInitializers;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
@@ -21,7 +22,6 @@ import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.Commons.Utils.I18NUtil;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
-import com.xuxiaocheng.WList.Server.WListServer;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
@@ -241,14 +241,14 @@ public final class BroadcastAssistant {
         //noinspection resource
         BroadcastAssistant.receiver.computeIfAbsent(address, k -> {
             final WListClientInterface client = new WListClient(address);
-            BroadcastAssistant.CallbackExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
+            new Thread(HExceptionWrapper.wrapRunnable(() -> {
                 boolean flag = true;
                 try (client) {
                     client.open();
                     OperateServerHelper.setBroadcastMode(client, true);
                     while (client.isActive()) {
                         final UnionPair<Pair.ImmutablePair<OperationType, ByteBuf>, Pair.ImmutablePair<String, String>> pair = OperateServerHelper.waitBroadcast(client);
-                        WListServer.IOExecutors.submit(HExceptionWrapper.wrapRunnable(() -> { // TODO: Why cannot use 'CallbackExecutors'.
+                        BroadcastAssistant.CallbackExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
                             if (pair.isFailure()) {
                                 BroadcastAssistant.get(address).UserBroadcast.callback(pair.getE());
                                 return;
@@ -265,12 +265,14 @@ public final class BroadcastAssistant {
                     if (!exception.getMessage().equals(I18NUtil.get("client.network.closed_client", address)))
                         throw exception;
                     flag = false;
+                } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                    HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
                 } finally {
                     BroadcastAssistant.stop(address);
                     if (flag)
                         BroadcastAssistant.start(address);
                 }
-            })).addListener(MiscellaneousUtil.exceptionListener());
+            }), "BroadcastReceiverLoop@" + address).start();
             BroadcastAssistant.map.initializeIfNot(address, BroadcastSet::new);
             return client;
         });
