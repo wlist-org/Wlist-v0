@@ -101,11 +101,16 @@ public final class RootSelector {
         }
     }
 
+    private static final @NotNull UnionPair<Optional<FileInformation>, Throwable> RootInfo = UnionPair.ok(Optional.of(new FileInformation(0, 0, IdentifierNames.RootSelector, true, -1, null, null, null)));
     /**
      * @see ProviderInterface#info(long, boolean, Consumer)
      */
     public static void info(final @NotNull FileLocation location, final boolean isDirectory, final @NotNull Consumer<? super @NotNull UnionPair<Optional<FileInformation>, Throwable>> consumer) {
         try {
+            if (IdentifierNames.RootSelector.equals(location.storage())) {
+                consumer.accept(RootSelector.RootInfo);
+                return;
+            }
             final ProviderInterface<?> real = StorageManager.getProvider(location.storage());
             if (real == null) {
                 consumer.accept(ProviderInterface.InfoNotExisted);
