@@ -20,7 +20,6 @@ import org.htmlunit.html.FrameWindow;
 import org.htmlunit.html.HtmlElement;
 import org.htmlunit.html.HtmlInput;
 import org.htmlunit.html.HtmlPage;
-import org.htmlunit.util.NameValuePair;
 import org.htmlunit.util.WebConnectionWrapper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -43,7 +42,7 @@ public class LanzouSharer extends AbstractIdBaseSharer<LanzouConfiguration> {
     protected static final @NotNull String AssertHost = Objects.requireNonNull(HttpUrl.parse("https://assets.woozooo.com/")).url().getHost();
     protected static final @NotNull DateTimeFormatter dataTimeFormatter = DateTimeFormatter.RFC_1123_DATE_TIME;
 
-    public @Nullable Pair.ImmutablePair<@NotNull HttpUrl, @Nullable Headers> getSingleShareFileDownloadUrl(final @NotNull HttpUrl url, final @Nullable String password) throws IOException, IllegalParametersException {
+    protected @Nullable Pair.ImmutablePair<@NotNull HttpUrl, @Nullable Headers> getSingleShareFileDownloadUrl(final @NotNull HttpUrl url, final @Nullable String password) throws IOException, IllegalParametersException {
         final HtmlElement downloading;
         try (final WebClient client = BrowserUtil.newWebClient()) {
             client.setWebConnection(new WebConnectionWrapper(client.getWebConnection()) {
@@ -54,7 +53,7 @@ public class LanzouSharer extends AbstractIdBaseSharer<LanzouConfiguration> {
                             return BrowserUtil.emptyResponse(request);
                         if (request.getUrl().toString().endsWith("/qrcode.min.js"))
                             return new WebResponse(new WebResponseData("QRCode=function(a,b){};QRCode.CorrectLevel={L:1,M:0,Q:3,H:2};"
-                                    .getBytes(StandardCharsets.UTF_8), 200, "OK", List.of(new NameValuePair("Content-Type", "application/x-javascript"))), request, 0);
+                                    .getBytes(StandardCharsets.UTF_8), 200, "OK", List.of(BrowserUtil.JSResponseHeader)), request, 0);
                     }
                     return super.getResponse(request);
                 }
@@ -121,19 +120,19 @@ public class LanzouSharer extends AbstractIdBaseSharer<LanzouConfiguration> {
         final HttpUrl displayUrl = Objects.requireNonNull(HttpUrl.parse(downloadUrl));
         // A Provider Bug: 9/27/2023
         // In Lanzou Provider, using the HEAD method for the first download after uploading will cause the file length to be reset to zero.
-        // Whether uploaded through a browser or through WList. Therefore, always use the GET method to avoid this bug.
-        try (final Response response = HttpNetworkHelper.getWithParameters(this.getConfiguration().getFileClient(), Pair.ImmutablePair.makeImmutablePair(displayUrl, "GET"), LanzouProvider.Headers, null).execute()) {
-            return Pair.ImmutablePair.makeImmutablePair(displayUrl, response.headers());
+        // Whether uploaded through a browser or through WList. Therefore, use the GET method to avoid this bug.
+        final HttpUrl finalUrl;
+        try (final Response response = HttpNetworkHelper.getWithParameters(HttpNetworkHelper.DefaultNoRedirectHttpClient, Pair.ImmutablePair.makeImmutablePair(displayUrl, "HEAD"), LanzouProvider.Headers, null).execute()) {
+            if (!response.isRedirect()) // always redirect?
+                return Pair.ImmutablePair.makeImmutablePair(displayUrl, response.headers());
+            final String redirect = response.header("Location");
+            assert redirect != null;
+            finalUrl = HttpUrl.parse(redirect);
+            assert finalUrl != null;
         }
-        // The code following does not work.
-//        try (final Response response = HttpNetworkHelper.getWithParameters(HttpNetworkHelper.DefaultNoRedirectHttpClient, Pair.ImmutablePair.makeImmutablePair(displayUrl, "GET"), LanzouProvider.Headers, null).execute()) {
-//            if (response.isRedirect()) {
-//                final String finalUrl = response.header("Location");
-//                assert finalUrl != null;
-//                return Pair.ImmutablePair.makeImmutablePair(Objects.requireNonNull(HttpUrl.parse(finalUrl)), null);
-//            }
-//            return Pair.ImmutablePair.makeImmutablePair(displayUrl, response.headers());
-//        }
+        try (final Response response = HttpNetworkHelper.getWithParameters(HttpNetworkHelper.DefaultNoRedirectHttpClient, Pair.ImmutablePair.makeImmutablePair(finalUrl, "GET"), LanzouProvider.Headers, null).execute()) {
+            return Pair.ImmutablePair.makeImmutablePair(finalUrl, response.headers());
+        }
     }
 
     protected Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull ZonedDateTime> testRealSizeAndData(final @NotNull HttpUrl url, final @Nullable Headers header) throws IOException {

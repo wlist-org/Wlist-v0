@@ -10,6 +10,7 @@ import org.htmlunit.WebClient;
 import org.htmlunit.WebRequest;
 import org.htmlunit.WebResponse;
 import org.htmlunit.WebResponseData;
+import org.htmlunit.util.NameValuePair;
 import org.htmlunit.util.WebConnectionWrapper;
 import org.jetbrains.annotations.NotNull;
 
@@ -73,7 +74,12 @@ public final class BrowserUtil {
                 break;
     }
 
+    public static final @NotNull NameValuePair JSResponseHeader = new NameValuePair("Content-Type", "application/javascript");
+    public static final @NotNull WebResponseData EmptyResponse = new WebResponseData(EmptyArrays.EMPTY_BYTES, 200, "OK", List.of());
+    public static final @NotNull WebResponseData EmptyJSResponse = new WebResponseData(EmptyArrays.EMPTY_BYTES, 200, "OK", List.of(BrowserUtil.JSResponseHeader));
     public static @NotNull WebResponse emptyResponse(final @NotNull WebRequest request) {
-        return new WebResponse(new WebResponseData(EmptyArrays.EMPTY_BYTES, 200, "OK", List.of()), request, 0);
+        if (request.getUrl().toString().endsWith(".js"))
+            return new WebResponse(BrowserUtil.EmptyJSResponse, request, 0);
+        return new WebResponse(BrowserUtil.EmptyResponse, request, 0);
     }
 }
