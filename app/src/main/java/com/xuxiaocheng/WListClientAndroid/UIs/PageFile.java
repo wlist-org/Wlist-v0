@@ -18,6 +18,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMathHelper;
@@ -25,8 +26,9 @@ import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WList.AndroidSupports.FileInformationGetter;
 import com.xuxiaocheng.WList.AndroidSupports.FileLocationGetter;
 import com.xuxiaocheng.WList.AndroidSupports.FilesListInformationGetter;
+import com.xuxiaocheng.WList.AndroidSupports.InstantaneousProgressStateGetter;
+import com.xuxiaocheng.WList.Client.Assistants.FilesAssistant;
 import com.xuxiaocheng.WList.Client.Assistants.TokenAssistant;
-import com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper;
 import com.xuxiaocheng.WList.Client.Operations.OperateProvidersHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Client.WListClientManager;
@@ -46,6 +48,7 @@ import io.netty.util.internal.EmptyArrays;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.InetSocketAddress;
+import java.text.MessageFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Objects;
@@ -144,10 +147,43 @@ public class PageFile implements ActivityMainChooser.MainPage {
                     final VisibleFilesListInformation list;
                     // TODO: loading progress.
                     this.noMore.set(false); // prevent retry forever when server error.
-                    try (final WListClientInterface client = WListClientManager.quicklyGetClient(PageFile.this.address())) {
-                        // TODO: more configurable params.
-                        list = OperateFilesHelper.listFiles(client, TokenAssistant.getToken(PageFile.this.address(), PageFile.this.username()), location,
-                                Options.FilterPolicy.Both, new LinkedHashMap<>(0), position.getAndAdd(50), 50);
+                    final String pattern = PageFile.this.activity.getString(R.string.page_file_loading_text);
+                    final LinkedHashMap<VisibleFileInformation.Order, Options.OrderDirection> orders = new LinkedHashMap<>();
+                    orders.put(FileInformationGetter.Order.Directory.order(), Options.OrderDirection.DESCEND);
+                    orders.put(FileInformationGetter.Order.Name.order(), Options.OrderDirection.ASCEND);
+                    Main.runOnUiThread(PageFile.this.activity, () -> {
+                        page.pageFileContentLoadingText.setText(MessageFormat.format(pattern, 0, 0));
+                        page.pageFileContentLoading.setVisibility(View.VISIBLE);
+                        page.pageFileContentLoadingText.setVisibility(View.VISIBLE);
+                        PageFile.setLoading(page.pageFileContentLoading);
+                    });
+                    // TODO: more configurable params.
+                    try {
+                        list = FilesAssistant.list(PageFile.this.address(), PageFile.this.username(), location, Options.FilterPolicy.Both, orders, position.getAndAdd(50), 50, Main.ClientExecutors, s -> {
+                            if (s == null) {
+                                Main.runOnUiThread(PageFile.this.activity, () -> {
+                                    page.pageFileContentLoading.setVisibility(View.GONE);
+                                    page.pageFileContentLoadingText.setVisibility(View.GONE);
+                                    page.pageFileContentLoadingText.setText(MessageFormat.format(pattern, 0, 0));
+                                    page.pageFileContentLoading.clearAnimation();
+                                });
+                                return;
+                            }
+                            long current = 0, total = 0;
+                            for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
+                                current += pair.getFirst().longValue();
+                                total += pair.getSecond().longValue();
+                            }
+                            final long c = current, t = total;
+                            Main.runOnUiThread(PageFile.this.activity, () -> page.pageFileContentLoadingText.setText(MessageFormat.format(pattern, c, t)));
+                        });
+                    } finally {
+                        Main.runOnUiThread(PageFile.this.activity, () -> {
+                            page.pageFileContentLoading.setVisibility(View.GONE);
+                            page.pageFileContentLoadingText.setVisibility(View.GONE);
+                            page.pageFileContentLoadingText.setText(MessageFormat.format(pattern, 0, 0));
+                            page.pageFileContentLoading.clearAnimation();
+                        });
                     }
                     if (list == null) {
                         Main.showToast(PageFile.this.activity, R.string.page_file_unavailable_directory);

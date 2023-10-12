@@ -69,8 +69,7 @@ public class ActivityLogin extends AppCompatActivity {
                             Main.runOnUiThread(ActivityLogin.this, () -> Toast.makeText(ActivityLogin.this, "No password!!!", Toast.LENGTH_SHORT).show());
                             return;
                         }
-                        BroadcastAssistant.start(address);
-                        ActivityMain.start(ActivityLogin.this, address, IdentifierNames.UserName.Admin.getIdentifier());
+                        ActivityMain.start(ActivityLogin.this, address, IdentifierNames.UserName.Admin.getIdentifier(), true);
                         ActivityLogin.this.finish();
                     }, e -> {
                         Main.runOnUiThread(ActivityLogin.this, () -> internalServer.setText(R.string.activity_login_login_internal_server));
@@ -93,7 +92,7 @@ public class ActivityLogin extends AppCompatActivity {
                         }
                     });
                 }
-            }, Context.BIND_AUTO_CREATE);
+            }, Context.BIND_AUTO_CREATE | Context.BIND_ABOVE_CLIENT | Context.BIND_IMPORTANT);
         });
     }
 

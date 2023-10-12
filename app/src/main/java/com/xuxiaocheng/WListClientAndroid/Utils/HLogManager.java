@@ -49,9 +49,9 @@ public final class HLogManager {
                 final String message = this.cache.toString();
                 this.cache.reset();
                 int priority = this.lastPriority;
-                if (message.contains("[VERBOSE]") || message.contains("[LESS]"))
+                if (message.contains("[VERBOSE]") || message.contains("[DEBUG]"))
                     priority = Log.VERBOSE;
-                if (message.contains("[DEBUG]") || message.contains("[NETWORK]"))
+                if (message.contains("[LESS]") || message.contains("[NETWORK]"))
                     priority = Log.DEBUG;
                 if (message.contains("[FINE]") || message.contains("[INFO]") || message.contains("[ENHANCED]"))
                     priority = Log.INFO;

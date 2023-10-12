@@ -21,6 +21,7 @@
 	<string name="page_file_unavailable_directory">Current directory is not available.</string>
 	<string name="page_file_counter">items</string>
 	<string name="page_file_loading">Loading more…</string>
+	<string name="page_file_loading_text" translatable="false">{0} / {1}</string>
 	<string name="page_file_no_more">No more file.</string>
 	<string name="page_file_option">Details</string>
 	<string name="page_file_option_name">Name: </string>

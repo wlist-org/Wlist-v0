@@ -1,19 +1,27 @@
 package com.xuxiaocheng.WListClientAndroid.UIs;
 
 import android.app.Activity;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.AndroidSupports.ClientConfigurationSupporter;
+import com.xuxiaocheng.WList.Client.Assistants.BroadcastAssistant;
 import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.R;
+import com.xuxiaocheng.WListClientAndroid.Services.InternalServer.InternalServerService;
 import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -26,10 +34,10 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class ActivityMain extends AppCompatActivity {
-    public static void start(final @NotNull Activity activity, final @NotNull InetSocketAddress address, final @NotNull String username) {
+    public static void start(final @NotNull Activity activity, final @NotNull InetSocketAddress address, final @NotNull String username, final boolean isInternal) {
         final Intent intent = new Intent(activity, ActivityMain.class);
         intent.putExtra("host", address.getHostName()).putExtra("port", address.getPort());
-        intent.putExtra("name", username);
+        intent.putExtra("name", username).putExtra("service", isInternal);
         Main.runOnUiThread(activity, () -> activity.startActivity(intent));
     }
 
@@ -40,13 +48,27 @@ public class ActivityMain extends AppCompatActivity {
         final String name = intent.getStringExtra("name");
         if (host == null || port == -1 || name == null)
             return true;
+        final boolean isInternal = intent.getBooleanExtra("service", false);
         this.address.reinitialize(new InetSocketAddress(host, port));
         this.username.reinitialize(name);
+        if (isInternal)
+            this.bindService(new Intent(this, InternalServerService.class), new ServiceConnection() {
+                @Override
+                public void onServiceConnected(final ComponentName name, final @NotNull IBinder service) {
+                    ActivityMain.this.binder.reinitialize(service);
+                }
+
+                @Override
+                public void onServiceDisconnected(final ComponentName name) {
+                    ActivityMain.this.binder.uninitializeNullable();
+                }
+            }, Context.BIND_AUTO_CREATE | Context.BIND_ABOVE_CLIENT | Context.BIND_IMPORTANT);
         return false;
     }
 
     protected final @NotNull HInitializer<InetSocketAddress> address = new HInitializer<>("MainActivityAddress");
     protected final @NotNull HInitializer<String> username = new HInitializer<>("MainActivityUsername");
+    protected final @NotNull HInitializer<IBinder> binder = new HInitializer<>("MainActivityServiceBinder");
 
     protected final @NotNull AtomicReference<ActivityMainChooser.MainChoice> minTabChoice = new AtomicReference<>();
     protected final @NotNull Map<ActivityMainChooser.MainChoice, ActivityMainChooser.MainPage> pages = new EnumMap<>(ActivityMainChooser.MainChoice.class); {
@@ -99,6 +121,10 @@ public class ActivityMain extends AppCompatActivity {
                 activity.addView(newView, contentParams);
         });
         chooser.click(ActivityMainChooser.MainChoice.File);
+        Main.runOnBackgroundThread(this, HExceptionWrapper.wrapRunnable(() -> {
+            BroadcastAssistant.start(this.address.getInstance());
+            ClientConfigurationSupporter.parseFromFile(); // TODO.
+        }));
     }
 
     protected @Nullable ZonedDateTime lastBackPressedTime;
