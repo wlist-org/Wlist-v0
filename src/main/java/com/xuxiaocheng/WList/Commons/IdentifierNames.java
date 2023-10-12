@@ -52,25 +52,5 @@ public final class IdentifierNames {
         }
     }
 
-    public enum SelectorProviderName {
-        RootSelector("WList#RootSelector"),
-        ;
-        private final @NotNull String identifier;
-        SelectorProviderName(final @NotNull String identifier) {
-            this.identifier = identifier;
-        }
-        public @NotNull String getIdentifier() {
-            return this.identifier;
-        }
-        @Override
-        public @NotNull String toString() {
-            return "SelectorProviderName{" +
-                    "name='" + this.name() + '\'' +
-                    ", identify='" + this.identifier + '\'' +
-                    '}';
-        }
-        public static boolean contains(final @NotNull String name) {
-            return "WList#RootSelector".equals(name);
-        }
-    }
+    public static final @NotNull String RootSelector = "WList#RootSelector";
 }

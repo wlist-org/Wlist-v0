@@ -58,7 +58,7 @@ public final class RootSelector {
      */
     public static void list(final @NotNull FileLocation directory, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final @LongRange(minimum = 0) long position, final @IntRange(minimum = 0) int limit, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FilesListInformation, RefreshRequirements>>, Throwable>> consumer) {
         try {
-            if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(directory.storage())) {
+            if (IdentifierNames.RootSelector.equals(directory.storage())) {
                 if (filter == Options.FilterPolicy.OnlyFiles) {
                     consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(new FilesListInformation(StorageManager.getProvidersCount(), 0L, List.of())))));
                     return;
@@ -122,7 +122,7 @@ public final class RootSelector {
      */
     public static void refreshDirectory(final @NotNull FileLocation directory, final @NotNull Consumer<? super @NotNull UnionPair<Optional<RefreshRequirements>, Throwable>> consumer) {
         try {
-            if (IdentifierNames.SelectorProviderName.RootSelector.getIdentifier().equals(directory.storage())) {
+            if (IdentifierNames.RootSelector.equals(directory.storage())) {
                 consumer.accept(ProviderInterface.RefreshNoRequire);
                 return;
             }

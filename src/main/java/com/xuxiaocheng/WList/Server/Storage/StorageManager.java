@@ -59,7 +59,7 @@ public final class StorageManager {
             return I18NUtil.get("server.provider.invalid_name.blank");
         if (!StorageManager.DirectoryRootPathCache.equals(new File(name).getAbsoluteFile().getParentFile().toPath()))
             return I18NUtil.get("server.provider.invalid_name.characters");
-        if (IdentifierNames.SelectorProviderName.contains(name))
+        if (IdentifierNames.RootSelector.equals(name))
             return I18NUtil.get("server.provider.invalid_name.selector");
         return null;
     }
