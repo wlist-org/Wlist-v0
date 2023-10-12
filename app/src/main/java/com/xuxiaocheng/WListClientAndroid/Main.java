@@ -13,7 +13,9 @@ import com.xuxiaocheng.HeadLibs.HeadLibs;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.Client.Operations.OperateHelper;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
+import com.xuxiaocheng.WList.Server.Operations.ServerHandler;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.EventExecutorGroup;
@@ -41,8 +43,8 @@ public final class Main extends Application {
             }
         }); // Kill in main thread.
         HLog.setLogTimeFLength(3);
-//        OperateHelper.logOperation.set(false);
-//        ServerHandler.logOperation.set(false);
+        OperateHelper.logOperation.set(false);
+        ServerHandler.logOperation.set(false);
         Log.i("HLog", "Hello WList (Android v0.1.0)!" + ParametersMap.create().add("pid", Process.myPid()));
     }
 

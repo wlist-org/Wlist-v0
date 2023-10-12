@@ -120,10 +120,10 @@ public class ActivityMain extends AppCompatActivity {
             if (ok)
                 activity.addView(newView, contentParams);
         });
-        chooser.click(ActivityMainChooser.MainChoice.File);
         Main.runOnBackgroundThread(this, HExceptionWrapper.wrapRunnable(() -> {
             BroadcastAssistant.start(this.address.getInstance());
             ClientConfigurationSupporter.parseFromFile(); // TODO.
+            Main.runOnUiThread(this, () -> chooser.click(ActivityMainChooser.MainChoice.File));
         }));
     }
 

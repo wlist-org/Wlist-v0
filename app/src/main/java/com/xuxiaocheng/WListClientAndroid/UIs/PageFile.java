@@ -23,12 +23,15 @@ import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMathHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
+import com.xuxiaocheng.WList.AndroidSupports.ClientConfigurationSupporter;
 import com.xuxiaocheng.WList.AndroidSupports.FileInformationGetter;
 import com.xuxiaocheng.WList.AndroidSupports.FileLocationGetter;
 import com.xuxiaocheng.WList.AndroidSupports.FilesListInformationGetter;
 import com.xuxiaocheng.WList.AndroidSupports.InstantaneousProgressStateGetter;
+import com.xuxiaocheng.WList.Client.Assistants.BroadcastAssistant;
 import com.xuxiaocheng.WList.Client.Assistants.FilesAssistant;
 import com.xuxiaocheng.WList.Client.Assistants.TokenAssistant;
+import com.xuxiaocheng.WList.Client.ClientConfiguration;
 import com.xuxiaocheng.WList.Client.Operations.OperateProvidersHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Client.WListClientManager;
@@ -86,6 +89,12 @@ public class PageFile implements ActivityMainChooser.MainPage {
         page.pageFileContentList.setHasFixedSize(true);
         this.onRootPage();
         this.buildUploader();
+        Main.runOnBackgroundThread(this.activity, () -> {
+            final BroadcastAssistant.BroadcastSet set = BroadcastAssistant.get(this.address());
+            set.ProviderInitialized.register(s -> {
+
+            });
+        });
         return page.getRoot();
 //        PermissionsHelper.getPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE, success -> {
 //            if (!success.booleanValue())
@@ -97,11 +106,51 @@ public class PageFile implements ActivityMainChooser.MainPage {
 //        });
     }
 
+    @UiThread
+    private static void setLoading(final @NotNull ImageView loading) {
+        final Animation loadingAnimation = new RotateAnimation(0, 360 << 10, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
+        loadingAnimation.setDuration(500 << 10);
+        loadingAnimation.setInterpolator(new LinearInterpolator());
+        loadingAnimation.setRepeatCount(Animation.INFINITE);
+        loading.startAnimation(loadingAnimation);
+    }
+
+    @UiThread
+    private @NotNull View listLoadingView() {
+        final ConstraintLayout loading = EnhancedRecyclerViewAdapter.buildView(PageFile.this.activity.getLayoutInflater(), R.layout.page_file_tailor_loading, this.pageCache.getInstance().pageFileContentList);
+        final ImageView image = (ImageView) loading.getViewById(R.id.page_file_tailor_loading_image);
+        PageFile.setLoading(image);
+        return loading;
+    }
+
+    @UiThread
+    private @NotNull View listNoMoreView() {
+        return EnhancedRecyclerViewAdapter.buildView(PageFile.this.activity.getLayoutInflater(), R.layout.page_file_tailor_no_more, this.pageCache.getInstance().pageFileContentList);
+    }
+
+    private static final @NotNull HInitializer<String> listLoadingAnimationPattern = new HInitializer<>("ListLoadingAnimationPattern");
+    @UiThread
+    private void listLoadingAnimation(final boolean show, final long current, final long total) {
+        final PageFileContentBinding page = this.pageCache.getInstance();
+        PageFile.listLoadingAnimationPattern.initializeIfNot(() -> this.activity.getString(R.string.page_file_loading_text));
+        page.pageFileContentLoadingText.setText(MessageFormat.format(PageFile.listLoadingAnimationPattern.getInstance(), current, total));
+        if (show) {
+            page.pageFileContentLoading.setVisibility(View.VISIBLE);
+            page.pageFileContentLoadingText.setVisibility(View.VISIBLE);
+            PageFile.setLoading(page.pageFileContentLoading);
+        } else {
+            page.pageFileContentLoading.setVisibility(View.GONE);
+            page.pageFileContentLoadingText.setVisibility(View.GONE);
+            page.pageFileContentLoading.clearAnimation();
+        }
+    }
+
+
     protected final @NotNull PageFileStacks stacks = new PageFileStacks();
 
     @UiThread
     protected void updatePage(final boolean isRoot, final @NotNull CharSequence name, final @NotNull FileLocation location,
-                                                                final @NotNull Consumer<@NotNull VisibleFileInformation> clicker, final @NotNull Consumer<@NotNull VisibleFileInformation> option) {
+                              final @NotNull Consumer<? super @NotNull VisibleFileInformation> clicker, final @NotNull Consumer<@NotNull VisibleFileInformation> option) {
         final PageFileContentBinding page = this.pageCache.getInstance();
         final ImageView backer = page.pageFileContentBacker;
         if (isRoot) {
@@ -114,10 +163,13 @@ public class PageFile implements ActivityMainChooser.MainPage {
             backer.setClickable(true);
         }
         page.pageFileContentName.setText(name);
+        final AtomicLong counter = new AtomicLong();
+        final HInitializer<RecyclerView.OnScrollListener> listenerHInitializer = new HInitializer<>("OnScrollListener");
         final EnhancedRecyclerViewAdapter<VisibleFileInformation, PageFileViewHolder> adapter = new EnhancedRecyclerViewAdapter<>() {
             @Override
             protected @NotNull PageFileViewHolder createViewHolder(final @NotNull ViewGroup parent) {
-                return new PageFileViewHolder(EnhancedRecyclerViewAdapter.buildView(PageFile.this.activity.getLayoutInflater(), R.layout.page_file_cell, page.pageFileContentList), clicker, option);
+                return new PageFileViewHolder(EnhancedRecyclerViewAdapter.buildView(PageFile.this.activity.getLayoutInflater(), R.layout.page_file_cell, page.pageFileContentList),
+                        information -> {PageFile.this.stacks.push(name, counter, location, this, listenerHInitializer.getInstance());clicker.accept(information);}, option);
             }
 
             @Override
@@ -127,7 +179,6 @@ public class PageFile implements ActivityMainChooser.MainPage {
         };
         page.pageFileContentCounter.setVisibility(View.GONE);
         page.pageFileContentCounterText.setVisibility(View.GONE); // Set visible in listener.
-        final AtomicLong counter = new AtomicLong();
         final AtomicLong position = new AtomicLong(0);
         final RecyclerView.OnScrollListener listener = new RecyclerView.OnScrollListener() {
             private final @NotNull AtomicBoolean onLoading = new AtomicBoolean(false);
@@ -139,51 +190,28 @@ public class PageFile implements ActivityMainChooser.MainPage {
                 // TODO: Remove the pages on the top.
                 if (recyclerView.canScrollVertically(1) || this.noMore.get() || !this.onLoading.compareAndSet(false, true))
                     return;
-                final ConstraintLayout loadingTailor = EnhancedRecyclerViewAdapter.buildView(PageFile.this.activity.getLayoutInflater(), R.layout.page_file_tailor_loading, page.pageFileContentList);
-                final ImageView loading = (ImageView) loadingTailor.getViewById(R.id.page_file_tailor_loading_image);
-                PageFile.setLoading(loading);
-                adapter.addTailor(loadingTailor);
+                adapter.addTailor(PageFile.this.listLoadingView());
                 Main.runOnBackgroundThread(PageFile.this.activity, HExceptionWrapper.wrapRunnable(() -> {
                     final VisibleFilesListInformation list;
-                    // TODO: loading progress.
                     this.noMore.set(false); // prevent retry forever when server error.
-                    final String pattern = PageFile.this.activity.getString(R.string.page_file_loading_text);
-                    final LinkedHashMap<VisibleFileInformation.Order, Options.OrderDirection> orders = new LinkedHashMap<>();
-                    orders.put(FileInformationGetter.Order.Directory.order(), Options.OrderDirection.DESCEND);
-                    orders.put(FileInformationGetter.Order.Name.order(), Options.OrderDirection.ASCEND);
-                    Main.runOnUiThread(PageFile.this.activity, () -> {
-                        page.pageFileContentLoadingText.setText(MessageFormat.format(pattern, 0, 0));
-                        page.pageFileContentLoading.setVisibility(View.VISIBLE);
-                        page.pageFileContentLoadingText.setVisibility(View.VISIBLE);
-                        PageFile.setLoading(page.pageFileContentLoading);
-                    });
-                    // TODO: more configurable params.
+                    Main.runOnUiThread(PageFile.this.activity, () -> PageFile.this.listLoadingAnimation(true, 0, 0));
                     try {
-                        list = FilesAssistant.list(PageFile.this.address(), PageFile.this.username(), location, Options.FilterPolicy.Both, orders, position.getAndAdd(50), 50, Main.ClientExecutors, s -> {
-                            if (s == null) {
-                                Main.runOnUiThread(PageFile.this.activity, () -> {
-                                    page.pageFileContentLoading.setVisibility(View.GONE);
-                                    page.pageFileContentLoadingText.setVisibility(View.GONE);
-                                    page.pageFileContentLoadingText.setText(MessageFormat.format(pattern, 0, 0));
-                                    page.pageFileContentLoading.clearAnimation();
-                                });
-                                return;
-                            }
+                        final ClientConfiguration configuration = ClientConfigurationSupporter.get();
+                        final Options.FilterPolicy filter = ClientConfigurationSupporter.filterPolicy(configuration);
+                        final LinkedHashMap<VisibleFileInformation.Order, Options.OrderDirection> orders = ClientConfigurationSupporter.fileOrders(configuration);
+                        final int limit = ClientConfigurationSupporter.limitPerPage(configuration);
+                        list = FilesAssistant.list(PageFile.this.address(), PageFile.this.username(), location, filter, orders, position.getAndAdd(limit), limit, Main.ClientExecutors, s -> {
+                            if (s == null) return;
                             long current = 0, total = 0;
                             for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
                                 current += pair.getFirst().longValue();
                                 total += pair.getSecond().longValue();
                             }
                             final long c = current, t = total;
-                            Main.runOnUiThread(PageFile.this.activity, () -> page.pageFileContentLoadingText.setText(MessageFormat.format(pattern, c, t)));
+                            Main.runOnUiThread(PageFile.this.activity, () -> PageFile.this.listLoadingAnimation(true, c, t));
                         });
                     } finally {
-                        Main.runOnUiThread(PageFile.this.activity, () -> {
-                            page.pageFileContentLoading.setVisibility(View.GONE);
-                            page.pageFileContentLoadingText.setVisibility(View.GONE);
-                            page.pageFileContentLoadingText.setText(MessageFormat.format(pattern, 0, 0));
-                            page.pageFileContentLoading.clearAnimation();
-                        });
+                        Main.runOnUiThread(PageFile.this.activity, () -> PageFile.this.listLoadingAnimation(false, 0, 0));
                     }
                     if (list == null) {
                         Main.showToast(PageFile.this.activity, R.string.page_file_unavailable_directory);
@@ -201,27 +229,25 @@ public class PageFile implements ActivityMainChooser.MainPage {
                 }, e -> {
                     this.onLoading.set(false);
                     Main.runOnUiThread(PageFile.this.activity, () -> {
-                        loading.clearAnimation();
                         if (this.noMore.get() || e != null) {
-                            adapter.setTailor(0, EnhancedRecyclerViewAdapter.buildView(PageFile.this.activity.getLayoutInflater(), R.layout.page_file_tailor_no_more, page.pageFileContentList));
+                            adapter.setTailor(0, PageFile.this.listNoMoreView());
                             if (page.pageFileContentList.getAdapter() == adapter) // Confuse: Why must call 'setAdapter' again?
                                 page.pageFileContentList.setAdapter(adapter);
                         } else {
                             adapter.removeTailor(0);
-                            if (page.pageFileContentList.getAdapter() == adapter) // Autoload more if still in this list page.
+                            if (page.pageFileContentList.getAdapter() == adapter) // Automatically load more if still in this list page.
                                 this.onScrollStateChanged(recyclerView, newState);
                         }
                     });
                 }, false));
             }
         };
+        listenerHInitializer.initialize(listener);
         final RecyclerView content = page.pageFileContentList;
         content.setAdapter(adapter);
         content.clearOnScrollListeners();
         content.addOnScrollListener(listener);
         listener.onScrollStateChanged(content, AbsListView.OnScrollListener.SCROLL_STATE_IDLE);
-        if (!isRoot)
-            this.stacks.push(name, counter, location, adapter, listener);
     }
 
     @UiThread
@@ -240,9 +266,12 @@ public class PageFile implements ActivityMainChooser.MainPage {
 
     @UiThread
     protected void onInsidePage(final @NotNull CharSequence name, final @NotNull FileLocation location) {
-        this.updatePage(false, name, location,
-                information -> this.onInsidePage(FileInformationGetter.name(information),
-                        new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.id(information))), information -> {
+        this.updatePage(false, name, location, information -> {
+            if (FileInformationGetter.isDirectory(information))
+                this.onInsidePage(FileInformationGetter.name(information), new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.id(information)));
+            else
+                Main.runOnBackgroundThread(this.activity, () -> {throw new UnsupportedOperationException("WIP");}); // TODO
+        }, information -> {
             final PageFileOptionBinding optionBinding = PageFileOptionBinding.inflate(this.activity.getLayoutInflater());
             optionBinding.pageFileOptionName.setText(FileInformationGetter.name(information));
             final long size = FileInformationGetter.size(information);
@@ -393,10 +422,6 @@ public class PageFile implements ActivityMainChooser.MainPage {
     @UiThread
     protected boolean popFileList() {
         final PageFileContentBinding page = this.pageCache.getInstance();
-        if (this.stacks.pop() == null) {
-            this.onRootPage();
-            return false;
-        }
         final UnionPair<PageFileStacks.CachedStackRecord, PageFileStacks.NonCachedStackRecord> p = this.stacks.pop();
         if (p == null) {
             this.onRootPage();
@@ -632,15 +657,6 @@ public class PageFile implements ActivityMainChooser.MainPage {
     @Override
     public boolean onBackPressed() {
         return this.popFileList();
-    }
-
-    @UiThread
-    static void setLoading(final @NotNull ImageView loading) {
-        final Animation loadingAnimation = new RotateAnimation(0, 360 << 10, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
-        loadingAnimation.setDuration(500 << 10);
-        loadingAnimation.setInterpolator(new LinearInterpolator());
-        loadingAnimation.setRepeatCount(Animation.INFINITE);
-        loading.startAnimation(loadingAnimation);
     }
 
     @Override
