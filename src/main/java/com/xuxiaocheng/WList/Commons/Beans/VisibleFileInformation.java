@@ -39,6 +39,14 @@ public record VisibleFileInformation(long id, long parentId, @NotNull String nam
 
     public enum Order implements Options.OrderPolicy {
         Id, Name, Directory, Size, CreateTime, UpdateTime,
+        ;
+        public static @Nullable Order of(final @NotNull String policy) {
+            try {
+                return Order.valueOf(policy);
+            } catch (final IllegalArgumentException exception) {
+                return null;
+            }
+        }
     }
 
     private static final @NotNull @Unmodifiable LinkedHashMap<@NotNull Order, Options.@NotNull OrderDirection> ListEmptyOrder = new LinkedHashMap<>(0);

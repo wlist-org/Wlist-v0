@@ -59,6 +59,14 @@ public final class Options {
 
     public enum OrderDirection {
         ASCEND, DESCEND,
+        ;
+        public static @Nullable OrderDirection of(final @NotNull String policy) {
+            try {
+                return OrderDirection.valueOf(policy);
+            } catch (final IllegalArgumentException exception) {
+                return null;
+            }
+        }
     }
 
 
