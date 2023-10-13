@@ -27,7 +27,7 @@
 		android:paddingTop="15dp"
 		android:paddingEnd="10dp"
 		android:paddingBottom="15dp"
-		android:src="@mipmap/page_file_backer"
+		android:src="@mipmap/backer"
 		app:layout_constraintBottom_toTopOf="@id/page_file_content_guideline_header"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toLeftOf="@id/page_file_content_guideline_backer"

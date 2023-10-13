@@ -14,7 +14,7 @@ import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WListClientAndroid.Main;
 import com.xuxiaocheng.WListClientAndroid.R;
 import com.xuxiaocheng.WListClientAndroid.Utils.ViewUtil;
-import com.xuxiaocheng.WListClientAndroid.databinding.PageFileProviderBinding;
+import com.xuxiaocheng.WListClientAndroid.databinding.PageFileProviderLanzouBinding;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -55,16 +55,16 @@ public final class PageFileProviderConfigurations {
     }
 
     // TODO
-    private static final @NotNull ConfigurationGetter<LanzouConfiguration, PageFileProviderBinding> Lanzou = new ConfigurationGetter<>() {
+    private static final @NotNull ConfigurationGetter<LanzouConfiguration, PageFileProviderLanzouBinding> Lanzou = new ConfigurationGetter<>() {
         @Override
-        public @NotNull PageFileProviderBinding buildPage(final @NotNull Activity activity, final @Nullable LanzouConfiguration old) {
-            final PageFileProviderBinding binding = PageFileProviderBinding.inflate(activity.getLayoutInflater());
+        public @NotNull PageFileProviderLanzouBinding buildPage(final @NotNull Activity activity, final @Nullable LanzouConfiguration old) {
+            final PageFileProviderLanzouBinding binding = PageFileProviderLanzouBinding.inflate(activity.getLayoutInflater());
             binding.pageFileProviderName.setText(R.string.page_file_provider_lanzou);
             return binding;
         }
 
         @Override
-        public Pair.@NotNull ImmutablePair<@NotNull LanzouConfiguration, @NotNull Boolean> checkValid(final @NotNull Activity activity, final @NotNull PageFileProviderBinding view) {
+        public Pair.@NotNull ImmutablePair<@NotNull LanzouConfiguration, @NotNull Boolean> checkValid(final @NotNull Activity activity, final @NotNull PageFileProviderLanzouBinding view) {
             final String name = ViewUtil.getText(view.pageFileProviderName);
             final String passport = ViewUtil.getText(view.pageFileProviderPassport);
             final String password = ViewUtil.getText(view.pageFileProviderPassword);

@@ -66,9 +66,9 @@ public class ActivityMain extends AppCompatActivity {
         return false;
     }
 
-    protected final @NotNull HInitializer<InetSocketAddress> address = new HInitializer<>("MainActivityAddress");
-    protected final @NotNull HInitializer<String> username = new HInitializer<>("MainActivityUsername");
-    protected final @NotNull HInitializer<IBinder> binder = new HInitializer<>("MainActivityServiceBinder");
+    protected final @NotNull HInitializer<InetSocketAddress> address = new HInitializer<>("ActivityMainAddress");
+    protected final @NotNull HInitializer<String> username = new HInitializer<>("ActivityMainUsername");
+    protected final @NotNull HInitializer<IBinder> binder = new HInitializer<>("ActivityMainServiceBinder");
 
     protected final @NotNull AtomicReference<ActivityMainChooser.MainChoice> minTabChoice = new AtomicReference<>();
     protected final @NotNull Map<ActivityMainChooser.MainChoice, ActivityMainChooser.MainPage> pages = new EnumMap<>(ActivityMainChooser.MainChoice.class); {
