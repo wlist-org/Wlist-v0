@@ -70,7 +70,7 @@ public final class PageFileProviderConfigurations {
             final String password = ViewUtil.getText(view.pageFileProviderPassword);
             final LanzouConfiguration configuration = new LanzouConfiguration();
             final Collection<Object> errors = new ArrayList<>();
-            configuration.load(Map.of("name", name, "passport", passport, "password", password, "directly_login", true), errors);
+            configuration.load(Map.of("name", name, "passport", passport, "password", password, "directly_login", "true"), errors);
             if (!errors.isEmpty()) {
                 activity.runOnUiThread(() -> Toast.makeText(activity.getApplicationContext(), errors.toString(), Toast.LENGTH_SHORT).show());
                 return Pair.ImmutablePair.makeImmutablePair(configuration, Boolean.FALSE);

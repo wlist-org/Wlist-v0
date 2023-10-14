@@ -16,7 +16,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecyclerViewAdapter.WrappedViewHolder<?>> extends RecyclerView.Adapter<EnhancedRecyclerViewAdapter.WrappedViewHolder<?>> {
+public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecyclerViewAdapter.WrappedViewHolder<?, T>> extends RecyclerView.Adapter<EnhancedRecyclerViewAdapter.WrappedViewHolder<?, T>> {
     protected final @NotNull List<View> headers = new ArrayList<>();
     protected final @NotNull List<View> tailors = new ArrayList<>();
     protected final @NotNull List<T> data = new ArrayList<>();
@@ -26,10 +26,11 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
         return (V) inflater.inflate(cell, parent, false);
     }
 
-    public abstract static class WrappedViewHolder<V extends View> extends RecyclerView.ViewHolder {
+    public abstract static class WrappedViewHolder<V extends View, T> extends RecyclerView.ViewHolder {
         protected WrappedViewHolder(final @NotNull V itemView) {
             super(itemView);
         }
+        public abstract void onBind(final @NotNull T data);
     }
 
     @Override
@@ -41,14 +42,17 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
         return 0;
     }
 
-    protected static class HeaderAndTailorViewHolder<V extends View> extends WrappedViewHolder<V> {
+    protected static class HeaderAndTailorViewHolder<V extends View, T> extends WrappedViewHolder<V, T> {
         protected HeaderAndTailorViewHolder(final @NotNull V itemView) {
             super(itemView);
+        }
+        @Override
+        public void onBind(@NotNull final T data) {
         }
     }
 
     @Override
-    public @NotNull WrappedViewHolder<?> onCreateViewHolder(final @NotNull ViewGroup parent, final int viewType) {
+    public @NotNull WrappedViewHolder<?, T> onCreateViewHolder(final @NotNull ViewGroup parent, final int viewType) {
         if (viewType > 0) return new HeaderAndTailorViewHolder<>(this.headers.get(viewType - 1));
         if (viewType < 0) return new HeaderAndTailorViewHolder<>(this.tailors.get(-viewType - 1));
         return this.createViewHolder(parent);
@@ -56,14 +60,11 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
 
     protected abstract @NotNull VH createViewHolder(final @NotNull ViewGroup parent);
 
-    @SuppressWarnings("unchecked")
     @Override
-    public void onBindViewHolder(final @NotNull WrappedViewHolder<?> holder, final int position) {
+    public void onBindViewHolder(final @NotNull WrappedViewHolder<?, T> holder, final int position) {
         if (this.getItemViewType(position) == 0)
-            this.bindViewHolder((VH) holder, this.data.get(position - this.headers.size()));
+            holder.onBind(this.data.get(position - this.headers.size()));
     }
-
-    protected abstract void bindViewHolder(final @NotNull VH holder, final @NotNull T information);
 
     @Override
     public int getItemCount() {
@@ -200,7 +201,7 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
     }
 
     @Override
-    public void onViewAttachedToWindow(final @NotNull WrappedViewHolder<?> holder) {
+    public void onViewAttachedToWindow(final @NotNull WrappedViewHolder<?, T> holder) {
         super.onViewAttachedToWindow(holder);
         final ViewGroup.LayoutParams params = holder.itemView.getLayoutParams();
         if (params instanceof StaggeredGridLayoutManager.LayoutParams layoutParams)

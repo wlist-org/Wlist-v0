@@ -73,6 +73,8 @@ public final class ActivityMainChooser {
     public interface MainPage {
         @NotNull View onShow();
         boolean onBackPressed();
+        default void onActivityCreateHook() {
+        }
     }
 
     private final @NotNull ButtonGroup fileButton;

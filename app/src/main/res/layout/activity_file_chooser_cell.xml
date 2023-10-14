@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                                                   xmlns:app="http://schemas.android.com/apk/res-auto"
+                                                   android:layout_width="match_parent"
+                                                   android:layout_height="50dp">
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/activity_file_chooser_cell_guideline_name"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		app:layout_constraintGuide_begin="50dp" />
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/activity_file_chooser_cell_guideline_image"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="horizontal"
+		app:layout_constraintGuide_percent="0.5" />
+
+	<androidx.appcompat.widget.AppCompatImageView
+		android:id="@+id/activity_file_chooser_cell_image"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:layout_marginStart="10dp"
+		android:layout_marginEnd="10dp"
+		android:scaleType="centerInside"
+		app:layout_constraintBottom_toBottomOf="@id/activity_file_chooser_cell_guideline_image"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toLeftOf="@id/activity_file_chooser_cell_guideline_name"
+		app:layout_constraintTop_toTopOf="@id/activity_file_chooser_cell_guideline_image" />
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/activity_file_chooser_cell_guideline_option"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		app:layout_constraintGuide_end="50dp" />
+
+	<androidx.appcompat.widget.AppCompatImageView
+		android:id="@+id/activity_file_chooser_cell_chooser"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:autoSizeTextType="uniform"
+		android:gravity="center"
+		android:paddingStart="5dp"
+		android:paddingEnd="5dp"
+		android:src="@mipmap/app_logo"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toRightOf="@id/activity_file_chooser_cell_guideline_option"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toTopOf="parent" />
+
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/activity_file_chooser_cell_guideline_tips"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="horizontal"
+		app:layout_constraintGuide_percent="0.6" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/activity_file_chooser_cell_name"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:layout_marginTop="5dp"
+		android:ellipsize="end"
+		android:gravity="start"
+		android:maxLines="1"
+		android:text="@string/app_name"
+		android:textColor="@color/text_normal"
+		android:textSize="15sp"
+		app:layout_constraintBottom_toTopOf="@id/activity_file_chooser_cell_guideline_tips"
+		app:layout_constraintLeft_toRightOf="@id/activity_file_chooser_cell_guideline_name"
+		app:layout_constraintRight_toLeftOf="@id/activity_file_chooser_cell_guideline_option"
+		app:layout_constraintTop_toTopOf="parent" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/activity_file_chooser_cell_tips"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:layout_marginBottom="5dp"
+		android:gravity="start"
+		android:text="@string/app_name"
+		android:textColor="@color/text_normal"
+		android:textSize="11sp"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toRightOf="@id/activity_file_chooser_cell_guideline_name"
+		app:layout_constraintRight_toLeftOf="@id/activity_file_chooser_cell_guideline_option"
+		app:layout_constraintTop_toBottomOf="@id/activity_file_chooser_cell_guideline_tips" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

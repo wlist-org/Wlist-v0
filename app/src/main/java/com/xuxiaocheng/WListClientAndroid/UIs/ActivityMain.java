@@ -120,6 +120,7 @@ public class ActivityMain extends AppCompatActivity {
             if (ok)
                 activity.addView(newView, contentParams);
         });
+        this.pages.values().forEach(ActivityMainChooser.MainPage::onActivityCreateHook);
         Main.runOnBackgroundThread(this, HExceptionWrapper.wrapRunnable(() -> {
             BroadcastAssistant.start(this.address.getInstance());
             ClientConfigurationSupporter.parseFromFile(); // TODO.

@@ -24,7 +24,7 @@ public final class InternalServerService extends Service {
         super.onCreate();
         HLogManager.initialize(this, HLogManager.ProcessType.Server);
         HLogManager.getInstance("DefaultLogger").log(HLogLevel.FINE, "Internal WList Server is starting.", ParametersMap.create().add("pid", Process.myPid()));
-        WList.RuntimePath.initialize(this.getExternalFilesDir("server"));
+        WList.RuntimePath.reinitialize(this.getExternalFilesDir("server"));
         NativeUtil.ExtraPathGetterCore.reinitialize(l -> {
             final String arch = PlatformDependent.normalizedArch();
             throw new IllegalStateException("Unknown architecture: " + ("unknown".equals(arch) ? System.getProperty("os.arch") : arch));

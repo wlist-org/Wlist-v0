@@ -1,9 +1,10 @@
 package com.xuxiaocheng.WListClientAndroid.UIs;
 
-import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.Environment;
 import android.util.DisplayMetrics;
 import android.view.MotionEvent;
 import android.view.View;
@@ -14,12 +15,13 @@ import android.view.animation.RotateAnimation;
 import android.widget.AbsListView;
 import android.widget.ImageView;
 import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.activity.result.contract.ActivityResultContract;
 import androidx.annotation.UiThread;
 import androidx.appcompat.app.AlertDialog;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
@@ -60,23 +62,27 @@ import com.xuxiaocheng.WListClientAndroid.databinding.PageFileOptionBinding;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileUploadBinding;
 import io.netty.util.internal.EmptyArrays;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
 import java.net.InetSocketAddress;
 import java.text.MessageFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 public class PageFile implements ActivityMainChooser.MainPage {
-    @NotNull
-    protected final ActivityMain activity;
+    protected final @NotNull ActivityMain activity;
 
     public PageFile(final @NotNull ActivityMain activity) {
         super();
@@ -90,7 +96,6 @@ public class PageFile implements ActivityMainChooser.MainPage {
     protected @NotNull String username() {
         return this.activity.username.getInstance();
     }
-
 
     protected final @NotNull HInitializer<PageFileContentBinding> pageCache = new HInitializer<>("PageFile");
     @Override
@@ -110,14 +115,6 @@ public class PageFile implements ActivityMainChooser.MainPage {
             });
         });
         return page.getRoot();
-//        PermissionsHelper.getPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE, success -> {
-//            if (!success.booleanValue())
-//                Main.showToast(this, R.string.toast_no_read_permissions);
-//        });
-//        PermissionsHelper.getPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE, success -> {
-//            if (!success.booleanValue())
-//                Main.showToast(this, R.string.toast_no_write_permissions);
-//        });
     }
 
     @UiThread
@@ -188,11 +185,6 @@ public class PageFile implements ActivityMainChooser.MainPage {
                     PageFile.this.stacks.push(Triad.ImmutableTriad.makeImmutableTriad(location, this.getData(p), new AtomicLong(p)));
                     clicker.accept(information);
                 }, option::accept);
-            }
-
-            @Override
-            protected void bindViewHolder(final @NotNull PageFileViewHolder holder, final @NotNull VisibleFileInformation information) {
-                holder.onBind(information);
             }
         };
         page.pageFileContentCounter.setVisibility(View.GONE);
@@ -481,6 +473,8 @@ public class PageFile implements ActivityMainChooser.MainPage {
         return true;
     }
 
+    protected final @NotNull HInitializer<ActivityResultLauncher<Pair.ImmutablePair<File, String>>> chooserLauncher = new HInitializer<>("PageFileChooserLauncher");
+
     @SuppressWarnings("unchecked")
     @SuppressLint("ClickableViewAccessibility")
     protected <C extends StorageConfiguration> void buildUploader() {
@@ -593,8 +587,44 @@ public class PageFile implements ActivityMainChooser.MainPage {
                         }).show();
             });
             upload.pageFileUploadDirectoryText.setOnClickListener(v -> upload.pageFileUploadDirectory.performClick());
-            final ActivityResultLauncher<String> launcher = this.activity.registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
-                if (uri == null) return;
+            final BiConsumer<File, String> uploadFile = (root, pattern) -> {
+                if (!clickable.compareAndSet(true, false)) return;
+                uploader.cancel();
+                PermissionsHelper.getExternalStorage(this.activity, false, success -> {
+                    if (success.booleanValue())
+                        this.chooserLauncher.getInstance().launch(Pair.ImmutablePair.makeImmutablePair(root, pattern));
+                    else
+                        Main.showToast(this.activity, R.string.toast_no_read_permissions);
+                });
+            };
+            upload.pageFileUploadFile.setOnClickListener(v -> uploadFile.accept(Environment.getExternalStorageDirectory(), ".*"));
+            upload.pageFileUploadFileText.setOnClickListener(v -> upload.pageFileUploadFile.performClick());
+            upload.pageFileUploadPicture.setOnClickListener(v -> uploadFile.accept(Environment.getExternalStorageDirectory(), "\\.(jpg|jpeg|png|bmp|gif|svg|webp)$"));
+            upload.pageFileUploadPictureText.setOnClickListener(v -> upload.pageFileUploadPicture.performClick());
+            upload.pageFileUploadVideo.setOnClickListener(v -> uploadFile.accept(Environment.getExternalStorageDirectory(), "\\.(mp4|avi|mov|wmv)$"));
+            upload.pageFileUploadVideoText.setOnClickListener(v -> upload.pageFileUploadVideo.performClick());
+            uploader.show();
+        });
+    }
+
+    @Override
+    public void onActivityCreateHook() {
+        this.chooserLauncher.reinitialize(this.activity.registerForActivityResult(new ActivityResultContract<Pair.@NotNull ImmutablePair<@NotNull File, @NotNull String>, @NotNull List<@NotNull File>>() {
+            @Override
+            public @NotNull Intent createIntent(final @NotNull Context context, final Pair.@NotNull ImmutablePair<@NotNull File, @NotNull String> root) {
+                return ActivityFileChooser.build(context, root.getFirst(), root.getSecond());
+            }
+
+            @Override
+            public @NotNull List<@NotNull File> parseResult(final int i, final @Nullable Intent intent) {
+                if (intent == null) return List.of();
+                final String[] strings = intent.getStringArrayExtra("files");
+                if (strings == null) return List.of();
+                return AndroidSupporter.streamToList(Stream.of(strings).map(s -> new File(s).getAbsoluteFile()));
+            }
+        }, files -> {
+            HLogManager.getInstance("ClientLogger").log(HLogLevel.FAULT, files);
+            if (files.isEmpty()) return;
 //                Main.runOnNewBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
 //                    // TODO: serialize uploading task.
 //                    final String filename;
@@ -636,29 +666,10 @@ public class PageFile implements ActivityMainChooser.MainPage {
 //                            }
 //                        }
 //                    }
-                HLogManager.getInstance("ClientLogger").log(HLogLevel.FAULT, uri);
-            });
-            final Consumer<String> uploadFile = type -> {
-                if (!clickable.compareAndSet(true, false)) return;
-                uploader.cancel();
-                PermissionsHelper.getPermission(this.activity, Manifest.permission.READ_EXTERNAL_STORAGE, success -> {
-                    if (!success.booleanValue())
-                        Main.showToast(this.activity, R.string.toast_no_read_permissions);
-                    launcher.launch(type);
-                    launcher.unregister();
-                });
-            }; // TODO: internal file chooser.
-            upload.pageFileUploadFile.setOnClickListener(v -> uploadFile.accept("*/*"));
-            upload.pageFileUploadFileText.setOnClickListener(v -> upload.pageFileUploadFile.performClick());
-            upload.pageFileUploadPicture.setOnClickListener(v -> uploadFile.accept("image/*"));
-            upload.pageFileUploadPictureText.setOnClickListener(v -> upload.pageFileUploadPicture.performClick());
-            upload.pageFileUploadVideo.setOnClickListener(v -> uploadFile.accept("video/*"));
-            upload.pageFileUploadVideoText.setOnClickListener(v -> upload.pageFileUploadVideo.performClick());
-            uploader.show();
-        });
+        }));
     }
 
-//    @Override
+    //    @Override
 //    public boolean onActivityResult(final int requestCode, final int resultCode, final @Nullable Intent data) {
 //        if (resultCode == Activity.RESULT_OK && requestCode == "SelectFiles".hashCode() && data != null) {
 //            final Collection<Uri> uris = new ArrayList<>();
