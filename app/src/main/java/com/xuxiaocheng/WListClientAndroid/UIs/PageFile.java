@@ -214,12 +214,13 @@ public class PageFile implements ActivityMainChooser.MainPage {
                 Main.runOnBackgroundThread(PageFile.this.activity, HExceptionWrapper.wrapRunnable(() -> {
                     final VisibleFilesListInformation list;
                     (isDown ? noMoreDown : noMoreUp).set(false); // prevent retry forever when server error.
+                    final int limit;
                     Main.runOnUiThread(PageFile.this.activity, () -> PageFile.this.listLoadingAnimation(true, 0, 0));
                     try {
                         final ClientConfiguration configuration = ClientConfigurationSupporter.get();
                         final Options.FilterPolicy filter = ClientConfigurationSupporter.filterPolicy(configuration);
                         final LinkedHashMap<VisibleFileInformation.Order, Options.OrderDirection> orders = ClientConfigurationSupporter.fileOrders(configuration);
-                        final int limit = ClientConfigurationSupporter.limitPerPage(configuration);
+                        limit = ClientConfigurationSupporter.limitPerPage(configuration);
                         final int need = isDown ? limit : Math.toIntExact(Math.min(loadedUp.get(), limit));
                         list = FilesAssistant.list(PageFile.this.address(), PageFile.this.username(), location, filter, orders,
                                 isDown ? loadedDown.getAndAdd(need) : loadedUp.addAndGet(-need), need, Main.ClientExecutors, s -> {
@@ -241,7 +242,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
                         return;
                     }
                     if (isDown)
-                        noMoreDown.set(FilesListInformationGetter.informationList(list).isEmpty());
+                        noMoreDown.set(FilesListInformationGetter.informationList(list).size() < limit);
                     else
                         noMoreUp.set(loadedUp.get() <= 0);
                     Main.runOnUiThread(PageFile.this.activity, () -> {
@@ -631,65 +632,39 @@ public class PageFile implements ActivityMainChooser.MainPage {
                 // TODO: serialize uploading task.
                 HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Uploading files.",
                         ParametersMap.create().add("address", this.address()).add("location", location).add("files", files));
-//                final UnionPair<UnionPair<VisibleFileInformation, String>, FailureReason> request;
-//                try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address)) {
-//                    request = OperateFilesHelper.requestUploadFile(client, TokenManager.getToken(this.address), record.location, filename, size, md5, Options.DuplicatePolicy.KEEP);
-//                    if (request.isFailure()) // TODO
-//                        throw new RuntimeException(FailureReason.handleFailureReason(request.getE()));
-//                    if (request.getT().isFailure()) {
-//                        final String id = request.getT().getE();
-//                        final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(NetworkTransmission.FileTransferBufferSize, NetworkTransmission.FileTransferBufferSize);
-//                        try (final InputStream stream = new BufferedInputStream(this.activity.getContentResolver().openInputStream(uri))) {
-//                            int chunk = 0;
-//                            while (true) {
-//                                buffer.writeBytes(stream, NetworkTransmission.FileTransferBufferSize);
-//                                final UnionPair<VisibleFileInformation, Boolean> result = OperateFilesHelper.uploadFile(client, TokenManager.getToken(this.address), id, chunk++, buffer.retain());
-//                                if (result == null || result.isSuccess() || !result.getE().booleanValue() || stream.available() == 0)
-//                                    break;
-//                                buffer.clear();
-//                            }
-//                        } finally {
-//                            buffer.release();
-//                        }
-//                    }
+                for (final File file: files) {
+                    if (!file.isFile() || !file.canRead())
+                        continue;
+                    final AlertDialog[] loader = new AlertDialog[1];
+                    Main.runOnUiThread(this.activity, () -> {
+                        final ImageView loading = new ImageView(this.activity);
+                        loading.setImageResource(R.mipmap.page_file_loading);
+                        PageFile.setLoading(loading);
+                        loader[0] = new AlertDialog.Builder(this.activity).setTitle(file.getName()).setCancelable(false).show();
+                        this.listLoadingAnimation(true, 0, 0);
+                    });
+                    try {
+                        final ClientConfiguration configuration = ClientConfigurationSupporter.get();
+                        final Options.DuplicatePolicy policy = ClientConfigurationSupporter.duplicatePolicy(configuration);
+                        FilesAssistant.upload(this.address(), this.username(), file, policy, location, c -> true, s -> { // TODO
+                            long current = 0, total = 0;
+                            for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
+                                current += pair.getFirst().longValue();
+                                total += pair.getSecond().longValue();
+                            }
+                            final long c = current, t = total;
+                            Main.runOnUiThread(PageFile.this.activity, () -> PageFile.this.listLoadingAnimation(true, c, t));
+                        });
+                    } finally {
+                        Main.runOnUiThread(this.activity, () -> {
+                            loader[0].cancel();
+                            this.listLoadingAnimation(false, 0, 0);
+                        });
+                    }
+                }
             }));
         }));
     }
-
-    //    @Override
-//    public boolean onActivityResult(final int requestCode, final int resultCode, final @Nullable Intent data) {
-//        if (resultCode == Activity.RESULT_OK && requestCode == "SelectFiles".hashCode() && data != null) {
-//            final Collection<Uri> uris = new ArrayList<>();
-//            if (data.getData() != null)
-//                uris.add(data.getData());
-//            else {
-//                final ClipData clipData = data.getClipData();
-//                for (int i = 0; i < clipData.getItemCount(); ++i)
-//                    uris.add(clipData.getItemAt(i).getUri());
-//            }
-//            final ImageView loading = new ImageView(this.activity);
-//            loading.setImageResource(R.mipmap.page_file_loading);
-//            PageFile.setLoading(loading);
-//            final AlertDialog dialog = new AlertDialog.Builder(this.activity)
-//                    .setTitle(R.string.page_file_upload_file).setView(loading).setCancelable(false).show();
-//            Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
-//                final CountDownLatch latch = new CountDownLatch(uris.size());
-//                for (final Uri uri: uris)
-//            }, latch::countDown));
-//                latch.await();
-//                Main.runOnUiThread(this.activity, () -> {
-//                    dialog.cancel();
-//                    Main.showToast(this.activity, R.string.page_file_upload_success_file);
-//                    // TODO: auto add.
-//                    final CachedStackRecord record = this.locationStack.getFirst(); // .peek();
-//                    this.popFileList();
-//                    this.pushFileList(record.name, record.location);
-//                });
-//            }));
-//            return true;
-//        }
-//        return false;
-//    }
 
     @Override
     public boolean onBackPressed() {

@@ -108,7 +108,7 @@ public class ActivityFileChooser extends AppCompatActivity {
             final List<File> files;
             try (final Stream<Path> stream = Files.list(root.toPath())) {
                 files = AndroidSupporter.streamToList(stream.map(Path::toFile)
-                        .filter(f -> f.isDirectory() || this.pattern.getInstance().matcher(f.getName()).matches())
+                        .filter(f -> f.isDirectory() || this.pattern.getInstance().matcher(f.getName()).find())
                         .sorted(Comparator.comparing(File::isDirectory).reversed().thenComparing(File::getName)));
             }
             Main.runOnUiThread(this, () -> adapter.addDataRange(files));
