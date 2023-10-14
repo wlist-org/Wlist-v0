@@ -20,7 +20,6 @@ import com.xuxiaocheng.WList.Commons.Beans.VisibleUserInformation;
 import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
-import com.xuxiaocheng.WList.Commons.Utils.I18NUtil;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
@@ -244,7 +243,12 @@ public final class BroadcastAssistant {
             new Thread(HExceptionWrapper.wrapRunnable(() -> {
                 boolean flag = true;
                 try (client) {
-                    client.open();
+                    try {
+                        client.open();
+                    } catch (final IOException exception) {
+                        flag = false;
+                        throw exception;
+                    }
                     OperateServerHelper.setBroadcastMode(client, true);
                     while (client.isActive()) {
                         final UnionPair<Pair.ImmutablePair<OperationType, ByteBuf>, Pair.ImmutablePair<String, String>> pair = OperateServerHelper.waitBroadcast(client);
@@ -261,10 +265,6 @@ public final class BroadcastAssistant {
                             }
                         })).addListener(MiscellaneousUtil.exceptionListener());
                     }
-                } catch (final IOException exception) {
-                    if (!exception.getMessage().equals(I18NUtil.get("client.network.closed_client", address)))
-                        throw exception;
-                    flag = false;
                 } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                     HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
                 } finally {
