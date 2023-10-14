@@ -17,12 +17,18 @@ import java.util.concurrent.TimeUnit;
 public final class LanzouConfiguration extends StorageConfiguration {
     private final @NotNull OkHttpClient httpClient = HttpNetworkHelper.newHttpClientBuilder()
             .addNetworkInterceptor(new HttpNetworkHelper.FrequencyControlInterceptor(
-                    new HttpNetworkHelper.FrequencyControlPolicy(3, 1, TimeUnit.SECONDS),
+                    new HttpNetworkHelper.FrequencyControlPolicy(5, 1, TimeUnit.SECONDS),
                     HttpNetworkHelper.defaultFrequencyControlPolicyPerMinute()
             )).build();
 
     @Override
     public @NotNull OkHttpClient getHttpClient() {
+        return this.httpClient;
+    }
+
+    @SuppressWarnings("SuspiciousGetterSetter")
+    @Override
+    public @NotNull OkHttpClient getFileClient() {
         return this.httpClient;
     }
 
