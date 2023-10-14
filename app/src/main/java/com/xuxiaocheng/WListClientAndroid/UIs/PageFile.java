@@ -67,7 +67,6 @@ import org.jetbrains.annotations.Nullable;
 import java.io.File;
 import java.net.InetSocketAddress;
 import java.text.MessageFormat;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.LinkedHashMap;
@@ -303,9 +302,10 @@ public class PageFile implements ActivityMainChooser.MainPage {
             final PageFileOptionBinding optionBinding = PageFileOptionBinding.inflate(this.activity.getLayoutInflater());
             optionBinding.pageFileOptionName.setText(FileInformationGetter.name(information));
             final long size = FileInformationGetter.size(information);
-            optionBinding.pageFileOptionSize.setText(size < 1 ? "unknown" : String.valueOf(size));
-            optionBinding.pageFileOptionCreate.setText(FileInformationGetter.createTimeString(information, DateTimeFormatter.ISO_DATE_TIME, "unknown"));
-            optionBinding.pageFileOptionUpdate.setText(FileInformationGetter.updateTimeString(information, DateTimeFormatter.ISO_DATE_TIME, "unknown"));
+            final String unknown = this.activity.getString(R.string.unknown);
+            optionBinding.pageFileOptionSize.setText(size < 0 ? unknown : String.valueOf(size));
+            optionBinding.pageFileOptionCreate.setText(Objects.requireNonNullElse(ViewUtil.format(FileInformationGetter.createTime(information)), unknown));
+            optionBinding.pageFileOptionUpdate.setText(Objects.requireNonNullElse(ViewUtil.format(FileInformationGetter.updateTime(information)), unknown));
             final AlertDialog modifier = new AlertDialog.Builder(this.activity)
                     .setTitle(R.string.page_file_option).setView(optionBinding.getRoot())
                     .setPositiveButton(R.string.cancel, null).create();

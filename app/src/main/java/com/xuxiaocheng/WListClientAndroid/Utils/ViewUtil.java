@@ -3,8 +3,13 @@ package com.xuxiaocheng.WListClientAndroid.Utils;
 import android.widget.ImageView;
 import android.widget.TextView;
 import com.xuxiaocheng.WListClientAndroid.R;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.Objects;
 
@@ -36,5 +41,11 @@ public final class ViewUtil {
             case "zip", "7z", "rar", "gz", "tar" -> R.mipmap.page_file_image_zip;
             default -> R.mipmap.page_file_image_file;
         });
+    }
+
+    @Contract("null -> null; !null -> !null")
+    public static @Nullable String format(final @Nullable ZonedDateTime time) {
+        if (time == null) return null;
+        return time.toOffsetDateTime().atZoneSameInstant(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.getDefault()));
     }
 }

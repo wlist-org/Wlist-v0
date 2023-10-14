@@ -12,7 +12,6 @@ import com.xuxiaocheng.WListClientAndroid.Utils.ViewUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 import java.util.function.Consumer;
 
@@ -39,7 +38,7 @@ class PageFileViewHolder extends EnhancedRecyclerViewAdapter.WrappedViewHolder<C
         this.itemView.setOnClickListener(v -> this.clicker.accept(information)); // TODO: select on long click.
         ViewUtil.setFileImage(this.image, FileInformationGetter.isDirectory(information), FileInformationGetter.name(information));
         this.name.setText(FileInformationGetter.name(information));
-        this.tips.setText(FileInformationGetter.updateTimeString(information, DateTimeFormatter.ISO_DATE_TIME, "unknown").replace('T', ' '));
+        this.tips.setText(Objects.requireNonNullElse(ViewUtil.format(FileInformationGetter.updateTime(information)), this.image.getContext().getString(R.string.unknown)));
         this.option.setOnClickListener(v -> this.listener.accept(information));
     }
 
