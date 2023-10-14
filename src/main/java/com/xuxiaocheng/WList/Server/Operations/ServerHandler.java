@@ -42,7 +42,7 @@ public interface ServerHandler {
     AtomicBoolean logOperation = new AtomicBoolean(true);
 
     static void logOperation(final @NotNull Channel channel, final @NotNull OperationType operation, final @Nullable UnionPair<UserInformation, MessageProto> user, final @Nullable Supplier<? extends @NotNull ParametersMap> parameters) {
-        if (ServerHandler.logOperation.get() && HLog.getInstance("ServerLogger").getLevel() >= HLogLevel.DEBUG.getLevel())
+        if (ServerHandler.logOperation.get() && HLog.getInstance("ServerLogger").getLevel() < HLogLevel.DEBUG.getLevel())
             HLog.getInstance("ServerLogger").log(HLogLevel.DEBUG, "Operate: ", channel.remoteAddress(), ", type: ", operation,
                     (Supplier<String>) () -> user == null ? "" : user.isSuccess() ?
                             ServerHandler.user(null, user.getT()) : ". Refused because " + user.getE().state(), ".",

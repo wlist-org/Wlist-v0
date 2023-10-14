@@ -60,7 +60,7 @@ public final class WList {
     }
 
     public static final @NotNull HInitializer<File> RuntimePath = new HInitializer<>("RuntimePath");
-    private static @NotNull HLog logger = HLog.DefaultLogger;
+    private static HLog logger;
 
     private static void handleArgs(final @NotNull String @NotNull ... args) {
         File runtimePath = new File("").getAbsoluteFile();

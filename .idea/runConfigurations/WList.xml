@@ -2,6 +2,7 @@
   <configuration default="false" name="WList" type="Application" factoryName="Application" nameIsGenerated="true">
     <option name="MAIN_CLASS_NAME" value="com.xuxiaocheng.WList.WList" />
     <module name="WList.main" />
+    <option name="PROGRAM_PARAMETERS" value="-Debug" />
     <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/run" />
     <extension name="coverage">
       <pattern>
