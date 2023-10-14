@@ -14,17 +14,22 @@ import java.io.File;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 class ActivityFileChooserViewHolder extends EnhancedRecyclerViewAdapter.WrappedViewHolder<ConstraintLayout, File> {
     protected final @NotNull BiConsumer<@NotNull File, @NotNull Boolean> choose;
-    protected final @NotNull AtomicBoolean chose = new AtomicBoolean(false);
+    protected final @NotNull Consumer<@NotNull File> directory;
+    protected final @NotNull Predicate<@NotNull File> isChose;
     protected final @NotNull ImageView image;
     protected final @NotNull TextView name;
     protected final @NotNull ImageView chooser;
 
-    protected ActivityFileChooserViewHolder(final @NotNull ConstraintLayout cell, final @NotNull BiConsumer<@NotNull File, @NotNull Boolean> choose) {
+    protected ActivityFileChooserViewHolder(final @NotNull ConstraintLayout cell, final @NotNull BiConsumer<@NotNull File, @NotNull Boolean> choose, final @NotNull Consumer<@NotNull File> directory, final @NotNull Predicate<@NotNull File> isChose) {
         super(cell);
         this.choose = choose;
+        this.directory = directory;
+        this.isChose = isChose;
         this.image = (ImageView) cell.getViewById(R.id.activity_file_chooser_cell_image);
         this.name = (TextView) cell.getViewById(R.id.activity_file_chooser_cell_name);
         this.chooser = (ImageView) cell.getViewById(R.id.activity_file_chooser_cell_chooser);
@@ -35,16 +40,22 @@ class ActivityFileChooserViewHolder extends EnhancedRecyclerViewAdapter.WrappedV
         ViewUtil.setFileImage(this.image, file.isDirectory(), file.getName());
         this.name.setText(file.getName());
         if (file.isDirectory()) {
+            this.image.setOnClickListener(v -> this.directory.accept(file));
             this.chooser.setVisibility(View.GONE);
             this.chooser.setOnClickListener(null);
         } else {
+            this.image.setOnClickListener(null);
             this.chooser.setVisibility(View.VISIBLE);
+            final AtomicBoolean chose = new AtomicBoolean(this.isChose.test(file));
+            this.chooser.setImageResource(chose.get() ? R.mipmap.app_logo_round : R.mipmap.app_logo);
             this.chooser.setOnClickListener(v -> {
-                if (this.chose.get()) {
-                    this.chose.set(false);
+                if (chose.get()) {
+                    chose.set(false);
+                    this.chooser.setImageResource(R.mipmap.app_logo);
                     this.choose.accept(file, false);
                 } else {
-                    this.chose.set(true);
+                    chose.set(true);
+                    this.chooser.setImageResource(R.mipmap.app_logo_round);
                     this.choose.accept(file, true);
                 }
             });

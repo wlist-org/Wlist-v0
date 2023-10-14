@@ -7,7 +7,6 @@ import android.view.ViewGroup;
 import androidx.annotation.UiThread;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
@@ -85,19 +84,26 @@ public class ActivityFileChooser extends AppCompatActivity {
 
     @UiThread
     protected void setList(final @NotNull File root) {
-        final RecyclerView list = this.activity.getInstance().activityFileChooserContentList;
+        final ActivityFileChooserBinding activity = this.activity.getInstance();
+        final File parent = root.getParentFile();
+        activity.activityFileChooserBacker.setOnClickListener(v -> {
+            if (parent == null || Objects.requireNonNullElse(parent.list(), EmptyArrays.EMPTY_STRINGS).length == 0)
+                this.finish();
+            else
+                this.setList(parent);
+        });
         final EnhancedRecyclerViewAdapter<File, ActivityFileChooserViewHolder> adapter = new EnhancedRecyclerViewAdapter<>() {
             @Override
             protected @NotNull ActivityFileChooserViewHolder createViewHolder(final @NotNull ViewGroup parent) {
-                return new ActivityFileChooserViewHolder(EnhancedRecyclerViewAdapter.buildView(ActivityFileChooser.this.getLayoutInflater(), R.layout.activity_file_chooser_cell, list), (file, chose) -> {
+                return new ActivityFileChooserViewHolder(EnhancedRecyclerViewAdapter.buildView(ActivityFileChooser.this.getLayoutInflater(), R.layout.activity_file_chooser_cell, activity.activityFileChooserContentList), (file, chose) -> {
                     if (chose.booleanValue())
                         ActivityFileChooser.this.files.add(file);
                     else
                         ActivityFileChooser.this.files.remove(file);
-                });
+                }, ActivityFileChooser.this::setList, ActivityFileChooser.this.files::contains);
             }
         };
-        list.setAdapter(adapter);
+        activity.activityFileChooserContentList.setAdapter(adapter);
         Main.runOnBackgroundThread(this, HExceptionWrapper.wrapRunnable(() -> {
             final List<File> files;
             try (final Stream<Path> stream = Files.list(root.toPath())) {

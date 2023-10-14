@@ -73,6 +73,7 @@ import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -498,7 +499,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
                 }
                 case MotionEvent.ACTION_UP -> {
                     if (scrolling.get())
-                        PageFile.this.activity.getSharedPreferences("android.page.uploader_position", Context.MODE_PRIVATE).edit()
+                        PageFile.this.activity.getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE).edit()
                                 .putFloat("x", v.getX()).putFloat("y", v.getY()).apply();
                     else return v.performClick();
                 }
@@ -514,13 +515,14 @@ public class PageFile implements ActivityMainChooser.MainPage {
             } else {
                 final DisplayMetrics displayMetrics = this.activity.getResources().getDisplayMetrics();
                 x = preferences.getFloat("x", (displayMetrics.widthPixels - page.pageFileContentUploader.getWidth()) * 0.7f);
-                y = preferences.getFloat("y", displayMetrics.heightPixels * 0.6f);
+                y = preferences.getFloat("y", displayMetrics.heightPixels * 0.7f);
                 preferences.edit().putFloat("x", x).putFloat("y", y).apply();
             }
             Main.runOnUiThread(this.activity, () -> {
                 page.pageFileContentUploader.setX(x);
                 page.pageFileContentUploader.setY(y);
-            });
+                page.pageFileContentUploader.setVisibility(View.VISIBLE);
+            }, 300, TimeUnit.MILLISECONDS);
         });
         page.pageFileContentUploader.setOnClickListener(u -> {
             if (this.stacks.isEmpty()) { // Root selector
@@ -550,7 +552,6 @@ public class PageFile implements ActivityMainChooser.MainPage {
                         }).show();
                 return;
             }
-            final FileLocation location = this.currentLocation.get();
             final PageFileUploadBinding upload = PageFileUploadBinding.inflate(this.activity.getLayoutInflater());
             final AlertDialog uploader = new AlertDialog.Builder(this.activity)
                     .setTitle(R.string.page_file_upload).setView(upload.getRoot())
@@ -559,6 +560,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
             upload.pageFileUploadDirectory.setOnClickListener(v -> {
                 if (!clickable.compareAndSet(true, false)) return;
                 uploader.cancel();
+                final FileLocation location = this.currentLocation.get();
                 final PageFileEditorBinding editor = PageFileEditorBinding.inflate(this.activity.getLayoutInflater());
                 editor.pageFileEditor.setText(R.string.page_file_upload_directory_name);
                 editor.pageFileEditor.setHint(R.string.page_file_upload_directory_hint);
@@ -623,49 +625,34 @@ public class PageFile implements ActivityMainChooser.MainPage {
                 return AndroidSupporter.streamToList(Stream.of(strings).map(s -> new File(s).getAbsoluteFile()));
             }
         }, files -> {
-            HLogManager.getInstance("ClientLogger").log(HLogLevel.FAULT, files);
             if (files.isEmpty()) return;
-//                Main.runOnNewBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
-//                    // TODO: serialize uploading task.
-//                    final String filename;
-//                    final long size;
-//                    try (final Cursor cursor = this.activity.getContentResolver().query(uri, new String[] {OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE}, null, null, null)) {
-//                        if (cursor == null || !cursor.moveToFirst())
-//                            return;
-//                        filename = cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME));
-//                        size = cursor.getLong(cursor.getColumnIndexOrThrow(OpenableColumns.SIZE));
-//                    }
-//                    final MessageDigest digester = HMessageDigestHelper.MD5.getDigester();
-//                    try (final InputStream stream = new BufferedInputStream(this.activity.getContentResolver().openInputStream(uri))) {
-//                        HMessageDigestHelper.updateMessageDigest(digester, stream);
-//                    }
-//                    final String md5 = HMessageDigestHelper.MD5.digest(digester);
-//                    final CachedStackRecord record = this.locationStack.getFirst(); // .peek();
-//                    HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Uploading file.",
-//                            ParametersMap.create().add("address", this.address).add("location", record.location).add("uri", uri)
-//                                    .add("filename", filename).add("size", size).add("md5", md5));
-//                    final UnionPair<UnionPair<VisibleFileInformation, String>, FailureReason> request;
-//                    try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address)) {
-//                        request = OperateFilesHelper.requestUploadFile(client, TokenManager.getToken(this.address), record.location, filename, size, md5, Options.DuplicatePolicy.KEEP);
-//                        if (request.isFailure()) // TODO
-//                            throw new RuntimeException(FailureReason.handleFailureReason(request.getE()));
-//                        if (request.getT().isFailure()) {
-//                            final String id = request.getT().getE();
-//                            final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(NetworkTransmission.FileTransferBufferSize, NetworkTransmission.FileTransferBufferSize);
-//                            try (final InputStream stream = new BufferedInputStream(this.activity.getContentResolver().openInputStream(uri))) {
-//                                int chunk = 0;
-//                                while (true) {
-//                                    buffer.writeBytes(stream, NetworkTransmission.FileTransferBufferSize);
-//                                    final UnionPair<VisibleFileInformation, Boolean> result = OperateFilesHelper.uploadFile(client, TokenManager.getToken(this.address), id, chunk++, buffer.retain());
-//                                    if (result == null || result.isSuccess() || !result.getE().booleanValue() || stream.available() == 0)
-//                                        break;
-//                                    buffer.clear();
-//                                }
-//                            } finally {
-//                                buffer.release();
+            Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
+                final FileLocation location = this.currentLocation.get();
+                // TODO: serialize uploading task.
+                HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Uploading files.",
+                        ParametersMap.create().add("address", this.address()).add("location", location).add("files", files));
+//                final UnionPair<UnionPair<VisibleFileInformation, String>, FailureReason> request;
+//                try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address)) {
+//                    request = OperateFilesHelper.requestUploadFile(client, TokenManager.getToken(this.address), record.location, filename, size, md5, Options.DuplicatePolicy.KEEP);
+//                    if (request.isFailure()) // TODO
+//                        throw new RuntimeException(FailureReason.handleFailureReason(request.getE()));
+//                    if (request.getT().isFailure()) {
+//                        final String id = request.getT().getE();
+//                        final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(NetworkTransmission.FileTransferBufferSize, NetworkTransmission.FileTransferBufferSize);
+//                        try (final InputStream stream = new BufferedInputStream(this.activity.getContentResolver().openInputStream(uri))) {
+//                            int chunk = 0;
+//                            while (true) {
+//                                buffer.writeBytes(stream, NetworkTransmission.FileTransferBufferSize);
+//                                final UnionPair<VisibleFileInformation, Boolean> result = OperateFilesHelper.uploadFile(client, TokenManager.getToken(this.address), id, chunk++, buffer.retain());
+//                                if (result == null || result.isSuccess() || !result.getE().booleanValue() || stream.available() == 0)
+//                                    break;
+//                                buffer.clear();
 //                            }
+//                        } finally {
+//                            buffer.release();
 //                        }
 //                    }
+            }));
         }));
     }
 

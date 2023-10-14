@@ -133,6 +133,7 @@ public final class PermissionsHelper {
         protected void onActivityResult(final int requestCode, final int resultCode, final Intent data) {
             super.onActivityResult(requestCode, resultCode, data);
             assert requestCode == Math.abs("MANAGE_ALL_FILES_ACCESS_PERMISSION".hashCode());
+            this.finish();
             PermissionsHelper.callback.accept(Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager());
         }
     }
