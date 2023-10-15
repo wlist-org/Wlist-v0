@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListClientAndroid.UIs;
+package com.xuxiaocheng.WListAndroid.UIs;
 
 import android.app.Activity;
 import android.content.ComponentName;
@@ -19,10 +19,10 @@ import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.AndroidSupports.ClientConfigurationSupporter;
 import com.xuxiaocheng.WList.Client.Assistants.BroadcastAssistant;
 import com.xuxiaocheng.WList.Client.WListClientManager;
-import com.xuxiaocheng.WListClientAndroid.Main;
-import com.xuxiaocheng.WListClientAndroid.R;
-import com.xuxiaocheng.WListClientAndroid.Services.InternalServer.InternalServerService;
-import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
+import com.xuxiaocheng.WListAndroid.Main;
+import com.xuxiaocheng.WListAndroid.R;
+import com.xuxiaocheng.WListAndroid.Services.InternalServer.InternalServerService;
+import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListClientAndroid.Services.InternalServer;
+package com.xuxiaocheng.WListAndroid.Services.InternalServer;
 
 import android.app.Service;
 import android.content.Intent;
@@ -10,8 +10,8 @@ import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.Rust.NativeUtil;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.WList;
-import com.xuxiaocheng.WListClientAndroid.Main;
-import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
+import com.xuxiaocheng.WListAndroid.Main;
+import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
 import io.netty.util.internal.PlatformDependent;
 import org.jetbrains.annotations.NotNull;
 

@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListClientAndroid.Utils;
+package com.xuxiaocheng.WListAndroid.Utils;
 
 import android.content.Context;
 import android.util.Log;

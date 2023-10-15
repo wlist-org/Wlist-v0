@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListClientAndroid.Utils;
+package com.xuxiaocheng.WListAndroid.Utils;
 
 import android.view.View;
 import android.view.ViewGroup;

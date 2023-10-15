@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListClientAndroid.Services.InternalServer;
+package com.xuxiaocheng.WListAndroid.Services.InternalServer;
 
 import android.os.Binder;
 import android.os.IBinder;

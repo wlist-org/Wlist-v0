@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListClientAndroid.Helpers;
+package com.xuxiaocheng.WListAndroid.Helpers;
 
 import android.Manifest;
 import android.app.Activity;
@@ -11,7 +11,7 @@ import androidx.annotation.MainThread;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
-import com.xuxiaocheng.WListClientAndroid.Main;
+import com.xuxiaocheng.WListAndroid.Main;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

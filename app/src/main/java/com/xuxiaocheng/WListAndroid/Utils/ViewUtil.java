@@ -1,8 +1,8 @@
-package com.xuxiaocheng.WListClientAndroid.Utils;
+package com.xuxiaocheng.WListAndroid.Utils;
 
 import android.widget.ImageView;
 import android.widget.TextView;
-import com.xuxiaocheng.WListClientAndroid.R;
+import com.xuxiaocheng.WListAndroid.R;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

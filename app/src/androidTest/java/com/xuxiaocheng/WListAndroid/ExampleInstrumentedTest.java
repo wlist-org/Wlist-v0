@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListClientAndroid;
+package com.xuxiaocheng.WListAndroid;
 
 import android.content.Context;
 import androidx.test.ext.junit.runners.AndroidJUnit4;

@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListClientAndroid;
+package com.xuxiaocheng.WListAndroid;
 
 import org.junit.Assert;
 import org.junit.Test;

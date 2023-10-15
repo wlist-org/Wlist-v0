@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListClientAndroid.Helpers;
+package com.xuxiaocheng.WListAndroid.Helpers;
 
 import android.content.Context;
 import android.content.SharedPreferences;

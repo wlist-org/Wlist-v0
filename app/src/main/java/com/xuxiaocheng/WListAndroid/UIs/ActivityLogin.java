@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListClientAndroid.UIs;
+package com.xuxiaocheng.WListAndroid.UIs;
 
 import android.content.ComponentName;
 import android.content.Context;
@@ -16,13 +16,13 @@ import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Client.Assistants.TokenAssistant;
 import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
-import com.xuxiaocheng.WListClientAndroid.Helpers.PasswordHelper;
-import com.xuxiaocheng.WListClientAndroid.Main;
-import com.xuxiaocheng.WListClientAndroid.R;
-import com.xuxiaocheng.WListClientAndroid.Services.InternalServer.InternalServerBinder;
-import com.xuxiaocheng.WListClientAndroid.Services.InternalServer.InternalServerService;
-import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
-import com.xuxiaocheng.WListClientAndroid.databinding.ActivityLoginBinding;
+import com.xuxiaocheng.WListAndroid.Helpers.PasswordHelper;
+import com.xuxiaocheng.WListAndroid.Main;
+import com.xuxiaocheng.WListAndroid.R;
+import com.xuxiaocheng.WListAndroid.Services.InternalServer.InternalServerBinder;
+import com.xuxiaocheng.WListAndroid.Services.InternalServer.InternalServerService;
+import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
+import com.xuxiaocheng.WListAndroid.databinding.ActivityLoginBinding;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

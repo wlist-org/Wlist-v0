@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListClientAndroid.UIs;
+package com.xuxiaocheng.WListAndroid.UIs;
 
 import android.view.View;
 import android.widget.ImageView;
@@ -6,9 +6,9 @@ import android.widget.TextView;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import com.xuxiaocheng.WList.AndroidSupports.FileInformationGetter;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
-import com.xuxiaocheng.WListClientAndroid.R;
-import com.xuxiaocheng.WListClientAndroid.Utils.EnhancedRecyclerViewAdapter;
-import com.xuxiaocheng.WListClientAndroid.Utils.ViewUtil;
+import com.xuxiaocheng.WListAndroid.R;
+import com.xuxiaocheng.WListAndroid.Utils.EnhancedRecyclerViewAdapter;
+import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListClientAndroid.UIs;
+package com.xuxiaocheng.WListAndroid.UIs;
 
 import android.app.Activity;
 import android.widget.Toast;
@@ -11,10 +11,10 @@ import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.WList.Server.Storage.Providers.Real.Lanzou.LanzouConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
-import com.xuxiaocheng.WListClientAndroid.Main;
-import com.xuxiaocheng.WListClientAndroid.R;
-import com.xuxiaocheng.WListClientAndroid.Utils.ViewUtil;
-import com.xuxiaocheng.WListClientAndroid.databinding.PageFileProviderLanzouBinding;
+import com.xuxiaocheng.WListAndroid.Main;
+import com.xuxiaocheng.WListAndroid.R;
+import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
+import com.xuxiaocheng.WListAndroid.databinding.PageFileProviderLanzouBinding;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

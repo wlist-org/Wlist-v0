@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListClientAndroid.UIs;
+package com.xuxiaocheng.WListAndroid.UIs;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -51,17 +51,17 @@ import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
-import com.xuxiaocheng.WListClientAndroid.Helpers.PermissionsHelper;
-import com.xuxiaocheng.WListClientAndroid.Main;
-import com.xuxiaocheng.WListClientAndroid.R;
-import com.xuxiaocheng.WListClientAndroid.Utils.EmptyRecyclerAdapter;
-import com.xuxiaocheng.WListClientAndroid.Utils.EnhancedRecyclerViewAdapter;
-import com.xuxiaocheng.WListClientAndroid.Utils.HLogManager;
-import com.xuxiaocheng.WListClientAndroid.Utils.ViewUtil;
-import com.xuxiaocheng.WListClientAndroid.databinding.PageFileContentBinding;
-import com.xuxiaocheng.WListClientAndroid.databinding.PageFileEditorBinding;
-import com.xuxiaocheng.WListClientAndroid.databinding.PageFileOptionBinding;
-import com.xuxiaocheng.WListClientAndroid.databinding.PageFileUploadBinding;
+import com.xuxiaocheng.WListAndroid.Helpers.PermissionsHelper;
+import com.xuxiaocheng.WListAndroid.Main;
+import com.xuxiaocheng.WListAndroid.R;
+import com.xuxiaocheng.WListAndroid.Utils.EmptyRecyclerAdapter;
+import com.xuxiaocheng.WListAndroid.Utils.EnhancedRecyclerViewAdapter;
+import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
+import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
+import com.xuxiaocheng.WListAndroid.databinding.PageFileContentBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageFileEditorBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageFileOptionBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageFileUploadBinding;
 import io.netty.util.internal.EmptyArrays;
 import org.jetbrains.annotations.NotNull;
 

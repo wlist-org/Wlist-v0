@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListClientAndroid;
+package com.xuxiaocheng.WListAndroid;
 
 import android.app.Activity;
 import android.app.Application;
