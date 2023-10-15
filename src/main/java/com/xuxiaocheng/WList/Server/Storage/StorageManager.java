@@ -36,7 +36,6 @@ import java.io.InputStream;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.ZonedDateTime;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -118,7 +117,7 @@ public final class StorageManager {
                     try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(configurationFile))) {
                         config = YamlHelper.loadYaml(inputStream);
                     }
-                    final List<String> errors = StorageManager.initializeStorage0(e.getKey(), e.getValue(), config);
+                    final List<Pair.ImmutablePair<String, String>> errors = StorageManager.initializeStorage0(e.getKey(), e.getValue(), config);
                     if (errors != null)
                         StorageManager.logger.log(HLogLevel.ENHANCED, "Errors while initializing storage.", ParametersMap.create()
                                 .add("storage", e.getKey()).add("errors", errors));
@@ -135,7 +134,7 @@ public final class StorageManager {
                 StorageManager.failedStorages.size(), " failed. Totally cost time: ", Duration.between(t1, t2).toMillis() + " ms.");
     }
 
-    private static <C extends StorageConfiguration> @Nullable List<@NotNull String> initializeStorage0(final @NotNull String name, final @NotNull StorageTypes<C> type, final @NotNull @Unmodifiable Map<? super String, Object> config) throws IllegalParametersException, IOException {
+    private static <C extends StorageConfiguration> @Nullable List<Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> initializeStorage0(final @NotNull String name, final @NotNull StorageTypes<C> type, final @NotNull @Unmodifiable Map<? super String, Object> config) throws IllegalParametersException, IOException {
         StorageManager.logger.log(HLogLevel.LESS, "Loading storage:", ParametersMap.create().add("name", name).add("type", type));
         StorageManager.failedStorages.remove(name);
         final Pair<StorageTypes<?>, Triad.ImmutableTriad<ProviderInterface<?>, RecyclerInterface<?>, SharerInterface<?>>> triad = Pair.makePair(type, StorageManager.ProviderPlaceholder);
@@ -146,13 +145,10 @@ public final class StorageManager {
             final ProviderInterface<C> provider = type.getProvider().get();
             final RecyclerInterface<C> recycler = type.getRecycler().get();
             final SharerInterface<C> sharer = type.getSharer().get();
-            final Collection<Pair.ImmutablePair<String, String>> errors = new LinkedList<>();
+            final List<Pair.ImmutablePair<String, String>> errors = new LinkedList<>();
             configuration.load(config, errors);
-            YamlHelper.throwErrors(errors);
-            configuration.setName(name);
-            final List<String> e = configuration.check();
-            if (!e.isEmpty())
-                return e;
+            if (!errors.isEmpty())
+                return errors;
             try {
                 provider.initialize(configuration);
                 recycler.initialize(configuration);
@@ -193,14 +189,14 @@ public final class StorageManager {
         return false;
     }
 
-    public static @Nullable List<@NotNull String> addStorage(final @NotNull String name, final @NotNull StorageTypes<?> type, final @Nullable Map<String, Object> config) throws IOException, IllegalParametersException {
+    public static @Nullable List<Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> addStorage(final @NotNull String name, final @NotNull StorageTypes<?> type, final @Nullable Map<String, Object> config) throws IOException, IllegalParametersException {
         final Map<String, Object> configuration;
         if (config == null)
             try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(StorageManager.getStorageConfigurationFile(name)))) {
                 configuration = YamlHelper.loadYaml(inputStream);
             }
         else configuration = config;
-        final List<String> error = StorageManager.initializeStorage0(name, type, configuration);
+        final List<Pair.ImmutablePair<String, String>> error = StorageManager.initializeStorage0(name, type, configuration);
         if (error != null)
             return error;
         ServerConfiguration.get().providers().put(name, type);

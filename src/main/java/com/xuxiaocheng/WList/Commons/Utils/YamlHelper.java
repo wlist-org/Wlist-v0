@@ -33,7 +33,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
- * @see ServerConfiguration#parse(InputStream)  for example.
+ * @see ServerConfiguration#parse(InputStream) for example.
  */
 public final class YamlHelper {
     private YamlHelper() {

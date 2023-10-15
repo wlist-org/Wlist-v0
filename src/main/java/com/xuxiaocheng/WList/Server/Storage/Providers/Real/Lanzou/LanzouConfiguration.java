@@ -14,7 +14,6 @@ import org.jetbrains.annotations.UnmodifiableView;
 
 import java.time.ZonedDateTime;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -120,18 +119,13 @@ public final class LanzouConfiguration extends StorageConfiguration {
                 o -> YamlHelper.transferBooleanFromStr(o, errors, "skip_username_checker")).booleanValue();
         this.skipFileNameChecker = YamlHelper.getConfig(config, "skip_file_name_checker", this.skipFileNameChecker,
                 o -> YamlHelper.transferBooleanFromStr(o, errors, "skip_file_name_checker")).booleanValue();
-    }
 
-    @Override
-    public @NotNull List<@NotNull String> check() {
-        final List<String> errors = super.check();
         if (!this.skipUsernameChecker && (this.passport.isEmpty() || !ProviderUtil.PhoneNumberPattern.matcher(this.passport).matches()))
-            errors.add(I18NUtil.get("provider.lanzou.configuration.invalid.passport"));
+            errors.add(Pair.ImmutablePair.makeImmutablePair("passport", I18NUtil.get("provider.lanzou.configuration.invalid.passport")));
         if (!this.skipUsernameChecker && (this.password.length() < 6 || 20 < this.password.length()))
-            errors.add(I18NUtil.get("provider.lanzou.configuration.invalid.password"));
+            errors.add(Pair.ImmutablePair.makeImmutablePair("password", I18NUtil.get("provider.lanzou.configuration.invalid.password")));
         if (MiscellaneousUtil.now().isAfter(this.tokenExpire))
             this.token = null;
-        return errors;
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Server.Operations;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
@@ -63,12 +64,15 @@ public final class OperateProvidersHandler {
         }
         assert config != null;
         return () -> {
-            final List<String> errors = StorageManager.addStorage(name, type, config);
+            final List<Pair.ImmutablePair<String, String>> errors = StorageManager.addStorage(name, type, config);
             if (errors != null) {
                 WListServer.ServerChannelHandler.write(channel, new MessageProto(ResponseState.DataError, buf -> {
-                    ByteBufIOUtil.writeVariableLenLong(buf, errors.size());
-                    for (final String error : errors)
-                        ByteBufIOUtil.writeUTF(buf, error);
+                    ByteBufIOUtil.writeUTF(buf, "Configuration");
+                    ByteBufIOUtil.writeVariableLenInt(buf, errors.size());
+                    for (final Pair.ImmutablePair<String, String> error: errors) {
+                        ByteBufIOUtil.writeUTF(buf, error.getFirst());
+                        ByteBufIOUtil.writeUTF(buf, error.getSecond());
+                    }
                     return buf;
                 }));
                 return;

@@ -13,10 +13,8 @@ import org.jetbrains.annotations.UnmodifiableView;
 import java.math.BigInteger;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -51,7 +49,7 @@ public abstract class StorageConfiguration {
     }
 
     protected @NotNull ZonedDateTime createTime = MiscellaneousUtil.now();
-    protected @NotNull ZonedDateTime updateTime = MiscellaneousUtil.now();
+    protected @NotNull ZonedDateTime updateTime = this.createTime;
     protected long rootDirectoryId = 0;
 
     public @NotNull ZonedDateTime getCreateTime() {
@@ -199,19 +197,16 @@ public abstract class StorageConfiguration {
                 o -> YamlHelper.transferString(o, errors, "image_link"));
         this.vip = YamlHelper.getConfig(config, "vip", this.vip,
                 o -> YamlHelper.transferBooleanFromStr(o, errors, "vip")).booleanValue();
-    }
 
-    public @NotNull List<@NotNull String> check() {
-        final List<String> errors = new ArrayList<>();
+
         if (this.createTime.isAfter(this.updateTime))
-            errors.add(I18NUtil.get("provider.configuration.invalid.time"));
+            errors.add(Pair.ImmutablePair.makeImmutablePair("update_time", I18NUtil.get("provider.configuration.invalid.time")));
         if (this.spaceAll >= 0 && this.spaceGlobalAll >= 0 && this.spaceAll > this.spaceGlobalAll)
-            errors.add(I18NUtil.get("provider.configuration.invalid.space_all"));
+            errors.add(Pair.ImmutablePair.makeImmutablePair("space_all", I18NUtil.get("provider.configuration.invalid.space_all")));
         if (this.spaceUsed >= 0 && this.spaceGlobalUsed >= 0 && this.spaceUsed > this.spaceGlobalUsed)
-            errors.add(I18NUtil.get("provider.configuration.invalid.space_used"));
+            errors.add(Pair.ImmutablePair.makeImmutablePair("space_used", I18NUtil.get("provider.configuration.invalid.space_used")));
         if (this.fileCount >= 0 && this.fileGlobalCount >= 0 && this.fileCount > this.fileGlobalCount)
-            errors.add(I18NUtil.get("provider.configuration.invalid.file_count"));
-        return errors;
+            errors.add(Pair.ImmutablePair.makeImmutablePair("file_count", I18NUtil.get("provider.configuration.invalid.file_count")));
     }
 
     public @NotNull Map<@NotNull String, @NotNull Object> dump() {
