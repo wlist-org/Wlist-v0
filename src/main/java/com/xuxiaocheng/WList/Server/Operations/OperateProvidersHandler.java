@@ -4,6 +4,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.Operations.OperationType;
+import com.xuxiaocheng.WList.Commons.Operations.ResponseState;
 import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
@@ -19,6 +20,7 @@ import io.netty.buffer.ByteBufInputStream;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.InputStream;
+import java.util.List;
 import java.util.Map;
 
 public final class OperateProvidersHandler {
@@ -61,7 +63,16 @@ public final class OperateProvidersHandler {
         }
         assert config != null;
         return () -> {
-            StorageManager.addStorage(name, type, config);
+            final List<String> errors = StorageManager.addStorage(name, type, config);
+            if (errors != null) {
+                WListServer.ServerChannelHandler.write(channel, new MessageProto(ResponseState.DataError, buf -> {
+                    ByteBufIOUtil.writeVariableLenLong(buf, errors.size());
+                    for (final String error : errors)
+                        ByteBufIOUtil.writeUTF(buf, error);
+                    return buf;
+                }));
+                return;
+            }
             BroadcastManager.onProviderInitialized(name);
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
         };

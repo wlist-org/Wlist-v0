@@ -1,8 +1,11 @@
 package com.xuxiaocheng.WList.Server.Storage.Providers.Real.Lanzou;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.WList.Commons.Utils.I18NUtil;
+import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.ProviderUtil;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import okhttp3.OkHttpClient;
 import org.jetbrains.annotations.NotNull;
@@ -11,6 +14,7 @@ import org.jetbrains.annotations.UnmodifiableView;
 
 import java.time.ZonedDateTime;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -96,6 +100,7 @@ public final class LanzouConfiguration extends StorageConfiguration {
         super.name = "lanzou";
         super.maxSizePerFile = 100 << 20;
         super.rootDirectoryId = -1;
+        super.spaceGlobalAll = Long.MAX_VALUE;
         super.load(config, errors);
         this.passport = YamlHelper.getConfig(config, "passport", this.passport,
                 o -> YamlHelper.transferString(o, errors, "passport"));
@@ -115,6 +120,18 @@ public final class LanzouConfiguration extends StorageConfiguration {
                 o -> YamlHelper.transferBooleanFromStr(o, errors, "skip_username_checker")).booleanValue();
         this.skipFileNameChecker = YamlHelper.getConfig(config, "skip_file_name_checker", this.skipFileNameChecker,
                 o -> YamlHelper.transferBooleanFromStr(o, errors, "skip_file_name_checker")).booleanValue();
+    }
+
+    @Override
+    public @NotNull List<@NotNull String> check() {
+        final List<String> errors = super.check();
+        if (!this.skipUsernameChecker && (this.passport.isEmpty() || !ProviderUtil.PhoneNumberPattern.matcher(this.passport).matches()))
+            errors.add(I18NUtil.get("provider.lanzou.configuration.invalid.passport"));
+        if (!this.skipUsernameChecker && (this.password.length() < 6 || 20 < this.password.length()))
+            errors.add(I18NUtil.get("provider.lanzou.configuration.invalid.password"));
+        if (MiscellaneousUtil.now().isAfter(this.tokenExpire))
+            this.token = null;
+        return errors;
     }
 
     @Override

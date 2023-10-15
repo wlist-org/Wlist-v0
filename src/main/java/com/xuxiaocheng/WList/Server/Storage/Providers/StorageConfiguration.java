@@ -1,6 +1,7 @@
 package com.xuxiaocheng.WList.Server.Storage.Providers;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.WList.Commons.Utils.I18NUtil;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
@@ -12,8 +13,10 @@ import org.jetbrains.annotations.UnmodifiableView;
 import java.math.BigInteger;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -71,9 +74,9 @@ public abstract class StorageConfiguration {
         return this.rootDirectoryId;
     }
 
-    protected long spaceAll = 0;
+    protected long spaceAll = -1;
     protected long spaceUsed = -1;
-    protected long spaceGlobalAll = 0;
+    protected long spaceGlobalAll = -1;
     protected long spaceGlobalUsed = -1;
     protected long fileCount = -1;
     protected long fileGlobalCount = -1;
@@ -196,6 +199,19 @@ public abstract class StorageConfiguration {
                 o -> YamlHelper.transferString(o, errors, "image_link"));
         this.vip = YamlHelper.getConfig(config, "vip", this.vip,
                 o -> YamlHelper.transferBooleanFromStr(o, errors, "vip")).booleanValue();
+    }
+
+    public @NotNull List<@NotNull String> check() {
+        final List<String> errors = new ArrayList<>();
+        if (this.createTime.isAfter(this.updateTime))
+            errors.add(I18NUtil.get("provider.configuration.invalid.time"));
+        if (this.spaceAll >= 0 && this.spaceGlobalAll >= 0 && this.spaceAll > this.spaceGlobalAll)
+            errors.add(I18NUtil.get("provider.configuration.invalid.space_all"));
+        if (this.spaceUsed >= 0 && this.spaceGlobalUsed >= 0 && this.spaceUsed > this.spaceGlobalUsed)
+            errors.add(I18NUtil.get("provider.configuration.invalid.space_used"));
+        if (this.fileCount >= 0 && this.fileGlobalCount >= 0 && this.fileCount > this.fileGlobalCount)
+            errors.add(I18NUtil.get("provider.configuration.invalid.file_count"));
+        return errors;
     }
 
     public @NotNull Map<@NotNull String, @NotNull Object> dump() {

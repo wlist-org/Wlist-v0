@@ -16,10 +16,10 @@ import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Commons.Utils.YamlHelper;
 import com.xuxiaocheng.WList.Server.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
-import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
 import com.xuxiaocheng.WList.Server.Storage.Providers.RecyclerInterface;
 import com.xuxiaocheng.WList.Server.Storage.Providers.SharerInterface;
+import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.Nls;
@@ -39,6 +39,7 @@ import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -117,7 +118,10 @@ public final class StorageManager {
                     try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(configurationFile))) {
                         config = YamlHelper.loadYaml(inputStream);
                     }
-                    StorageManager.initializeStorage0(e.getKey(), e.getValue(), config);
+                    final List<String> errors = StorageManager.initializeStorage0(e.getKey(), e.getValue(), config);
+                    if (errors != null)
+                        StorageManager.logger.log(HLogLevel.ENHANCED, "Errors while initializing storage.", ParametersMap.create()
+                                .add("storage", e.getKey()).add("errors", errors));
                 } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Exception exception) {
                     StorageManager.failedStorages.put(e.getKey(), exception);
                     HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
@@ -127,11 +131,11 @@ public final class StorageManager {
             throw new RuntimeException(exception);
         }
         final ZonedDateTime t2 = MiscellaneousUtil.now();
-        StorageManager.logger.log(HLogLevel.ENHANCED, "Loaded ", StorageManager.storages.size(), " providers successfully. ",
+        StorageManager.logger.log(HLogLevel.ENHANCED, "Loaded ", StorageManager.storages.size(), " storages successfully. ",
                 StorageManager.failedStorages.size(), " failed. Totally cost time: ", Duration.between(t1, t2).toMillis() + " ms.");
     }
 
-    private static <C extends StorageConfiguration> void initializeStorage0(final @NotNull String name, final @NotNull StorageTypes<C> type, final @NotNull @Unmodifiable Map<? super String, Object> config) throws IllegalParametersException, IOException {
+    private static <C extends StorageConfiguration> @Nullable List<@NotNull String> initializeStorage0(final @NotNull String name, final @NotNull StorageTypes<C> type, final @NotNull @Unmodifiable Map<? super String, Object> config) throws IllegalParametersException, IOException {
         StorageManager.logger.log(HLogLevel.LESS, "Loading storage:", ParametersMap.create().add("name", name).add("type", type));
         StorageManager.failedStorages.remove(name);
         final Pair<StorageTypes<?>, Triad.ImmutableTriad<ProviderInterface<?>, RecyclerInterface<?>, SharerInterface<?>>> triad = Pair.makePair(type, StorageManager.ProviderPlaceholder);
@@ -146,6 +150,9 @@ public final class StorageManager {
             configuration.load(config, errors);
             YamlHelper.throwErrors(errors);
             configuration.setName(name);
+            final List<String> e = configuration.check();
+            if (!e.isEmpty())
+                return e;
             try {
                 provider.initialize(configuration);
                 recycler.initialize(configuration);
@@ -160,6 +167,7 @@ public final class StorageManager {
                 StorageManager.storages.remove(name);
         }
         StorageManager.logger.log(HLogLevel.INFO, "Load storage successfully:", ParametersMap.create().add("name", name));
+        return null;
     }
 
     private static boolean uninitializeStorage0(final @NotNull String name, final boolean dropIndex) {
@@ -185,16 +193,19 @@ public final class StorageManager {
         return false;
     }
 
-    public static void addStorage(final @NotNull String name, final @NotNull StorageTypes<?> type, final @Nullable Map<String, Object> config) throws IOException, IllegalParametersException {
+    public static @Nullable List<@NotNull String> addStorage(final @NotNull String name, final @NotNull StorageTypes<?> type, final @Nullable Map<String, Object> config) throws IOException, IllegalParametersException {
         final Map<String, Object> configuration;
         if (config == null)
             try (final InputStream inputStream = new BufferedInputStream(new FileInputStream(StorageManager.getStorageConfigurationFile(name)))) {
                 configuration = YamlHelper.loadYaml(inputStream);
             }
         else configuration = config;
-        StorageManager.initializeStorage0(name, type, configuration);
+        final List<String> error = StorageManager.initializeStorage0(name, type, configuration);
+        if (error != null)
+            return error;
         ServerConfiguration.get().providers().put(name, type);
         ServerConfiguration.dumpToFile();
+        return null;
     }
 
     public static boolean removeStorage(final @NotNull String name, final boolean dropIndex) throws IOException {
