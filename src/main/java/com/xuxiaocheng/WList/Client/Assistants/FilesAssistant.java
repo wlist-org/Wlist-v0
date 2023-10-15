@@ -404,7 +404,7 @@ public final class FilesAssistant {
                 final Map.Entry<Long, List<Integer>> next = map.firstEntry();
                 if (next == null)
                     break;
-                stream.skipNBytes(pos - entry.getKey().longValue());
+                AndroidSupporter.skipNBytes(stream, pos - entry.getKey().longValue());
                 long length = next.getKey().longValue() - entry.getKey().longValue();
                 while (length > 0) {
                     final int read = buffer.clear().writeBytes(stream, Math.toIntExact(Math.min(8192, length)));
@@ -473,7 +473,7 @@ public final class FilesAssistant {
                 CompletableFuture.runAsync(HExceptionWrapper.wrapRunnable(() -> stream.accept(HExceptionWrapper.wrapConsumer(inputStream -> {
                     final ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer(NetworkTransmission.FileTransferBufferSize, NetworkTransmission.FileTransferBufferSize);
                     try (final WListClientInterface c = WListClientManager.quicklyGetClient(address)) {
-                        inputStream.skipNBytes(pair.getFirst().longValue());
+                        AndroidSupporter.skipNBytes(inputStream, pair.getFirst().longValue());
                         long length = pair.getSecond().longValue() - pair.getFirst().longValue();
                         while (length > 0) {
                             final int read = buf.writeBytes(inputStream, Math.toIntExact(Math.min(length, NetworkTransmission.FileTransferBufferSize)));
