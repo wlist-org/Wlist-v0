@@ -33,7 +33,6 @@
 		<activity android:name=".UIs.ActivityMain" />
 		<activity android:name=".Helpers.PermissionsHelper$PermissionsActivity" />
 		<activity android:name=".Helpers.PermissionsHelper$StoragesActivity" />
-		<activity android:name=".UIs.ActivityFileChooser" />
 
 		<service
 			android:name=".Services.InternalServer.InternalServerService"

@@ -2,9 +2,9 @@ package com.xuxiaocheng.WListClientAndroid.UIs;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
-import android.os.Environment;
+import android.database.Cursor;
+import android.provider.OpenableColumns;
 import android.util.DisplayMetrics;
 import android.view.MotionEvent;
 import android.view.View;
@@ -14,14 +14,14 @@ import android.view.animation.LinearInterpolator;
 import android.view.animation.RotateAnimation;
 import android.widget.AbsListView;
 import android.widget.ImageView;
+import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContract;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.UiThread;
 import androidx.appcompat.app.AlertDialog;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
@@ -30,6 +30,7 @@ import com.xuxiaocheng.HeadLibs.Helpers.HMathHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.AndroidSupports.ClientConfigurationSupporter;
+import com.xuxiaocheng.WList.AndroidSupports.FailureReasonGetter;
 import com.xuxiaocheng.WList.AndroidSupports.FileInformationGetter;
 import com.xuxiaocheng.WList.AndroidSupports.FileLocationGetter;
 import com.xuxiaocheng.WList.AndroidSupports.FilesListInformationGetter;
@@ -43,6 +44,7 @@ import com.xuxiaocheng.WList.Client.Operations.OperateProvidersHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFilesListInformation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
@@ -62,24 +64,21 @@ import com.xuxiaocheng.WListClientAndroid.databinding.PageFileOptionBinding;
 import com.xuxiaocheng.WListClientAndroid.databinding.PageFileUploadBinding;
 import io.netty.util.internal.EmptyArrays;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
+import java.io.BufferedInputStream;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.text.MessageFormat;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.stream.Stream;
 
 public class PageFile implements ActivityMainChooser.MainPage {
     protected final @NotNull ActivityMain activity;
@@ -223,7 +222,6 @@ public class PageFile implements ActivityMainChooser.MainPage {
                         final int need = isDown ? limit : Math.toIntExact(Math.min(loadedUp.get(), limit));
                         list = FilesAssistant.list(PageFile.this.address(), PageFile.this.username(), location, filter, orders,
                                 isDown ? loadedDown.getAndAdd(need) : loadedUp.addAndGet(-need), need, Main.ClientExecutors, s -> {
-                            if (s == null) return;
                             long current = 0, total = 0;
                             for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
                                 current += pair.getFirst().longValue();
@@ -475,7 +473,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
         return true;
     }
 
-    protected final @NotNull HInitializer<ActivityResultLauncher<Pair.ImmutablePair<File, String>>> chooserLauncher = new HInitializer<>("PageFileChooserLauncher");
+    protected final @NotNull HInitializer<ActivityResultLauncher<String>> chooserLauncher = new HInitializer<>("PageFileChooserLauncher");
 
     @SuppressWarnings("unchecked")
     @SuppressLint("ClickableViewAccessibility")
@@ -590,21 +588,21 @@ public class PageFile implements ActivityMainChooser.MainPage {
                         }).show();
             });
             upload.pageFileUploadDirectoryText.setOnClickListener(v -> upload.pageFileUploadDirectory.performClick());
-            final BiConsumer<File, String> uploadFile = (root, pattern) -> {
+            final Consumer<String> uploadFile = pattern -> {
                 if (!clickable.compareAndSet(true, false)) return;
                 uploader.cancel();
                 PermissionsHelper.getExternalStorage(this.activity, false, success -> {
                     if (success.booleanValue())
-                        this.chooserLauncher.getInstance().launch(Pair.ImmutablePair.makeImmutablePair(root, pattern));
+                        this.chooserLauncher.getInstance().launch(pattern);
                     else
                         Main.showToast(this.activity, R.string.toast_no_read_permissions);
                 });
             };
-            upload.pageFileUploadFile.setOnClickListener(v -> uploadFile.accept(Environment.getExternalStorageDirectory(), ".*"));
+            upload.pageFileUploadFile.setOnClickListener(v -> uploadFile.accept("*/*"));
             upload.pageFileUploadFileText.setOnClickListener(v -> upload.pageFileUploadFile.performClick());
-            upload.pageFileUploadPicture.setOnClickListener(v -> uploadFile.accept(Environment.getExternalStorageDirectory(), "\\.(jpg|jpeg|png|bmp|gif|svg|webp)$"));
+            upload.pageFileUploadPicture.setOnClickListener(v -> uploadFile.accept("image/*"));
             upload.pageFileUploadPictureText.setOnClickListener(v -> upload.pageFileUploadPicture.performClick());
-            upload.pageFileUploadVideo.setOnClickListener(v -> uploadFile.accept(Environment.getExternalStorageDirectory(), "\\.(mp4|avi|mov|wmv)$"));
+            upload.pageFileUploadVideo.setOnClickListener(v -> uploadFile.accept("video/*"));
             upload.pageFileUploadVideoText.setOnClickListener(v -> upload.pageFileUploadVideo.performClick());
             uploader.show();
         });
@@ -612,55 +610,54 @@ public class PageFile implements ActivityMainChooser.MainPage {
 
     @Override
     public void onActivityCreateHook() {
-        this.chooserLauncher.reinitialize(this.activity.registerForActivityResult(new ActivityResultContract<Pair.@NotNull ImmutablePair<@NotNull File, @NotNull String>, @NotNull List<@NotNull File>>() {
-            @Override
-            public @NotNull Intent createIntent(final @NotNull Context context, final Pair.@NotNull ImmutablePair<@NotNull File, @NotNull String> root) {
-                return ActivityFileChooser.build(context, root.getFirst(), root.getSecond());
-            }
-
-            @Override
-            public @NotNull List<@NotNull File> parseResult(final int i, final @Nullable Intent intent) {
-                if (intent == null) return List.of();
-                final String[] strings = intent.getStringArrayExtra("files");
-                if (strings == null) return List.of();
-                return AndroidSupporter.streamToList(Stream.of(strings).map(s -> new File(s).getAbsoluteFile()));
-            }
-        }, files -> {
-            if (files.isEmpty()) return;
+        this.chooserLauncher.reinitialize(this.activity.registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
+            if (uri == null) return;
             Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
                 final FileLocation location = this.currentLocation.get();
                 // TODO: serialize uploading task.
+                // uri.toString()  -->  Uri.parse(...)
+                final String filename;
+                final long size;
+                try (final Cursor cursor = this.activity.getContentResolver().query(uri, new String[] {OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE}, null, null, null)) {
+                    if (cursor == null || !cursor.moveToFirst()) return;
+                    filename = cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME));
+                    size = cursor.getLong(cursor.getColumnIndexOrThrow(OpenableColumns.SIZE));
+                }
                 HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Uploading files.",
-                        ParametersMap.create().add("address", this.address()).add("location", location).add("files", files));
-                for (final File file: files) {
-                    if (!file.isFile() || !file.canRead())
-                        continue;
-                    final AlertDialog[] loader = new AlertDialog[1];
-                    Main.runOnUiThread(this.activity, () -> {
-                        final ImageView loading = new ImageView(this.activity);
-                        loading.setImageResource(R.mipmap.page_file_loading);
-                        PageFile.setLoading(loading);
-                        loader[0] = new AlertDialog.Builder(this.activity).setTitle(file.getName()).setCancelable(false).show();
-                        this.listLoadingAnimation(true, 0, 0);
+                        ParametersMap.create().add("address", this.address()).add("location", location).add("filename", filename).add("size", size).add("uri", uri));
+                final AlertDialog[] loader = new AlertDialog[1];
+                Main.runOnUiThread(this.activity, () -> {
+                    final ImageView loading = new ImageView(this.activity);
+                    loading.setImageResource(R.mipmap.page_file_loading);
+                    PageFile.setLoading(loading);
+                    loader[0] = new AlertDialog.Builder(this.activity).setTitle(filename).setCancelable(false).show();
+                    this.listLoadingAnimation(true, 0, 0);
+                });
+                try {
+                    final ClientConfiguration configuration = ClientConfigurationSupporter.get();
+                    final Options.DuplicatePolicy policy = ClientConfigurationSupporter.duplicatePolicy(configuration);
+                    final VisibleFailureReason reason = FilesAssistant.uploadStream(this.address(), this.username(), HExceptionWrapper.wrapConsumer(consumer -> {
+                        try (final InputStream stream = new BufferedInputStream(this.activity.getContentResolver().openInputStream(uri))) {
+                            consumer.accept(stream);
+                        }
+                    }), size, filename, policy, location, c -> true, s -> { // TODO
+                        long current = 0, total = 0;
+                        for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
+                            current += pair.getFirst().longValue();
+                            total += pair.getSecond().longValue();
+                        }
+                        final long c = current, t = total;
+                        Main.runOnUiThread(PageFile.this.activity, () -> PageFile.this.listLoadingAnimation(true, c, t));
                     });
-                    try {
-                        final ClientConfiguration configuration = ClientConfigurationSupporter.get();
-                        final Options.DuplicatePolicy policy = ClientConfigurationSupporter.duplicatePolicy(configuration);
-                        FilesAssistant.upload(this.address(), this.username(), file, policy, location, c -> true, s -> { // TODO
-                            long current = 0, total = 0;
-                            for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
-                                current += pair.getFirst().longValue();
-                                total += pair.getSecond().longValue();
-                            }
-                            final long c = current, t = total;
-                            Main.runOnUiThread(PageFile.this.activity, () -> PageFile.this.listLoadingAnimation(true, c, t));
-                        });
-                    } finally {
-                        Main.runOnUiThread(this.activity, () -> {
-                            loader[0].cancel();
-                            this.listLoadingAnimation(false, 0, 0);
-                        });
-                    }
+                    if (reason != null) // TODO
+                        Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, FailureReasonGetter.message(reason), Toast.LENGTH_SHORT).show());
+                    else
+                        Main.showToast(this.activity, R.string.page_file_upload_success_file);
+                } finally {
+                    Main.runOnUiThread(this.activity, () -> {
+                        loader[0].cancel();
+                        this.listLoadingAnimation(false, 0, 0);
+                    });
                 }
             }));
         }));
