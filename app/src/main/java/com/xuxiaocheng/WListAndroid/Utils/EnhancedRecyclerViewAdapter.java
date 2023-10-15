@@ -110,8 +110,7 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
 
     @UiThread
     public void changeData(final int index, final @NotNull T data) {
-        this.data.remove(index);
-        this.data.add(index, data);
+        this.data.set(index, data);
         this.notifyItemChanged(this.headers.size() + index);
     }
 

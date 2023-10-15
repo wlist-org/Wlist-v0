@@ -105,13 +105,19 @@ public class PageFile implements ActivityMainChooser.MainPage {
         this.pageCache.initialize(page);
         page.pageFileContentList.setLayoutManager(new LinearLayoutManager(this.activity));
         page.pageFileContentList.setHasFixedSize(true);
-        this.onRootPage(new AtomicLong(0));
+        this.onRootPage(0);
         this.buildUploader();
-        Main.runOnBackgroundThread(this.activity, () -> {
+        Main.runOnBackgroundThread(this.activity, () -> { // TODO
             final BroadcastAssistant.BroadcastSet set = BroadcastAssistant.get(this.address());
-            set.ProviderInitialized.register(s -> {
 
-            });
+            set.ProviderInitialized.register(s -> Main.runOnUiThread(this.activity, () -> this.onRootPage(this.getCurrentPosition())));
+            set.ProviderUninitialized.register(s -> Main.runOnUiThread(this.activity, () -> this.onRootPage(this.getCurrentPosition())));
+            set.FileTrash.register(s -> Main.runOnUiThread(this.activity, () ->
+                    this.onInsidePage(this.pageCache.getInstance().pageFileContentName.getText(), this.currentLocation.get(), this.getCurrentPosition())));
+//            set.FileUpdate.register(s -> Main.runOnUiThread(this.activity, () ->
+//                    this.onInsidePage(this.pageCache.getInstance().pageFileContentName.getText(), this.currentLocation.get(), this.getCurrentPosition())));
+            set.FileUpload.register(s -> Main.runOnUiThread(this.activity, () ->
+                    this.onInsidePage(this.pageCache.getInstance().pageFileContentName.getText(), this.currentLocation.get(), this.getCurrentPosition())));
         });
         return page.getRoot();
     }
@@ -169,7 +175,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
     protected final @NotNull Deque<Triad.@NotNull ImmutableTriad<@NotNull FileLocation, @NotNull VisibleFileInformation, @NotNull AtomicLong>> stacks = new ArrayDeque<>();
 
     @UiThread
-    private void updatePage(final @NotNull FileLocation location, final @NotNull AtomicLong position,
+    private void updatePage(final @NotNull FileLocation location, final long position,
                               final @NotNull Consumer<? super @NotNull VisibleFileInformation> clicker, final @NotNull Consumer<? super @NotNull VisibleFileInformation> option) {
         final PageFileContentBinding page = this.pageCache.getInstance();
         this.currentLocation.set(location);
@@ -188,9 +194,9 @@ public class PageFile implements ActivityMainChooser.MainPage {
         };
         page.pageFileContentCounter.setVisibility(View.GONE);
         page.pageFileContentCounterText.setVisibility(View.GONE);
-        final AtomicLong loadedUp = new AtomicLong(position.get());
-        final AtomicLong loadedDown = new AtomicLong(position.get());
-        final AtomicBoolean noMoreUp = new AtomicBoolean(position.get() <= 0);
+        final AtomicLong loadedUp = new AtomicLong(position);
+        final AtomicLong loadedDown = new AtomicLong(position);
+        final AtomicBoolean noMoreUp = new AtomicBoolean(position <= 0);
         final AtomicBoolean noMoreDown = new AtomicBoolean(false);
         final RecyclerView.OnScrollListener listener = new RecyclerView.OnScrollListener() {
             @UiThread
@@ -272,20 +278,20 @@ public class PageFile implements ActivityMainChooser.MainPage {
     }
 
     @UiThread
-    protected void onRootPage(final @NotNull AtomicLong position) {
+    protected void onRootPage(final long position) {
         final PageFileContentBinding page = this.pageCache.getInstance();
         page.pageFileContentBacker.setImageResource(R.mipmap.backer_nonclickable);
         page.pageFileContentBacker.setOnClickListener(null);
         page.pageFileContentBacker.setClickable(false);
         page.pageFileContentName.setText(R.string.app_name);
         this.updatePage(new FileLocation(IdentifierNames.RootSelector, 0), position, information ->
-                this.onInsidePage(FileInformationGetter.name(information), new FileLocation(FileInformationGetter.name(information), FileInformationGetter.id(information)), new AtomicLong(0)), information ->
+                this.onInsidePage(FileInformationGetter.name(information), new FileLocation(FileInformationGetter.name(information), FileInformationGetter.id(information)), 0), information ->
                 Main.runOnBackgroundThread(this.activity, () -> {throw new UnsupportedOperationException("WIP");}) // TODO
         );
     }
 
     @UiThread
-    protected void onInsidePage(final @NotNull CharSequence name, final @NotNull FileLocation location, final @NotNull AtomicLong position) {
+    protected void onInsidePage(final @NotNull CharSequence name, final @NotNull FileLocation location, final long position) {
         final PageFileContentBinding page = this.pageCache.getInstance();
         page.pageFileContentBacker.setImageResource(R.mipmap.backer);
         page.pageFileContentBacker.setOnClickListener(v -> this.popFileList());
@@ -293,7 +299,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
         page.pageFileContentName.setText(name);
         this.updatePage(location, position, information -> {
             if (FileInformationGetter.isDirectory(information))
-                this.onInsidePage(FileInformationGetter.name(information), new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.id(information)), new AtomicLong(0));
+                this.onInsidePage(FileInformationGetter.name(information), new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.id(information)), 0);
             else
                 Main.runOnBackgroundThread(this.activity, () -> {throw new UnsupportedOperationException("WIP");}); // TODO
         }, information -> {
@@ -465,9 +471,9 @@ public class PageFile implements ActivityMainChooser.MainPage {
                 if (directory == null)
                     this.popFileList();
                 else if (IdentifierNames.RootSelector.equals(FileInformationGetter.name(directory)))
-                    this.onRootPage(p.getC());
+                    this.onRootPage(p.getC().get());
                 else
-                    this.onInsidePage(FileInformationGetter.name(directory), p.getA(), p.getC());
+                    this.onInsidePage(FileInformationGetter.name(directory), p.getA(), p.getC().get());
             });
         }));
         return true;
