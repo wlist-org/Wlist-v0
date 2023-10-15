@@ -40,6 +40,7 @@ import org.jetbrains.annotations.Unmodifiable;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.net.SocketAddress;
 import java.nio.channels.FileChannel;
@@ -62,6 +63,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -312,7 +314,7 @@ public final class FilesAssistant {
         }
     }
 
-    public static @Nullable VisibleFilesListInformation list(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation directory, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @NotNull ScheduledExecutorService executor, final @NotNull Consumer<? super @Nullable InstantaneousProgressState> callback) throws IOException, InterruptedException, WrongStateException {
+    public static @Nullable VisibleFilesListInformation list(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation directory, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @NotNull ScheduledExecutorService executor, final @NotNull Consumer<? super @NotNull InstantaneousProgressState> callback) throws IOException, InterruptedException, WrongStateException {
         final UnionPair<VisibleFilesListInformation, RefreshConfirm> confirm;
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
             confirm = OperateFilesHelper.listFiles(client, TokenAssistant.getToken(address, username), directory, filter, orders, position, limit);
@@ -328,7 +330,6 @@ public final class FilesAssistant {
         } finally {
             future.cancel(true);
         }
-        callback.accept(null);
         return FilesAssistant.list(address, username, directory, filter, orders, position, limit, executor, callback);
     }
 
@@ -361,5 +362,150 @@ public final class FilesAssistant {
                     throw new CancellationException();
             }
         }), 300, ClientConfiguration.get().progressInterval(), TimeUnit.MILLISECONDS);
+    }
+
+
+    // Upload (Android Version)
+
+    private static @NotNull @Unmodifiable List<@NotNull String> calculateChecksumsStream(final @NotNull InputStream stream, final @NotNull Collection<@NotNull UploadChecksum> requirements) throws IOException {
+        if (requirements.isEmpty())
+            return List.of();
+        final NavigableMap<Long, List<Integer>> map = new TreeMap<>();
+        final List<HMessageDigestHelper.MessageDigestAlgorithm> algorithms = new ArrayList<>(requirements.size());
+        final List<MessageDigest> digests = new ArrayList<>(requirements.size());
+        int i = 0;
+        for (final UploadChecksum checksum: requirements) {
+            assert checksum.start() < checksum.end();
+            final int k = i++;
+            map.compute(checksum.start(), (a, b) -> Objects.requireNonNullElseGet(b, ArrayList::new)).add(k);
+            map.compute(checksum.end(), (a, b) -> Objects.requireNonNullElseGet(b, ArrayList::new)).add(-k-1);
+            final HMessageDigestHelper.MessageDigestAlgorithm algorithm = UploadChecksum.getAlgorithm(checksum.algorithm());
+            algorithms.add(algorithm);
+            digests.add(algorithm.getDigester());
+        }
+        final String[] checksums = new String[requirements.size()];
+        final ByteBuf buffer = ByteBufAllocator.DEFAULT.heapBuffer(8192);
+        try {
+            long pos = 0;
+            final Collection<Integer> reading = new HashSet<>();
+            while (!map.isEmpty()) {
+                final Map.Entry<Long, List<Integer>> entry = map.pollFirstEntry();
+                for (final Integer integer: entry.getValue())
+                    if (integer.intValue() >= 0)
+                        reading.add(integer);
+                    else {
+                        reading.remove(integer);
+                        final int k = -integer.intValue()-1;
+                        checksums[k] = algorithms.get(k).digest(digests.get(k));
+                        digests.get(k).reset();
+                    }
+                if (reading.isEmpty())
+                    continue;
+                final Map.Entry<Long, List<Integer>> next = map.firstEntry();
+                if (next == null)
+                    break;
+                stream.skipNBytes(pos - entry.getKey().longValue());
+                long length = next.getKey().longValue() - entry.getKey().longValue();
+                while (length > 0) {
+                    final int read = buffer.clear().writeBytes(stream, Math.toIntExact(Math.min(8192, length)));
+                    if (read < 0)
+                        break;
+                    if (read == 0)
+                        AndroidSupporter.onSpinWait();
+                    for (final Integer integer: reading)
+                        digests.get(integer.intValue()).update(buffer.array(), 0, read);
+                    length -= read;
+                }
+                pos += length;
+            }
+        } finally {
+            buffer.release();
+        }
+        for (final String checksum: checksums)
+            if (checksum == null)
+                throw new IllegalStateException("Failed to calculate checksum." + ParametersMap.create().add("requirements", requirements).add("checksums", checksums));
+        return List.of(checksums);
+    }
+
+    /**
+     * @param stream Warning: this method will be called many times and may in multi threads. {@link InputStream#skipNBytes(long)} is used to seek position.
+     */
+    public static @Nullable VisibleFailureReason uploadStream(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull Consumer<? super @NotNull Consumer<? super @NotNull InputStream>> stream, final long size, final @NotNull String filename, final Options.@NotNull DuplicatePolicy policy, final @NotNull FileLocation parent, final @NotNull Predicate<? super @NotNull UploadConfirm> continuer, final @NotNull Consumer<? super @NotNull InstantaneousProgressState> callback) throws IOException, InterruptedException, WrongStateException {
+        final UnionPair<UploadConfirm, VisibleFailureReason> confirm;
+        try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
+            confirm = OperateFilesHelper.requestUploadFile(client, TokenAssistant.getToken(address, username), parent, filename, size, policy);
+        }
+        if (confirm == null)
+            return new VisibleFailureReason(FailureKind.Others, parent, "Requesting.");
+        if (confirm.isFailure())
+            return confirm.getE();
+        if (!continuer.test(confirm.getT()))
+            return null;
+        final AtomicReference<List<String>> checksums = new AtomicReference<>();
+        try {
+            stream.accept(HExceptionWrapper.wrapConsumer(inputStream -> {
+                checksums.set(FilesAssistant.calculateChecksumsStream(inputStream, confirm.getT().checksums()));
+            }));
+        } catch (final RuntimeException exception) {
+            throw HExceptionWrapper.unwrapException(exception, IOException.class);
+        }
+        HLog.getInstance("ClientLogger").log(HLogLevel.LESS, "Calculated checksums.", ParametersMap.create()
+                .add("filename", filename).add("size", size).add("checksums", checksums));
+        final UploadConfirm.UploadInformation information;
+        try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
+            information = OperateFilesHelper.confirmUploadFile(client, TokenAssistant.getToken(address, username), confirm.getT().id(), checksums.get());
+        }
+        if (information == null)
+            return new VisibleFailureReason(FailureKind.Others, parent, "Confirming.");
+        final EventExecutorGroup executors = new DefaultEventExecutorGroup(ClientConfiguration.get().threadCount() > 0 ?
+                ClientConfiguration.get().threadCount() : Math.min(Runtime.getRuntime().availableProcessors(), information.parallel().size()),
+                new DefaultThreadFactory("UploadingExecutor:S@" + filename), information.parallel().size(), (t, e) ->
+                HLog.getInstance("ClientLogger").log(HLogLevel.MISTAKE, "Something went wrong when uploading.", ParametersMap.create()
+                        .add("address", address).add("username", username).add("filename", filename).add("size", size)));
+        final AtomicBoolean flag = new AtomicBoolean(false);
+        final boolean success;
+        try {
+            final CountDownLatch failure = new CountDownLatch(information.parallel().size());
+            final CountDownLatch latch = new CountDownLatch(information.parallel().size());
+            int i = 0;
+            for (final Pair.ImmutablePair<Long, Long> pair: information.parallel()) {
+                final int index = i++;
+                CompletableFuture.runAsync(HExceptionWrapper.wrapRunnable(() -> stream.accept(HExceptionWrapper.wrapConsumer(inputStream -> {
+                    final ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer(NetworkTransmission.FileTransferBufferSize, NetworkTransmission.FileTransferBufferSize);
+                    try (final WListClientInterface c = WListClientManager.quicklyGetClient(address)) {
+                        inputStream.skipNBytes(pair.getFirst().longValue());
+                        long length = pair.getSecond().longValue() - pair.getFirst().longValue();
+                        while (length > 0) {
+                            final int read = buf.writeBytes(inputStream, Math.toIntExact(Math.min(length, NetworkTransmission.FileTransferBufferSize)));
+                            if (read < 0 || !OperateFilesHelper.uploadFile(c, TokenAssistant.getToken(address, username), confirm.getT().id(), index, buf.retain())) {
+                                flag.set(true);
+                                while (failure.getCount() > 0)
+                                    failure.countDown();
+                            }
+                            if (failure.getCount() <= 0)
+                                break;
+                            length -= read;
+                            buf.clear();
+                        }
+                    } finally {
+                        buf.release();
+                    }
+                })), () -> {
+                    failure.countDown();
+                    latch.countDown();
+                }), executors).exceptionally(MiscellaneousUtil.exceptionHandler());
+            }
+            FilesAssistant.waitAndCallback(address, username, callback, flag, failure, confirm.getT().id());
+            latch.await();
+        } finally {
+            final Future<?> future = executors.shutdownGracefully().await();
+            try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
+                success = OperateFilesHelper.finishUploadFile(client, TokenAssistant.getToken(address, username), confirm.getT().id());
+            }
+            future.sync(); // rethrow.
+        }
+        if (flag.get())
+            return new VisibleFailureReason(FailureKind.Others, parent, "Uploading.");
+        return success ? null : new VisibleFailureReason(FailureKind.Others, parent, "Finishing.");
     }
 }

@@ -59,7 +59,6 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
@@ -148,21 +147,21 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                 page.<HtmlInput>getElementByName("username").setValue(configuration.getPassport());
                 page.<HtmlInput>getElementByName("password").setValue(configuration.getPassword());
                 final HtmlPage res = page.getHtmlElementById("s3").click();
-                final String result = res.asNormalizedText(); // ((DomNode) res.getByXPath("//p").get(0)).getVisibleText()
-                boolean flag = true;
-                for (final Iterator<String> iterator = Arrays.stream(result.split("\n")).iterator(); iterator.hasNext(); ) {
-                    if ("\u63D0\u793A\u4FE1\u606F".equals(iterator.next())) {
-                        if (iterator.hasNext() && iterator.next().contains("\u767B\u5F55\u6210\u529F"))
-                            flag = false;
-                        break;
-                    }
-                }
-                if (flag)
-                    throw new IllegalParametersException("Failed to login.", ParametersMap.create().add("configuration", configuration).add("page", result));
+//                final String result = res.asNormalizedText(); // ((DomNode) res.getByXPath("//p").get(0)).getVisibleText()
+//                boolean flag = true;
+//                for (final Iterator<String> iterator = Arrays.stream(result.split("\n")).iterator(); iterator.hasNext(); ) {
+//                    if ("\u63D0\u793A\u4FE1\u606F".equals(iterator.next())) {
+//                        if (iterator.hasNext() && iterator.next().contains("\u767B\u5F55\u6210\u529F"))
+//                            flag = false;
+//                        break;
+//                    }
+//                }
+//                if (flag)
+//                    throw new IllegalParametersException("Failed to login.", ParametersMap.create().add("configuration", configuration).add("page", result));
                 cookies = client.getCookies(Objects.requireNonNull(HttpUrl.parse("https://up.woozooo.com/")).url());
             }
             Cookie token = null, uid = null;
-            for (final Cookie c : cookies) {
+            for (final Cookie c: cookies) {
                 if ("phpdisk_info".equalsIgnoreCase(c.getName()))
                     token = c;
                 if ("ylogin".equalsIgnoreCase(c.getName()))

@@ -149,6 +149,7 @@ public final class StorageManager {
             configuration.load(config, errors);
             if (!errors.isEmpty())
                 return errors;
+            configuration.setName(name);
             try {
                 provider.initialize(configuration);
                 recycler.initialize(configuration);

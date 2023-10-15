@@ -7,6 +7,7 @@ import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.Rust.NetworkTransmission;
+import com.xuxiaocheng.WList.Client.Assistants.BroadcastAssistant;
 import com.xuxiaocheng.WList.Client.Assistants.FilesAssistant;
 import com.xuxiaocheng.WList.Client.Assistants.TokenAssistant;
 import com.xuxiaocheng.WList.Client.Exceptions.WrongStateException;
@@ -30,7 +31,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -41,6 +41,7 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.lang.reflect.InvocationTargetException;
@@ -51,8 +52,13 @@ import java.nio.file.Files;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
-@Disabled("Manually test")
+//@Disabled("Manually test")
 @Execution(ExecutionMode.SAME_THREAD)
 @SuppressWarnings("MethodOverridesStaticMethodOfSuperclass")
 public class FilesTest extends ProvidersWrapper {
@@ -89,7 +95,6 @@ public class FilesTest extends ProvidersWrapper {
         Assertions.assertEquals(HMessageDigestHelper.MD5.get("123123"), result.get(2));
     }
 
-    @Disabled("Prepare 'run/test_file.zip' and then run this test.")
     @ParameterizedTest(name = "running")
     @MethodSource("broadcast")
     public void upload(final @NotNull WListClientInterface client, final @NotNull WListClientInterface broadcast) throws IOException, InterruptedException, WrongStateException {
@@ -168,5 +173,81 @@ public class FilesTest extends ProvidersWrapper {
                 state -> HLog.DefaultLogger.log(HLogLevel.LESS, state.stages())));
         Assertions.assertEquals(List.of(md5), method.invoke(null, file,
                 List.of(new UploadChecksum(0, file.length(), UploadChecksum.MD5))));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void calculateStream() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+        final Method method = FilesAssistant.class.getDeclaredMethod("calculateChecksumsStream", InputStream.class, Collection.class);
+        method.setAccessible(true);
+        final List<UploadChecksum> requirements = List.of(
+                new UploadChecksum(0, 3, UploadChecksum.MD5),
+                new UploadChecksum(3, 6, UploadChecksum.MD5),
+                new UploadChecksum(0, 6, UploadChecksum.SHA512)
+        );
+        final char[] array = "123123".toCharArray();
+        final List<String> result = (List<String>) method.invoke(null, new InputStream() {
+            private final @NotNull AtomicInteger pos = new AtomicInteger(0);
+            @Override
+            public int read() {
+                final int i = this.pos.getAndIncrement();
+                if (i >= array.length)
+                    return -1;
+                return array[i];
+            }
+        }, requirements);
+        Assertions.assertEquals(HMessageDigestHelper.MD5.get("123"), result.get(0));
+        Assertions.assertEquals(HMessageDigestHelper.MD5.get("123"), result.get(1));
+        Assertions.assertEquals(HMessageDigestHelper.SHA512.get("123123"), result.get(2));
+    }
+
+    @ParameterizedTest(name = "running")
+    @MethodSource("client")
+    public void uploadStream(final @NotNull WListClientInterface client) throws WrongStateException, IOException, InterruptedException {
+        TokenAssistant.login(this.address(), this.adminUsername(), this.adminPassword(), WListServer.IOExecutors);
+
+        final ByteBuf small = ByteBufAllocator.DEFAULT.heapBuffer().writeBytes("WList test upload: small file.\nrandom: ".getBytes(StandardCharsets.UTF_8))
+                .writeBytes(HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, 64, HRandomHelper.AnyWords).getBytes(StandardCharsets.UTF_8));
+        HLog.DefaultLogger.log(HLogLevel.INFO, HMessageDigestHelper.MD5.get(ByteBufIOUtil.allToByteArray(small)));
+        final VisibleFileInformation smallInformation = this.testUploadStream(small, "1.txt");
+        HLog.DefaultLogger.log(HLogLevel.INFO, smallInformation);
+
+        final ByteBuf big = ByteBufAllocator.DEFAULT.heapBuffer().writeBytes("WList test upload: big file.\nrandom: ".getBytes(StandardCharsets.UTF_8))
+                .writeBytes(HRandomHelper.nextString(HRandomHelper.DefaultSecureRandom, NetworkTransmission.FileTransferBufferSize << 1, HRandomHelper.AnyWords).getBytes(StandardCharsets.UTF_8));
+        HLog.DefaultLogger.log(HLogLevel.INFO, HMessageDigestHelper.MD5.get(ByteBufIOUtil.allToByteArray(big)));
+        final VisibleFileInformation bigInformation = this.testUploadStream(big, "2.txt");
+        HLog.DefaultLogger.log(HLogLevel.INFO, bigInformation);
+
+        HLog.DefaultLogger.log(HLogLevel.BUG, "Please check the uploaded file and then continue the test.");
+        TimeUnit.SECONDS.sleep(10);
+        OperateFilesHelper.trashFileOrDirectory(client, TokenAssistant.getToken(this.address(), this.adminUsername()), this.location(smallInformation.id()), false);
+        OperateFilesHelper.trashFileOrDirectory(client, TokenAssistant.getToken(this.address(), this.adminUsername()), this.location(bigInformation.id()), false);
+    }
+
+    public @NotNull VisibleFileInformation testUploadStream(final @NotNull ByteBuf buffer, final @NotNull String filename) throws WrongStateException, IOException, InterruptedException {
+        final long size = buffer.readableBytes();
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<VisibleFileInformation> information = new AtomicReference<>();
+        final Consumer<Pair.ImmutablePair<String, VisibleFileInformation>> callback = p -> {
+            Assertions.assertEquals("test", p.getFirst());
+            information.set(p.getSecond());
+            latch.countDown();
+        };
+        BroadcastAssistant.get(this.address()).FileUpload.register(callback);
+        Assertions.assertNull(FilesAssistant.uploadStream(this.address(), this.adminUsername(), consumer -> {
+            final @NotNull AtomicInteger pos = new AtomicInteger(0);
+            consumer.accept(new InputStream() {
+                @Override
+                public int read() {
+                    final int i = pos.getAndIncrement();
+                    if (i >= size)
+                        return -1;
+                    return buffer.getByte(i);
+                }
+            });
+        }, size, filename, Options.DuplicatePolicy.ERROR, this.location(this.root()), c -> {HLog.DefaultLogger.log("", c);return true;},
+                state -> HLog.DefaultLogger.log(HLogLevel.LESS, state.stages())));
+        latch.await();
+        return information.get();
     }
 }

@@ -6,6 +6,7 @@ import io.netty.buffer.ByteBufOutputStream;
 import io.netty.util.internal.EmptyArrays;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.TestOnly;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -512,6 +513,7 @@ public final class ByteBufIOUtil {
             serializer.serialize(buffer, object);
     }
 
+    @TestOnly
     public static byte @NotNull [] allToByteArray(final @NotNull ByteBuf buffer) {
         if (buffer.hasArray()) {
             final int offset = buffer.arrayOffset();
