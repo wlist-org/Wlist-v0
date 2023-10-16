@@ -5,20 +5,20 @@
                                                    android:layout_height="match_parent">
 
 	<androidx.appcompat.widget.AppCompatTextView
-		android:id="@+id/page_user_content_disconnect"
+		android:id="@+id/page_user_disconnect"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:background="@color/background_differ"
 		android:text="@string/page_user_disconnect"
 		android:textColor="@color/text_normal"
 		android:textSize="50sp"
-		app:layout_constraintBottom_toTopOf="@id/page_user_content_close_server"
+		app:layout_constraintBottom_toTopOf="@id/page_user_close_server"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toTopOf="parent" />
 
 	<androidx.appcompat.widget.AppCompatTextView
-		android:id="@+id/page_user_content_close_server"
+		android:id="@+id/page_user_close_server"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:background="@color/background_differ"
@@ -28,6 +28,6 @@
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/page_user_content_disconnect" />
+		app:layout_constraintTop_toBottomOf="@id/page_user_disconnect" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

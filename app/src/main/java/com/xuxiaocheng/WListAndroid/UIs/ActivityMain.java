@@ -23,9 +23,11 @@ import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.Services.InternalServer.InternalServerService;
 import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
+import com.xuxiaocheng.WListAndroid.databinding.ActivityMainBinding;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.time.ZonedDateTime;
@@ -74,6 +76,7 @@ public class ActivityMain extends AppCompatActivity {
     protected final @NotNull Map<ActivityMainChooser.MainChoice, ActivityMainChooser.MainPage> pages = new EnumMap<>(ActivityMainChooser.MainChoice.class); {
         this.pages.put(ActivityMainChooser.MainChoice.File, new PageFile(this));
         this.pages.put(ActivityMainChooser.MainChoice.User, new PageUser(this));
+        this.pages.put(ActivityMainChooser.MainChoice.Trans, new PageTrans(this));
     }
 
     @Override
@@ -82,20 +85,21 @@ public class ActivityMain extends AppCompatActivity {
         HLogManager.initialize(this, HLogManager.ProcessType.Activity);
         final HLog logger = HLogManager.getInstance("DefaultLogger");
         logger.log(HLogLevel.VERBOSE, "Creating ActivityMain.");
-        this.setContentView(R.layout.activity_main);
+        final ActivityMainBinding activity = ActivityMainBinding.inflate(this.getLayoutInflater());
+        this.setContentView(activity.getRoot());
         if (this.extraAddress()) {
             HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), new IllegalStateException("No address received."));
             this.finish();
             return;
         }
         final ActivityMainChooser chooser = new ActivityMainChooser(
-            new ActivityMainChooser.ButtonGroup(this, R.id.activity_main_tab_file, R.id.activity_main_tab_file_button, R.id.activity_main_tab_file_text,
-                    R.mipmap.main_tab_file, R.mipmap.main_tab_file_chose, R.color.text_normal, R.color.red),
-            new ActivityMainChooser.ButtonGroup(this, R.id.activity_main_tab_user, R.id.activity_main_tab_user_button, R.id.activity_main_tab_user_text,
-                    R.mipmap.main_tab_user, R.mipmap.main_tab_user_chose, R.color.text_normal, R.color.red)
+                new ActivityMainChooser.ButtonGroup(this, activity.activityMainTabFileButton, R.mipmap.main_tab_file, R.mipmap.main_tab_file_chose,
+                        activity.activityMainTabFileText, activity.activityMainTabFile),
+                new ActivityMainChooser.ButtonGroup(this, activity.activityMainTabUserButton, R.mipmap.main_tab_user, R.mipmap.main_tab_user_chose,
+                        activity.activityMainTabUserText, activity.activityMainTabUser),
+                new ActivityMainChooser.ButtonGroup(this, activity.activityMainTasks, R.mipmap.app_logo, R.mipmap.app_logo_round, null)
         );
         final AtomicReference<View> currentView = new AtomicReference<>(null);
-        final ConstraintLayout activity = this.findViewById(R.id.activity_main);
         final ConstraintLayout.LayoutParams contentParams = new ConstraintLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ConstraintLayout.LayoutParams.MATCH_CONSTRAINT);
         contentParams.bottomToTop = R.id.activity_main_guideline_tab;
         contentParams.leftToLeft = R.id.activity_main;
@@ -108,7 +112,7 @@ public class ActivityMain extends AppCompatActivity {
                 this.minTabChoice.set(null);
             }
             if (oldView != null)
-                activity.removeView(oldView);
+                activity.getRoot().removeView(oldView);
             final ActivityMainChooser.MainPage page = this.pages.get(choice);
             assert page != null;
             final View newView = page.onShow();
@@ -118,11 +122,12 @@ public class ActivityMain extends AppCompatActivity {
                 this.minTabChoice.set(choice);
             }
             if (ok)
-                activity.addView(newView, contentParams);
+                activity.getRoot().addView(newView, contentParams);
         });
         this.pages.values().forEach(ActivityMainChooser.MainPage::onActivityCreateHook);
         Main.runOnBackgroundThread(this, HExceptionWrapper.wrapRunnable(() -> {
             BroadcastAssistant.start(this.address.getInstance());
+            ClientConfigurationSupporter.location().reinitialize(new File(this.getExternalFilesDir("client"), "client.yaml"));
             ClientConfigurationSupporter.parseFromFile(); // TODO.
             Main.runOnUiThread(this, () -> chooser.click(ActivityMainChooser.MainChoice.File));
         }));

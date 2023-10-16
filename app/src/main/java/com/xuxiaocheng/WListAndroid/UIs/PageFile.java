@@ -60,7 +60,7 @@ import com.xuxiaocheng.WListAndroid.Utils.EmptyRecyclerAdapter;
 import com.xuxiaocheng.WListAndroid.Utils.EnhancedRecyclerViewAdapter;
 import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
 import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
-import com.xuxiaocheng.WListAndroid.databinding.PageFileContentBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileDirectoryBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileOptionBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileRenameBinding;
@@ -99,17 +99,18 @@ public class PageFile implements ActivityMainChooser.MainPage {
         return this.activity.username.getInstance();
     }
 
-    protected final @NotNull HInitializer<PageFileContentBinding> pageCache = new HInitializer<>("PageFile");
+    protected final @NotNull HInitializer<PageFileBinding> pageCache = new HInitializer<>("PageFile");
     @Override
     public @NotNull ConstraintLayout onShow() {
-        final PageFileContentBinding cache = this.pageCache.getInstanceNullable();
+        final PageFileBinding cache = this.pageCache.getInstanceNullable();
         if (cache != null) return cache.getRoot();
-        final PageFileContentBinding page = PageFileContentBinding.inflate(this.activity.getLayoutInflater());
+        final PageFileBinding page = PageFileBinding.inflate(this.activity.getLayoutInflater());
         this.pageCache.initialize(page);
-        page.pageFileContentList.setLayoutManager(new LinearLayoutManager(this.activity));
-        page.pageFileContentList.setHasFixedSize(true);
+        page.pageFileList.setLayoutManager(new LinearLayoutManager(this.activity));
+        page.pageFileList.setHasFixedSize(true);
         this.onRootPage(0);
         this.buildUploader();
+        this.buildOption();
         Main.runOnBackgroundThread(this.activity, () -> { // TODO
             final BroadcastAssistant.BroadcastSet set = BroadcastAssistant.get(this.address());
 
@@ -120,15 +121,14 @@ public class PageFile implements ActivityMainChooser.MainPage {
             set.ProviderInitialized.register(s -> onRoot.run());
             set.ProviderUninitialized.register(s -> onRoot.run());
 
-
             set.FileTrash.register(s -> Main.runOnUiThread(this.activity, () ->
-                    this.onInsidePage(this.pageCache.getInstance().pageFileContentName.getText(), this.currentLocation.get(), this.getCurrentPosition())));
+                    this.onInsidePage(this.pageCache.getInstance().pageFileName.getText(), this.currentLocation.get(), this.getCurrentPosition())));
 //            set.FileUpdate.register(s -> Main.runOnUiThread(this.activity, () ->
-//                    this.onInsidePage(this.pageCache.getInstance().pageFileContentName.getText(), this.currentLocation.get(), this.getCurrentPosition())));
+//                    this.onInsidePage(this.pageCache.getInstance().pageFileName.getText(), this.currentLocation.get(), this.getCurrentPosition())));
             set.FileUpload.register(s -> Main.runOnUiThread(this.activity, () -> {
                 final FileLocation location = this.currentLocation.get();
                 if (FileLocationGetter.storage(location).equals(s.getFirst()) && FileLocationGetter.id(location) == FileInformationGetter.parentId(s.getSecond()))
-                    this.onInsidePage(this.pageCache.getInstance().pageFileContentName.getText(), location, this.getCurrentPosition());
+                    this.onInsidePage(this.pageCache.getInstance().pageFileName.getText(), location, this.getCurrentPosition());
             }));
         });
         return page.getRoot();
@@ -145,7 +145,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
 
     @UiThread
     private @NotNull View listLoadingView() {
-        final ConstraintLayout loading = EnhancedRecyclerViewAdapter.buildView(PageFile.this.activity.getLayoutInflater(), R.layout.page_file_tailor_loading, this.pageCache.getInstance().pageFileContentList);
+        final ConstraintLayout loading = EnhancedRecyclerViewAdapter.buildView(PageFile.this.activity.getLayoutInflater(), R.layout.page_file_tailor_loading, this.pageCache.getInstance().pageFileList);
         final ImageView image = (ImageView) loading.getViewById(R.id.page_file_tailor_loading_image);
         PageFile.setLoading(image);
         return loading;
@@ -153,28 +153,28 @@ public class PageFile implements ActivityMainChooser.MainPage {
 
     @UiThread
     private @NotNull View listNoMoreView() {
-        return EnhancedRecyclerViewAdapter.buildView(PageFile.this.activity.getLayoutInflater(), R.layout.page_file_tailor_no_more, this.pageCache.getInstance().pageFileContentList);
+        return EnhancedRecyclerViewAdapter.buildView(PageFile.this.activity.getLayoutInflater(), R.layout.page_file_tailor_no_more, this.pageCache.getInstance().pageFileList);
     }
 
     private static final @NotNull HInitializer<String> listLoadingAnimationPattern = new HInitializer<>("ListLoadingAnimationPattern");
     @UiThread
     private void listLoadingAnimation(final boolean show, final long current, final long total) {
-        final PageFileContentBinding page = this.pageCache.getInstance();
+        final PageFileBinding page = this.pageCache.getInstance();
         PageFile.listLoadingAnimationPattern.initializeIfNot(() -> this.activity.getString(R.string.page_file_loading_text));
-        page.pageFileContentLoadingText.setText(MessageFormat.format(PageFile.listLoadingAnimationPattern.getInstance(), current, total));
+        page.pageFileLoadingText.setText(MessageFormat.format(PageFile.listLoadingAnimationPattern.getInstance(), current, total));
         if (show) {
-            page.pageFileContentLoading.setVisibility(View.VISIBLE);
-            page.pageFileContentLoadingText.setVisibility(View.VISIBLE);
-            PageFile.setLoading(page.pageFileContentLoading);
+            page.pageFileLoading.setVisibility(View.VISIBLE);
+            page.pageFileLoadingText.setVisibility(View.VISIBLE);
+            PageFile.setLoading(page.pageFileLoading);
         } else {
-            page.pageFileContentLoading.setVisibility(View.GONE);
-            page.pageFileContentLoadingText.setVisibility(View.GONE);
-            page.pageFileContentLoading.clearAnimation();
+            page.pageFileLoading.setVisibility(View.GONE);
+            page.pageFileLoadingText.setVisibility(View.GONE);
+            page.pageFileLoading.clearAnimation();
         }
     }
 
     private int getCurrentPosition() {
-        final RecyclerView list = this.pageCache.getInstance().pageFileContentList;
+        final RecyclerView list = this.pageCache.getInstance().pageFileList;
         final RecyclerView.LayoutManager manager = list.getLayoutManager();
         final RecyclerView.Adapter<?> adapter = list.getAdapter();
         assert manager instanceof LinearLayoutManager;
@@ -189,13 +189,13 @@ public class PageFile implements ActivityMainChooser.MainPage {
     @UiThread
     private void updatePage(final @NotNull FileLocation location, final long position,
                               final @NotNull Consumer<? super @NotNull VisibleFileInformation> clicker, final @NotNull Consumer<? super @NotNull VisibleFileInformation> option) {
-        final PageFileContentBinding page = this.pageCache.getInstance();
+        final PageFileBinding page = this.pageCache.getInstance();
         this.currentLocation.set(location);
         final AtomicBoolean onLoading = new AtomicBoolean(false);
         final EnhancedRecyclerViewAdapter<VisibleFileInformation, PageFileViewHolder> adapter = new EnhancedRecyclerViewAdapter<>() {
             @Override
             protected @NotNull PageFileViewHolder createViewHolder(final @NotNull ViewGroup parent) {
-                return new PageFileViewHolder(EnhancedRecyclerViewAdapter.buildView(PageFile.this.activity.getLayoutInflater(), R.layout.page_file_cell, page.pageFileContentList), information -> {
+                return new PageFileViewHolder(EnhancedRecyclerViewAdapter.buildView(PageFile.this.activity.getLayoutInflater(), R.layout.page_file_cell, page.pageFileList), information -> {
                     if (onLoading.get())
                         return;
                     final int p = PageFile.this.getCurrentPosition();
@@ -204,8 +204,8 @@ public class PageFile implements ActivityMainChooser.MainPage {
                 }, option::accept);
             }
         };
-        page.pageFileContentCounter.setVisibility(View.GONE);
-        page.pageFileContentCounterText.setVisibility(View.GONE);
+        page.pageFileCounter.setVisibility(View.GONE);
+        page.pageFileCounterText.setVisibility(View.GONE);
         final AtomicLong loadedUp = new AtomicLong(position);
         final AtomicLong loadedDown = new AtomicLong(position);
         final AtomicBoolean noMoreUp = new AtomicBoolean(position <= 0);
@@ -261,9 +261,9 @@ public class PageFile implements ActivityMainChooser.MainPage {
                     else
                         noMoreUp.set(loadedUp.get() <= 0);
                     Main.runOnUiThread(PageFile.this.activity, () -> {
-                        page.pageFileContentCounter.setText(String.valueOf(FilesListInformationGetter.total(list)));
-                        page.pageFileContentCounter.setVisibility(View.VISIBLE);
-                        page.pageFileContentCounterText.setVisibility(View.VISIBLE);
+                        page.pageFileCounter.setText(String.valueOf(FilesListInformationGetter.total(list)));
+                        page.pageFileCounter.setVisibility(View.VISIBLE);
+                        page.pageFileCounterText.setVisibility(View.VISIBLE);
                         if (isDown)
                             adapter.addDataRange(FilesListInformationGetter.informationList(list));
                         else
@@ -283,19 +283,19 @@ public class PageFile implements ActivityMainChooser.MainPage {
                 }, false));
             }
         };
-        page.pageFileContentList.setAdapter(adapter);
-        page.pageFileContentList.clearOnScrollListeners();
-        page.pageFileContentList.addOnScrollListener(listener);
-        listener.onScrollStateChanged(page.pageFileContentList, AbsListView.OnScrollListener.SCROLL_STATE_IDLE);
+        page.pageFileList.setAdapter(adapter);
+        page.pageFileList.clearOnScrollListeners();
+        page.pageFileList.addOnScrollListener(listener);
+        listener.onScrollStateChanged(page.pageFileList, AbsListView.OnScrollListener.SCROLL_STATE_IDLE);
     }
 
     @UiThread
     protected void onRootPage(final long position) {
-        final PageFileContentBinding page = this.pageCache.getInstance();
-        page.pageFileContentBacker.setImageResource(R.mipmap.backer_nonclickable);
-        page.pageFileContentBacker.setOnClickListener(null);
-        page.pageFileContentBacker.setClickable(false);
-        page.pageFileContentName.setText(R.string.app_name);
+        final PageFileBinding page = this.pageCache.getInstance();
+        page.pageFileBacker.setImageResource(R.mipmap.backer_nonclickable);
+        page.pageFileBacker.setOnClickListener(null);
+        page.pageFileBacker.setClickable(false);
+        page.pageFileName.setText(R.string.app_name);
         this.updatePage(new FileLocation(IdentifierNames.RootSelector, 0), position, information ->
                 this.onInsidePage(FileInformationGetter.name(information), new FileLocation(FileInformationGetter.name(information), FileInformationGetter.id(information)), 0), information ->
                 Main.runOnBackgroundThread(this.activity, () -> {throw new UnsupportedOperationException("WIP");}) // TODO
@@ -304,11 +304,11 @@ public class PageFile implements ActivityMainChooser.MainPage {
 
     @UiThread
     protected void onInsidePage(final @NotNull CharSequence name, final @NotNull FileLocation location, final long position) {
-        final PageFileContentBinding page = this.pageCache.getInstance();
-        page.pageFileContentBacker.setImageResource(R.mipmap.backer);
-        page.pageFileContentBacker.setOnClickListener(v -> this.popFileList());
-        page.pageFileContentBacker.setClickable(true);
-        page.pageFileContentName.setText(name);
+        final PageFileBinding page = this.pageCache.getInstance();
+        page.pageFileBacker.setImageResource(R.mipmap.backer);
+        page.pageFileBacker.setOnClickListener(v -> this.popFileList());
+        page.pageFileBacker.setClickable(true);
+        page.pageFileName.setText(name);
         this.updatePage(location, position, information -> {
             if (FileInformationGetter.isDirectory(information))
                 this.onInsidePage(FileInformationGetter.name(information), new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.id(information)), 0);
@@ -495,13 +495,13 @@ public class PageFile implements ActivityMainChooser.MainPage {
     protected boolean popFileList() {
         final Triad.ImmutableTriad<FileLocation, VisibleFileInformation, AtomicLong> p = this.stacks.poll();
         if (p == null) return false;
-        final PageFileContentBinding page = this.pageCache.getInstance();
+        final PageFileBinding page = this.pageCache.getInstance();
         this.listLoadingAnimation(true, 0, 0);
-        page.pageFileContentBacker.setClickable(false);
-        page.pageFileContentCounter.setVisibility(View.GONE);
-        page.pageFileContentCounterText.setVisibility(View.GONE);
-        page.pageFileContentList.clearOnScrollListeners();
-        page.pageFileContentList.setAdapter(EmptyRecyclerAdapter.Instance);
+        page.pageFileBacker.setClickable(false);
+        page.pageFileCounter.setVisibility(View.GONE);
+        page.pageFileCounterText.setVisibility(View.GONE);
+        page.pageFileList.clearOnScrollListeners();
+        page.pageFileList.setAdapter(EmptyRecyclerAdapter.Instance);
         Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
             final VisibleFileInformation directory;
             try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address())) {
@@ -523,11 +523,11 @@ public class PageFile implements ActivityMainChooser.MainPage {
 
     @SuppressWarnings("unchecked")
     @SuppressLint("ClickableViewAccessibility")
-    protected <C extends StorageConfiguration> void buildUploader() {
-        final PageFileContentBinding page = this.pageCache.getInstance();
+    private <C extends StorageConfiguration> void buildUploader() {
+        final PageFileBinding page = this.pageCache.getInstance();
         final AtomicBoolean scrolling = new AtomicBoolean();
         final AtomicInteger startX = new AtomicInteger(), startY = new AtomicInteger();
-        page.pageFileContentUploader.setOnTouchListener((v, e) -> {
+        page.pageFileUploader.setOnTouchListener((v, e) -> {
             switch (e.getAction()) {
                 case MotionEvent.ACTION_DOWN -> {
                     scrolling.set(false);
@@ -536,9 +536,9 @@ public class PageFile implements ActivityMainChooser.MainPage {
                 }
                 case MotionEvent.ACTION_MOVE -> {
                     if (scrolling.get()) {
-                        final float parentX = page.pageFileContentList.getX(), parentY = page.pageFileContentList.getY();
-                        v.setX(HMathHelper.clamp(v.getX() + e.getX() - parentX, 0, page.pageFileContentList.getWidth()) + parentX - v.getWidth() / 2.0f);
-                        v.setY(HMathHelper.clamp(v.getY() + e.getY() - parentY, -50, page.pageFileContentList.getHeight()) + parentY - v.getHeight() / 2.0f);
+                        final float parentX = page.pageFileList.getX(), parentY = page.pageFileList.getY();
+                        v.setX(HMathHelper.clamp(v.getX() + e.getX() - parentX, 0, page.pageFileList.getWidth()) + parentX - v.getWidth() / 2.0f);
+                        v.setY(HMathHelper.clamp(v.getY() + e.getY() - parentY, -50, page.pageFileList.getHeight()) + parentY - v.getHeight() / 2.0f);
                     } else if (Math.abs(v.getX() + e.getX() - Float.intBitsToFloat(startX.get())) > v.getWidth() / 2.0f || Math.abs(v.getY() + e.getY() - Float.intBitsToFloat(startY.get())) > v.getHeight() / 2.0f)
                         scrolling.set(true);
                 }
@@ -559,17 +559,17 @@ public class PageFile implements ActivityMainChooser.MainPage {
                 y = preferences.getFloat("y", 0);
             } else {
                 final DisplayMetrics displayMetrics = this.activity.getResources().getDisplayMetrics();
-                x = preferences.getFloat("x", (displayMetrics.widthPixels - page.pageFileContentUploader.getWidth()) * 0.7f);
+                x = preferences.getFloat("x", (displayMetrics.widthPixels - page.pageFileUploader.getWidth()) * 0.7f);
                 y = preferences.getFloat("y", displayMetrics.heightPixels * 0.7f);
                 preferences.edit().putFloat("x", x).putFloat("y", y).apply();
             }
             Main.runOnUiThread(this.activity, () -> {
-                page.pageFileContentUploader.setX(x);
-                page.pageFileContentUploader.setY(y);
-                page.pageFileContentUploader.setVisibility(View.VISIBLE);
+                page.pageFileUploader.setX(x);
+                page.pageFileUploader.setY(y);
+                page.pageFileUploader.setVisibility(View.VISIBLE);
             }, 300, TimeUnit.MILLISECONDS);
         });
-        page.pageFileContentUploader.setOnClickListener(u -> {
+        page.pageFileUploader.setOnClickListener(u -> {
             if (this.stacks.isEmpty()) { // Root selector
                 final String[] storages = StorageTypes.getAll().keySet().toArray(EmptyArrays.EMPTY_STRINGS);
                 final AtomicInteger choice = new AtomicInteger(-1);
@@ -707,6 +707,10 @@ public class PageFile implements ActivityMainChooser.MainPage {
                 }
             }));
         }));
+    }
+
+    private void buildOption() {
+        
     }
 
     @Override

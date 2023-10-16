@@ -6,21 +6,21 @@
                                                    android:layout_height="match_parent">
 
 	<androidx.constraintlayout.widget.Guideline
-		android:id="@+id/page_file_content_guideline_title"
+		android:id="@+id/page_file_guideline_title"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:orientation="horizontal"
 		app:layout_constraintGuide_begin="50dp" />
 
 	<androidx.constraintlayout.widget.Guideline
-		android:id="@+id/page_file_content_guideline_backer"
+		android:id="@+id/page_file_guideline_backer"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:orientation="vertical"
 		app:layout_constraintGuide_percent="0.15" />
 
 	<androidx.appcompat.widget.AppCompatImageView
-		android:id="@+id/page_file_content_backer"
+		android:id="@+id/page_file_backer"
 		android:layout_width="0dp"
 		android:layout_height="0dp"
 		android:paddingStart="10dp"
@@ -28,13 +28,13 @@
 		android:paddingEnd="10dp"
 		android:paddingBottom="15dp"
 		android:src="@mipmap/backer"
-		app:layout_constraintBottom_toTopOf="@id/page_file_content_guideline_title"
+		app:layout_constraintBottom_toTopOf="@id/page_file_guideline_title"
 		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toLeftOf="@id/page_file_content_guideline_backer"
+		app:layout_constraintRight_toLeftOf="@id/page_file_guideline_backer"
 		app:layout_constraintTop_toTopOf="parent" />
 
 	<androidx.appcompat.widget.AppCompatTextView
-		android:id="@+id/page_file_content_name"
+		android:id="@+id/page_file_name"
 		android:layout_width="0dp"
 		android:layout_height="0dp"
 		android:ellipsize="end"
@@ -45,27 +45,27 @@
 		android:text="@string/app_name"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
-		app:layout_constraintBottom_toTopOf="@id/page_file_content_guideline_title"
-		app:layout_constraintLeft_toRightOf="@id/page_file_content_guideline_backer"
-		app:layout_constraintRight_toLeftOf="@id/page_file_content_counter"
+		app:layout_constraintBottom_toTopOf="@id/page_file_guideline_title"
+		app:layout_constraintLeft_toRightOf="@id/page_file_guideline_backer"
+		app:layout_constraintRight_toLeftOf="@id/page_file_counter"
 		app:layout_constraintTop_toTopOf="parent" />
 
 	<androidx.appcompat.widget.AppCompatTextView
-		android:id="@+id/page_file_content_counter"
+		android:id="@+id/page_file_counter"
 		android:layout_width="wrap_content"
 		android:layout_height="0dp"
 		android:gravity="center_vertical|end"
 		android:text="0"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
-		app:layout_constraintBottom_toTopOf="@id/page_file_content_guideline_title"
-		app:layout_constraintLeft_toRightOf="@id/page_file_content_name"
-		app:layout_constraintRight_toLeftOf="@id/page_file_content_counter_text"
+		app:layout_constraintBottom_toTopOf="@id/page_file_guideline_title"
+		app:layout_constraintLeft_toRightOf="@id/page_file_name"
+		app:layout_constraintRight_toLeftOf="@id/page_file_counter_text"
 		app:layout_constraintTop_toTopOf="parent"
 		tools:ignore="HardcodedText" />
 
 	<androidx.appcompat.widget.AppCompatTextView
-		android:id="@+id/page_file_content_counter_text"
+		android:id="@+id/page_file_counter_text"
 		android:layout_width="wrap_content"
 		android:layout_height="0dp"
 		android:gravity="center_horizontal|end"
@@ -74,21 +74,21 @@
 		android:text="@string/page_file_counter"
 		android:textColor="@color/text_normal"
 		android:textSize="15sp"
-		app:layout_constraintBaseline_toBaselineOf="@id/page_file_content_counter"
-		app:layout_constraintLeft_toRightOf="@id/page_file_content_counter"
+		app:layout_constraintBaseline_toBaselineOf="@id/page_file_counter"
+		app:layout_constraintLeft_toRightOf="@id/page_file_counter"
 		app:layout_constraintRight_toRightOf="parent" />
 
 	<androidx.recyclerview.widget.RecyclerView
-		android:id="@+id/page_file_content_list"
+		android:id="@+id/page_file_list"
 		android:layout_width="match_parent"
 		android:layout_height="0dp"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/page_file_content_guideline_title" />
+		app:layout_constraintTop_toBottomOf="@id/page_file_guideline_title" />
 
 	<androidx.appcompat.widget.AppCompatImageView
-		android:id="@+id/page_file_content_uploader"
+		android:id="@+id/page_file_uploader"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:src="@mipmap/page_file_upload"
@@ -97,19 +97,19 @@
 		app:layout_constraintRight_toRightOf="parent" />
 
 	<androidx.appcompat.widget.AppCompatImageView
-		android:id="@+id/page_file_content_loading"
+		android:id="@+id/page_file_loading"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:src="@mipmap/page_file_loading"
 		android:visibility="gone"
-		app:layout_constraintBottom_toTopOf="@id/page_file_content_loading_text"
+		app:layout_constraintBottom_toTopOf="@id/page_file_loading_text"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toTopOf="parent"
 		app:layout_constraintVertical_chainStyle="packed" />
 
 	<androidx.appcompat.widget.AppCompatTextView
-		android:id="@+id/page_file_content_loading_text"
+		android:id="@+id/page_file_loading_text"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:layout_marginTop="20dp"
@@ -119,6 +119,6 @@
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/page_file_content_loading" />
+		app:layout_constraintTop_toBottomOf="@id/page_file_loading" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
