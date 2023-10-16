@@ -34,6 +34,7 @@
 	<string name="page_file_option_delete">删除</string>
 	<string name="page_file_option_download">下载</string>
 	<string name="page_file_option_rename_success">重命名成功</string>
+	<string name="page_file_option_rename_complex">当前操作不被该存储直接支持，是否仍然执行？（可能会消耗一些时间）</string>
 	<string name="page_file_option_move_success">移动成功</string>
 	<string name="page_file_option_copy_success">复制成功</string>
 	<string name="page_file_option_delete_success">删除成功</string>

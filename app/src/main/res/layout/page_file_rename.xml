@@ -5,7 +5,7 @@
                                                    android:layout_height="match_parent">
 
 	<androidx.appcompat.widget.AppCompatEditText
-		android:id="@+id/page_file_editor"
+		android:id="@+id/page_file_rename_name"
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"
 		android:background="@color/lighter_gray"

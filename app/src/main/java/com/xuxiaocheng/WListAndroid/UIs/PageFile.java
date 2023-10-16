@@ -22,9 +22,11 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
+import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMathHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
@@ -59,8 +61,9 @@ import com.xuxiaocheng.WListAndroid.Utils.EnhancedRecyclerViewAdapter;
 import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
 import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileContentBinding;
-import com.xuxiaocheng.WListAndroid.databinding.PageFileEditorBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageFileDirectoryBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileOptionBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageFileRenameBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileUploadBinding;
 import io.netty.util.internal.EmptyArrays;
 import org.jetbrains.annotations.NotNull;
@@ -110,14 +113,23 @@ public class PageFile implements ActivityMainChooser.MainPage {
         Main.runOnBackgroundThread(this.activity, () -> { // TODO
             final BroadcastAssistant.BroadcastSet set = BroadcastAssistant.get(this.address());
 
-            set.ProviderInitialized.register(s -> Main.runOnUiThread(this.activity, () -> this.onRootPage(this.getCurrentPosition())));
-            set.ProviderUninitialized.register(s -> Main.runOnUiThread(this.activity, () -> this.onRootPage(this.getCurrentPosition())));
+            final Runnable onRoot = () -> {
+                if (this.stacks.isEmpty())
+                    Main.runOnUiThread(this.activity, () -> this.onRootPage(this.getCurrentPosition()));
+            };
+            set.ProviderInitialized.register(s -> onRoot.run());
+            set.ProviderUninitialized.register(s -> onRoot.run());
+
+
             set.FileTrash.register(s -> Main.runOnUiThread(this.activity, () ->
                     this.onInsidePage(this.pageCache.getInstance().pageFileContentName.getText(), this.currentLocation.get(), this.getCurrentPosition())));
 //            set.FileUpdate.register(s -> Main.runOnUiThread(this.activity, () ->
 //                    this.onInsidePage(this.pageCache.getInstance().pageFileContentName.getText(), this.currentLocation.get(), this.getCurrentPosition())));
-            set.FileUpload.register(s -> Main.runOnUiThread(this.activity, () ->
-                    this.onInsidePage(this.pageCache.getInstance().pageFileContentName.getText(), this.currentLocation.get(), this.getCurrentPosition())));
+            set.FileUpload.register(s -> Main.runOnUiThread(this.activity, () -> {
+                final FileLocation location = this.currentLocation.get();
+                if (FileLocationGetter.storage(location).equals(s.getFirst()) && FileLocationGetter.id(location) == FileInformationGetter.parentId(s.getSecond()))
+                    this.onInsidePage(this.pageCache.getInstance().pageFileContentName.getText(), location, this.getCurrentPosition());
+            }));
         });
         return page.getRoot();
     }
@@ -314,42 +326,70 @@ public class PageFile implements ActivityMainChooser.MainPage {
                     .setTitle(R.string.page_file_option).setView(optionBinding.getRoot())
                     .setPositiveButton(R.string.cancel, null).create();
             final AtomicBoolean clickable = new AtomicBoolean(true);
-//                optionBinding.pageFileOptionRename.setOnClickListener(u -> {
-//                    if (!clickable.compareAndSet(true, false)) return;
-//                    modifier.cancel();
-//                    final PageFileEditorBinding editor = PageFileEditorBinding.inflate(this.page.activity.getLayoutInflater());
-//                    editor.pageFileEditor.setText(FileInformationGetter.name(information));
-//                    if (editor.pageFileEditor.requestFocus()) {
-//                        editor.pageFileEditor.setSelectAllOnFocus(true);
-//                        editor.pageFileEditor.setSelection(Objects.requireNonNull(editor.pageFileEditor.getText()).length());
-//                    }
-//                    new AlertDialog.Builder(this.page.activity).setTitle(R.string.page_file_option_rename).setView(editor.getRoot())
-//                            .setNegativeButton(R.string.cancel, (d, w) -> {})
-//                            .setPositiveButton(R.string.confirm, (d, w) -> {
-//                                final Editable editable = editor.pageFileEditor.getText();
-//                                final String name = editable == null ? "" : editable.toString();
-//                                if (FileInformationGetter.name(information).equals(name)) return;
-//                                final ImageView loading = new ImageView(this.page.activity);
-//                                loading.setImageResource(R.mipmap.page_file_loading);
-//                                PageFile.setLoading(loading);
-//                                final AlertDialog dialog = new AlertDialog.Builder(this.page.activity)
-//                                        .setTitle(R.string.page_file_option_rename).setView(loading).setCancelable(false).show();
-//                                Main.runOnBackgroundThread(this.page.activity, HExceptionWrapper.wrapRunnable(() -> {
-//                                    HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Renaming.",
-//                                            ParametersMap.create().add("address", this.page.address).add("location", location).add("name", name));
-//                                    try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.page.address)) {
-//                                        OperateFilesHelper.renameFile(client, TokenManager.getToken(this.page.address), location, name, Options.DuplicatePolicy.ERROR);
-//                                    }
-//                                    Main.runOnUiThread(this.page.activity, () -> {
-//                                        Main.showToast(this.page.activity, R.string.page_file_option_rename_success);
-//                                        // TODO: auto refresh.
-//                                        this.page.popFileList();
-//                                        this.page.pushFileList(record.name, record.location);
-//                                    });
-//                                }, () -> Main.runOnUiThread(this.page.activity, dialog::cancel)));
-//                            }).show();
-//                });
-//                optionBinding.pageFileOptionRenameIcon.setOnClickListener(u -> optionBinding.pageFileOptionRename.performClick());
+            optionBinding.pageFileOptionRename.setOnClickListener(u -> {
+                if (!clickable.compareAndSet(true, false)) return;
+                modifier.cancel();
+                final PageFileRenameBinding renamer = PageFileRenameBinding.inflate(this.activity.getLayoutInflater());
+                renamer.pageFileRenameName.setText(FileInformationGetter.name(information));
+                if (renamer.pageFileRenameName.requestFocus()) {
+                    renamer.pageFileRenameName.setSelectAllOnFocus(true);
+                    renamer.pageFileRenameName.setSelection(Objects.requireNonNull(renamer.pageFileRenameName.getText()).length());
+                }
+                new AlertDialog.Builder(this.activity).setTitle(R.string.page_file_option_rename).setView(renamer.getRoot())
+                        .setNegativeButton(R.string.cancel, (d, w) -> {})
+                        .setPositiveButton(R.string.confirm, (d, w) -> {
+                            final String renamed = ViewUtil.getText(renamer.pageFileRenameName);
+                            if (AndroidSupporter.isBlank(renamed) || FileInformationGetter.name(information).equals(renamed)) return;
+                            final ImageView loading = new ImageView(this.activity);
+                            loading.setImageResource(R.mipmap.page_file_loading);
+                            PageFile.setLoading(loading);
+                            final AlertDialog dialog = new AlertDialog.Builder(this.activity)
+                                    .setTitle(R.string.page_file_option_rename).setView(loading).setCancelable(false).show();
+                            Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
+                                HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Renaming.",
+                                        ParametersMap.create().add("address", this.address()).add("location", location).add("name", renamed));
+                                final ClientConfiguration configuration = ClientConfigurationSupporter.get();
+                                final Options.DuplicatePolicy policy = ClientConfigurationSupporter.duplicatePolicy(configuration);
+                                final UnionPair<Boolean, VisibleFailureReason> res;
+                                try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address())) {
+                                    res = OperateFilesHelper.renameDirectly(client, TokenAssistant.getToken(this.address(), this.username()), location, FileInformationGetter.isDirectory(information), renamed, policy);
+                                }
+                                if (res == null || res.isFailure()) {
+                                    Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, res == null ? "Others" : res.getE().message(), Toast.LENGTH_SHORT).show());
+                                    return;
+                                }
+                                if (res.getT().booleanValue()) {
+                                    Main.showToast(this.activity, R.string.page_file_option_rename_success);
+                                    return;
+                                }
+                                new AlertDialog.Builder(this.activity)
+                                        .setTitle(R.string.page_file_option_rename_complex)
+                                        .setNegativeButton(R.string.cancel, null)
+                                        .setPositiveButton(R.string.confirm, (a, k) -> Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
+                                            final UnionPair<Boolean, VisibleFailureReason> copied;
+                                            try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address())) {
+                                                copied = OperateFilesHelper.copyDirectly(client, TokenAssistant.getToken(this.address(), this.username()), location, FileInformationGetter.isDirectory(information),
+                                                        new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.parentId(information)), renamed, policy);
+                                            }
+                                            if (copied == null || res.isFailure()) {
+                                                Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, copied == null ? "Others" : copied.getE().message(), Toast.LENGTH_SHORT).show());
+                                                return;
+                                            }
+                                            if (copied.getT().booleanValue()) {
+                                                try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address())) {
+                                                    OperateFilesHelper.trashFileOrDirectory(client, TokenAssistant.getToken(this.address(), this.username()),
+                                                            new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.id(information)), FileInformationGetter.isDirectory(information));
+                                                }
+                                                Main.showToast(this.activity, R.string.page_file_option_rename_success);
+                                                return;
+                                            }
+                                            // TODO: directory. upload after downloading.
+                                            throw new UnsupportedOperationException("WIP");
+                                        }))).show();
+                            }, () -> Main.runOnUiThread(this.activity, dialog::cancel)));
+                        }).show();
+            });
+            optionBinding.pageFileOptionRenameIcon.setOnClickListener(u -> optionBinding.pageFileOptionRename.performClick());
 //                optionBinding.pageFileOptionMove.setOnClickListener(u -> {
 //                    if (!clickable.compareAndSet(true, false)) return;
 //                    modifier.cancel();
@@ -566,18 +606,18 @@ public class PageFile implements ActivityMainChooser.MainPage {
                 if (!clickable.compareAndSet(true, false)) return;
                 uploader.cancel();
                 final FileLocation location = this.currentLocation.get();
-                final PageFileEditorBinding editor = PageFileEditorBinding.inflate(this.activity.getLayoutInflater());
-                editor.pageFileEditor.setText(R.string.page_file_upload_directory_name);
-                editor.pageFileEditor.setHint(R.string.page_file_upload_directory_hint);
-                if (editor.pageFileEditor.requestFocus()) {
-                    editor.pageFileEditor.setSelectAllOnFocus(true);
-                    editor.pageFileEditor.setSelection(Objects.requireNonNull(editor.pageFileEditor.getText()).length());
+                final PageFileDirectoryBinding editor = PageFileDirectoryBinding.inflate(this.activity.getLayoutInflater());
+                editor.pageFileDirectoryName.setText(R.string.page_file_upload_directory_name);
+                editor.pageFileDirectoryName.setHint(R.string.page_file_upload_directory_hint);
+                if (editor.pageFileDirectoryName.requestFocus()) {
+                    editor.pageFileDirectoryName.setSelectAllOnFocus(true);
+                    editor.pageFileDirectoryName.setSelection(Objects.requireNonNull(editor.pageFileDirectoryName.getText()).length());
                 }
                 new AlertDialog.Builder(this.activity).setTitle(R.string.page_file_upload_directory)
                         .setIcon(R.mipmap.page_file_upload_directory).setView(editor.getRoot())
                         .setNegativeButton(R.string.cancel, null)
                         .setPositiveButton(R.string.confirm, (d, w) -> {
-                            final String name = ViewUtil.getText(editor.pageFileEditor);
+                            final String name = ViewUtil.getText(editor.pageFileDirectoryName);
                             final ImageView loading = new ImageView(this.activity);
                             loading.setImageResource(R.mipmap.page_file_loading);
                             PageFile.setLoading(loading);

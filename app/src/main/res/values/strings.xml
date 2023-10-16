@@ -35,6 +35,7 @@
 	<string name="page_file_option_delete">Delete</string>
 	<string name="page_file_option_download">Download</string>
 	<string name="page_file_option_rename_success">Renamed.</string>
+	<string name="page_file_option_rename_complex">This operation is not supported directly by the storage. Force do it? (may cause a long time.)</string>
 	<string name="page_file_option_move_success">Moved.</string>
 	<string name="page_file_option_copy_success">Copied.</string>
 	<string name="page_file_option_delete_success">Deleted.</string>
