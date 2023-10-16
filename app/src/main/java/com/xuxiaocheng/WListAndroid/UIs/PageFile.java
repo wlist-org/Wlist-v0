@@ -14,11 +14,13 @@ import android.view.animation.LinearInterpolator;
 import android.view.animation.RotateAnimation;
 import android.widget.AbsListView;
 import android.widget.ImageView;
+import android.widget.SimpleAdapter;
 import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.UiThread;
 import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.widget.ListPopupWindow;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -75,6 +77,8 @@ import java.text.MessageFormat;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -110,9 +114,9 @@ public class PageFile implements ActivityMainChooser.MainPage {
         page.pageFileList.setHasFixedSize(true);
         this.onRootPage(0);
         this.buildUploader();
-        this.buildOption();
         Main.runOnBackgroundThread(this.activity, () -> { // TODO
             final BroadcastAssistant.BroadcastSet set = BroadcastAssistant.get(this.address());
+            set.ServerClose.register(id -> Main.runOnUiThread(this.activity, this.activity::close));
 
             final Runnable onRoot = () -> {
                 if (this.stacks.isEmpty())
@@ -355,7 +359,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
                                     res = OperateFilesHelper.renameDirectly(client, TokenAssistant.getToken(this.address(), this.username()), location, FileInformationGetter.isDirectory(information), renamed, policy);
                                 }
                                 if (res == null || res.isFailure()) {
-                                    Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, res == null ? "Others" : res.getE().message(), Toast.LENGTH_SHORT).show());
+                                    Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, res == null ? "Others" : FailureReasonGetter.message(res.getE()), Toast.LENGTH_SHORT).show());
                                     return;
                                 }
                                 if (res.getT().booleanValue()) {
@@ -372,7 +376,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
                                                         new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.parentId(information)), renamed, policy);
                                             }
                                             if (copied == null || res.isFailure()) {
-                                                Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, copied == null ? "Others" : copied.getE().message(), Toast.LENGTH_SHORT).show());
+                                                Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, copied == null ? "Others" : FailureReasonGetter.message(copied.getE()), Toast.LENGTH_SHORT).show());
                                                 return;
                                             }
                                             if (copied.getT().booleanValue()) {
@@ -707,10 +711,36 @@ public class PageFile implements ActivityMainChooser.MainPage {
                 }
             }));
         }));
-    }
-
-    private void buildOption() {
-        
+        final ImageView options = this.activity.findViewById(R.id.activity_main_options);
+        options.setOnClickListener(v -> {
+            if (this.activity.currentChoice.get() != ActivityMainChooser.MainChoice.File) return;
+            final ListPopupWindow popup = new ListPopupWindow(this.activity);
+            popup.setWidth(this.pageCache.getInstance().pageFileList.getWidth() >> 1);
+            popup.setAnchorView(options);
+            popup.setAdapter(new SimpleAdapter(this.activity, List.of(
+                    Map.of("image", R.mipmap.app_logo_round, "name", this.activity.getResources().getString(R.string.page_file_options_refresh))
+            ), R.layout.activity_main_options_cell, new String[]{"image", "name"},
+                    new int[]{R.id.activity_main_options_cell_image, R.id.activity_main_options_cell_name}));
+            popup.setOnItemClickListener((p, w, pos, i) -> {
+                popup.dismiss();
+                if (pos == 0) { // Refresh.
+                    final FileLocation location = this.currentLocation.get();
+                    this.listLoadingAnimation(true, 0, 0);
+                    Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
+                        FilesAssistant.refresh(this.address(), this.username(), location, Main.ClientExecutors, s -> { // TODO
+                            long current = 0, total = 0;
+                            for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
+                                current += pair.getFirst().longValue();
+                                total += pair.getSecond().longValue();
+                            }
+                            final long c = current, t = total;
+                            Main.runOnUiThread(PageFile.this.activity, () -> this.listLoadingAnimation(true, c, t));
+                        });
+                    }, () -> Main.runOnUiThread(this.activity, () -> this.listLoadingAnimation(false, 0, 0))));
+                }
+            });
+            popup.show();
+        });
     }
 
     @Override

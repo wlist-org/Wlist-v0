@@ -72,7 +72,7 @@ public class ActivityMain extends AppCompatActivity {
     protected final @NotNull HInitializer<String> username = new HInitializer<>("ActivityMainUsername");
     protected final @NotNull HInitializer<IBinder> binder = new HInitializer<>("ActivityMainServiceBinder");
 
-    protected final @NotNull AtomicReference<ActivityMainChooser.MainChoice> minTabChoice = new AtomicReference<>();
+    protected final @NotNull AtomicReference<ActivityMainChooser.MainChoice> currentChoice = new AtomicReference<>();
     protected final @NotNull Map<ActivityMainChooser.MainChoice, ActivityMainChooser.MainPage> pages = new EnumMap<>(ActivityMainChooser.MainChoice.class); {
         this.pages.put(ActivityMainChooser.MainChoice.File, new PageFile(this));
         this.pages.put(ActivityMainChooser.MainChoice.User, new PageUser(this));
@@ -89,7 +89,7 @@ public class ActivityMain extends AppCompatActivity {
         this.setContentView(activity.getRoot());
         if (this.extraAddress()) {
             HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), new IllegalStateException("No address received."));
-            this.finish();
+            this.close();
             return;
         }
         final ActivityMainChooser chooser = new ActivityMainChooser(
@@ -109,7 +109,7 @@ public class ActivityMain extends AppCompatActivity {
             final View oldView;
             synchronized (currentView) {
                 oldView = currentView.getAndSet(null);
-                this.minTabChoice.set(null);
+                this.currentChoice.set(null);
             }
             if (oldView != null)
                 activity.getRoot().removeView(oldView);
@@ -119,7 +119,7 @@ public class ActivityMain extends AppCompatActivity {
             final boolean ok;
             synchronized (currentView) {
                 ok = currentView.compareAndSet(null, newView);
-                this.minTabChoice.set(choice);
+                this.currentChoice.set(choice);
             }
             if (ok)
                 activity.getRoot().addView(newView, contentParams);
@@ -136,7 +136,7 @@ public class ActivityMain extends AppCompatActivity {
     protected @Nullable ZonedDateTime lastBackPressedTime;
     @Override
     public void onBackPressed() {
-        final ActivityMainChooser.MainChoice choice = this.minTabChoice.get();
+        final ActivityMainChooser.MainChoice choice = this.currentChoice.get();
         if (choice != null) {
             final ActivityMainChooser.MainPage page = this.pages.get(choice);
             assert page != null;
@@ -191,7 +191,7 @@ public class ActivityMain extends AppCompatActivity {
     @Override
     public @NotNull String toString() {
         return "ActivityMain{" +
-                "minTabChoice=" + this.minTabChoice +
+                "minTabChoice=" + this.currentChoice +
                 ", address=" + this.address +
                 ", lastBackPressedTime=" + this.lastBackPressedTime +
                 ", super=" + super.toString() +

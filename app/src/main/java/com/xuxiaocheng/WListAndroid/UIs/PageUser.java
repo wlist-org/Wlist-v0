@@ -1,6 +1,5 @@
 package com.xuxiaocheng.WListAndroid.UIs;
 
-import android.content.Intent;
 import android.view.View;
 import android.widget.TextView;
 import androidx.constraintlayout.widget.ConstraintLayout;
@@ -10,7 +9,7 @@ import com.xuxiaocheng.WList.Client.Operations.OperateServerHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WListAndroid.Main;
-import com.xuxiaocheng.WListAndroid.databinding.PageUserContentBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageUserBinding;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.InetSocketAddress;
@@ -39,10 +38,10 @@ public class PageUser implements ActivityMainChooser.MainPage {
     public @NotNull View onShow() {
         final ConstraintLayout cache = this.pageCache.get();
         if (cache != null) return cache;
-        final PageUserContentBinding page = PageUserContentBinding.inflate(this.activity.getLayoutInflater());
+        final PageUserBinding page = PageUserBinding.inflate(this.activity.getLayoutInflater());
         this.pageCache.set(page.getRoot());
-        final TextView close = page.pageUserContentCloseServer;
-        final TextView disconnection = page.pageUserContentDisconnect;
+        final TextView close = page.pageUserCloseServer;
+        final TextView disconnection = page.pageUserDisconnect;
         // TODO
         final AtomicBoolean clickable = new AtomicBoolean(true);
         close.setOnClickListener(v -> {
@@ -52,15 +51,13 @@ public class PageUser implements ActivityMainChooser.MainPage {
                 try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address())) {
                     OperateServerHelper.closeServer(client, TokenAssistant.getToken(this.address(), this.username()));
                 }
-                Main.runOnUiThread(this.activity, this.activity::close);
             }, () -> clickable.set(true)));
         });
         disconnection.setOnClickListener(v -> {
             if (!clickable.compareAndSet(true, false))
                 return;
             try {
-                this.activity.startActivity(new Intent(this.activity, ActivityLogin.class));
-                this.activity.finish();
+                this.activity.close();
             } finally {
                 clickable.set(true);
             }
