@@ -700,7 +700,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                 final String real = json.getString("info");
                 this.throwIfNull(real, json, "renameDirectly0", p -> p.add("information", information).add("name", name));
                 consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(new FileInformation(
-                        information.id(), information.parentId(), real, true, information.size(), information.createTime(), now, information.others()
+                        information.id(), information.parentId(), real, false, information.size(), information.createTime(), now, information.others()
                 )))));
             });
     }

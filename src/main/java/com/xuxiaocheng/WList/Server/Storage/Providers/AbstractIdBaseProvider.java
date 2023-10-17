@@ -22,6 +22,7 @@ import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.BroadcastManager;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.ProgressBar;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.BackgroundTaskManager;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.ProviderUtil;
 import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.Records.FailureReason;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
@@ -156,6 +157,8 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
 
 
     protected void onTrash(final long id, final boolean isDirectory) throws SQLException {
+        if (!isDirectory)
+            ProviderUtil.removeDownloadUrlCache(this.getLocation(id));
         this.manager.getInstance().deleteFileOrDirectory(id, isDirectory, null);
         WListServer.IOExecutors.execute(() -> BroadcastManager.onFileTrash(this.getLocation(id), isDirectory));
     }
