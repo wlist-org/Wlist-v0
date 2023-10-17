@@ -1,22 +1,23 @@
 package com.xuxiaocheng.WList.Server.Storage.Helpers;
 
-import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
+import com.xuxiaocheng.HeadLibs.HeadLibs;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import io.netty.util.internal.EmptyArrays;
 import org.htmlunit.BrowserVersion;
+import org.htmlunit.Cache;
 import org.htmlunit.HttpMethod;
 import org.htmlunit.WebClient;
 import org.htmlunit.WebRequest;
 import org.htmlunit.WebResponse;
 import org.htmlunit.WebResponseData;
+import org.htmlunit.javascript.SilentJavaScriptErrorListener;
 import org.htmlunit.util.NameValuePair;
 import org.htmlunit.util.WebConnectionWrapper;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.function.Supplier;
 
 public final class BrowserUtil {
     private BrowserUtil() {
@@ -24,14 +25,15 @@ public final class BrowserUtil {
     }
 
     private static final @NotNull HLog logger = HLog.create("BrowserLogger");
+    private static final @NotNull Cache SharedCache = new Cache();
 
-    /**
-     * @see HttpNetworkHelper#newHttpClientBuilder()
-     */
-    public static final @NotNull HInitializer<Supplier<@NotNull WebClient>> WebClientCore = new HInitializer<>("WebClientCore", () -> {
+    public static @NotNull WebClient newWebClient() {
         final WebClient client = new WebClient(BrowserVersion.EDGE);
         client.getOptions().setCssEnabled(false);
+//        client.setCssErrorHandler(new SilentCssErrorHandler());
         client.getOptions().setJavaScriptEnabled(true);
+        if (!HeadLibs.isDebugMode())
+            client.setJavaScriptErrorListener(new SilentJavaScriptErrorListener());
         client.getOptions().setThrowExceptionOnScriptError(false);
         client.setWebConnection(new WebConnectionWrapper(client.getWebConnection()) {
             @Override
@@ -53,11 +55,8 @@ public final class BrowserUtil {
                 return response;
             }
         });
+        client.setCache(BrowserUtil.SharedCache);
         return client;
-    });
-
-    public static @NotNull WebClient newWebClient() {
-        return BrowserUtil.WebClientCore.getInstance().get();
     }
 
     public static void waitJavaScriptCompleted(final @NotNull WebClient client) {
