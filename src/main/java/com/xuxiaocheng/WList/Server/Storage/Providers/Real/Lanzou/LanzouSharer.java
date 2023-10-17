@@ -125,9 +125,7 @@ public class LanzouSharer extends AbstractIdBaseSharer<LanzouConfiguration> {
         try (final Response response = HttpNetworkHelper.getWithParameters(HttpNetworkHelper.DefaultNoRedirectHttpClient, Pair.ImmutablePair.makeImmutablePair(displayUrl, "HEAD"), LanzouProvider.Headers, null).execute()) {
             if (!response.isRedirect()) // always redirect?
                 return Pair.ImmutablePair.makeImmutablePair(displayUrl, response.headers());
-            final String redirect = response.header("Location");
-            assert redirect != null;
-            finalUrl = HttpUrl.parse(redirect);
+            finalUrl = HttpNetworkHelper.extraLocationHeader(displayUrl, response.header("Location"));
             assert finalUrl != null;
         }
         try (final Response response = HttpNetworkHelper.getWithParameters(HttpNetworkHelper.DefaultNoRedirectHttpClient, Pair.ImmutablePair.makeImmutablePair(finalUrl, "GET"), LanzouProvider.Headers, null).execute()) {

@@ -272,6 +272,13 @@ public final class HttpNetworkHelper {
         return RequestBody.create(JSON.toJSONBytes(obj), MediaType.parse("application/json;charset=utf-8"));
     }
 
+    public static @Nullable HttpUrl extraLocationHeader(final @NotNull HttpUrl url, final @Nullable String location) {
+        if (location == null) return null;
+        final HttpUrl.Builder builder = url.newBuilder(location);
+        if (builder == null) return null;
+        return builder.build();
+    }
+
     public static @NotNull RequestBody createOctetStreamRequestBody(final @NotNull ByteBuf content, final @Nullable ProgressBar.ProgressListener listener) {
         final long length = content.readableBytes();
         final RequestBody body = new RequestBody() {
