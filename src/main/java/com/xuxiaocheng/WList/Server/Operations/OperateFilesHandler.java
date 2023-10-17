@@ -540,7 +540,7 @@ public final class OperateFilesHandler {
             final UploadRequirements requirements = p.getT().getT();
             final String id = UploadIdHelper.generateId(requirements);
             HLog.getInstance("ServerLogger").log(HLogLevel.LESS, "Signed upload id.", ServerHandler.user(null, user.getT()),
-                    ParametersMap.create().add("parent", parent).add("filename", filename).add("size", size).add("checksums", requirements.checksums()));
+                    ParametersMap.create().add("parent", parent).add("filename", filename).add("size", size).add("checksums", requirements.checksums()).add("id", id));
             WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(buf -> requirements.dumpConfirm(buf, id)));
         });
     };

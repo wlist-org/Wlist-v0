@@ -52,7 +52,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -288,7 +287,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
                 latch.countDown();
             };
             BroadcastAssistant.get(address()).FileUpload.register(callback);
-            FilesAssistant.upload(address(), adminUsername(), file, Options.DuplicatePolicy.ERROR, parent, PredicateE.truePredicate(), ConsumerE.emptyConsumer());
+            FilesAssistant.upload(address(), adminUsername(), file, parent, PredicateE.truePredicate(), ConsumerE.emptyConsumer());
             latch.await();
             BroadcastAssistant.get(address()).FileUpload.unregister(callback);
             return information.get();
