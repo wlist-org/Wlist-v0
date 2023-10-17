@@ -28,7 +28,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-public record ClientConfiguration(int threadCount, int progressInterval,
+public record ClientConfiguration(int threadCount, int progressStartDelay, int progressInterval,
                                   int limitPerPage, Options.@NotNull FilterPolicy filterPolicy,
                                   @NotNull LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> fileOrders,
                                   Options.@NotNull DuplicatePolicy duplicatePolicy,
@@ -52,6 +52,8 @@ public record ClientConfiguration(int threadCount, int progressInterval,
         final ClientConfiguration configuration = new ClientConfiguration(
                 YamlHelper.getConfig(config, "thread_count", Runtime.getRuntime().availableProcessors(),
                         o -> YamlHelper.transferIntegerFromStr(o, errors, "thread_count", BigInteger.ONE, YamlHelper.IntegerMax)).intValue(),
+                YamlHelper.getConfig(config, "progress_start_delay", TimeUnit.MILLISECONDS.toMillis(300),
+                        o -> YamlHelper.transferIntegerFromStr(o, errors, "progress_start_delay", BigInteger.ZERO, YamlHelper.IntegerMax)).intValue(),
                 YamlHelper.getConfig(config, "progress_interval", TimeUnit.MILLISECONDS.toMillis(500),
                         o -> YamlHelper.transferIntegerFromStr(o, errors, "progress_interval", BigInteger.ONE, YamlHelper.IntegerMax)).intValue(),
                 YamlHelper.getConfig(config, "limit_per_page", 20,
@@ -141,6 +143,7 @@ public record ClientConfiguration(int threadCount, int progressInterval,
     public static void dump(final @NotNull ClientConfiguration configuration, final @NotNull OutputStream stream) throws IOException {
         final Map<String, Object> config = new LinkedHashMap<>();
         config.put("thread_count", configuration.threadCount);
+        config.put("progress_start_delay", configuration.progressStartDelay);
         config.put("progress_interval", configuration.progressInterval);
         config.put("limit_per_page", configuration.limitPerPage);
         config.put("filter_policy", configuration.filterPolicy.name());

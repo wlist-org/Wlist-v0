@@ -91,33 +91,53 @@ public final class FilesAssistant {
         super();
     }
 
-    private static void waitAndCallback(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull Consumer<? super @NotNull InstantaneousProgressState> callback, final @NotNull AtomicBoolean failure, final @NotNull CountDownLatch latch, final @NotNull Collection<@NotNull String> ids) throws InterruptedException, IOException {
-        try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
-            int failed = 0;
-            while (!latch.await(ClientConfiguration.get().progressInterval(), TimeUnit.MILLISECONDS)) {
-                final Collection<InstantaneousProgressState> states = ConcurrentHashMap.newKeySet();
-                try {
-                    HMultiRunHelper.runConsumers(BroadcastAssistant.CallbackExecutors, ids, HExceptionWrapper.wrapConsumer(id -> {
-                        final InstantaneousProgressState state = OperateProgressHelper.getProgress(client, TokenAssistant.getToken(address, username), id);
-                        if (state != null)
-                            states.add(state);
-                    }));
-                } catch (final RuntimeException exception) {
-                    HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
-                    states.clear();
+    private static @NotNull InstantaneousProgressState callbackCore(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull Collection<@NotNull String> ids) throws InterruptedException {
+        final Collection<InstantaneousProgressState> states = ConcurrentHashMap.newKeySet();
+        try {
+            HMultiRunHelper.runConsumers(BroadcastAssistant.CallbackExecutors, ids, HExceptionWrapper.wrapConsumer(id -> {
+                final InstantaneousProgressState state;
+                try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
+                    state = OperateProgressHelper.getProgress(client, TokenAssistant.getToken(address, username), id);
                 }
-                if (states.isEmpty()) {
-                    if (++failed > 3) {
-                        failure.set(true);
-                        break;
-                    }
-                } else {
-                    failed = 0;
-                    BroadcastAssistant.CallbackExecutors.submit(() -> callback.accept(new InstantaneousProgressState(
-                            AndroidSupporter.streamToList(states.stream().flatMap(s -> s.stages().stream()))))).addListener(MiscellaneousUtil.exceptionListener());
+                if (state != null)
+                    states.add(state);
+            }));
+        } catch (final RuntimeException exception) {
+            HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
+            states.clear();
+        }
+        return new InstantaneousProgressState(AndroidSupporter.streamToList(states.stream().flatMap(s -> s.stages().stream())));
+    }
+
+    private static void callbackSync(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull Consumer<? super @NotNull InstantaneousProgressState> callback, final @NotNull AtomicBoolean failure, final @NotNull CountDownLatch latch, final @NotNull Collection<@NotNull String> ids) throws InterruptedException {
+        TimeUnit.MILLISECONDS.sleep(ClientConfiguration.get().progressStartDelay());
+        int failed = 0;
+        while (!latch.await(ClientConfiguration.get().progressInterval(), TimeUnit.MILLISECONDS)) {
+            final InstantaneousProgressState state = FilesAssistant.callbackCore(address, username, ids);
+            if (state.stages().isEmpty()) {
+                if (++failed > 3) {
+                    failure.set(true);
+                    break;
                 }
+            } else {
+                failed = 0;
+                BroadcastAssistant.CallbackExecutors.submit(() -> callback.accept(state)).addListener(MiscellaneousUtil.exceptionListener());
             }
         }
+    }
+
+    private static @NotNull ScheduledFuture<?> callbackAsync(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull ScheduledExecutorService executor, final @NotNull Consumer<? super @NotNull InstantaneousProgressState> callback, final @NotNull Collection<@NotNull String> ids) {
+        final AtomicInteger failed = new AtomicInteger(0);
+        return executor.scheduleWithFixedDelay(HExceptionWrapper.wrapRunnable(() -> {
+            final InstantaneousProgressState state = FilesAssistant.callbackCore(address, username, ids);
+            if (state.stages().isEmpty()) {
+                if (failed.incrementAndGet() >= 3)
+                    throw new CancellationException();
+            } else {
+                failed.set(0);
+                callback.accept(state);
+            }
+        }), ClientConfiguration.get().progressStartDelay(), ClientConfiguration.get().progressInterval(), TimeUnit.MILLISECONDS);
     }
 
 
@@ -265,9 +285,9 @@ public final class FilesAssistant {
                         //noinspection VariableNotUsedInsideIf
                         if (e != null)
                             failure.set(true);
-                    }, false), executors).exceptionally(MiscellaneousUtil.exceptionHandler()).join();
+                    }, false), executors).exceptionally(MiscellaneousUtil.exceptionHandler());
                 }
-                FilesAssistant.waitAndCallback(address, username, callback, failure, latch, List.of(confirm.getT().id()));
+                FilesAssistant.callbackSync(address, username, callback, failure, latch, List.of(confirm.getT().id()));
                 latch.await();
         }, () -> {
             final Future<?> future = executors.shutdownGracefully().await();
@@ -444,7 +464,7 @@ public final class FilesAssistant {
                         throw new IllegalStateException("Invalid download chunk." + ParametersMap.create().add("address", address).add("username", username).add("file", file)
                                 .add("location", location).add("confirm", confirm).add("information", information).add("position", position).add("parallel", information.parallel()));
                     position = pair.getSecond().longValue();
-                    final int chunk = i++;
+                    final int index = i++;
                     final AtomicLong saved = new AtomicLong(pair.getFirst().longValue());
                     progress.add(Pair.ImmutablePair.makeImmutablePair(saved, pair.getSecond()));
                     CompletableFuture.runAsync(HExceptionWrapper.wrapRunnable(() -> {
@@ -454,7 +474,7 @@ public final class FilesAssistant {
                              final FileChannel channel = accessFile.getChannel().position(pair.getFirst().longValue());
                              final FileLock ignoredLock = channel.lock(pair.getFirst().longValue(), length, false)) {
                             while (length > 0) {
-                                final ByteBuf buf = OperateFilesHelper.downloadFile(c, TokenAssistant.getToken(address, username), confirm.getT().id(), chunk);
+                                final ByteBuf buf = OperateFilesHelper.downloadFile(c, TokenAssistant.getToken(address, username), confirm.getT().id(), index);
                                 if (buf == null) {
                                     failure.set(true);
                                     break;
@@ -482,7 +502,7 @@ public final class FilesAssistant {
                             .add("location", location).add("confirm", confirm).add("information", information).add("position", position).add("parallel", information.parallel()));
             }
             if (!failure.get()) {
-                FilesAssistant.waitAndCallback(address, username, HExceptionWrapper.wrapConsumer(s -> {
+                FilesAssistant.callbackSync(address, username, HExceptionWrapper.wrapConsumer(s -> {
                     FilesAssistant.saveDownloadingProgress(location, file, progress);
                     callback.accept(s);
                 }), failure, latch, ids);
@@ -501,6 +521,15 @@ public final class FilesAssistant {
     }
 
 
+    private static void refreshCore(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull ScheduledExecutorService executor, final @NotNull Consumer<? super @NotNull InstantaneousProgressState> callback, final @NotNull String id) throws IOException, InterruptedException, WrongStateException {
+        final ScheduledFuture<?> future = FilesAssistant.callbackAsync(address, username, executor, callback, List.of(id));
+        try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
+            OperateFilesHelper.confirmRefresh(client, TokenAssistant.getToken(address, username), id);
+        } finally {
+            future.cancel(true);
+        }
+    }
+
     public static @Nullable VisibleFilesListInformation list(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation directory, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @NotNull ScheduledExecutorService executor, final @NotNull Consumer<? super @NotNull InstantaneousProgressState> callback) throws IOException, InterruptedException, WrongStateException {
         final UnionPair<VisibleFilesListInformation, RefreshConfirm> confirm;
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
@@ -510,13 +539,7 @@ public final class FilesAssistant {
             return null;
         if (confirm.isSuccess())
             return confirm.getT();
-        final String id = confirm.getE().id();
-        final ScheduledFuture<?> future = FilesAssistant.delayAndWait(address, username, id, executor, callback);
-        try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
-            OperateFilesHelper.confirmRefresh(client, TokenAssistant.getToken(address, username), id);
-        } finally {
-            future.cancel(true);
-        }
+        FilesAssistant.refreshCore(address, username, executor, callback, confirm.getE().id());
         return FilesAssistant.list(address, username, directory, filter, orders, position, limit, executor, callback);
     }
 
@@ -527,28 +550,8 @@ public final class FilesAssistant {
         }
         if (confirm == null)
             return false;
-        final String id = confirm.id();
-        final ScheduledFuture<?> future = FilesAssistant.delayAndWait(address, username, id, executor, callback);
-        try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
-            OperateFilesHelper.confirmRefresh(client, TokenAssistant.getToken(address, username), id);
-        } finally {
-            future.cancel(true);
-        }
+        FilesAssistant.refreshCore(address, username, executor, callback, confirm.id());
         return true;
-    }
-
-    private static @NotNull ScheduledFuture<?> delayAndWait(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull String id, final @NotNull ScheduledExecutorService executor, final @NotNull Consumer<? super @NotNull InstantaneousProgressState> callback) {
-        final AtomicInteger failed = new AtomicInteger(0);
-        return executor.scheduleWithFixedDelay(HExceptionWrapper.wrapRunnable(() -> {
-            try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
-                final InstantaneousProgressState state = OperateProgressHelper.getProgress(client, TokenAssistant.getToken(address, username), id);
-                if (state != null) {
-                    failed.set(0);
-                    callback.accept(state);
-                } else if (failed.incrementAndGet() >= 3)
-                    throw new CancellationException();
-            }
-        }), 300, ClientConfiguration.get().progressInterval(), TimeUnit.MILLISECONDS);
     }
 
 }
