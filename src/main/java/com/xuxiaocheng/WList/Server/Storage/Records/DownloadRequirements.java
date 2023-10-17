@@ -87,11 +87,16 @@ public record DownloadRequirements(boolean acceptedRange, long downloadingSize, 
         return Objects.requireNonNullElse(headers.get("Accept-Ranges"), "").contains("bytes");
     }
 
-    private static @Nullable ZonedDateTime getExpireTime(final @Nullable ZonedDateTime expires, final @NotNull Headers headers) {
+    private static @Nullable ZonedDateTime getExpireTime(final @Nullable ZonedDateTime expires, final @NotNull Headers headers, final @Nullable Consumer<? super @NotNull ZonedDateTime> expireTimeUpdateCallback) {
         if (expires != null)
             return expires;
         final Instant instant = headers.getInstant("Expires"); // TODO: Expires?
-        return instant == null ? null : ZonedDateTime.ofInstant(instant, ZoneOffset.UTC);
+        if (instant == null)
+            return null;
+        final ZonedDateTime expireTime = ZonedDateTime.ofInstant(instant, ZoneOffset.UTC);
+        if (expireTimeUpdateCallback != null)
+            expireTimeUpdateCallback.accept(expireTime);
+        return expireTime;
     }
 
 
@@ -141,7 +146,7 @@ public record DownloadRequirements(boolean acceptedRange, long downloadingSize, 
         final long size = result.getSecond().getA().longValue();
         final long start = result.getSecond().getB().longValue();
         final long end = result.getSecond().getC().longValue();
-        final ZonedDateTime expires = DownloadRequirements.getExpireTime(expireTime, urlHeaders);
+        final ZonedDateTime expires = DownloadRequirements.getExpireTime(expireTime, urlHeaders, null);
         return new DownloadRequirements(true, end - start, () -> {
             final int count = MiscellaneousUtil.calculatePartCount(size, NetworkTransmission.FileTransferBufferSize);
             final List<OrderedSuppliers> list = new ArrayList<>(count);
@@ -176,7 +181,7 @@ public record DownloadRequirements(boolean acceptedRange, long downloadingSize, 
         });
     }
 
-    public static @NotNull DownloadRequirements tryGetDownloadFromUrl(final @NotNull OkHttpClient client, final @NotNull HttpUrl url, final @Nullable Headers testedResponseHeader, final @Nullable Long totalSize, final Headers.@Nullable Builder requestHeaderBuilder, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @Nullable ZonedDateTime expireTime) throws IOException {
+    public static @NotNull DownloadRequirements tryGetDownloadFromUrl(final @NotNull OkHttpClient client, final @NotNull HttpUrl url, final @Nullable Headers testedResponseHeader, final @Nullable Long totalSize, final Headers.@Nullable Builder requestHeaderBuilder, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @Nullable ZonedDateTime expireTime, final @Nullable Consumer<? super @NotNull ZonedDateTime> expireTimeUpdateCallback) throws IOException {
         final Pair.ImmutablePair<Headers, Triad.ImmutableTriad<Long, Long, Long>> result = DownloadRequirements.getUrlHeaders(client, url, testedResponseHeader, totalSize, requestHeaderBuilder, from, to);
         if (result == null)
             return DownloadRequirements.EmptyDownloadRequirements;
@@ -184,7 +189,7 @@ public record DownloadRequirements(boolean acceptedRange, long downloadingSize, 
         final long size = result.getSecond().getA().longValue();
         final long start = result.getSecond().getB().longValue();
         final long end = result.getSecond().getC().longValue();
-        final ZonedDateTime expires = DownloadRequirements.getExpireTime(expireTime, urlHeaders);
+        final ZonedDateTime expires = DownloadRequirements.getExpireTime(expireTime, urlHeaders, expireTimeUpdateCallback);
         if (DownloadRequirements.isSupportedRange(urlHeaders))
             return DownloadRequirements.getDownloadMethodsByRangedUrl(client, url, urlHeaders, size, requestHeaderBuilder, start, end, expires);
         return new DownloadRequirements(false, size, () -> {

@@ -106,9 +106,6 @@ public final class HttpNetworkHelper {
         }
         return response;
     };
-    /**
-     * @see BrowserUtil#WebClientCore
-     */
     public static OkHttpClient.@NotNull Builder newHttpClientBuilder(){
         return new OkHttpClient.Builder()
                 .connectTimeout(15, TimeUnit.SECONDS)

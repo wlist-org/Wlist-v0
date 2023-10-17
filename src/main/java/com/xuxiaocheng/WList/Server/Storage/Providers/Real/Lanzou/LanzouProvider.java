@@ -10,6 +10,7 @@ import com.xuxiaocheng.HeadLibs.CheckRules.StringCheckRules.LengthCheckRule;
 import com.xuxiaocheng.HeadLibs.CheckRules.StringCheckRules.SuffixCheckRule;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.BiConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
@@ -17,6 +18,7 @@ import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Commons.Utils.I18NUtil;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
@@ -24,7 +26,6 @@ import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.Exceptions.IllegalResponseCodeException;
 import com.xuxiaocheng.WList.Server.Exceptions.WrongResponseException;
-import com.xuxiaocheng.WList.Server.Operations.Helpers.BroadcastManager;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.ProgressBar;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.BrowserUtil;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
@@ -138,6 +139,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
             configuration.setToken(token.value());
         } else {
             final Set<Cookie> cookies;
+            //noinspection CommentedOutCode
             try (final WebClient client = BrowserUtil.newWebClient()) {
                 final HtmlPage page = client.getPage("https://up.woozooo.com/account.php?action=login");
                 BrowserUtil.waitJavaScriptCompleted(client);
@@ -146,7 +148,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                 slide.mouseMove(false, false, false, MouseEvent.BUTTON_RIGHT);
                 page.<HtmlInput>getElementByName("username").setValue(configuration.getPassport());
                 page.<HtmlInput>getElementByName("password").setValue(configuration.getPassword());
-                final HtmlPage res = page.getHtmlElementById("s3").click();
+                /*final HtmlPage res = */page.getHtmlElementById("s3").click();
 //                final String result = res.asNormalizedText(); // ((DomNode) res.getByXPath("//p").get(0)).getVisibleText()
 //                boolean flag = true;
 //                for (final Iterator<String> iterator = Arrays.stream(result.split("\n")).iterator(); iterator.hasNext(); ) {
@@ -306,7 +308,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
             final JSONObject info = json.getJSONObject("info");
             this.throwIfNull(info, json, "getFileShareUrl", p -> p.add("fileId", fileId));
             final Integer onof = info.getInteger("onof");
-            if (onof == null) {// not available.
+            if (onof == null) { // not available.
                 consumer.accept(null, null);
                 return;
             }
@@ -374,10 +376,10 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                         assert sharer != null;
                         final Pair.ImmutablePair<HttpUrl, Headers> downloadUrl = sharer.getSingleShareFileDownloadUrl(url, pwd);
                         if (downloadUrl != null) {
-                            final Pair<Long, ZonedDateTime> fixed = sharer.testRealSizeAndData(downloadUrl.getFirst(), downloadUrl.getSecond());
+                            final Triad.ImmutableTriad<Headers, Long, ZonedDateTime> fixed = sharer.testRealSizeAndData(downloadUrl.getFirst(), downloadUrl.getSecond());
                             if (fixed != null) {
-                                size = fixed.getFirst().longValue();
-                                time = fixed.getSecond();
+                                size = fixed.getB().longValue();
+                                time = fixed.getC();
                             }
                         }
                     } finally {
@@ -435,13 +437,13 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                 consumer.accept(AbstractIdBaseProvider.UpdateNotExisted);
                 return;
             }
-            final Pair<Long, ZonedDateTime> fixed = sharer.testRealSizeAndData(downloadUrl.getFirst(), downloadUrl.getSecond());
+            final Triad.ImmutableTriad<Headers, Long, ZonedDateTime> fixed = sharer.testRealSizeAndData(downloadUrl.getFirst(), downloadUrl.getSecond());
             if (fixed == null) {
                 consumer.accept(AbstractIdBaseProvider.UpdateNoRequired);
                 return;
             }
             consumer.accept(UnionPair.ok(UnionPair.ok(new FileInformation(oldInformation.id(), oldInformation.parentId(), oldInformation.name(),
-                    false, fixed.getFirst().longValue(), fixed.getSecond(), fixed.getSecond(), LanzouProvider.dumpOthers(url, pwd)))));
+                    false, fixed.getB().longValue(), fixed.getC(), fixed.getC(), LanzouProvider.dumpOthers(url, pwd)))));
         });
     }
 
@@ -492,38 +494,53 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
         return information.others() == null;
     }
 
+    @SuppressWarnings("OverlyBroadThrowsClause")
     @Override
     protected void download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer) throws Exception {
         assert !information.isDirectory();
-        final RunnableE onDelete = () -> {
-            this.manager.getInstance().deleteFile(information.id(), null);
-            BroadcastManager.onFileTrash(this.getLocation(information.id()), false);
-            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(this.getLocation(information.id()), false))));
-        };
+        final FileLocation location = this.getLocation(information.id());
+        final HttpUrl cached = ProviderUtil.getDownloadUrlCache(location);
+        if (cached != null) {
+            consumer.accept(UnionPair.ok(UnionPair.ok(DownloadRequirements.tryGetDownloadFromUrl(this.getConfiguration().getFileClient(),
+                    cached, null, information.size(), LanzouProvider.Headers.newBuilder(), from, to, null,
+                    e -> ProviderUtil.setDownloadUrlCache(location, cached, e)))));
+            return;
+        }
         final BiConsumerE<HttpUrl, String> downloader = (url, pwd) -> {
+            final RunnableE onDelete = () -> {
+                this.onTrash(information.id(), false);
+                consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byNoSuchFile(this.getLocation(information.id()), false))));
+            };
             if (url == null) {
                 onDelete.run();
                 return;
             }
             final LanzouSharer sharer = (LanzouSharer) StorageManager.getSharer(this.getConfiguration().getName());
             assert sharer != null;
-            final ConsumerE<Pair.ImmutablePair<HttpUrl, Headers>> consume = downloadUrl -> {
+            final BiConsumerE<Pair.ImmutablePair<HttpUrl, Headers>, Pair.ImmutablePair<HttpUrl, String>> consume = (downloadUrl, shared) -> {
                 if (downloadUrl == null) {
                     onDelete.run();
                     return;
                 }
+                Headers header = downloadUrl.getSecond();
+                if (this.doesRequireUpdate(information)) {
+                    final Triad.ImmutableTriad<Headers, Long, ZonedDateTime> fixed = sharer.testRealSizeAndData(downloadUrl.getFirst(), downloadUrl.getSecond());
+                    if (fixed != null) {
+                        this.onUpdate(new FileInformation(information.id(), information.parentId(), information.name(), false, fixed.getB().longValue(),
+                                fixed.getC(), fixed.getC(), LanzouProvider.dumpOthers(url, pwd)));
+                        header = fixed.getA();
+                    }
+                }
+                ProviderUtil.setDownloadUrlCache(location, downloadUrl.getFirst(), null);
                 consumer.accept(UnionPair.ok(UnionPair.ok(DownloadRequirements.tryGetDownloadFromUrl(this.getConfiguration().getFileClient(),
-                        downloadUrl.getFirst(), downloadUrl.getSecond(), information.size(), LanzouProvider.Headers.newBuilder(), from, to, null))));
+                        downloadUrl.getFirst(), header, information.size(), LanzouProvider.Headers.newBuilder(), from, to, null,
+                        e -> ProviderUtil.setDownloadUrlCache(location, downloadUrl.getFirst(), e)))));
             };
             try {
-                consume.accept(sharer.getSingleShareFileDownloadUrl(url, pwd));
+                consume.accept(sharer.getSingleShareFileDownloadUrl(url, pwd), null);
             } catch (final IllegalParametersException ignore) { // Wrong password.
-                this.getFileShareUrl(information.id(), e -> consumer.accept(UnionPair.fail(e)), (u, p) -> {
-                    if (u == null)
-                        onDelete.run();
-                    else
-                        consume.accept(sharer.getSingleShareFileDownloadUrl(u, p));
-                });
+                this.getFileShareUrl(information.id(), e -> consumer.accept(UnionPair.fail(e)), (u, p) ->
+                        consume.accept(u == null ? null : sharer.getSingleShareFileDownloadUrl(u, p), Pair.ImmutablePair.makeImmutablePair(u, p)));
             }
         };
         if (information.others() == null) {

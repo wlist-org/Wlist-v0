@@ -5,23 +5,31 @@ import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.BiConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
+import com.xuxiaocheng.WList.Server.Operations.Helpers.IdsHelper;
 import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseProvider;
+import okhttp3.HttpUrl;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 
+import java.time.Duration;
+import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -263,6 +271,20 @@ public final class ProviderUtil {
                 return this.next();
             }
         })));
+    }
+
+    private static final @NotNull Map<@NotNull FileLocation, @NotNull HttpUrl> downloadUrlCache = new ConcurrentHashMap<>();
+    public static void setDownloadUrlCache(final @NotNull FileLocation location, final @NotNull HttpUrl url, final @Nullable ZonedDateTime expire) {
+        ProviderUtil.downloadUrlCache.put(location, url);
+        if (expire != null)
+            IdsHelper.CleanerExecutors.schedule(() -> ProviderUtil.downloadUrlCache.remove(location, url),
+                    Duration.between(MiscellaneousUtil.now(), expire).toSeconds(), TimeUnit.SECONDS).addListener(IdsHelper.noCancellationExceptionListener());
+    }
+    public static void removeDownloadUrlCache(final @NotNull FileLocation location) {
+        ProviderUtil.downloadUrlCache.remove(location);
+    }
+    public static @Nullable HttpUrl getDownloadUrlCache(final @NotNull FileLocation location) {
+        return ProviderUtil.downloadUrlCache.get(location);
     }
 
     // Example: "1.txt" ==> ".txt"

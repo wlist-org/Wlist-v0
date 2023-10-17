@@ -2,6 +2,7 @@ package com.xuxiaocheng.WList.Server.Storage.Providers.Real.Lanzou;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Server.Exceptions.IllegalParametersException;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.BrowserUtil;
@@ -26,8 +27,9 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Objects;
@@ -40,8 +42,7 @@ public class LanzouSharer extends AbstractIdBaseSharer<LanzouConfiguration> {
     }
 
     protected static final @NotNull String AssertHost = Objects.requireNonNull(HttpUrl.parse("https://assets.woozooo.com/")).url().getHost();
-    protected static final @NotNull DateTimeFormatter dataTimeFormatter = DateTimeFormatter.RFC_1123_DATE_TIME;
-
+    protected static final @NotNull WebResponseData QRCodeMinJs = new WebResponseData("var QRCode=function(a,b){};QRCode.CorrectLevel={L:1,M:0,Q:3,H:2};".getBytes(StandardCharsets.UTF_8), 200, "OK", List.of(BrowserUtil.JSResponseHeader));
     protected @Nullable Pair.ImmutablePair<@NotNull HttpUrl, @Nullable Headers> getSingleShareFileDownloadUrl(final @NotNull HttpUrl url, final @Nullable String password) throws IOException, IllegalParametersException {
         final HtmlElement downloading;
         try (final WebClient client = BrowserUtil.newWebClient()) {
@@ -52,8 +53,7 @@ public class LanzouSharer extends AbstractIdBaseSharer<LanzouConfiguration> {
                         if (!request.getUrl().getHost().equals(url.url().getHost()) && !request.getUrl().getHost().equals(LanzouSharer.AssertHost))
                             return BrowserUtil.emptyResponse(request);
                         if (request.getUrl().toString().endsWith("/qrcode.min.js"))
-                            return new WebResponse(new WebResponseData("QRCode=function(a,b){};QRCode.CorrectLevel={L:1,M:0,Q:3,H:2};"
-                                    .getBytes(StandardCharsets.UTF_8), 200, "OK", List.of(BrowserUtil.JSResponseHeader)), request, 0);
+                            return new WebResponse(LanzouSharer.QRCodeMinJs, request, 0);
                     }
                     return super.getResponse(request);
                 }
@@ -133,7 +133,7 @@ public class LanzouSharer extends AbstractIdBaseSharer<LanzouConfiguration> {
         }
     }
 
-    protected Pair.@Nullable ImmutablePair<@NotNull Long, @NotNull ZonedDateTime> testRealSizeAndData(final @NotNull HttpUrl url, final @Nullable Headers header) throws IOException {
+    protected Triad.@Nullable ImmutableTriad<@NotNull Headers, @NotNull Long, @NotNull ZonedDateTime> testRealSizeAndData(final @NotNull HttpUrl url, final @Nullable Headers header) throws IOException {
         final LanzouConfiguration configuration = this.configuration.getInstance();
         final Headers headers;
         if (header == null)
@@ -142,11 +142,11 @@ public class LanzouSharer extends AbstractIdBaseSharer<LanzouConfiguration> {
             }
         else headers = header;
         final String sizeS = headers.get("Content-Length");
-        final String dataS = headers.get("Last-Modified");
+        final Instant dataS = headers.getInstant("Last-Modified");
         if (sizeS == null || dataS == null)
             return null;
         try {
-            return Pair.ImmutablePair.makeImmutablePair(Long.parseLong(sizeS), ZonedDateTime.parse(dataS, LanzouSharer.dataTimeFormatter));
+            return Triad.ImmutableTriad.makeImmutableTriad(headers, Long.parseLong(sizeS), ZonedDateTime.ofInstant(dataS, ZoneOffset.UTC));
         } catch (final NumberFormatException | DateTimeParseException ignore) {
             return null;
         }

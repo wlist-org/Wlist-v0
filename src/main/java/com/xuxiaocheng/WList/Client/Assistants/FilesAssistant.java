@@ -51,6 +51,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.net.SocketAddress;
 import java.nio.channels.FileChannel;
@@ -82,6 +83,8 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 public final class FilesAssistant {
     private FilesAssistant() {
@@ -330,7 +333,7 @@ public final class FilesAssistant {
         if (!recordFile.isFile() || !recordFile.canRead())
             return FilesAssistant.FullDownloadingProgress;
         final JSONObject json;
-        try (final InputStream stream = /*new GZIPInputStream(*/new BufferedInputStream(new FileInputStream(recordFile))/*)*/) {
+        try (final InputStream stream = new GZIPInputStream(new BufferedInputStream(new FileInputStream(recordFile)))) {
             json = JSON.parseObject(stream);
         } catch (@SuppressWarnings("OverlyBroadCatchBlock") final IOException | JSONException exception) {
             HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
@@ -372,10 +375,9 @@ public final class FilesAssistant {
         json.put("progress", record);
         final byte[] bytes = JSON.toJSONBytes(json);
         HFileHelper.writeFileAtomically(recordFile, stream -> {
-//            try (final OutputStream outputStream = new GZIPOutputStream(stream)) {
-//                outputStream.write(bytes);
-//            }
-            stream.write(bytes);
+            try (final OutputStream outputStream = new GZIPOutputStream(stream)) {
+                outputStream.write(bytes);
+            }
         });
     }
 

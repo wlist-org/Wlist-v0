@@ -160,7 +160,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         WListServer.IOExecutors.execute(() -> BroadcastManager.onFileTrash(this.getLocation(id), isDirectory));
     }
 
-    protected void onUpdate(final @NotNull FileInformation information, final @Nullable String _connectionId) throws SQLException {
+    protected void onUpdate(final @NotNull FileInformation information) throws SQLException {
         this.manager.getInstance().updateOrInsertFileOrDirectory(information, null);
         WListServer.IOExecutors.execute(() -> BroadcastManager.onFileUpdate(this.getLocation(information.id()), information.isDirectory()));
     }
@@ -1114,7 +1114,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                             final FileInformation info = t.getT().get().getT();
                             assert info.id() == id;
                             assert info.isDirectory() == isDirectory && info.size() == information.size() && info.parentId() == parentId;
-                            this.onUpdate(info, null);
+                            this.onUpdate(info);
                             result = UnionPair.ok(Optional.of(UnionPair.ok(info)));
                             return;
                         }
@@ -1196,7 +1196,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                             final FileInformation info = t.getT().get().getT();
                             assert info.id() == id;
                             assert info.isDirectory() == isDirectory && info.size() == information.size() && info.parentId() == information.parentId();
-                            this.onUpdate(info, null);
+                            this.onUpdate(info);
                         }
                         result = t;
                     } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
