@@ -279,7 +279,7 @@ public final class HttpNetworkHelper {
         return builder.build();
     }
 
-    public static @NotNull RequestBody createOctetStreamRequestBody(final @NotNull ByteBuf content, final @Nullable ProgressBar.ProgressListener listener) {
+    public static @NotNull RequestBody createOctetStreamRequestBody(final @NotNull ByteBuf content, final ProgressBar.@Nullable ProgressListener listener) {
         final long length = content.readableBytes();
         final RequestBody body = new RequestBody() {
             @Override
@@ -326,9 +326,9 @@ public final class HttpNetworkHelper {
 
     public static class ProgressRequestBody extends RequestBody {
         protected final @NotNull RequestBody requestBody;
-        protected final @NotNull ProgressBar.ProgressListener listener;
+        protected final ProgressBar.@NotNull ProgressListener listener;
 
-        public ProgressRequestBody(final @NotNull RequestBody requestBody, final @NotNull ProgressBar.ProgressListener listener) {
+        public ProgressRequestBody(final @NotNull RequestBody requestBody, final ProgressBar.@NotNull ProgressListener listener) {
             super();
             this.requestBody = requestBody;
             this.listener = listener;
@@ -403,7 +403,7 @@ public final class HttpNetworkHelper {
         }
     }
 
-    public static @NotNull ByteBuf receiveDataFromStream(final @NotNull InputStream stream, final int length, final @Nullable ProgressBar.ProgressListener listener) throws IOException {
+    public static @NotNull ByteBuf receiveDataFromStream(final @NotNull InputStream stream, final int length, final ProgressBar.@Nullable ProgressListener listener) throws IOException {
         final ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(length, length);
         try {
             // stream.transferTo(new ByteBufOutputStream(buffer));

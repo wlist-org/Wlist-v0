@@ -50,7 +50,7 @@ public record ClientConfiguration(int threadCount, int progressInterval,
         final Map<String, Object> config = stream == null ? Map.of() : YamlHelper.loadYaml(stream);
         final Collection<Pair.ImmutablePair<String, String>> errors = new LinkedList<>();
         final ClientConfiguration configuration = new ClientConfiguration(
-                YamlHelper.getConfig(config, "thread_count", 4,
+                YamlHelper.getConfig(config, "thread_count", Runtime.getRuntime().availableProcessors(),
                         o -> YamlHelper.transferIntegerFromStr(o, errors, "thread_count", BigInteger.ONE, YamlHelper.IntegerMax)).intValue(),
                 YamlHelper.getConfig(config, "progress_interval", TimeUnit.MILLISECONDS.toMillis(500),
                         o -> YamlHelper.transferIntegerFromStr(o, errors, "progress_interval", BigInteger.ONE, YamlHelper.IntegerMax)).intValue(),

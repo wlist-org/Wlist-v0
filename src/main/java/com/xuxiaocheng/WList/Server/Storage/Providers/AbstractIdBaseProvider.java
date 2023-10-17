@@ -856,7 +856,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
     /**
      * Create an empty directory. {@code size == 0}
      */
-    protected abstract void create0(final long parentId, final @NotNull String directoryName, final @NotNull Options.DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) throws Exception;
+    protected abstract void create0(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) throws Exception;
 
     @Override
     public void createDirectory(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) throws Exception {

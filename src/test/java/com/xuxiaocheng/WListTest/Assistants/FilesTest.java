@@ -57,7 +57,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-@Disabled("Manually test")
+//@Disabled("Manually test")
 @Execution(ExecutionMode.SAME_THREAD)
 @SuppressWarnings("MethodOverridesStaticMethodOfSuperclass")
 public class FilesTest extends ProvidersWrapper {
@@ -74,6 +74,7 @@ public class FilesTest extends ProvidersWrapper {
         ProvidersWrapper.uninitialize();
     }
 
+    @Disabled
     @ParameterizedTest(name = "running")
     @MethodSource("client")
     public void _del(final @NotNull WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
@@ -152,39 +153,6 @@ public class FilesTest extends ProvidersWrapper {
     }
 
     @Test
-    public void download() throws IOException, InterruptedException, WrongStateException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-        TokenAssistant.login(this.address(), this.adminUsername(), this.adminPassword(), WListServer.IOExecutors);
-        final LinkedHashMap<VisibleFileInformation.Order, Options.OrderDirection> order = new LinkedHashMap<>();
-        order.put(VisibleFileInformation.Order.Size, Options.OrderDirection.ASCEND);
-        final VisibleFilesListInformation list = FilesAssistant.list(this.address(), this.adminUsername(), this.location(this.root()), Options.FilterPolicy.OnlyFiles, order, 0, 3, WListServer.IOExecutors, ConsumerE.emptyConsumer());
-        Assumptions.assumeTrue(list != null);
-        Assumptions.assumeTrue(list.informationList().size() == 2);
-
-        final VisibleFileInformation small = list.informationList().get(0);
-        Assumptions.assumeTrue("WListClientConsole-v0.1.1.exe".equals(small.name()));
-        Assumptions.assumeTrue(small.size() == 1803776);
-        this.testDownload(small.id(), "127d400ae420533548891ef54390f495");
-
-        final VisibleFileInformation big = list.informationList().get(1);
-        Assumptions.assumeTrue("WList-V0.2.0.jar".equals(big.name()));
-        Assumptions.assumeTrue(big.size() == 24915053);
-        this.testDownload(big.id(), "0efa9c569a7f37f0c92a352042a01df7");
-    }
-
-    public void testDownload(final long id, final @NotNull String md5) throws IOException, NoSuchMethodException, InvocationTargetException, IllegalAccessException, WrongStateException, InterruptedException {
-        final Method method = FilesAssistant.class.getDeclaredMethod("calculateChecksums", File.class, Collection.class);
-        method.setAccessible(true);
-
-        final File file = Files.createTempFile("test-download", ".jar").toFile();
-        file.deleteOnExit();
-        Assertions.assertNull(FilesAssistant.download(this.address(), this.adminUsername(), this.location(id),
-                file, c -> {HLog.DefaultLogger.log("", c);return true;},
-                state -> HLog.DefaultLogger.log(HLogLevel.LESS, state.stages())));
-        Assertions.assertEquals(List.of(md5), method.invoke(null, file,
-                List.of(new UploadChecksum(0, file.length(), UploadChecksum.MD5))));
-    }
-
-    @Test
     @SuppressWarnings("unchecked")
     public void calculateStream() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         final Method method = FilesAssistant.class.getDeclaredMethod("calculateChecksumsStream", InputStream.class, Collection.class);
@@ -258,4 +226,38 @@ public class FilesTest extends ProvidersWrapper {
         BroadcastAssistant.get(this.address()).FileUpload.unregister(callback);
         return information.get();
     }
+
+    @Test
+    public void download() throws IOException, InterruptedException, WrongStateException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+        final LinkedHashMap<VisibleFileInformation.Order, Options.OrderDirection> order = new LinkedHashMap<>();
+        order.put(VisibleFileInformation.Order.Size, Options.OrderDirection.ASCEND);
+        final VisibleFilesListInformation list = FilesAssistant.list(this.address(), this.adminUsername(), this.location(this.root()), Options.FilterPolicy.OnlyFiles, order, 0, 3, WListServer.IOExecutors, ConsumerE.emptyConsumer());
+        Assumptions.assumeTrue(list != null);
+        Assumptions.assumeTrue(list.informationList().size() == 2);
+
+        final VisibleFileInformation small = list.informationList().get(0);
+        Assumptions.assumeTrue("WListClientConsole-v0.1.1.exe".equals(small.name()));
+        Assumptions.assumeTrue(small.size() == 1803776);
+        this.testDownload(small.id(), "127d400ae420533548891ef54390f495");
+
+        final VisibleFileInformation big = list.informationList().get(1);
+        Assumptions.assumeTrue("WList-V0.2.0.jar".equals(big.name()));
+        Assumptions.assumeTrue(big.size() == 24915053);
+        this.testDownload(big.id(), "0efa9c569a7f37f0c92a352042a01df7");
+    }
+
+    public void testDownload(final long id, final @NotNull String md5) throws IOException, NoSuchMethodException, InvocationTargetException, IllegalAccessException, WrongStateException, InterruptedException {
+        final Method method = FilesAssistant.class.getDeclaredMethod("calculateChecksums", File.class, Collection.class);
+        method.setAccessible(true);
+
+        final File file = Files.createTempFile("test-upload", ".bin").toFile();
+        file.deleteOnExit();
+        Assertions.assertNull(FilesAssistant.download(this.address(), this.adminUsername(), this.location(id),
+                file, c -> {HLog.DefaultLogger.log("", c);return true;},
+                state -> HLog.DefaultLogger.log(HLogLevel.LESS, state.stages())));
+        Assertions.assertEquals(List.of(md5), method.invoke(null, file,
+                List.of(new UploadChecksum(0, file.length(), UploadChecksum.MD5))));
+    }
+
+
 }

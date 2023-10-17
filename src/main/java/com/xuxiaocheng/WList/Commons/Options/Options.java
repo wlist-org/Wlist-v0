@@ -75,7 +75,7 @@ public final class Options {
         OnlyFiles,
         Both,
         ;
-        public static @Nullable Options.FilterPolicy of(final byte policy) {
+        public static @Nullable FilterPolicy of(final byte policy) {
             return switch (policy) {
                 case 0 -> FilterPolicy.OnlyDirectories;
                 case 1 -> FilterPolicy.OnlyFiles;

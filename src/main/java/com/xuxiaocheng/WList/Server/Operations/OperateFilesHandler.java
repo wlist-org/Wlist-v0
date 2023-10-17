@@ -617,7 +617,7 @@ public final class OperateFilesHandler {
             return null;
         }
         assert buffer.readableBytes() <= NetworkTransmission.FileTransferBufferSize;
-        final ByteBuf content = buffer.retainedDuplicate();
+        final ByteBuf content = buffer.retainedSlice();
         buffer.readerIndex(buffer.writerIndex());
         final AtomicBoolean barrier = new AtomicBoolean(true);
         return () -> {

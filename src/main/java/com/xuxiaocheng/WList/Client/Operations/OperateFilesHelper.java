@@ -182,7 +182,7 @@ public final class OperateFilesHelper {
             final String reason = OperateHelper.handleState(receive);
             if (reason == null) {
                 OperateHelper.logOperated(OperationType.DownloadFile, null, p -> p.add("size", receive.readableBytes()));
-                return receive.retainedDuplicate();
+                return receive.retainedSlice();
             }
             OperateHelper.logOperated(OperationType.DownloadFile, reason, null);
             return null;
