@@ -155,33 +155,18 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
     }
 
 
-    protected void onTrash(final long id, final boolean isDirectory, final @Nullable String _connectionId) throws SQLException {
-        final FileManager manager = this.manager.getInstance();
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = manager.getConnection(_connectionId, connectionId)) {
-            manager.deleteFileOrDirectory(id, isDirectory, connectionId.get());
-            connection.commit();
-        }
+    protected void onTrash(final long id, final boolean isDirectory) throws SQLException {
+        this.manager.getInstance().deleteFileOrDirectory(id, isDirectory, null);
         WListServer.IOExecutors.execute(() -> BroadcastManager.onFileTrash(this.getLocation(id), isDirectory));
     }
 
     protected void onUpdate(final @NotNull FileInformation information, final @Nullable String _connectionId) throws SQLException {
-        final FileManager manager = this.manager.getInstance();
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = manager.getConnection(_connectionId, connectionId)) {
-            manager.updateOrInsertFileOrDirectory(information, connectionId.get());
-            connection.commit();
-        }
+        this.manager.getInstance().updateOrInsertFileOrDirectory(information, null);
         WListServer.IOExecutors.execute(() -> BroadcastManager.onFileUpdate(this.getLocation(information.id()), information.isDirectory()));
     }
 
-    protected void onUpload(final @NotNull FileInformation information, final @Nullable String _connectionId) throws SQLException {
-        final FileManager manager = this.manager.getInstance();
-        final AtomicReference<String> connectionId = new AtomicReference<>();
-        try (final Connection connection = manager.getConnection(_connectionId, connectionId)) {
-            manager.insertFileOrDirectory(information, connectionId.get());
-            connection.commit();
-        }
+    protected void onUpload(final @NotNull FileInformation information) throws SQLException {
+        this.manager.getInstance().insertFileOrDirectory(information, null);
         WListServer.IOExecutors.execute(() -> BroadcastManager.onFileUpload(this.getConfiguration().getName(), information));
     }
 
@@ -276,7 +261,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                             return;
                         }
                         if (t.getT().isFailure()) { // && t.getT().getE().booleanValue()
-                            this.onTrash(id, isDirectory, null);
+                            this.onTrash(id, isDirectory);
                             result = ProviderInterface.InfoNotExisted;
                             return;
                         }
@@ -286,10 +271,11 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                         final FileManager manager = this.manager.getInstance();
                         final AtomicReference<String> connectionId = new AtomicReference<>();
                         try (final Connection connection = manager.getConnection(null, connectionId)) {
-                            this.onUpdate(updated, connectionId.get());
+                            manager.updateOrInsertFileOrDirectory(updated, connectionId.get());
                             realInfo = manager.selectInfo(id, isDirectory, connectionId.get());
                             connection.commit();
                         }
+                        WListServer.IOExecutors.execute(() -> BroadcastManager.onFileUpdate(this.getLocation(updated.id()), updated.isDirectory()));
                         if (realInfo == null) {
                             result = ProviderInterface.InfoNotExisted;
                             return;
@@ -500,7 +486,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                                 finisher.run();
                                 flag1 = false;
                             } else
-                                this.onTrash(directoryId, true, null);
+                                this.onTrash(directoryId, true);
                         } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                             result1 = exception;
                         } finally {
@@ -606,7 +592,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                                                         result2 = ProviderInterface.TrashTooComplex;
                                                         return;
                                                     }
-                                                    this.onTrash(id, true, null);
+                                                    this.onTrash(id, true);
                                                     result2 = ProviderInterface.TrashSuccess;
                                                 } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                                                     result2 = UnionPair.fail(exception);
@@ -659,7 +645,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                             result = ProviderInterface.TrashTooComplex;
                             return;
                         }
-                        this.onTrash(id, isDirectory, null);
+                        this.onTrash(id, isDirectory);
                         result = ProviderInterface.TrashSuccess;
                     } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                         result = UnionPair.fail(exception);
@@ -882,7 +868,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                         if (t.isSuccess() && t.getT().isSuccess()) {
                             final FileInformation information = t.getT().getT();
                             assert information.isDirectory() && information.size() == 0 && information.parentId() == parentId;
-                            this.onUpload(information, null);
+                            this.onUpload(information);
                         }
                         result1 = t;
                     } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
@@ -951,7 +937,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                                         if (u.isSuccess() && u.getT().isPresent()) {
                                             final FileInformation information = u.getT().get();
                                             assert !information.isDirectory() && information.size() == size && information.parentId() == parentId;
-                                            this.onUpload(information, null);
+                                            this.onUpload(information);
                                         }
                                         o.accept(u);
                                     } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {

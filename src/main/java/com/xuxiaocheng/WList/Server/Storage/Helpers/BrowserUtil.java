@@ -35,6 +35,7 @@ public final class BrowserUtil {
         if (!HeadLibs.isDebugMode())
             client.setJavaScriptErrorListener(new SilentJavaScriptErrorListener());
         client.getOptions().setThrowExceptionOnScriptError(false);
+        client.setCache(BrowserUtil.SharedCache);
         client.setWebConnection(new WebConnectionWrapper(client.getWebConnection()) {
             @Override
             public WebResponse getResponse(final WebRequest request) throws IOException {
@@ -55,7 +56,7 @@ public final class BrowserUtil {
                 return response;
             }
         });
-        client.setCache(BrowserUtil.SharedCache);
+        client.setIncorrectnessListener((message, origin) -> {/*Ignore*/});
         return client;
     }
 
