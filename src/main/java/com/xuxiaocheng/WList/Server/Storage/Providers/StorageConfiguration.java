@@ -176,17 +176,17 @@ public abstract class StorageConfiguration {
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "root_directory_id", YamlHelper.LongMin, YamlHelper.LongMax)).longValue();
 
         this.spaceAll = YamlHelper.getConfig(config, "space_all", this.spaceAll,
-                o -> YamlHelper.transferIntegerFromStr(o, errors, "space_all", BigInteger.ZERO, YamlHelper.LongMax)).longValue();
+                o -> YamlHelper.transferIntegerFromStr(o, errors, "space_all", YamlHelper.MinusOne, YamlHelper.LongMax)).longValue();
         this.spaceUsed = YamlHelper.getConfig(config, "space_used", this.spaceUsed,
-                o -> YamlHelper.transferIntegerFromStr(o, errors, "space_used", BigInteger.valueOf(-1), YamlHelper.LongMax)).longValue();
+                o -> YamlHelper.transferIntegerFromStr(o, errors, "space_used", YamlHelper.MinusOne, YamlHelper.LongMax)).longValue();
         this.spaceGlobalAll = YamlHelper.getConfig(config, "space_global_all", this.spaceGlobalAll,
-                o -> YamlHelper.transferIntegerFromStr(o, errors, "space_global_all", BigInteger.ZERO, YamlHelper.LongMax)).longValue();
+                o -> YamlHelper.transferIntegerFromStr(o, errors, "space_global_all", YamlHelper.MinusOne, YamlHelper.LongMax)).longValue();
         this.spaceGlobalUsed = YamlHelper.getConfig(config, "space_global_used", this.spaceGlobalUsed,
-                o -> YamlHelper.transferIntegerFromStr(o, errors, "space_global_used", BigInteger.valueOf(-1), YamlHelper.LongMax)).longValue();
+                o -> YamlHelper.transferIntegerFromStr(o, errors, "space_global_used", YamlHelper.MinusOne, YamlHelper.LongMax)).longValue();
         this.fileCount = YamlHelper.getConfig(config, "file_count", this.fileCount,
-                o -> YamlHelper.transferIntegerFromStr(o, errors, "file_count", BigInteger.valueOf(-1), YamlHelper.LongMax)).longValue();
+                o -> YamlHelper.transferIntegerFromStr(o, errors, "file_count", YamlHelper.MinusOne, YamlHelper.LongMax)).longValue();
         this.fileGlobalCount = YamlHelper.getConfig(config, "file_global_count", this.fileGlobalCount,
-                    o -> YamlHelper.transferIntegerFromStr(o, errors, "file_global_count", BigInteger.valueOf(-1), YamlHelper.LongMax)).longValue();
+                    o -> YamlHelper.transferIntegerFromStr(o, errors, "file_global_count", YamlHelper.MinusOne, YamlHelper.LongMax)).longValue();
 
         this.maxSizePerFile = YamlHelper.getConfig(config, "max_size_per_file", this.maxSizePerFile,
                 o -> YamlHelper.transferIntegerFromStr(o, errors, "max_size_per_file", BigInteger.ZERO, YamlHelper.LongMax)).longValue();

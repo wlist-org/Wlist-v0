@@ -141,10 +141,10 @@ public final class StorageManager {
         if (StorageManager.storages.putIfAbsent(name, triad) != null)
             throw new IllegalParametersException("Conflict storage name.", ParametersMap.create().add("name", name).add("type", type));
         try {
-            final C configuration = type.getConfiguration().get();
-            final ProviderInterface<C> provider = type.getProvider().get();
-            final RecyclerInterface<C> recycler = type.getRecycler().get();
-            final SharerInterface<C> sharer = type.getSharer().get();
+            final C configuration = type.configuration().get();
+            final ProviderInterface<C> provider = type.provider().get();
+            final RecyclerInterface<C> recycler = type.recycler().get();
+            final SharerInterface<C> sharer = type.sharer().get();
             final List<Pair.ImmutablePair<String, String>> errors = new LinkedList<>();
             configuration.load(config, errors);
             if (!errors.isEmpty())

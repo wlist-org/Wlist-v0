@@ -47,7 +47,7 @@ public class OperateProvidersTest extends ServerWrapper {
     public @NotNull StorageTypes<LanzouConfiguration> providerType() {
         return OperateProvidersTest.ProviderType.getInstance();
     }
-    protected static final @NotNull HInitializer<LanzouConfiguration> Configuration = new HInitializer<>("StorageConfiguration", StorageTypes.Lanzou.getConfiguration().get());
+    protected static final @NotNull HInitializer<LanzouConfiguration> Configuration = new HInitializer<>("StorageConfiguration", StorageTypes.Lanzou.configuration().get());
     public @NotNull LanzouConfiguration providerConfiguration() {
         return OperateProvidersTest.Configuration.getInstance();
     }

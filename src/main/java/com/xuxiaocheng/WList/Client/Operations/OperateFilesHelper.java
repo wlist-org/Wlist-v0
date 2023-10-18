@@ -112,12 +112,23 @@ public final class OperateFilesHelper {
         OperateHelper.booleanOperation(client, send, OperationType.ConfirmRefresh);
     }
 
-    public static boolean trashFileOrDirectory(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation location, final boolean isDirectory) throws IOException, InterruptedException, WrongStateException {
+    public static @Nullable Boolean trashFileOrDirectory(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation location, final boolean isDirectory) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.TrashFileOrDirectory, token);
         location.dump(send);
         ByteBufIOUtil.writeBoolean(send, isDirectory);
         OperateHelper.logOperating(OperationType.TrashFileOrDirectory, token, p -> p.add("location", location).add("isDirectory", isDirectory));
-        return OperateHelper.booleanOperation(client, send, OperationType.TrashFileOrDirectory);
+        final ByteBuf receive = client.send(send);
+        try {
+            final String reason = OperateHelper.handleState(receive);
+            if (reason == null) {
+                OperateHelper.logOperated(OperationType.TrashFileOrDirectory, null, null);
+                return Boolean.TRUE;
+            }
+            OperateHelper.logOperated(OperationType.TrashFileOrDirectory, reason, null);
+            return "Complex".equals(reason) ? Boolean.FALSE : null;
+        } finally {
+            receive.release();
+        }
     }
 
     public static @Nullable UnionPair<DownloadConfirm, VisibleFailureReason> requestDownloadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation file, final long from, final long to) throws IOException, InterruptedException, WrongStateException {

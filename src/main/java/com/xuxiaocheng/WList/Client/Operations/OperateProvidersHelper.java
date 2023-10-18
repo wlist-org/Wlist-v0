@@ -29,7 +29,7 @@ public final class OperateProvidersHelper {
     public static <C extends StorageConfiguration> @Nullable @Unmodifiable List<Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> addProvider(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String name, final @NotNull StorageTypes<C> type, final @NotNull C configuration) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.AddProvider, token);
         ByteBufIOUtil.writeUTF(send, name);
-        ByteBufIOUtil.writeUTF(send, type.getIdentifier());
+        ByteBufIOUtil.writeUTF(send, type.identifier());
         YamlHelper.dumpYaml(configuration.dump(), new ByteBufOutputStream(send));
         OperateHelper.logOperating(OperationType.AddProvider, token, p -> p.add("name", name).add("type", type).add("configuration", configuration));
         final ByteBuf receive = client.send(send);

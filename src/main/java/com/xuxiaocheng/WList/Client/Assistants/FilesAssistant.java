@@ -56,6 +56,7 @@ import java.io.RandomAccessFile;
 import java.net.SocketAddress;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.security.MessageDigest;
 import java.util.ArrayList;
@@ -71,6 +72,7 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -231,7 +233,7 @@ public final class FilesAssistant {
         });
     }
 
-    private static @Nullable VisibleFailureReason uploadCore(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation parent, final @NotNull String filename, final long size, final @NotNull Predicate<? super @NotNull UploadConfirm> continuer, final @NotNull Consumer<? super @NotNull InstantaneousProgressState> callback, final @NotNull Function<? super @NotNull Collection<@NotNull UploadChecksum>, ? extends @NotNull @Unmodifiable List<@NotNull String>> calculator,
+    private static @Nullable VisibleFailureReason uploadCore(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation parent, final @NotNull String filename, final long size, final @NotNull Predicate<? super @NotNull UploadConfirm> continuer, final @Nullable Consumer<? super @NotNull InstantaneousProgressState> callback, final @NotNull Function<? super @NotNull Collection<@NotNull UploadChecksum>, ? extends @NotNull @Unmodifiable List<@NotNull String>> calculator,
                                                              final @NotNull Consumer<? super @NotNull Consumer<? super @NotNull BiConsumer<? super Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull Long>, ? super @NotNull Consumer<? super @NotNull BiFunction<? super @NotNull Integer,? super @NotNull ByteBuf, @NotNull Integer>>>>> runner) throws IOException, InterruptedException, WrongStateException {
         final UnionPair<UploadConfirm, VisibleFailureReason> confirm;
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
@@ -287,7 +289,10 @@ public final class FilesAssistant {
                             failure.set(true);
                     }, false), executors).exceptionally(MiscellaneousUtil.exceptionHandler());
                 }
-                FilesAssistant.callbackSync(address, username, callback, failure, latch, List.of(confirm.getT().id()));
+                FilesAssistant.callbackSync(address, username, s -> {
+                    if (callback != null)
+                        callback.accept(s);
+                }, failure, latch, List.of(confirm.getT().id()));
                 latch.await();
         }, () -> {
             final Future<?> future = executors.shutdownGracefully().await();
@@ -301,11 +306,11 @@ public final class FilesAssistant {
         return finishSuccess.get() ? null : new VisibleFailureReason(FailureKind.Others, parent, "Finishing.");
     }
 
-    public static @Nullable VisibleFailureReason upload(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull File file, final @NotNull FileLocation parent, final @NotNull Predicate<? super @NotNull UploadConfirm> continuer, final @NotNull Consumer<? super @NotNull InstantaneousProgressState> callback) throws IOException, InterruptedException, WrongStateException {
+    public static @Nullable VisibleFailureReason upload(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull File file, final @NotNull FileLocation parent, final @Nullable String filename, final @NotNull Predicate<? super @NotNull UploadConfirm> continuer, final @Nullable Consumer<? super @NotNull InstantaneousProgressState> callback) throws IOException, InterruptedException, WrongStateException {
         if (!file.isFile() || !file.canRead())
             throw new FileNotFoundException("Not a upload-able file." + ParametersMap.create().add("file", file));
         try {
-            return FilesAssistant.uploadCore(address, username, parent, file.getName(), file.length(), continuer, callback, requirements -> FilesAssistant.calculateChecksums(file, requirements), HExceptionWrapper.wrapConsumer(runner -> {
+            return FilesAssistant.uploadCore(address, username, parent, Objects.requireNonNullElseGet(filename, file::getName), file.length(), continuer, callback, requirements -> FilesAssistant.calculateChecksums(file, requirements), HExceptionWrapper.wrapConsumer(runner -> {
                 try (final RandomAccessFile accessFile = new RandomAccessFile(file, "r");
                      final FileChannel fileChannel = accessFile.getChannel()) { // Only lock.
                     runner.accept(HExceptionWrapper.wrapBiConsumer((pair, consumer) -> {
@@ -325,7 +330,7 @@ public final class FilesAssistant {
     /**
      * @param stream Warning: this method will be called many times and may in multi threads. {@link InputStream#skipNBytes(long)} is used to seek position.
      */
-    public static @Nullable VisibleFailureReason uploadStream(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull Consumer<? super @NotNull Consumer<? super @NotNull InputStream>> stream, final long size, final @NotNull String filename, final @NotNull FileLocation parent, final @NotNull Predicate<? super @NotNull UploadConfirm> continuer, final @NotNull Consumer<? super @NotNull InstantaneousProgressState> callback) throws IOException, InterruptedException, WrongStateException {
+    public static @Nullable VisibleFailureReason uploadStream(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull Consumer<? super @NotNull Consumer<? super @NotNull InputStream>> stream, final long size, final @NotNull String filename, final @NotNull FileLocation parent, final @NotNull Predicate<? super @NotNull UploadConfirm> continuer, final @Nullable Consumer<? super @NotNull InstantaneousProgressState> callback) throws IOException, InterruptedException, WrongStateException {
         try {
             return FilesAssistant.uploadCore(address, username, parent, filename, size, continuer, callback, requirements -> {
                 final AtomicReference<List<String>> res = new AtomicReference<>();
@@ -407,7 +412,7 @@ public final class FilesAssistant {
             Files.delete(recordFile.toPath());
     }
 
-    public static @Nullable VisibleFailureReason download(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation location, final @NotNull File file, final @NotNull Predicate<? super @NotNull DownloadConfirm> continuer, final @NotNull Consumer<? super @NotNull InstantaneousProgressState> callback) throws IOException, InterruptedException, WrongStateException {
+    public static @Nullable VisibleFailureReason download(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation location, final @NotNull File file, final @NotNull Predicate<? super @NotNull DownloadConfirm> continuer, final @Nullable Consumer<? super @NotNull InstantaneousProgressState> callback) throws IOException, InterruptedException, WrongStateException {
         final List<Pair.ImmutablePair<Long, Long>> downloaded = FilesAssistant.readDownloadingProgress(location, file);
         if (downloaded.isEmpty()) {
             FilesAssistant.finishDownloadingProgress(file);
@@ -502,9 +507,17 @@ public final class FilesAssistant {
                             .add("location", location).add("confirm", confirm).add("information", information).add("position", position).add("parallel", information.parallel()));
             }
             if (!failure.get()) {
+                final AtomicBoolean savable = new AtomicBoolean(true);
                 FilesAssistant.callbackSync(address, username, HExceptionWrapper.wrapConsumer(s -> {
-                    FilesAssistant.saveDownloadingProgress(location, file, progress);
-                    callback.accept(s);
+                    if (savable.get())
+                        try {
+                            FilesAssistant.saveDownloadingProgress(location, file, progress);
+                        } catch (final AccessDeniedException exception) {
+                            HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
+                            savable.set(false);
+                        }
+                    if (callback != null)
+                        callback.accept(s);
                 }), failure, latch, ids);
                 latch.await();
             }
@@ -521,16 +534,24 @@ public final class FilesAssistant {
     }
 
 
-    private static void refreshCore(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull ScheduledExecutorService executor, final @NotNull Consumer<? super @NotNull InstantaneousProgressState> callback, final @NotNull String id) throws IOException, InterruptedException, WrongStateException {
-        final ScheduledFuture<?> future = FilesAssistant.callbackAsync(address, username, executor, callback, List.of(id));
-        try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
-            OperateFilesHelper.confirmRefresh(client, TokenAssistant.getToken(address, username), id);
-        } finally {
-            future.cancel(true);
+    @Contract("_, _, null, !null, _ -> fail")
+    private static void refreshCore(final @NotNull SocketAddress address, final @NotNull String username, final @Nullable ScheduledExecutorService executor, final @Nullable Consumer<? super @NotNull InstantaneousProgressState> callback, final @NotNull String id) throws IOException, InterruptedException, WrongStateException {
+        if (callback == null) {
+            try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
+                OperateFilesHelper.confirmRefresh(client, TokenAssistant.getToken(address, username), id);
+            }
+        } else {
+            final ScheduledFuture<?> future = FilesAssistant.callbackAsync(address, username, Objects.requireNonNull(executor), callback, List.of(id));
+            try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
+                OperateFilesHelper.confirmRefresh(client, TokenAssistant.getToken(address, username), id);
+            } finally {
+                future.cancel(true);
+            }
         }
     }
 
-    public static @Nullable VisibleFilesListInformation list(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation directory, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @NotNull ScheduledExecutorService executor, final @NotNull Consumer<? super @NotNull InstantaneousProgressState> callback) throws IOException, InterruptedException, WrongStateException {
+    @Contract("_, _, _, _, _, _, _, null, !null -> fail")
+    public static @Nullable VisibleFilesListInformation list(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation directory, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable ScheduledExecutorService executor, final @Nullable Consumer<? super @NotNull InstantaneousProgressState> callback) throws IOException, InterruptedException, WrongStateException {
         final UnionPair<VisibleFilesListInformation, RefreshConfirm> confirm;
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
             confirm = OperateFilesHelper.listFiles(client, TokenAssistant.getToken(address, username), directory, filter, orders, position, limit);
@@ -543,7 +564,8 @@ public final class FilesAssistant {
         return FilesAssistant.list(address, username, directory, filter, orders, position, limit, executor, callback);
     }
 
-    public static boolean refresh(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation directory, final @NotNull ScheduledExecutorService executor, final @NotNull Consumer<? super @NotNull InstantaneousProgressState> callback) throws IOException, InterruptedException, WrongStateException {
+    @Contract("_, _, _, null, !null -> fail")
+    public static boolean refresh(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation directory, final @Nullable ScheduledExecutorService executor, final @Nullable Consumer<? super @NotNull InstantaneousProgressState> callback) throws IOException, InterruptedException, WrongStateException {
         final RefreshConfirm confirm;
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
             confirm = OperateFilesHelper.refreshDirectory(client, TokenAssistant.getToken(address, username), directory);
@@ -552,6 +574,60 @@ public final class FilesAssistant {
             return false;
         FilesAssistant.refreshCore(address, username, executor, callback, confirm.id());
         return true;
+    }
+
+
+    private static boolean trash0(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation location, final boolean isDirectory, final AtomicBoolean interruptFlag, final @NotNull Executor executor) throws IOException, InterruptedException, WrongStateException {
+        if (interruptFlag.get()) return true;
+        final Boolean success;
+        if (!isDirectory) {
+            try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
+                success = OperateFilesHelper.trashFileOrDirectory(client, TokenAssistant.getToken(address, username), location, false);
+            }
+            return success == null || success.booleanValue();
+        }
+        while (true) {
+            final VisibleFilesListInformation list = FilesAssistant.list(address, username, location, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, ClientConfiguration.get().limitPerPage(), null, null);
+            if (list == null) return true;
+            try {
+                HMultiRunHelper.runConsumers(executor, list.informationList(), HExceptionWrapper.wrapConsumer(information -> {
+                    if (!FilesAssistant.trash0(address, username, new FileLocation(location.storage(), information.id()), information.isDirectory(), interruptFlag, executor))
+                        interruptFlag.set(true);
+                }));
+            } catch (final RuntimeException exception) {
+                HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
+                interruptFlag.set(true);
+            }
+            if (interruptFlag.get()) return false;
+            if (list.total() == list.informationList().size())
+                break;
+        }
+        final Boolean s;
+        try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
+            s = OperateFilesHelper.trashFileOrDirectory(client, TokenAssistant.getToken(address, username), location, true);
+        }
+        return s == null || s.booleanValue();
+    }
+
+    /**
+     * @param trashRecursivelyCallback When trash is too complex, it will be called. Then the operation won't be atomic.
+     */
+    public static boolean trash(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation location, final boolean isDirectory, final @NotNull Predicate<@Nullable Void> trashRecursivelyCallback) throws IOException, InterruptedException, WrongStateException {
+        final Boolean success;
+        try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
+            success = OperateFilesHelper.trashFileOrDirectory(client, TokenAssistant.getToken(address, username), location, isDirectory);
+        }
+        if (success == null || success.booleanValue()) return true;
+        if (!isDirectory) return false; // Trash file but complex. (Unreachable.)
+        if (!trashRecursivelyCallback.test(null)) return true;
+        final EventExecutorGroup executors = new DefaultEventExecutorGroup(ClientConfiguration.get().threadCount() > 0 ?
+                ClientConfiguration.get().threadCount() : Runtime.getRuntime().availableProcessors(),
+                new DefaultThreadFactory(String.format("TrashingExecutor#%s", location)));
+        try {
+            return FilesAssistant.trash0(address, username, location, true, new AtomicBoolean(false), executors);
+        } finally {
+            executors.shutdownGracefully().sync();
+        }
     }
 
 }

@@ -15,7 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 
 @Disabled
-public class TokenTest extends ServerWrapper {
+public class TokenAssistantTest extends ServerWrapper {
     @Test
     public void test() throws IOException, WrongStateException, InterruptedException {
         ServerConfiguration.set(ServerConfiguration.parse(new ByteArrayInputStream("token_expire_time: 60".getBytes(StandardCharsets.UTF_8))));

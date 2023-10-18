@@ -287,7 +287,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
                 latch.countDown();
             };
             BroadcastAssistant.get(address()).FileUpload.register(callback);
-            FilesAssistant.upload(address(), adminUsername(), file, parent, PredicateE.truePredicate(), ConsumerE.emptyConsumer());
+            FilesAssistant.upload(address(), adminUsername(), file, parent, null, PredicateE.truePredicate(), ConsumerE.emptyConsumer());
             latch.await();
             BroadcastAssistant.get(address()).FileUpload.unregister(callback);
             return information.get();

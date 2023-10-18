@@ -7,6 +7,8 @@ import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.ProgressBar;
 import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseProvider;
+import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseRecycler;
+import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseSharer;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WList.Server.Storage.Records.DownloadRequirements;
@@ -35,6 +37,19 @@ import java.util.function.Supplier;
 
 @SuppressWarnings("PublicField")
 public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.AbstractConfiguration> {
+    public static final StorageTypes<AbstractConfiguration> AbstractType = new StorageTypes<>("abstract", AbstractConfiguration::new, AbstractProvider::new,
+            () -> new AbstractIdBaseRecycler<>() {
+                @Override
+                public @NotNull StorageTypes<AbstractConfiguration> getType() {
+                    return AbstractProvider.AbstractType;
+                }
+            }, () -> new AbstractIdBaseSharer<>() {
+                @Override
+                public @NotNull StorageTypes<AbstractConfiguration> getType() {
+                    return AbstractProvider.AbstractType;
+                }
+            });
+
     public static class AbstractConfiguration extends StorageConfiguration {
     }
 

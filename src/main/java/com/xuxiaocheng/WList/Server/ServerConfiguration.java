@@ -99,7 +99,7 @@ public record ServerConfiguration(int port, int maxServerBacklog,
         config.put("id_idle_expire_time", configuration.idIdleExpireTime);
         config.put("max_limit_per_page", configuration.maxLimitPerPage);
         config.put("allow_drop_index_after_uninitialize_provider", configuration.allowDropIndexAfterUninitializeProvider);
-        config.put("providers", configuration.providers.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, t -> t.getValue().getIdentifier())));
+        config.put("providers", configuration.providers.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, t -> t.getValue().identifier())));
         YamlHelper.dumpYaml(config, stream);
     }
 

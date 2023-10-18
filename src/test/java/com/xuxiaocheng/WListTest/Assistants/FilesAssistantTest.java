@@ -13,6 +13,7 @@ import com.xuxiaocheng.WList.Client.Assistants.TokenAssistant;
 import com.xuxiaocheng.WList.Client.Exceptions.WrongStateException;
 import com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.UploadChecksum;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFilesListInformation;
@@ -22,6 +23,7 @@ import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WListTest.Operations.ProvidersWrapper;
+import com.xuxiaocheng.WListTest.Storage.AbstractProvider;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import org.jetbrains.annotations.NotNull;
@@ -49,10 +51,14 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -60,16 +66,18 @@ import java.util.function.Consumer;
 //@Disabled("Manually test")
 @Execution(ExecutionMode.SAME_THREAD)
 @SuppressWarnings("MethodOverridesStaticMethodOfSuperclass")
-public class FilesTest extends ProvidersWrapper {
+public class FilesAssistantTest extends ProvidersWrapper {
     @BeforeAll
     public static void initialize() throws Exception {
         ProvidersWrapper.initialize();
-        StorageManager.addStorage("test", StorageTypes.Lanzou, null);
+        Assertions.assertNull(StorageManager.addStorage("test", StorageTypes.Lanzou, null));
+        Assertions.assertNull(StorageManager.addStorage("abstract", AbstractProvider.AbstractType, null));
     }
 
     @AfterAll
     public static void uninitialize() throws Exception {
         TimeUnit.MILLISECONDS.sleep(300); // Wait for broadcast.
+        StorageManager.removeStorage("abstract", true);
         StorageManager.removeStorage("test", false);
         ProvidersWrapper.uninitialize();
     }
@@ -144,7 +152,7 @@ public class FilesTest extends ProvidersWrapper {
         };
         BroadcastAssistant.get(this.address()).FileUpload.register(callback);
         Assertions.assertNull(FilesAssistant.upload(this.address(), this.adminUsername(), file,
-                this.location(this.root()), c -> {HLog.DefaultLogger.log(HLogLevel.INFO, c);return true;},
+                this.location(this.root()), null, c -> {HLog.DefaultLogger.log(HLogLevel.INFO, c);return true;},
                 state -> HLog.DefaultLogger.log(HLogLevel.LESS, state.stages())));
         latch.await();
         BroadcastAssistant.get(this.address()).FileUpload.unregister(callback);
@@ -260,4 +268,25 @@ public class FilesTest extends ProvidersWrapper {
     }
 
 
+    protected @NotNull FileLocation abstractLocation(final long id) {
+        return new FileLocation("abstract", id);
+    }
+
+    @Test
+    public void trash() throws IOException, InterruptedException, WrongStateException {
+        final AbstractProvider provider = Objects.requireNonNull((AbstractProvider) StorageManager.getProvider("abstract"));
+        provider.root().add(AbstractProvider.build(1, 0, true));
+        provider.root().get(1, true).add(AbstractProvider.build(2, 1, true));
+        provider.root().get(1, true).add(AbstractProvider.build(3, 1, false));
+        provider.root().get(1, true).add(AbstractProvider.build(4, 1, false));
+        provider.root().get(1, true).get(2, true).add(AbstractProvider.build(5, 2, false));
+        provider.supportTrashRecursively.set(false);
+        Assertions.assertTrue(FilesAssistant.refresh(this.address(), this.adminUsername(), this.abstractLocation(0), WListServer.IOExecutors, null));
+        Assertions.assertEquals(List.of("Login.", "List: 0"), provider.checkOperations());
+
+        final AtomicBoolean flag = new AtomicBoolean(false);
+        FilesAssistant.trash(this.address(), this.adminUsername(), this.abstractLocation(1), true, p -> {Assertions.assertTrue(flag.compareAndSet(false, true));return true;});
+        Assertions.assertTrue(flag.get());
+        Assertions.assertEquals(Set.of("Login.", "List: 1", "List: 2", "Trash: 5 f", "Trash: 2 d", "Trash: 4 f", "Trash: 3 f", "Trash: 1 d"), new HashSet<>(provider.checkOperations()));
+    }
 }
