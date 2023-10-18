@@ -1,6 +1,7 @@
 package com.xuxiaocheng.WListTest.Assistants;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.PredicateE;
 import com.xuxiaocheng.HeadLibs.Helpers.HMessageDigestHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
@@ -15,6 +16,7 @@ import com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.UploadChecksum;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFilesListInformation;
 import com.xuxiaocheng.WList.Commons.Options.Options;
@@ -85,7 +87,7 @@ public class FilesAssistantTest extends ProvidersWrapper {
     @Test
 //    @Disabled
     public void _del() throws IOException, InterruptedException, WrongStateException {
-        final long doubleId = 17737332;
+        final long doubleId = 17737902;
         Assertions.assertTrue(FilesAssistant.trash(this.address(), this.adminUsername(), this.location(FileSqliteHelper.getRealId(doubleId)), FileSqliteHelper.isDirectory(doubleId), PredicateE.truePredicate()));
     }
 
@@ -297,15 +299,9 @@ public class FilesAssistantTest extends ProvidersWrapper {
         Assertions.assertNotNull(list1);
         Assumptions.assumeTrue(list1.filtered() == 1);
 
-        Assertions.assertNull(FilesAssistant.copy(this.address(), this.adminUsername(), this.location(list1.informationList().get(0).id()), true, this.location(this.root()),
-                "copied", p -> {HLog.DefaultLogger.log(HLogLevel.INFO, p);return true;}));
-        HLog.DefaultLogger.log(HLogLevel.FAULT, "-------------------------");
-        TimeUnit.SECONDS.sleep(5);
+        final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.copy(this.address(), this.adminUsername(), this.location(list1.informationList().get(0).id()), true, this.location(this.root()), "copied", p -> {HLog.DefaultLogger.log(HLogLevel.INFO, p);return true;});
+        Assertions.assertTrue(res != null && res.isSuccess());
 
-        final VisibleFilesListInformation list2 = FilesAssistant.list(this.address(), this.adminUsername(), this.location(this.root()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 3, WListServer.IOExecutors, null);
-        Assertions.assertTrue(list2 != null && list2.informationList().size() == 2);
-        final List<VisibleFileInformation> t = new HashSet<>(list2.informationList()).stream().filter(i -> i.id() != list1.informationList().get(0).id()).toList();
-        Assertions.assertEquals(1, t.size());
-        Assertions.assertTrue(FilesAssistant.trash(this.address(), this.adminUsername(), this.location(t.get(0).id()), true, PredicateE.truePredicate()));
+        Assertions.assertTrue(FilesAssistant.trash(this.address(), this.adminUsername(), this.location(res.getT().id()), true, PredicateE.truePredicate()));
     }
 }

@@ -780,7 +780,7 @@ public final class OperateFilesHandler {
                 final FileInformation information = p.getT().get().getT();
                 HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Moved.", ServerHandler.user(null, user.getT()),
                         ParametersMap.create().add("from", location).add(isDirectory ? "directory" : "file", information));
-                WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
+                WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(information::dumpVisible));
                 return;
             }
             WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.ComplexOperation);
@@ -831,7 +831,7 @@ public final class OperateFilesHandler {
                 final FileInformation information = p.getT().get().getT();
                 HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Renamed.", ServerHandler.user(null, user.getT()),
                         ParametersMap.create().add("from", location).add(isDirectory ? "directory" : "file", information));
-                WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
+                WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(information::dumpVisible));
                 return;
             }
             WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.ComplexOperation);

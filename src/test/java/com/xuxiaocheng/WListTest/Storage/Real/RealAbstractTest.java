@@ -381,9 +381,9 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
                 latch.countDown();
             };
             BroadcastAssistant.get(address()).FileUpdate.register(callback);
-            final UnionPair<Boolean, VisibleFailureReason> res = OperateFilesHelper.moveDirectly(client, token(), location(information.id()), false, location(parent.id()), Options.DuplicatePolicy.ERROR);
+            final UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> res = OperateFilesHelper.moveDirectly(client, token(), location(information.id()), false, location(parent.id()), Options.DuplicatePolicy.ERROR);
             Assertions.assertTrue(res != null && res.isSuccess());
-            if (!res.getT().booleanValue()) {
+            if (res.getT().isEmpty()) {
                 BroadcastAssistant.get(address()).FileUpdate.unregister(callback);
                 HLog.DefaultLogger.log(HLogLevel.ERROR, "Unsupported operation: ", info.getTestClass().orElseThrow().getName(), "#", info.getTestMethod().orElseThrow().getName());
                 return;
@@ -421,9 +421,9 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
                 latch.countDown();
             };
             BroadcastAssistant.get(address()).FileUpdate.register(callback);
-            final UnionPair<Boolean, VisibleFailureReason> res = OperateFilesHelper.renameDirectly(client, token(), location(information.id()), false, "renamed-" + information.name(), Options.DuplicatePolicy.ERROR);
+            final UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> res = OperateFilesHelper.renameDirectly(client, token(), location(information.id()), false, "renamed-" + information.name(), Options.DuplicatePolicy.ERROR);
             Assertions.assertTrue(res != null && res.isSuccess());
-            if (!res.getT().booleanValue()) {
+            if (res.getT().isEmpty()) {
                 BroadcastAssistant.get(address()).FileUpdate.unregister(callback);
                 HLog.DefaultLogger.log(HLogLevel.ERROR, "Unsupported operation: ", info.getTestClass().orElseThrow().getName(), "#", info.getTestMethod().orElseThrow().getName());
                 return;
@@ -449,9 +449,9 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
                 latch.countDown();
             };
             BroadcastAssistant.get(address()).FileUpdate.register(callback);
-            final UnionPair<Boolean, VisibleFailureReason> res = OperateFilesHelper.renameDirectly(client, token(), location(information.id()), true, "renamed-" + information.name(), Options.DuplicatePolicy.ERROR);
+            final UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> res = OperateFilesHelper.renameDirectly(client, token(), location(information.id()), true, "renamed-" + information.name(), Options.DuplicatePolicy.ERROR);
             Assertions.assertTrue(res != null && res.isSuccess());
-            if (!res.getT().booleanValue()) {
+            if (res.getT().isEmpty()) {
                 BroadcastAssistant.get(address()).FileUpdate.unregister(callback);
                 HLog.DefaultLogger.log(HLogLevel.ERROR, "Unsupported operation: ", info.getTestClass().orElseThrow().getName(), "#", info.getTestMethod().orElseThrow().getName());
                 return;
