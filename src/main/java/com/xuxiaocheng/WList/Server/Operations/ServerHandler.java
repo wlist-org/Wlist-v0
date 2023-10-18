@@ -39,10 +39,11 @@ public interface ServerHandler {
         return String.format(" %s: (id=%d, name='%s')", Objects.requireNonNullElse(group, "group"), information.id(), information.name());
     }
 
-    AtomicBoolean logOperation = new AtomicBoolean(true);
+    AtomicBoolean LogActive = new AtomicBoolean(false);
+    AtomicBoolean LogOperation = new AtomicBoolean(true);
 
     static void logOperation(final @NotNull Channel channel, final @NotNull OperationType operation, final @Nullable UnionPair<UserInformation, MessageProto> user, final @Nullable Supplier<? extends @NotNull ParametersMap> parameters) {
-        if (ServerHandler.logOperation.get() && HLog.getInstance("ServerLogger").getLevel() < HLogLevel.DEBUG.getLevel())
+        if (ServerHandler.LogOperation.get() && HLog.getInstance("ServerLogger").getLevel() < HLogLevel.DEBUG.getLevel())
             HLog.getInstance("ServerLogger").log(HLogLevel.DEBUG, "Operate: ", channel.remoteAddress(), ", type: ", operation,
                     (Supplier<String>) () -> user == null ? "" : user.isSuccess() ?
                             ServerHandler.user(null, user.getT()) : ". Refused because " + user.getE().state(), ".",

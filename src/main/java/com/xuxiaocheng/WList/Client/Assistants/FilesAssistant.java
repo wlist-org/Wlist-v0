@@ -678,131 +678,59 @@ public final class FilesAssistant {
             return continuer.test(CopyPolicy.DownloadAndUpload) ? FilesAssistant.copyFileDownloadAndUpload(address, username, location, parent, name) : null;
         if (!continuer.test(CopyPolicy.BuildTree))
             return null;
-        final EventExecutorGroup executors = new DefaultEventExecutorGroup(ClientConfiguration.get().threadCount() > 0 ?
-                ClientConfiguration.get().threadCount() : Runtime.getRuntime().availableProcessors(),
-                new DefaultThreadFactory(String.format("CopyingExecutor#%s", location)));
-        final AtomicBoolean failure = new AtomicBoolean(false);
-        final AtomicReference<VisibleFailureReason> reason = new AtomicReference<>(null);
-        final AtomicLong pending = new AtomicLong(0);
-        try {
-            final BlockingQueue<CopyTuple> queue = new LinkedBlockingQueue<>();
-            queue.add(new CopyTuple(location, true, parent, name));
-            Boolean tested = null;
-            while (!queue.isEmpty() || pending.get() > 0) {
-                if (failure.get()) break;
-                synchronized (pending) {
-                    while (queue.isEmpty() && pending.get() > 0)
-                        pending.wait();
+        final BlockingQueue<CopyTuple> queue = new LinkedBlockingQueue<>(); // Sync due to is sqlite database and for preventing ServerError.
+        queue.add(new CopyTuple(location, true, parent, name));
+        Boolean tested = null;
+        while (!queue.isEmpty()) {
+            final CopyTuple tuple = queue.remove();
+            if (tuple.isDirectory) {
+                final UnionPair<VisibleFileInformation, VisibleFailureReason> directory;
+                try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
+                    directory = OperateFilesHelper.createDirectory(client, TokenAssistant.getToken(address, username), tuple.parent, tuple.name, ClientConfiguration.get().duplicatePolicy());
+                    if (directory == null) return new VisibleFailureReason(FailureKind.Others, parent, "Creating.");
+                    if (directory.isFailure()) return directory.getE();
                 }
-                final CopyTuple tuple = queue.poll();
-                if (tuple == null) break;
-                if (tuple.isDirectory) {
-                    pending.getAndIncrement();
-                    CompletableFuture.runAsync(HExceptionWrapper.wrapRunnable(() -> {
-                        final UnionPair<VisibleFileInformation, VisibleFailureReason> directory;
-                        boolean flag = true;
-                        try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
-                            directory = OperateFilesHelper.createDirectory(client, TokenAssistant.getToken(address, username), tuple.parent, tuple.name, ClientConfiguration.get().duplicatePolicy());
-                            if (directory == null) {
-                                reason.compareAndSet(null, new VisibleFailureReason(FailureKind.Others, parent, "Creating."));
-                                return;
-                            }
-                            if (directory.isFailure()) {
-                                reason.compareAndSet(null, directory.getE());
-                                return;
-                            }
-                            flag = false;
-                        } finally {
-                            if (flag)
-                                failure.set(true);
-                        }
-                        final FileLocation p = new FileLocation(tuple.parent.storage(), directory.getT().id());
-                        final AtomicLong pos = new AtomicLong(0);
-                        while (true) {
-                            if (failure.get()) break;
-                            final int limit = ClientConfiguration.get().limitPerPage();
-                            final VisibleFilesListInformation list = FilesAssistant.list(address, username, tuple.location, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), pos.getAndAdd(limit), limit, executors, null);
-                            if (list == null) break;
-                            for (final VisibleFileInformation info: list.informationList())
-                                queue.add(new CopyTuple(new FileLocation(tuple.parent.storage(), info.id()), info.isDirectory(), p, info.name()));
-                            if (list.total() == list.informationList().size()) break;
-                        }
-                    }, e -> {
-                        synchronized (pending) {
-                            pending.getAndDecrement();
-                            pending.notifyAll();
-                        }
-                        //noinspection VariableNotUsedInsideIf
-                        if (e != null)
-                            failure.set(true);
-                    }, false), executors).exceptionally(MiscellaneousUtil.exceptionHandler());
+                final FileLocation p = new FileLocation(tuple.parent.storage(), directory.getT().id());
+                final AtomicLong pos = new AtomicLong(0);
+                while (true) {
+                    final int limit = ClientConfiguration.get().limitPerPage();
+                    final VisibleFilesListInformation list = FilesAssistant.list(address, username, tuple.location, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), pos.getAndAdd(limit), limit, null, null);
+                    if (list == null) break;
+                    for (final VisibleFileInformation info: list.informationList())
+                        queue.add(new CopyTuple(new FileLocation(tuple.parent.storage(), info.id()), info.isDirectory(), p, info.name()));
+                    if (list.total() == list.informationList().size()) break;
+                }
+            } else {
+                if (tested == null) {
+                    final UnionPair<Boolean, VisibleFailureReason> file;
+                    try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
+                        file = OperateFilesHelper.copyDirectly(client, TokenAssistant.getToken(address, username), tuple.location, false, tuple.parent, tuple.name, ClientConfiguration.get().duplicatePolicy());
+                        if (file == null) return new VisibleFailureReason(FailureKind.Others, parent, "Copying.");
+                        if (file.isFailure()) return file.getE();
+                    }
+                    tested = file.getT();
+                    if (!tested.booleanValue()) {
+                        if (!continuer.test(CopyPolicy.DownloadAndUpload))
+                            return null;
+                        queue.add(tuple);
+                    }
                 } else {
-                    if (tested == null) {
+                    if (tested.booleanValue()) {
                         final UnionPair<Boolean, VisibleFailureReason> file;
-                        boolean flag = true;
                         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
                             file = OperateFilesHelper.copyDirectly(client, TokenAssistant.getToken(address, username), tuple.location, false, tuple.parent, tuple.name, ClientConfiguration.get().duplicatePolicy());
-                            if (file == null) return new VisibleFailureReason(FailureKind.Others, parent, "Copying.");
-                            if (file.isFailure()) return file.getE();
-                            flag = false;
-                        } finally {
-                            if (flag)
-                                failure.set(true);
                         }
-                        tested = file.getT();
-                        if (!tested.booleanValue()) {
-                            if (!continuer.test(CopyPolicy.DownloadAndUpload))
-                                return null;
-                            queue.add(tuple);
-                        }
-                    } else {
-                        final boolean directly = tested.booleanValue();
-                        pending.getAndIncrement();
-                        CompletableFuture.runAsync(HExceptionWrapper.wrapRunnable(() -> {
-                            if (directly) {
-                                final UnionPair<Boolean, VisibleFailureReason> file;
-                                try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
-                                    file = OperateFilesHelper.copyDirectly(client, TokenAssistant.getToken(address, username), tuple.location, false, tuple.parent, tuple.name, ClientConfiguration.get().duplicatePolicy());
-                                }
-                                if (file == null) {
-                                    failure.set(true);
-                                    return;
-                                }
-                                if (file.isFailure()) {
-                                    reason.compareAndSet(null, file.getE());
-                                    failure.set(true);
-                                    return;
-                                }
-                                if (file.getT().booleanValue())
-                                    return;
-                                if (failure.get())
-                                    return;
-                            }
-                            final VisibleFailureReason failureReason = FilesAssistant.copyFileDownloadAndUpload(address, username, tuple.location, tuple.parent, tuple.name);
-                            if (failureReason != null) {
-                                reason.compareAndSet(null, failureReason);
-                                failure.set(true);
-                            }
-                        }, e -> {
-                            synchronized (pending) {
-                                pending.getAndDecrement();
-                                pending.notifyAll();
-                            }
-                            //noinspection VariableNotUsedInsideIf
-                            if (e != null)
-                                failure.set(true);
-                        }, false), executors).exceptionally(MiscellaneousUtil.exceptionHandler());
+                        if (file == null) return new VisibleFailureReason(FailureKind.Others, parent, "Copying.");
+                        if (file.isFailure()) return file.getE();
+                        if (file.getT().booleanValue())
+                            continue;
                     }
+                    final VisibleFailureReason reason = FilesAssistant.copyFileDownloadAndUpload(address, username, tuple.location, tuple.parent, tuple.name);
+                    if (reason != null)
+                        return reason;
                 }
             }
-        } finally {
-            synchronized (pending) {
-                while (pending.get() > 0)
-                    pending.wait();
-            }
-            executors.shutdownGracefully().sync();
         }
-        final VisibleFailureReason r = reason.get();
-        return r != null ? r : failure.get() ? new VisibleFailureReason(FailureKind.Others, location, "Copying.") : null;
+        return null;
     }
 }

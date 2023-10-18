@@ -1,7 +1,7 @@
 package com.xuxiaocheng.WListTest.Assistants;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
+import com.xuxiaocheng.HeadLibs.Functions.PredicateE;
 import com.xuxiaocheng.HeadLibs.Helpers.HMessageDigestHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -19,6 +19,7 @@ import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFilesListInformation;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
+import com.xuxiaocheng.WList.Server.Databases.File.FileSqliteHelper;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WList.Server.WListServer;
@@ -31,7 +32,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -82,11 +82,11 @@ public class FilesAssistantTest extends ProvidersWrapper {
         ProvidersWrapper.uninitialize();
     }
 
-    @Disabled
-    @ParameterizedTest(name = "running")
-    @MethodSource("client")
-    public void _del(final @NotNull WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
-        OperateFilesHelper.trashFileOrDirectory(client, this.token(), this.location(285522805 >> 1), false);
+    @Test
+//    @Disabled
+    public void _del() throws IOException, InterruptedException, WrongStateException {
+        final long doubleId = 17737332;
+        Assertions.assertTrue(FilesAssistant.trash(this.address(), this.adminUsername(), this.location(FileSqliteHelper.getRealId(doubleId)), FileSqliteHelper.isDirectory(doubleId), PredicateE.truePredicate()));
     }
 
     @Test
@@ -219,12 +219,12 @@ public class FilesAssistantTest extends ProvidersWrapper {
             latch.countDown();
         };
         BroadcastAssistant.get(this.address()).FileUpload.register(callback);
-        Assertions.assertNull(FilesAssistant.uploadStream(this.address(), this.adminUsername(), consumer -> consumer.accept(new InputStream() {
-            private final @NotNull AtomicInteger pos = new AtomicInteger(0);
+        Assertions.assertNull(FilesAssistant.uploadStream(this.address(), this.adminUsername(), (pair, consumer) -> consumer.accept(new InputStream() {
+            private final @NotNull AtomicInteger pos = new AtomicInteger(pair.getFirst().intValue());
             @Override
             public int read() {
                 final int i = this.pos.getAndIncrement();
-                if (i >= size)
+                if (i >= pair.getSecond().intValue())
                     return -1;
                 return buffer.getByte(i);
             }
@@ -239,7 +239,7 @@ public class FilesAssistantTest extends ProvidersWrapper {
     public void download() throws IOException, InterruptedException, WrongStateException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         final LinkedHashMap<VisibleFileInformation.Order, Options.OrderDirection> order = new LinkedHashMap<>();
         order.put(VisibleFileInformation.Order.Size, Options.OrderDirection.ASCEND);
-        final VisibleFilesListInformation list = FilesAssistant.list(this.address(), this.adminUsername(), this.location(this.root()), Options.FilterPolicy.OnlyFiles, order, 0, 3, WListServer.IOExecutors, ConsumerE.emptyConsumer());
+        final VisibleFilesListInformation list = FilesAssistant.list(this.address(), this.adminUsername(), this.location(this.root()), Options.FilterPolicy.OnlyFiles, order, 0, 3, WListServer.IOExecutors, null);
         Assumptions.assumeTrue(list != null);
         Assumptions.assumeTrue(list.informationList().size() == 2);
 
@@ -288,5 +288,24 @@ public class FilesAssistantTest extends ProvidersWrapper {
         FilesAssistant.trash(this.address(), this.adminUsername(), this.abstractLocation(1), true, p -> {Assertions.assertTrue(flag.compareAndSet(false, true));return true;});
         Assertions.assertTrue(flag.get());
         Assertions.assertEquals(Set.of("Login.", "List: 1", "List: 2", "Trash: 5 f", "Trash: 2 d", "Trash: 4 f", "Trash: 3 f", "Trash: 1 d"), new HashSet<>(provider.checkOperations()));
+    }
+
+
+    @Test
+    public void copy() throws IOException, InterruptedException, WrongStateException {
+        final VisibleFilesListInformation list1 = FilesAssistant.list(this.address(), this.adminUsername(), this.location(this.root()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 2, WListServer.IOExecutors, null);
+        Assertions.assertNotNull(list1);
+        Assumptions.assumeTrue(list1.filtered() == 1);
+
+        Assertions.assertNull(FilesAssistant.copy(this.address(), this.adminUsername(), this.location(list1.informationList().get(0).id()), true, this.location(this.root()),
+                "copied", p -> {HLog.DefaultLogger.log(HLogLevel.INFO, p);return true;}));
+        HLog.DefaultLogger.log(HLogLevel.FAULT, "-------------------------");
+        TimeUnit.SECONDS.sleep(5);
+
+        final VisibleFilesListInformation list2 = FilesAssistant.list(this.address(), this.adminUsername(), this.location(this.root()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 3, WListServer.IOExecutors, null);
+        Assertions.assertTrue(list2 != null && list2.informationList().size() == 2);
+        final List<VisibleFileInformation> t = new HashSet<>(list2.informationList()).stream().filter(i -> i.id() != list1.informationList().get(0).id()).toList();
+        Assertions.assertEquals(1, t.size());
+        Assertions.assertTrue(FilesAssistant.trash(this.address(), this.adminUsername(), this.location(t.get(0).id()), true, PredicateE.truePredicate()));
     }
 }

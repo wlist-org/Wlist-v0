@@ -14,6 +14,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.BiConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -228,7 +229,11 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                             @Override
                             public void onResponse(final @NotNull Call call, final @NotNull Response response) {
                                 try {
-                                    consumer.accept(HttpNetworkHelper.extraJsonResponseBody(response));
+                                    final JSONObject json = HttpNetworkHelper.extraJsonResponseBody(response);
+                                    WListServer.ServerExecutors.submit(HExceptionWrapper.wrapRunnable(() -> consumer.accept(json), e -> {
+                                        if (e != null)
+                                            error.accept(e);
+                                    }, true)).addListener(MiscellaneousUtil.exceptionListener());
                                 } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                                     error.accept(exception);
                                 }
@@ -236,7 +241,10 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
                         });
                         return;
                     }
-                    consumer.accept(json);
+                    WListServer.ServerExecutors.submit(HExceptionWrapper.wrapRunnable(() -> consumer.accept(json), e -> {
+                        if (e != null)
+                            error.accept(e);
+                    }, true)).addListener(MiscellaneousUtil.exceptionListener());
                 } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                     error.accept(exception);
                 }

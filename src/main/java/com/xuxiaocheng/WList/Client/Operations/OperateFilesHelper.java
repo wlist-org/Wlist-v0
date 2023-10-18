@@ -209,7 +209,7 @@ public final class OperateFilesHelper {
         return OperateHelper.booleanOperation(client, send, OperationType.FinishDownloadFile);
     }
 
-    public static @Nullable UnionPair<Object, VisibleFailureReason> createDirectory(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation parent, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
+    public static @Nullable UnionPair<VisibleFileInformation, VisibleFailureReason> createDirectory(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation parent, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.CreateDirectory, token);
         parent.dump(send);
         ByteBufIOUtil.writeUTF(send, directoryName);
@@ -219,8 +219,9 @@ public final class OperateFilesHelper {
         try {
             final String reason = OperateHelper.handleState(receive);
             if (reason == null) {
-                OperateHelper.logOperated(OperationType.CreateDirectory, null, null);
-                return UnionPair.ok(token); // null.
+                final VisibleFileInformation directory = VisibleFileInformation.parse(receive);
+                OperateHelper.logOperated(OperationType.CreateDirectory, null, p -> p.add("directory", directory));
+                return UnionPair.ok(directory);
             }
             if ("Failure".equals(reason)) {
                 final VisibleFailureReason failureReason = VisibleFailureReason.parse(receive);
@@ -307,26 +308,26 @@ public final class OperateFilesHelper {
     }
 
     public static @Nullable UnionPair<Boolean, VisibleFailureReason> copyDirectly(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation location, final boolean isDirectory, final @NotNull FileLocation parent, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
-        final ByteBuf send = OperateHelper.operateWithToken(OperationType.CopyFile, token);
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.CopyDirectly, token);
         location.dump(send);
         ByteBufIOUtil.writeBoolean(send, isDirectory);
         parent.dump(send);
         ByteBufIOUtil.writeUTF(send, name);
         ByteBufIOUtil.writeUTF(send, policy.name());
-        OperateHelper.logOperating(OperationType.CopyFile, token, p -> p.add("location", location).add("isDirectory", isDirectory).add("parent", parent).add("name", name).add("policy", policy));
+        OperateHelper.logOperating(OperationType.CopyDirectly, token, p -> p.add("location", location).add("isDirectory", isDirectory).add("parent", parent).add("name", name).add("policy", policy));
         final ByteBuf receive = client.send(send);
         try {
             final String reason = OperateHelper.handleState(receive);
             if (reason == null) {
-                OperateHelper.logOperated(OperationType.CopyFile, null, null);
+                OperateHelper.logOperated(OperationType.CopyDirectly, null, null);
                 return UnionPair.ok(Boolean.TRUE);
             }
             if ("Failure".equals(reason)) {
                 final VisibleFailureReason failureReason = VisibleFailureReason.parse(receive);
-                OperateHelper.logOperated(OperationType.CopyFile, failureReason.toString(), null);
+                OperateHelper.logOperated(OperationType.CopyDirectly, failureReason.toString(), null);
                 return UnionPair.fail(failureReason);
             }
-            OperateHelper.logOperated(OperationType.CopyFile, reason, null);
+            OperateHelper.logOperated(OperationType.CopyDirectly, reason, null);
             return "Complex".equals(reason) ? UnionPair.ok(Boolean.FALSE) : null;
         } finally {
             receive.release();
@@ -334,25 +335,25 @@ public final class OperateFilesHelper {
     }
 
     public static @Nullable UnionPair<Boolean, VisibleFailureReason> moveDirectly(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation location, final boolean isDirectory, final @NotNull FileLocation parent, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
-        final ByteBuf send = OperateHelper.operateWithToken(OperationType.MoveFile, token);
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.MoveDirectly, token);
         location.dump(send);
         ByteBufIOUtil.writeBoolean(send, isDirectory);
         parent.dump(send);
         ByteBufIOUtil.writeUTF(send, policy.name());
-        OperateHelper.logOperating(OperationType.MoveFile, token, p -> p.add("location", location).add("isDirectory", isDirectory).add("parent", parent).add("policy", policy));
+        OperateHelper.logOperating(OperationType.MoveDirectly, token, p -> p.add("location", location).add("isDirectory", isDirectory).add("parent", parent).add("policy", policy));
         final ByteBuf receive = client.send(send);
         try {
             final String reason = OperateHelper.handleState(receive);
             if (reason == null) {
-                OperateHelper.logOperated(OperationType.MoveFile, null, null);
+                OperateHelper.logOperated(OperationType.MoveDirectly, null, null);
                 return UnionPair.ok(Boolean.TRUE);
             }
             if ("Failure".equals(reason)) {
                 final VisibleFailureReason failureReason = VisibleFailureReason.parse(receive);
-                OperateHelper.logOperated(OperationType.MoveFile, failureReason.toString(), null);
+                OperateHelper.logOperated(OperationType.MoveDirectly, failureReason.toString(), null);
                 return UnionPair.fail(failureReason);
             }
-            OperateHelper.logOperated(OperationType.MoveFile, reason, null);
+            OperateHelper.logOperated(OperationType.MoveDirectly, reason, null);
             return "Complex".equals(reason) ? UnionPair.ok(Boolean.FALSE) : null;
         } finally {
             receive.release();
@@ -360,25 +361,25 @@ public final class OperateFilesHelper {
     }
 
     public static @Nullable UnionPair<Boolean, VisibleFailureReason> renameDirectly(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation location, final boolean isDirectory, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
-        final ByteBuf send = OperateHelper.operateWithToken(OperationType.RenameFile, token);
+        final ByteBuf send = OperateHelper.operateWithToken(OperationType.RenameDirectly, token);
         location.dump(send);
         ByteBufIOUtil.writeBoolean(send, isDirectory);
         ByteBufIOUtil.writeUTF(send, name);
         ByteBufIOUtil.writeUTF(send, policy.name());
-        OperateHelper.logOperating(OperationType.RenameFile, token, p -> p.add("location", location).add("isDirectory", isDirectory).add("name", name).add("policy", policy));
+        OperateHelper.logOperating(OperationType.RenameDirectly, token, p -> p.add("location", location).add("isDirectory", isDirectory).add("name", name).add("policy", policy));
         final ByteBuf receive = client.send(send);
         try {
             final String reason = OperateHelper.handleState(receive);
             if (reason == null) {
-                OperateHelper.logOperated(OperationType.RenameFile, null, null);
+                OperateHelper.logOperated(OperationType.RenameDirectly, null, null);
                 return UnionPair.ok(Boolean.TRUE);
             }
             if ("Failure".equals(reason)) {
                 final VisibleFailureReason failureReason = VisibleFailureReason.parse(receive);
-                OperateHelper.logOperated(OperationType.RenameFile, failureReason.toString(), null);
+                OperateHelper.logOperated(OperationType.RenameDirectly, failureReason.toString(), null);
                 return UnionPair.fail(failureReason);
             }
-            OperateHelper.logOperated(OperationType.RenameFile, reason, null);
+            OperateHelper.logOperated(OperationType.RenameDirectly, reason, null);
             return "Complex".equals(reason) ? UnionPair.ok(Boolean.FALSE) : null;
         } finally {
             receive.release();

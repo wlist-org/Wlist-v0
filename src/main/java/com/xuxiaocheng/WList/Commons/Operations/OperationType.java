@@ -56,9 +56,9 @@ public enum OperationType {
     ConfirmUploadFile,
     UploadFile,
     FinishUploadFile,
-    RenameFile,
-    CopyFile,
-    MoveFile,
+    CopyDirectly,
+    MoveDirectly,
+    RenameDirectly,
     // Progress
     GetProgress,
     ;

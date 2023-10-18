@@ -160,12 +160,14 @@ public class WListServer {
     public static class ServerChannelHandler extends SimpleChannelInboundHandler<ByteBuf> {
         @Override
         public void channelActive(final @NotNull ChannelHandlerContext ctx) {
-            WListServer.logger.log(HLogLevel.DEBUG, "Active: ", ctx.channel().remoteAddress(), " (", ctx.channel().id().asLongText(), ')');
+            if (ServerHandler.LogActive.get())
+                WListServer.logger.log(HLogLevel.DEBUG, "Active: ", ctx.channel().remoteAddress(), " (", ctx.channel().id().asLongText(), ')');
         }
 
         @Override
         public void channelInactive(final @NotNull ChannelHandlerContext ctx) {
-            WListServer.logger.log(HLogLevel.DEBUG, "Inactive: ", ctx.channel().remoteAddress(), " (", ctx.channel().id().asLongText(), ')');
+            if (ServerHandler.LogActive.get())
+                WListServer.logger.log(HLogLevel.DEBUG, "Inactive: ", ctx.channel().remoteAddress(), " (", ctx.channel().id().asLongText(), ')');
         }
 
         public static void write(final @NotNull Channel channel, final @NotNull MessageProto message) {

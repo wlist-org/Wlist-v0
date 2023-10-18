@@ -2,7 +2,6 @@ package com.xuxiaocheng.WListTest.Storage.Real;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
-import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.PredicateE;
 import com.xuxiaocheng.HeadLibs.Helpers.HMessageDigestHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -94,7 +93,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
         @ParameterizedTest(name = "running")
         @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
         public void file(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
-            final VisibleFilesListInformation list = FilesAssistant.list(address(), adminUsername(), location(root()), Options.FilterPolicy.OnlyFiles, VisibleFileInformation.emptyOrder(), 0, 1, WListServer.IOExecutors, ConsumerE.emptyConsumer());
+            final VisibleFilesListInformation list = FilesAssistant.list(address(), adminUsername(), location(root()), Options.FilterPolicy.OnlyFiles, VisibleFileInformation.emptyOrder(), 0, 1, WListServer.IOExecutors, null);
             Assumptions.assumeTrue(list != null);
             final VisibleFileInformation information = list.informationList().get(0);
             Assertions.assertEquals(information, OperateFilesHelper.getFileOrDirectory(client, token(), location(information.id()), false));
@@ -103,7 +102,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
         @ParameterizedTest(name = "running")
         @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
         public void directory(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
-            final VisibleFilesListInformation list = FilesAssistant.list(address(), adminUsername(), location(root()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 1, WListServer.IOExecutors, ConsumerE.emptyConsumer());
+            final VisibleFilesListInformation list = FilesAssistant.list(address(), adminUsername(), location(root()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 1, WListServer.IOExecutors, null);
             Assumptions.assumeTrue(list != null);
             final VisibleFileInformation information = list.informationList().get(0);
             Assertions.assertEquals(information, OperateFilesHelper.getFileOrDirectory(client, token(), location(information.id()), true));
@@ -130,18 +129,19 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
                 latch.countDown();
             };
             BroadcastAssistant.get(address()).FileUpload.register(callback);
-            final UnionPair<Object, VisibleFailureReason> p = OperateFilesHelper.createDirectory(client, token(), location(root()), "directory", Options.DuplicatePolicy.ERROR);
+            final UnionPair<VisibleFileInformation, VisibleFailureReason> p = OperateFilesHelper.createDirectory(client, token(), location(root()), "directory", Options.DuplicatePolicy.ERROR);
             Assertions.assertTrue(p != null && p.isSuccess());
             latch.await();
             BroadcastAssistant.get(address()).FileUpload.unregister(callback);
             HLog.DefaultLogger.log(HLogLevel.LESS, info.getTestMethod().map(Method::getName).orElse("unknown"), ": ", information.get());
+            Assertions.assertEquals(information.get(), p.getT());
             OperateFilesHelper.trashFileOrDirectory(client, token(), location(information.get().id()), true);
         }
 
         @ParameterizedTest(name = "running")
         @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
         public void notAvailable(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
-            final UnionPair<Object, VisibleFailureReason> res = OperateFilesHelper.createDirectory(client, token(), location(-2), "unreachable", Options.DuplicatePolicy.ERROR);
+            final UnionPair<VisibleFileInformation, VisibleFailureReason> res = OperateFilesHelper.createDirectory(client, token(), location(-2), "unreachable", Options.DuplicatePolicy.ERROR);
             Assertions.assertTrue(res != null && res.isFailure());
             Assertions.assertEquals(FailureKind.NoSuchFile, res.getE().kind());
         }
@@ -151,7 +151,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
     public abstract class AbstractRefreshTest {
         @Test
         public void refresh() throws IOException, InterruptedException, WrongStateException {
-            final VisibleFilesListInformation list = FilesAssistant.list(address(), adminUsername(), location(root()), Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 50, WListServer.IOExecutors, ConsumerE.emptyConsumer());
+            final VisibleFilesListInformation list = FilesAssistant.list(address(), adminUsername(), location(root()), Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 50, WListServer.IOExecutors, null);
             Assumptions.assumeTrue(list != null);
             Assumptions.assumeTrue(list.informationList().size() < 50);
             final Collection<Pair.ImmutablePair<FileLocation, Boolean>> l = new HashSet<>();
@@ -165,7 +165,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
                 latch.countDown();
             };
             BroadcastAssistant.get(address()).FileUpdate.register(callback);
-            Assertions.assertTrue(FilesAssistant.refresh(address(), adminUsername(), location(root()), WListServer.IOExecutors, ConsumerE.emptyConsumer()));
+            Assertions.assertTrue(FilesAssistant.refresh(address(), adminUsername(), location(root()), WListServer.IOExecutors, null));
             latch.await();
             BroadcastAssistant.get(address()).FileUpdate.unregister(callback);
 
@@ -175,7 +175,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
         @ParameterizedTest(name = "running")
         @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
         public void notAvailable(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
-            final UnionPair<Object, VisibleFailureReason> res = OperateFilesHelper.createDirectory(client, token(), location(-2), "unreachable", Options.DuplicatePolicy.ERROR);
+            final UnionPair<VisibleFileInformation, VisibleFailureReason> res = OperateFilesHelper.createDirectory(client, token(), location(-2), "unreachable", Options.DuplicatePolicy.ERROR);
             Assertions.assertTrue(res != null && res.isFailure());
             Assertions.assertEquals(FailureKind.NoSuchFile, res.getE().kind());
         }
@@ -187,7 +187,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
         @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
         public void cancel(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
             // Prepare.
-            final VisibleFilesListInformation list = FilesAssistant.list(address(), adminUsername(), location(root()), Options.FilterPolicy.OnlyFiles, VisibleFileInformation.emptyOrder(), 0, 2, WListServer.IOExecutors, ConsumerE.emptyConsumer());
+            final VisibleFilesListInformation list = FilesAssistant.list(address(), adminUsername(), location(root()), Options.FilterPolicy.OnlyFiles, VisibleFileInformation.emptyOrder(), 0, 2, WListServer.IOExecutors, null);
             Assumptions.assumeTrue(list != null);
             Assumptions.assumeFalse(list.informationList().isEmpty());
             final VisibleFileInformation information = list.informationList().get(0);
@@ -213,7 +213,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
         public void download() throws IOException, InterruptedException, WrongStateException {
             final LinkedHashMap<VisibleFileInformation.Order, Options.OrderDirection> order = new LinkedHashMap<>();
             order.put(VisibleFileInformation.Order.Size, Options.OrderDirection.ASCEND);
-            final VisibleFilesListInformation list = FilesAssistant.list(address(), adminUsername(), location(root()), Options.FilterPolicy.OnlyFiles, order, 0, 3, WListServer.IOExecutors, ConsumerE.emptyConsumer());
+            final VisibleFilesListInformation list = FilesAssistant.list(address(), adminUsername(), location(root()), Options.FilterPolicy.OnlyFiles, order, 0, 3, WListServer.IOExecutors, null);
             Assumptions.assumeTrue(list != null);
             Assumptions.assumeTrue(list.informationList().size() == 2);
             final VisibleFileInformation small = list.informationList().get(0); /* <= NetworkTransmission.FileTransferBufferSize */
@@ -230,7 +230,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
         public void testDownload(final @NotNull FileLocation location, final @NotNull String md5) throws InterruptedException, WrongStateException, IOException {
             final File file = Files.createTempFile("downloading", ".bin").toFile();
             file.deleteOnExit();
-            FilesAssistant.download(address(), adminUsername(), location, file, PredicateE.truePredicate(), ConsumerE.emptyConsumer());
+            FilesAssistant.download(address(), adminUsername(), location, file, PredicateE.truePredicate(), null);
             final MessageDigest digest = HMessageDigestHelper.MD5.getDigester();
             try (final InputStream stream = new BufferedInputStream(new FileInputStream(file))) {
                 HMessageDigestHelper.updateMessageDigest(digest, stream);
@@ -287,7 +287,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
                 latch.countDown();
             };
             BroadcastAssistant.get(address()).FileUpload.register(callback);
-            FilesAssistant.upload(address(), adminUsername(), file, parent, null, PredicateE.truePredicate(), ConsumerE.emptyConsumer());
+            FilesAssistant.upload(address(), adminUsername(), file, parent, null, PredicateE.truePredicate(), null);
             latch.await();
             BroadcastAssistant.get(address()).FileUpload.unregister(callback);
             return information.get();
@@ -320,11 +320,11 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
         @ParameterizedTest(name = "running")
         @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
         public void file(final WListClientInterface client, final @NotNull TestInfo info) throws IOException, InterruptedException, WrongStateException {
-            final VisibleFilesListInformation l = FilesAssistant.list(address(), adminUsername(), location(root()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 1, WListServer.IOExecutors, ConsumerE.emptyConsumer());
+            final VisibleFilesListInformation l = FilesAssistant.list(address(), adminUsername(), location(root()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 1, WListServer.IOExecutors, null);
             Assumptions.assumeTrue(l != null);
             Assumptions.assumeFalse(l.informationList().isEmpty());
             final VisibleFileInformation parent = l.informationList().get(0);
-            final VisibleFilesListInformation list = FilesAssistant.list(address(), adminUsername(), location(root()), Options.FilterPolicy.OnlyFiles, VisibleFileInformation.emptyOrder(), 0, 1, WListServer.IOExecutors, ConsumerE.emptyConsumer());
+            final VisibleFilesListInformation list = FilesAssistant.list(address(), adminUsername(), location(root()), Options.FilterPolicy.OnlyFiles, VisibleFileInformation.emptyOrder(), 0, 1, WListServer.IOExecutors, null);
             Assumptions.assumeTrue(list != null);
             Assumptions.assumeFalse(list.informationList().isEmpty());
             final VisibleFileInformation information = list.informationList().get(0);
@@ -364,11 +364,11 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
         @ParameterizedTest(name = "running")
         @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
         public void file(final WListClientInterface client, final @NotNull TestInfo info) throws IOException, InterruptedException, WrongStateException {
-            final VisibleFilesListInformation l = FilesAssistant.list(address(), adminUsername(), location(root()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 1, WListServer.IOExecutors, ConsumerE.emptyConsumer());
+            final VisibleFilesListInformation l = FilesAssistant.list(address(), adminUsername(), location(root()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 1, WListServer.IOExecutors, null);
             Assumptions.assumeTrue(l != null);
             Assumptions.assumeFalse(l.informationList().isEmpty());
             final VisibleFileInformation parent = l.informationList().get(0);
-            final VisibleFilesListInformation list = FilesAssistant.list(address(), adminUsername(), location(root()), Options.FilterPolicy.OnlyFiles, VisibleFileInformation.emptyOrder(), 0, 1, WListServer.IOExecutors, ConsumerE.emptyConsumer());
+            final VisibleFilesListInformation list = FilesAssistant.list(address(), adminUsername(), location(root()), Options.FilterPolicy.OnlyFiles, VisibleFileInformation.emptyOrder(), 0, 1, WListServer.IOExecutors, null);
             Assumptions.assumeTrue(list != null);
             Assumptions.assumeFalse(list.informationList().isEmpty());
             final VisibleFileInformation information = list.informationList().get(0);
@@ -408,7 +408,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
         @ParameterizedTest(name = "running")
         @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
         public void file(final WListClientInterface client, final @NotNull TestInfo info) throws IOException, InterruptedException, WrongStateException {
-            final VisibleFilesListInformation list = FilesAssistant.list(address(), adminUsername(), location(root()), Options.FilterPolicy.OnlyFiles, VisibleFileInformation.emptyOrder(), 0, 1, WListServer.IOExecutors, ConsumerE.emptyConsumer());
+            final VisibleFilesListInformation list = FilesAssistant.list(address(), adminUsername(), location(root()), Options.FilterPolicy.OnlyFiles, VisibleFileInformation.emptyOrder(), 0, 1, WListServer.IOExecutors, null);
             Assumptions.assumeTrue(list != null);
             Assumptions.assumeFalse(list.informationList().isEmpty());
             final VisibleFileInformation information = list.informationList().get(0);
@@ -436,7 +436,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
         @ParameterizedTest(name = "running")
         @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
         public void directory(final WListClientInterface client, final @NotNull TestInfo info) throws IOException, InterruptedException, WrongStateException {
-            final VisibleFilesListInformation list = FilesAssistant.list(address(), adminUsername(), location(root()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 1, WListServer.IOExecutors, ConsumerE.emptyConsumer());
+            final VisibleFilesListInformation list = FilesAssistant.list(address(), adminUsername(), location(root()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 1, WListServer.IOExecutors, null);
             Assumptions.assumeTrue(list != null);
             Assumptions.assumeFalse(list.informationList().isEmpty());
             final VisibleFileInformation information = list.informationList().get(0);
