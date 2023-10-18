@@ -48,6 +48,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -258,7 +259,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
             Assertions.assertFalse(OperateFilesHelper.cancelUploadFile(client, token(), ""));
             Assertions.assertNull(OperateFilesHelper.confirmUploadFile(client, token(), "", List.of()));
             Assertions.assertFalse(OperateFilesHelper.uploadFile(client, token(), "", 0, Unpooled.EMPTY_BUFFER));
-            Assertions.assertFalse(OperateFilesHelper.finishUploadFile(client, token(), ""));
+            Assertions.assertNull(OperateFilesHelper.finishUploadFile(client, token(), ""));
         }
 
         @ParameterizedTest(name = "running")
@@ -336,9 +337,9 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
                 latch.countDown();
             };
             BroadcastAssistant.get(address()).FileUpdate.register(callback);
-            final UnionPair<Boolean, VisibleFailureReason> res = OperateFilesHelper.copyDirectly(client, token(), location(information.id()), false, location(parent.id()), "temp-" + information.name(), Options.DuplicatePolicy.ERROR);
+            final UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> res = OperateFilesHelper.copyDirectly(client, token(), location(information.id()), false, location(parent.id()), "temp-" + information.name(), Options.DuplicatePolicy.ERROR);
             Assertions.assertTrue(res != null && res.isSuccess());
-            if (!res.getT().booleanValue()) {
+            if (res.getT().isEmpty()) {
                 BroadcastAssistant.get(address()).FileUpdate.unregister(callback);
                 HLog.DefaultLogger.log(HLogLevel.ERROR, "Unsupported operation: ", info.getTestClass().orElseThrow().getName(), "#", info.getTestMethod().orElseThrow().getName());
                 return;

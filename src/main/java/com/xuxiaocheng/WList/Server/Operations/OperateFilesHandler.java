@@ -678,7 +678,7 @@ public final class OperateFilesHandler {
             final FileInformation file = p.getT().getT();
             HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Uploaded file.", ServerHandler.user(null, user.getT()),
                     ParametersMap.create().add("file", file));
-            WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
+            WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(file::dumpVisible));
         });
     };
 
@@ -728,7 +728,7 @@ public final class OperateFilesHandler {
                 final FileInformation information = p.getT().get().getT();
                 HLog.getInstance("ServerLogger").log(HLogLevel.FINE, "Copied.", ServerHandler.user(null, user.getT()),
                         ParametersMap.create().add("from", location).add(isDirectory ? "directory" : "file", information));
-                WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
+                WListServer.ServerChannelHandler.write(channel, MessageProto.successMessage(information::dumpVisible));
                 return;
             }
             WListServer.ServerChannelHandler.write(channel, OperateFilesHandler.ComplexOperation);
