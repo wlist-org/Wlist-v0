@@ -68,7 +68,7 @@ public final class HttpNetworkHelper {
     public static final @NotNull String DefaultAgent = "WList/0.3.2";
 
     private static final @NotNull Dispatcher Dispatcher = new Dispatcher(WListServer.IOExecutors);
-    private static final @NotNull @Unmodifiable Set<@NotNull String> PrivateFormNames = Set.of("password", "pwd", "passwd", "pw");
+    public static final @NotNull @Unmodifiable Set<@NotNull String> PrivateFormNames = Set.of("password", "pwd", "passwd", "pw");
     private static final @NotNull Interceptor NetworkLoggerInterceptor = chain -> {
         final Request request = chain.request();
         HttpNetworkHelper.logger.log(HLogLevel.NETWORK, "Sending: ", request.method(), ' ', request.url(),

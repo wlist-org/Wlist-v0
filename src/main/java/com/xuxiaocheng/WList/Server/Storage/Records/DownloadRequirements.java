@@ -90,7 +90,7 @@ public record DownloadRequirements(boolean acceptedRange, long downloadingSize, 
     private static @Nullable ZonedDateTime getExpireTime(final @Nullable ZonedDateTime expires, final @NotNull Headers headers, final @Nullable Consumer<? super @NotNull ZonedDateTime> expireTimeUpdateCallback) {
         if (expires != null)
             return expires;
-        final Instant instant = headers.getInstant("Expires"); // TODO: Expires?
+        final Instant instant = headers.getInstant("Expires");
         if (instant == null)
             return null;
         final ZonedDateTime expireTime = ZonedDateTime.ofInstant(instant, ZoneOffset.UTC);

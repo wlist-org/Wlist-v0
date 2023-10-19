@@ -181,7 +181,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
      * @param consumer empty: directory is not existed. present: list of files.
      * @throws Exception: Any iterating exception can be wrapped in {@link NoSuchElementException} and then thrown in method {@code next()}.
      * @see #ListNotExisted
-     * @see com.xuxiaocheng.WList.Server.Storage.Helpers.ProviderUtil#wrapSuppliersInPages(ConsumerE, Executor, BiConsumerE, Consumer)
+     * @see ProviderUtil#wrapSuppliersInPages(ConsumerE, Executor, BiConsumerE, Consumer)
      */
     protected abstract void list0(final long directoryId, final @Nullable ProgressBar progress, final @NotNull Consumer<? super UnionPair<Optional<Iterator<FileInformation>>, Throwable>> consumer) throws Exception;
 

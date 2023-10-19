@@ -7,7 +7,9 @@ import io.netty.util.internal.EmptyArrays;
 import org.htmlunit.BrowserVersion;
 import org.htmlunit.Cache;
 import org.htmlunit.HttpMethod;
+import org.htmlunit.SilentCssErrorHandler;
 import org.htmlunit.WebClient;
+import org.htmlunit.WebConsole;
 import org.htmlunit.WebRequest;
 import org.htmlunit.WebResponse;
 import org.htmlunit.WebResponseData;
@@ -18,6 +20,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.function.Supplier;
 
 public final class BrowserUtil {
     private BrowserUtil() {
@@ -30,18 +33,28 @@ public final class BrowserUtil {
     public static @NotNull WebClient newWebClient() {
         final WebClient client = new WebClient(BrowserVersion.EDGE);
         client.getOptions().setCssEnabled(false);
-//        client.setCssErrorHandler(new SilentCssErrorHandler());
         client.getOptions().setJavaScriptEnabled(true);
-        if (!HeadLibs.isDebugMode())
-            client.setJavaScriptErrorListener(new SilentJavaScriptErrorListener());
         client.getOptions().setThrowExceptionOnScriptError(false);
         client.setCache(BrowserUtil.SharedCache);
         client.setWebConnection(new WebConnectionWrapper(client.getWebConnection()) {
             @Override
             public WebResponse getResponse(final WebRequest request) throws IOException {
                 BrowserUtil.logger.log(HLogLevel.NETWORK, "Sending: ", request.getHttpMethod(), ' ', request.getUrl(),
-                        request.getHttpMethod() == HttpMethod.GET || request.getParameters().isEmpty() ? "" : " Parameters: " + request.getParameters(),
-                        request.getAdditionalHeader("Range") == null ? "" : (" (Range: " + request.getAdditionalHeader("Range") + ')'));
+                        ((Supplier<String>) () -> {
+                            if (request.getHttpMethod() == HttpMethod.GET || request.getParameters().isEmpty())
+                                return "";
+                            final StringBuilder builder = new StringBuilder();
+                            builder.append(" (Form: {");
+                            for (final NameValuePair pair: request.getParameters()) {
+                                builder.append(pair.getName());
+                                if (HttpNetworkHelper.PrivateFormNames.contains(pair.getName()))
+                                    builder.append(": ***");
+                                else
+                                    builder.append("=").append(pair.getValue());
+                                builder.append(", ");
+                            }
+                            return builder.replace(builder.length() - 2, builder.length(), "})").toString();
+                        }), request.getAdditionalHeader("Range") == null ? "" : (" (Range: " + request.getAdditionalHeader("Range") + ')'));
                 final long time1 = System.currentTimeMillis();
                 final WebResponse response;
                 boolean successFlag = false;
@@ -56,9 +69,24 @@ public final class BrowserUtil {
                 return response;
             }
         });
-        client.setIncorrectnessListener((message, origin) -> {/*Ignore*/});
+        if (!HeadLibs.isDebugMode()) {
+            client.setIncorrectnessListener((message, origin) -> {/*Ignore*/});
+            client.setCssErrorHandler(new SilentCssErrorHandler());
+            client.setJavaScriptErrorListener(new SilentJavaScriptErrorListener());
+            client.getWebConsole().setLogger(SilentConsoleLogger.Instance);
+        }
         return client;
     }
+
+    public static class SilentConsoleLogger implements WebConsole.Logger {
+        public static final SilentConsoleLogger Instance = new SilentConsoleLogger();
+        @Override public boolean isTraceEnabled() {return false;}@Override public void trace(final Object message) {}
+        @Override public boolean isDebugEnabled() {return false;}@Override public void debug(final Object message) {}
+        @Override public boolean isInfoEnabled() {return false;}@Override public void info(final Object message) {}
+        @Override public boolean isWarnEnabled() {return false;}@Override public void warn(final Object message) {}
+        @Override public boolean isErrorEnabled() {return false;}@Override public void error(final Object message) {}
+    }
+
 
     public static void waitJavaScriptCompleted(final @NotNull WebClient client) {
         while (true)

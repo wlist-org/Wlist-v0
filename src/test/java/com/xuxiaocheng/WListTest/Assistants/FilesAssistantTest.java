@@ -52,6 +52,7 @@ import java.lang.reflect.Method;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.security.MessageDigest;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -237,6 +238,7 @@ public class FilesAssistantTest extends ProvidersWrapper {
         return information.get();
     }
 
+
     @Test
     public void download() throws IOException, InterruptedException, WrongStateException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         final LinkedHashMap<VisibleFileInformation.Order, Options.OrderDirection> order = new LinkedHashMap<>();
@@ -269,6 +271,33 @@ public class FilesAssistantTest extends ProvidersWrapper {
                 List.of(new UploadChecksum(0, file.length(), UploadChecksum.MD5))));
     }
 
+    @Test
+    public void downloadStream() throws IOException, InterruptedException, WrongStateException {
+        final LinkedHashMap<VisibleFileInformation.Order, Options.OrderDirection> order = new LinkedHashMap<>();
+        order.put(VisibleFileInformation.Order.Size, Options.OrderDirection.ASCEND);
+        final VisibleFilesListInformation list = FilesAssistant.list(this.address(), this.adminUsername(), this.location(this.root()), Options.FilterPolicy.OnlyFiles, order, 0, 3, WListServer.IOExecutors, null);
+        Assumptions.assumeTrue(list != null);
+        Assumptions.assumeTrue(list.informationList().size() == 2);
+
+        final VisibleFileInformation small = list.informationList().get(0);
+        Assumptions.assumeTrue("WListClientConsole-v0.1.1.exe".equals(small.name()));
+        Assumptions.assumeTrue(small.size() == 1803776);
+        this.testDownloadStream(small.id(), "127d400ae420533548891ef54390f495");
+
+        final VisibleFileInformation big = list.informationList().get(1);
+        Assumptions.assumeTrue("WList-V0.2.0.jar".equals(big.name()));
+        Assumptions.assumeTrue(big.size() == 24915053);
+        this.testDownloadStream(big.id(), "0efa9c569a7f37f0c92a352042a01df7");
+    }
+
+    public void testDownloadStream(final long id, final @NotNull String md5) throws IOException, InterruptedException, WrongStateException {
+        final InputStream stream = Objects.requireNonNull(FilesAssistant.downloadStream(this.address(), this.adminUsername(), this.location(id),
+                c -> {HLog.DefaultLogger.log("", c);return true;}, 0, Long.MAX_VALUE, WListServer.IOExecutors)).getT();
+        final MessageDigest digester = HMessageDigestHelper.MD5.getDigester();
+        HMessageDigestHelper.updateMessageDigest(digester, stream);
+        Assertions.assertEquals(md5, HMessageDigestHelper.MD5.digest(digester));
+    }
+
 
     protected @NotNull FileLocation abstractLocation(final long id) {
         return new FileLocation("abstract", id);
@@ -299,7 +328,7 @@ public class FilesAssistantTest extends ProvidersWrapper {
         Assertions.assertNotNull(list1);
         Assumptions.assumeTrue(list1.filtered() == 1);
 
-        final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.copy(this.address(), this.adminUsername(), this.location(list1.informationList().get(0).id()), true, this.location(this.root()), "copied", p -> {HLog.DefaultLogger.log(HLogLevel.INFO, p);return true;});
+        final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.copy(this.address(), this.adminUsername(), this.location(list1.informationList().get(0).id()), true, this.location(this.root()), "copied", WListServer.IOExecutors, p -> {HLog.DefaultLogger.log(HLogLevel.INFO, p);return true;});
         Assertions.assertTrue(res != null && res.isSuccess());
 
         Assertions.assertTrue(FilesAssistant.trash(this.address(), this.adminUsername(), this.location(res.getT().id()), true, PredicateE.truePredicate()));

@@ -130,7 +130,7 @@ public final class ProviderUtil {
                         return false;
                     supplier.run();
                     synchronized (threadRunning) {
-                        while (threadRunning.get() && filesQueue.peek() == null)
+                        while (threadRunning.get() && filesQueue.isEmpty())
                             try {
                                 threadRunning.wait();
                             } catch (final InterruptedException ignore) {
@@ -246,7 +246,7 @@ public final class ProviderUtil {
                 } else
                     supplier.run();
                 synchronized (threadRunning) {
-                    while (threadRunning.get() > 0 && filesQueue.peek() == null)
+                    while (threadRunning.get() > 0 && filesQueue.isEmpty())
                         try {
                             threadRunning.wait();
                         } catch (final InterruptedException ignore) {
