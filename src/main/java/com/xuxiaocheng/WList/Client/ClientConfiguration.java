@@ -77,7 +77,7 @@ public record ClientConfiguration(int threadCount, int progressStartDelay, int p
                         }
                         final String d = YamlHelper.transferString(e.getValue(), errors, "file_orders(" + e.getKey() + ')');
                         if (d == null) continue;
-                        final Options.OrderDirection direction = Options.OrderDirection.of(e.getKey());
+                        final Options.OrderDirection direction = Options.OrderDirection.of(d);
                         if (direction == null) {
                             HLog.getInstance("DefaultLogger").log(HLogLevel.WARN, "Invalid file order direction.", ParametersMap.create().add("name", e.getKey()).add("direction", d));
                             continue;
@@ -103,7 +103,7 @@ public record ClientConfiguration(int threadCount, int progressStartDelay, int p
                         }
                         final String d = YamlHelper.transferString(e.getValue(), errors, "user_orders(" + e.getKey() + ')');
                         if (d == null) continue;
-                        final Options.OrderDirection direction = Options.OrderDirection.of(e.getKey());
+                        final Options.OrderDirection direction = Options.OrderDirection.of(d);
                         if (direction == null) {
                             HLog.getInstance("DefaultLogger").log(HLogLevel.WARN, "Invalid user order direction.", ParametersMap.create().add("name", e.getKey()).add("direction", d));
                             continue;
@@ -127,7 +127,7 @@ public record ClientConfiguration(int threadCount, int progressStartDelay, int p
                         }
                         final String d = YamlHelper.transferString(e.getValue(), errors, "user_group_orders(" + e.getKey() + ')');
                         if (d == null) continue;
-                        final Options.OrderDirection direction = Options.OrderDirection.of(e.getKey());
+                        final Options.OrderDirection direction = Options.OrderDirection.of(d);
                         if (direction == null) {
                             HLog.getInstance("DefaultLogger").log(HLogLevel.WARN, "Invalid user group order direction.", ParametersMap.create().add("name", e.getKey()).add("direction", d));
                             continue;
