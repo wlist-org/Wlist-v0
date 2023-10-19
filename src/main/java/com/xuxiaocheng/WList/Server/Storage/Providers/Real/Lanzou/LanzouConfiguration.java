@@ -124,7 +124,7 @@ public final class LanzouConfiguration extends StorageConfiguration {
             errors.add(Pair.ImmutablePair.makeImmutablePair("passport", I18NUtil.get("provider.lanzou.configuration.invalid.passport")));
         if (!this.skipUsernameChecker && (this.password.length() < 6 || 20 < this.password.length()))
             errors.add(Pair.ImmutablePair.makeImmutablePair("password", I18NUtil.get("provider.lanzou.configuration.invalid.password")));
-        if (MiscellaneousUtil.now().isAfter(this.tokenExpire))
+        if (this.tokenExpire != null && MiscellaneousUtil.now().isAfter(this.tokenExpire))
             this.token = null;
     }
 
