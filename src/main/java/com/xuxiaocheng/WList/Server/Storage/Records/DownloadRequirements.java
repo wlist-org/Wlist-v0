@@ -15,6 +15,7 @@ import com.xuxiaocheng.WList.Server.Exceptions.NetworkException;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.ProgressBar;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.HttpNetworkHelper;
 import io.netty.buffer.ByteBuf;
+import okhttp3.CacheControl;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.Headers;
@@ -90,9 +91,14 @@ public record DownloadRequirements(boolean acceptedRange, long downloadingSize, 
     private static @Nullable ZonedDateTime getExpireTime(final @Nullable ZonedDateTime expires, final @NotNull Headers headers, final @Nullable Consumer<? super @NotNull ZonedDateTime> expireTimeUpdateCallback) {
         if (expires != null)
             return expires;
-        final Instant instant = headers.getInstant("Expires");
-        if (instant == null)
-            return null;
+        Instant instant = headers.getInstant("Expires");
+        if (instant == null) {
+            final CacheControl control = CacheControl.parse(headers);
+            if (control.maxAgeSeconds() <= 0)
+                return null;
+            final Instant now = Objects.requireNonNullElseGet(headers.getInstant("Date"), Instant::now);
+            instant = now.plusSeconds(control.maxAgeSeconds());
+        }
         final ZonedDateTime expireTime = ZonedDateTime.ofInstant(instant, ZoneOffset.UTC);
         if (expireTimeUpdateCallback != null)
             expireTimeUpdateCallback.accept(expireTime);
@@ -100,7 +106,7 @@ public record DownloadRequirements(boolean acceptedRange, long downloadingSize, 
     }
 
 
-    private static Pair.@Nullable ImmutablePair<@NotNull Headers, Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull Long>> getUrlHeaders(final @NotNull OkHttpClient client, final @NotNull HttpUrl url, final @Nullable Headers testedResponseHeader, final @Nullable Long totalSize, final Headers.@Nullable Builder requestHeaderBuilder, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws IOException {
+    private static Pair.@Nullable ImmutablePair<@NotNull Headers, Triad.@NotNull ImmutableTriad<@NotNull Long, @NotNull Long, @NotNull Long>> getUrlHeaders(final Call.@NotNull Factory client, final @NotNull HttpUrl url, final @Nullable Headers testedResponseHeader, final @Nullable Long totalSize, final Headers.@Nullable Builder requestHeaderBuilder, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to) throws IOException {
         if (from < 0 || to < 0 || from > to)
             return null;
         long size = 0, start = 0, end = 0;

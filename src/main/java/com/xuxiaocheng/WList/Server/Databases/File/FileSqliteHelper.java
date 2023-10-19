@@ -656,7 +656,7 @@ public class FileSqliteHelper implements FileSqlInterface {
                 try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     SELECT parent_id FROM %s WHERE double_id == ? LIMIT 1;
                     """, this.tableName))) {
-                    final Set<Long> book = new HashSet<>();
+                    final Collection<Long> book = new HashSet<>();
                     while (true) {
                         if (book.contains(fileDoubleParent))
                             throw new IllegalStateException("Recycling files tree." + ParametersMap.create().add("id", id).add("isDirectory", isDirectory).add("parentId", FileSqliteHelper.getRealId(fileDoubleParent)));

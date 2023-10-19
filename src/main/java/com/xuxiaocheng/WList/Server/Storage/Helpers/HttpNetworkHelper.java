@@ -217,7 +217,7 @@ public final class HttpNetworkHelper {
 
     private static final @NotNull Headers EmptyHeaders = new Headers.Builder().build();
 
-    public static @NotNull Call getWithParameters(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull String> parameters) {
+    public static @NotNull Call getWithParameters(final Call.@NotNull Factory client, final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull String> parameters) {
         assert !HttpMethod.requiresRequestBody(url.getSecond());
         return client.newCall(new Request.Builder().url(HttpNetworkHelper.getRealUrl(url.getFirst(), parameters))
                 .headers(Objects.requireNonNullElse(headers, HttpNetworkHelper.EmptyHeaders))
@@ -225,7 +225,7 @@ public final class HttpNetworkHelper {
                 .build());
     }
 
-    public static @NotNull Call postWithBody(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> url, final @Nullable Headers headers, final @Nullable RequestBody body) {
+    public static @NotNull Call postWithBody(final Call.@NotNull Factory client, final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> url, final @Nullable Headers headers, final @Nullable RequestBody body) {
         assert HttpMethod.requiresRequestBody(url.getSecond());
         return client.newCall(new Request.Builder().url(url.getFirst())
                 .headers(Objects.requireNonNullElse(headers, HttpNetworkHelper.EmptyHeaders))
@@ -234,7 +234,7 @@ public final class HttpNetworkHelper {
                 .build());
     }
 
-    public static @NotNull Call postWithParametersAndBody(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull String> parameters, final @Nullable RequestBody body) {
+    public static @NotNull Call postWithParametersAndBody(final Call.@NotNull Factory client, final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull String> parameters, final @Nullable RequestBody body) {
         assert HttpMethod.requiresRequestBody(url.getSecond());
         return client.newCall(new Request.Builder().url(HttpNetworkHelper.getRealUrl(url.getFirst(), parameters))
                 .headers(Objects.requireNonNullElse(headers, HttpNetworkHelper.EmptyHeaders))
@@ -243,7 +243,7 @@ public final class HttpNetworkHelper {
                 .build());
     }
 
-    public static @NotNull Call callWithJson(final @NotNull OkHttpClient client, final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body) {
+    public static @NotNull Call callWithJson(final Call.@NotNull Factory client, final Pair.@NotNull ImmutablePair<@NotNull HttpUrl, @NotNull String> url, final @Nullable Headers headers, final @Nullable Map<@NotNull String, @NotNull Object> body) {
         return HttpMethod.requiresRequestBody(url.getSecond()) ?
                 HttpNetworkHelper.postWithBody(client, url, headers, HttpNetworkHelper.createJsonRequestBody(body)) :
                 HttpNetworkHelper.getWithParameters(client, url, headers, body == null ? null : body.entrySet().stream()

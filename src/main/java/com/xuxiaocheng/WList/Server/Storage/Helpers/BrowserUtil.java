@@ -73,13 +73,12 @@ public final class BrowserUtil {
             client.setIncorrectnessListener((message, origin) -> {/*Ignore*/});
             client.setCssErrorHandler(new SilentCssErrorHandler());
             client.setJavaScriptErrorListener(new SilentJavaScriptErrorListener());
-            client.getWebConsole().setLogger(SilentConsoleLogger.Instance);
+            client.getWebConsole().setLogger(new SilentConsoleLogger());
         }
         return client;
     }
 
     public static class SilentConsoleLogger implements WebConsole.Logger {
-        public static final SilentConsoleLogger Instance = new SilentConsoleLogger();
         @Override public boolean isTraceEnabled() {return false;}@Override public void trace(final Object message) {}
         @Override public boolean isDebugEnabled() {return false;}@Override public void debug(final Object message) {}
         @Override public boolean isInfoEnabled() {return false;}@Override public void info(final Object message) {}
