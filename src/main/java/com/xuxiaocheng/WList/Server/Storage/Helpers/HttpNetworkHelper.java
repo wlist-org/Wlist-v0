@@ -106,13 +106,28 @@ public final class HttpNetworkHelper {
         }
         return response;
     };
+    private static final @NotNull Interceptor FrequencyCappedInterceptor = chain -> {
+        final Request request = chain.request();
+        Response response = chain.proceed(request);
+        while (response.code() == 514) {
+            HttpNetworkHelper.logger.log(HLogLevel.NETWORK, "Frequency capped (514). Waiting 2 seconds and retry...");
+            try {
+                TimeUnit.SECONDS.sleep(2);
+            } catch (final InterruptedException exception) {
+                throw new IOException(exception);
+            }
+            response = chain.proceed(request);
+        }
+        return response;
+    };
     public static OkHttpClient.@NotNull Builder newHttpClientBuilder(){
         return new OkHttpClient.Builder()
                 .connectTimeout(15, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .dispatcher(HttpNetworkHelper.Dispatcher)
-                .addInterceptor(HttpNetworkHelper.NetworkLoggerInterceptor);
+                .addInterceptor(HttpNetworkHelper.NetworkLoggerInterceptor)
+                .addInterceptor(HttpNetworkHelper.FrequencyCappedInterceptor);
     }
     public static final @NotNull OkHttpClient DefaultHttpClient = HttpNetworkHelper.newHttpClientBuilder().build();
     public static final @NotNull OkHttpClient DefaultNoRedirectHttpClient = HttpNetworkHelper.newHttpClientBuilder().followRedirects(false).followSslRedirects(false).build();
