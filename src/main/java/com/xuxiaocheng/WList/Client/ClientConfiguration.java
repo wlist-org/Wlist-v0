@@ -33,7 +33,8 @@ public record ClientConfiguration(int threadCount, int progressStartDelay, int p
                                   @NotNull LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> fileOrders,
                                   Options.@NotNull DuplicatePolicy duplicatePolicy,
                                   @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> userOrders,
-                                  @NotNull LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> userGroupOrders) {
+                                  @NotNull LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> userGroupOrders,
+                                  boolean copyNoTempFile) {
     public static final @NotNull HInitializer<File> Location = new HInitializer<>("ClientConfigurationLocation");
     private static final @NotNull HInitializer<ClientConfiguration> instance = new HInitializer<>("ClientConfiguration");
 
@@ -134,7 +135,9 @@ public record ClientConfiguration(int threadCount, int progressStartDelay, int p
                         orders.put(order, direction);
                     }
                     return orders;
-                })
+                }),
+                YamlHelper.getConfig(config, "copy_no_temp_file", true,
+                        o -> YamlHelper.transferBooleanFromStr(o, errors, "copy_no_temp_file")).booleanValue()
         );
         YamlHelper.throwErrors(errors);
         return configuration;
@@ -151,6 +154,7 @@ public record ClientConfiguration(int threadCount, int progressStartDelay, int p
         config.put("duplicate_policy", configuration.duplicatePolicy.name());
         config.put("user_orders", configuration.userOrders.entrySet().stream().collect(Collectors.toMap(e -> e.getKey().name(), e -> e.getValue().name())));
         config.put("user_group_orders", configuration.userGroupOrders.entrySet().stream().collect(Collectors.toMap(e -> e.getKey().name(), e -> e.getValue().name())));
+        config.put("copy_no_temp_file", configuration.copyNoTempFile);
         YamlHelper.dumpYaml(config, stream);
     }
 

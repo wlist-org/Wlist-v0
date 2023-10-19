@@ -313,24 +313,41 @@ public class FilesAssistantTest extends ProvidersWrapper {
         provider.root().get(1, true).get(2, true).add(AbstractProvider.build(5, 2, false));
         provider.supportTrashRecursively.set(false);
         Assertions.assertTrue(FilesAssistant.refresh(this.address(), this.adminUsername(), this.abstractLocation(0), WListServer.IOExecutors, null));
-        Assertions.assertEquals(List.of("Login.", "List: 0"), provider.checkOperations());
+        Assertions.assertEquals(List.of("Login.", "Update: 0 d", "Login.", "List: 0"), provider.checkOperations());
 
         final AtomicBoolean flag = new AtomicBoolean(false);
-        FilesAssistant.trash(this.address(), this.adminUsername(), this.abstractLocation(1), true, p -> {Assertions.assertTrue(flag.compareAndSet(false, true));return true;});
+        Assertions.assertTrue(FilesAssistant.trash(this.address(), this.adminUsername(), this.abstractLocation(1), true, p -> {Assertions.assertTrue(flag.compareAndSet(false, true));return true;}));
         Assertions.assertTrue(flag.get());
-        Assertions.assertEquals(Set.of("Login.", "List: 1", "List: 2", "Trash: 5 f", "Trash: 2 d", "Trash: 4 f", "Trash: 3 f", "Trash: 1 d"), new HashSet<>(provider.checkOperations()));
+        Assertions.assertEquals(Set.of("Login.", "Update: 1 d", "Update: 2 d", "List: 1", "List: 2", "Trash: 5 f", "Trash: 2 d", "Trash: 4 f", "Trash: 3 f", "Trash: 1 d"), new HashSet<>(provider.checkOperations()));
     }
 
 
     @Test
     public void copy() throws IOException, InterruptedException, WrongStateException {
-        final VisibleFilesListInformation list1 = FilesAssistant.list(this.address(), this.adminUsername(), this.location(this.root()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 2, WListServer.IOExecutors, null);
-        Assertions.assertNotNull(list1);
-        Assumptions.assumeTrue(list1.filtered() == 1);
+        final VisibleFilesListInformation list = FilesAssistant.list(this.address(), this.adminUsername(), this.location(this.root()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 2, WListServer.IOExecutors, null);
+        Assertions.assertNotNull(list);
+        Assumptions.assumeTrue(list.filtered() == 1);
 
-        final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.copy(this.address(), this.adminUsername(), this.location(list1.informationList().get(0).id()), true, this.location(this.root()), "copied", WListServer.IOExecutors, p -> {HLog.DefaultLogger.log(HLogLevel.INFO, p);return true;});
+        final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.copy(this.address(), this.adminUsername(), this.location(list.informationList().get(0).id()), true, this.location(this.root()), "copied", WListServer.IOExecutors, p -> {HLog.DefaultLogger.log(HLogLevel.INFO, p);return true;});
         Assertions.assertTrue(res != null && res.isSuccess());
 
         Assertions.assertTrue(FilesAssistant.trash(this.address(), this.adminUsername(), this.location(res.getT().id()), true, PredicateE.truePredicate()));
+    }
+
+    @Test
+    public void move() throws IOException, InterruptedException, WrongStateException {
+        final VisibleFilesListInformation list = FilesAssistant.list(this.address(), this.adminUsername(), this.location(this.root()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 2, WListServer.IOExecutors, null);
+        Assertions.assertNotNull(list);
+        Assumptions.assumeTrue(list.filtered() == 1);
+
+        final VisibleFilesListInformation list2 = FilesAssistant.list(this.address(), this.adminUsername(), this.location(list.informationList().get(0).id()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 2, WListServer.IOExecutors, null);
+        Assertions.assertNotNull(list2);
+        Assumptions.assumeTrue(list2.filtered() == 1);
+
+        final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.move(this.address(), this.adminUsername(), this.location(list2.informationList().get(0).id()), true, this.location(this.root()), WListServer.IOExecutors, p -> {HLog.DefaultLogger.log(HLogLevel.INFO, p);return true;});
+        Assertions.assertTrue(res != null && res.isSuccess());
+
+        final UnionPair<VisibleFileInformation, VisibleFailureReason> restore = FilesAssistant.move(this.address(), this.adminUsername(), this.location(res.getT().id()), true, this.location(list.informationList().get(0).id()), WListServer.IOExecutors, p -> {HLog.DefaultLogger.log(HLogLevel.INFO, p);return true;});
+        Assertions.assertTrue(restore != null && restore.isSuccess());
     }
 }
