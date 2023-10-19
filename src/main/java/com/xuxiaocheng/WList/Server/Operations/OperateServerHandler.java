@@ -63,7 +63,7 @@ public final class OperateServerHandler {
                     BroadcastManager.broadcast(OperationType.CloseServer, buf -> {
                         ByteBufIOUtil.writeVariableLenLong(buf, user.getT().id());
                         return buf;
-                    }, false).await().addListener(MiscellaneousUtil.exceptionListener());
+                    }).await().addListener(MiscellaneousUtil.exceptionListener());
                 } catch (final InterruptedException exception) {
                     HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
                 } finally {

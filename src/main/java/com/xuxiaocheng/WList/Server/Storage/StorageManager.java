@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public final class StorageManager {
@@ -107,6 +108,7 @@ public final class StorageManager {
             StorageManager.logger.log(HLogLevel.ENHANCED, "No storages were found!");
             return;
         }
+        final AtomicInteger failure = new AtomicInteger(0);
         final Map<String, StorageTypes<?>> providers = ServerConfiguration.get().providers();
         final ZonedDateTime t1 = MiscellaneousUtil.now();
         try {
@@ -118,9 +120,11 @@ public final class StorageManager {
                         config = YamlHelper.loadYaml(inputStream);
                     }
                     final List<Pair.ImmutablePair<String, String>> errors = StorageManager.initializeStorage0(e.getKey(), e.getValue(), config);
-                    if (errors != null)
+                    if (errors != null) {
                         StorageManager.logger.log(HLogLevel.ENHANCED, "Errors while initializing storage.", ParametersMap.create()
                                 .add("storage", e.getKey()).add("errors", errors));
+                        failure.getAndIncrement();
+                    }
                 } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Exception exception) {
                     StorageManager.failedStorages.put(e.getKey(), exception);
                     HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
@@ -130,8 +134,8 @@ public final class StorageManager {
             throw new RuntimeException(exception);
         }
         final ZonedDateTime t2 = MiscellaneousUtil.now();
-        StorageManager.logger.log(HLogLevel.ENHANCED, "Loaded ", StorageManager.storages.size(), " storages successfully. ",
-                StorageManager.failedStorages.size(), " failed. Totally cost time: ", Duration.between(t1, t2).toMillis() + " ms.");
+        StorageManager.logger.log(HLogLevel.ENHANCED, "Loaded ", StorageManager.storages.size(), " storages successfully, ",
+                failure.get(), " erroneously, ", StorageManager.failedStorages.size(), " exceptionally. Totally cost time: ", Duration.between(t1, t2).toMillis() + " ms.");
     }
 
     private static <C extends StorageConfiguration> @Nullable List<Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> initializeStorage0(final @NotNull String name, final @NotNull StorageTypes<C> type, final @NotNull @Unmodifiable Map<? super String, Object> config) throws IllegalParametersException, IOException {

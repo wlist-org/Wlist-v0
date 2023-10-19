@@ -21,6 +21,7 @@ import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
+import com.xuxiaocheng.WList.Server.Operations.Helpers.BroadcastManager;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
@@ -252,7 +253,7 @@ public final class BroadcastAssistant {
                     OperateServerHelper.setBroadcastMode(client, true);
                     while (client.isActive()) {
                         final UnionPair<Pair.ImmutablePair<OperationType, ByteBuf>, Pair.ImmutablePair<String, String>> pair = OperateServerHelper.waitBroadcast(client);
-                        BroadcastAssistant.CallbackExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
+                        final Runnable runner = HExceptionWrapper.wrapRunnable(() -> {
                             if (pair.isFailure()) {
                                 BroadcastAssistant.get(address).UserBroadcast.callback(pair.getE());
                                 return;
@@ -263,7 +264,11 @@ public final class BroadcastAssistant {
                             } finally {
                                 buffer.release();
                             }
-                        })).addListener(MiscellaneousUtil.exceptionListener());
+                        }, MiscellaneousUtil.exceptionCallback, true);
+                        if (pair.isFailure() || !BroadcastManager.OrderedBroadcastType.contains(pair.getT().getFirst()))
+                            BroadcastAssistant.CallbackExecutors.submit(runner);
+                        else
+                            runner.run();
                     }
                 } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                     HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
