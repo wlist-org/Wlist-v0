@@ -640,7 +640,7 @@ public final class FilesAssistant {
                         } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                             noNextIndex.set(true);
                             noNextIndex.set(true);
-                            if (!throwable.compareAndSet(null, exception))
+                            if (!throwable.compareAndSet(null, exception) && !exception.equals(throwable.get()))
                                 HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
                             synchronized (threadRunning) {
                                 threadRunning.set(false);

@@ -2,8 +2,10 @@ package com.xuxiaocheng.WList.Client.Exceptions;
 
 import com.xuxiaocheng.WList.Commons.Operations.ResponseState;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.Serial;
+import java.util.Objects;
 
 @SuppressWarnings("ClassHasNoToStringMethod")
 public class WrongStateException extends Exception {
@@ -24,5 +26,18 @@ public class WrongStateException extends Exception {
 
     public @NotNull ResponseState getState() {
         return this.state;
+    }
+
+    @Override
+    public boolean equals(final @Nullable Object o) {
+        if (this == o) return true;
+        if (o == null || this.getClass() != o.getClass()) return false;
+        final WrongStateException that = (WrongStateException) o;
+        return this.state == that.state;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.state);
     }
 }
