@@ -150,10 +150,10 @@ public record ClientConfiguration(int threadCount, int progressStartDelay, int p
         config.put("progress_interval", configuration.progressInterval);
         config.put("limit_per_page", configuration.limitPerPage);
         config.put("filter_policy", configuration.filterPolicy.name());
-        config.put("file_orders", configuration.fileOrders.entrySet().stream().collect(Collectors.toMap(e -> e.getKey().name(), e -> e.getValue().name())));
+        config.put("file_orders", configuration.fileOrders.entrySet().stream().collect(Collectors.toMap(e -> e.getKey().name(), e -> e.getValue().name(), (a, b) -> a, LinkedHashMap::new)));
         config.put("duplicate_policy", configuration.duplicatePolicy.name());
-        config.put("user_orders", configuration.userOrders.entrySet().stream().collect(Collectors.toMap(e -> e.getKey().name(), e -> e.getValue().name())));
-        config.put("user_group_orders", configuration.userGroupOrders.entrySet().stream().collect(Collectors.toMap(e -> e.getKey().name(), e -> e.getValue().name())));
+        config.put("user_orders", configuration.userOrders.entrySet().stream().collect(Collectors.toMap(e -> e.getKey().name(), e -> e.getValue().name(), (a, b) -> a, LinkedHashMap::new)));
+        config.put("user_group_orders", configuration.userGroupOrders.entrySet().stream().collect(Collectors.toMap(e -> e.getKey().name(), e -> e.getValue().name(), (a, b) -> a, LinkedHashMap::new)));
         config.put("copy_no_temp_file", configuration.copyNoTempFile);
         YamlHelper.dumpYaml(config, stream);
     }

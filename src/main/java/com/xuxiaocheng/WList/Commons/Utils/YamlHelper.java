@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  * @see ServerConfiguration#parse(InputStream) for example.
@@ -43,11 +44,8 @@ public final class YamlHelper {
     public static @NotNull @UnmodifiableView Map<@NotNull String, @NotNull Object> normalizeMapNode(final @Nullable @UnmodifiableView Map<?, ?> config) {
         if (config == null)
             return Map.of();
-        final Map<String, Object> map = new LinkedHashMap<>(config.size());
-        for (final Map.Entry<?, ?> entry: config.entrySet())
-            if (entry.getKey() != null && entry.getValue() != null)
-                map.put(entry.getKey().toString(), entry.getValue());
-        return Collections.unmodifiableMap(map);
+        return Collections.unmodifiableMap(config.entrySet().stream().filter(entry -> entry.getKey() != null && entry.getValue() != null)
+                .collect(Collectors.toMap(e -> e.getKey().toString(), Map.Entry::getValue, (a, b) -> a, LinkedHashMap::new)));
     }
 
     public static @NotNull @UnmodifiableView Map<@NotNull String, @NotNull Object> loadYaml(final @NotNull InputStream stream) throws IOException {
