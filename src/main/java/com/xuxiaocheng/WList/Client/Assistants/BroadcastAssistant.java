@@ -13,6 +13,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Client.Operations.OperateServerHelper;
 import com.xuxiaocheng.WList.Client.WListClient;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
+import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation;
@@ -248,8 +249,7 @@ public final class BroadcastAssistant {
                         client.open();
                     } catch (final IOException exception) {
                         flag = false;
-//                        throw exception;
-                        return;
+                        throw exception;
                     }
                     OperateServerHelper.setBroadcastMode(client, true);
                     while (client.isActive()) {
@@ -271,6 +271,9 @@ public final class BroadcastAssistant {
                         else
                             runner.run();
                     }
+                } catch (final IOException exception) {
+                    if (WListClientManager.instances.isInitialized(address))
+                        HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
                 } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                     HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
                 } finally {
