@@ -39,6 +39,8 @@ public interface ServerHandler {
         return String.format(" %s: (id=%d, name='%s')", Objects.requireNonNullElse(group, "group"), information.id(), information.name());
     }
 
+    AtomicBoolean AllowLogOn = new AtomicBoolean(true);
+
     AtomicBoolean LogActive = new AtomicBoolean(false);
     AtomicBoolean LogOperation = new AtomicBoolean(true);
 

@@ -86,8 +86,13 @@ public final class OperateSelfHandler {
     private static final @NotNull ServerHandler doLogon = (channel, buffer) -> {
         final String username = ByteBufIOUtil.readUTF(buffer);
         final String password = PasswordGuard.encryptPassword(ByteBufIOUtil.readUTF(buffer));
+        final boolean allow = ServerHandler.AllowLogOn.get();
         ServerHandler.logOperation(channel, OperationType.Logon, null, () -> ParametersMap.create()
-                .add("username", username).add("password", password));
+                .add("username", username).add("password", password).add("allow", allow));
+        if (!allow) {
+            WListServer.ServerChannelHandler.write(channel, MessageProto.composeMessage(ResponseState.Unsupported, "Log on is not allowed."));
+            return null;
+        }
         return () -> {
             final UserInformation information = UserManager.getInstance().insertUser(username, password, null);
             if (information == null) {

@@ -7,6 +7,7 @@ import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
 import com.xuxiaocheng.Rust.NetworkTransmission;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
@@ -14,6 +15,7 @@ import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.IdsHelper;
+import com.xuxiaocheng.WList.Server.Operations.ServerHandler;
 import com.xuxiaocheng.WList.Server.Operations.ServerHandlerManager;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.BackgroundTaskManager;
@@ -69,10 +71,53 @@ public final class WList {
                 HeadLibs.setDebugMode(true);
             if ("-NoDebug".equalsIgnoreCase(arg))
                 HeadLibs.setDebugMode(false);
-            if (arg.startsWith("-path:"))
-                runtimePath = new File(arg.substring("-path:".length())).getAbsoluteFile();
-            if ("/?".equals(arg)) {
-                HLog.DefaultLogger.log(HLogLevel.FINE, "Usage: [-Debug|-NoDebug] [-path:<path>]");
+            if ("-Inside".equalsIgnoreCase(arg))
+                ServerHandler.AllowLogOn.set(false);
+            if ("-Outside".equalsIgnoreCase(arg))
+                ServerHandler.AllowLogOn.set(true);
+            if ("-NoLogOperation".equalsIgnoreCase(arg))
+                ServerHandler.LogOperation.set(false);
+            if ("-LogOperation".equalsIgnoreCase(arg))
+                ServerHandler.LogOperation.set(true);
+            if ("-NoLogActive".equalsIgnoreCase(arg))
+                ServerHandler.LogActive.set(false);
+            if ("-LogActive".equalsIgnoreCase(arg))
+                ServerHandler.LogActive.set(true);
+            if (arg.startsWith("-Path:"))
+                runtimePath = new File(arg.substring("-Path:".length())).getAbsoluteFile();
+            if (arg.startsWith("-LogLevel:")) {
+                final int level;
+                try {
+                    level = Integer.parseInt(arg.substring("-LogLevel:".length()));
+                } catch (final NumberFormatException exception) {
+                    HLog.DefaultLogger.log(HLogLevel.ERROR, "Invalid log level: " + arg.substring("-LogLevel:".length()), exception);
+                    continue;
+                }
+                HLog.LoggerCreateCore.reinitialize(n -> HLog.createInstance(n, level, false, true, HMergedStreams.getFileOutputStreamNoException(null)));
+            }
+            if ("/?".equals(arg) || arg.endsWith("help")) {
+                HLog.DefaultLogger.log(HLogLevel.FINE, """
+Usage: [-Debug|-NoDebug] [-Inside|-Outside] [-NoLogOperation|-LogOperation] [-NoLogActive|-LogActive] [-Path:<path>] [-LogLevel:<level>]
+
+Debug: Set debug mode.
+Inside: Disallow logon.
+NoLogOperation: Do not log user operation message.
+NoLogActive: Do not log client active/inactive message.
+Path: The core runtime path.
+LogLevel: The log level.
+    -1000   : VERBOSE,
+    -500    : DEBUG,
+    -300    : LESS,
+    -200    : FINE,
+    -100    : INFO,
+     0      : ENHANCED,
+     100    : MISTAKE,
+     200    : WARN,
+     300    : ERROR,
+     500    : FAULT,
+     250    : NETWORK,
+     1000   : BUG,
+""");
                 return;
             }
         }
