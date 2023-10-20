@@ -89,7 +89,7 @@ public class WListServer {
     public synchronized void start(final @IntRange(minimum = 0, maximum = 65535) int defaultPort) throws InterruptedException {
         if (this.latch.getCount() == 0) throw new IllegalStateException("Cannot start WList server twice in same process.");
         WListServer.logger.log(HLogLevel.INFO, "WListServer is starting...");
-        WListServer.logger.log(HLogLevel.LESS, "Transmission Codec: '", NetworkTransmission.CipherHeader, "' (", NetworkTransmission.CipherVersion, ")");
+        WListServer.logger.log(HLogLevel.FINE, "Transmission Codec: '", NetworkTransmission.CipherHeader, "' (", NetworkTransmission.CipherVersion, ")");
         final ServerBootstrap serverBootstrap = new ServerBootstrap();
         serverBootstrap.group(this.workerGroup, this.workerGroup);
         serverBootstrap.channel(NioServerSocketChannel.class);

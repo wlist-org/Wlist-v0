@@ -39,4 +39,11 @@ public record StorageTypes<C extends StorageConfiguration>(@NotNull String ident
         this.sharer = sharer;
         StorageTypes.providers.put(this.identifier, this);
     }
+
+    @Override
+    public @NotNull String toString() {
+        return "StorageTypes{" +
+                "identifier='" + this.identifier + '\'' +
+                '}';
+    }
 }

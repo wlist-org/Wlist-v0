@@ -96,7 +96,8 @@ public final class WList {
                 HLog.LoggerCreateCore.reinitialize(n -> HLog.createInstance(n, level, false, true, HMergedStreams.getFileOutputStreamNoException(null)));
             }
             if ("/?".equals(arg) || arg.endsWith("help")) {
-                HLog.DefaultLogger.log(HLogLevel.FINE, """
+                //noinspection UseOfSystemOutOrSystemErr
+                System.out.println("""
 Usage: [-Debug|-NoDebug] [-Inside|-Outside] [-NoLogOperation|-LogOperation] [-NoLogActive|-LogActive] [-Path:<path>] [-LogLevel:<level>]
 
 Debug: Set debug mode.
@@ -118,7 +119,8 @@ LogLevel: The log level.
      250    : NETWORK,
      1000   : BUG,
 """);
-                return;
+                //noinspection CallToSystemExit
+                System.exit(0);
             }
         }
         final File path = runtimePath;
@@ -186,7 +188,7 @@ LogLevel: The log level.
     private static void initializeStorageProvider() throws IOException {
         final File configuration = new File(WList.RuntimePath.getInstance(), "configs");
         final File cache = new File(WList.RuntimePath.getInstance(), "caches");
-        WList.logger.log(HLogLevel.LESS, "Initializing storage provider.", ParametersMap.create().add("directory", configuration));
+        WList.logger.log(HLogLevel.LESS, "Initializing storage provider.", ParametersMap.create().add("configurations", configuration).add("caches", cache));
         HFileHelper.ensureDirectoryExist(configuration.toPath());
         StorageManager.initialize(configuration, cache);
         WList.logger.log(HLogLevel.VERBOSE, "Initialized storage provider.");
