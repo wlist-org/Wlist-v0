@@ -31,6 +31,7 @@ import com.xuxiaocheng.WList.Server.Storage.Records.RefreshRequirements;
 import com.xuxiaocheng.WList.Server.Storage.Records.UploadRequirements;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WList.Server.WListServer;
+import okhttp3.Call;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
@@ -681,7 +682,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
      * Get download methods of a specific file.
      * @see #doesRequireLoginDownloading(FileInformation)
      * @see #getLocation(long) to create {@code FailureReason}.
-     * @see DownloadRequirements#tryGetDownloadFromUrl(OkHttpClient, HttpUrl, Headers, Long, Headers.Builder, long, long, ZonedDateTime)
+     * @see DownloadRequirements#tryGetDownloadFromUrl(Call.Factory, HttpUrl, Headers, Long, Headers.Builder, long, long, ZonedDateTime, Consumer)
      */
     protected abstract void download0(final @NotNull FileInformation information, final long from, final long to, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<DownloadRequirements, FailureReason>, Throwable>> consumer) throws Exception;
 
@@ -988,9 +989,13 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         return false;
     }
     private @Nullable FileInformation checkCMAvailable(final long id, final boolean isDirectory, final long parentId, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> consumer) throws SQLException {
+        if (isDirectory && id == this.getConfiguration().getRootDirectoryId()) {
+            consumer.accept(UnionPair.ok(Optional.of(UnionPair.fail(Optional.of(FailureReason.byNoSuchFile(this.getLocation(id), true))))));
+            return null;
+        }
         final FileInformation information = this.manager.getInstance().selectInfo(id, isDirectory, null);
         if (information == null) {
-            consumer.accept(UnionPair.ok(Optional.of(UnionPair.fail(Optional.of(FailureReason.byNoSuchFile(this.getLocation(id), false))))));
+            consumer.accept(UnionPair.ok(Optional.of(UnionPair.fail(Optional.of(FailureReason.byNoSuchFile(this.getLocation(id), isDirectory))))));
             return null;
         }
         assert isDirectory || information.size() >= 0;
@@ -1160,9 +1165,13 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
 
     @Override
     public void renameDirectly(final long id, final boolean isDirectory, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) throws Exception {
+        if (isDirectory && id == this.getConfiguration().getRootDirectoryId()) {
+            consumer.accept(UnionPair.ok(Optional.of(UnionPair.fail(FailureReason.byNoSuchFile(this.getLocation(id), true)))));
+            return;
+        }
         final FileInformation information = this.manager.getInstance().selectInfo(id, isDirectory, null);
         if (information == null) {
-            consumer.accept(UnionPair.ok(Optional.of(UnionPair.fail(FailureReason.byNoSuchFile(this.getLocation(id), false)))));
+            consumer.accept(UnionPair.ok(Optional.of(UnionPair.fail(FailureReason.byNoSuchFile(this.getLocation(id), isDirectory)))));
             return;
         }
         if (information.name().equals(name)) {
