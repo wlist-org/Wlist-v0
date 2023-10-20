@@ -54,6 +54,7 @@ import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFilesListInformation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInterface;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WListAndroid.Helpers.PermissionsHelper;
@@ -81,6 +82,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -117,21 +120,23 @@ public class PageFile implements ActivityMainChooser.MainPage {
         page.pageFileList.setHasFixedSize(true);
         this.onRootPage(0);
         this.buildUploader();
-        Main.runOnBackgroundThread(this.activity, () -> { // TODO
+        Main.runOnBackgroundThread(this.activity, () -> { // TODO auto insert.
             final BroadcastAssistant.BroadcastSet set = BroadcastAssistant.get(this.address());
             set.ServerClose.register(id -> Main.runOnUiThread(this.activity, this.activity::close));
-
             final Runnable onRoot = () -> {
                 if (this.stacks.isEmpty())
                     Main.runOnUiThread(this.activity, () -> this.onRootPage(this.getCurrentPosition()));
             };
             set.ProviderInitialized.register(s -> onRoot.run());
             set.ProviderUninitialized.register(s -> onRoot.run());
-
-            set.FileTrash.register(s -> Main.runOnUiThread(this.activity, () ->
-                    this.onInsidePage(this.pageCache.getInstance().pageFileName.getText(), this.currentLocation.get(), this.getCurrentPosition())));
-//            set.FileUpdate.register(s -> Main.runOnUiThread(this.activity, () ->
-//                    this.onInsidePage(this.pageCache.getInstance().pageFileName.getText(), this.currentLocation.get(), this.getCurrentPosition())));
+            final Consumer<Pair.ImmutablePair<FileLocation, Boolean>> update = s -> {
+                final FileLocation location = this.currentLocation.get();
+                if (FileLocationGetter.storage(location).equals(FileLocationGetter.storage(s.getFirst()))
+                        && this.currentDoubleIds.contains(FileSqlInterface.getDoubleId(FileLocationGetter.id(s.getFirst()), s.getSecond().booleanValue())))
+                    this.onInsidePage(this.pageCache.getInstance().pageFileName.getText(), this.currentLocation.get(), this.getCurrentPosition());
+            };
+            set.FileTrash.register(s -> Main.runOnUiThread(this.activity, () -> update.accept(s)));
+            set.FileUpdate.register(s -> Main.runOnUiThread(this.activity, () -> update.accept(s)));
             set.FileUpload.register(s -> Main.runOnUiThread(this.activity, () -> {
                 final FileLocation location = this.currentLocation.get();
                 if (FileLocationGetter.storage(location).equals(s.getFirst()) && FileLocationGetter.id(location) == FileInformationGetter.parentId(s.getSecond()))
@@ -191,6 +196,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
 
 
     protected final @NotNull AtomicReference<FileLocation> currentLocation = new AtomicReference<>();
+    protected final @NotNull Set<Long> currentDoubleIds = ConcurrentHashMap.newKeySet();
     protected final @NotNull Deque<Triad.@NotNull ImmutableTriad<@NotNull FileLocation, @NotNull VisibleFileInformation, @NotNull AtomicLong>> stacks = new ArrayDeque<>();
 
     @UiThread
@@ -198,6 +204,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
                               final @NotNull Consumer<? super @NotNull VisibleFileInformation> clicker, final @NotNull Consumer<? super @NotNull VisibleFileInformation> option) {
         final PageFileBinding page = this.pageCache.getInstance();
         this.currentLocation.set(location);
+        this.currentDoubleIds.clear();
         final AtomicBoolean onLoading = new AtomicBoolean(false);
         final EnhancedRecyclerViewAdapter<VisibleFileInformation, PageFileViewHolder> adapter = new EnhancedRecyclerViewAdapter<>() {
             @Override
@@ -267,6 +274,8 @@ public class PageFile implements ActivityMainChooser.MainPage {
                         noMoreDown.set(FilesListInformationGetter.informationList(list).size() < limit);
                     else
                         noMoreUp.set(loadedUp.get() <= 0);
+                    PageFile.this.currentDoubleIds.addAll(AndroidSupporter.streamToList(FilesListInformationGetter.informationList(list).stream()
+                            .map(information -> FileSqlInterface.getDoubleId(FileInformationGetter.id(information), FileInformationGetter.isDirectory(information)))));
                     Main.runOnUiThread(PageFile.this.activity, () -> {
                         page.pageFileCounter.setText(String.valueOf(FilesListInformationGetter.total(list)));
                         page.pageFileCounter.setVisibility(View.VISIBLE);
