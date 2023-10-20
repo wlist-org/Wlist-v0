@@ -1,6 +1,5 @@
 package com.xuxiaocheng.WListTest;
 
-import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.FunctionE;
@@ -16,7 +15,6 @@ import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
-import com.xuxiaocheng.WList.Server.Operations.Helpers.BroadcastManager;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.IdsHelper;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Helpers.BackgroundTaskManager;
@@ -27,20 +25,16 @@ import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.RepeatedTest;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
 
 @Execution(ExecutionMode.SAME_THREAD)
 public class TempTest {
@@ -48,28 +42,9 @@ public class TempTest {
     private static final boolean initializeServer = false;
     private static final boolean initializeClient = true;
     private static final @NotNull ConsumerE<SocketAddress> start = address -> {
-        TimeUnit.SECONDS.sleep(1);
     };
     private static final @NotNull FunctionE<SocketAddress, @Nullable Object> _main = address -> {
-        final CountDownLatch latch = new CountDownLatch(2);
-        final AtomicBoolean state = new AtomicBoolean(false);
-        final Consumer<Pair.ImmutablePair<String, Boolean>> callback = p -> {
-            try {
-                synchronized (state) {
-                    if (state.get() == p.getSecond().booleanValue())
-                        return;/*error*/
-                    state.set(p.getSecond().booleanValue());
-                }
-            } finally {
-                latch.countDown();
-            }
-        };
-        BroadcastAssistant.get(address).ProviderLogin.register(callback);
-        BroadcastManager.onProviderLogin("test", true);
-        BroadcastManager.onProviderLogin("test", false);
-        latch.await();
-        BroadcastAssistant.get(address).ProviderLogin.unregister(callback);
-        Assertions.assertFalse(state.get());
+
         return null;
     };
 
@@ -105,7 +80,7 @@ public class TempTest {
         TempTest.start.accept(TempTest.address);
     }
 
-    @RepeatedTest(100)
+    @Test
     public void tempTest() throws Exception {
         final Object obj = TempTest._main.apply(TempTest.address);
         if (obj != null) {

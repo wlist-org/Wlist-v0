@@ -350,4 +350,17 @@ public class FilesAssistantTest extends ProvidersWrapper {
         final UnionPair<VisibleFileInformation, VisibleFailureReason> restore = FilesAssistant.move(this.address(), this.adminUsername(), this.location(res.getT().id()), true, this.location(list.informationList().get(0).id()), WListServer.IOExecutors, p -> {HLog.DefaultLogger.log(HLogLevel.INFO, p);return true;});
         Assertions.assertTrue(restore != null && restore.isSuccess());
     }
+
+    @Test
+    public void rename() throws IOException, InterruptedException, WrongStateException {
+        final VisibleFilesListInformation list = FilesAssistant.list(this.address(), this.adminUsername(), this.location(this.root()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 2, WListServer.IOExecutors, null);
+        Assertions.assertNotNull(list);
+        Assumptions.assumeTrue(list.filtered() == 1);
+
+        final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.rename(this.address(), this.adminUsername(), this.location(list.informationList().get(0).id()), true, "renamed", WListServer.IOExecutors, p -> {HLog.DefaultLogger.log(HLogLevel.INFO, p);return true;});
+        Assertions.assertTrue(res != null && res.isSuccess());
+
+        final UnionPair<VisibleFileInformation, VisibleFailureReason> restore = FilesAssistant.rename(this.address(), this.adminUsername(), this.location(res.getT().id()), true, list.informationList().get(0).name(), WListServer.IOExecutors, p -> {HLog.DefaultLogger.log(HLogLevel.INFO, p);return true;});
+        Assertions.assertTrue(restore != null && restore.isSuccess());
+    }
 }

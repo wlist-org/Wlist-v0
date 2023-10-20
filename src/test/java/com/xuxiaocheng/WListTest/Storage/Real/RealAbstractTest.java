@@ -131,7 +131,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
             };
             BroadcastAssistant.get(address()).FileUpload.register(callback);
             final UnionPair<VisibleFileInformation, VisibleFailureReason> p = OperateFilesHelper.createDirectory(client, token(), location(root()), "directory", Options.DuplicatePolicy.ERROR);
-            Assertions.assertTrue(p != null && p.isSuccess());
+            Assertions.assertTrue(p.isSuccess(), p.toString());
             latch.await();
             BroadcastAssistant.get(address()).FileUpload.unregister(callback);
             HLog.DefaultLogger.log(HLogLevel.LESS, info.getTestMethod().map(Method::getName).orElse("unknown"), ": ", information.get());
@@ -143,7 +143,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
         @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
         public void notAvailable(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
             final UnionPair<VisibleFileInformation, VisibleFailureReason> res = OperateFilesHelper.createDirectory(client, token(), location(-2), "unreachable", Options.DuplicatePolicy.ERROR);
-            Assertions.assertTrue(res != null && res.isFailure());
+            Assertions.assertTrue(res.isFailure(), res.toString());
             Assertions.assertEquals(FailureKind.NoSuchFile, res.getE().kind());
         }
     }
@@ -177,7 +177,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
         @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
         public void notAvailable(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
             final UnionPair<VisibleFileInformation, VisibleFailureReason> res = OperateFilesHelper.createDirectory(client, token(), location(-2), "unreachable", Options.DuplicatePolicy.ERROR);
-            Assertions.assertTrue(res != null && res.isFailure());
+            Assertions.assertTrue(res.isFailure(), res.toString());
             Assertions.assertEquals(FailureKind.NoSuchFile, res.getE().kind());
         }
     }
@@ -194,7 +194,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
             final VisibleFileInformation information = list.informationList().get(0);
             // Request.
             final UnionPair<DownloadConfirm, VisibleFailureReason> confirm = OperateFilesHelper.requestDownloadFile(client, token(), location(information.id()), 0, Long.MAX_VALUE);
-            Assumptions.assumeTrue(confirm != null);
+            Assertions.assertTrue(confirm.isSuccess(), confirm.toString());
             Assertions.assertEquals(information.size(), confirm.getT().downloadingSize());
             // Test.
             Assertions.assertTrue(OperateFilesHelper.cancelDownloadFile(client, token(), confirm.getT().id()));
@@ -203,7 +203,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
         @ParameterizedTest(name = "running")
         @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
         public void notAvailable(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
-            Assertions.assertEquals(FailureKind.NoSuchFile, Objects.requireNonNull(OperateFilesHelper.requestDownloadFile(client, token(), location(1), 0, Long.MAX_VALUE)).getE().kind());
+            Assertions.assertEquals(FailureKind.NoSuchFile, OperateFilesHelper.requestDownloadFile(client, token(), location(1), 0, Long.MAX_VALUE).getE().kind());
             Assertions.assertFalse(OperateFilesHelper.cancelDownloadFile(client, token(), ""));
             Assertions.assertNull(OperateFilesHelper.confirmDownloadFile(client, token(), ""));
             Assertions.assertNull(OperateFilesHelper.downloadFile(client, token(), "", 0));
@@ -247,7 +247,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
         public void cancel(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
             // Request.
             final UnionPair<UploadConfirm, VisibleFailureReason> confirm = OperateFilesHelper.requestUploadFile(client, token(), location(root()), "1.txt", 0, Options.DuplicatePolicy.ERROR);
-            Assumptions.assumeTrue(confirm != null && confirm.isSuccess());
+            Assertions.assertTrue(confirm.isSuccess(), confirm.toString());
             // Test.
             Assertions.assertTrue(OperateFilesHelper.cancelUploadFile(client, token(), confirm.getT().id()));
         }
@@ -255,7 +255,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
         @ParameterizedTest(name = "running")
         @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
         public void notAvailable(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
-            Assertions.assertEquals(FailureKind.NoSuchFile, Objects.requireNonNull(OperateFilesHelper.requestUploadFile(client, token(), location(1), "1.txt", 0, Options.DuplicatePolicy.ERROR)).getE().kind());
+            Assertions.assertEquals(FailureKind.NoSuchFile, OperateFilesHelper.requestUploadFile(client, token(), location(1), "1.txt", 0, Options.DuplicatePolicy.ERROR).getE().kind());
             Assertions.assertFalse(OperateFilesHelper.cancelUploadFile(client, token(), ""));
             Assertions.assertNull(OperateFilesHelper.confirmUploadFile(client, token(), "", List.of()));
             Assertions.assertFalse(OperateFilesHelper.uploadFile(client, token(), "", 0, Unpooled.EMPTY_BUFFER));
@@ -338,7 +338,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
             };
             BroadcastAssistant.get(address()).FileUpdate.register(callback);
             final UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> res = OperateFilesHelper.copyDirectly(client, token(), location(information.id()), false, location(parent.id()), "temp-" + information.name(), Options.DuplicatePolicy.ERROR);
-            Assertions.assertTrue(res != null && res.isSuccess());
+            Assertions.assertTrue(res.isSuccess(), res.toString());
             if (res.getT().isEmpty()) {
                 BroadcastAssistant.get(address()).FileUpdate.unregister(callback);
                 HLog.DefaultLogger.log(HLogLevel.ERROR, "Unsupported operation: ", info.getTestClass().orElseThrow().getName(), "#", info.getTestMethod().orElseThrow().getName());
@@ -355,8 +355,8 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
         @ParameterizedTest(name = "running")
         @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
         public void notAvailable(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
-            Assertions.assertEquals(FailureKind.NoSuchFile, Objects.requireNonNull(OperateFilesHelper.copyDirectly(client, token(),
-                    location(-2), false, location(-3), "1.txt", Options.DuplicatePolicy.ERROR)).getE().kind());
+            Assertions.assertEquals(FailureKind.NoSuchFile, OperateFilesHelper.copyDirectly(client, token(),
+                    location(-2), false, location(-3), "1.txt", Options.DuplicatePolicy.ERROR).getE().kind());
         }
     }
 
@@ -382,7 +382,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
             };
             BroadcastAssistant.get(address()).FileUpdate.register(callback);
             final UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> res = OperateFilesHelper.moveDirectly(client, token(), location(information.id()), false, location(parent.id()), Options.DuplicatePolicy.ERROR);
-            Assertions.assertTrue(res != null && res.isSuccess());
+            Assertions.assertTrue(res.isSuccess(), res.toString());
             if (res.getT().isEmpty()) {
                 BroadcastAssistant.get(address()).FileUpdate.unregister(callback);
                 HLog.DefaultLogger.log(HLogLevel.ERROR, "Unsupported operation: ", info.getTestClass().orElseThrow().getName(), "#", info.getTestMethod().orElseThrow().getName());
@@ -399,8 +399,8 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
         @ParameterizedTest(name = "running")
         @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
         public void notAvailable(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
-            Assertions.assertEquals(FailureKind.NoSuchFile, Objects.requireNonNull(OperateFilesHelper.moveDirectly(client, token(),
-                    location(-2), false, location(-3), Options.DuplicatePolicy.ERROR)).getE().kind());
+            Assertions.assertEquals(FailureKind.NoSuchFile, OperateFilesHelper.moveDirectly(client, token(),
+                    location(-2), false, location(-3), Options.DuplicatePolicy.ERROR).getE().kind());
         }
     }
 
@@ -422,7 +422,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
             };
             BroadcastAssistant.get(address()).FileUpdate.register(callback);
             final UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> res = OperateFilesHelper.renameDirectly(client, token(), location(information.id()), false, "renamed-" + information.name(), Options.DuplicatePolicy.ERROR);
-            Assertions.assertTrue(res != null && res.isSuccess());
+            Assertions.assertTrue(res.isSuccess(), res.toString());
             if (res.getT().isEmpty()) {
                 BroadcastAssistant.get(address()).FileUpdate.unregister(callback);
                 HLog.DefaultLogger.log(HLogLevel.ERROR, "Unsupported operation: ", info.getTestClass().orElseThrow().getName(), "#", info.getTestMethod().orElseThrow().getName());
@@ -450,7 +450,7 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
             };
             BroadcastAssistant.get(address()).FileUpdate.register(callback);
             final UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> res = OperateFilesHelper.renameDirectly(client, token(), location(information.id()), true, "renamed-" + information.name(), Options.DuplicatePolicy.ERROR);
-            Assertions.assertTrue(res != null && res.isSuccess());
+            Assertions.assertTrue(res.isSuccess(), res.toString());
             if (res.getT().isEmpty()) {
                 BroadcastAssistant.get(address()).FileUpdate.unregister(callback);
                 HLog.DefaultLogger.log(HLogLevel.ERROR, "Unsupported operation: ", info.getTestClass().orElseThrow().getName(), "#", info.getTestMethod().orElseThrow().getName());
@@ -465,10 +465,10 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
         @ParameterizedTest(name = "running")
         @MethodSource("com.xuxiaocheng.WListTest.Operations.ServerWrapper#client")
         public void notAvailable(final WListClientInterface client) throws IOException, InterruptedException, WrongStateException {
-            Assertions.assertEquals(FailureKind.NoSuchFile, Objects.requireNonNull(OperateFilesHelper.renameDirectly(client, token(),
-                    location(-2), false, "1.txt", Options.DuplicatePolicy.ERROR)).getE().kind());
-            Assertions.assertEquals(FailureKind.NoSuchFile, Objects.requireNonNull(OperateFilesHelper.renameDirectly(client, token(),
-                    location(-2), true, "a", Options.DuplicatePolicy.ERROR)).getE().kind());
+            Assertions.assertEquals(FailureKind.NoSuchFile, OperateFilesHelper.renameDirectly(client, token(),
+                    location(-2), false, "1.txt", Options.DuplicatePolicy.ERROR).getE().kind());
+            Assertions.assertEquals(FailureKind.NoSuchFile, OperateFilesHelper.renameDirectly(client, token(),
+                    location(-2), true, "a", Options.DuplicatePolicy.ERROR).getE().kind());
         }
     }
 }

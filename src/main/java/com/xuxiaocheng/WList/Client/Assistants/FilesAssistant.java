@@ -246,10 +246,7 @@ public final class FilesAssistant {
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
             confirm = OperateFilesHelper.requestUploadFile(client, TokenAssistant.getToken(address, username), parent, filename, size, ClientConfiguration.get().duplicatePolicy());
         }
-        if (confirm == null)
-            return UnionPair.fail(new VisibleFailureReason(FailureKind.Others, parent, "Requesting."));
-        if (confirm.isFailure())
-            return UnionPair.fail(confirm.getE());
+        if (confirm.isFailure()) return UnionPair.fail(confirm.getE());
         if (!continuer.test(confirm.getT())) {
             try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
                 OperateFilesHelper.cancelUploadFile(client, TokenAssistant.getToken(address, username), confirm.getT().id());
@@ -273,7 +270,7 @@ public final class FilesAssistant {
             information = OperateFilesHelper.confirmUploadFile(client, TokenAssistant.getToken(address, username), confirm.getT().id(), checksums);
         }
         if (information == null)
-            return UnionPair.fail(new VisibleFailureReason(FailureKind.Others, parent, "Confirming."));
+            return UnionPair.fail(new VisibleFailureReason(FailureKind.Others, parent, "Confirming upload file."));
         final EventExecutorGroup executors = new DefaultEventExecutorGroup(ClientConfiguration.get().threadCount() > 0 ?
                 ClientConfiguration.get().threadCount() : Math.min(Runtime.getRuntime().availableProcessors(), information.parallel().size()),
                 new DefaultThreadFactory(String.format("UploadingExecutor#%s:%d@%s", parent, size, filename)));
@@ -323,7 +320,7 @@ public final class FilesAssistant {
         }));
         if (failure.get())
             return UnionPair.fail(new VisibleFailureReason(FailureKind.Others, parent, "Uploading."));
-        return finishSuccess.get() != null ? UnionPair.ok(finishSuccess.get()) : UnionPair.fail(new VisibleFailureReason(FailureKind.Others, parent, "Finishing."));
+        return finishSuccess.get() != null ? UnionPair.ok(finishSuccess.get()) : UnionPair.fail(new VisibleFailureReason(FailureKind.Others, parent, "Finishing upload file."));
     }
 
     public static @Nullable UnionPair<VisibleFileInformation, VisibleFailureReason> upload(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull File file, final @NotNull FileLocation parent, final @Nullable String filename, final @NotNull Predicate<? super @NotNull UploadConfirm> continuer, final @Nullable Consumer<? super @NotNull InstantaneousProgressState> callback) throws IOException, InterruptedException, WrongStateException {
@@ -448,10 +445,7 @@ public final class FilesAssistant {
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
             firstConfirm = OperateFilesHelper.requestDownloadFile(client, TokenAssistant.getToken(address, username), location, 0, Long.MAX_VALUE);
         }
-        if (firstConfirm == null)
-            return new VisibleFailureReason(FailureKind.Others, location, "Requesting.");
-        if (firstConfirm.isFailure())
-            return firstConfirm.getE();
+        if (firstConfirm.isFailure()) return firstConfirm.getE();
         if (!continuer.test(firstConfirm.getT())) {
             try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
                 OperateFilesHelper.cancelDownloadFile(client, TokenAssistant.getToken(address, username), firstConfirm.getT().id());
@@ -485,15 +479,16 @@ public final class FilesAssistant {
                     try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
                         confirm = OperateFilesHelper.requestDownloadFile(client, TokenAssistant.getToken(address, username), location, state.getFirst().longValue(), state.getSecond().longValue());
                     }
-                    if (confirm == null || confirm.isFailure() || confirm.getT().acceptedRange() != firstConfirm.getT().acceptedRange())
-                        return confirm == null || confirm.isSuccess() ? new VisibleFailureReason(FailureKind.Others, location, "Requesting.") : confirm.getE();
+                    if (confirm.isFailure()) return confirm.getE();
+                    if (confirm.getT().acceptedRange() != firstConfirm.getT().acceptedRange())
+                        return new VisibleFailureReason(FailureKind.Others, location, "Requesting download file: inconsistent acceptedRange.");
                 }
                 final DownloadConfirm.DownloadInformation information;
                 try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
                     information = OperateFilesHelper.confirmDownloadFile(client, TokenAssistant.getToken(address, username), confirm.getT().id());
                 }
                 if (information == null)
-                    return new VisibleFailureReason(FailureKind.Others, location, "Confirming.");
+                    return new VisibleFailureReason(FailureKind.Others, location, "Confirming download file.");
                 int i = 0;
                 ids.add(confirm.getT().id());
                 final AtomicLong insideLatch = new AtomicLong(information.parallel().size());
@@ -577,10 +572,7 @@ public final class FilesAssistant {
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
             confirm = OperateFilesHelper.requestDownloadFile(client, TokenAssistant.getToken(address, username), location, from, to);
         }
-        if (confirm == null)
-            return UnionPair.fail(new VisibleFailureReason(FailureKind.Others, location, "Requesting."));
-        if (confirm.isFailure())
-            return UnionPair.fail(confirm.getE());
+        if (confirm.isFailure()) return UnionPair.fail(confirm.getE());
         final String id = confirm.getT().id();
         if (from > 0 && !continuer.test(confirm.getT())) {
             try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
@@ -898,7 +890,6 @@ public final class FilesAssistant {
             final UnionPair<VisibleFileInformation, VisibleFailureReason> directory;
             try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
                 directory = OperateFilesHelper.createDirectory(client, TokenAssistant.getToken(address, username), parent, name, ClientConfiguration.get().duplicatePolicy());
-                if (directory == null) return UnionPair.fail(new VisibleFailureReason(FailureKind.Others, parent, "Creating."));
                 if (directory.isFailure()) return UnionPair.fail(directory.getE());
             }
             final FileLocation p = new FileLocation(parent.storage(), directory.getT().id());
@@ -908,7 +899,7 @@ public final class FilesAssistant {
                 final VisibleFilesListInformation list = FilesAssistant.list(address, username, location, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), pos.getAndAdd(limit), limit, null, null);
                 if (list == null) break;
                 for (final VisibleFileInformation info: list.informationList()) {
-                    final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.copy0(address, username, new FileLocation(parent.storage(), info.id()), info.isDirectory(), p, info.name(), downloaderExecutor, directly, continuer);
+                    final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.copy0(address, username, new FileLocation(location.storage(), info.id()), info.isDirectory(), p, info.name(), downloaderExecutor, directly, continuer);
                     if (res == null || res.isFailure()) return res;
                 }
                 if (list.total() == list.informationList().size()) break;
@@ -919,14 +910,11 @@ public final class FilesAssistant {
             final UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> file;
             try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
                 file = OperateFilesHelper.copyDirectly(client, TokenAssistant.getToken(address, username), location, false, parent, name, ClientConfiguration.get().duplicatePolicy());
-                if (file == null) return UnionPair.fail(new VisibleFailureReason(FailureKind.Others, parent, "Copying."));
-                if (file.isFailure()) return UnionPair.fail(file.getE());
             }
+            if (file.isFailure()) return UnionPair.fail(file.getE());
             final Boolean old = directly.getAndSet(file.getT().isPresent());
-            if (directly.get().booleanValue())
-                return UnionPair.ok(file.getT().get());
-            if (old == null && !continuer.test(NotDirectlyPolicy.DownloadAndUpload))
-                return null;
+            if (directly.get().booleanValue()) return UnionPair.ok(file.getT().get());
+            if (old == null && !continuer.test(NotDirectlyPolicy.DownloadAndUpload)) return null;
         }
         return FilesAssistant.copyFileDownloadAndUpload(address, username, location, parent, name, Objects.requireNonNullElseGet(downloaderExecutor, ForkJoinPool::commonPool));
     }
@@ -937,12 +925,11 @@ public final class FilesAssistant {
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
             confirm = OperateFilesHelper.copyDirectly(client, TokenAssistant.getToken(address, username), location, isDirectory, parent, name, ClientConfiguration.get().duplicatePolicy());
         }
-        if (confirm == null) return UnionPair.fail(new VisibleFailureReason(FailureKind.Others, location, "Requesting."));
         if (confirm.isFailure()) return UnionPair.fail(confirm.getE());
         if (confirm.getT().isPresent()) return UnionPair.ok(confirm.getT().get());
-        if (!isDirectory)
-            return continuer.test(NotDirectlyPolicy.DownloadAndUpload) ? FilesAssistant.copyFileDownloadAndUpload(address, username, location, parent, name, Objects.requireNonNullElseGet(downloaderExecutor, ForkJoinPool::commonPool)) : null;
-        return continuer.test(NotDirectlyPolicy.BuildTree) ? FilesAssistant.copy0(address, username, location, true, parent, name, downloaderExecutor, new AtomicReference<>(null), continuer) : null;
+        if (!continuer.test(isDirectory ? NotDirectlyPolicy.BuildTree : NotDirectlyPolicy.DownloadAndUpload)) return null;
+        return isDirectory ? FilesAssistant.copy0(address, username, location, true, parent, name, downloaderExecutor, new AtomicReference<>(null), continuer)
+                : FilesAssistant.copyFileDownloadAndUpload(address, username, location, parent, name, Objects.requireNonNullElseGet(downloaderExecutor, ForkJoinPool::commonPool));
     }
 
 
@@ -956,16 +943,15 @@ public final class FilesAssistant {
             final UnionPair<VisibleFileInformation, VisibleFailureReason> directory;
             try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
                 directory = OperateFilesHelper.createDirectory(client, TokenAssistant.getToken(address, username), parent, source.name(), ClientConfiguration.get().duplicatePolicy());
-                if (directory == null) return UnionPair.fail(new VisibleFailureReason(FailureKind.Others, parent, "Creating."));
-                if (directory.isFailure()) return UnionPair.fail(directory.getE());
             }
+            if (directory.isFailure()) return UnionPair.fail(directory.getE());
             final FileLocation p = new FileLocation(parent.storage(), directory.getT().id());
             while (true) {
                 final int limit = ClientConfiguration.get().limitPerPage();
                 final VisibleFilesListInformation list = FilesAssistant.list(address, username, location, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, limit, null, null);
                 if (list == null) break;
                 for (final VisibleFileInformation info: list.informationList()) {
-                    final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.move0(address, username, new FileLocation(parent.storage(), info.id()), info.isDirectory(), p, downloaderExecutor, directly, continuer);
+                    final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.move0(address, username, new FileLocation(location.storage(), info.id()), info.isDirectory(), p, downloaderExecutor, directly, continuer);
                     if (res == null || res.isFailure()) return res;
                 }
                 if (list.total() == list.informationList().size()) break;
@@ -977,14 +963,11 @@ public final class FilesAssistant {
             final UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> file;
             try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
                 file = OperateFilesHelper.moveDirectly(client, TokenAssistant.getToken(address, username), location, false, parent, ClientConfiguration.get().duplicatePolicy());
-                if (file == null) return UnionPair.fail(new VisibleFailureReason(FailureKind.Others, parent, "Copying."));
-                if (file.isFailure()) return UnionPair.fail(file.getE());
             }
+            if (file.isFailure()) return UnionPair.fail(file.getE());
             final Boolean old = directly.getAndSet(file.getT().isPresent());
-            if (directly.get().booleanValue())
-                return UnionPair.ok(file.getT().get());
-            if (old == null && !continuer.test(NotDirectlyPolicy.DownloadAndUpload))
-                return null;
+            if (directly.get().booleanValue()) return UnionPair.ok(file.getT().get());
+            if (old == null && !continuer.test(NotDirectlyPolicy.DownloadAndUpload)) return null;
         }
         final VisibleFileInformation source;
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
@@ -1001,13 +984,59 @@ public final class FilesAssistant {
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
             confirm = OperateFilesHelper.moveDirectly(client, TokenAssistant.getToken(address, username), location, isDirectory, parent, ClientConfiguration.get().duplicatePolicy());
         }
-        if (confirm == null) return UnionPair.fail(new VisibleFailureReason(FailureKind.Others, location, "Requesting."));
         if (confirm.isFailure()) return UnionPair.fail(confirm.getE());
         if (confirm.getT().isPresent()) return UnionPair.ok(confirm.getT().get());
-        if (!isDirectory)
-            return continuer.test(NotDirectlyPolicy.DownloadAndUpload) ? FilesAssistant.move0(address, username, location, false, parent, downloaderExecutor, new AtomicReference<>(Boolean.FALSE), PredicateE.truePredicate()) : null;
-        return continuer.test(NotDirectlyPolicy.BuildTree) ? FilesAssistant.move0(address, username, location, true, parent, downloaderExecutor, new AtomicReference<>(null), continuer) : null;
+        if (!continuer.test(isDirectory ? NotDirectlyPolicy.BuildTree : NotDirectlyPolicy.DownloadAndUpload)) return null;
+        return isDirectory ? FilesAssistant.move0(address, username, location, true, parent, downloaderExecutor, new AtomicReference<>(null), continuer)
+                : FilesAssistant.move0(address, username, location, false, parent, downloaderExecutor, new AtomicReference<>(Boolean.FALSE), PredicateE.truePredicate());
     }
 
-    // TODO: rename.
+
+    public static @Nullable UnionPair<VisibleFileInformation, VisibleFailureReason> rename(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation location, final boolean isDirectory, final @NotNull String name, final @Nullable Executor downloaderExecutor, final @NotNull Predicate<? super @NotNull NotDirectlyPolicy> continuer) throws IOException, InterruptedException, WrongStateException {
+        final UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> confirm;
+        try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
+            confirm = OperateFilesHelper.renameDirectly(client, TokenAssistant.getToken(address, username), location, isDirectory, name, ClientConfiguration.get().duplicatePolicy());
+        }
+        if (confirm.isFailure()) return UnionPair.fail(confirm.getE());
+        if (confirm.getT().isPresent()) return UnionPair.ok(confirm.getT().get());
+        if (!continuer.test(isDirectory ? NotDirectlyPolicy.BuildTree : NotDirectlyPolicy.DownloadAndUpload)) return null;
+        final VisibleFileInformation source;
+        try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
+            source = OperateFilesHelper.getFileOrDirectory(client, TokenAssistant.getToken(address, username), location, isDirectory);
+            if (source == null) return UnionPair.fail(new VisibleFailureReason(FailureKind.NoSuchFile, location, isDirectory ? "No such directory." : "No such file."));
+        }
+        final FileLocation parent = new FileLocation(location.storage(), source.parentId());
+        if (!isDirectory) {
+            final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.copyFileDownloadAndUpload(address, username, location, parent, name, Objects.requireNonNullElseGet(downloaderExecutor, ForkJoinPool::commonPool));
+            if (res.isFailure() || FilesAssistant.trash(address, username, location, false, PredicateE.truePredicate())) return res;
+            return UnionPair.fail(new VisibleFailureReason(FailureKind.Others, location, "Trashing."));
+        }
+        final UnionPair<VisibleFileInformation, VisibleFailureReason> directory;
+        try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
+            directory = OperateFilesHelper.createDirectory(client, TokenAssistant.getToken(address, username), parent, source.name(), ClientConfiguration.get().duplicatePolicy());
+        }
+        if (directory.isFailure()) return UnionPair.fail(directory.getE());
+        final AtomicReference<Boolean> tested = new AtomicReference<>(null);
+        while (true) {
+            final VisibleFilesListInformation list = FilesAssistant.list(address, username, location, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, ClientConfiguration.get().limitPerPage(), null, null);
+            if (list == null) return directory;
+            try {
+                for (final VisibleFileInformation information: list.informationList()) {
+                    final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.move(address, username, new FileLocation(location.storage(), information.id()), true, parent, downloaderExecutor, p -> {
+                        if (p == NotDirectlyPolicy.DownloadAndUpload) {
+                            if (tested.get() == null)
+                                tested.set(continuer.test(NotDirectlyPolicy.DownloadAndUpload));
+                            return tested.get().booleanValue();
+                        }
+                        return true;
+                    });
+                    if (res == null || res.isFailure()) return res;
+                }
+            } catch (final RuntimeException exception) {
+                HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
+            }
+            if (list.total() == list.informationList().size()) break;
+        }
+        return directory;
+    }
 }

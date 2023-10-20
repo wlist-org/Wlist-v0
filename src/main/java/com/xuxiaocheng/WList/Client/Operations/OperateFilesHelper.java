@@ -10,6 +10,7 @@ import com.xuxiaocheng.WList.Commons.Beans.UploadConfirm;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFilesListInformation;
+import com.xuxiaocheng.WList.Commons.Operations.FailureKind;
 import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
@@ -132,7 +133,7 @@ public final class OperateFilesHelper {
         }
     }
 
-    public static @Nullable UnionPair<DownloadConfirm, VisibleFailureReason> requestDownloadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation file, final long from, final long to) throws IOException, InterruptedException, WrongStateException {
+    public static @NotNull UnionPair<DownloadConfirm, VisibleFailureReason> requestDownloadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation file, final long from, final long to) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.RequestDownloadFile, token);
         file.dump(send);
         ByteBufIOUtil.writeVariableLenLong(send, from);
@@ -152,7 +153,7 @@ public final class OperateFilesHelper {
                 return UnionPair.fail(failureReason);
             }
             OperateHelper.logOperated(OperationType.RequestDownloadFile, reason, null);
-            return null;
+            return UnionPair.fail(new VisibleFailureReason(FailureKind.Others, file, "Requesting download file."));
         } finally {
             receive.release();
         }
@@ -210,7 +211,7 @@ public final class OperateFilesHelper {
         return OperateHelper.booleanOperation(client, send, OperationType.FinishDownloadFile);
     }
 
-    public static @Nullable UnionPair<VisibleFileInformation, VisibleFailureReason> createDirectory(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation parent, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
+    public static @NotNull UnionPair<VisibleFileInformation, VisibleFailureReason> createDirectory(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation parent, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.CreateDirectory, token);
         parent.dump(send);
         ByteBufIOUtil.writeUTF(send, directoryName);
@@ -230,13 +231,13 @@ public final class OperateFilesHelper {
                 return UnionPair.fail(failureReason);
             }
             OperateHelper.logOperated(OperationType.CreateDirectory, reason, null);
-            return null;
+            return UnionPair.fail(new VisibleFailureReason(FailureKind.Others, parent, "Creating."));
         } finally {
             receive.release();
         }
     }
 
-    public static @Nullable UnionPair<UploadConfirm, VisibleFailureReason> requestUploadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation parent, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
+    public static @NotNull UnionPair<UploadConfirm, VisibleFailureReason> requestUploadFile(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation parent, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.RequestUploadFile, token);
         parent.dump(send);
         ByteBufIOUtil.writeUTF(send, filename);
@@ -257,7 +258,7 @@ public final class OperateFilesHelper {
                 return UnionPair.fail(failureReason);
             }
             OperateHelper.logOperated(OperationType.RequestUploadFile, reason, null);
-            return null;
+            return UnionPair.fail(new VisibleFailureReason(FailureKind.Others, parent, "Requesting upload file."));
         } finally {
             receive.release();
         }
@@ -322,7 +323,7 @@ public final class OperateFilesHelper {
 
     private static final @NotNull UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> Complex = UnionPair.ok(Optional.empty());
 
-    public static @Nullable UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> copyDirectly(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation location, final boolean isDirectory, final @NotNull FileLocation parent, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
+    public static @NotNull UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> copyDirectly(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation location, final boolean isDirectory, final @NotNull FileLocation parent, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.CopyDirectly, token);
         location.dump(send);
         ByteBufIOUtil.writeBoolean(send, isDirectory);
@@ -344,13 +345,13 @@ public final class OperateFilesHelper {
                 return UnionPair.fail(failureReason);
             }
             OperateHelper.logOperated(OperationType.CopyDirectly, reason, null);
-            return "Complex".equals(reason) ? OperateFilesHelper.Complex : null;
+            return "Complex".equals(reason) ? OperateFilesHelper.Complex : UnionPair.fail(new VisibleFailureReason(FailureKind.Others, parent, "Copying."));
         } finally {
             receive.release();
         }
     }
 
-    public static @Nullable UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> moveDirectly(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation location, final boolean isDirectory, final @NotNull FileLocation parent, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
+    public static @NotNull UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> moveDirectly(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation location, final boolean isDirectory, final @NotNull FileLocation parent, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.MoveDirectly, token);
         location.dump(send);
         ByteBufIOUtil.writeBoolean(send, isDirectory);
@@ -371,13 +372,13 @@ public final class OperateFilesHelper {
                 return UnionPair.fail(failureReason);
             }
             OperateHelper.logOperated(OperationType.MoveDirectly, reason, null);
-            return "Complex".equals(reason) ? OperateFilesHelper.Complex : null;
+            return "Complex".equals(reason) ? OperateFilesHelper.Complex : UnionPair.fail(new VisibleFailureReason(FailureKind.Others, location, "Moving."));
         } finally {
             receive.release();
         }
     }
 
-    public static @Nullable UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> renameDirectly(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation location, final boolean isDirectory, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
+    public static @NotNull UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> renameDirectly(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull FileLocation location, final boolean isDirectory, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.RenameDirectly, token);
         location.dump(send);
         ByteBufIOUtil.writeBoolean(send, isDirectory);
@@ -398,7 +399,7 @@ public final class OperateFilesHelper {
                 return UnionPair.fail(failureReason);
             }
             OperateHelper.logOperated(OperationType.RenameDirectly, reason, null);
-            return "Complex".equals(reason) ? OperateFilesHelper.Complex : null;
+            return "Complex".equals(reason) ? OperateFilesHelper.Complex : UnionPair.fail(new VisibleFailureReason(FailureKind.Others, location, "Renaming"));
         } finally {
             receive.release();
         }
