@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
+import android.os.Environment;
 import android.provider.OpenableColumns;
 import android.util.DisplayMetrics;
 import android.view.MotionEvent;
@@ -33,6 +34,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.HeadLibs.Functions.PredicateE;
 import com.xuxiaocheng.HeadLibs.Helpers.HMathHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
@@ -77,6 +79,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.BufferedInputStream;
+import java.io.File;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.text.MessageFormat;
@@ -157,6 +160,14 @@ public class PageFile implements ActivityMainChooser.MainPage {
         loadingAnimation.setInterpolator(new LinearInterpolator());
         loadingAnimation.setRepeatCount(Animation.INFINITE);
         loading.startAnimation(loadingAnimation);
+    }
+
+    @UiThread
+    private @NotNull AlertDialog loadingDialog(@StringRes final int title) {
+        final ImageView loading = new ImageView(this.activity);
+        loading.setImageResource(R.mipmap.page_file_loading);
+        PageFile.setLoading(loading);
+        return new AlertDialog.Builder(this.activity).setTitle(title).setView(loading).setCancelable(false).show();
     }
 
     @UiThread
@@ -357,18 +368,14 @@ public class PageFile implements ActivityMainChooser.MainPage {
                     renamer.pageFileRenameName.setSelection(Objects.requireNonNull(renamer.pageFileRenameName.getText()).length());
                 }
                 new AlertDialog.Builder(this.activity).setTitle(R.string.page_file_option_rename).setView(renamer.getRoot())
-                        .setNegativeButton(R.string.cancel, (d, w) -> {})
+                        .setNegativeButton(R.string.cancel, null)
                         .setPositiveButton(R.string.confirm, (d, w) -> {
                             final String renamed = ViewUtil.getText(renamer.pageFileRenameName);
                             if (AndroidSupporter.isBlank(renamed) || FileInformationGetter.name(information).equals(renamed)) return;
-                            final ImageView loading = new ImageView(this.activity);
-                            loading.setImageResource(R.mipmap.page_file_loading);
-                            PageFile.setLoading(loading);
-                            final AlertDialog dialog = new AlertDialog.Builder(this.activity)
-                                    .setTitle(R.string.page_file_option_rename).setView(loading).setCancelable(false).show();
+                            final AlertDialog dialog = this.loadingDialog(R.string.page_file_option_rename);
                             Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
                                 HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Renaming.",
-                                        ParametersMap.create().add("address", this.address()).add("location", location).add("name", renamed));
+                                        ParametersMap.create().add("address", this.address()).add("information", information).add("renamed", renamed));
                                 final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.rename(this.address(), this.username(), current, FileInformationGetter.isDirectory(information), renamed,
                                         Main.ClientExecutors, HExceptionWrapper.wrapPredicate(p -> this.queryNotSupportedOperation()));
                                 if (res == null) return;
@@ -386,85 +393,107 @@ public class PageFile implements ActivityMainChooser.MainPage {
                 Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
                     final FileLocation target = this.queryTargetDirectory(R.string.page_file_option_move/*, FileInformationGetter.isDirectory(information) ? current : null*/);
                     if (target == null) return;
-                    final AtomicBoolean queried = new AtomicBoolean(false);
-                    final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.move(this.address(), this.username(), current, FileInformationGetter.isDirectory(information), target, Main.ClientExecutors, HExceptionWrapper.wrapPredicate(p -> {
-                        if (queried.getAndSet(true)) return true;
-                        return this.queryNotSupportedOperation();
-                    }));
-                    if (res == null) return;
-                    if (res.isFailure())
-                        Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, FailureReasonGetter.kind(res.getE()) + FailureReasonGetter.message(res.getE()), Toast.LENGTH_SHORT).show());
-                    else
-                        Main.showToast(this.activity, R.string.page_file_option_move_success);
+                    HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Moving.",
+                            ParametersMap.create().add("address", this.address()).add("information", information).add("target", target));
+                    Main.runOnUiThread(this.activity, () -> {
+                        final AlertDialog dialog = this.loadingDialog(R.string.page_file_option_move);
+                        Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
+                            final AtomicBoolean queried = new AtomicBoolean(false);
+                            final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.move(this.address(), this.username(), current, FileInformationGetter.isDirectory(information), target, Main.ClientExecutors, HExceptionWrapper.wrapPredicate(p -> {
+                                if (queried.getAndSet(true)) return true;
+                                return this.queryNotSupportedOperation();
+                            }));
+                            if (res == null) return;
+                            if (res.isFailure())
+                                Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, FailureReasonGetter.kind(res.getE()) + FailureReasonGetter.message(res.getE()), Toast.LENGTH_SHORT).show());
+                            else
+                                Main.showToast(this.activity, R.string.page_file_option_move_success);
+                        }, () -> Main.runOnUiThread(this.activity, dialog::cancel)));
+                    });
                 }));
             });
             optionBinding.pageFileOptionMoveIcon.setOnClickListener(u -> optionBinding.pageFileOptionMove.performClick());
-//                optionBinding.pageFileOptionCopy.setOnClickListener(u -> {
-//                    if (!clickable.compareAndSet(true, false)) return;
-//                    modifier.cancel();
-//                    Main.runOnBackgroundThread(this.page.activity, () -> {
-//                        // TODO: copy file.
-//                        throw new UnsupportedOperationException("Copy file is unsupported now!");
-//                    });
-//                });
-//                optionBinding.pageFileOptionCopyIcon.setOnClickListener(u -> optionBinding.pageFileOptionCopy.performClick());
-//                optionBinding.pageFileOptionDelete.setOnClickListener(u -> {
-//                    if (!clickable.compareAndSet(true, false)) return;
-//                    modifier.cancel();
-//                    final ImageView loading = new ImageView(this.page.activity);
-//                    loading.setImageResource(R.mipmap.page_file_loading);
-//                    PageFile.setLoading(loading);
-//                    final AlertDialog dialog = new AlertDialog.Builder(this.page.activity)
-//                            .setTitle(R.string.page_file_option_delete).setView(loading).setCancelable(false).show();
-//                    Main.runOnBackgroundThread(this.page.activity, HExceptionWrapper.wrapRunnable(() -> {
-//                        HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Deleting.",
-//                                ParametersMap.create().add("address", this.page.address).add("location", location));
-//                        try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.page.address)) {
-//                            OperateFilesHelper.trashFileOrDirectory(client, TokenManager.getToken(this.page.address), location);
-//                        }
-//                        Main.runOnUiThread(this.page.activity, () -> {
-//                            Main.showToast(this.page.activity, R.string.page_file_option_delete_success);
-//                            // TODO: auto remove
-//                            this.page.popFileList();
-//                            this.page.pushFileList(record.name, record.location);
-//                        });
-//                    }, () -> Main.runOnUiThread(this.page.activity, dialog::cancel)));
-//                });
-//                optionBinding.pageFileOptionDeleteIcon.setOnClickListener(u -> optionBinding.pageFileOptionDelete.performClick());
-//                optionBinding.pageFileOptionDownload.setOnClickListener(u -> {
-//                    if (!clickable.compareAndSet(true, false)) return;
-//                    modifier.cancel();
-//                    final ImageView loading = new ImageView(this.page.activity);
-//                    loading.setImageResource(R.mipmap.page_file_loading);
-//                    PageFile.setLoading(loading);
-//                    final AlertDialog dialog = new AlertDialog.Builder(this.page.activity)
-//                            .setTitle(R.string.page_file_option_download).setView(loading).setCancelable(false).show();
-//                    Main.runOnBackgroundThread(this.page.activity, HExceptionWrapper.wrapRunnable(() -> {
-//                        HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Downloading.",
-//                                ParametersMap.create().add("address", this.page.address).add("location", location));
-//                        try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.page.address)) {
-//                            final Pair.ImmutablePair<Long, String> id = OperateFilesHelper.requestDownloadFile(client, TokenManager.getToken(this.page.address), location, 0, Long.MAX_VALUE);
-//                            if (id == null)
-//                                throw new IllegalStateException("File not exist.");
-//                            final File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "wlist/" + FileInformationGetter.name(information));
-//                            HFileHelper.ensureFileExist(file.toPath(), false);
-//                            try (final OutputStream stream = new BufferedOutputStream(new FileOutputStream(file))) {
-//                                int chunk = 0;
-//                                while (true) {
-//                                    final ByteBuf buffer = OperateFilesHelper.downloadFile(client, TokenManager.getToken(this.page.address), id.getSecond(), chunk++);
-//                                    if (buffer == null) break;
-//                                    try (final InputStream buf = new ByteBufInputStream(buffer)) {
-//                                        AIOStream.transferTo(buf, stream);
-//                                    } finally {
-//                                        buffer.release();
-//                                    }
-//                                }
-//                            }
-//                        }
-//                        Main.showToast(this.page.activity, R.string.page_file_option_download_success);
-//                    }, () -> Main.runOnUiThread(this.page.activity, dialog::cancel)));
-//                });
-//                optionBinding.pageFileOptionDownloadIcon.setOnClickListener(u -> optionBinding.pageFileOptionDownload.performClick());
+            optionBinding.pageFileOptionCopy.setOnClickListener(u -> {
+                if (!clickable.compareAndSet(true, false)) return;
+                modifier.cancel();
+                Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
+                    final FileLocation target = this.queryTargetDirectory(R.string.page_file_option_copy/*, FileInformationGetter.isDirectory(information) ? current : null*/);
+                    if (target == null) return;
+                    HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Copying.",
+                            ParametersMap.create().add("address", this.address()).add("information", information).add("target", target));
+                    Main.runOnUiThread(this.activity, () -> {
+                        final AlertDialog dialog = this.loadingDialog(R.string.page_file_option_copy);
+                        Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
+                            final AtomicBoolean queried = new AtomicBoolean(false);
+                            final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.copy(this.address(), this.username(), current, FileInformationGetter.isDirectory(information), target, FileInformationGetter.name(information), Main.ClientExecutors, HExceptionWrapper.wrapPredicate(p -> {
+                                if (queried.getAndSet(true)) return true;
+                                return this.queryNotSupportedOperation();
+                            }));
+                            if (res == null) return;
+                            if (res.isFailure())
+                                Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, FailureReasonGetter.kind(res.getE()) + FailureReasonGetter.message(res.getE()), Toast.LENGTH_SHORT).show());
+                            else
+                                Main.showToast(this.activity, R.string.page_file_option_copy_success);
+                        }, () -> Main.runOnUiThread(this.activity, dialog::cancel)));
+                    });
+                }));
+            });
+            optionBinding.pageFileOptionCopyIcon.setOnClickListener(u -> optionBinding.pageFileOptionCopy.performClick());
+            optionBinding.pageFileOptionDelete.setOnClickListener(u -> {
+                if (!clickable.compareAndSet(true, false)) return;
+                modifier.cancel();
+                new AlertDialog.Builder(this.activity).setTitle(R.string.page_file_option_delete)
+                        .setNegativeButton(R.string.cancel, null)
+                        .setPositiveButton(R.string.confirm, (d, w) -> {
+                            final AlertDialog dialog = this.loadingDialog(R.string.page_file_option_delete);
+                            Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
+                                HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Deleting.",
+                                        ParametersMap.create().add("address", this.address()).add("information", information));
+                                if (FilesAssistant.trash(this.address(), this.username(), new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.id(information)), FileInformationGetter.isDirectory(information), HExceptionWrapper.wrapPredicate(unused -> this.queryNotSupportedOperation())))
+                                    Main.showToast(this.activity, R.string.page_file_option_delete_success);
+                            }, () -> Main.runOnUiThread(this.activity, dialog::cancel)));
+                        }).show();
+            });
+            optionBinding.pageFileOptionDeleteIcon.setOnClickListener(u -> optionBinding.pageFileOptionDelete.performClick());
+            if (FileInformationGetter.isDirectory(information)) {
+                optionBinding.pageFileOptionDownload.setVisibility(View.GONE);
+                optionBinding.pageFileOptionDownloadIcon.setVisibility(View.GONE);
+            } else {
+                optionBinding.pageFileOptionDownload.setOnClickListener(u -> {
+                    if (!clickable.compareAndSet(true, false)) return;
+                    modifier.cancel();
+                    new AlertDialog.Builder(this.activity).setTitle(R.string.page_file_option_download)
+                            .setNegativeButton(R.string.cancel, null)
+                            .setPositiveButton(R.string.confirm, (d, w) -> {
+                                final AlertDialog dialog = this.loadingDialog(R.string.page_file_option_download);
+                                Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
+                                    final File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "wlist/" + FileInformationGetter.name(information));
+                                    HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Downloading.",
+                                            ParametersMap.create().add("address", this.address()).add("information", information).add("file", file));
+                                    final VisibleFailureReason res;
+                                    try {
+                                        Main.runOnUiThread(PageFile.this.activity, () -> PageFile.this.listLoadingAnimation(true, 0, 0));
+                                        res = FilesAssistant.download(this.address(), this.username(), new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.id(information)), file, PredicateE.truePredicate(), s -> {
+                                            long c = 0, total = 0;
+                                            for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
+                                                c += pair.getFirst().longValue();
+                                                total += pair.getSecond().longValue();
+                                            }
+                                            final long l = c, t = total;
+                                            Main.runOnUiThread(PageFile.this.activity, () -> PageFile.this.listLoadingAnimation(true, l, t));
+                                        });
+                                    } finally {
+                                        Main.runOnUiThread(PageFile.this.activity, () -> PageFile.this.listLoadingAnimation(false, 0, 0));
+                                    }
+                                    if (res != null)
+                                        Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, FailureReasonGetter.kind(res) + FailureReasonGetter.message(res), Toast.LENGTH_SHORT).show());
+                                    else
+                                        Main.showToast(this.activity, R.string.page_file_option_download_success);
+                                }, () -> Main.runOnUiThread(this.activity, dialog::cancel)));
+                            }).show();
+                });
+                optionBinding.pageFileOptionDownloadIcon.setOnClickListener(u -> optionBinding.pageFileOptionDownload.performClick());
+            }
             modifier.show();
         });
     }
