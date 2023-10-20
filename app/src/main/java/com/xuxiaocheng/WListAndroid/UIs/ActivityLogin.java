@@ -93,17 +93,17 @@ public class ActivityLogin extends AppCompatActivity {
                 }
             }, Context.BIND_AUTO_CREATE | Context.BIND_ABOVE_CLIENT | Context.BIND_IMPORTANT);
         });
-        activity.activityLoginIcon.setOnClickListener(v -> { // TODO
-            if (!clickable.compareAndSet(true, false)) return;
-            Main.runOnBackgroundThread(this, HExceptionWrapper.wrapRunnable(() -> {
-                final InetSocketAddress address = new InetSocketAddress("192.168.1.9", 5212);
-//                final InetSocketAddress address = new InetSocketAddress(ViewUtil.getText(activity.activityLoginPassport), Integer.parseInt(ViewUtil.getText(activity.activityLoginPassword)));
-                WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
-                if (!TokenAssistant.login(address, "admin", "Eb7aFkA2", Main.ClientExecutors))
-                    return;
-                ActivityMain.start(this, address, "admin", false);
-            }, () -> clickable.set(true)));
-        });
+//        activity.activityLoginIcon.setOnClickListener(v -> { // TODO
+//            if (!clickable.compareAndSet(true, false)) return;
+//            Main.runOnBackgroundThread(this, HExceptionWrapper.wrapRunnable(() -> {
+//                final InetSocketAddress address = new InetSocketAddress("192.168.1.9", 5212);
+////                final InetSocketAddress address = new InetSocketAddress(ViewUtil.getText(activity.activityLoginPassport), Integer.parseInt(ViewUtil.getText(activity.activityLoginPassword)));
+//                WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
+//                if (!TokenAssistant.login(address, "admin", "Eb7aFkA2", Main.ClientExecutors))
+//                    return;
+//                ActivityMain.start(this, address, "admin", false);
+//            }, () -> clickable.set(true)));
+//        });
     }
 
     @Override

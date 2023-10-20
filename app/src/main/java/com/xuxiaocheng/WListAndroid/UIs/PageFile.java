@@ -35,6 +35,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Functions.PredicateE;
+import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMathHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
@@ -465,9 +466,13 @@ public class PageFile implements ActivityMainChooser.MainPage {
                     new AlertDialog.Builder(this.activity).setTitle(R.string.page_file_option_download)
                             .setNegativeButton(R.string.cancel, null)
                             .setPositiveButton(R.string.confirm, (d, w) -> {
-                                final AlertDialog dialog = this.loadingDialog(R.string.page_file_option_download);
+                                final ImageView loading = new ImageView(this.activity);
+                                loading.setImageResource(R.mipmap.page_file_loading);
+                                PageFile.setLoading(loading);
+                                final AlertDialog loader = new AlertDialog.Builder(this.activity).setTitle(FileInformationGetter.name(information)).setCancelable(false).show();
                                 Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
                                     final File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "wlist/" + FileInformationGetter.name(information));
+                                    HFileHelper.ensureFileAccessible(file, true);
                                     HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Downloading.",
                                             ParametersMap.create().add("address", this.address()).add("information", information).add("file", file));
                                     final VisibleFailureReason res;
@@ -489,7 +494,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
                                         Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, FailureReasonGetter.kind(res) + FailureReasonGetter.message(res), Toast.LENGTH_SHORT).show());
                                     else
                                         Main.showToast(this.activity, R.string.page_file_option_download_success);
-                                }, () -> Main.runOnUiThread(this.activity, dialog::cancel)));
+                                }, () -> Main.runOnUiThread(this.activity, loader::cancel)));
                             }).show();
                 });
                 optionBinding.pageFileOptionDownloadIcon.setOnClickListener(u -> optionBinding.pageFileOptionDownload.performClick());
@@ -717,40 +722,37 @@ public class PageFile implements ActivityMainChooser.MainPage {
                 }
                 HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Uploading files.",
                         ParametersMap.create().add("address", this.address()).add("location", location).add("filename", filename).add("size", size).add("uri", uri));
-                final AlertDialog[] loader = new AlertDialog[1];
                 Main.runOnUiThread(this.activity, () -> {
                     final ImageView loading = new ImageView(this.activity);
                     loading.setImageResource(R.mipmap.page_file_loading);
                     PageFile.setLoading(loading);
-                    loader[0] = new AlertDialog.Builder(this.activity).setTitle(filename).setCancelable(false).show();
+                    final AlertDialog loader = new AlertDialog.Builder(this.activity).setTitle(filename).setCancelable(false).show();
                     this.listLoadingAnimation(true, 0, 0);
-                });
-                try {
-                    final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.uploadStream(this.address(), this.username(), HExceptionWrapper.wrapBiConsumer((pair, consumer) -> {
-                        try (final InputStream stream = new BufferedInputStream(this.activity.getContentResolver().openInputStream(uri))) {
-                            AndroidSupporter.skipNBytes(stream, pair.getFirst().longValue());
-                            consumer.accept(stream);
-                        }
-                    }), size, filename, location, c -> true, s -> { // TODO
-                        long current = 0, total = 0;
-                        for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
-                            current += pair.getFirst().longValue();
-                            total += pair.getSecond().longValue();
-                        }
-                        final long c = current, t = total;
-                        Main.runOnUiThread(PageFile.this.activity, () -> PageFile.this.listLoadingAnimation(true, c, t));
-                    });
-                    assert res != null;
-                    if (res.isFailure()) // TODO
-                        Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, FailureReasonGetter.message(res.getE()), Toast.LENGTH_SHORT).show());
-                    else
-                        Main.showToast(this.activity, R.string.page_file_upload_success_file);
-                } finally {
-                    Main.runOnUiThread(this.activity, () -> {
-                        loader[0].cancel();
+                    Main.runOnUiThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
+                        final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.uploadStream(this.address(), this.username(), HExceptionWrapper.wrapBiConsumer((pair, consumer) -> {
+                            try (final InputStream stream = new BufferedInputStream(this.activity.getContentResolver().openInputStream(uri))) {
+                                AndroidSupporter.skipNBytes(stream, pair.getFirst().longValue());
+                                consumer.accept(stream);
+                            }
+                        }), size, filename, location, c -> true, s -> { // TODO
+                            long current = 0, total = 0;
+                            for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
+                                current += pair.getFirst().longValue();
+                                total += pair.getSecond().longValue();
+                            }
+                            final long c = current, t = total;
+                            Main.runOnUiThread(PageFile.this.activity, () -> PageFile.this.listLoadingAnimation(true, c, t));
+                        });
+                        assert res != null;
+                        if (res.isFailure()) // TODO
+                            Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, FailureReasonGetter.message(res.getE()), Toast.LENGTH_SHORT).show());
+                        else
+                            Main.showToast(this.activity, R.string.page_file_upload_success_file);
+                    }, () -> Main.runOnUiThread(this.activity, () -> {
+                        loader.cancel();
                         this.listLoadingAnimation(false, 0, 0);
-                    });
-                }
+                    })));
+                });
             }));
         }));
         final ImageView options = this.activity.findViewById(R.id.activity_main_options);
