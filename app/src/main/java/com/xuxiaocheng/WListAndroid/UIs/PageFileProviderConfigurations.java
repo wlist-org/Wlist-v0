@@ -8,6 +8,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.viewbinding.ViewBinding;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.WList.AndroidSupports.StorageTypeGetter;
 import com.xuxiaocheng.WList.Server.Storage.Providers.Real.Lanzou.LanzouConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
@@ -34,7 +35,7 @@ public final class PageFileProviderConfigurations {
     public static <C extends StorageConfiguration, V extends ViewBinding> void getConfiguration(final @NotNull Activity activity, final @NotNull StorageTypes<C> type, final @Nullable C old, final @NotNull @WorkerThread Consumer<@NotNull C> callback) {
         final ConfigurationGetter<C, V> getter = (ConfigurationGetter<C, V>) PageFileProviderConfigurations.map.get(type);
         final V view = Objects.requireNonNull(getter).buildPage(activity, old);
-        new AlertDialog.Builder(activity).setTitle(type.getIdentifier()).setView(view.getRoot())
+        new AlertDialog.Builder(activity).setTitle(StorageTypeGetter.identifier(type)).setView(view.getRoot())
                 .setNegativeButton(R.string.cancel, null)
                 .setPositiveButton(R.string.confirm, (b, h) -> {
                     Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> {

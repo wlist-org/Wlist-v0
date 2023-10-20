@@ -39,6 +39,7 @@ import com.xuxiaocheng.WList.AndroidSupports.FileInformationGetter;
 import com.xuxiaocheng.WList.AndroidSupports.FileLocationGetter;
 import com.xuxiaocheng.WList.AndroidSupports.FilesListInformationGetter;
 import com.xuxiaocheng.WList.AndroidSupports.InstantaneousProgressStateGetter;
+import com.xuxiaocheng.WList.AndroidSupports.StorageTypeGetter;
 import com.xuxiaocheng.WList.Client.Assistants.BroadcastAssistant;
 import com.xuxiaocheng.WList.Client.Assistants.FilesAssistant;
 import com.xuxiaocheng.WList.Client.Assistants.TokenAssistant;
@@ -80,6 +81,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -94,6 +96,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
         super();
         this.activity = activity;
     }
+
 
     protected @NotNull InetSocketAddress address() {
         return this.activity.address.getInstance();
@@ -352,44 +355,26 @@ public class PageFile implements ActivityMainChooser.MainPage {
                             Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
                                 HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Renaming.",
                                         ParametersMap.create().add("address", this.address()).add("location", location).add("name", renamed));
-                                final ClientConfiguration configuration = ClientConfigurationSupporter.get();
-                                final Options.DuplicatePolicy policy = ClientConfigurationSupporter.duplicatePolicy(configuration);
-                                final UnionPair<Boolean, VisibleFailureReason> res;
-                                try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address())) {
-                                    res = OperateFilesHelper.renameDirectly(client, TokenAssistant.getToken(this.address(), this.username()), location, FileInformationGetter.isDirectory(information), renamed, policy);
-                                }
-                                if (res == null || res.isFailure()) {
-                                    Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, res == null ? "Others" : FailureReasonGetter.message(res.getE()), Toast.LENGTH_SHORT).show());
-                                    return;
-                                }
-                                if (res.getT().booleanValue()) {
+                                final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.rename(this.address(), this.username(),
+                                        new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.id(information)), FileInformationGetter.isDirectory(information), renamed, Main.ClientExecutors, HExceptionWrapper.wrapPredicate(p -> {
+                                    final CountDownLatch latch = new CountDownLatch(1);
+                                    final AtomicBoolean con = new AtomicBoolean(false);
+                                    Main.runOnUiThread(this.activity, () -> new AlertDialog.Builder(this.activity)
+                                            .setTitle(R.string.page_file_option_rename_complex)
+                                            .setOnCancelListener(a -> latch.countDown())
+                                            .setNegativeButton(R.string.cancel, (a, b) -> latch.countDown())
+                                            .setPositiveButton(R.string.confirm, (a, k) -> Main.runOnBackgroundThread(this.activity, () -> {
+                                                con.set(true);
+                                                latch.countDown();
+                                            })).show());
+                                    latch.await();
+                                    return con.get();
+                                }));
+                                if (res == null) return;
+                                if (res.isFailure())
+                                    Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, FailureReasonGetter.kind(res.getE()) + FailureReasonGetter.message(res.getE()), Toast.LENGTH_SHORT).show());
+                                else
                                     Main.showToast(this.activity, R.string.page_file_option_rename_success);
-                                    return;
-                                }
-                                new AlertDialog.Builder(this.activity)
-                                        .setTitle(R.string.page_file_option_rename_complex)
-                                        .setNegativeButton(R.string.cancel, null)
-                                        .setPositiveButton(R.string.confirm, (a, k) -> Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
-                                            final UnionPair<Boolean, VisibleFailureReason> copied;
-                                            try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address())) {
-                                                copied = OperateFilesHelper.copyDirectly(client, TokenAssistant.getToken(this.address(), this.username()), location, FileInformationGetter.isDirectory(information),
-                                                        new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.parentId(information)), renamed, policy);
-                                            }
-                                            if (copied == null || res.isFailure()) {
-                                                Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, copied == null ? "Others" : FailureReasonGetter.message(copied.getE()), Toast.LENGTH_SHORT).show());
-                                                return;
-                                            }
-                                            if (copied.getT().booleanValue()) {
-                                                try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address())) {
-                                                    OperateFilesHelper.trashFileOrDirectory(client, TokenAssistant.getToken(this.address(), this.username()),
-                                                            new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.id(information)), FileInformationGetter.isDirectory(information));
-                                                }
-                                                Main.showToast(this.activity, R.string.page_file_option_rename_success);
-                                                return;
-                                            }
-                                            // TODO: directory. upload after downloading.
-                                            throw new UnsupportedOperationException("WIP");
-                                        }))).show();
                             }, () -> Main.runOnUiThread(this.activity, dialog::cancel)));
                         }).show();
             });
@@ -575,7 +560,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
         });
         page.pageFileUploader.setOnClickListener(u -> {
             if (this.stacks.isEmpty()) { // Root selector
-                final String[] storages = StorageTypes.getAll().keySet().toArray(EmptyArrays.EMPTY_STRINGS);
+                final String[] storages = StorageTypeGetter.getAll().keySet().toArray(EmptyArrays.EMPTY_STRINGS);
                 final AtomicInteger choice = new AtomicInteger(-1);
                 new AlertDialog.Builder(this.activity).setTitle(R.string.page_file_provider_add)
                         .setSingleChoiceItems(storages, -1, (d, w) -> choice.set(w))
@@ -583,7 +568,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
                         .setPositiveButton(R.string.confirm, (d, w) -> {
                             if (choice.get() == -1) return;
                             final String identifier = storages[choice.get()];
-                            final StorageTypes<C> type = (StorageTypes<C>) Objects.requireNonNull(StorageTypes.get(identifier));
+                            final StorageTypes<C> type = (StorageTypes<C>) Objects.requireNonNull(StorageTypeGetter.get(identifier));
                             PageFileProviderConfigurations.getConfiguration(PageFile.this.activity, type, null, configuration -> Main.runOnUiThread(this.activity, () -> {
                                 final ImageView loading = new ImageView(PageFile.this.activity);
                                 loading.setImageResource(R.mipmap.page_file_loading);
@@ -684,13 +669,12 @@ public class PageFile implements ActivityMainChooser.MainPage {
                     this.listLoadingAnimation(true, 0, 0);
                 });
                 try {
-                    final ClientConfiguration configuration = ClientConfigurationSupporter.get();
-                    final Options.DuplicatePolicy policy = ClientConfigurationSupporter.duplicatePolicy(configuration);
-                    final VisibleFailureReason reason = FilesAssistant.uploadStream(this.address(), this.username(), HExceptionWrapper.wrapConsumer(consumer -> {
+                    final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.uploadStream(this.address(), this.username(), HExceptionWrapper.wrapBiConsumer((pair, consumer) -> {
                         try (final InputStream stream = new BufferedInputStream(this.activity.getContentResolver().openInputStream(uri))) {
+                            AndroidSupporter.skipNBytes(stream, pair.getFirst().longValue());
                             consumer.accept(stream);
                         }
-                    }), size, filename, policy, location, c -> true, s -> { // TODO
+                    }), size, filename, location, c -> true, s -> { // TODO
                         long current = 0, total = 0;
                         for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
                             current += pair.getFirst().longValue();
@@ -699,8 +683,9 @@ public class PageFile implements ActivityMainChooser.MainPage {
                         final long c = current, t = total;
                         Main.runOnUiThread(PageFile.this.activity, () -> PageFile.this.listLoadingAnimation(true, c, t));
                     });
-                    if (reason != null) // TODO
-                        Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, FailureReasonGetter.message(reason), Toast.LENGTH_SHORT).show());
+                    assert res != null;
+                    if (res.isFailure()) // TODO
+                        Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, FailureReasonGetter.message(res.getE()), Toast.LENGTH_SHORT).show());
                     else
                         Main.showToast(this.activity, R.string.page_file_upload_success_file);
                 } finally {
@@ -726,17 +711,15 @@ public class PageFile implements ActivityMainChooser.MainPage {
                 if (pos == 0) { // Refresh.
                     final FileLocation location = this.currentLocation.get();
                     this.listLoadingAnimation(true, 0, 0);
-                    Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
-                        FilesAssistant.refresh(this.address(), this.username(), location, Main.ClientExecutors, s -> { // TODO
-                            long current = 0, total = 0;
-                            for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
-                                current += pair.getFirst().longValue();
-                                total += pair.getSecond().longValue();
-                            }
-                            final long c = current, t = total;
-                            Main.runOnUiThread(PageFile.this.activity, () -> this.listLoadingAnimation(true, c, t));
-                        });
-                    }, () -> Main.runOnUiThread(this.activity, () -> this.listLoadingAnimation(false, 0, 0))));
+                    Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> FilesAssistant.refresh(this.address(), this.username(), location, Main.ClientExecutors, s -> { // TODO
+                        long current = 0, total = 0;
+                        for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
+                            current += pair.getFirst().longValue();
+                            total += pair.getSecond().longValue();
+                        }
+                        final long c = current, t = total;
+                        Main.runOnUiThread(PageFile.this.activity, () -> this.listLoadingAnimation(true, c, t));
+                    }), () -> Main.runOnUiThread(this.activity, () -> this.listLoadingAnimation(false, 0, 0))));
                 }
             });
             popup.show();

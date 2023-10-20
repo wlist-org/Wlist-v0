@@ -43,8 +43,9 @@ public final class Main extends Application {
             }
         }); // Kill in main thread.
         HLog.setLogTimeFLength(3);
-        OperateHelper.logOperation.set(false);
-        ServerHandler.logOperation.set(false);
+        OperateHelper.LogOperation.set(true);
+        ServerHandler.LogActive.set(false);
+        ServerHandler.LogOperation.set(false);
         Log.i("HLog", "Hello WList (Android v0.1.0)!" + ParametersMap.create().add("pid", Process.myPid()));
     }
 
