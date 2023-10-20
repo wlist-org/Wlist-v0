@@ -335,9 +335,9 @@ public class PageFile implements ActivityMainChooser.MainPage {
             optionBinding.pageFileOptionName.setText(FileInformationGetter.name(information));
             final long size = FileInformationGetter.size(information);
             final String unknown = this.activity.getString(R.string.unknown);
-            optionBinding.pageFileOptionSize.setText(size < 0 ? unknown : String.valueOf(size));
-            optionBinding.pageFileOptionCreate.setText(Objects.requireNonNullElse(ViewUtil.format(FileInformationGetter.createTime(information)), unknown));
-            optionBinding.pageFileOptionUpdate.setText(Objects.requireNonNullElse(ViewUtil.format(FileInformationGetter.updateTime(information)), unknown));
+            optionBinding.pageFileOptionSize.setText(ViewUtil.formatSizeDetail(size, unknown));
+            optionBinding.pageFileOptionCreate.setText(ViewUtil.formatTime(FileInformationGetter.createTime(information), unknown));
+            optionBinding.pageFileOptionUpdate.setText(ViewUtil.formatTime(FileInformationGetter.updateTime(information), unknown));
             final AlertDialog modifier = new AlertDialog.Builder(this.activity)
                     .setTitle(R.string.page_file_option).setView(optionBinding.getRoot())
                     .setPositiveButton(R.string.cancel, null).create();

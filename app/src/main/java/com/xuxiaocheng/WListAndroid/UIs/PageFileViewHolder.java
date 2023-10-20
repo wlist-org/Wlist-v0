@@ -38,7 +38,7 @@ class PageFileViewHolder extends EnhancedRecyclerViewAdapter.WrappedViewHolder<C
         this.itemView.setOnClickListener(v -> this.clicker.accept(information)); // TODO: select on long click.
         ViewUtil.setFileImage(this.image, FileInformationGetter.isDirectory(information), FileInformationGetter.name(information));
         this.name.setText(FileInformationGetter.name(information));
-        this.tips.setText(Objects.requireNonNullElse(ViewUtil.format(FileInformationGetter.updateTime(information)), this.image.getContext().getString(R.string.unknown)));
+        this.tips.setText(ViewUtil.formatTime(FileInformationGetter.updateTime(information), this.image.getContext().getString(R.string.unknown)));
         this.option.setOnClickListener(v -> this.listener.accept(information));
     }
 

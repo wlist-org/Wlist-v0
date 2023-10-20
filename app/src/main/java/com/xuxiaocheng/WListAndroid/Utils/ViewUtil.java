@@ -3,7 +3,6 @@ package com.xuxiaocheng.WListAndroid.Utils;
 import android.widget.ImageView;
 import android.widget.TextView;
 import com.xuxiaocheng.WListAndroid.R;
-import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -20,6 +19,26 @@ public final class ViewUtil {
 
     public static @NotNull String getText(final @NotNull TextView textView) {
         return Objects.requireNonNullElse(textView.getText(), "").toString();
+    }
+
+    private static final float SizeFactor = 0.9F;
+    private static final @NotNull String @NotNull [] SizeUnits = new String[]{"B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
+    public static @NotNull String formatSize(final long size, final @NotNull String unknown) {
+        if (size < 0) return unknown;
+        int index = 0;
+        float s = size;
+        for (; s >= 1024 * ViewUtil.SizeFactor && index < ViewUtil.SizeUnits.length - 1; ++index)
+            s /= 1024;
+        return String.format(Locale.getDefault(), "%.2f %s", s, ViewUtil.SizeUnits[index]);
+    }
+
+    public static @NotNull String formatSizeDetail(final long size, final @NotNull String unknown) {
+        return ViewUtil.formatSize(size, unknown) + (size <= 1024 * ViewUtil.SizeFactor ? "" : String.format(Locale.getDefault(), " (%d B)", size));
+    }
+
+    public static @NotNull String formatTime(final @Nullable ZonedDateTime time, final @NotNull String unknown) {
+        if (time == null) return unknown;
+        return time.toOffsetDateTime().atZoneSameInstant(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.getDefault()));
     }
 
     public static void setFileImage(final @NotNull ImageView image, final boolean isDirectory, final @NotNull String name) {
@@ -41,11 +60,5 @@ public final class ViewUtil {
             case "zip", "7z", "rar", "gz", "tar" -> R.mipmap.page_file_image_zip;
             default -> R.mipmap.page_file_image_file;
         });
-    }
-
-    @Contract("null -> null; !null -> !null")
-    public static @Nullable String format(final @Nullable ZonedDateTime time) {
-        if (time == null) return null;
-        return time.toOffsetDateTime().atZoneSameInstant(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.getDefault()));
     }
 }
