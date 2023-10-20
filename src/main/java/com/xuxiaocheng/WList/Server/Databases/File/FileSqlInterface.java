@@ -75,7 +75,7 @@ public interface FileSqlInterface extends DatabaseInterface {
     @Nullable FileInformation selectInfo(final long id, final boolean isDirectory, final @Nullable String _connectionId) throws SQLException;
 
     /**
-     * Select all files in directory.
+     * Select all files in directory. (Do NOT select root directory.)
      */
     @NotNull FilesListInformation selectInfosInDirectory(final long directoryId, final Options.@NotNull FilterPolicy filter, final @NotNull LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException;
 
@@ -86,7 +86,7 @@ public interface FileSqlInterface extends DatabaseInterface {
     Pair.@NotNull ImmutablePair<@NotNull Set<@NotNull Long>, @NotNull Set<@NotNull Long>> selectIdsInDirectory(final long directoryId, final @Nullable String _connectionId) throws SQLException;
 
     /**
-     * Select file by name in directory. (For duplicate.)
+     * Select file by name in directory. (For duplicate.) (Do NOT select root directory.)
      */
     @Nullable FileInformation selectInfoInDirectoryByName(final long parentId, final @NotNull String name, final @Nullable String _connectionId) throws SQLException;
 

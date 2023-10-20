@@ -604,10 +604,11 @@ public class FileSqliteHelper implements FileSqlInterface {
         final FileInformation information;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
-    SELECT %s FROM %s WHERE parent_id == ? AND name == ? LIMIT 1;
+    SELECT %s FROM %s WHERE parent_id == ? AND name == ? AND double_id != ? LIMIT 1;
                 """, FileSqliteHelper.FileInfoExtra, this.tableName))) {
                 statement.setLong(1, FileSqliteHelper.getDoubleId(parentId, true));
                 statement.setString(2, name);
+                statement.setLong(3, this.doubleRootId);
                 try (final ResultSet result = statement.executeQuery()) {
                     information = FileSqliteHelper.nextFile(result);
                 }
