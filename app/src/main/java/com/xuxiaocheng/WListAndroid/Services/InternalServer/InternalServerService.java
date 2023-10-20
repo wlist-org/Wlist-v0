@@ -8,6 +8,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.Rust.NativeUtil;
+import com.xuxiaocheng.WList.Server.Operations.ServerHandler;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.WList;
 import com.xuxiaocheng.WListAndroid.Main;
@@ -29,6 +30,7 @@ public final class InternalServerService extends Service {
             final String arch = PlatformDependent.normalizedArch();
             throw new IllegalStateException("Unknown architecture: " + ("unknown".equals(arch) ? System.getProperty("os.arch") : arch));
         }); // Normally is unreachable.
+        ServerHandler.AllowLogOn.set(false);
         this.ServerMainThread.start();
     }
 
