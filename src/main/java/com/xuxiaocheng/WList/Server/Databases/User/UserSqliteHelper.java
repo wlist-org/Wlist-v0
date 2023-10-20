@@ -24,7 +24,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Timestamp;
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -425,7 +424,7 @@ public class UserSqliteHelper implements UserSqlInterface {
                 """)) {
                 statement.setLong(1, groupId);
                 statement.setLong(2, this.getAdminId());
-                count = statement.executeLargeUpdate();
+                count = AndroidSupporter.isAndroid ? statement.executeUpdate() : statement.executeLargeUpdate();
             }
             connection.commit();
         }

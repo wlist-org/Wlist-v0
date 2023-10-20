@@ -38,7 +38,7 @@ public final class ByteBufIOUtil {
         if (length <= 0)
             return EmptyArrays.EMPTY_BYTES;
         if (buffer.readableBytes() < length)
-            throw new IOException(new IndexOutOfBoundsException(length));
+            throw new IOException(new IndexOutOfBoundsException("Index out of range: " + length)); // AndroidSupporter
         final byte[] bytes = new byte[length];
         buffer.readBytes(bytes);
         return bytes;

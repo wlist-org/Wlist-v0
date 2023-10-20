@@ -729,7 +729,7 @@ public final class FilesAssistant {
             }
         };
         if (!confirm.getT().acceptedRange())
-            stream.skipNBytes(from);
+            AndroidSupporter.skipNBytes(stream, from);
         return UnionPair.ok(stream);
     }
 

@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Server.Storage.Helpers;
 
+import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.BiConsumerE;
@@ -123,7 +124,7 @@ public final class ProviderUtil {
                 @Override
                 public boolean hasNext() {
                     if (throwable.get() != null)
-                        throw new NoSuchElementException(throwable.get());
+                        throw AndroidSupporter.isAndroid ? new RuntimeException(throwable.get()) : new NoSuchElementException(throwable.get());
                     if (filesQueue.peek() != null)
                         return true;
                     if (noNext.get())
@@ -143,7 +144,7 @@ public final class ProviderUtil {
                 @Override
                 public @NotNull FileInformation next() {
                     if (throwable.get() != null)
-                        throw new NoSuchElementException(throwable.get());
+                        throw AndroidSupporter.isAndroid ? new RuntimeException(throwable.get()) : new NoSuchElementException(throwable.get());
                     final FileInformation item = filesQueue.poll();
                     if (item != null) {
                         if (filesQueue.size() < ProviderUtil.lowWaterMark)
@@ -237,7 +238,7 @@ public final class ProviderUtil {
             @Override
             public boolean hasNext() {
                 if (throwable.get() != null)
-                    throw new NoSuchElementException(throwable.get());
+                    throw AndroidSupporter.isAndroid ? new RuntimeException(throwable.get()) : new NoSuchElementException(throwable.get());
                 if (filesQueue.peek() != null)
                     return true;
                 if (nextPage.get() >= pageCount) {
@@ -259,7 +260,7 @@ public final class ProviderUtil {
             @Override
             public @NotNull FileInformation next() {
                 if (throwable.get() != null)
-                    throw new NoSuchElementException(throwable.get());
+                    throw AndroidSupporter.isAndroid ? new RuntimeException(throwable.get()) : new NoSuchElementException(throwable.get());
                 final FileInformation item = filesQueue.poll();
                 if (item != null) {
                     if (filesQueue.size() < lowWaterMark)

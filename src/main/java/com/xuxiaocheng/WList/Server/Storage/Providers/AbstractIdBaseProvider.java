@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WList.Server.Storage.Providers;
 
+import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
 import com.xuxiaocheng.HeadLibs.CheckRules.CheckRule;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
@@ -376,6 +377,13 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                                         }
                                         AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, "No more elements when 'refreshDirectory#list0'.", ParametersMap.create().add("configuration", this.getConfiguration())
                                                 .add("t", t).add("directoryId", directoryId), exception);
+                                    } catch (final RuntimeException exception) {
+                                        if (AndroidSupporter.isAndroid) {
+                                            if (exception.getCause() != null) {
+                                                result1 = exception.getCause() instanceof Exception e ? e : exception;
+                                                return;
+                                            }
+                                        } else throw exception;
                                     }
                                     connection.commit();
                                 }

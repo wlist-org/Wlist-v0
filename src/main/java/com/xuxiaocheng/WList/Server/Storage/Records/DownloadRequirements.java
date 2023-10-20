@@ -20,7 +20,6 @@ import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
-import okhttp3.OkHttpClient;
 import okhttp3.Response;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -142,7 +141,7 @@ public record DownloadRequirements(boolean acceptedRange, long downloadingSize, 
         return Pair.ImmutablePair.makeImmutablePair(urlHeaders, Triad.ImmutableTriad.makeImmutableTriad(size, start, end));
     }
 
-    private static @NotNull DownloadRequirements getDownloadMethodsByRangedUrl(final @NotNull OkHttpClient client, final @NotNull HttpUrl url, final @Nullable Headers testedResponseHeader, final @Nullable Long totalSize, final Headers.@Nullable Builder requestHeaderBuilder, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @Nullable ZonedDateTime expireTime) throws IOException {
+    private static @NotNull DownloadRequirements getDownloadMethodsByRangedUrl(final Call.@NotNull Factory client, final @NotNull HttpUrl url, final @Nullable Headers testedResponseHeader, final @Nullable Long totalSize, final Headers.@Nullable Builder requestHeaderBuilder, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @Nullable ZonedDateTime expireTime) throws IOException {
         final Pair.ImmutablePair<Headers, Triad.ImmutableTriad<Long, Long, Long>> result = DownloadRequirements.getUrlHeaders(client, url, testedResponseHeader, totalSize, requestHeaderBuilder, from, to);
         if (result == null)
             return DownloadRequirements.EmptyDownloadRequirements;
@@ -187,7 +186,7 @@ public record DownloadRequirements(boolean acceptedRange, long downloadingSize, 
         });
     }
 
-    public static @NotNull DownloadRequirements tryGetDownloadFromUrl(final @NotNull OkHttpClient client, final @NotNull HttpUrl url, final @Nullable Headers testedResponseHeader, final @Nullable Long totalSize, final Headers.@Nullable Builder requestHeaderBuilder, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @Nullable ZonedDateTime expireTime, final @Nullable Consumer<? super @NotNull ZonedDateTime> expireTimeUpdateCallback) throws IOException {
+    public static @NotNull DownloadRequirements tryGetDownloadFromUrl(final Call.@NotNull Factory client, final @NotNull HttpUrl url, final @Nullable Headers testedResponseHeader, final @Nullable Long totalSize, final Headers.@Nullable Builder requestHeaderBuilder, final @LongRange(minimum = 0) long from, final @LongRange(minimum = 0) long to, final @Nullable ZonedDateTime expireTime, final @Nullable Consumer<? super @NotNull ZonedDateTime> expireTimeUpdateCallback) throws IOException {
         final Pair.ImmutablePair<Headers, Triad.ImmutableTriad<Long, Long, Long>> result = DownloadRequirements.getUrlHeaders(client, url, testedResponseHeader, totalSize, requestHeaderBuilder, from, to);
         if (result == null)
             return DownloadRequirements.EmptyDownloadRequirements;
