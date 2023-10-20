@@ -36,7 +36,7 @@ public final class Main extends Application {
                 HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Uncaught exception listened by WList Android.", ParametersMap.create().add("thread", t.getName()), e));
         final Thread.UncaughtExceptionHandler defaulter = HUncaughtExceptionHelper.getUncaughtExceptionListener(HUncaughtExceptionHelper.DefaultKey);
         final Thread.UncaughtExceptionHandler killer = HUncaughtExceptionHelper.getUncaughtExceptionListener(HUncaughtExceptionHelper.KillerKey);
-        HUncaughtExceptionHelper.setUncaughtExceptionListener(HUncaughtExceptionHelper.KillerKey, (t, e) -> {
+        HUncaughtExceptionHelper.replaceUncaughtExceptionListener(HUncaughtExceptionHelper.KillerKey, (t, e) -> {
             if (Looper.getMainLooper().getThread() == t) {
                 if (defaulter != null) defaulter.uncaughtException(t, e);
                 if (killer != null) killer.uncaughtException(t, e);

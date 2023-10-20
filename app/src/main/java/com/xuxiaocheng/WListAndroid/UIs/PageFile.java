@@ -13,12 +13,15 @@ import android.view.animation.Animation;
 import android.view.animation.LinearInterpolator;
 import android.view.animation.RotateAnimation;
 import android.widget.AbsListView;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.SimpleAdapter;
 import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.StringRes;
 import androidx.annotation.UiThread;
+import androidx.annotation.WorkerThread;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.ListPopupWindow;
 import androidx.constraintlayout.widget.ConstraintLayout;
@@ -71,6 +74,7 @@ import com.xuxiaocheng.WListAndroid.databinding.PageFileRenameBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileUploadBinding;
 import io.netty.util.internal.EmptyArrays;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.BufferedInputStream;
 import java.io.InputStream;
@@ -341,6 +345,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
             final AlertDialog modifier = new AlertDialog.Builder(this.activity)
                     .setTitle(R.string.page_file_option).setView(optionBinding.getRoot())
                     .setPositiveButton(R.string.cancel, null).create();
+            final FileLocation current = new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.id(information));
             final AtomicBoolean clickable = new AtomicBoolean(true);
             optionBinding.pageFileOptionRename.setOnClickListener(u -> {
                 if (!clickable.compareAndSet(true, false)) return;
@@ -364,21 +369,8 @@ public class PageFile implements ActivityMainChooser.MainPage {
                             Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
                                 HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Renaming.",
                                         ParametersMap.create().add("address", this.address()).add("location", location).add("name", renamed));
-                                final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.rename(this.address(), this.username(),
-                                        new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.id(information)), FileInformationGetter.isDirectory(information), renamed, Main.ClientExecutors, HExceptionWrapper.wrapPredicate(p -> {
-                                    final CountDownLatch latch = new CountDownLatch(1);
-                                    final AtomicBoolean con = new AtomicBoolean(false);
-                                    Main.runOnUiThread(this.activity, () -> new AlertDialog.Builder(this.activity)
-                                            .setTitle(R.string.page_file_option_rename_complex)
-                                            .setOnCancelListener(a -> latch.countDown())
-                                            .setNegativeButton(R.string.cancel, (a, b) -> latch.countDown())
-                                            .setPositiveButton(R.string.confirm, (a, k) -> Main.runOnBackgroundThread(this.activity, () -> {
-                                                con.set(true);
-                                                latch.countDown();
-                                            })).show());
-                                    latch.await();
-                                    return con.get();
-                                }));
+                                final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.rename(this.address(), this.username(), current, FileInformationGetter.isDirectory(information), renamed,
+                                        Main.ClientExecutors, HExceptionWrapper.wrapPredicate(p -> this.queryNotSupportedOperation()));
                                 if (res == null) return;
                                 if (res.isFailure())
                                     Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, FailureReasonGetter.kind(res.getE()) + FailureReasonGetter.message(res.getE()), Toast.LENGTH_SHORT).show());
@@ -388,37 +380,25 @@ public class PageFile implements ActivityMainChooser.MainPage {
                         }).show();
             });
             optionBinding.pageFileOptionRenameIcon.setOnClickListener(u -> optionBinding.pageFileOptionRename.performClick());
-//                optionBinding.pageFileOptionMove.setOnClickListener(u -> {
-//                    if (!clickable.compareAndSet(true, false)) return;
-//                    modifier.cancel();
-//                    Main.runOnBackgroundThread(this.page.activity, () -> {
-//                        // TODO: move file.
-//                        throw new UnsupportedOperationException("Move file is unsupported now!");
-//                    });
-////                    final EnhancedRecyclerViewAdapter<VisibleFileInformation, CellViewHolder> adapter = new EnhancedRecyclerViewAdapter<>() {
-////                        @Override
-////                        protected @NotNull CellViewHolder createViewHolder(final @NotNull ViewGroup parent) {
-////                            final CellViewHolder holder = new CellViewHolder(EnhancedRecyclerViewAdapter.buildView(CellViewHolder.this.page.activity.getLayoutInflater(), R.layout.page_file_cell, (RecyclerView) parent), information -> {
-//////                                PageFile.this.pushFileList(isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information),
-//////                                        FileLocationGetter.create(isRoot ? FileInformationGetter.name(information) : FileLocationGetter.driver(location), FileInformationGetter.id(information)));
-////                            }, isRoot, CellViewHolder.this.page);
-////                            holder.option.setVisibility(View.GONE);
-////                            return holder;
-////                        }
-////
-////                        @Override
-////                        protected void bindViewHolder(final @NotNull CellViewHolder holder, final @NotNull VisibleFileInformation information) {
-////                            holder.itemView.setOnClickListener(v -> holder.clicker.accept(information));
-////                            CellViewHolder.setFileImage(holder.image, information);
-////                            holder.name.setText(holder.isRoot ? FileInformationGetter.md5(information) : FileInformationGetter.name(information));
-////                            holder.tips.setText(FileInformationGetter.updateTimeString(information, DateTimeFormatter.ISO_DATE_TIME, "unknown").replace('T', ' '));
-////                            // TODO: same as 'onBind' except 'option'.
-////                        }
-////                    };
-////                    final AlertDialog.Builder chooser = new AlertDialog.Builder(this.page.activity).setTitle(R.string.page_file_option_move)
-////                            .setView()
-//                });
-//                optionBinding.pageFileOptionMoveIcon.setOnClickListener(u -> optionBinding.pageFileOptionMove.performClick());
+            optionBinding.pageFileOptionMove.setOnClickListener(u -> {
+                if (!clickable.compareAndSet(true, false)) return;
+                modifier.cancel();
+                Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
+                    final FileLocation target = this.queryTargetDirectory(R.string.page_file_option_move/*, FileInformationGetter.isDirectory(information) ? current : null*/);
+                    if (target == null) return;
+                    final AtomicBoolean queried = new AtomicBoolean(false);
+                    final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.move(this.address(), this.username(), current, FileInformationGetter.isDirectory(information), target, Main.ClientExecutors, HExceptionWrapper.wrapPredicate(p -> {
+                        if (queried.getAndSet(true)) return true;
+                        return this.queryNotSupportedOperation();
+                    }));
+                    if (res == null) return;
+                    if (res.isFailure())
+                        Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, FailureReasonGetter.kind(res.getE()) + FailureReasonGetter.message(res.getE()), Toast.LENGTH_SHORT).show());
+                    else
+                        Main.showToast(this.activity, R.string.page_file_option_move_success);
+                }));
+            });
+            optionBinding.pageFileOptionMoveIcon.setOnClickListener(u -> optionBinding.pageFileOptionMove.performClick());
 //                optionBinding.pageFileOptionCopy.setOnClickListener(u -> {
 //                    if (!clickable.compareAndSet(true, false)) return;
 //                    modifier.cancel();
@@ -487,6 +467,45 @@ public class PageFile implements ActivityMainChooser.MainPage {
 //                optionBinding.pageFileOptionDownloadIcon.setOnClickListener(u -> optionBinding.pageFileOptionDownload.performClick());
             modifier.show();
         });
+    }
+
+    @WorkerThread
+    public boolean queryNotSupportedOperation() throws InterruptedException {
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicBoolean continuer = new AtomicBoolean(false);
+        Main.runOnUiThread(this.activity, () -> new AlertDialog.Builder(this.activity)
+                .setTitle(R.string.page_file_option_rename_complex)
+                .setOnCancelListener(a -> latch.countDown())
+                .setNegativeButton(R.string.cancel, (a, b) -> latch.countDown())
+                .setPositiveButton(R.string.confirm, (a, k) -> Main.runOnBackgroundThread(this.activity, () -> {
+                    continuer.set(true);
+                    latch.countDown();
+                })).show());
+        latch.await();
+        return continuer.get();
+    }
+
+    @WorkerThread
+    public @Nullable FileLocation queryTargetDirectory(@StringRes final int title/*, final @Nullable FileLocation current*/) throws InterruptedException {
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<FileLocation> result = new AtomicReference<>();
+        final PageFile page = new PageFile(this.activity); // TODO
+        Main.runOnUiThread(this.activity, () -> {
+            final View p = this.pageCache.getInstance().getRoot();
+            new AlertDialog.Builder(this.activity)
+                    .setTitle(title).setView(page.onShow())
+                    .setOnCancelListener(a -> latch.countDown())
+                    .setNegativeButton(R.string.cancel, (a, b) -> latch.countDown())
+                    .setPositiveButton(R.string.confirm, (a, k) -> {
+                        result.set(page.currentLocation.get());
+                        latch.countDown();
+                    }).show()
+                    .getWindow().setLayout(p.getWidth(), p.getHeight());
+            page.pageCache.getInstance().getRoot().setLayoutParams(new FrameLayout.LayoutParams(p.getWidth(), p.getHeight()));
+            page.pageCache.getInstance().pageFileUploader.setVisibility(View.GONE);
+        });
+        latch.await();
+        return result.get();
     }
 
     @UiThread
