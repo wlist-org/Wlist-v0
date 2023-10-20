@@ -59,10 +59,10 @@ public final class OperateHelper {
         return send;
     }
 
-    public static final AtomicBoolean logOperation = new AtomicBoolean(true);
+    public static final AtomicBoolean LogOperation = new AtomicBoolean(true);
 
     static void logOperating(final @NotNull OperationType operation, final @Nullable String token, final @Nullable Consumer<? super @NotNull ParametersMap> parameters) {
-        if (OperateHelper.logOperation.get()) {
+        if (OperateHelper.LogOperation.get()) {
             final ParametersMap parametersMap = ParametersMap.create();
             if (token != null)
                 parametersMap.add("tokenHash", token.hashCode());
@@ -73,7 +73,7 @@ public final class OperateHelper {
     }
 
     static void logOperated(final @NotNull OperationType operation, final @Nullable String reason, final @Nullable Consumer<? super @NotNull ParametersMap> parameters) {
-        if (OperateHelper.logOperation.get()) {
+        if (OperateHelper.LogOperation.get()) {
             final boolean success = reason == null;
             final ParametersMap parametersMap = ParametersMap.create().add("success", success).optionallyAdd(!success, "reason", reason);
             if (parameters != null)

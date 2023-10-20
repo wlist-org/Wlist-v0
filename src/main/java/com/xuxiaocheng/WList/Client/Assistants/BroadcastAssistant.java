@@ -248,7 +248,8 @@ public final class BroadcastAssistant {
                         client.open();
                     } catch (final IOException exception) {
                         flag = false;
-                        throw exception;
+//                        throw exception;
+                        return;
                     }
                     OperateServerHelper.setBroadcastMode(client, true);
                     while (client.isActive()) {
