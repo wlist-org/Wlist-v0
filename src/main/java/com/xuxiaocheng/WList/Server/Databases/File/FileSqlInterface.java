@@ -20,6 +20,19 @@ public interface FileSqlInterface extends DatabaseInterface {
     @Contract(pure = true) @NotNull String getProviderName();
     @Contract(pure = true) long getRootId();
 
+    @Contract(pure = true)
+    static long getDoubleId(final long id, final boolean isDirectory) {
+        return (id << 1) + (isDirectory ? 0 : 1);
+    }
+    @Contract(pure = true)
+    static long getRealId(final long doubleId) {
+        return doubleId >> 1;
+    }
+    @Contract(pure = true)
+    static boolean isDirectory(final long doubleId) {
+        return (doubleId & 1) == 0;
+    }
+
 
     /* --- Insert --- */
 

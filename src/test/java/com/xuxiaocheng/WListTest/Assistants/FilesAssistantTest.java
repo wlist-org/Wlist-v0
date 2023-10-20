@@ -21,7 +21,7 @@ import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFilesListInformation;
 import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
-import com.xuxiaocheng.WList.Server.Databases.File.FileSqliteHelper;
+import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInterface;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WList.Server.WListServer;
@@ -89,7 +89,7 @@ public class FilesAssistantTest extends ProvidersWrapper {
 //    @Disabled
     public void _del() throws IOException, InterruptedException, WrongStateException {
         final long doubleId = 17737902;
-        Assertions.assertTrue(FilesAssistant.trash(this.address(), this.adminUsername(), this.location(FileSqliteHelper.getRealId(doubleId)), FileSqliteHelper.isDirectory(doubleId), PredicateE.truePredicate()));
+        Assertions.assertTrue(FilesAssistant.trash(this.address(), this.adminUsername(), this.location(FileSqlInterface.getRealId(doubleId)), FileSqlInterface.isDirectory(doubleId), PredicateE.truePredicate()));
     }
 
     @Test

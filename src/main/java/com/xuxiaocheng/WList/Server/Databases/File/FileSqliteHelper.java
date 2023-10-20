@@ -51,26 +51,12 @@ public class FileSqliteHelper implements FileSqlInterface {
         this.providerName = providerName;
         this.rootId = rootId;
         this.tableName = FileSqliteHelper.getTableName(providerName);
-        this.doubleRootId = FileSqliteHelper.getDoubleId(this.rootId, true);
+        this.doubleRootId = FileSqlInterface.getDoubleId(this.rootId, true);
     }
 
     @Override
     public @NotNull Connection getConnection(final @Nullable String _connectionId, final @Nullable AtomicReference<? super String> connectionId) throws SQLException {
         return this.database.getConnection(_connectionId, connectionId);
-    }
-
-
-    @Contract(pure = true)
-    public static long getDoubleId(final long id, final boolean isDirectory) {
-        return (id << 1) + (isDirectory ? 0 : 1);
-    }
-    @Contract(pure = true)
-    public static long getRealId(final long doubleId) {
-        return doubleId >> 1;
-    }
-    @Contract(pure = true)
-    public static boolean isDirectory(final long doubleId) {
-        return (doubleId & 1) == 0;
     }
 
 
@@ -107,7 +93,7 @@ public class FileSqliteHelper implements FileSqlInterface {
                 try (final ResultSet result = statement.executeQuery()) {
                     if (result.next() && this.doubleRootId != result.getLong(1))
                         throw new IllegalStateException("Duplicate database root id." + ParametersMap.create()
-                                .add("existed", FileSqliteHelper.getRealId(result.getLong(1))).add("new", this.rootId).add("provider", this.providerName));
+                                .add("existed", FileSqlInterface.getRealId(result.getLong(1))).add("new", this.rootId).add("provider", this.providerName));
                 }
             }
             final boolean newer;
@@ -165,13 +151,13 @@ public class FileSqliteHelper implements FileSqlInterface {
             return null;
         final long doubleId = result.getLong("double_id");
         final long doubleParentId = result.getLong("parent_id");
-        final boolean directory = FileSqliteHelper.isDirectory(doubleId);
+        final boolean directory = FileSqlInterface.isDirectory(doubleId);
         final String name = result.getString("name");
         final long size = result.getLong("size");
         final Timestamp createTime = result.getTimestamp("create_time");
         final Timestamp updateTime = result.getTimestamp("update_time");
         final String others = result.getString("others");
-        return new FileInformation(FileSqliteHelper.getRealId(doubleId), FileSqliteHelper.getRealId(doubleParentId), name, directory, size,
+        return new FileInformation(FileSqlInterface.getRealId(doubleId), FileSqlInterface.getRealId(doubleParentId), name, directory, size,
                 createTime == null ? null : SqlHelper.toZonedDataTime(createTime),
                 updateTime == null ? null : SqlHelper.toZonedDataTime(updateTime),
                 others);
@@ -200,8 +186,8 @@ public class FileSqliteHelper implements FileSqlInterface {
     INSERT INTO %s (double_id, parent_id, name, name_order, size, create_time, update_time, others)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?);
                 """, this.tableName))) {
-                statement.setLong(1, FileSqliteHelper.getDoubleId(information.id(), information.isDirectory()));
-                statement.setLong(2, FileSqliteHelper.getDoubleId(information.parentId(), true));
+                statement.setLong(1, FileSqlInterface.getDoubleId(information.id(), information.isDirectory()));
+                statement.setLong(2, FileSqlInterface.getDoubleId(information.parentId(), true));
                 statement.setString(3, information.name());
                 statement.setBytes(4, SqlHelper.toOrdered(information.name()));
                 statement.setLong(5, information.size());
@@ -220,7 +206,7 @@ public class FileSqliteHelper implements FileSqlInterface {
     public void insertIterator(final @NotNull Iterator<@NotNull FileInformation> iterator, final long directoryId, final @Nullable String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>(_connectionId);
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
-            final long doubleDirectoryId = FileSqliteHelper.getDoubleId(directoryId, true);
+            final long doubleDirectoryId = FileSqlInterface.getDoubleId(directoryId, true);
             boolean success = true;
             long size = 0;
             if (iterator.hasNext()) {
@@ -232,7 +218,7 @@ public class FileSqliteHelper implements FileSqlInterface {
                     while (iterator.hasNext()) {
                         final FileInformation information = iterator.next();
                         assert information.parentId() == directoryId && (information.isDirectory() || information.size() >= 0);
-                        final long doubleId = FileSqliteHelper.getDoubleId(information.id(), information.isDirectory());
+                        final long doubleId = FileSqlInterface.getDoubleId(information.id(), information.isDirectory());
                         if (inserted.contains(doubleId))
                             continue;
                         inserted.add(doubleId);
@@ -272,7 +258,7 @@ public class FileSqliteHelper implements FileSqlInterface {
     protected void updateDirectorySizeRecursively(final long directoryId, final long delta, final @Nullable String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>(_connectionId);
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
-            final long doubleId = FileSqliteHelper.getDoubleId(directoryId, true);
+            final long doubleId = FileSqlInterface.getDoubleId(directoryId, true);
             final long size, parentId;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     SELECT size, parent_id FROM %s WHERE double_id == ? LIMIT 1;
@@ -282,7 +268,7 @@ public class FileSqliteHelper implements FileSqlInterface {
                     if (!result.next())
                         throw new IllegalStateException("No such directory." + ParametersMap.create().add("directoryId", directoryId).add("delta", delta));
                     size = result.getLong("size");
-                    parentId = FileSqliteHelper.getRealId(result.getLong("parent_id"));
+                    parentId = FileSqlInterface.getRealId(result.getLong("parent_id"));
                 }
             }
             if (size >= 0) {
@@ -335,7 +321,7 @@ public class FileSqliteHelper implements FileSqlInterface {
     protected void unknownDirectorySizeRecursively(final long directoryId, final @Nullable String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>(_connectionId);
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
-            final long doubleId = FileSqliteHelper.getDoubleId(directoryId, true);
+            final long doubleId = FileSqlInterface.getDoubleId(directoryId, true);
             final long size, parentId;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     SELECT size, parent_id FROM %s WHERE double_id == ? LIMIT 1;
@@ -345,7 +331,7 @@ public class FileSqliteHelper implements FileSqlInterface {
                     if (!result.next())
                         throw new IllegalStateException("No such directory." + ParametersMap.create().add("directoryId", directoryId));
                     size = result.getLong("size");
-                    parentId = FileSqliteHelper.getRealId(result.getLong("parent_id"));
+                    parentId = FileSqlInterface.getRealId(result.getLong("parent_id"));
                 }
             }
             if (size >= 0) {
@@ -389,7 +375,7 @@ public class FileSqliteHelper implements FileSqlInterface {
     @Override
     public void updateOrInsertFile(final @NotNull FileInformation file, final @Nullable String _connectionId) throws SQLException {
         assert !file.isDirectory() && file.size() >= 0;
-        final long parentDoubleId = FileSqliteHelper.getDoubleId(file.parentId(), true);
+        final long parentDoubleId = FileSqlInterface.getDoubleId(file.parentId(), true);
         final AtomicReference<String> connectionId = new AtomicReference<>(_connectionId);
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
             if (this.isDirectoryIndexed(parentDoubleId, connection)) {
@@ -407,7 +393,7 @@ public class FileSqliteHelper implements FileSqlInterface {
                         statement.setTimestamp(5, SqlHelper.getTimestamp(file.createTime() == null ? old.createTime() : file.createTime()));
                         statement.setTimestamp(6, SqlHelper.getTimestamp(file.updateTime() == null ? old.updateTime() : file.updateTime()));
                         statement.setString(7, file.others());
-                        statement.setLong(8, FileSqliteHelper.getDoubleId(file.id(), false));
+                        statement.setLong(8, FileSqlInterface.getDoubleId(file.id(), false));
                         statement.executeUpdate();
                     }
                     if (file.parentId() == old.parentId()) {
@@ -426,7 +412,7 @@ public class FileSqliteHelper implements FileSqlInterface {
     @Override
     public void updateOrInsertDirectory(final @NotNull FileInformation directory, final @Nullable String _connectionId) throws SQLException {
         assert directory.isDirectory();
-        final long parentDoubleId = FileSqliteHelper.getDoubleId(directory.parentId(), true);
+        final long parentDoubleId = FileSqlInterface.getDoubleId(directory.parentId(), true);
         final AtomicReference<String> connectionId = new AtomicReference<>(_connectionId);
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
             if (this.isDirectoryIndexed(parentDoubleId, connection)) {
@@ -436,7 +422,7 @@ public class FileSqliteHelper implements FileSqlInterface {
     INSERT INTO %s (double_id, parent_id, name, name_order, size, create_time, update_time, others)
         VALUES (?, ?, ?, ?, -1, ?, ?, ?);
                         """, this.tableName))) {
-                        statement.setLong(1, FileSqliteHelper.getDoubleId(directory.id(), true));
+                        statement.setLong(1, FileSqlInterface.getDoubleId(directory.id(), true));
                         statement.setLong(2, parentDoubleId);
                         statement.setString(3, directory.name());
                         statement.setBytes(4, SqlHelper.toOrdered(directory.name()));
@@ -458,7 +444,7 @@ public class FileSqliteHelper implements FileSqlInterface {
                         statement.setTimestamp(4, SqlHelper.getTimestamp(directory.createTime() == null ? old.createTime() : directory.createTime()));
                         statement.setTimestamp(5, SqlHelper.getTimestamp(directory.updateTime() == null ? old.updateTime() : directory.updateTime()));
                         statement.setString(6, directory.others());
-                        statement.setLong(7, FileSqliteHelper.getDoubleId(directory.id(), true));
+                        statement.setLong(7, FileSqlInterface.getDoubleId(directory.id(), true));
                         statement.executeUpdate();
                     }
                     if (directory.parentId() != old.parentId())
@@ -520,7 +506,7 @@ public class FileSqliteHelper implements FileSqlInterface {
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     SELECT %s FROM %s WHERE double_id == ? LIMIT 1;
                 """, FileSqliteHelper.FileInfoExtra, this.tableName))) {
-                statement.setLong(1, FileSqliteHelper.getDoubleId(id, isDirectory));
+                statement.setLong(1, FileSqlInterface.getDoubleId(id, isDirectory));
                 try (final ResultSet result = statement.executeQuery()) {
                     information = FileSqliteHelper.nextFile(result);
                 }
@@ -538,7 +524,7 @@ public class FileSqliteHelper implements FileSqlInterface {
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     SELECT COUNT(*) FROM %s WHERE parent_id == ? AND double_id != ?;
                 """, this.tableName))) {
-                statement.setLong(1, FileSqliteHelper.getDoubleId(directoryId, true));
+                statement.setLong(1, FileSqlInterface.getDoubleId(directoryId, true));
                 statement.setLong(2, this.doubleRootId);
                 try (final ResultSet result = statement.executeQuery()) {
                     result.next();
@@ -552,7 +538,7 @@ public class FileSqliteHelper implements FileSqlInterface {
                 try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     SELECT COUNT(*) FROM %s WHERE parent_id == ? %s AND double_id != ?;
                     """, this.tableName, FileSqliteHelper.whereFilter(filter)))) {
-                    statement.setLong(1, FileSqliteHelper.getDoubleId(directoryId, true));
+                    statement.setLong(1, FileSqlInterface.getDoubleId(directoryId, true));
                     statement.setLong(2, this.doubleRootId);
                     try (final ResultSet result = statement.executeQuery()) {
                         result.next();
@@ -565,7 +551,7 @@ public class FileSqliteHelper implements FileSqlInterface {
                     try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     SELECT %s FROM %s WHERE parent_id == ? AND double_id != ? %s %s LIMIT ? OFFSET ?;
                         """, FileSqliteHelper.FileInfoExtra, this.tableName, FileSqliteHelper.whereFilter(filter), FileSqliteHelper.orderBy(orders)))) {
-                        statement.setLong(1, FileSqliteHelper.getDoubleId(directoryId, true));
+                        statement.setLong(1, FileSqlInterface.getDoubleId(directoryId, true));
                         statement.setLong(2, this.doubleRootId);
                         statement.setLong(3, limit);
                         statement.setLong(4, position);
@@ -586,11 +572,11 @@ public class FileSqliteHelper implements FileSqlInterface {
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     SELECT double_id FROM %s WHERE parent_id == ?;
                 """, this.tableName))) {
-                statement.setLong(1, FileSqliteHelper.getDoubleId(directoryId, true));
+                statement.setLong(1, FileSqlInterface.getDoubleId(directoryId, true));
                 try (final ResultSet result = statement.executeQuery()) {
                     while (result.next()) {
                         final long doubleId = result.getLong(1);
-                        (FileSqliteHelper.isDirectory(doubleId) ? directories : files).add(FileSqliteHelper.getRealId(doubleId));
+                        (FileSqlInterface.isDirectory(doubleId) ? directories : files).add(FileSqlInterface.getRealId(doubleId));
                     }
                 }
             }
@@ -606,7 +592,7 @@ public class FileSqliteHelper implements FileSqlInterface {
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     SELECT %s FROM %s WHERE parent_id == ? AND name == ? AND double_id != ? LIMIT 1;
                 """, FileSqliteHelper.FileInfoExtra, this.tableName))) {
-                statement.setLong(1, FileSqliteHelper.getDoubleId(parentId, true));
+                statement.setLong(1, FileSqlInterface.getDoubleId(parentId, true));
                 statement.setString(2, name);
                 statement.setLong(3, this.doubleRootId);
                 try (final ResultSet result = statement.executeQuery()) {
@@ -624,12 +610,12 @@ public class FileSqliteHelper implements FileSqlInterface {
         final boolean success;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             long fileDoubleParent;
-            final long directoryDoubleId = FileSqliteHelper.getDoubleId(directoryId, true);
+            final long directoryDoubleId = FileSqlInterface.getDoubleId(directoryId, true);
             final long fileSize, directorySize;
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     SELECT parent_id, size FROM %s WHERE double_id == ? LIMIT 1;
                 """, this.tableName))) {
-                statement.setLong(1, FileSqliteHelper.getDoubleId(id, isDirectory));
+                statement.setLong(1, FileSqlInterface.getDoubleId(id, isDirectory));
                 try (final ResultSet result = statement.executeQuery()) {
                     if (!result.next()) {
                         connection.commit();
@@ -660,12 +646,12 @@ public class FileSqliteHelper implements FileSqlInterface {
                     final Collection<Long> book = new HashSet<>();
                     while (true) {
                         if (book.contains(fileDoubleParent))
-                            throw new IllegalStateException("Recycling files tree." + ParametersMap.create().add("id", id).add("isDirectory", isDirectory).add("parentId", FileSqliteHelper.getRealId(fileDoubleParent)));
+                            throw new IllegalStateException("Recycling files tree." + ParametersMap.create().add("id", id).add("isDirectory", isDirectory).add("parentId", FileSqlInterface.getRealId(fileDoubleParent)));
                         book.add(fileDoubleParent);
                         statement.setLong(1, fileDoubleParent);
                         try (final ResultSet result = statement.executeQuery()) {
                             if (!result.next())
-                                throw new IllegalStateException("Illegal files tree." + ParametersMap.create().add("id", id).add("isDirectory", isDirectory).add("parentId", FileSqliteHelper.getRealId(fileDoubleParent)));
+                                throw new IllegalStateException("Illegal files tree." + ParametersMap.create().add("id", id).add("isDirectory", isDirectory).add("parentId", FileSqlInterface.getRealId(fileDoubleParent)));
                             fileDoubleParent = result.getLong(1);
                         }
                         if (fileDoubleParent == this.doubleRootId) {
@@ -695,11 +681,11 @@ public class FileSqliteHelper implements FileSqlInterface {
             try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     SELECT size, parent_id FROM %s WHERE double_id == ? LIMIT 1;
                 """, this.tableName))) {
-                statement.setLong(1, FileSqliteHelper.getDoubleId(fileId, false));
+                statement.setLong(1, FileSqlInterface.getDoubleId(fileId, false));
                 try (final ResultSet result = statement.executeQuery()) {
                     if (result.next()) {
                         size = result.getLong(1);
-                        parentId = FileSqliteHelper.getRealId(result.getLong(2));
+                        parentId = FileSqlInterface.getRealId(result.getLong(2));
                         success = true;
                     } else
                         success = false;
@@ -709,7 +695,7 @@ public class FileSqliteHelper implements FileSqlInterface {
                 try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     DELETE FROM %s WHERE double_id == ?;
                     """, this.tableName))) {
-                    statement.setLong(1, FileSqliteHelper.getDoubleId(fileId, false));
+                    statement.setLong(1, FileSqlInterface.getDoubleId(fileId, false));
                     statement.executeUpdate();
                 }
                 this.updateDirectorySizeRecursively(parentId, -size, connectionId.get());
@@ -743,11 +729,11 @@ public class FileSqliteHelper implements FileSqlInterface {
                 try (final PreparedStatement statement = connection.prepareStatement(String.format("""
     SELECT size, parent_id FROM %s WHERE double_id == ? LIMIT 1;
                     """, this.tableName))) {
-                    statement.setLong(1, FileSqliteHelper.getDoubleId(directoryId, true));
+                    statement.setLong(1, FileSqlInterface.getDoubleId(directoryId, true));
                     try (final ResultSet result = statement.executeQuery()) {
                         if (result.next()) {
                             size = result.getLong(1);
-                            parentId = FileSqliteHelper.getRealId(result.getLong(2));
+                            parentId = FileSqlInterface.getRealId(result.getLong(2));
                             success = true;
                         } else
                             success = false;
@@ -772,14 +758,14 @@ public class FileSqliteHelper implements FileSqlInterface {
     DELETE FROM %s WHERE double_id == ?;
                         """, this.tableName))) {
                         for (final Long id: files) {
-                            statement.setLong(1, FileSqliteHelper.getDoubleId(id.longValue(), false));
+                            statement.setLong(1, FileSqlInterface.getDoubleId(id.longValue(), false));
                             statement.executeUpdate();
                         }
                         for (final Long id: directories) {
-                            statement.setLong(1, FileSqliteHelper.getDoubleId(id.longValue(), true));
+                            statement.setLong(1, FileSqlInterface.getDoubleId(id.longValue(), true));
                             statement.executeUpdate();
                         }
-                        statement.setLong(1, FileSqliteHelper.getDoubleId(directoryId, true));
+                        statement.setLong(1, FileSqlInterface.getDoubleId(directoryId, true));
                         statement.executeUpdate();
                     }
                     this.updateDirectorySizeRecursively(parentId, size == -1 ? 0 : -size, connectionId.get());

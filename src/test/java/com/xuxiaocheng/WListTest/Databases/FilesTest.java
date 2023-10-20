@@ -3,7 +3,7 @@ package com.xuxiaocheng.WListTest.Databases;
 import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
-import com.xuxiaocheng.WList.Server.Databases.File.FileSqliteHelper;
+import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInterface;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
 import com.xuxiaocheng.StaticLoader;
 import org.junit.jupiter.api.AfterEach;
@@ -60,12 +60,12 @@ public class FilesTest {
     @ParameterizedTest
     @ValueSource(longs = {1, 2, 3, 4, 0, -1, -2, -3})
     public void doubleId(final long id) {
-        final long directory = FileSqliteHelper.getDoubleId(id, true);
-        final long file = FileSqliteHelper.getDoubleId(id, false);
-        Assertions.assertEquals(id, FileSqliteHelper.getRealId(directory));
-        Assertions.assertEquals(id, FileSqliteHelper.getRealId(file));
-        Assertions.assertTrue(FileSqliteHelper.isDirectory(directory));
-        Assertions.assertFalse(FileSqliteHelper.isDirectory(file));
+        final long directory = FileSqlInterface.getDoubleId(id, true);
+        final long file = FileSqlInterface.getDoubleId(id, false);
+        Assertions.assertEquals(id, FileSqlInterface.getRealId(directory));
+        Assertions.assertEquals(id, FileSqlInterface.getRealId(file));
+        Assertions.assertTrue(FileSqlInterface.isDirectory(directory));
+        Assertions.assertFalse(FileSqlInterface.isDirectory(file));
         Assertions.assertEquals(directory, file - 1);
     }
 
