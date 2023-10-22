@@ -43,10 +43,10 @@ public final class Main extends Application {
             }
         }); // Kill in main thread.
         HLog.setLogTimeFLength(3);
-        OperateHelper.LogOperation.set(true);
+        OperateHelper.LogOperation.set(false);
         ServerHandler.LogActive.set(false);
         ServerHandler.LogOperation.set(false);
-        Log.i("HLog", "Hello WList (Android v0.1.0)!" + ParametersMap.create().add("pid", Process.myPid()));
+        Log.i("HLog", "Hello WList (Android v0.1.1)!" + ParametersMap.create().add("pid", Process.myPid()));
     }
 
     public static final @NotNull EventExecutorGroup ClientExecutors =

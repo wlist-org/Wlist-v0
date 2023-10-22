@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WListAndroid.UIs;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -28,6 +29,7 @@ import androidx.appcompat.widget.ListPopupWindow;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.qw.soul.permission.bean.Permissions;
 import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
@@ -63,12 +65,12 @@ import com.xuxiaocheng.WList.Commons.Options.Options;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInterface;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
-import com.xuxiaocheng.WListAndroid.Helpers.PermissionsHelper;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.Utils.EmptyRecyclerAdapter;
 import com.xuxiaocheng.WListAndroid.Utils.EnhancedRecyclerViewAdapter;
 import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
+import com.xuxiaocheng.WListAndroid.Utils.PermissionUtil;
 import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileDirectoryBinding;
@@ -472,6 +474,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
                                 final AlertDialog loader = new AlertDialog.Builder(this.activity).setTitle(FileInformationGetter.name(information)).setCancelable(false).show();
                                 Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
                                     final File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "wlist/" + FileInformationGetter.name(information));
+                                    PermissionUtil.tryGetPermission(this.activity, Permissions.build(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE));
                                     HFileHelper.ensureFileAccessible(file, true);
                                     HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Downloading.",
                                             ParametersMap.create().add("address", this.address()).add("information", information).add("file", file));
@@ -688,12 +691,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
             final Consumer<String> uploadFile = pattern -> {
                 if (!clickable.compareAndSet(true, false)) return;
                 uploader.cancel();
-                PermissionsHelper.getExternalStorage(this.activity, false, success -> {
-                    if (success.booleanValue())
-                        this.chooserLauncher.getInstance().launch(pattern);
-                    else
-                        Main.showToast(this.activity, R.string.toast_no_read_permissions);
-                });
+                this.chooserLauncher.getInstance().launch(pattern);
             };
             upload.pageFileUploadFile.setOnClickListener(v -> uploadFile.accept("*/*"));
             upload.pageFileUploadFileText.setOnClickListener(v -> upload.pageFileUploadFile.performClick());

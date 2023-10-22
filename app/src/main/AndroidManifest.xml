@@ -15,6 +15,7 @@
 		android:fullBackupContent="@xml/backup_rules"
 		android:icon="@mipmap/app_logo"
 		android:label="@string/app_name"
+		android:requestLegacyExternalStorage="true"
 		android:roundIcon="@mipmap/app_logo_round"
 		android:supportsRtl="true"
 		android:theme="@style/Theme.WListClientAndroid"
@@ -30,8 +31,6 @@
 			</intent-filter>
 		</activity>
 		<activity android:name=".UIs.ActivityMain" />
-		<activity android:name=".Helpers.PermissionsHelper$PermissionsActivity" />
-		<activity android:name=".Helpers.PermissionsHelper$StoragesActivity" />
 
 		<service
 			android:name=".Services.InternalServer.InternalServerService"
