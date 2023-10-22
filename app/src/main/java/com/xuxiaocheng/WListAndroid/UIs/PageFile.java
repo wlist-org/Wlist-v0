@@ -760,7 +760,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
             popup.setWidth(this.pageCache.getInstance().pageFileList.getWidth() >> 1);
             popup.setAnchorView(options);
             popup.setAdapter(new SimpleAdapter(this.activity, List.of(
-                    Map.of("image", R.mipmap.app_logo_round, "name", this.activity.getResources().getString(R.string.page_file_options_refresh))
+                    Map.of("image", R.mipmap.page_file_refresh, "name", this.activity.getResources().getString(R.string.page_file_options_refresh))
             ), R.layout.activity_main_options_cell, new String[]{"image", "name"},
                     new int[]{R.id.activity_main_options_cell_image, R.id.activity_main_options_cell_name}));
             popup.setOnItemClickListener((p, w, pos, i) -> {

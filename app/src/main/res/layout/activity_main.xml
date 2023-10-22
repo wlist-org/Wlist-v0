@@ -28,7 +28,7 @@
 		app:layout_constraintTop_toTopOf="parent">
 
 		<androidx.appcompat.widget.AppCompatImageView
-			android:id="@+id/activity_main_tasks"
+			android:id="@+id/activity_main_trans"
 			android:layout_width="wrap_content"
 			android:layout_height="match_parent"
 			android:adjustViewBounds="true"
@@ -36,7 +36,7 @@
 			android:paddingTop="15dp"
 			android:paddingEnd="10dp"
 			android:paddingBottom="15dp"
-			android:src="@mipmap/main_chooser_tasks" />
+			android:src="@mipmap/main_chooser_trans" />
 
 		<androidx.appcompat.widget.AppCompatImageView
 			android:id="@+id/activity_main_options"
