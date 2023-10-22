@@ -93,15 +93,15 @@ public class ActivityMain extends AppCompatActivity {
             return;
         }
         final ActivityMainChooser chooser = new ActivityMainChooser(
-                new ActivityMainChooser.ButtonGroup(this, activity.activityMainTabFileButton, R.mipmap.main_tab_file, R.mipmap.main_tab_file_chose,
-                        activity.activityMainTabFileText, activity.activityMainTabFile),
-                new ActivityMainChooser.ButtonGroup(this, activity.activityMainTabUserButton, R.mipmap.main_tab_user, R.mipmap.main_tab_user_chose,
-                        activity.activityMainTabUserText, activity.activityMainTabUser),
+                new ActivityMainChooser.ButtonGroup(this, activity.activityMainChooserFileButton, R.mipmap.main_chooser_file, R.mipmap.main_chooser_file_chose,
+                        activity.activityMainChooserFileText, activity.activityMainChooserFile),
+                new ActivityMainChooser.ButtonGroup(this, activity.activityMainChooserUserButton, R.mipmap.main_chooser_user, R.mipmap.main_chooser_user_chose,
+                        activity.activityMainChooserUserText, activity.activityMainChooserUser),
                 new ActivityMainChooser.ButtonGroup(this, activity.activityMainTasks, R.mipmap.app_logo, R.mipmap.app_logo_round, null)
         );
         final AtomicReference<View> currentView = new AtomicReference<>(null);
         final ConstraintLayout.LayoutParams contentParams = new ConstraintLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ConstraintLayout.LayoutParams.MATCH_CONSTRAINT);
-        contentParams.bottomToTop = R.id.activity_main_guideline_tab;
+        contentParams.bottomToTop = R.id.activity_main_guideline_chooser;
         contentParams.leftToLeft = R.id.activity_main;
         contentParams.rightToRight = R.id.activity_main;
         contentParams.topToBottom = R.id.activity_main_guideline_title;
