@@ -20,8 +20,8 @@
 		android:layout_width="match_parent"
 		android:layout_height="0dp"
 		android:background="@color/background_normal"
-		android:orientation="horizontal"
 		android:gravity="end"
+		android:orientation="horizontal"
 		app:layout_constraintBottom_toBottomOf="@id/activity_main_guideline_title"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
@@ -31,16 +31,18 @@
 			android:id="@+id/activity_main_tasks"
 			android:layout_width="wrap_content"
 			android:layout_height="match_parent"
+			android:adjustViewBounds="true"
 			android:paddingStart="10dp"
 			android:paddingTop="15dp"
 			android:paddingEnd="10dp"
 			android:paddingBottom="15dp"
-			android:src="@drawable/backer" />
+			android:src="@mipmap/main_chooser_tasks" />
 
 		<androidx.appcompat.widget.AppCompatImageView
 			android:id="@+id/activity_main_options"
 			android:layout_width="wrap_content"
 			android:layout_height="match_parent"
+			android:adjustViewBounds="true"
 			android:paddingStart="10dp"
 			android:paddingTop="15dp"
 			android:paddingEnd="10dp"

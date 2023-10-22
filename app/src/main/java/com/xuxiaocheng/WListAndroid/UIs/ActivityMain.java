@@ -97,7 +97,7 @@ public class ActivityMain extends AppCompatActivity {
                         activity.activityMainChooserFileText, activity.activityMainChooserFile),
                 new ActivityMainChooser.ButtonGroup(this, activity.activityMainChooserUserButton, R.mipmap.main_chooser_user, R.mipmap.main_chooser_user_chose,
                         activity.activityMainChooserUserText, activity.activityMainChooserUser),
-                new ActivityMainChooser.ButtonGroup(this, activity.activityMainTasks, R.mipmap.app_logo, R.mipmap.app_logo_round, null)
+                new ActivityMainChooser.ButtonGroup(this, activity.activityMainTasks, R.mipmap.main_chooser_tasks, R.mipmap.main_chooser_tasks_chose, null)
         );
         final AtomicReference<View> currentView = new AtomicReference<>(null);
         final ConstraintLayout.LayoutParams contentParams = new ConstraintLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ConstraintLayout.LayoutParams.MATCH_CONSTRAINT);
