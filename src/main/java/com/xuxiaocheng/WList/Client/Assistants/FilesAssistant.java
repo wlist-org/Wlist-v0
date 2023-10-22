@@ -472,6 +472,10 @@ public final class FilesAssistant {
             final Collection<String> ids = new ArrayList<>();
             for (final Pair.ImmutablePair<Long, Long> state: downloaded) {
                 if (failure.get()) break;
+                if (state.getFirst().longValue() >= state.getSecond().longValue()) {
+                    latch.countDown();
+                    continue;
+                }
                 final UnionPair<DownloadConfirm, VisibleFailureReason> confirm;
                 if (downloaded == FilesAssistant.FullDownloadingProgress)
                     confirm = firstConfirm;

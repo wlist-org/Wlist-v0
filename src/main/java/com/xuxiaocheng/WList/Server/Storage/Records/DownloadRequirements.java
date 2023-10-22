@@ -163,7 +163,7 @@ public record DownloadRequirements(boolean acceptedRange, long downloadingSize, 
                 final int length = Math.toIntExact(e - b);
                 final Call call = HttpNetworkHelper.getWithParameters(client, getUrl, builder.set("Range", String.format("bytes=%d-%d", b, e - 1)).build(), null);
                 calls.add(call);
-                list.add(new OrderedSuppliers(b - start, e - start, (consumer, listener) -> {
+                list.add(new OrderedSuppliers(b, e, (consumer, listener) -> {
                     call.enqueue(new Callback() {
                         @Override
                         public void onFailure(final @NotNull Call call, final @NotNull IOException exception) {

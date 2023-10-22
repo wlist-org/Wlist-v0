@@ -153,7 +153,7 @@ public final class OperateFilesHelper {
                 return UnionPair.fail(failureReason);
             }
             OperateHelper.logOperated(OperationType.RequestDownloadFile, reason, null);
-            return UnionPair.fail(new VisibleFailureReason(FailureKind.Others, file, "Requesting download file."));
+            return UnionPair.fail(new VisibleFailureReason(FailureKind.Others, file, "Requesting download file: " + reason));
         } finally {
             receive.release();
         }
@@ -231,7 +231,7 @@ public final class OperateFilesHelper {
                 return UnionPair.fail(failureReason);
             }
             OperateHelper.logOperated(OperationType.CreateDirectory, reason, null);
-            return UnionPair.fail(new VisibleFailureReason(FailureKind.Others, parent, "Creating."));
+            return UnionPair.fail(new VisibleFailureReason(FailureKind.Others, parent, "Creating: " + reason));
         } finally {
             receive.release();
         }
@@ -258,7 +258,7 @@ public final class OperateFilesHelper {
                 return UnionPair.fail(failureReason);
             }
             OperateHelper.logOperated(OperationType.RequestUploadFile, reason, null);
-            return UnionPair.fail(new VisibleFailureReason(FailureKind.Others, parent, "Requesting upload file."));
+            return UnionPair.fail(new VisibleFailureReason(FailureKind.Others, parent, "Requesting upload file: " + reason));
         } finally {
             receive.release();
         }
@@ -345,7 +345,7 @@ public final class OperateFilesHelper {
                 return UnionPair.fail(failureReason);
             }
             OperateHelper.logOperated(OperationType.CopyDirectly, reason, null);
-            return "Complex".equals(reason) ? OperateFilesHelper.Complex : UnionPair.fail(new VisibleFailureReason(FailureKind.Others, parent, "Copying."));
+            return "Complex".equals(reason) ? OperateFilesHelper.Complex : UnionPair.fail(new VisibleFailureReason(FailureKind.Others, parent, "Copying: " + reason));
         } finally {
             receive.release();
         }
@@ -372,7 +372,7 @@ public final class OperateFilesHelper {
                 return UnionPair.fail(failureReason);
             }
             OperateHelper.logOperated(OperationType.MoveDirectly, reason, null);
-            return "Complex".equals(reason) ? OperateFilesHelper.Complex : UnionPair.fail(new VisibleFailureReason(FailureKind.Others, location, "Moving."));
+            return "Complex".equals(reason) ? OperateFilesHelper.Complex : UnionPair.fail(new VisibleFailureReason(FailureKind.Others, location, "Moving: " + reason));
         } finally {
             receive.release();
         }
@@ -399,7 +399,7 @@ public final class OperateFilesHelper {
                 return UnionPair.fail(failureReason);
             }
             OperateHelper.logOperated(OperationType.RenameDirectly, reason, null);
-            return "Complex".equals(reason) ? OperateFilesHelper.Complex : UnionPair.fail(new VisibleFailureReason(FailureKind.Others, location, "Renaming"));
+            return "Complex".equals(reason) ? OperateFilesHelper.Complex : UnionPair.fail(new VisibleFailureReason(FailureKind.Others, location, "Renaming: " + reason));
         } finally {
             receive.release();
         }
