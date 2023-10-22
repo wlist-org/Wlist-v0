@@ -83,6 +83,10 @@ public final class WList {
                 ServerHandler.LogActive.set(false);
             if ("-LogActive".equalsIgnoreCase(arg))
                 ServerHandler.LogActive.set(true);
+            if ("-NoLogNetwork".equalsIgnoreCase(arg))
+                ServerHandler.LogNetwork.set(false);
+            if ("-LogNetwork".equalsIgnoreCase(arg))
+                ServerHandler.LogActive.set(true);
             if (arg.startsWith("-Path:"))
                 runtimePath = new File(arg.substring("-Path:".length())).getAbsoluteFile();
             if (arg.startsWith("-LogLevel:")) {
@@ -98,7 +102,7 @@ public final class WList {
             if ("/?".equals(arg) || arg.endsWith("help")) {
                 //noinspection UseOfSystemOutOrSystemErr
                 System.out.println("""
-Usage: [-Debug|-NoDebug] [-Inside|-Outside] [-NoLogOperation|-LogOperation] [-NoLogActive|-LogActive] [-Path:<path>] [-LogLevel:<level>]
+Usage: [-Debug|-NoDebug] [-Inside|-Outside] [-NoLogOperation|-LogOperation] [-NoLogActive|-LogActive] [-NoLogNetwork|-LogNetwork] [-Path:<path>] [-LogLevel:<level>]
 
 Debug: Set debug mode.
 Inside: Disallow logon.

@@ -1,8 +1,10 @@
 package com.xuxiaocheng.WList.Server.Storage.Helpers;
 
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.HeadLibs;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.Server.Operations.ServerHandler;
 import io.netty.util.internal.EmptyArrays;
 import org.htmlunit.BrowserVersion;
 import org.htmlunit.Cache;
@@ -30,6 +32,21 @@ public final class BrowserUtil {
     private static final @NotNull HLog logger = HLog.create("BrowserLogger");
     private static final @NotNull Cache SharedCache = new Cache();
 
+    private static @NotNull String toStringParameters(final @NotNull WebRequest request) {
+        if (request.getHttpMethod() == HttpMethod.GET || request.getParameters().isEmpty())
+            return "";
+        final StringBuilder builder = new StringBuilder();
+        builder.append(" (Form: {");
+        for (final NameValuePair pair: request.getParameters()) {
+            builder.append(pair.getName());
+            if (HttpNetworkHelper.PrivateFormNames.contains(pair.getName()))
+                builder.append(": ***");
+            else
+                builder.append("=").append(pair.getValue());
+            builder.append(", ");
+        }
+        return builder.replace(builder.length() - 2, builder.length(), "})").toString();
+    }
     public static @NotNull WebClient newWebClient() {
         final WebClient client = new WebClient(BrowserVersion.EDGE);
         client.getOptions().setCssEnabled(false);
@@ -38,23 +55,11 @@ public final class BrowserUtil {
         client.setCache(BrowserUtil.SharedCache);
         client.setWebConnection(new WebConnectionWrapper(client.getWebConnection()) {
             @Override
-            public WebResponse getResponse(final WebRequest request) throws IOException {
-                BrowserUtil.logger.log(HLogLevel.NETWORK, "Sending: ", request.getHttpMethod(), ' ', request.getUrl(),
-                        ((Supplier<String>) () -> {
-                            if (request.getHttpMethod() == HttpMethod.GET || request.getParameters().isEmpty())
-                                return "";
-                            final StringBuilder builder = new StringBuilder();
-                            builder.append(" (Form: {");
-                            for (final NameValuePair pair: request.getParameters()) {
-                                builder.append(pair.getName());
-                                if (HttpNetworkHelper.PrivateFormNames.contains(pair.getName()))
-                                    builder.append(": ***");
-                                else
-                                    builder.append("=").append(pair.getValue());
-                                builder.append(", ");
-                            }
-                            return builder.replace(builder.length() - 2, builder.length(), "})").toString();
-                        }), request.getAdditionalHeader("Range") == null ? "" : (" (Range: " + request.getAdditionalHeader("Range") + ')'));
+            public WebResponse getResponse(final @NotNull WebRequest request) throws IOException {
+                if (ServerHandler.LogNetwork.get())
+                    BrowserUtil.logger.log(HLogLevel.NETWORK, "Sending: ", request.getHttpMethod(), ' ', request.getUrl(),
+                            request.getAdditionalHeader("Range") == null ? "" : (" (Range: " + request.getAdditionalHeader("Range") + ')'),
+                            (Supplier<String>) () -> BrowserUtil.toStringParameters(request));
                 final long time1 = System.currentTimeMillis();
                 final WebResponse response;
                 boolean successFlag = false;
@@ -63,8 +68,13 @@ public final class BrowserUtil {
                     successFlag = true;
                 } finally {
                     final long time2 = System.currentTimeMillis();
-                    BrowserUtil.logger.log(HLogLevel.NETWORK, "Received. Totally cost time: ", time2 - time1, "ms.",
-                            successFlag ? "" : " But something went wrong.");
+                    if (ServerHandler.LogNetwork.get())
+                        BrowserUtil.logger.log(HLogLevel.NETWORK, "Received. Totally cost time: ", time2 - time1, "ms.",
+                                successFlag ? "" : " But something went wrong.");
+                    else if (!successFlag)
+                        BrowserUtil.logger.log(HLogLevel.NETWORK, "Something went wrong when requested. Totally cost time: ", time2 - time1, "ms.", ParametersMap.create()
+                                .add("Method", request.getHttpMethod()).add("url", request.getUrl()).optionallyAdd(request.getAdditionalHeader("Range") != null, "Range", request.getAdditionalHeader("Range"))
+                                .add("Parameters", (Supplier<String>) () -> BrowserUtil.toStringParameters(request)));
                 }
                 return response;
             }

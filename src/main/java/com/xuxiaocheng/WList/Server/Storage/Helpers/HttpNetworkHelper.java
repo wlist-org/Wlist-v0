@@ -9,6 +9,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Server.Exceptions.NetworkException;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.ProgressBar;
+import com.xuxiaocheng.WList.Server.Operations.ServerHandler;
 import com.xuxiaocheng.WList.Server.WListServer;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -69,30 +70,29 @@ public final class HttpNetworkHelper {
 
     private static final @NotNull Dispatcher Dispatcher = new Dispatcher(WListServer.IOExecutors);
     public static final @NotNull @Unmodifiable Set<@NotNull String> PrivateFormNames = Set.of("password", "pwd", "passwd", "pw");
+    private static @NotNull String toStringFormBody(final @NotNull FormBody body) {
+        final StringBuilder builder = new StringBuilder();
+        builder.append(" (Form: {");
+        for (int i = 0; i < body.size(); i++) {
+            final String name = body.name(i);
+            builder.append(name);
+            if (HttpNetworkHelper.PrivateFormNames.contains(name))
+                builder.append(": ***");
+            else
+                builder.append("=").append(body.value(i));
+            if (i == body.size() - 1)
+                builder.append("})");
+            else
+                builder.append(", ");
+        }
+        return builder.toString();
+    }
     private static final @NotNull Interceptor NetworkLoggerInterceptor = chain -> {
         final Request request = chain.request();
-        HttpNetworkHelper.logger.log(HLogLevel.NETWORK, "Sending: ", request.method(), ' ', request.url(),
-                request.header("Range") == null ? "" : (" (Range: " + request.header("Range") + ')'),
-                (Supplier<String>) () -> {
-                    final RequestBody requestBody = request.body();
-                    if (!(requestBody instanceof FormBody formBody))
-                        return "";
-                    final StringBuilder builder = new StringBuilder();
-                    builder.append(" (Form: {");
-                    for (int i = 0; i < formBody.size(); i++) {
-                        final String name = formBody.name(i);
-                        builder.append(name);
-                        if (HttpNetworkHelper.PrivateFormNames.contains(name))
-                            builder.append(": ***");
-                        else
-                            builder.append("=").append(formBody.value(i));
-                        if (i == formBody.size() - 1)
-                            builder.append("})");
-                        else
-                            builder.append(", ");
-                    }
-                    return builder.toString();
-                });
+        if (ServerHandler.LogNetwork.get())
+            HttpNetworkHelper.logger.log(HLogLevel.NETWORK, "Sending: ", request.method(), ' ', request.url(),
+                    request.header("Range") == null ? "" : (" (Range: " + request.header("Range") + ')'),
+                    (Supplier<String>) () -> request.body() instanceof FormBody formBody ? HttpNetworkHelper.toStringFormBody(formBody) : "");
         final long time1 = System.currentTimeMillis();
         final Response response;
         boolean successFlag = false;
@@ -101,8 +101,13 @@ public final class HttpNetworkHelper {
             successFlag = true;
         } finally {
             final long time2 = System.currentTimeMillis();
-            HttpNetworkHelper.logger.log(HLogLevel.NETWORK, "Received. Totally cost time: ", time2 - time1, "ms.",
-                    successFlag ? "" : " But something went wrong.");
+            if (ServerHandler.LogNetwork.get())
+                HttpNetworkHelper.logger.log(HLogLevel.NETWORK, "Received. Totally cost time: ", time2 - time1, "ms.",
+                        successFlag ? "" : " But something went wrong.");
+            else if (!successFlag)
+                HttpNetworkHelper.logger.log(HLogLevel.NETWORK, "Something went wrong when requested. Totally cost time: ", time2 - time1, "ms.", ParametersMap.create()
+                        .add("Method", request.method()).add("url", request.url()).optionallyAdd(request.header("Range") != null, "Range", request.header("Range"))
+                        .optionallyAddSupplier(request.body() instanceof FormBody, "Form", () -> HttpNetworkHelper.toStringFormBody((FormBody) Objects.requireNonNull(request.body()))));
         }
         return response;
     };

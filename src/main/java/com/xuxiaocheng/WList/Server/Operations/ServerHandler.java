@@ -43,6 +43,7 @@ public interface ServerHandler {
 
     AtomicBoolean LogActive = new AtomicBoolean(false);
     AtomicBoolean LogOperation = new AtomicBoolean(true);
+    AtomicBoolean LogNetwork = new AtomicBoolean(true);
 
     static void logOperation(final @NotNull Channel channel, final @NotNull OperationType operation, final @Nullable UnionPair<UserInformation, MessageProto> user, final @Nullable Supplier<? extends @NotNull ParametersMap> parameters) {
         if (ServerHandler.LogOperation.get() && HLog.getInstance("ServerLogger").getLevel() < HLogLevel.DEBUG.getLevel())
