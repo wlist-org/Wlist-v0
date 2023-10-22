@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+        android:width="64dp"
+        android:height="64dp"
+        android:viewportWidth="100"
+        android:viewportHeight="100">
+
+	<group
+		android:rotation="-50"
+		android:translateX="30"
+		android:translateY="50">
+
+		<path
+			android:fillColor="@color/clickable"
+			android:pathData="M0,-5 A1,1,0,0,0,0,5 L50,5 A1,1,0,0,0,50,-5 Z" />
+
+		<group android:rotation="100">
+			<path
+				android:fillColor="@color/clickable"
+				android:pathData="M0,-5 A1,1,0,0,0,0,5 L50,5 A1,1,0,0,0,50,-5 Z" />
+		</group>
+	</group>
+
+</vector>

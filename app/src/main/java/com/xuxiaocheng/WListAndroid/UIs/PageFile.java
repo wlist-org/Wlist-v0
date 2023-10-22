@@ -326,7 +326,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
     @UiThread
     protected void onRootPage(final long position) {
         final PageFileBinding page = this.pageCache.getInstance();
-        page.pageFileBacker.setImageResource(R.mipmap.backer_nonclickable);
+        page.pageFileBacker.setImageResource(R.drawable.backer_nonclickable);
         page.pageFileBacker.setOnClickListener(null);
         page.pageFileBacker.setClickable(false);
         page.pageFileName.setText(R.string.app_name);
@@ -339,7 +339,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
     @UiThread
     protected void onInsidePage(final @NotNull CharSequence name, final @NotNull FileLocation location, final long position) {
         final PageFileBinding page = this.pageCache.getInstance();
-        page.pageFileBacker.setImageResource(R.mipmap.backer);
+        page.pageFileBacker.setImageResource(R.drawable.backer);
         page.pageFileBacker.setOnClickListener(v -> this.popFileList());
         page.pageFileBacker.setClickable(true);
         page.pageFileName.setText(name);
