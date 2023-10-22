@@ -323,15 +323,14 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
             final boolean hasPwd = onof.intValue() == 1;
             final String domin = info.getString("is_newd");
             final String identifier = info.getString("f_id");
-            final String taoc = Objects.requireNonNullElse(info.getString("taoc"), ""); // This field may have been discarded.
             this.throwIfNull(domin, json, "getFileShareUrl", p -> p.add("fileId", fileId));
             this.throwIfNull(identifier, json, "getFileShareUrl", p -> p.add("fileId", fileId));
             if (hasPwd) {
                 final String pwd = info.getString("pwd");
                 this.throwIfNull(pwd, json, "getFileShareUrl", p -> p.add("fileId", fileId));
-                consumer.accept(Objects.requireNonNull(HttpUrl.parse(domin + '/' + identifier)), pwd + taoc);
+                consumer.accept(Objects.requireNonNull(HttpUrl.parse(domin + '/' + identifier)), pwd);
             } else
-                consumer.accept(Objects.requireNonNull(HttpUrl.parse(domin + '/' + identifier + taoc)), null);
+                consumer.accept(Objects.requireNonNull(HttpUrl.parse(domin + '/' + identifier)), null);
         });
     }
 
