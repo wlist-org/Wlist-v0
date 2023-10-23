@@ -34,13 +34,15 @@
 	<string name="page_file_option_delete">删除</string>
 	<string name="page_file_option_download">下载</string>
 	<string name="page_file_option_rename_success">重命名成功</string>
-	<string name="page_file_option_rename_complex">当前操作不被该存储直接支持，是否仍然执行？（可能会消耗一些时间）</string>
 	<string name="page_file_option_move_success">移动成功</string>
 	<string name="page_file_option_copy_success">复制成功</string>
 	<string name="page_file_option_delete_success">删除成功</string>
 	<string name="page_file_option_download_success">下载成功</string>
+	<string name="page_file_option_complex">当前操作不被该存储直接支持，是否仍然执行？（可能会消耗一些时间）</string>
+	<string name="page_file_create">创建</string>
+	<string name="page_file_create_directory">新建文件夹</string>
+	<string name="page_file_create_storage">添加网盘</string>
 	<string name="page_file_upload">上传</string>
-	<string name="page_file_upload_directory">创建文件夹</string>
 	<string name="page_file_upload_file">上传文件</string>
 	<string name="page_file_upload_picture">上传图片</string>
 	<string name="page_file_upload_video">上传视频</string>
@@ -49,7 +51,6 @@
 	<string name="page_file_upload_success_directory">创建文件夹成功</string>
 	<string name="page_file_upload_success_file">上传文件成功</string>
 	<string name="page_file_options_refresh">重新与网盘同步</string>
-	<string name="page_file_provider_add">添加网盘</string>
 	<string name="page_file_provider_lanzou">蓝奏云</string>
 	<string name="page_file_provider_name">目录名称：</string>
 	<string name="page_file_provider_passport">网盘账号：</string>

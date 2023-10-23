@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
-        android:color="@color/nonclickable">
+        android:color="@color/water_selector">
 	<item>
 		<shape>
 			<corners android:radius="1dp" />
-			<solid android:color="@color/background_differ" />
+			<solid android:color="@color/background_normal" />
 		</shape>
 	</item>
 </ripple>

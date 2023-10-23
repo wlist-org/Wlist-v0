@@ -27,6 +27,7 @@ import androidx.appcompat.widget.ListPopupWindow;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.qw.soul.permission.bean.Permissions;
 import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
@@ -507,7 +508,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
         final CountDownLatch latch = new CountDownLatch(1);
         final AtomicBoolean continuer = new AtomicBoolean(false);
         Main.runOnUiThread(this.activity, () -> new AlertDialog.Builder(this.activity)
-                .setTitle(R.string.page_file_option_rename_complex)
+                .setTitle(R.string.page_file_option_complex)
                 .setOnCancelListener(a -> latch.countDown())
                 .setNegativeButton(R.string.cancel, (a, b) -> latch.countDown())
                 .setPositiveButton(R.string.confirm, (a, k) -> Main.runOnBackgroundThread(this.activity, () -> {
@@ -620,10 +621,16 @@ public class PageFile implements ActivityMainChooser.MainPage {
             }, 300, TimeUnit.MILLISECONDS);
         });
         page.pageFileUploader.setOnClickListener(u -> {
-            if (this.stacks.isEmpty()) { // Root selector
+            final BottomSheetDialog dialog = new BottomSheetDialog(this.activity, R.style.BottomSheetDialog);
+            final PageFileUploadBinding uploader = PageFileUploadBinding.inflate(this.activity.getLayoutInflater());
+            uploader.pageFileUploadCancel.setOnClickListener(v -> dialog.cancel());
+            final AtomicBoolean clickable = new AtomicBoolean(true);
+            uploader.pageFileUploadAddProvider.setOnClickListener(v -> {
+                if (!clickable.compareAndSet(true, false)) return;
+                dialog.cancel();
                 final String[] storages = StorageTypeGetter.getAll().keySet().toArray(EmptyArrays.EMPTY_STRINGS);
                 final AtomicInteger choice = new AtomicInteger(-1);
-                new AlertDialog.Builder(this.activity).setTitle(R.string.page_file_provider_add)
+                new AlertDialog.Builder(this.activity).setTitle(R.string.page_file_create_storage)
                         .setSingleChoiceItems(storages, -1, (d, w) -> choice.set(w))
                         .setNegativeButton(R.string.cancel, null)
                         .setPositiveButton(R.string.confirm, (d, w) -> {
@@ -631,27 +638,22 @@ public class PageFile implements ActivityMainChooser.MainPage {
                             final String identifier = storages[choice.get()];
                             final StorageTypes<C> type = (StorageTypes<C>) Objects.requireNonNull(StorageTypeGetter.get(identifier));
                             PageFileProviderConfigurations.getConfiguration(PageFile.this.activity, type, null, configuration -> Main.runOnUiThread(this.activity, () -> {
-                                final AlertDialog dialog = new AlertDialog.Builder(PageFile.this.activity)
-                                        .setTitle(R.string.page_file_provider_add).setView(this.loadingView())
+                                final AlertDialog loading = new AlertDialog.Builder(PageFile.this.activity)
+                                        .setTitle(R.string.page_file_create_storage).setView(this.loadingView())
                                         .setCancelable(false).show();
                                 Main.runOnBackgroundThread(PageFile.this.activity, HExceptionWrapper.wrapRunnable(() -> {
                                     try (final WListClientInterface client = WListClientManager.quicklyGetClient(PageFile.this.address())) {
                                         OperateProvidersHelper.addProvider(client, TokenAssistant.getToken(PageFile.this.address(), PageFile.this.username()),
                                                 configuration.getName(), type, configuration);
                                     }
-                                }, () -> Main.runOnUiThread(PageFile.this.activity, dialog::cancel)));
+                                }, () -> Main.runOnUiThread(PageFile.this.activity, loading::cancel)));
                             }));
                         }).show();
-                return;
-            }
-            final PageFileUploadBinding upload = PageFileUploadBinding.inflate(this.activity.getLayoutInflater());
-            final AlertDialog uploader = new AlertDialog.Builder(this.activity)
-                    .setTitle(R.string.page_file_upload).setView(upload.getRoot())
-                    .setPositiveButton(R.string.cancel, null).create();
-            final AtomicBoolean clickable = new AtomicBoolean(true);
-            upload.pageFileUploadDirectory.setOnClickListener(v -> {
+            });
+            uploader.pageFileUploadCreateDirectory.setOnClickListener(v -> {
+                if (this.stacks.isEmpty()) return;
                 if (!clickable.compareAndSet(true, false)) return;
-                uploader.cancel();
+                dialog.cancel();
                 final FileLocation location = this.currentLocation.get();
                 final PageFileDirectoryBinding editor = PageFileDirectoryBinding.inflate(this.activity.getLayoutInflater());
                 editor.pageFileDirectoryName.setText(R.string.page_file_upload_directory_name);
@@ -660,13 +662,13 @@ public class PageFile implements ActivityMainChooser.MainPage {
                     editor.pageFileDirectoryName.setSelectAllOnFocus(true);
                     editor.pageFileDirectoryName.setSelection(Objects.requireNonNull(editor.pageFileDirectoryName.getText()).length());
                 }
-                new AlertDialog.Builder(this.activity).setTitle(R.string.page_file_upload_directory)
+                new AlertDialog.Builder(this.activity).setTitle(R.string.page_file_create_directory)
                         .setIcon(R.mipmap.page_file_upload_directory).setView(editor.getRoot())
                         .setNegativeButton(R.string.cancel, null)
                         .setPositiveButton(R.string.confirm, (d, w) -> {
                             final String name = ViewUtil.getText(editor.pageFileDirectoryName);
-                            final AlertDialog loader = new AlertDialog.Builder(this.activity)
-                                    .setTitle(R.string.page_file_upload_directory).setView(this.loadingView()).setCancelable(false).show();
+                            final AlertDialog loading = new AlertDialog.Builder(this.activity)
+                                    .setTitle(R.string.page_file_create_directory).setView(this.loadingView()).setCancelable(false).show();
                             Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
                                 HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Creating directory.",
                                         ParametersMap.create().add("address", this.address()).add("location", location).add("name", name));
@@ -674,22 +676,30 @@ public class PageFile implements ActivityMainChooser.MainPage {
                                     OperateFilesHelper.createDirectory(client, TokenAssistant.getToken(this.address(), this.username()), location, name, Options.DuplicatePolicy.ERROR);
                                 }
                                 Main.showToast(this.activity, R.string.page_file_upload_success_directory);
-                            }, () -> Main.runOnUiThread(this.activity, loader::cancel)));
+                            }, () -> Main.runOnUiThread(this.activity, loading::cancel)));
                         }).show();
             });
-            upload.pageFileUploadDirectoryText.setOnClickListener(v -> upload.pageFileUploadDirectory.performClick());
-            final Consumer<String> uploadFile = pattern -> {
+            uploader.pageFileUploadFile.setOnClickListener(v -> {
+                if (this.stacks.isEmpty()) return;
                 if (!clickable.compareAndSet(true, false)) return;
-                uploader.cancel();
-                this.chooserLauncher.getInstance().launch(pattern);
-            };
-            upload.pageFileUploadFile.setOnClickListener(v -> uploadFile.accept("*/*"));
-            upload.pageFileUploadFileText.setOnClickListener(v -> upload.pageFileUploadFile.performClick());
-            upload.pageFileUploadPicture.setOnClickListener(v -> uploadFile.accept("image/*"));
-            upload.pageFileUploadPictureText.setOnClickListener(v -> upload.pageFileUploadPicture.performClick());
-            upload.pageFileUploadVideo.setOnClickListener(v -> uploadFile.accept("video/*"));
-            upload.pageFileUploadVideoText.setOnClickListener(v -> upload.pageFileUploadVideo.performClick());
-            uploader.show();
+                dialog.cancel();
+                this.chooserLauncher.getInstance().launch("*/*");
+            });
+            uploader.pageFileUploadPicture.setOnClickListener(v -> {
+                if (this.stacks.isEmpty()) return;
+                if (!clickable.compareAndSet(true, false)) return;
+                dialog.cancel();
+                this.chooserLauncher.getInstance().launch("image/*");
+            });
+            uploader.pageFileUploadVideo.setOnClickListener(v -> {
+                if (this.stacks.isEmpty()) return;
+                if (!clickable.compareAndSet(true, false)) return;
+                dialog.cancel();
+                this.chooserLauncher.getInstance().launch("video/*");
+            });
+            dialog.setCanceledOnTouchOutside(true);
+            dialog.setContentView(uploader.getRoot());
+            dialog.show();
         });
     }
 

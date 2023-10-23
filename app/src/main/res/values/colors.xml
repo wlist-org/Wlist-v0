@@ -29,6 +29,10 @@
 	<color name="loading_g">@color/loading_f</color>
 	<color name="loading_h">@color/loading_g</color>
 	<color name="more_options">@color/gray</color>
+	<color name="water_selector">@color/gray</color>
+	<color name="page_file_uploader_a">@color/white</color>
+	<color name="page_file_uploader_b">@color/red</color>
+	<color name="page_file_uploader_c">@color/red</color>
 	<color name="page_file_refresh">@color/gray</color>
 
 </resources>

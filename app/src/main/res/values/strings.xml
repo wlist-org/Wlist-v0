@@ -35,13 +35,15 @@
 	<string name="page_file_option_delete">Delete</string>
 	<string name="page_file_option_download">Download</string>
 	<string name="page_file_option_rename_success">Renamed.</string>
-	<string name="page_file_option_rename_complex">This operation is not supported directly by the storage. Force do it? (may cause a long time.)</string>
 	<string name="page_file_option_move_success">Moved.</string>
 	<string name="page_file_option_copy_success">Copied.</string>
 	<string name="page_file_option_delete_success">Deleted.</string>
 	<string name="page_file_option_download_success">Downloaded.</string>
+	<string name="page_file_option_complex">This operation is not supported directly by the storage. Force do it? (may cause a long time.)</string>
+	<string name="page_file_create">Create</string>
+	<string name="page_file_create_directory">New Directory</string>
+	<string name="page_file_create_storage">Web Storage</string>
 	<string name="page_file_upload">Upload</string>
-	<string name="page_file_upload_directory">Directory</string>
 	<string name="page_file_upload_file">File</string>
 	<string name="page_file_upload_picture">Picture</string>
 	<string name="page_file_upload_video">Video</string>
@@ -50,7 +52,6 @@
 	<string name="page_file_upload_success_directory">Created directory.</string>
 	<string name="page_file_upload_success_file">Uploaded file.</string>
 	<string name="page_file_options_refresh">Refresh and sync.</string>
-	<string name="page_file_provider_add">Add web storage.</string>
 	<string name="page_file_provider_lanzou">Lanzou</string>
 	<string name="page_file_provider_name">Storage name: </string>
 	<string name="page_file_provider_passport">Storage passport: </string>

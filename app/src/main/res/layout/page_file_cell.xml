@@ -3,7 +3,7 @@
                                                    xmlns:app="http://schemas.android.com/apk/res-auto"
                                                    android:layout_width="match_parent"
                                                    android:layout_height="50dp"
-                                                   android:background="@drawable/recycler_water_selector"
+                                                   android:background="@drawable/water_selector_differ"
                                                    android:clickable="true"
                                                    android:focusable="true">
 
