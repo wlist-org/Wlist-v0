@@ -20,5 +20,13 @@
 
 	<color name="backer_clickable">@color/clickable</color>
 	<color name="backer_nonclickable">@color/nonclickable</color>
+	<color name="loading_a">#8A8A8A</color>
+	<color name="loading_b">#A3A3A3</color>
+	<color name="loading_c">#B3B3B3</color>
+	<color name="loading_d">#C3C3C3</color>
+	<color name="loading_e">#D3D3D3</color>
+	<color name="loading_f">@color/loading_e</color>
+	<color name="loading_g">@color/loading_f</color>
+	<color name="loading_h">@color/loading_g</color>
 	<color name="more_options">@color/gray</color>
 </resources>
