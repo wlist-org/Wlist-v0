@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+	<style name="BottomSheetDialog" parent="Theme.Design.Light.BottomSheetDialog">
+		<item name="bottomSheetStyle">@style/BottomSheetDialog.Style</item>
+	</style>
+	<style name="BottomSheetDialog.Style" parent="Widget.Design.BottomSheet.Modal">
+		<item name="android:background">@android:color/transparent</item>
+	</style>
+	
 	<style name="Theme.WListClientAndroid" parent="Theme.MaterialComponents.DayNight.NoActionBar">
 		<!-- Primary brand color. -->
 		<item name="colorPrimary">@color/black</item>
@@ -14,8 +21,4 @@
 		<!-- Customize your theme here. -->
 	</style>
 
-	<style name="Theme.WListClientAndroid.NoActionBar">
-		<item name="windowActionBar">false</item>
-		<item name="windowNoTitle">true</item>
-	</style>
 </resources>
