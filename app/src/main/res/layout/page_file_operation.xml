@@ -6,29 +6,29 @@
                                                    android:layout_height="wrap_content">
 
 	<androidx.constraintlayout.widget.Guideline
-		android:id="@+id/page_file_option_guideline_hint"
+		android:id="@+id/page_file_operation_guideline_hint"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:orientation="vertical"
 		app:layout_constraintGuide_percent="0.3" />
 
 	<androidx.appcompat.widget.AppCompatTextView
-		android:id="@+id/page_file_option_name_text"
+		android:id="@+id/page_file_operation_name_text"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:lines="1"
 		android:paddingTop="5dp"
 		android:paddingBottom="5dp"
-		android:text="@string/page_file_option_name"
+		android:text="@string/page_file_operation_name"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
-		app:layout_constraintBottom_toTopOf="@id/page_file_option_size_text"
+		app:layout_constraintBottom_toTopOf="@id/page_file_operation_size_text"
 		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toLeftOf="@id/page_file_option_guideline_hint"
+		app:layout_constraintRight_toLeftOf="@id/page_file_operation_guideline_hint"
 		app:layout_constraintTop_toTopOf="parent" />
 
 	<androidx.appcompat.widget.AppCompatEditText
-		android:id="@+id/page_file_option_name"
+		android:id="@+id/page_file_operation_name"
 		android:layout_width="0dp"
 		android:layout_height="wrap_content"
 		android:background="@android:color/transparent"
@@ -39,29 +39,29 @@
 		android:text="name"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
-		app:layout_constraintBottom_toBottomOf="@id/page_file_option_name_text"
-		app:layout_constraintLeft_toRightOf="@id/page_file_option_guideline_hint"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_operation_name_text"
+		app:layout_constraintLeft_toRightOf="@id/page_file_operation_guideline_hint"
 		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toTopOf="@id/page_file_option_name_text"
+		app:layout_constraintTop_toTopOf="@id/page_file_operation_name_text"
 		tools:ignore="HardcodedText" />
 
 	<androidx.appcompat.widget.AppCompatTextView
-		android:id="@+id/page_file_option_size_text"
+		android:id="@+id/page_file_operation_size_text"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:lines="1"
 		android:paddingTop="5dp"
 		android:paddingBottom="5dp"
-		android:text="@string/page_file_option_size"
+		android:text="@string/page_file_operation_size"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
-		app:layout_constraintBottom_toTopOf="@id/page_file_option_create_text"
+		app:layout_constraintBottom_toTopOf="@id/page_file_operation_create_text"
 		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toLeftOf="@id/page_file_option_guideline_hint"
-		app:layout_constraintTop_toBottomOf="@id/page_file_option_name_text" />
+		app:layout_constraintRight_toLeftOf="@id/page_file_operation_guideline_hint"
+		app:layout_constraintTop_toBottomOf="@id/page_file_operation_name_text" />
 
 	<androidx.appcompat.widget.AppCompatEditText
-		android:id="@+id/page_file_option_size"
+		android:id="@+id/page_file_operation_size"
 		android:layout_width="0dp"
 		android:layout_height="wrap_content"
 		android:background="@android:color/transparent"
@@ -72,29 +72,29 @@
 		android:text="0 B"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
-		app:layout_constraintBottom_toBottomOf="@id/page_file_option_size_text"
-		app:layout_constraintLeft_toRightOf="@id/page_file_option_guideline_hint"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_operation_size_text"
+		app:layout_constraintLeft_toRightOf="@id/page_file_operation_guideline_hint"
 		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toTopOf="@id/page_file_option_size_text"
+		app:layout_constraintTop_toTopOf="@id/page_file_operation_size_text"
 		tools:ignore="HardcodedText" />
 
 	<androidx.appcompat.widget.AppCompatTextView
-		android:id="@+id/page_file_option_create_text"
+		android:id="@+id/page_file_operation_create_text"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:lines="1"
 		android:paddingTop="5dp"
 		android:paddingBottom="5dp"
-		android:text="@string/page_file_option_create"
+		android:text="@string/page_file_operation_create"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
-		app:layout_constraintBottom_toTopOf="@id/page_file_option_update_text"
+		app:layout_constraintBottom_toTopOf="@id/page_file_operation_update_text"
 		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toLeftOf="@id/page_file_option_guideline_hint"
-		app:layout_constraintTop_toBottomOf="@id/page_file_option_size_text" />
+		app:layout_constraintRight_toLeftOf="@id/page_file_operation_guideline_hint"
+		app:layout_constraintTop_toBottomOf="@id/page_file_operation_size_text" />
 
 	<androidx.appcompat.widget.AppCompatEditText
-		android:id="@+id/page_file_option_create"
+		android:id="@+id/page_file_operation_create"
 		android:layout_width="0dp"
 		android:layout_height="wrap_content"
 		android:background="@android:color/transparent"
@@ -105,29 +105,29 @@
 		android:text="unknown"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
-		app:layout_constraintBottom_toBottomOf="@id/page_file_option_create_text"
-		app:layout_constraintLeft_toRightOf="@id/page_file_option_guideline_hint"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_operation_create_text"
+		app:layout_constraintLeft_toRightOf="@id/page_file_operation_guideline_hint"
 		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toTopOf="@id/page_file_option_create_text"
+		app:layout_constraintTop_toTopOf="@id/page_file_operation_create_text"
 		tools:ignore="HardcodedText" />
 
 	<androidx.appcompat.widget.AppCompatTextView
-		android:id="@+id/page_file_option_update_text"
+		android:id="@+id/page_file_operation_update_text"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:lines="1"
 		android:paddingTop="5dp"
 		android:paddingBottom="5dp"
-		android:text="@string/page_file_option_update"
+		android:text="@string/page_file_operation_update"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
-		app:layout_constraintBottom_toTopOf="@id/page_file_option_rename"
+		app:layout_constraintBottom_toTopOf="@id/page_file_operation_rename"
 		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toLeftOf="@id/page_file_option_guideline_hint"
-		app:layout_constraintTop_toBottomOf="@id/page_file_option_create_text" />
+		app:layout_constraintRight_toLeftOf="@id/page_file_operation_guideline_hint"
+		app:layout_constraintTop_toBottomOf="@id/page_file_operation_create_text" />
 
 	<androidx.appcompat.widget.AppCompatEditText
-		android:id="@+id/page_file_option_update"
+		android:id="@+id/page_file_operation_update"
 		android:layout_width="0dp"
 		android:layout_height="wrap_content"
 		android:background="@android:color/transparent"
@@ -138,157 +138,157 @@
 		android:text="unknown"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
-		app:layout_constraintBottom_toBottomOf="@id/page_file_option_update_text"
-		app:layout_constraintLeft_toRightOf="@id/page_file_option_guideline_hint"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_operation_update_text"
+		app:layout_constraintLeft_toRightOf="@id/page_file_operation_guideline_hint"
 		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toTopOf="@id/page_file_option_update_text"
+		app:layout_constraintTop_toTopOf="@id/page_file_operation_update_text"
 		tools:ignore="HardcodedText" />
 
 	<androidx.constraintlayout.widget.Guideline
-		android:id="@+id/page_file_option_guideline_icon"
+		android:id="@+id/page_file_operation_guideline_icon"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:orientation="vertical"
 		app:layout_constraintGuide_percent="0.2" />
 
 	<androidx.appcompat.widget.AppCompatTextView
-		android:id="@+id/page_file_option_rename"
+		android:id="@+id/page_file_operation_rename"
 		android:layout_width="0dp"
 		android:layout_height="wrap_content"
 		android:lines="1"
 		android:paddingTop="5dp"
 		android:paddingBottom="5dp"
-		android:text="@string/page_file_option_rename"
+		android:text="@string/page_file_operation_rename"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
-		app:layout_constraintBottom_toTopOf="@id/page_file_option_move"
-		app:layout_constraintLeft_toRightOf="@id/page_file_option_guideline_icon"
+		app:layout_constraintBottom_toTopOf="@id/page_file_operation_move"
+		app:layout_constraintLeft_toRightOf="@id/page_file_operation_guideline_icon"
 		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/page_file_option_update_text" />
+		app:layout_constraintTop_toBottomOf="@id/page_file_operation_update_text" />
 
 	<androidx.appcompat.widget.AppCompatImageView
-		android:id="@+id/page_file_option_rename_icon"
+		android:id="@+id/page_file_operation_rename_icon"
 		android:layout_width="0dp"
 		android:layout_height="0dp"
 		android:paddingTop="5dp"
 		android:paddingBottom="5dp"
 		android:scaleType="centerInside"
-		android:src="@mipmap/page_file_options_rename"
-		app:layout_constraintBottom_toBottomOf="@id/page_file_option_rename"
+		android:src="@mipmap/page_file_operation_rename"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_operation_rename"
 		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toLeftOf="@id/page_file_option_guideline_icon"
-		app:layout_constraintTop_toTopOf="@id/page_file_option_rename" />
+		app:layout_constraintRight_toLeftOf="@id/page_file_operation_guideline_icon"
+		app:layout_constraintTop_toTopOf="@id/page_file_operation_rename" />
 
 	<androidx.appcompat.widget.AppCompatTextView
-		android:id="@+id/page_file_option_move"
+		android:id="@+id/page_file_operation_move"
 		android:layout_width="0dp"
 		android:layout_height="wrap_content"
 		android:lines="1"
 		android:paddingTop="5dp"
 		android:paddingBottom="5dp"
-		android:text="@string/page_file_option_move"
+		android:text="@string/page_file_operation_move"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
-		app:layout_constraintBottom_toTopOf="@id/page_file_option_copy"
-		app:layout_constraintLeft_toRightOf="@id/page_file_option_guideline_icon"
+		app:layout_constraintBottom_toTopOf="@id/page_file_operation_copy"
+		app:layout_constraintLeft_toRightOf="@id/page_file_operation_guideline_icon"
 		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/page_file_option_rename" />
+		app:layout_constraintTop_toBottomOf="@id/page_file_operation_rename" />
 
 	<androidx.appcompat.widget.AppCompatImageView
-		android:id="@+id/page_file_option_move_icon"
+		android:id="@+id/page_file_operation_move_icon"
 		android:layout_width="0dp"
 		android:layout_height="0dp"
 		android:paddingTop="5dp"
 		android:paddingBottom="5dp"
 		android:scaleType="centerInside"
-		android:src="@mipmap/page_file_options_move"
-		app:layout_constraintBottom_toBottomOf="@id/page_file_option_move"
+		android:src="@mipmap/page_file_operation_move"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_operation_move"
 		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toLeftOf="@id/page_file_option_guideline_icon"
-		app:layout_constraintTop_toTopOf="@id/page_file_option_move" />
+		app:layout_constraintRight_toLeftOf="@id/page_file_operation_guideline_icon"
+		app:layout_constraintTop_toTopOf="@id/page_file_operation_move" />
 
 	<androidx.appcompat.widget.AppCompatTextView
-		android:id="@+id/page_file_option_copy"
+		android:id="@+id/page_file_operation_copy"
 		android:layout_width="0dp"
 		android:layout_height="wrap_content"
 		android:lines="1"
 		android:paddingTop="5dp"
 		android:paddingBottom="5dp"
-		android:text="@string/page_file_option_copy"
+		android:text="@string/page_file_operation_copy"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
-		app:layout_constraintBottom_toTopOf="@id/page_file_option_delete"
-		app:layout_constraintLeft_toRightOf="@id/page_file_option_guideline_icon"
+		app:layout_constraintBottom_toTopOf="@id/page_file_operation_delete"
+		app:layout_constraintLeft_toRightOf="@id/page_file_operation_guideline_icon"
 		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/page_file_option_move" />
+		app:layout_constraintTop_toBottomOf="@id/page_file_operation_move" />
 
 	<androidx.appcompat.widget.AppCompatImageView
-		android:id="@+id/page_file_option_copy_icon"
+		android:id="@+id/page_file_operation_copy_icon"
 		android:layout_width="0dp"
 		android:layout_height="0dp"
 		android:paddingTop="5dp"
 		android:paddingBottom="5dp"
 		android:scaleType="centerInside"
-		android:src="@mipmap/page_file_options_copy"
-		app:layout_constraintBottom_toBottomOf="@id/page_file_option_copy"
+		android:src="@mipmap/page_file_operation_copy"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_operation_copy"
 		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toLeftOf="@id/page_file_option_guideline_icon"
-		app:layout_constraintTop_toTopOf="@id/page_file_option_copy" />
+		app:layout_constraintRight_toLeftOf="@id/page_file_operation_guideline_icon"
+		app:layout_constraintTop_toTopOf="@id/page_file_operation_copy" />
 
 	<androidx.appcompat.widget.AppCompatTextView
-		android:id="@+id/page_file_option_delete"
+		android:id="@+id/page_file_operation_delete"
 		android:layout_width="0dp"
 		android:layout_height="wrap_content"
 		android:lines="1"
 		android:paddingTop="5dp"
 		android:paddingBottom="5dp"
-		android:text="@string/page_file_option_delete"
+		android:text="@string/page_file_operation_delete"
 		android:textColor="@color/text_warning"
 		android:textSize="20sp"
-		app:layout_constraintBottom_toTopOf="@id/page_file_option_download"
-		app:layout_constraintLeft_toRightOf="@id/page_file_option_guideline_icon"
+		app:layout_constraintBottom_toTopOf="@id/page_file_operation_download"
+		app:layout_constraintLeft_toRightOf="@id/page_file_operation_guideline_icon"
 		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/page_file_option_copy" />
+		app:layout_constraintTop_toBottomOf="@id/page_file_operation_copy" />
 
 	<androidx.appcompat.widget.AppCompatImageView
-		android:id="@+id/page_file_option_delete_icon"
+		android:id="@+id/page_file_operation_delete_icon"
 		android:layout_width="0dp"
 		android:layout_height="0dp"
 		android:paddingTop="5dp"
 		android:paddingBottom="5dp"
 		android:scaleType="centerInside"
-		android:src="@mipmap/page_file_options_delete"
-		app:layout_constraintBottom_toBottomOf="@id/page_file_option_delete"
+		android:src="@mipmap/page_file_operation_delete"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_operation_delete"
 		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toLeftOf="@id/page_file_option_guideline_icon"
-		app:layout_constraintTop_toTopOf="@id/page_file_option_delete" />
+		app:layout_constraintRight_toLeftOf="@id/page_file_operation_guideline_icon"
+		app:layout_constraintTop_toTopOf="@id/page_file_operation_delete" />
 
 	<androidx.appcompat.widget.AppCompatTextView
-		android:id="@+id/page_file_option_download"
+		android:id="@+id/page_file_operation_download"
 		android:layout_width="0dp"
 		android:layout_height="wrap_content"
 		android:lines="1"
 		android:paddingTop="5dp"
 		android:paddingBottom="5dp"
-		android:text="@string/page_file_option_download"
+		android:text="@string/page_file_operation_download"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
 		app:layout_constraintBottom_toBottomOf="parent"
-		app:layout_constraintLeft_toRightOf="@id/page_file_option_guideline_icon"
+		app:layout_constraintLeft_toRightOf="@id/page_file_operation_guideline_icon"
 		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/page_file_option_delete" />
+		app:layout_constraintTop_toBottomOf="@id/page_file_operation_delete" />
 
 	<androidx.appcompat.widget.AppCompatImageView
-		android:id="@+id/page_file_option_download_icon"
+		android:id="@+id/page_file_operation_download_icon"
 		android:layout_width="0dp"
 		android:layout_height="0dp"
 		android:paddingTop="5dp"
 		android:paddingBottom="5dp"
 		android:scaleType="centerInside"
-		android:src="@mipmap/page_file_options_download"
-		app:layout_constraintBottom_toBottomOf="@id/page_file_option_download"
+		android:src="@mipmap/page_file_operation_download"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_operation_download"
 		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toLeftOf="@id/page_file_option_guideline_icon"
-		app:layout_constraintTop_toTopOf="@id/page_file_option_download" />
+		app:layout_constraintRight_toLeftOf="@id/page_file_operation_guideline_icon"
+		app:layout_constraintTop_toTopOf="@id/page_file_operation_download" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

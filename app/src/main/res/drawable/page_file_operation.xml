@@ -9,32 +9,32 @@
 		android:translateX="50"
 		android:translateY="50">
 		<path
-			android:fillColor="@color/more_options"
+			android:fillColor="@color/page_file_options"
 			android:pathData="M0,5 A5,5,0,0,0,0,-5" />
 		<path
-			android:fillColor="@color/more_options"
+			android:fillColor="@color/page_file_options"
 			android:pathData="M0,5 A5,5,0,0,1,0,-5" />
 	</group>
 
 	<group
-		android:translateX="50"
-		android:translateY="35">
+		android:translateX="30"
+		android:translateY="50">
 		<path
-			android:fillColor="@color/more_options"
+			android:fillColor="@color/page_file_options"
 			android:pathData="M0,5 A5,5,0,0,0,0,-5" />
 		<path
-			android:fillColor="@color/more_options"
+			android:fillColor="@color/page_file_options"
 			android:pathData="M0,5 A5,5,0,0,1,0,-5" />
 	</group>
 
 	<group
-		android:translateX="50"
-		android:translateY="65">
+		android:translateX="70"
+		android:translateY="50">
 		<path
-			android:fillColor="@color/more_options"
+			android:fillColor="@color/page_file_options"
 			android:pathData="M0,5 A5,5,0,0,0,0,-5" />
 		<path
-			android:fillColor="@color/more_options"
+			android:fillColor="@color/page_file_options"
 			android:pathData="M0,5 A5,5,0,0,1,0,-5" />
 	</group>
 

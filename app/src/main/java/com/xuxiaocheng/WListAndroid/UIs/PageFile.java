@@ -73,7 +73,7 @@ import com.xuxiaocheng.WListAndroid.Utils.PermissionUtil;
 import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileDirectoryBinding;
-import com.xuxiaocheng.WListAndroid.databinding.PageFileOptionBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageFileOperationBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileRenameBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileUploadBinding;
 import io.netty.util.internal.EmptyArrays;
@@ -220,7 +220,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
 
     @UiThread
     private void updatePage(final @NotNull FileLocation location, final long position,
-                              final @NotNull BiConsumer<? super @NotNull VisibleFileInformation, ? super @NotNull AtomicBoolean> clicker, final @NotNull BiConsumer<? super @NotNull VisibleFileInformation, ? super @NotNull AtomicBoolean> option) {
+                              final @NotNull BiConsumer<? super @NotNull VisibleFileInformation, ? super @NotNull AtomicBoolean> clicker, final @NotNull BiConsumer<? super @NotNull VisibleFileInformation, ? super @NotNull AtomicBoolean> operation) {
         final PageFileBinding page = this.pageCache.getInstance();
         this.currentLocation.set(location);
         this.currentDoubleIds.clear();
@@ -239,7 +239,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
                     clicker.accept(information, clickable);
                 }, f -> {
                     if (clickable.compareAndSet(true, false))
-                        option.accept(f, clickable);
+                        operation.accept(f, clickable);
                 });
             }
         };
@@ -357,20 +357,20 @@ public class PageFile implements ActivityMainChooser.MainPage {
             }
             Main.runOnBackgroundThread(this.activity, () -> {c.set(true);throw new UnsupportedOperationException("WIP");}); // TODO
         }, (information, c) -> {
-            final PageFileOptionBinding optionBinding = PageFileOptionBinding.inflate(this.activity.getLayoutInflater());
-            optionBinding.pageFileOptionName.setText(FileInformationGetter.name(information));
+            final PageFileOperationBinding operationBinding = PageFileOperationBinding.inflate(this.activity.getLayoutInflater());
+            operationBinding.pageFileOperationName.setText(FileInformationGetter.name(information));
             final long size = FileInformationGetter.size(information);
             final String unknown = this.activity.getString(R.string.unknown);
-            optionBinding.pageFileOptionSize.setText(ViewUtil.formatSizeDetail(size, unknown));
-            optionBinding.pageFileOptionCreate.setText(ViewUtil.formatTime(FileInformationGetter.createTime(information), unknown));
-            optionBinding.pageFileOptionUpdate.setText(ViewUtil.formatTime(FileInformationGetter.updateTime(information), unknown));
+            operationBinding.pageFileOperationSize.setText(ViewUtil.formatSizeDetail(size, unknown));
+            operationBinding.pageFileOperationCreate.setText(ViewUtil.formatTime(FileInformationGetter.createTime(information), unknown));
+            operationBinding.pageFileOperationUpdate.setText(ViewUtil.formatTime(FileInformationGetter.updateTime(information), unknown));
             final AlertDialog modifier = new AlertDialog.Builder(this.activity)
-                    .setTitle(R.string.page_file_option).setView(optionBinding.getRoot())
+                    .setTitle(R.string.page_file_operation).setView(operationBinding.getRoot())
                     .setOnCancelListener(d -> c.set(true))
                     .setPositiveButton(R.string.cancel, (d, w) -> c.set(true)).create();
             final FileLocation current = new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.id(information));
             final AtomicBoolean clickable = new AtomicBoolean(true);
-            optionBinding.pageFileOptionRename.setOnClickListener(u -> {
+            operationBinding.pageFileOperationRename.setOnClickListener(u -> {
                 if (!clickable.compareAndSet(true, false)) return;
                 modifier.cancel();
                 final PageFileRenameBinding renamer = PageFileRenameBinding.inflate(this.activity.getLayoutInflater());
@@ -379,12 +379,12 @@ public class PageFile implements ActivityMainChooser.MainPage {
                     renamer.pageFileRenameName.setSelectAllOnFocus(true);
                     renamer.pageFileRenameName.setSelection(Objects.requireNonNull(renamer.pageFileRenameName.getText()).length());
                 }
-                new AlertDialog.Builder(this.activity).setTitle(R.string.page_file_option_rename).setView(renamer.getRoot())
+                new AlertDialog.Builder(this.activity).setTitle(R.string.page_file_operation_rename).setView(renamer.getRoot())
                         .setNegativeButton(R.string.cancel, null)
                         .setPositiveButton(R.string.confirm, (d, w) -> {
                             final String renamed = ViewUtil.getText(renamer.pageFileRenameName);
                             if (AndroidSupporter.isBlank(renamed) || FileInformationGetter.name(information).equals(renamed)) return;
-                            final AlertDialog dialog = this.loadingDialog(R.string.page_file_option_rename);
+                            final AlertDialog dialog = this.loadingDialog(R.string.page_file_operation_rename);
                             Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
                                 HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Renaming.",
                                         ParametersMap.create().add("address", this.address()).add("information", information).add("renamed", renamed));
@@ -394,21 +394,21 @@ public class PageFile implements ActivityMainChooser.MainPage {
                                 if (res.isFailure())
                                     Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, FailureReasonGetter.kind(res.getE()) + FailureReasonGetter.message(res.getE()), Toast.LENGTH_SHORT).show());
                                 else
-                                    Main.showToast(this.activity, R.string.page_file_option_rename_success);
+                                    Main.showToast(this.activity, R.string.page_file_operation_rename_success);
                             }, () -> Main.runOnUiThread(this.activity, dialog::cancel)));
                         }).show();
             });
-            optionBinding.pageFileOptionRenameIcon.setOnClickListener(u -> optionBinding.pageFileOptionRename.performClick());
-            optionBinding.pageFileOptionMove.setOnClickListener(u -> {
+            operationBinding.pageFileOperationRenameIcon.setOnClickListener(u -> operationBinding.pageFileOperationRename.performClick());
+            operationBinding.pageFileOperationMove.setOnClickListener(u -> {
                 if (!clickable.compareAndSet(true, false)) return;
                 modifier.cancel();
                 Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
-                    final FileLocation target = this.queryTargetDirectory(R.string.page_file_option_move/*, FileInformationGetter.isDirectory(information) ? current : null*/);
+                    final FileLocation target = this.queryTargetDirectory(R.string.page_file_operation_move/*, FileInformationGetter.isDirectory(information) ? current : null*/);
                     if (target == null) return;
                     HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Moving.",
                             ParametersMap.create().add("address", this.address()).add("information", information).add("target", target));
                     Main.runOnUiThread(this.activity, () -> {
-                        final AlertDialog dialog = this.loadingDialog(R.string.page_file_option_move);
+                        final AlertDialog dialog = this.loadingDialog(R.string.page_file_operation_move);
                         Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
                             final AtomicBoolean queried = new AtomicBoolean(false);
                             final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.move(this.address(), this.username(), current, FileInformationGetter.isDirectory(information), target, Main.ClientExecutors, HExceptionWrapper.wrapPredicate(p -> {
@@ -419,22 +419,22 @@ public class PageFile implements ActivityMainChooser.MainPage {
                             if (res.isFailure())
                                 Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, FailureReasonGetter.kind(res.getE()) + FailureReasonGetter.message(res.getE()), Toast.LENGTH_SHORT).show());
                             else
-                                Main.showToast(this.activity, R.string.page_file_option_move_success);
+                                Main.showToast(this.activity, R.string.page_file_operation_move_success);
                         }, () -> Main.runOnUiThread(this.activity, dialog::cancel)));
                     });
                 }));
             });
-            optionBinding.pageFileOptionMoveIcon.setOnClickListener(u -> optionBinding.pageFileOptionMove.performClick());
-            optionBinding.pageFileOptionCopy.setOnClickListener(u -> {
+            operationBinding.pageFileOperationMoveIcon.setOnClickListener(u -> operationBinding.pageFileOperationMove.performClick());
+            operationBinding.pageFileOperationCopy.setOnClickListener(u -> {
                 if (!clickable.compareAndSet(true, false)) return;
                 modifier.cancel();
                 Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
-                    final FileLocation target = this.queryTargetDirectory(R.string.page_file_option_copy/*, FileInformationGetter.isDirectory(information) ? current : null*/);
+                    final FileLocation target = this.queryTargetDirectory(R.string.page_file_operation_copy/*, FileInformationGetter.isDirectory(information) ? current : null*/);
                     if (target == null) return;
                     HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Copying.",
                             ParametersMap.create().add("address", this.address()).add("information", information).add("target", target));
                     Main.runOnUiThread(this.activity, () -> {
-                        final AlertDialog dialog = this.loadingDialog(R.string.page_file_option_copy);
+                        final AlertDialog dialog = this.loadingDialog(R.string.page_file_operation_copy);
                         Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
                             final AtomicBoolean queried = new AtomicBoolean(false);
                             final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.copy(this.address(), this.username(), current, FileInformationGetter.isDirectory(information), target, FileInformationGetter.name(information), Main.ClientExecutors, HExceptionWrapper.wrapPredicate(p -> {
@@ -445,36 +445,36 @@ public class PageFile implements ActivityMainChooser.MainPage {
                             if (res.isFailure())
                                 Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, FailureReasonGetter.kind(res.getE()) + FailureReasonGetter.message(res.getE()), Toast.LENGTH_SHORT).show());
                             else
-                                Main.showToast(this.activity, R.string.page_file_option_copy_success);
+                                Main.showToast(this.activity, R.string.page_file_operation_copy_success);
                         }, () -> Main.runOnUiThread(this.activity, dialog::cancel)));
                     });
                 }));
             });
-            optionBinding.pageFileOptionCopyIcon.setOnClickListener(u -> optionBinding.pageFileOptionCopy.performClick());
-            optionBinding.pageFileOptionDelete.setOnClickListener(u -> {
+            operationBinding.pageFileOperationCopyIcon.setOnClickListener(u -> operationBinding.pageFileOperationCopy.performClick());
+            operationBinding.pageFileOperationDelete.setOnClickListener(u -> {
                 if (!clickable.compareAndSet(true, false)) return;
                 modifier.cancel();
-                new AlertDialog.Builder(this.activity).setTitle(R.string.page_file_option_delete)
+                new AlertDialog.Builder(this.activity).setTitle(R.string.page_file_operation_delete)
                         .setNegativeButton(R.string.cancel, null)
                         .setPositiveButton(R.string.confirm, (d, w) -> {
-                            final AlertDialog dialog = this.loadingDialog(R.string.page_file_option_delete);
+                            final AlertDialog dialog = this.loadingDialog(R.string.page_file_operation_delete);
                             Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
                                 HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Deleting.",
                                         ParametersMap.create().add("address", this.address()).add("information", information));
                                 if (FilesAssistant.trash(this.address(), this.username(), new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.id(information)), FileInformationGetter.isDirectory(information), HExceptionWrapper.wrapPredicate(unused -> this.queryNotSupportedOperation())))
-                                    Main.showToast(this.activity, R.string.page_file_option_delete_success);
+                                    Main.showToast(this.activity, R.string.page_file_operation_delete_success);
                             }, () -> Main.runOnUiThread(this.activity, dialog::cancel)));
                         }).show();
             });
-            optionBinding.pageFileOptionDeleteIcon.setOnClickListener(u -> optionBinding.pageFileOptionDelete.performClick());
+            operationBinding.pageFileOperationDeleteIcon.setOnClickListener(u -> operationBinding.pageFileOperationDelete.performClick());
             if (FileInformationGetter.isDirectory(information)) {
-                optionBinding.pageFileOptionDownload.setVisibility(View.GONE);
-                optionBinding.pageFileOptionDownloadIcon.setVisibility(View.GONE);
+                operationBinding.pageFileOperationDownload.setVisibility(View.GONE);
+                operationBinding.pageFileOperationDownloadIcon.setVisibility(View.GONE);
             } else {
-                optionBinding.pageFileOptionDownload.setOnClickListener(u -> {
+                operationBinding.pageFileOperationDownload.setOnClickListener(u -> {
                     if (!clickable.compareAndSet(true, false)) return;
                     modifier.cancel();
-                    new AlertDialog.Builder(this.activity).setTitle(R.string.page_file_option_download)
+                    new AlertDialog.Builder(this.activity).setTitle(R.string.page_file_operation_download)
                             .setNegativeButton(R.string.cancel, null)
                             .setPositiveButton(R.string.confirm, (d, w) -> {
                                 final AlertDialog loader = new AlertDialog.Builder(this.activity).setTitle(FileInformationGetter.name(information)).setCancelable(false).show();
@@ -502,11 +502,11 @@ public class PageFile implements ActivityMainChooser.MainPage {
                                     if (res != null)
                                         Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, FailureReasonGetter.kind(res) + FailureReasonGetter.message(res), Toast.LENGTH_SHORT).show());
                                     else
-                                        Main.showToast(this.activity, R.string.page_file_option_download_success);
+                                        Main.showToast(this.activity, R.string.page_file_operation_download_success);
                                 }, () -> Main.runOnUiThread(this.activity, loader::cancel)));
                             }).show();
                 });
-                optionBinding.pageFileOptionDownloadIcon.setOnClickListener(u -> optionBinding.pageFileOptionDownload.performClick());
+                operationBinding.pageFileOperationDownloadIcon.setOnClickListener(u -> operationBinding.pageFileOperationDownload.performClick());
             }
             modifier.show();
         });
@@ -517,7 +517,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
         final CountDownLatch latch = new CountDownLatch(1);
         final AtomicBoolean continuer = new AtomicBoolean(false);
         Main.runOnUiThread(this.activity, () -> new AlertDialog.Builder(this.activity)
-                .setTitle(R.string.page_file_option_complex)
+                .setTitle(R.string.page_file_operation_complex)
                 .setOnCancelListener(a -> latch.countDown())
                 .setNegativeButton(R.string.cancel, (a, b) -> latch.countDown())
                 .setPositiveButton(R.string.confirm, (a, k) -> Main.runOnBackgroundThread(this.activity, () -> {
@@ -769,7 +769,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
                     Map.of("image", R.drawable.page_file_refresh, "name", this.activity.getResources().getString(R.string.page_file_options_refresh)),
                     Map.of("image", R.drawable.page_file_sorter, "name", this.activity.getResources().getString(R.string.page_file_options_sorter)),
                     Map.of("image", R.drawable.page_file_filter, "name", this.activity.getResources().getString(R.string.page_file_options_filter))
-            ), R.layout.activity_main_options_cell, new String[]{"image", "name"},
+            ), R.layout.page_file_options_cell, new String[]{"image", "name"},
                     new int[]{R.id.activity_main_options_cell_image, R.id.activity_main_options_cell_name}));
             popup.setOnItemClickListener((p, w, pos, i) -> {
                 popup.dismiss();

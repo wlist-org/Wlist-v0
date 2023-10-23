@@ -8,16 +8,16 @@
 	<path
 		android:pathData="M10,25 H90"
 		android:strokeWidth="5"
-		android:strokeColor="@color/page_file_options" />
+		android:strokeColor="@color/page_file_operation" />
 
 	<path
 		android:strokeWidth="5"
-		android:strokeColor="@color/page_file_options"
+		android:strokeColor="@color/page_file_operation"
 		android:pathData="M10,50 H65" />
 
 	<path
 		android:strokeWidth="5"
-		android:strokeColor="@color/page_file_options"
+		android:strokeColor="@color/page_file_operation"
 		android:pathData="M10,75 H40" />
 
 </vector>
