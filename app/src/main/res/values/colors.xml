@@ -29,4 +29,6 @@
 	<color name="loading_g">@color/loading_f</color>
 	<color name="loading_h">@color/loading_g</color>
 	<color name="more_options">@color/gray</color>
+	<color name="page_file_refresh">@color/gray</color>
+
 </resources>
