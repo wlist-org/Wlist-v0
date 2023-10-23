@@ -49,7 +49,7 @@
 		android:gravity="center"
 		android:paddingStart="5dp"
 		android:paddingEnd="5dp"
-		android:src="@mipmap/page_file_ellipsis"
+		android:src="@drawable/page_file_options"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toRightOf="@id/page_file_cell_guideline_option"
 		app:layout_constraintRight_toRightOf="parent"
