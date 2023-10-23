@@ -99,6 +99,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public class PageFile implements ActivityMainChooser.MainPage {
@@ -219,21 +220,27 @@ public class PageFile implements ActivityMainChooser.MainPage {
 
     @UiThread
     private void updatePage(final @NotNull FileLocation location, final long position,
-                              final @NotNull Consumer<? super @NotNull VisibleFileInformation> clicker, final @NotNull Consumer<? super @NotNull VisibleFileInformation> option) {
+                              final @NotNull BiConsumer<? super @NotNull VisibleFileInformation, ? super @NotNull AtomicBoolean> clicker, final @NotNull BiConsumer<? super @NotNull VisibleFileInformation, ? super @NotNull AtomicBoolean> option) {
         final PageFileBinding page = this.pageCache.getInstance();
         this.currentLocation.set(location);
         this.currentDoubleIds.clear();
         final AtomicBoolean onLoading = new AtomicBoolean(false);
+        final AtomicBoolean clickable = new AtomicBoolean(true);
         final EnhancedRecyclerViewAdapter<VisibleFileInformation, PageFileViewHolder> adapter = new EnhancedRecyclerViewAdapter<>() {
             @Override
             protected @NotNull PageFileViewHolder createViewHolder(final @NotNull ViewGroup parent) {
                 return new PageFileViewHolder(EnhancedRecyclerViewAdapter.buildView(PageFile.this.activity.getLayoutInflater(), R.layout.page_file_cell, page.pageFileList), information -> {
-                    if (onLoading.get())
-                        return;
-                    final int p = PageFile.this.getCurrentPosition();
-                    PageFile.this.stacks.push(Triad.ImmutableTriad.makeImmutableTriad(location, this.getData(p), new AtomicLong(p)));
-                    clicker.accept(information);
-                }, option::accept);
+                    if (onLoading.get()) return;
+                    if (!clickable.compareAndSet(true, false)) return;
+                    if (FileInformationGetter.isDirectory(information)) {
+                        final int p = PageFile.this.getCurrentPosition();
+                        PageFile.this.stacks.push(Triad.ImmutableTriad.makeImmutableTriad(location, this.getData(p), new AtomicLong(p)));
+                    }
+                    clicker.accept(information, clickable);
+                }, f -> {
+                    if (clickable.compareAndSet(true, false))
+                        option.accept(f, clickable);
+                });
             }
         };
         page.pageFileCounter.setVisibility(View.GONE);
@@ -330,9 +337,9 @@ public class PageFile implements ActivityMainChooser.MainPage {
         page.pageFileBacker.setOnClickListener(null);
         page.pageFileBacker.setClickable(false);
         page.pageFileName.setText(R.string.app_name);
-        this.updatePage(new FileLocation(IdentifierNames.RootSelector, 0), position, information ->
-                this.onInsidePage(FileInformationGetter.name(information), new FileLocation(FileInformationGetter.name(information), FileInformationGetter.id(information)), 0), information ->
-                Main.runOnBackgroundThread(this.activity, () -> {throw new UnsupportedOperationException("WIP");}) // TODO
+        this.updatePage(new FileLocation(IdentifierNames.RootSelector, 0), position, (information, c) ->
+                this.onInsidePage(FileInformationGetter.name(information), new FileLocation(FileInformationGetter.name(information), FileInformationGetter.id(information)), 0), (information, c) ->
+                Main.runOnBackgroundThread(this.activity, () -> {c.set(true);throw new UnsupportedOperationException("WIP");}) // TODO
         );
     }
 
@@ -343,12 +350,13 @@ public class PageFile implements ActivityMainChooser.MainPage {
         page.pageFileBacker.setOnClickListener(v -> this.popFileList());
         page.pageFileBacker.setClickable(true);
         page.pageFileName.setText(name);
-        this.updatePage(location, position, information -> {
-            if (FileInformationGetter.isDirectory(information))
+        this.updatePage(location, position, (information, c) -> {
+            if (FileInformationGetter.isDirectory(information)) {
                 this.onInsidePage(FileInformationGetter.name(information), new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.id(information)), 0);
-            else
-                Main.runOnBackgroundThread(this.activity, () -> {throw new UnsupportedOperationException("WIP");}); // TODO
-        }, information -> {
+                return;
+            }
+            Main.runOnBackgroundThread(this.activity, () -> {c.set(true);throw new UnsupportedOperationException("WIP");}); // TODO
+        }, (information, c) -> {
             final PageFileOptionBinding optionBinding = PageFileOptionBinding.inflate(this.activity.getLayoutInflater());
             optionBinding.pageFileOptionName.setText(FileInformationGetter.name(information));
             final long size = FileInformationGetter.size(information);
@@ -358,7 +366,8 @@ public class PageFile implements ActivityMainChooser.MainPage {
             optionBinding.pageFileOptionUpdate.setText(ViewUtil.formatTime(FileInformationGetter.updateTime(information), unknown));
             final AlertDialog modifier = new AlertDialog.Builder(this.activity)
                     .setTitle(R.string.page_file_option).setView(optionBinding.getRoot())
-                    .setPositiveButton(R.string.cancel, null).create();
+                    .setOnCancelListener(d -> c.set(true))
+                    .setPositiveButton(R.string.cancel, (d, w) -> c.set(true)).create();
             final FileLocation current = new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.id(information));
             final AtomicBoolean clickable = new AtomicBoolean(true);
             optionBinding.pageFileOptionRename.setOnClickListener(u -> {
@@ -479,12 +488,12 @@ public class PageFile implements ActivityMainChooser.MainPage {
                                     try {
                                         Main.runOnUiThread(PageFile.this.activity, () -> PageFile.this.listLoadingAnimation(true, 0, 0));
                                         res = FilesAssistant.download(this.address(), this.username(), new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.id(information)), file, PredicateE.truePredicate(), s -> {
-                                            long c = 0, total = 0;
+                                            long curr = 0, total = 0;
                                             for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
-                                                c += pair.getFirst().longValue();
+                                                curr += pair.getFirst().longValue();
                                                 total += pair.getSecond().longValue();
                                             }
-                                            final long l = c, t = total;
+                                            final long l = curr, t = total;
                                             Main.runOnUiThread(PageFile.this.activity, () -> PageFile.this.listLoadingAnimation(true, l, t));
                                         });
                                     } finally {
