@@ -33,6 +33,6 @@
 	<color name="page_file_uploader_a">@color/white</color>
 	<color name="page_file_uploader_b">@color/red</color>
 	<color name="page_file_uploader_c">@color/red</color>
-	<color name="page_file_refresh">@color/gray</color>
+	<color name="page_file_options">@color/gray</color>
 
 </resources>

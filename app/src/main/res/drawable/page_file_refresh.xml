@@ -11,12 +11,12 @@
 		android:translateY="50">
 
 		<path
-			android:pathData="M0,30 A30,30,0,1,1,30,0"
+			android:pathData="M0,40 A40,40,0,1,1,40,0"
 			android:strokeWidth="5"
-			android:strokeColor="@color/page_file_refresh" />
+			android:strokeColor="@color/page_file_options" />
 		<path
-			android:fillColor="@color/page_file_refresh"
-			android:pathData="M20,0 H40 L30,15 Z" />
+			android:fillColor="@color/page_file_options"
+			android:pathData="M30,0 H50 L40,15 Z" />
 	</group>
 
 	<group
@@ -25,9 +25,9 @@
 		android:translateY="50">
 
 		<path
-			android:pathData="M0,30 A30,30,0,0,0,30,0"
+			android:pathData="M0,40 A40,40,0,0,0,40,0"
 			android:strokeWidth="5"
-			android:strokeColor="@color/page_file_refresh" />
+			android:strokeColor="@color/page_file_options" />
 	</group>
 
 </vector>

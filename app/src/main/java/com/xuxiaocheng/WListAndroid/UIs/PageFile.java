@@ -767,8 +767,8 @@ public class PageFile implements ActivityMainChooser.MainPage {
             popup.setAnchorView(options);
             popup.setAdapter(new SimpleAdapter(this.activity, List.of(
                     Map.of("image", R.drawable.page_file_refresh, "name", this.activity.getResources().getString(R.string.page_file_options_refresh)),
-                    Map.of("image", R.mipmap.page_file_sort, "name", this.activity.getResources().getString(R.string.page_file_options_sort)),
-                    Map.of("image", R.mipmap.page_file_filter, "name", this.activity.getResources().getString(R.string.page_file_options_filter))
+                    Map.of("image", R.drawable.page_file_sorter, "name", this.activity.getResources().getString(R.string.page_file_options_sorter)),
+                    Map.of("image", R.drawable.page_file_filter, "name", this.activity.getResources().getString(R.string.page_file_options_filter))
             ), R.layout.activity_main_options_cell, new String[]{"image", "name"},
                     new int[]{R.id.activity_main_options_cell_image, R.id.activity_main_options_cell_name}));
             popup.setOnItemClickListener((p, w, pos, i) -> {
