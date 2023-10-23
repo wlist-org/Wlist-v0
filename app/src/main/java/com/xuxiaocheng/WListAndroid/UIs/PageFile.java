@@ -761,12 +761,14 @@ public class PageFile implements ActivityMainChooser.MainPage {
         }));
         final ImageView options = this.activity.findViewById(R.id.activity_main_options);
         options.setOnClickListener(v -> {
-            if (this.activity.currentChoice.get() != ActivityMainChooser.MainChoice.File) return;
+            if (this.activity.currentChoice.get() != ActivityMainChooser.MainChoice.File) return; // TODO
             final ListPopupWindow popup = new ListPopupWindow(this.activity);
             popup.setWidth(this.pageCache.getInstance().pageFileList.getWidth() >> 1);
             popup.setAnchorView(options);
             popup.setAdapter(new SimpleAdapter(this.activity, List.of(
-                    Map.of("image", R.drawable.page_file_refresh, "name", this.activity.getResources().getString(R.string.page_file_options_refresh))
+                    Map.of("image", R.drawable.page_file_refresh, "name", this.activity.getResources().getString(R.string.page_file_options_refresh)),
+                    Map.of("image", R.mipmap.page_file_sort, "name", this.activity.getResources().getString(R.string.page_file_options_sort)),
+                    Map.of("image", R.mipmap.page_file_filter, "name", this.activity.getResources().getString(R.string.page_file_options_filter))
             ), R.layout.activity_main_options_cell, new String[]{"image", "name"},
                     new int[]{R.id.activity_main_options_cell_image, R.id.activity_main_options_cell_name}));
             popup.setOnItemClickListener((p, w, pos, i) -> {
@@ -783,6 +785,12 @@ public class PageFile implements ActivityMainChooser.MainPage {
                         final long c = current, t = total;
                         Main.runOnUiThread(PageFile.this.activity, () -> this.listLoadingAnimation(true, c, t));
                     }), () -> Main.runOnUiThread(this.activity, () -> this.listLoadingAnimation(false, 0, 0))));
+                }
+                if (pos == 1) { // Sort
+                    // TODO
+                }
+                if (pos == 2) { // Filter
+                    // TODO
                 }
             });
             popup.show();
