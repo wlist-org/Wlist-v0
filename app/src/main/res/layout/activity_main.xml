@@ -43,11 +43,7 @@
 			android:layout_width="wrap_content"
 			android:layout_height="match_parent"
 			android:adjustViewBounds="true"
-			android:paddingStart="10dp"
-			android:paddingTop="15dp"
-			android:paddingEnd="10dp"
-			android:paddingBottom="15dp"
-			android:src="@drawable/backer" />
+			android:src="@drawable/activity_main_options" />
 
 	</androidx.appcompat.widget.LinearLayoutCompat>
 

@@ -156,7 +156,8 @@ public class PageFile implements ActivityMainChooser.MainPage {
 
     @UiThread
     private void setLoading(final @NotNull ImageView loading) {
-        ((Animatable) loading.getDrawable()).start();
+        if (loading.getDrawable() instanceof Animatable animatable)
+            animatable.start();
     }
 
     private @NotNull ImageView loadingView() {
