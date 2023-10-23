@@ -11,7 +11,7 @@
 		android:layout_marginTop="10dp"
 		android:layout_marginBottom="10dp"
 		android:scaleType="centerInside"
-		android:src="@mipmap/page_file_loading"
+		android:src="@drawable/loading"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintHorizontal_chainStyle="packed"
 		app:layout_constraintLeft_toLeftOf="parent"

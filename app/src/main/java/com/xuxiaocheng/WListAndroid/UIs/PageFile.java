@@ -5,15 +5,13 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
+import android.graphics.drawable.Animatable;
 import android.os.Environment;
 import android.provider.OpenableColumns;
 import android.util.DisplayMetrics;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.Animation;
-import android.view.animation.LinearInterpolator;
-import android.view.animation.RotateAnimation;
 import android.widget.AbsListView;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -157,27 +155,27 @@ public class PageFile implements ActivityMainChooser.MainPage {
     }
 
     @UiThread
-    private static void setLoading(final @NotNull ImageView loading) {
-        final Animation loadingAnimation = new RotateAnimation(0, 360 << 10, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
-        loadingAnimation.setDuration(500 << 10);
-        loadingAnimation.setInterpolator(new LinearInterpolator());
-        loadingAnimation.setRepeatCount(Animation.INFINITE);
-        loading.startAnimation(loadingAnimation);
+    private void setLoading(final @NotNull ImageView loading) {
+        ((Animatable) loading.getDrawable()).start();
+    }
+
+    private @NotNull ImageView loadingView() {
+        final ImageView loading = new ImageView(this.activity);
+        loading.setImageResource(R.drawable.loading);
+        this.setLoading(loading);
+        return loading;
     }
 
     @UiThread
     private @NotNull AlertDialog loadingDialog(@StringRes final int title) {
-        final ImageView loading = new ImageView(this.activity);
-        loading.setImageResource(R.mipmap.page_file_loading);
-        PageFile.setLoading(loading);
-        return new AlertDialog.Builder(this.activity).setTitle(title).setView(loading).setCancelable(false).show();
+        return new AlertDialog.Builder(this.activity).setTitle(title).setView(this.loadingView()).setCancelable(false).show();
     }
 
     @UiThread
     private @NotNull View listLoadingView() {
         final ConstraintLayout loading = EnhancedRecyclerViewAdapter.buildView(PageFile.this.activity.getLayoutInflater(), R.layout.page_file_tailor_loading, this.pageCache.getInstance().pageFileList);
         final ImageView image = (ImageView) loading.getViewById(R.id.page_file_tailor_loading_image);
-        PageFile.setLoading(image);
+        this.setLoading(image);
         return loading;
     }
 
@@ -195,7 +193,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
         if (show) {
             page.pageFileLoading.setVisibility(View.VISIBLE);
             page.pageFileLoadingText.setVisibility(View.VISIBLE);
-            PageFile.setLoading(page.pageFileLoading);
+            this.setLoading(page.pageFileLoading);
         } else {
             page.pageFileLoading.setVisibility(View.GONE);
             page.pageFileLoadingText.setVisibility(View.GONE);
@@ -468,9 +466,6 @@ public class PageFile implements ActivityMainChooser.MainPage {
                     new AlertDialog.Builder(this.activity).setTitle(R.string.page_file_option_download)
                             .setNegativeButton(R.string.cancel, null)
                             .setPositiveButton(R.string.confirm, (d, w) -> {
-                                final ImageView loading = new ImageView(this.activity);
-                                loading.setImageResource(R.mipmap.page_file_loading);
-                                PageFile.setLoading(loading);
                                 final AlertDialog loader = new AlertDialog.Builder(this.activity).setTitle(FileInformationGetter.name(information)).setCancelable(false).show();
                                 Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
                                     final File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "wlist/" + FileInformationGetter.name(information));
@@ -635,11 +630,8 @@ public class PageFile implements ActivityMainChooser.MainPage {
                             final String identifier = storages[choice.get()];
                             final StorageTypes<C> type = (StorageTypes<C>) Objects.requireNonNull(StorageTypeGetter.get(identifier));
                             PageFileProviderConfigurations.getConfiguration(PageFile.this.activity, type, null, configuration -> Main.runOnUiThread(this.activity, () -> {
-                                final ImageView loading = new ImageView(PageFile.this.activity);
-                                loading.setImageResource(R.mipmap.page_file_loading);
-                                PageFile.setLoading(loading);
                                 final AlertDialog dialog = new AlertDialog.Builder(PageFile.this.activity)
-                                        .setTitle(R.string.page_file_provider_add).setView(loading)
+                                        .setTitle(R.string.page_file_provider_add).setView(this.loadingView())
                                         .setCancelable(false).show();
                                 Main.runOnBackgroundThread(PageFile.this.activity, HExceptionWrapper.wrapRunnable(() -> {
                                     try (final WListClientInterface client = WListClientManager.quicklyGetClient(PageFile.this.address())) {
@@ -672,11 +664,8 @@ public class PageFile implements ActivityMainChooser.MainPage {
                         .setNegativeButton(R.string.cancel, null)
                         .setPositiveButton(R.string.confirm, (d, w) -> {
                             final String name = ViewUtil.getText(editor.pageFileDirectoryName);
-                            final ImageView loading = new ImageView(this.activity);
-                            loading.setImageResource(R.mipmap.page_file_loading);
-                            PageFile.setLoading(loading);
                             final AlertDialog loader = new AlertDialog.Builder(this.activity)
-                                    .setTitle(R.string.page_file_upload_directory).setView(loading).setCancelable(false).show();
+                                    .setTitle(R.string.page_file_upload_directory).setView(this.loadingView()).setCancelable(false).show();
                             Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
                                 HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Creating directory.",
                                         ParametersMap.create().add("address", this.address()).add("location", location).add("name", name));
@@ -721,9 +710,6 @@ public class PageFile implements ActivityMainChooser.MainPage {
                 HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Uploading files.",
                         ParametersMap.create().add("address", this.address()).add("location", location).add("filename", filename).add("size", size).add("uri", uri));
                 Main.runOnUiThread(this.activity, () -> {
-                    final ImageView loading = new ImageView(this.activity);
-                    loading.setImageResource(R.mipmap.page_file_loading);
-                    PageFile.setLoading(loading);
                     final AlertDialog loader = new AlertDialog.Builder(this.activity).setTitle(filename).setCancelable(false).show();
                     this.listLoadingAnimation(true, 0, 0);
                     Main.runOnUiThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
