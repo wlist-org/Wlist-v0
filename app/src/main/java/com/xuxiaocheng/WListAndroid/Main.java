@@ -8,11 +8,14 @@ import android.os.Process;
 import android.util.Log;
 import android.widget.Toast;
 import androidx.annotation.StringRes;
+import androidx.annotation.UiThread;
+import androidx.annotation.WorkerThread;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.HeadLibs;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.Client.Assistants.BroadcastAssistant;
 import com.xuxiaocheng.WList.Client.Operations.OperateHelper;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Server.Operations.ServerHandler;
@@ -44,6 +47,7 @@ public final class Main extends Application {
         }); // Kill in main thread.
         HLog.setLogTimeFLength(3);
         OperateHelper.LogOperation.set(false);
+        BroadcastAssistant.LogBroadcastEvent.set(false);
         ServerHandler.LogActive.set(false);
         ServerHandler.LogOperation.set(false);
         Log.i("HLog", "Hello WList (Android v0.1.1)!" + ParametersMap.create().add("pid", Process.myPid()));
@@ -84,7 +88,7 @@ public final class Main extends Application {
         };
     }
 
-    public static void runOnUiThread(final @Nullable Activity activity, final @NotNull Runnable runnable) {
+    public static void runOnUiThread(final @Nullable Activity activity, @UiThread final @NotNull Runnable runnable) {
         final Runnable wrappedRunnable = Main.wrapRunnable(activity, runnable);
         if (Main.mainHandler.getLooper().getThread() == Thread.currentThread())
             wrappedRunnable.run();
@@ -95,7 +99,11 @@ public final class Main extends Application {
                 Main.mainHandler.post(wrappedRunnable);
     }
 
-    public static void runOnUiThread(final @Nullable Activity activity, final @NotNull Runnable runnable, final long delay, final @NotNull TimeUnit unit) {
+    public static void runOnNextUiThread(final @Nullable Activity activity, @UiThread final @NotNull Runnable runnable) {
+        Main.AndroidExecutors.submit(() -> Main.runOnUiThread(activity, runnable));
+    }
+
+    public static void runOnUiThread(final @Nullable Activity activity, @UiThread final @NotNull Runnable runnable, final long delay, final @NotNull TimeUnit unit) {
         final Runnable wrappedRunnable = Main.wrapRunnable(activity, runnable);
         if (activity != null)
             Main.AndroidExecutors.schedule(() -> activity.runOnUiThread(wrappedRunnable), delay, unit);
@@ -103,7 +111,7 @@ public final class Main extends Application {
             Main.mainHandler.postDelayed(wrappedRunnable, unit.toMillis(delay));
     }
 
-    public static void runOnBackgroundThread(final @Nullable Activity activity, final @NotNull Runnable runnable) {
+    public static void runOnBackgroundThread(final @Nullable Activity activity, @WorkerThread final @NotNull Runnable runnable) {
         final Runnable wrappedRunnable = Main.wrapRunnable(activity, runnable);
         if (Main.mainHandler.getLooper().getThread() != Thread.currentThread())
             wrappedRunnable.run();
@@ -114,7 +122,7 @@ public final class Main extends Application {
                 Main.AndroidExecutors.submit(wrappedRunnable).addListener(MiscellaneousUtil.exceptionListener());
     }
 
-    public static void runOnNewBackgroundThread(final @Nullable Activity activity, final @NotNull Runnable runnable) {
+    public static void runOnNextBackgroundThread(final @Nullable Activity activity, @WorkerThread final @NotNull Runnable runnable) {
         final Runnable wrappedRunnable = Main.wrapRunnable(activity, runnable);
         if (activity != null)
             Main.AndroidExecutors.submit(wrappedRunnable).addListener(Main.exceptionListenerWithToast(activity));
@@ -122,7 +130,7 @@ public final class Main extends Application {
             Main.AndroidExecutors.submit(wrappedRunnable).addListener(MiscellaneousUtil.exceptionListener());
     }
 
-    public static void runOnBackgroundThread(final @Nullable Activity activity, final @NotNull Runnable runnable, final long delay, final @NotNull TimeUnit unit) {
+    public static void runOnBackgroundThread(final @Nullable Activity activity, @WorkerThread final @NotNull Runnable runnable, final long delay, final @NotNull TimeUnit unit) {
         final Runnable wrappedRunnable = Main.wrapRunnable(activity, runnable);
         if (activity != null)
             Main.AndroidExecutors.schedule(wrappedRunnable, delay, unit).addListener(Main.exceptionListenerWithToast(activity));

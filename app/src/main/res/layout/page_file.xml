@@ -19,6 +19,13 @@
 		android:orientation="vertical"
 		app:layout_constraintGuide_percent="0.1" />
 
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/page_file_guideline_loading"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		app:layout_constraintGuide_percent="0.9" />
+
 	<androidx.appcompat.widget.AppCompatImageView
 		android:id="@+id/page_file_backer"
 		android:layout_width="0dp"
@@ -92,33 +99,58 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:src="@mipmap/page_file_upload"
-		android:visibility="invisible"
+		android:visibility="gone"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintRight_toRightOf="parent" />
 
-	<androidx.appcompat.widget.AppCompatImageView
+	<View
 		android:id="@+id/page_file_loading"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:src="@drawable/loading"
+		android:layout_width="1dp"
+		android:layout_height="0dp"
+		android:background="@color/loading_bar_b"
 		android:visibility="gone"
-		app:layout_constraintBottom_toTopOf="@id/page_file_loading_text"
-		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_loading_bar"
+		app:layout_constraintLeft_toRightOf="@id/page_file_guideline_backer"
+		app:layout_constraintRight_toLeftOf="@id/page_file_loading_bar"
+		app:layout_constraintTop_toTopOf="@id/page_file_loading_bar" />
+
+	<View
+		android:id="@+id/page_file_loading_bar"
+		android:layout_width="0dp"
+		android:layout_height="5dp"
+		android:background="@color/loading_bar_a"
+		android:visibility="gone"
+		app:layout_constraintBottom_toTopOf="@id/page_file_loading_percent"
+		app:layout_constraintLeft_toRightOf="@id/page_file_loading"
+		app:layout_constraintRight_toLeftOf="@id/page_file_guideline_loading"
 		app:layout_constraintTop_toTopOf="parent"
 		app:layout_constraintVertical_chainStyle="packed" />
 
 	<androidx.appcompat.widget.AppCompatTextView
-		android:id="@+id/page_file_loading_text"
-		android:layout_width="wrap_content"
+		android:id="@+id/page_file_loading_percent"
+		android:layout_width="0dp"
 		android:layout_height="wrap_content"
-		android:layout_marginTop="20dp"
+		android:layout_marginTop="10dp"
+		android:gravity="center_vertical|end"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
 		android:visibility="gone"
 		app:layout_constraintBottom_toBottomOf="parent"
-		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/page_file_loading" />
+		app:layout_constraintLeft_toRightOf="@id/page_file_loading_text"
+		app:layout_constraintRight_toLeftOf="@id/page_file_guideline_loading"
+		app:layout_constraintTop_toBottomOf="@id/page_file_loading_bar" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_file_loading_text"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:gravity="center"
+		android:textColor="@color/text_normal"
+		android:textSize="20sp"
+		android:visibility="gone"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_loading_percent"
+		app:layout_constraintLeft_toRightOf="@id/page_file_guideline_backer"
+		app:layout_constraintRight_toLeftOf="@id/page_file_loading_percent"
+		app:layout_constraintTop_toTopOf="@id/page_file_loading_percent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

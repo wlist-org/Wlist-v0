@@ -131,7 +131,13 @@ public class PageFile implements ActivityMainChooser.MainPage {
         this.onRootPage(0);
         this.buildUploader();
         Main.runOnBackgroundThread(this.activity, () -> { // TODO auto insert.
-            final BroadcastAssistant.BroadcastSet set = BroadcastAssistant.get(this.address());
+            final BroadcastAssistant.BroadcastSet set;
+            try {
+                set = BroadcastAssistant.get(this.address());
+            } catch (final IllegalStateException exception) {
+                Main.runOnUiThread(this.activity, this.activity::close);
+                return;
+            }
             set.ServerClose.register(id -> Main.runOnUiThread(this.activity, this.activity::close));
             final Runnable onRoot = () -> {
                 if (this.stacks.isEmpty())
@@ -187,21 +193,36 @@ public class PageFile implements ActivityMainChooser.MainPage {
         return EnhancedRecyclerViewAdapter.buildView(PageFile.this.activity.getLayoutInflater(), R.layout.page_file_tailor_no_more, this.pageCache.getInstance().pageFileList);
     }
 
-    private static final @NotNull HInitializer<String> listLoadingAnimationPattern = new HInitializer<>("ListLoadingAnimationPattern");
-    @UiThread
+    private static final @NotNull HInitializer<String> listLoadingAnimationMessage = new HInitializer<>("listLoadingAnimationMessage");
+    private static final @NotNull HInitializer<String> listLoadingAnimationPercent = new HInitializer<>("listLoadingAnimationPercent");
+    @WorkerThread
     private void listLoadingAnimation(final boolean show, final long current, final long total) {
         final PageFileBinding page = this.pageCache.getInstance();
-        PageFile.listLoadingAnimationPattern.initializeIfNot(() -> this.activity.getString(R.string.page_file_loading_text));
-        page.pageFileLoadingText.setText(MessageFormat.format(PageFile.listLoadingAnimationPattern.getInstance(), current, total));
-        if (show) {
-            page.pageFileLoading.setVisibility(View.VISIBLE);
-            page.pageFileLoadingText.setVisibility(View.VISIBLE);
-            this.setLoading(page.pageFileLoading);
-        } else {
-            page.pageFileLoading.setVisibility(View.GONE);
-            page.pageFileLoadingText.setVisibility(View.GONE);
-            page.pageFileLoading.clearAnimation();
-        }
+        PageFile.listLoadingAnimationMessage.initializeIfNot(() -> this.activity.getString(R.string.page_file_loading_text));
+        PageFile.listLoadingAnimationPercent.initializeIfNot(() -> this.activity.getString(R.string.page_file_loading_percent));
+        final double p = show ? total <= 0 ? 0 : ((double) current) / total : 1;
+        final String percent = MessageFormat.format(PageFile.listLoadingAnimationPercent.getInstance(), p);
+        final String text = MessageFormat.format(PageFile.listLoadingAnimationMessage.getInstance(), current, total);
+        //noinspection NumericCastThatLosesPrecision
+        final int size = Math.max(1, (int) (p * (page.pageFileLoadingBar.getWidth() + page.pageFileLoading.getWidth())));
+        Main.runOnUiThread(this.activity, () -> {
+            page.pageFileLoading.getLayoutParams().width = size;
+            page.pageFileLoadingPercent.setText(percent);
+            page.pageFileLoadingText.setText(text);
+            if (show) {
+                page.pageFileLoading.setVisibility(View.VISIBLE);
+                page.pageFileLoadingBar.setVisibility(View.VISIBLE);
+                page.pageFileLoadingPercent.setVisibility(View.VISIBLE);
+                page.pageFileLoadingText.setVisibility(View.VISIBLE);
+            }
+        });
+        if (!show)
+            Main.runOnUiThread(this.activity, () -> {
+                page.pageFileLoading.setVisibility(View.GONE);
+                page.pageFileLoadingBar.setVisibility(View.GONE);
+                page.pageFileLoadingPercent.setVisibility(View.GONE);
+                page.pageFileLoadingText.setVisibility(View.GONE);
+            }, 200, TimeUnit.MILLISECONDS);
     }
 
     private int getCurrentPosition() {
@@ -270,7 +291,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
                     final VisibleFilesListInformation list;
                     (isDown ? noMoreDown : noMoreUp).set(false); // prevent retry forever when server error.
                     final int limit;
-                    Main.runOnUiThread(PageFile.this.activity, () -> PageFile.this.listLoadingAnimation(true, 0, 0));
+                    PageFile.this.listLoadingAnimation(true, 0, 0);
                     try {
                         final ClientConfiguration configuration = ClientConfigurationSupporter.get();
                         final Options.FilterPolicy filter = ClientConfigurationSupporter.filterPolicy(configuration);
@@ -285,10 +306,13 @@ public class PageFile implements ActivityMainChooser.MainPage {
                                 total += pair.getSecond().longValue();
                             }
                             final long c = current, t = total;
-                            Main.runOnUiThread(PageFile.this.activity, () -> PageFile.this.listLoadingAnimation(true, c, t));
+                            PageFile.this.listLoadingAnimation(true, c, t);
                         });
+                    } catch (final IllegalStateException exception) {
+                        Main.runOnUiThread(PageFile.this.activity, PageFile.this.activity::close);
+                        return;
                     } finally {
-                        Main.runOnUiThread(PageFile.this.activity, () -> PageFile.this.listLoadingAnimation(false, 0, 0));
+                        PageFile.this.listLoadingAnimation(false, 0, 0);
                     }
                     if (list == null) {
                         Main.showToast(PageFile.this.activity, R.string.page_file_unavailable_directory);
@@ -486,7 +510,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
                                             ParametersMap.create().add("address", this.address()).add("information", information).add("file", file));
                                     final VisibleFailureReason res;
                                     try {
-                                        Main.runOnUiThread(PageFile.this.activity, () -> PageFile.this.listLoadingAnimation(true, 0, 0));
+                                        PageFile.this.listLoadingAnimation(true, 0, 0);
                                         res = FilesAssistant.download(this.address(), this.username(), new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.id(information)), file, PredicateE.truePredicate(), s -> {
                                             long curr = 0, total = 0;
                                             for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
@@ -494,10 +518,10 @@ public class PageFile implements ActivityMainChooser.MainPage {
                                                 total += pair.getSecond().longValue();
                                             }
                                             final long l = curr, t = total;
-                                            Main.runOnUiThread(PageFile.this.activity, () -> PageFile.this.listLoadingAnimation(true, l, t));
+                                            PageFile.this.listLoadingAnimation(true, l, t);
                                         });
                                     } finally {
-                                        Main.runOnUiThread(PageFile.this.activity, () -> PageFile.this.listLoadingAnimation(false, 0, 0));
+                                        PageFile.this.listLoadingAnimation(false, 0, 0);
                                     }
                                     if (res != null)
                                         Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, FailureReasonGetter.kind(res) + FailureReasonGetter.message(res), Toast.LENGTH_SHORT).show());
@@ -556,13 +580,13 @@ public class PageFile implements ActivityMainChooser.MainPage {
         final Triad.ImmutableTriad<FileLocation, VisibleFileInformation, AtomicLong> p = this.stacks.poll();
         if (p == null) return false;
         final PageFileBinding page = this.pageCache.getInstance();
-        this.listLoadingAnimation(true, 0, 0);
         page.pageFileBacker.setClickable(false);
         page.pageFileCounter.setVisibility(View.GONE);
         page.pageFileCounterText.setVisibility(View.GONE);
         page.pageFileList.clearOnScrollListeners();
         page.pageFileList.setAdapter(EmptyRecyclerAdapter.Instance);
         Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
+            this.listLoadingAnimation(true, 0, 0);
             final VisibleFileInformation directory;
             try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address())) {
                 directory = OperateFilesHelper.getFileOrDirectory(client, TokenAssistant.getToken(this.address(), this.username()), p.getA(), true);
@@ -734,9 +758,9 @@ public class PageFile implements ActivityMainChooser.MainPage {
                 }
                 HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Uploading files.",
                         ParametersMap.create().add("address", this.address()).add("location", location).add("filename", filename).add("size", size).add("uri", uri));
+                this.listLoadingAnimation(true, 0, 0);
                 Main.runOnUiThread(this.activity, () -> {
                     final AlertDialog loader = new AlertDialog.Builder(this.activity).setTitle(filename).setCancelable(false).show();
-                    this.listLoadingAnimation(true, 0, 0);
                     Main.runOnUiThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
                         final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.uploadStream(this.address(), this.username(), HExceptionWrapper.wrapBiConsumer((pair, consumer) -> {
                             try (final InputStream stream = new BufferedInputStream(this.activity.getContentResolver().openInputStream(uri))) {
@@ -750,17 +774,17 @@ public class PageFile implements ActivityMainChooser.MainPage {
                                 total += pair.getSecond().longValue();
                             }
                             final long c = current, t = total;
-                            Main.runOnUiThread(PageFile.this.activity, () -> PageFile.this.listLoadingAnimation(true, c, t));
+                            PageFile.this.listLoadingAnimation(true, c, t);
                         });
                         assert res != null;
                         if (res.isFailure()) // TODO
                             Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, FailureReasonGetter.message(res.getE()), Toast.LENGTH_SHORT).show());
                         else
                             Main.showToast(this.activity, R.string.page_file_upload_success_file);
-                    }, () -> Main.runOnUiThread(this.activity, () -> {
-                        loader.cancel();
+                    }, () -> {
                         this.listLoadingAnimation(false, 0, 0);
-                    })));
+                        Main.runOnUiThread(this.activity, loader::cancel);
+                    }));
                 });
             }));
         }));
@@ -780,16 +804,18 @@ public class PageFile implements ActivityMainChooser.MainPage {
                 popup.dismiss();
                 if (pos == 0) { // Refresh.
                     final FileLocation location = this.currentLocation.get();
-                    this.listLoadingAnimation(true, 0, 0);
-                    Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> FilesAssistant.refresh(this.address(), this.username(), location, Main.ClientExecutors, s -> { // TODO
-                        long current = 0, total = 0;
-                        for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
-                            current += pair.getFirst().longValue();
-                            total += pair.getSecond().longValue();
-                        }
-                        final long c = current, t = total;
-                        Main.runOnUiThread(PageFile.this.activity, () -> this.listLoadingAnimation(true, c, t));
-                    }), () -> Main.runOnUiThread(this.activity, () -> this.listLoadingAnimation(false, 0, 0))));
+                    Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
+                        this.listLoadingAnimation(true, 0, 0);
+                        FilesAssistant.refresh(this.address(), this.username(), location, Main.ClientExecutors, s -> { // TODO
+                            long current = 0, total = 0;
+                            for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
+                                current += pair.getFirst().longValue();
+                                total += pair.getSecond().longValue();
+                            }
+                            final long c = current, t = total;
+                            this.listLoadingAnimation(true, c, t);
+                        });
+                    }, () -> this.listLoadingAnimation(false, 0, 0)));
                 }
                 if (pos == 1) { // Sort
                     // TODO

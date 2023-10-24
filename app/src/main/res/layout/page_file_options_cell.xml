@@ -23,7 +23,7 @@
 		android:id="@+id/activity_main_options_cell_name"
 		android:layout_width="0dp"
 		android:layout_height="0dp"
-		android:gravity="start|center_vertical"
+		android:gravity="center_vertical|start"
 		android:maxLines="1"
 		android:textSize="15sp"
 		android:textColor="@color/text_normal"
