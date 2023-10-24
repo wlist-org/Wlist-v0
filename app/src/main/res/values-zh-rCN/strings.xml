@@ -55,6 +55,7 @@
 	<string name="page_file_provider_passport">网盘账号：</string>
 	<string name="page_file_provider_password">网盘密码：</string>
 	<string name="page_file_options_refresh">重新与网盘同步</string>
+	<string name="page_file_options_refresh_warning">注意：重新与网盘同步可能需要较长时间</string>
 	<string name="page_file_options_sorter">排序</string>
 	<string name="page_file_options_filter">过滤</string>
 	<string name="page_user_disconnect">断开连接</string>

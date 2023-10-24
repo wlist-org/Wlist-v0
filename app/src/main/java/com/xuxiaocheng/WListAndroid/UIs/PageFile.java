@@ -55,7 +55,6 @@ import com.xuxiaocheng.WList.Client.Operations.OperateProvidersHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
-import com.xuxiaocheng.WList.Commons.Beans.InstantaneousProgressState;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFilesListInformation;
@@ -74,6 +73,7 @@ import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileDirectoryBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileOperationBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageFileOptionsRefreshBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileRenameBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileUploadBinding;
 import io.netty.util.internal.EmptyArrays;
@@ -116,6 +116,11 @@ public class PageFile implements ActivityMainChooser.MainPage {
 
     protected @NotNull String username() {
         return this.activity.username.getInstance();
+    }
+
+    @Override
+    public void onHide() {
+        this.activity.findViewById(R.id.activity_main_options).setVisibility(View.GONE);
     }
 
     protected final @NotNull HInitializer<PageFileBinding> pageCache = new HInitializer<>("PageFile");
@@ -200,7 +205,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
         final PageFileBinding page = this.pageCache.getInstance();
         PageFile.listLoadingAnimationMessage.initializeIfNot(() -> this.activity.getString(R.string.page_file_loading_text));
         PageFile.listLoadingAnimationPercent.initializeIfNot(() -> this.activity.getString(R.string.page_file_loading_percent));
-        final double p = show ? total <= 0 ? 0 : ((double) current) / total : 1;
+        final double p = total <= 0 ? show ? 0 : 1 : ((double) current) / total;
         final String percent = MessageFormat.format(PageFile.listLoadingAnimationPercent.getInstance(), p);
         final String text = MessageFormat.format(PageFile.listLoadingAnimationMessage.getInstance(), current, total);
         //noinspection NumericCastThatLosesPrecision
@@ -221,17 +226,6 @@ public class PageFile implements ActivityMainChooser.MainPage {
                 ViewUtil.fadeOut(page.pageFileLoadingText, 300);
             }
         });
-    }
-
-    @WorkerThread
-    private void listLoadingCallback(final @NotNull InstantaneousProgressState state) {
-        long current = 0, total = 0;
-        for (final Pair.ImmutablePair<Long, Long> pair: InstantaneousProgressStateGetter.stages(state)) {
-            current += pair.getFirst().longValue();
-            total += pair.getSecond().longValue();
-        }
-        final long c = current, t = total;
-        PageFile.this.listLoadingAnimation(true, c, t);
     }
 
     private int getCurrentPosition() {
@@ -309,7 +303,10 @@ public class PageFile implements ActivityMainChooser.MainPage {
                                     PageFile.this.listLoadingAnimation(true, 0, 0);
                                     showed.set(true);
                                     return true;
-                                }, PageFile.this::listLoadingCallback);
+                                }, state -> {
+                                    final Pair.ImmutablePair<Long, Long> pair = InstantaneousProgressStateGetter.merge(state);
+                                    PageFile.this.listLoadingAnimation(true, pair.getFirst().longValue(), pair.getSecond().longValue());
+                                });
                     } catch (final IllegalStateException exception) {
                         Main.runOnUiThread(PageFile.this.activity, PageFile.this.activity::close);
                         return;
@@ -589,8 +586,10 @@ public class PageFile implements ActivityMainChooser.MainPage {
         page.pageFileBacker.setClickable(false);
         page.pageFileCounter.setVisibility(View.GONE);
         page.pageFileCounterText.setVisibility(View.GONE);
-        page.pageFileList.clearOnScrollListeners();
-        page.pageFileList.setAdapter(EmptyRecyclerAdapter.Instance);
+        final PageFileBinding page1 = this.pageCache.getInstance();
+        page1.pageFileList.clearOnScrollListeners();
+        page1.pageFileList.setAdapter(EmptyRecyclerAdapter.Instance);
+        this.currentDoubleIds.clear();
         Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
             final VisibleFileInformation directory;
             try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address())) {
@@ -772,9 +771,9 @@ public class PageFile implements ActivityMainChooser.MainPage {
                                 AndroidSupporter.skipNBytes(stream, pair.getFirst().longValue());
                                 consumer.accept(stream);
                             }
-                        }), size, filename, location, PredicateE.truePredicate(), s -> { // TODO upload rogress.
+                        }), size, filename, location, PredicateE.truePredicate(), s -> { // TODO upload progress.
                             long current = 0, total = 0;
-                            for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
+                            for (final Pair.ImmutablePair<Long, Long> pair: InstantaneousProgressStateGetter.stages(s)) {
                                 current += pair.getFirst().longValue();
                                 total += pair.getSecond().longValue();
                             }
@@ -808,11 +807,24 @@ public class PageFile implements ActivityMainChooser.MainPage {
             popup.setOnItemClickListener((p, w, pos, i) -> {
                 popup.dismiss();
                 if (pos == 0) { // Refresh.
-                    final FileLocation location = this.currentLocation.get();
-                    Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
-                        this.listLoadingAnimation(true, 0, 0);
-                        FilesAssistant.refresh(this.address(), this.username(), location, Main.ClientExecutors, this::listLoadingCallback);
-                    }, () -> this.listLoadingAnimation(false, 0, 0)));
+                    if (this.stacks.isEmpty()) return;
+                    final PageFileOptionsRefreshBinding refresh = PageFileOptionsRefreshBinding.inflate(this.activity.getLayoutInflater());
+                    new AlertDialog.Builder(this.activity)
+                            .setTitle(R.string.page_file_options_refresh)
+                            .setView(refresh.getRoot())
+                            .setNegativeButton(R.string.cancel, null)
+                            .setPositiveButton(R.string.confirm, (d, h) -> {
+                                final FileLocation location = this.currentLocation.get();
+                                final AtomicLong max = new AtomicLong(0);
+                                Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
+                                    this.listLoadingAnimation(true, 0, 0);
+                                    FilesAssistant.refresh(this.address(), this.username(), location, Main.ClientExecutors, state -> {
+                                        final Pair.ImmutablePair<Long, Long> pair = InstantaneousProgressStateGetter.merge(state);
+                                        max.set(pair.getSecond().longValue());
+                                        this.listLoadingAnimation(true, pair.getFirst().longValue(), pair.getSecond().longValue());
+                                    });
+                                }, () -> this.listLoadingAnimation(false, max.get(), max.get())));
+                            }).show();
                 }
                 if (pos == 1) { // Sort
                     // TODO
@@ -823,11 +835,6 @@ public class PageFile implements ActivityMainChooser.MainPage {
             });
             popup.show();
         });
-    }
-
-    @Override
-    public void onHide() {
-        this.activity.findViewById(R.id.activity_main_options).setVisibility(View.GONE);
     }
 
     @Override
