@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class HLogManager {
@@ -31,7 +32,7 @@ public final class HLogManager {
             return;
         try {
             HMergedStreams.initializeDefaultFileOutputStream(new File(context.getApplicationContext().getExternalCacheDir(), "logs/" +
-                    ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH.mm.ss")) + '.' + type + ".log"));
+                    ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH.mm.ss", Locale.getDefault())) + '.' + type + ".log"));
         } catch (final IOException exception) {
             throw new RuntimeException("Unreachable!", exception);
         }

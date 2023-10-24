@@ -6,6 +6,7 @@ import android.os.IBinder;
 import android.os.Process;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.Rust.NativeUtil;
 import com.xuxiaocheng.WList.Server.Operations.ServerHandler;
@@ -15,6 +16,9 @@ import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
 import io.netty.util.internal.PlatformDependent;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @SuppressWarnings("ClassHasNoToStringMethod")
 public final class InternalServerService extends Service {
@@ -31,11 +35,20 @@ public final class InternalServerService extends Service {
             throw new IllegalStateException("Unknown architecture: " + ("unknown".equals(arch) ? System.getProperty("os.arch") : arch));
         }); // Normally is unreachable.
         ServerHandler.AllowLogOn.set(false);
+        HUncaughtExceptionHelper.setUncaughtExceptionListener("service", (t, e) -> {
+            if (t == this.ServerMainThread)
+                Main.runOnBackgroundThread(null, () -> {
+                    this.onDestroy(); // Force stop.
+                    this.stopSelf();
+                }, 300, TimeUnit.MILLISECONDS);
+        });
         this.ServerMainThread.start();
     }
 
+    private final @NotNull AtomicBoolean called = new AtomicBoolean(false);
     @Override
     public void onDestroy() {
+        if (!this.called.compareAndSet(false, true)) return;
         super.onDestroy();
         HLogManager.getInstance("DefaultLogger").log(HLogLevel.FINE, "Internal WList Server is stopping.");
         Main.runOnBackgroundThread(null, HExceptionWrapper.wrapRunnable(() -> {

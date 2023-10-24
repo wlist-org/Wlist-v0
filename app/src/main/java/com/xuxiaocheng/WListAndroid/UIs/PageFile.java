@@ -50,12 +50,12 @@ import com.xuxiaocheng.WList.AndroidSupports.StorageTypeGetter;
 import com.xuxiaocheng.WList.Client.Assistants.BroadcastAssistant;
 import com.xuxiaocheng.WList.Client.Assistants.FilesAssistant;
 import com.xuxiaocheng.WList.Client.Assistants.TokenAssistant;
-import com.xuxiaocheng.WList.Client.ClientConfiguration;
 import com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper;
 import com.xuxiaocheng.WList.Client.Operations.OperateProvidersHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
+import com.xuxiaocheng.WList.Commons.Beans.InstantaneousProgressState;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFilesListInformation;
@@ -87,7 +87,6 @@ import java.net.InetSocketAddress;
 import java.text.MessageFormat;
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -204,25 +203,34 @@ public class PageFile implements ActivityMainChooser.MainPage {
         final String percent = MessageFormat.format(PageFile.listLoadingAnimationPercent.getInstance(), p);
         final String text = MessageFormat.format(PageFile.listLoadingAnimationMessage.getInstance(), current, total);
         //noinspection NumericCastThatLosesPrecision
-        final int size = Math.max(1, (int) (p * (page.pageFileLoadingBar.getWidth() + page.pageFileLoading.getWidth())));
+        final float g = ((float) p) * 0.8f + 0.1f;
         Main.runOnUiThread(this.activity, () -> {
-            page.pageFileLoading.getLayoutParams().width = size;
+            page.pageFileGuidelineLoaded.setGuidelinePercent(g);
             page.pageFileLoadingPercent.setText(percent);
             page.pageFileLoadingText.setText(text);
             if (show) {
-                page.pageFileLoading.setVisibility(View.VISIBLE);
-                page.pageFileLoadingBar.setVisibility(View.VISIBLE);
-                page.pageFileLoadingPercent.setVisibility(View.VISIBLE);
-                page.pageFileLoadingText.setVisibility(View.VISIBLE);
+                ViewUtil.fadeIn(page.pageFileLoading, 100);
+                ViewUtil.fadeIn(page.pageFileLoadingBar, 100);
+                ViewUtil.fadeIn(page.pageFileLoadingPercent, 200);
+                ViewUtil.fadeIn(page.pageFileLoadingText, 200);
+            } else {
+                ViewUtil.fadeOut(page.pageFileLoading, 300);
+                ViewUtil.fadeOut(page.pageFileLoadingBar, 300);
+                ViewUtil.fadeOut(page.pageFileLoadingPercent, 300);
+                ViewUtil.fadeOut(page.pageFileLoadingText, 300);
             }
         });
-        if (!show)
-            Main.runOnUiThread(this.activity, () -> {
-                page.pageFileLoading.setVisibility(View.GONE);
-                page.pageFileLoadingBar.setVisibility(View.GONE);
-                page.pageFileLoadingPercent.setVisibility(View.GONE);
-                page.pageFileLoadingText.setVisibility(View.GONE);
-            }, 200, TimeUnit.MILLISECONDS);
+    }
+
+    @WorkerThread
+    private void listLoadingCallback(final @NotNull InstantaneousProgressState state) {
+        long current = 0, total = 0;
+        for (final Pair.ImmutablePair<Long, Long> pair: InstantaneousProgressStateGetter.stages(state)) {
+            current += pair.getFirst().longValue();
+            total += pair.getSecond().longValue();
+        }
+        final long c = current, t = total;
+        PageFile.this.listLoadingAnimation(true, c, t);
     }
 
     private int getCurrentPosition() {
@@ -288,31 +296,27 @@ public class PageFile implements ActivityMainChooser.MainPage {
                 else
                     adapter.addHeader(PageFile.this.listLoadingView());
                 Main.runOnBackgroundThread(PageFile.this.activity, HExceptionWrapper.wrapRunnable(() -> {
-                    final VisibleFilesListInformation list;
                     (isDown ? noMoreDown : noMoreUp).set(false); // prevent retry forever when server error.
+                    VisibleFilesListInformation list = null;
                     final int limit;
-                    PageFile.this.listLoadingAnimation(true, 0, 0);
+                    final AtomicBoolean showed = new AtomicBoolean(false);
                     try {
-                        final ClientConfiguration configuration = ClientConfigurationSupporter.get();
-                        final Options.FilterPolicy filter = ClientConfigurationSupporter.filterPolicy(configuration);
-                        final LinkedHashMap<VisibleFileInformation.Order, Options.OrderDirection> orders = ClientConfigurationSupporter.fileOrders(configuration);
-                        limit = ClientConfigurationSupporter.limitPerPage(configuration);
+                        limit = ClientConfigurationSupporter.limitPerPage(ClientConfigurationSupporter.get());
                         final int need = isDown ? limit : Math.toIntExact(Math.min(loadedUp.get(), limit));
-                        list = FilesAssistant.list(PageFile.this.address(), PageFile.this.username(), location, filter, orders,
-                                isDown ? loadedDown.getAndAdd(need) : loadedUp.addAndGet(-need), need, Main.ClientExecutors, s -> {
-                            long current = 0, total = 0;
-                            for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
-                                current += pair.getFirst().longValue();
-                                total += pair.getSecond().longValue();
-                            }
-                            final long c = current, t = total;
-                            PageFile.this.listLoadingAnimation(true, c, t);
-                        });
+                        list = FilesAssistant.list(PageFile.this.address(), PageFile.this.username(), location, null, null,
+                                isDown ? loadedDown.getAndAdd(need) : loadedUp.addAndGet(-need), need, Main.ClientExecutors, c -> {
+                                    PageFile.this.listLoadingAnimation(true, 0, 0);
+                                    showed.set(true);
+                                    return true;
+                                }, PageFile.this::listLoadingCallback);
                     } catch (final IllegalStateException exception) {
                         Main.runOnUiThread(PageFile.this.activity, PageFile.this.activity::close);
                         return;
                     } finally {
-                        PageFile.this.listLoadingAnimation(false, 0, 0);
+                        if (showed.get()) {
+                            final long num = list == null ? 0 : FilesListInformationGetter.total(list);
+                            PageFile.this.listLoadingAnimation(false, num, num);
+                        }
                     }
                     if (list == null) {
                         Main.showToast(PageFile.this.activity, R.string.page_file_unavailable_directory);
@@ -325,14 +329,15 @@ public class PageFile implements ActivityMainChooser.MainPage {
                         noMoreUp.set(loadedUp.get() <= 0);
                     PageFile.this.currentDoubleIds.addAll(AndroidSupporter.streamToList(FilesListInformationGetter.informationList(list).stream()
                             .map(information -> FileSqlInterface.getDoubleId(FileInformationGetter.id(information), FileInformationGetter.isDirectory(information)))));
+                    final VisibleFilesListInformation l = list;
                     Main.runOnUiThread(PageFile.this.activity, () -> {
-                        page.pageFileCounter.setText(String.valueOf(FilesListInformationGetter.total(list)));
+                        page.pageFileCounter.setText(String.valueOf(FilesListInformationGetter.total(l)));
                         page.pageFileCounter.setVisibility(View.VISIBLE);
                         page.pageFileCounterText.setVisibility(View.VISIBLE);
                         if (isDown)
-                            adapter.addDataRange(FilesListInformationGetter.informationList(list));
+                            adapter.addDataRange(FilesListInformationGetter.informationList(l));
                         else
-                            adapter.addDataRange(0, FilesListInformationGetter.informationList(list));
+                            adapter.addDataRange(0, FilesListInformationGetter.informationList(l));
                     });
                 }, e -> {
                     onLoading.set(false);
@@ -510,7 +515,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
                                             ParametersMap.create().add("address", this.address()).add("information", information).add("file", file));
                                     final VisibleFailureReason res;
                                     try {
-                                        PageFile.this.listLoadingAnimation(true, 0, 0);
+                                        PageFile.this.listLoadingAnimation(true, 0, 0); // TODO: download progress.
                                         res = FilesAssistant.download(this.address(), this.username(), new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.id(information)), file, PredicateE.truePredicate(), s -> {
                                             long curr = 0, total = 0;
                                             for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
@@ -586,7 +591,6 @@ public class PageFile implements ActivityMainChooser.MainPage {
         page.pageFileList.clearOnScrollListeners();
         page.pageFileList.setAdapter(EmptyRecyclerAdapter.Instance);
         Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
-            this.listLoadingAnimation(true, 0, 0);
             final VisibleFileInformation directory;
             try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address())) {
                 directory = OperateFilesHelper.getFileOrDirectory(client, TokenAssistant.getToken(this.address(), this.username()), p.getA(), true);
@@ -767,7 +771,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
                                 AndroidSupporter.skipNBytes(stream, pair.getFirst().longValue());
                                 consumer.accept(stream);
                             }
-                        }), size, filename, location, c -> true, s -> { // TODO
+                        }), size, filename, location, PredicateE.truePredicate(), s -> { // TODO upload rogress.
                             long current = 0, total = 0;
                             for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
                                 current += pair.getFirst().longValue();
@@ -806,15 +810,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
                     final FileLocation location = this.currentLocation.get();
                     Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
                         this.listLoadingAnimation(true, 0, 0);
-                        FilesAssistant.refresh(this.address(), this.username(), location, Main.ClientExecutors, s -> { // TODO
-                            long current = 0, total = 0;
-                            for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
-                                current += pair.getFirst().longValue();
-                                total += pair.getSecond().longValue();
-                            }
-                            final long c = current, t = total;
-                            this.listLoadingAnimation(true, c, t);
-                        });
+                        FilesAssistant.refresh(this.address(), this.username(), location, Main.ClientExecutors, this::listLoadingCallback);
                     }, () -> this.listLoadingAnimation(false, 0, 0)));
                 }
                 if (pos == 1) { // Sort

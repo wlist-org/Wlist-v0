@@ -103,15 +103,22 @@
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintRight_toRightOf="parent" />
 
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/page_file_guideline_loaded"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		app:layout_constraintGuide_percent="0.1" />
+
 	<View
 		android:id="@+id/page_file_loading"
-		android:layout_width="1dp"
+		android:layout_width="0dp"
 		android:layout_height="0dp"
 		android:background="@color/loading_bar_b"
 		android:visibility="gone"
 		app:layout_constraintBottom_toBottomOf="@id/page_file_loading_bar"
 		app:layout_constraintLeft_toRightOf="@id/page_file_guideline_backer"
-		app:layout_constraintRight_toLeftOf="@id/page_file_loading_bar"
+		app:layout_constraintRight_toLeftOf="@id/page_file_guideline_loaded"
 		app:layout_constraintTop_toTopOf="@id/page_file_loading_bar" />
 
 	<View
@@ -121,7 +128,7 @@
 		android:background="@color/loading_bar_a"
 		android:visibility="gone"
 		app:layout_constraintBottom_toTopOf="@id/page_file_loading_percent"
-		app:layout_constraintLeft_toRightOf="@id/page_file_loading"
+		app:layout_constraintLeft_toRightOf="@id/page_file_guideline_loaded"
 		app:layout_constraintRight_toLeftOf="@id/page_file_guideline_loading"
 		app:layout_constraintTop_toTopOf="parent"
 		app:layout_constraintVertical_chainStyle="packed" />
