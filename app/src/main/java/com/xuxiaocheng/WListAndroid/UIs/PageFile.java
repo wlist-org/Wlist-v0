@@ -121,6 +121,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
     protected final @NotNull HInitializer<PageFileBinding> pageCache = new HInitializer<>("PageFile");
     @Override
     public @NotNull ConstraintLayout onShow() {
+        this.activity.findViewById(R.id.activity_main_options).setVisibility(View.VISIBLE);
         final PageFileBinding cache = this.pageCache.getInstanceNullable();
         if (cache != null) return cache.getRoot();
         final PageFileBinding page = PageFileBinding.inflate(this.activity.getLayoutInflater());
@@ -822,6 +823,11 @@ public class PageFile implements ActivityMainChooser.MainPage {
             });
             popup.show();
         });
+    }
+
+    @Override
+    public void onHide() {
+        this.activity.findViewById(R.id.activity_main_options).setVisibility(View.GONE);
     }
 
     @Override

@@ -80,10 +80,19 @@ public final class ActivityMainChooser {
         }
     }
 
+    @FunctionalInterface
     public interface MainPage {
+        @UiThread
         @NotNull View onShow();
-        boolean onBackPressed();
+        @UiThread
+        default boolean onBackPressed() {
+            return false;
+        }
+        @UiThread
         default void onActivityCreateHook() {
+        }
+        @UiThread
+        default void onHide() {
         }
     }
 

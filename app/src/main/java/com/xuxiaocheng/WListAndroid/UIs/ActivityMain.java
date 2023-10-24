@@ -33,6 +33,7 @@ import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class ActivityMain extends AppCompatActivity {
@@ -107,15 +108,16 @@ public class ActivityMain extends AppCompatActivity {
         contentParams.topToBottom = R.id.activity_main_guideline_title;
         chooser.setOnChangeListener(choice -> {
             final View oldView;
+            final ActivityMainChooser.MainChoice oldChoice;
             synchronized (currentView) {
                 oldView = currentView.getAndSet(null);
-                this.currentChoice.set(null);
+                oldChoice = this.currentChoice.getAndSet(null);
             }
             if (oldView != null)
                 activity.getRoot().removeView(oldView);
-            final ActivityMainChooser.MainPage page = this.pages.get(choice);
-            assert page != null;
-            final View newView = page.onShow();
+            if (oldChoice != null)
+                Objects.requireNonNull(this.pages.get(oldChoice)).onHide();
+            final View newView = Objects.requireNonNull(this.pages.get(choice)).onShow();
             final boolean ok;
             synchronized (currentView) {
                 ok = currentView.compareAndSet(null, newView);

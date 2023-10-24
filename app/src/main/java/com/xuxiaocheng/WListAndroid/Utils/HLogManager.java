@@ -62,7 +62,7 @@ public final class HLogManager {
                     priority = Log.ERROR;
                 if (message.contains("[FAULT]") || message.contains("[BUG]"))
                     priority = Log.ASSERT;
-                Log.println(priority, "WList", message);
+                Log.println(priority, "HLog-WList", message);
                 this.lastPriority = priority;
             }
         }, fileOutputStream));

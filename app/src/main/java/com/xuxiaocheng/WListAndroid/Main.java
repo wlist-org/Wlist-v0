@@ -78,7 +78,7 @@ public final class Main extends Application {
         BroadcastAssistant.LogBroadcastEvent.set(false);
         ServerHandler.LogActive.set(false);
         ServerHandler.LogOperation.set(false);
-        Log.i("HLog", "Hello WList (Android v0.1.1)!" + ParametersMap.create().add("pid", Process.myPid()));
+        Log.i("HLog-WList", "Hello WList (Android v0.1.1)!" + ParametersMap.create().add("pid", Process.myPid()));
     }
 
     public static final @NotNull EventExecutorGroup ClientExecutors =

@@ -23,9 +23,4 @@ public class PageTrans implements ActivityMainChooser.MainPage {
 
         return page.getRoot();
     }
-
-    @Override
-    public boolean onBackPressed() {
-        return false;
-    }
 }

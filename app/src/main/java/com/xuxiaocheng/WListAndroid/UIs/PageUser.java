@@ -66,11 +66,6 @@ public class PageUser implements ActivityMainChooser.MainPage {
     }
 
     @Override
-    public boolean onBackPressed() {
-        return false;
-    }
-
-    @Override
     public @NotNull String toString() {
         return "PageUser{" +
                 "activity=" + this.activity +
