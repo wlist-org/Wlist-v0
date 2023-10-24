@@ -36,10 +36,11 @@ import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 /**
- * @see com.xuxiaocheng.WList.Server.Operations.Helpers.BroadcastManager
+ * @see BroadcastManager
  */
 public final class BroadcastAssistant {
     private BroadcastAssistant() {
@@ -47,6 +48,8 @@ public final class BroadcastAssistant {
     }
 
     public static final @NotNull EventExecutorGroup CallbackExecutors = new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors(), new DefaultThreadFactory("CallbackExecutors"));
+
+    public static final @NotNull AtomicBoolean LogBroadcastEvent = new AtomicBoolean(true);
 
     public static class CallbackSet<T> {
         protected final @NotNull String name;
@@ -66,7 +69,8 @@ public final class BroadcastAssistant {
                 HLog.getInstance("ClientLogger").log(HLogLevel.WARN, "No broadcast callbacks registered.", ParametersMap.create().add("name", this.name).add("event", t));
                 return;
             }
-            HLog.getInstance("ClientLogger").log(HLogLevel.LESS, "Broadcast callback: ", ParametersMap.create().add("name", this.name).add("event", t));
+            if (BroadcastAssistant.LogBroadcastEvent.get())
+                HLog.getInstance("ClientLogger").log(HLogLevel.LESS, "Broadcast callback: ", ParametersMap.create().add("name", this.name).add("event", t));
             HMultiRunHelper.runConsumers(BroadcastAssistant.CallbackExecutors, this.callbacks, c -> c.accept(t));
         }
         @Override
