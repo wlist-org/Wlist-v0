@@ -34,7 +34,7 @@ public final class InternalServerService extends Service {
             }, 300, TimeUnit.MILLISECONDS);
             return;
         }
-        HLogManager.getInstance("DefaultLogger").log(HLogLevel.FINE, "Internal WList Server is starting.", ParametersMap.create().add("pid", Process.myPid()));
+        HLogManager.getInstance("DefaultLogger").log(HLogLevel.INFO, "Internal WList Server is starting.", ParametersMap.create().add("pid", Process.myPid()));
         WList.RuntimePath.reinitialize(this.getExternalFilesDir("server"));
         NativeUtil.ExtraPathGetterCore.reinitialize(l -> {
             final String arch = PlatformDependent.normalizedArch();
@@ -49,7 +49,7 @@ public final class InternalServerService extends Service {
     public void onDestroy() {
         if (!this.called.compareAndSet(false, true)) return;
         super.onDestroy();
-        HLogManager.getInstance("DefaultLogger").log(HLogLevel.FINE, "Internal WList Server is stopping.");
+        HLogManager.getInstance("DefaultLogger").log(HLogLevel.FINE, "Internal WList Server is stopping.", ParametersMap.create().add("pid", Process.myPid()));
         Main.runOnBackgroundThread(null, HExceptionWrapper.wrapRunnable(() -> {
             WListServer.getInstance().stop();
             this.ServerMainThread.join();

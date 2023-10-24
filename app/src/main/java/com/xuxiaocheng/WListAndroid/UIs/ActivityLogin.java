@@ -6,7 +6,6 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.util.Log;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
@@ -53,19 +52,16 @@ public class ActivityLogin extends AppCompatActivity {
 
                 @Override
                 public void onServiceConnected(final ComponentName name, final @NotNull IBinder iService) {
-//                    iService.linkToDeath(() -> {
-//
-//                    }, 0);
                     Main.runOnBackgroundThread(ActivityLogin.this, HExceptionWrapper.wrapRunnable(() -> {
                         final InetSocketAddress address = InternalServerBinder.getAddress(iService);
-                        logger.log(HLogLevel.INFO, "Connecting to service: ", address);
+                        logger.log(HLogLevel.FINE, "Connecting to service: ", address);
                         Main.runOnUiThread(ActivityLogin.this, () -> activity.activityLoginLoginInternalServer.setText(R.string.activity_login_loading_connecting));
                         this.address.initialize(address);
                         WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
                         logger.log(HLogLevel.LESS, "Clients initialized.");
                         final String initPassword = InternalServerBinder.getAndDeleteAdminPassword(iService);
                         final String password = PasswordHelper.updateInternalPassword(ActivityLogin.this, IdentifierNames.UserName.Admin.getIdentifier(), initPassword);
-                        logger.log(HLogLevel.ENHANCED, "Got server password.", ParametersMap.create().add("init", initPassword != null).add("password", password));
+                        logger.log(HLogLevel.INFO, "Got server password.", ParametersMap.create().add("init", initPassword != null).add("password", password));
                         Main.runOnUiThread(ActivityLogin.this, () -> activity.activityLoginLoginInternalServer.setText(R.string.activity_login_loading_logging_in));
                         if (password == null || !TokenAssistant.login(address, IdentifierNames.UserName.Admin.getIdentifier(), password, Main.ClientExecutors)) {
                             // TODO get password from user.
