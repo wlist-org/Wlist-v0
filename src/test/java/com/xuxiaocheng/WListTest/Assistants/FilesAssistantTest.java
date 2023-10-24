@@ -243,7 +243,7 @@ public class FilesAssistantTest extends ProvidersWrapper {
     public void download() throws IOException, InterruptedException, WrongStateException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         final LinkedHashMap<VisibleFileInformation.Order, Options.OrderDirection> order = new LinkedHashMap<>();
         order.put(VisibleFileInformation.Order.Size, Options.OrderDirection.ASCEND);
-        final VisibleFilesListInformation list = FilesAssistant.list(this.address(), this.adminUsername(), this.location(this.root()), Options.FilterPolicy.OnlyFiles, order, 0, 3, WListServer.IOExecutors, null);
+        final VisibleFilesListInformation list = FilesAssistant.list(this.address(), this.adminUsername(), this.location(this.root()), Options.FilterPolicy.OnlyFiles, order, 0, 3, WListServer.IOExecutors, PredicateE.truePredicate(), null);
         Assumptions.assumeTrue(list != null);
         Assumptions.assumeTrue(list.informationList().size() == 2);
 
@@ -275,7 +275,7 @@ public class FilesAssistantTest extends ProvidersWrapper {
     public void downloadStream() throws IOException, InterruptedException, WrongStateException {
         final LinkedHashMap<VisibleFileInformation.Order, Options.OrderDirection> order = new LinkedHashMap<>();
         order.put(VisibleFileInformation.Order.Size, Options.OrderDirection.ASCEND);
-        final VisibleFilesListInformation list = FilesAssistant.list(this.address(), this.adminUsername(), this.location(this.root()), Options.FilterPolicy.OnlyFiles, order, 0, 3, WListServer.IOExecutors, null);
+        final VisibleFilesListInformation list = FilesAssistant.list(this.address(), this.adminUsername(), this.location(this.root()), Options.FilterPolicy.OnlyFiles, order, 0, 3, WListServer.IOExecutors, PredicateE.truePredicate(), null);
         Assumptions.assumeTrue(list != null);
         Assumptions.assumeTrue(list.informationList().size() == 2);
 
@@ -324,7 +324,7 @@ public class FilesAssistantTest extends ProvidersWrapper {
 
     @Test
     public void copy() throws IOException, InterruptedException, WrongStateException {
-        final VisibleFilesListInformation list = FilesAssistant.list(this.address(), this.adminUsername(), this.location(this.root()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 2, WListServer.IOExecutors, null);
+        final VisibleFilesListInformation list = FilesAssistant.list(this.address(), this.adminUsername(), this.location(this.root()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 2, WListServer.IOExecutors, PredicateE.truePredicate(), null);
         Assertions.assertNotNull(list);
         Assumptions.assumeTrue(list.filtered() == 1);
 
@@ -336,11 +336,11 @@ public class FilesAssistantTest extends ProvidersWrapper {
 
     @Test
     public void move() throws IOException, InterruptedException, WrongStateException {
-        final VisibleFilesListInformation list = FilesAssistant.list(this.address(), this.adminUsername(), this.location(this.root()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 2, WListServer.IOExecutors, null);
+        final VisibleFilesListInformation list = FilesAssistant.list(this.address(), this.adminUsername(), this.location(this.root()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 2, WListServer.IOExecutors, PredicateE.truePredicate(), null);
         Assertions.assertNotNull(list);
         Assumptions.assumeTrue(list.filtered() == 1);
 
-        final VisibleFilesListInformation list2 = FilesAssistant.list(this.address(), this.adminUsername(), this.location(list.informationList().get(0).id()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 2, WListServer.IOExecutors, null);
+        final VisibleFilesListInformation list2 = FilesAssistant.list(this.address(), this.adminUsername(), this.location(list.informationList().get(0).id()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 2, WListServer.IOExecutors, PredicateE.truePredicate(), null);
         Assertions.assertNotNull(list2);
         Assumptions.assumeTrue(list2.filtered() == 1);
 
@@ -353,7 +353,7 @@ public class FilesAssistantTest extends ProvidersWrapper {
 
     @Test
     public void rename() throws IOException, InterruptedException, WrongStateException {
-        final VisibleFilesListInformation list = FilesAssistant.list(this.address(), this.adminUsername(), this.location(this.root()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 2, WListServer.IOExecutors, null);
+        final VisibleFilesListInformation list = FilesAssistant.list(this.address(), this.adminUsername(), this.location(this.root()), Options.FilterPolicy.OnlyDirectories, VisibleFileInformation.emptyOrder(), 0, 2, WListServer.IOExecutors, PredicateE.truePredicate(), null);
         Assertions.assertNotNull(list);
         Assumptions.assumeTrue(list.filtered() == 1);
 

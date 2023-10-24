@@ -754,22 +754,26 @@ public final class FilesAssistant {
         }
     }
 
-    @Contract("_, _, _, _, _, _, _, null, !null -> fail")
-    public static @Nullable VisibleFilesListInformation list(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation directory, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable ScheduledExecutorService executor, final @Nullable Consumer<? super @NotNull InstantaneousProgressState> callback) throws IOException, InterruptedException, WrongStateException {
+    @Contract("_, _, _, _, _, _, _, null, _, !null -> fail")
+    public static @Nullable VisibleFilesListInformation list(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation directory, final Options.@Nullable FilterPolicy filter, final @Nullable @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable ScheduledExecutorService executor, final @NotNull Predicate<? super @NotNull RefreshConfirm> continuer, final @Nullable Consumer<? super @NotNull InstantaneousProgressState> callback) throws IOException, InterruptedException, WrongStateException {
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
             if (OperateFilesHelper.getFileOrDirectory(client, TokenAssistant.getToken(address, username), directory, true) == null)
                 return null;
         }
         final UnionPair<VisibleFilesListInformation, RefreshConfirm> confirm;
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
-            confirm = OperateFilesHelper.listFiles(client, TokenAssistant.getToken(address, username), directory, filter, orders, position, limit);
+            confirm = OperateFilesHelper.listFiles(client, TokenAssistant.getToken(address, username), directory,
+                    Objects.requireNonNullElseGet(filter, () -> ClientConfiguration.get().filterPolicy()),
+                    Objects.requireNonNullElseGet(orders, () -> ClientConfiguration.get().fileOrders()), position, limit);
         }
         if (confirm == null)
             return null;
         if (confirm.isSuccess())
             return confirm.getT();
+        if (!continuer.test(confirm.getE()))
+            return null;
         FilesAssistant.refreshCore(address, username, executor, callback, confirm.getE().id());
-        return FilesAssistant.list(address, username, directory, filter, orders, position, limit, executor, callback);
+        return FilesAssistant.list(address, username, directory, filter, orders, position, limit, executor, PredicateE.truePredicate(), callback);
     }
 
     @Contract("_, _, _, null, !null -> fail")
@@ -799,7 +803,7 @@ public final class FilesAssistant {
             return success == null || success.booleanValue();
         }
         while (true) {
-            final VisibleFilesListInformation list = FilesAssistant.list(address, username, location, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, ClientConfiguration.get().limitPerPage(), null, null);
+            final VisibleFilesListInformation list = FilesAssistant.list(address, username, location, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, ClientConfiguration.get().limitPerPage(), null, PredicateE.truePredicate(), null);
             if (list == null) return true;
             try {
                 HMultiRunHelper.runConsumers(executor, list.informationList(), HExceptionWrapper.wrapConsumer(information -> {
@@ -900,7 +904,7 @@ public final class FilesAssistant {
             final AtomicLong pos = new AtomicLong(0);
             while (true) {
                 final int limit = ClientConfiguration.get().limitPerPage();
-                final VisibleFilesListInformation list = FilesAssistant.list(address, username, location, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), pos.getAndAdd(limit), limit, null, null);
+                final VisibleFilesListInformation list = FilesAssistant.list(address, username, location, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), pos.getAndAdd(limit), limit, null, PredicateE.truePredicate(), null);
                 if (list == null) break;
                 for (final VisibleFileInformation info: list.informationList()) {
                     final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.copy0(address, username, new FileLocation(location.storage(), info.id()), info.isDirectory(), p, info.name(), downloaderExecutor, directly, continuer);
@@ -952,7 +956,7 @@ public final class FilesAssistant {
             final FileLocation p = new FileLocation(parent.storage(), directory.getT().id());
             while (true) {
                 final int limit = ClientConfiguration.get().limitPerPage();
-                final VisibleFilesListInformation list = FilesAssistant.list(address, username, location, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, limit, null, null);
+                final VisibleFilesListInformation list = FilesAssistant.list(address, username, location, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, limit, null, PredicateE.truePredicate(), null);
                 if (list == null) break;
                 for (final VisibleFileInformation info: list.informationList()) {
                     final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.move0(address, username, new FileLocation(location.storage(), info.id()), info.isDirectory(), p, downloaderExecutor, directly, continuer);
@@ -1022,7 +1026,7 @@ public final class FilesAssistant {
         if (directory.isFailure()) return UnionPair.fail(directory.getE());
         final AtomicReference<Boolean> tested = new AtomicReference<>(null);
         while (true) {
-            final VisibleFilesListInformation list = FilesAssistant.list(address, username, location, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, ClientConfiguration.get().limitPerPage(), null, null);
+            final VisibleFilesListInformation list = FilesAssistant.list(address, username, location, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, ClientConfiguration.get().limitPerPage(), null, PredicateE.truePredicate(), null);
             if (list == null) return directory;
             try {
                 for (final VisibleFileInformation information: list.informationList()) {
