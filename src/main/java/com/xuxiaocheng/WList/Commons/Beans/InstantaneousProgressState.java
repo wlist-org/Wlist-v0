@@ -20,4 +20,16 @@ public record InstantaneousProgressState(@NotNull List<Pair.@NotNull ImmutablePa
             stages.add(Pair.ImmutablePair.makeImmutablePair(ByteBufIOUtil.readVariableLenLong(buffer), ByteBufIOUtil.readVariableLenLong(buffer)));
         return new InstantaneousProgressState(stages);
     }
+
+    private static final Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull Long> EmptyMerge = Pair.ImmutablePair.makeImmutablePair(0L, 0L);
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull Long> merge() {
+        if (this.stages.isEmpty()) return InstantaneousProgressState.EmptyMerge;
+        if (this.stages.size() == 1) return this.stages.get(0);
+        long current = 0, total = 0;
+        for (final Pair.ImmutablePair<Long, Long> pair: this.stages) {
+            current += pair.getFirst().longValue();
+            total += pair.getSecond().longValue();
+        }
+        return Pair.ImmutablePair.makeImmutablePair(current, total);
+    }
 }
