@@ -29,6 +29,7 @@ import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class WList {
@@ -154,7 +155,8 @@ LogLevel: The log level.
         } finally {
             WList.checkConfigurationsSaved();
             try {
-                WList.shutdownAllExecutors().await();
+                if (!WList.shutdownAllExecutors().await(15, TimeUnit.SECONDS))
+                    logger.log(HLogLevel.WARN, "Executors shutdown timed out.");
             } catch (final InterruptedException exception) {
                 HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
             }
