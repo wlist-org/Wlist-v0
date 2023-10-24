@@ -634,7 +634,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
             final PageFileUploadBinding uploader = PageFileUploadBinding.inflate(this.activity.getLayoutInflater());
             uploader.pageFileUploadCancel.setOnClickListener(v -> dialog.cancel());
             final AtomicBoolean clickable = new AtomicBoolean(true);
-            uploader.pageFileUploadAddProvider.setOnClickListener(v -> {
+            uploader.pageFileUploadStorageImage.setOnClickListener(v -> {
                 if (!clickable.compareAndSet(true, false)) return;
                 dialog.cancel();
                 final String[] storages = StorageTypeGetter.getAll().keySet().toArray(EmptyArrays.EMPTY_STRINGS);
@@ -659,7 +659,8 @@ public class PageFile implements ActivityMainChooser.MainPage {
                             }));
                         }).show();
             });
-            uploader.pageFileUploadCreateDirectory.setOnClickListener(v -> {
+            uploader.pageFileUploadStorageText.setOnClickListener(v -> uploader.pageFileUploadStorageImage.performClick());
+            uploader.pageFileUploadDirectoryImage.setOnClickListener(v -> {
                 if (this.stacks.isEmpty()) return;
                 if (!clickable.compareAndSet(true, false)) return;
                 dialog.cancel();
@@ -688,24 +689,28 @@ public class PageFile implements ActivityMainChooser.MainPage {
                             }, () -> Main.runOnUiThread(this.activity, loading::cancel)));
                         }).show();
             });
-            uploader.pageFileUploadFile.setOnClickListener(v -> {
+            uploader.pageFileUploadDirectoryText.setOnClickListener(v -> uploader.pageFileUploadDirectoryImage.performClick());
+            uploader.pageFileUploadFileImage.setOnClickListener(v -> {
                 if (this.stacks.isEmpty()) return;
                 if (!clickable.compareAndSet(true, false)) return;
                 dialog.cancel();
                 this.chooserLauncher.getInstance().launch("*/*");
             });
-            uploader.pageFileUploadPicture.setOnClickListener(v -> {
+            uploader.pageFileUploadFileText.setOnClickListener(v -> uploader.pageFileUploadFileImage.performClick());
+            uploader.pageFileUploadPictureImage.setOnClickListener(v -> {
                 if (this.stacks.isEmpty()) return;
                 if (!clickable.compareAndSet(true, false)) return;
                 dialog.cancel();
                 this.chooserLauncher.getInstance().launch("image/*");
             });
-            uploader.pageFileUploadVideo.setOnClickListener(v -> {
+            uploader.pageFileUploadPictureText.setOnClickListener(v -> uploader.pageFileUploadPictureImage.performClick());
+            uploader.pageFileUploadVideoImage.setOnClickListener(v -> {
                 if (this.stacks.isEmpty()) return;
                 if (!clickable.compareAndSet(true, false)) return;
                 dialog.cancel();
                 this.chooserLauncher.getInstance().launch("video/*");
             });
+            uploader.pageFileUploadVideoText.setOnClickListener(v -> uploader.pageFileUploadVideoImage.performClick());
             dialog.setCanceledOnTouchOutside(true);
             dialog.setContentView(uploader.getRoot());
             dialog.show();

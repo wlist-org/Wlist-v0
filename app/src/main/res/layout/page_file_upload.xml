@@ -1,242 +1,187 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.appcompat.widget.LinearLayoutCompat xmlns:android="http://schemas.android.com/apk/res/android"
-                                              xmlns:app="http://schemas.android.com/apk/res-auto"
-                                              android:layout_width="match_parent"
-                                              android:layout_height="wrap_content"
-                                              android:background="@drawable/bottom_sheet_dialog"
-                                              android:orientation="vertical">
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                                                   xmlns:app="http://schemas.android.com/apk/res-auto"
+                                                   android:layout_width="match_parent"
+                                                   android:layout_height="wrap_content"
+                                                   android:background="@drawable/bottom_sheet_dialog">
 
 	<androidx.appcompat.widget.AppCompatTextView
 		android:id="@+id/page_file_upload_upload_text"
-		android:layout_width="match_parent"
+		android:layout_width="0dp"
 		android:layout_height="wrap_content"
 		android:layout_marginStart="20dp"
 		android:layout_marginTop="10dp"
 		android:layout_marginEnd="20sp"
+		android:layout_marginBottom="10dp"
 		android:text="@string/page_file_upload"
 		android:textColor="@color/text_normal"
-		android:textSize="20sp" />
+		android:textSize="20sp"
+		app:layout_constraintBottom_toTopOf="@id/page_file_upload_file_image"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toTopOf="parent" />
 
-	<androidx.appcompat.widget.LinearLayoutCompat
-		android:id="@+id/page_file_upload_upload_list"
-		android:layout_width="match_parent"
-		android:layout_height="70dp"
-		android:layout_marginStart="10dp"
-		android:layout_marginTop="10dp"
-		android:layout_marginEnd="10dp"
-		android:layout_marginBottom="10dp"
-		android:orientation="horizontal">
+	<androidx.appcompat.widget.AppCompatImageView
+		android:id="@+id/page_file_upload_file_image"
+		android:layout_width="0dp"
+		android:layout_height="50dp"
+		android:adjustViewBounds="true"
+		android:scaleType="centerInside"
+		android:src="@mipmap/page_file_upload_file"
+		app:layout_constraintBottom_toTopOf="@id/page_file_upload_file_text"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toLeftOf="@id/page_file_upload_picture_image"
+		app:layout_constraintTop_toBottomOf="@id/page_file_upload_upload_text" />
 
-		<androidx.constraintlayout.widget.ConstraintLayout
-			android:id="@+id/page_file_upload_file"
-			android:layout_width="wrap_content"
-			android:layout_height="match_parent"
-			android:layout_marginStart="10dp"
-			android:layout_marginEnd="10dp">
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_file_upload_file_text"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:gravity="center"
+		android:maxLines="1"
+		android:text="@string/page_file_upload_file"
+		android:textColor="@color/text_normal"
+		android:textSize="15sp"
+		app:layout_constraintBottom_toTopOf="@id/page_file_upload_create_text"
+		app:layout_constraintLeft_toLeftOf="@id/page_file_upload_file_image"
+		app:layout_constraintRight_toRightOf="@id/page_file_upload_file_image"
+		app:layout_constraintTop_toBottomOf="@id/page_file_upload_file_image" />
 
-			<androidx.appcompat.widget.AppCompatImageView
-				android:id="@+id/page_file_upload_file_image"
-				android:layout_width="wrap_content"
-				android:layout_height="0dp"
-				android:adjustViewBounds="true"
-				android:scaleType="centerInside"
-				android:src="@mipmap/page_file_upload_file"
-				app:layout_constraintBottom_toTopOf="@id/page_file_upload_file_text"
-				app:layout_constraintLeft_toLeftOf="parent"
-				app:layout_constraintRight_toRightOf="parent"
-				app:layout_constraintTop_toTopOf="parent" />
+	<androidx.appcompat.widget.AppCompatImageView
+		android:id="@+id/page_file_upload_picture_image"
+		android:layout_width="0dp"
+		android:layout_height="50dp"
+		android:adjustViewBounds="true"
+		android:scaleType="centerInside"
+		android:src="@mipmap/page_file_upload_picture"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_upload_file_image"
+		app:layout_constraintLeft_toRightOf="@id/page_file_upload_file_image"
+		app:layout_constraintRight_toLeftOf="@id/page_file_upload_video_image"
+		app:layout_constraintTop_toTopOf="@id/page_file_upload_file_image" />
 
-			<androidx.appcompat.widget.AppCompatTextView
-				android:id="@+id/page_file_upload_file_text"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:gravity="center"
-				android:maxLines="1"
-				android:text="@string/page_file_upload_file"
-				android:textColor="@color/text_normal"
-				android:textSize="15sp"
-				app:layout_constraintBottom_toBottomOf="parent"
-				app:layout_constraintLeft_toLeftOf="parent"
-				app:layout_constraintRight_toRightOf="parent"
-				app:layout_constraintTop_toBottomOf="@id/page_file_upload_file_image" />
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_file_upload_picture_text"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:gravity="center"
+		android:maxLines="1"
+		android:text="@string/page_file_upload_picture"
+		android:textColor="@color/text_normal"
+		android:textSize="15sp"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_upload_file_text"
+		app:layout_constraintLeft_toLeftOf="@id/page_file_upload_picture_image"
+		app:layout_constraintRight_toRightOf="@id/page_file_upload_picture_image"
+		app:layout_constraintTop_toTopOf="@id/page_file_upload_file_text" />
 
-		</androidx.constraintlayout.widget.ConstraintLayout>
+	<androidx.appcompat.widget.AppCompatImageView
+		android:id="@+id/page_file_upload_video_image"
+		android:layout_width="0dp"
+		android:layout_height="50dp"
+		android:adjustViewBounds="true"
+		android:scaleType="centerInside"
+		android:src="@mipmap/page_file_upload_video"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_upload_picture_image"
+		app:layout_constraintLeft_toRightOf="@id/page_file_upload_picture_image"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toTopOf="@id/page_file_upload_picture_image" />
 
-		<androidx.constraintlayout.widget.ConstraintLayout
-			android:id="@+id/page_file_upload_picture"
-			android:layout_width="wrap_content"
-			android:layout_height="match_parent"
-			android:layout_marginStart="10dp"
-			android:layout_marginEnd="10dp">
-
-			<androidx.appcompat.widget.AppCompatImageView
-				android:id="@+id/page_file_upload_picture_image"
-				android:layout_width="wrap_content"
-				android:layout_height="0dp"
-				android:adjustViewBounds="true"
-				android:scaleType="centerInside"
-				android:src="@mipmap/page_file_upload_picture"
-				app:layout_constraintBottom_toTopOf="@id/page_file_upload_picture_text"
-				app:layout_constraintLeft_toLeftOf="parent"
-				app:layout_constraintRight_toRightOf="parent"
-				app:layout_constraintTop_toTopOf="parent" />
-
-			<androidx.appcompat.widget.AppCompatTextView
-				android:id="@+id/page_file_upload_picture_text"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:gravity="center"
-				android:maxLines="1"
-				android:text="@string/page_file_upload_picture"
-				android:textColor="@color/text_normal"
-				android:textSize="15sp"
-				app:layout_constraintBottom_toBottomOf="parent"
-				app:layout_constraintLeft_toLeftOf="parent"
-				app:layout_constraintRight_toRightOf="parent"
-				app:layout_constraintTop_toBottomOf="@id/page_file_upload_picture_image" />
-
-		</androidx.constraintlayout.widget.ConstraintLayout>
-
-		<androidx.constraintlayout.widget.ConstraintLayout
-			android:id="@+id/page_file_upload_video"
-			android:layout_width="wrap_content"
-			android:layout_height="match_parent"
-			android:layout_marginStart="10dp"
-			android:layout_marginEnd="10dp">
-
-			<androidx.appcompat.widget.AppCompatImageView
-				android:id="@+id/page_file_upload_video_image"
-				android:layout_width="wrap_content"
-				android:layout_height="0dp"
-				android:adjustViewBounds="true"
-				android:scaleType="centerInside"
-				android:src="@mipmap/page_file_upload_video"
-				app:layout_constraintBottom_toTopOf="@id/page_file_upload_video_text"
-				app:layout_constraintLeft_toLeftOf="parent"
-				app:layout_constraintRight_toRightOf="parent"
-				app:layout_constraintTop_toTopOf="parent" />
-
-			<androidx.appcompat.widget.AppCompatTextView
-				android:id="@+id/page_file_upload_video_text"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:gravity="center"
-				android:maxLines="1"
-				android:text="@string/page_file_upload_video"
-				android:textColor="@color/text_normal"
-				android:textSize="15sp"
-				app:layout_constraintBottom_toBottomOf="parent"
-				app:layout_constraintLeft_toLeftOf="parent"
-				app:layout_constraintRight_toRightOf="parent"
-				app:layout_constraintTop_toBottomOf="@id/page_file_upload_video_image" />
-
-		</androidx.constraintlayout.widget.ConstraintLayout>
-
-	</androidx.appcompat.widget.LinearLayoutCompat>
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_file_upload_video_text"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:gravity="center"
+		android:maxLines="1"
+		android:text="@string/page_file_upload_video"
+		android:textColor="@color/text_normal"
+		android:textSize="15sp"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_upload_picture_text"
+		app:layout_constraintLeft_toLeftOf="@id/page_file_upload_video_image"
+		app:layout_constraintRight_toRightOf="@id/page_file_upload_video_image"
+		app:layout_constraintTop_toTopOf="@id/page_file_upload_picture_text" />
 
 	<androidx.appcompat.widget.AppCompatTextView
 		android:id="@+id/page_file_upload_create_text"
-		android:layout_width="match_parent"
+		android:layout_width="0dp"
 		android:layout_height="wrap_content"
 		android:layout_marginStart="20dp"
 		android:layout_marginTop="10dp"
 		android:layout_marginEnd="20sp"
+		android:layout_marginBottom="10dp"
 		android:text="@string/page_file_create"
 		android:textColor="@color/text_normal"
-		android:textSize="20sp" />
+		android:textSize="20sp"
+		app:layout_constraintBottom_toTopOf="@id/page_file_upload_directory_image"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/page_file_upload_file_text" />
 
-	<androidx.appcompat.widget.LinearLayoutCompat
-		android:id="@+id/page_file_upload_create_list"
-		android:layout_width="match_parent"
-		android:layout_height="70dp"
-		android:layout_marginStart="10dp"
-		android:layout_marginTop="10dp"
-		android:layout_marginEnd="10dp"
-		android:layout_marginBottom="10dp"
-		android:orientation="horizontal">
+	<androidx.appcompat.widget.AppCompatImageView
+		android:id="@+id/page_file_upload_directory_image"
+		android:layout_width="0dp"
+		android:layout_height="50dp"
+		android:adjustViewBounds="true"
+		android:scaleType="centerInside"
+		android:src="@mipmap/page_file_upload_directory"
+		app:layout_constraintBottom_toTopOf="@id/page_file_upload_directory_text"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toLeftOf="@id/page_file_upload_picture_image"
+		app:layout_constraintTop_toBottomOf="@id/page_file_upload_create_text" />
 
-		<androidx.constraintlayout.widget.ConstraintLayout
-			android:id="@+id/page_file_upload_create_directory"
-			android:layout_width="wrap_content"
-			android:layout_height="match_parent"
-			android:layout_marginStart="10dp"
-			android:layout_marginEnd="10dp">
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_file_upload_directory_text"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:gravity="center"
+		android:maxLines="1"
+		android:text="@string/page_file_create_directory"
+		android:textColor="@color/text_normal"
+		android:textSize="15sp"
+		app:layout_constraintBottom_toTopOf="@id/page_file_upload_cancel_line"
+		app:layout_constraintLeft_toLeftOf="@id/page_file_upload_directory_image"
+		app:layout_constraintRight_toRightOf="@id/page_file_upload_directory_image"
+		app:layout_constraintTop_toBottomOf="@id/page_file_upload_directory_image" />
 
-			<androidx.appcompat.widget.AppCompatImageView
-				android:id="@+id/page_file_upload_create_directory_image"
-				android:layout_width="wrap_content"
-				android:layout_height="0dp"
-				android:adjustViewBounds="true"
-				android:scaleType="centerInside"
-				android:src="@mipmap/page_file_upload_directory"
-				app:layout_constraintBottom_toTopOf="@id/page_file_upload_create_directory_text"
-				app:layout_constraintLeft_toLeftOf="parent"
-				app:layout_constraintRight_toRightOf="parent"
-				app:layout_constraintTop_toTopOf="parent" />
+	<androidx.appcompat.widget.AppCompatImageView
+		android:id="@+id/page_file_upload_storage_image"
+		android:layout_width="0dp"
+		android:layout_height="50dp"
+		android:adjustViewBounds="true"
+		android:scaleType="centerInside"
+		android:src="@mipmap/page_file_upload_directory"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_upload_directory_image"
+		app:layout_constraintLeft_toRightOf="@id/page_file_upload_directory_image"
+		app:layout_constraintRight_toLeftOf="@id/page_file_upload_video_image"
+		app:layout_constraintTop_toTopOf="@id/page_file_upload_directory_image" />
 
-			<androidx.appcompat.widget.AppCompatTextView
-				android:id="@+id/page_file_upload_create_directory_text"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:gravity="center"
-				android:maxLines="1"
-				android:text="@string/page_file_create_directory"
-				android:textColor="@color/text_normal"
-				android:textSize="15sp"
-				app:layout_constraintBottom_toBottomOf="parent"
-				app:layout_constraintLeft_toLeftOf="parent"
-				app:layout_constraintRight_toRightOf="parent"
-				app:layout_constraintTop_toBottomOf="@id/page_file_upload_create_directory_image" />
-
-		</androidx.constraintlayout.widget.ConstraintLayout>
-
-		<androidx.constraintlayout.widget.ConstraintLayout
-			android:id="@+id/page_file_upload_add_provider"
-			android:layout_width="wrap_content"
-			android:layout_height="match_parent"
-			android:layout_marginStart="10dp"
-			android:layout_marginEnd="10dp">
-
-			<androidx.appcompat.widget.AppCompatImageView
-				android:id="@+id/page_file_upload_add_provider_image"
-				android:layout_width="wrap_content"
-				android:layout_height="0dp"
-				android:adjustViewBounds="true"
-				android:scaleType="centerInside"
-				android:src="@mipmap/page_file_upload_directory"
-				app:layout_constraintBottom_toTopOf="@id/page_file_upload_add_provider_text"
-				app:layout_constraintLeft_toLeftOf="parent"
-				app:layout_constraintRight_toRightOf="parent"
-				app:layout_constraintTop_toTopOf="parent" />
-
-			<androidx.appcompat.widget.AppCompatTextView
-				android:id="@+id/page_file_upload_add_provider_text"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:gravity="center"
-				android:maxLines="1"
-				android:text="@string/page_file_create_storage"
-				android:textColor="@color/text_normal"
-				android:textSize="15sp"
-				app:layout_constraintBottom_toBottomOf="parent"
-				app:layout_constraintLeft_toLeftOf="parent"
-				app:layout_constraintRight_toRightOf="parent"
-				app:layout_constraintTop_toBottomOf="@id/page_file_upload_add_provider_image" />
-
-		</androidx.constraintlayout.widget.ConstraintLayout>
-
-	</androidx.appcompat.widget.LinearLayoutCompat>
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_file_upload_storage_text"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:gravity="center"
+		android:maxLines="1"
+		android:text="@string/page_file_create_storage"
+		android:textColor="@color/text_normal"
+		android:textSize="15sp"
+		app:layout_constraintBottom_toBottomOf="@id/page_file_upload_directory_text"
+		app:layout_constraintLeft_toLeftOf="@id/page_file_upload_storage_image"
+		app:layout_constraintRight_toRightOf="@id/page_file_upload_storage_image"
+		app:layout_constraintTop_toTopOf="@id/page_file_upload_directory_text" />
 
 	<View
-		android:layout_width="match_parent"
+		android:id="@+id/page_file_upload_cancel_line"
+		android:layout_width="0dp"
 		android:layout_height="2dp"
 		android:layout_marginStart="10dp"
 		android:layout_marginEnd="10dp"
-		android:background="@color/lighter_gray" />
+		android:background="@color/lighter_gray"
+		app:layout_constraintBottom_toTopOf="@id/page_file_upload_cancel"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/page_file_upload_directory_text" />
 
 	<androidx.appcompat.widget.AppCompatTextView
 		android:id="@+id/page_file_upload_cancel"
-		android:layout_width="match_parent"
+		android:layout_width="0dp"
 		android:layout_height="wrap_content"
 		android:layout_marginStart="10dp"
 		android:layout_marginEnd="10dp"
@@ -246,6 +191,10 @@
 		android:paddingBottom="10dp"
 		android:text="@string/cancel"
 		android:textColor="@color/text_normal"
-		android:textSize="20sp" />
+		android:textSize="20sp"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/page_file_upload_cancel_line" />
 
-</androidx.appcompat.widget.LinearLayoutCompat>
+</androidx.constraintlayout.widget.ConstraintLayout>
