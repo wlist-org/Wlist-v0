@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.util.Log;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
@@ -52,6 +53,9 @@ public class ActivityLogin extends AppCompatActivity {
 
                 @Override
                 public void onServiceConnected(final ComponentName name, final @NotNull IBinder iService) {
+//                    iService.linkToDeath(() -> {
+//
+//                    }, 0);
                     Main.runOnBackgroundThread(ActivityLogin.this, HExceptionWrapper.wrapRunnable(() -> {
                         final InetSocketAddress address = InternalServerBinder.getAddress(iService);
                         logger.log(HLogLevel.INFO, "Connecting to service: ", address);
@@ -90,6 +94,9 @@ public class ActivityLogin extends AppCompatActivity {
                             WListClientManager.quicklyUninitialize(address);
                         }
                     });
+                    final Intent intent = new Intent(ActivityLogin.this, ActivityLogin.class);
+                    ActivityLogin.this.startActivity(intent);
+                    ActivityLogin.this.finish();
                 }
             }, Context.BIND_AUTO_CREATE | Context.BIND_ABOVE_CLIENT | Context.BIND_IMPORTANT);
         });

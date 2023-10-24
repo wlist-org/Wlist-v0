@@ -27,9 +27,9 @@ public final class HLogManager {
     }
 
     public static final @NotNull AtomicBoolean initialized = new AtomicBoolean(false);
-    public static void initialize(final @NotNull Context context, final @NotNull ProcessType type) {
+    public static boolean initialize(final @NotNull Context context, final @NotNull ProcessType type) {
         if (!HLogManager.initialized.compareAndSet(false, true))
-            return;
+            return true;
         try {
             HMergedStreams.initializeDefaultFileOutputStream(new File(context.getApplicationContext().getExternalCacheDir(), "logs/" +
                     ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH.mm.ss", Locale.getDefault())) + '.' + type + ".log"));
@@ -66,6 +66,7 @@ public final class HLogManager {
                 this.lastPriority = priority;
             }
         }, fileOutputStream));
+        return false;
     }
 
     public static @NotNull HLog getInstance(final @NotNull String logger) {

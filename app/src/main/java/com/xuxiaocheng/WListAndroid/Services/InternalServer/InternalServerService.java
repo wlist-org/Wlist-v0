@@ -6,7 +6,6 @@ import android.os.IBinder;
 import android.os.Process;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
-import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.Rust.NativeUtil;
 import com.xuxiaocheng.WList.Server.Operations.ServerHandler;
@@ -27,7 +26,14 @@ public final class InternalServerService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        HLogManager.initialize(this, HLogManager.ProcessType.Server);
+        if (HLogManager.initialize(this, HLogManager.ProcessType.Server)) {
+            HLogManager.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Incompatible service instance.", ParametersMap.create().add("pid", Process.myPid()));
+            Main.runOnBackgroundThread(null, () -> {
+                this.onDestroy(); // Force stop.
+                this.stopSelf();
+            }, 300, TimeUnit.MILLISECONDS);
+            return;
+        }
         HLogManager.getInstance("DefaultLogger").log(HLogLevel.FINE, "Internal WList Server is starting.", ParametersMap.create().add("pid", Process.myPid()));
         WList.RuntimePath.reinitialize(this.getExternalFilesDir("server"));
         NativeUtil.ExtraPathGetterCore.reinitialize(l -> {
@@ -35,13 +41,6 @@ public final class InternalServerService extends Service {
             throw new IllegalStateException("Unknown architecture: " + ("unknown".equals(arch) ? System.getProperty("os.arch") : arch));
         }); // Normally is unreachable.
         ServerHandler.AllowLogOn.set(false);
-        HUncaughtExceptionHelper.setUncaughtExceptionListener("service", (t, e) -> {
-            if (t == this.ServerMainThread)
-                Main.runOnBackgroundThread(null, () -> {
-                    this.onDestroy(); // Force stop.
-                    this.stopSelf();
-                }, 300, TimeUnit.MILLISECONDS);
-        });
         this.ServerMainThread.start();
     }
 
