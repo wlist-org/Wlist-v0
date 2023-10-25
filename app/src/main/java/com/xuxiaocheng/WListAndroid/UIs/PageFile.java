@@ -632,7 +632,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
                 }
                 case MotionEvent.ACTION_UP -> {
                     if (scrolling.get())
-                        PageFile.this.activity.getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE).edit()
+                        this.activity.getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE).edit()
                                 .putFloat("x", v.getX()).putFloat("y", v.getY()).apply();
                     else return v.performClick();
                 }
@@ -640,23 +640,18 @@ public class PageFile implements ActivityMainChooser.MainPage {
             return true;
         });
         Main.runOnBackgroundThread(this.activity, () -> {
-            final float x, y;
             final SharedPreferences preferences = this.activity.getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE);
-            if (preferences.contains("x") && preferences.contains("y")) {
-                x = preferences.getFloat("x", 0);
-                y = preferences.getFloat("y", 0);
-            } else {
-                final DisplayMetrics displayMetrics = this.activity.getResources().getDisplayMetrics();
-                x = preferences.getFloat("x", (displayMetrics.widthPixels - page.pageFileUploader.getWidth()) * 0.7f);
-                y = preferences.getFloat("y", displayMetrics.heightPixels * 0.7f);
+            final DisplayMetrics displayMetrics = this.activity.getResources().getDisplayMetrics();
+            final float x = preferences.getFloat("x", (displayMetrics.widthPixels - page.pageFileUploader.getWidth()) * 0.8f);
+            final float y = preferences.getFloat("y", (displayMetrics.heightPixels - page.pageFileUploader.getHeight()) * 0.7f);
+            if (!preferences.contains("x") || !preferences.contains("y"))
                 preferences.edit().putFloat("x", x).putFloat("y", y).apply();
-            }
             Main.runOnUiThread(this.activity, () -> {
                 page.pageFileUploader.setX(x);
                 page.pageFileUploader.setY(y);
                 page.pageFileUploader.setVisibility(View.VISIBLE);
-            }, 300, TimeUnit.MILLISECONDS);
-        });
+            });
+        }, 300, TimeUnit.MILLISECONDS);
         page.pageFileUploader.setOnClickListener(u -> {
             final BottomSheetDialog dialog = new BottomSheetDialog(this.activity, R.style.BottomSheetDialog);
             final PageFileUploadBinding uploader = PageFileUploadBinding.inflate(this.activity.getLayoutInflater());
