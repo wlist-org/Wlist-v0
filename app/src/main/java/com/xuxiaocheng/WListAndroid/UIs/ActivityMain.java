@@ -22,6 +22,10 @@ import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.Services.InternalServer.InternalServerService;
+import com.xuxiaocheng.WListAndroid.UIs.Pages.File.PageFile;
+import com.xuxiaocheng.WListAndroid.UIs.Pages.PageChooser;
+import com.xuxiaocheng.WListAndroid.UIs.Pages.Trans.PageTrans;
+import com.xuxiaocheng.WListAndroid.UIs.Pages.User.PageUser;
 import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
 import com.xuxiaocheng.WListAndroid.databinding.ActivityMainBinding;
 import org.jetbrains.annotations.NotNull;
@@ -73,11 +77,23 @@ public class ActivityMain extends AppCompatActivity {
     protected final @NotNull HInitializer<String> username = new HInitializer<>("ActivityMainUsername");
     protected final @NotNull HInitializer<IBinder> binder = new HInitializer<>("ActivityMainServiceBinder");
 
-    protected final @NotNull AtomicReference<ActivityMainChooser.MainChoice> currentChoice = new AtomicReference<>();
-    protected final @NotNull Map<ActivityMainChooser.MainChoice, ActivityMainChooser.MainPage> pages = new EnumMap<>(ActivityMainChooser.MainChoice.class); {
-        this.pages.put(ActivityMainChooser.MainChoice.File, new PageFile(this));
-        this.pages.put(ActivityMainChooser.MainChoice.User, new PageUser(this));
-        this.pages.put(ActivityMainChooser.MainChoice.Trans, new PageTrans(this));
+    public @NotNull InetSocketAddress address() {
+        return this.address.getInstance();
+    }
+
+    public @NotNull String username() {
+        return this.username.getInstance();
+    }
+
+    protected final @NotNull AtomicReference<PageChooser.MainChoice> currentChoice = new AtomicReference<>();
+    protected final @NotNull Map<PageChooser.MainChoice, PageChooser.MainPage> pages = new EnumMap<>(PageChooser.MainChoice.class); {
+        this.pages.put(PageChooser.MainChoice.File, new PageFile(this));
+        this.pages.put(PageChooser.MainChoice.User, new PageUser(this));
+        this.pages.put(PageChooser.MainChoice.Trans, new PageTrans(this));
+    }
+
+    public PageChooser.@NotNull MainChoice currentChoice() {
+        return this.currentChoice.get();
     }
 
     @Override
@@ -93,12 +109,12 @@ public class ActivityMain extends AppCompatActivity {
             this.close();
             return;
         }
-        final ActivityMainChooser chooser = new ActivityMainChooser(
-                new ActivityMainChooser.ButtonGroup(this, activity.activityMainChooserFileButton, R.mipmap.main_chooser_file, R.mipmap.main_chooser_file_chose,
+        final PageChooser chooser = new PageChooser(
+                new PageChooser.ButtonGroup(this, activity.activityMainChooserFileButton, R.mipmap.main_chooser_file, R.mipmap.main_chooser_file_chose,
                         activity.activityMainChooserFileText, activity.activityMainChooserFile),
-                new ActivityMainChooser.ButtonGroup(this, activity.activityMainChooserUserButton, R.mipmap.main_chooser_user, R.mipmap.main_chooser_user_chose,
+                new PageChooser.ButtonGroup(this, activity.activityMainChooserUserButton, R.mipmap.main_chooser_user, R.mipmap.main_chooser_user_chose,
                         activity.activityMainChooserUserText, activity.activityMainChooserUser),
-                new ActivityMainChooser.ButtonGroup(this, activity.activityMainTrans, R.mipmap.main_chooser_trans, R.mipmap.main_chooser_trans_chose, null)
+                new PageChooser.ButtonGroup(this, activity.activityMainTrans, R.mipmap.main_chooser_trans, R.mipmap.main_chooser_trans_chose, null)
         );
         final AtomicReference<View> currentView = new AtomicReference<>(null);
         final ConstraintLayout.LayoutParams contentParams = new ConstraintLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ConstraintLayout.LayoutParams.MATCH_CONSTRAINT);
@@ -108,7 +124,7 @@ public class ActivityMain extends AppCompatActivity {
         contentParams.topToBottom = R.id.activity_main_guideline_title;
         chooser.setOnChangeListener(choice -> {
             final View oldView;
-            final ActivityMainChooser.MainChoice oldChoice;
+            final PageChooser.MainChoice oldChoice;
             synchronized (currentView) {
                 oldView = currentView.getAndSet(null);
                 oldChoice = this.currentChoice.getAndSet(null);
@@ -126,21 +142,21 @@ public class ActivityMain extends AppCompatActivity {
             if (ok)
                 activity.getRoot().addView(newView, contentParams);
         });
-        this.pages.values().forEach(ActivityMainChooser.MainPage::onActivityCreateHook);
+        this.pages.values().forEach(PageChooser.MainPage::onActivityCreateHook);
         Main.runOnBackgroundThread(this, HExceptionWrapper.wrapRunnable(() -> {
             BroadcastAssistant.start(this.address.getInstance());
             ClientConfigurationSupporter.location().reinitialize(new File(this.getExternalFilesDir("client"), "client.yaml"));
             ClientConfigurationSupporter.parseFromFile();
-            Main.runOnUiThread(this, () -> chooser.click(ActivityMainChooser.MainChoice.File));
+            Main.runOnUiThread(this, () -> chooser.click(PageChooser.MainChoice.File));
         }));
     }
 
     protected @Nullable ZonedDateTime lastBackPressedTime;
     @Override
     public void onBackPressed() {
-        final ActivityMainChooser.MainChoice choice = this.currentChoice.get();
+        final PageChooser.MainChoice choice = this.currentChoice.get();
         if (choice != null) {
-            final ActivityMainChooser.MainPage page = this.pages.get(choice);
+            final PageChooser.MainPage page = this.pages.get(choice);
             assert page != null;
             if (page.onBackPressed())
                 return;

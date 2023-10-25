@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListAndroid.UIs;
+package com.xuxiaocheng.WListAndroid.UIs.Pages.User;
 
 import android.view.View;
 import android.widget.TextView;
@@ -9,6 +9,8 @@ import com.xuxiaocheng.WList.Client.Operations.OperateServerHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WListAndroid.Main;
+import com.xuxiaocheng.WListAndroid.UIs.ActivityMain;
+import com.xuxiaocheng.WListAndroid.UIs.Pages.PageChooser;
 import com.xuxiaocheng.WListAndroid.databinding.PageUserBinding;
 import org.jetbrains.annotations.NotNull;
 
@@ -16,7 +18,7 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class PageUser implements ActivityMainChooser.MainPage {
+public class PageUser implements PageChooser.MainPage {
     protected final @NotNull ActivityMain activity;
 
     public PageUser(final @NotNull ActivityMain activity) {
@@ -25,11 +27,11 @@ public class PageUser implements ActivityMainChooser.MainPage {
     }
 
     protected @NotNull InetSocketAddress address() {
-        return this.activity.address.getInstance();
+        return this.activity.address();
     }
 
     protected @NotNull String username() {
-        return this.activity.username.getInstance();
+        return this.activity.username();
     }
 
 

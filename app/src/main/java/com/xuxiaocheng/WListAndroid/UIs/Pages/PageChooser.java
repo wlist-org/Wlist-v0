@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListAndroid.UIs;
+package com.xuxiaocheng.WListAndroid.UIs.Pages;
 
 import android.app.Activity;
 import android.view.View;
@@ -16,7 +16,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.function.Consumer;
 
-public final class ActivityMainChooser {
+public final class PageChooser {
     public static final class ButtonGroup {
         private final @NotNull ImageView button;
         private final @Nullable TextView text;
@@ -106,7 +106,7 @@ public final class ActivityMainChooser {
         Trans,
     }
 
-    public ActivityMainChooser(final @NotNull ButtonGroup fileButton, final @NotNull ButtonGroup userButton, final @NotNull ButtonGroup transButton) {
+    public PageChooser(final @NotNull ButtonGroup fileButton, final @NotNull ButtonGroup userButton, final @NotNull ButtonGroup transButton) {
         super();
         this.fileButton = fileButton;
         this.userButton = userButton;
@@ -138,7 +138,7 @@ public final class ActivityMainChooser {
     }
 
     @SuppressWarnings("UnusedReturnValue")
-    public boolean click(final ActivityMainChooser.@NotNull MainChoice choice) {
+    public boolean click(final PageChooser.@NotNull MainChoice choice) {
         return (switch (choice) {
             case File -> this.fileButton;
             case User -> this.userButton;

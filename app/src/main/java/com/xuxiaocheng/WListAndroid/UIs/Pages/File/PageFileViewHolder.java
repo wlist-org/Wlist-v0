@@ -1,8 +1,9 @@
-package com.xuxiaocheng.WListAndroid.UIs;
+package com.xuxiaocheng.WListAndroid.UIs.Pages.File;
 
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
+import androidx.annotation.UiThread;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import com.xuxiaocheng.WList.AndroidSupports.FileInformationGetter;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
@@ -23,7 +24,7 @@ class PageFileViewHolder extends EnhancedRecyclerViewAdapter.WrappedViewHolder<C
     protected final @NotNull TextView tips;
     protected final @NotNull View operation;
 
-    protected PageFileViewHolder(final @NotNull ConstraintLayout cell, final @NotNull Consumer<@NotNull VisibleFileInformation> clicker, final @NotNull Consumer<@NotNull VisibleFileInformation> operation) {
+    protected PageFileViewHolder(final @NotNull ConstraintLayout cell, @UiThread final @NotNull Consumer<@NotNull VisibleFileInformation> clicker, @UiThread final @NotNull Consumer<@NotNull VisibleFileInformation> operation) {
         super(cell);
         this.clicker = clicker;
         this.listener = operation;
@@ -56,7 +57,7 @@ class PageFileViewHolder extends EnhancedRecyclerViewAdapter.WrappedViewHolder<C
 
     @Override
     public @NotNull String toString() {
-        return "PageFile$CellViewHolder{" +
+        return "PageFileViewHolder{" +
                 "clicker=" + this.clicker +
                 ", listener=" + this.listener +
                 ", image=" + this.image +

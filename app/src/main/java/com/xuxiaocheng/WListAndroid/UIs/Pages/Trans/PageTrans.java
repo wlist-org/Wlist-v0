@@ -1,11 +1,13 @@
-package com.xuxiaocheng.WListAndroid.UIs;
+package com.xuxiaocheng.WListAndroid.UIs.Pages.Trans;
 
 import android.view.View;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
+import com.xuxiaocheng.WListAndroid.UIs.ActivityMain;
+import com.xuxiaocheng.WListAndroid.UIs.Pages.PageChooser;
 import com.xuxiaocheng.WListAndroid.databinding.PageTransBinding;
 import org.jetbrains.annotations.NotNull;
 
-public class PageTrans implements ActivityMainChooser.MainPage {
+public class PageTrans implements PageChooser.MainPage {
     protected final @NotNull ActivityMain activity;
 
     public PageTrans(final @NotNull ActivityMain activity) {

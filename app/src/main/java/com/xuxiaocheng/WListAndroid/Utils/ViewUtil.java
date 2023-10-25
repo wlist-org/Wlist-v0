@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WListAndroid.Utils;
 
+import android.graphics.drawable.Animatable;
 import android.view.View;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
@@ -96,5 +97,11 @@ public final class ViewUtil {
             case "zip", "7z", "rar", "gz", "tar" -> R.mipmap.page_file_image_zip;
             default -> R.mipmap.page_file_image_file;
         });
+    }
+
+    @UiThread
+    public static void startDrawableAnimation(final @NotNull ImageView loading) {
+        if (loading.getDrawable() instanceof Animatable animatable)
+            animatable.start();
     }
 }
