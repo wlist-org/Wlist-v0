@@ -3,6 +3,7 @@ package com.xuxiaocheng.WList.AndroidSupports;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation;
 import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.time.ZonedDateTime;
 import java.util.Set;
@@ -61,6 +62,14 @@ public final class UserGroupInformationGetter {
         }
         public VisibleUserGroupInformation.Order order() {
             return this.order;
+        }
+
+        public static @Nullable Order of(final @NotNull String policy) {
+            try {
+                return Order.valueOf(policy);
+            } catch (final IllegalArgumentException exception) {
+                return null;
+            }
         }
     }
 }

@@ -2,6 +2,7 @@ package com.xuxiaocheng.WList.AndroidSupports;
 
 import com.xuxiaocheng.WList.Commons.Beans.VisibleUserInformation;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.time.ZonedDateTime;
 
@@ -52,6 +53,14 @@ public final class UserInformationGetter {
         }
         public VisibleUserInformation.Order order() {
             return this.order;
+        }
+
+        public static @Nullable Order of(final @NotNull String policy) {
+            try {
+                return Order.valueOf(policy);
+            } catch (final IllegalArgumentException exception) {
+                return null;
+            }
         }
     }
 }

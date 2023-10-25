@@ -67,5 +67,13 @@ public final class FileInformationGetter {
         public VisibleFileInformation.Order order() {
             return this.order;
         }
+
+        public static @Nullable Order of(final @NotNull String policy) {
+            try {
+                return Order.valueOf(policy);
+            } catch (final IllegalArgumentException exception) {
+                return null;
+            }
+        }
     }
 }
