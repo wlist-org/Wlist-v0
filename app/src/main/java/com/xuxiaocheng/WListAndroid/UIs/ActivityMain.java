@@ -9,6 +9,7 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.view.View;
 import android.view.ViewGroup;
+import androidx.annotation.UiThread;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
@@ -195,6 +196,7 @@ public class ActivityMain extends AppCompatActivity {
         });
     }
 
+    @UiThread
     public void close() {
         this.startActivity(new Intent(this, ActivityLogin.class));
         this.finish();

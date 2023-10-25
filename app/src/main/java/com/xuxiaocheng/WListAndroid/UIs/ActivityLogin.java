@@ -76,8 +76,8 @@ public class ActivityLogin extends AppCompatActivity {
                         if (e != null) {
                             logger.log(HLogLevel.FAULT, "Failed to initialize wlist clients.", e);
                             Main.showToast(ActivityLogin.this, R.string.toast_fatal_application_initialization);
-                            ActivityLogin.this.unbindService(this);
                         }
+                        ActivityLogin.this.unbindService(this);
                     }, true));
                 }
 

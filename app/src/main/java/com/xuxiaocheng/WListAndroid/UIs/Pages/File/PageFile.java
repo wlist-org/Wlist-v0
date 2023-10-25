@@ -71,6 +71,17 @@ public class PageFile implements PageChooser.MainPage {
         page.pageFileList.setHasFixedSize(true);
         this.partList.onRootPage(0);
         this.buildUploader();
+        Main.runOnBackgroundThread(this.activity, () -> {
+            final BroadcastAssistant.BroadcastSet set;
+            try {
+                set = BroadcastAssistant.get(this.address());
+            } catch (final IllegalStateException exception) {
+                Main.runOnUiThread(this.activity, this.activity::close);
+                return;
+            }
+            set.ServerClose.register(id -> Main.runOnUiThread(this.activity, this.activity::close));
+            this.partList.listenBroadcast(set);
+        });
         return page.getRoot();
     }
 
@@ -198,17 +209,6 @@ public class PageFile implements PageChooser.MainPage {
                     this.partOptions.filter();
             });
             popup.show();
-        });
-        Main.runOnBackgroundThread(this.activity, () -> {
-            final BroadcastAssistant.BroadcastSet set;
-            try {
-                set = BroadcastAssistant.get(this.address());
-            } catch (final IllegalStateException exception) {
-                Main.runOnUiThread(this.activity, this.activity::close);
-                return;
-            }
-            set.ServerClose.register(id -> Main.runOnUiThread(this.activity, this.activity::close));
-            this.partList.listenBroadcast(set);
         });
     }
 
