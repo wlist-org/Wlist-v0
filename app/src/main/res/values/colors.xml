@@ -16,6 +16,7 @@
 	<color name="background_normal">@color/white</color>
 	<color name="background_differ">@color/lighter_gray</color>
 	<color name="line">@color/gray</color>
+	<color name="radio_button">#666666</color>
 
 
 	<color name="backer_clickable">@color/clickable</color>
