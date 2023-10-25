@@ -26,6 +26,10 @@ public final class ClientConfigurationSupporter {
         return configuration.threadCount();
     }
 
+    public static int progressStartDelay(final @NotNull ClientConfiguration configuration) {
+        return configuration.progressStartDelay();
+    }
+
     public static int progressInterval(final @NotNull ClientConfiguration configuration) {
         return configuration.progressInterval();
     }
@@ -52,6 +56,10 @@ public final class ClientConfigurationSupporter {
 
     public static @NotNull LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, @NotNull OrderDirection> userGroupOrders(final @NotNull ClientConfiguration configuration) {
         return configuration.userGroupOrders();
+    }
+
+    public static boolean copyNoTempFile(final @NotNull ClientConfiguration configuration) {
+        return configuration.copyNoTempFile();
     }
 
     public static @NotNull HInitializer<File> location() {
