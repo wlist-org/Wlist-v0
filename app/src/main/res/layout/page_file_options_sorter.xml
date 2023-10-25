@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                                                   xmlns:app="http://schemas.android.com/apk/res-auto"
+                                                   android:layout_width="wrap_content"
+                                                   android:layout_height="wrap_content">
+
+	<RadioGroup
+		android:id="@+id/page_file_options_sorter_policy"
+		android:layout_width="wrap_content"
+		android:layout_height="match_parent"
+		android:orientation="vertical"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintHorizontal_chainStyle="spread"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toLeftOf="@id/page_file_options_sorter_direction"
+		app:layout_constraintTop_toTopOf="parent">
+
+		<RadioButton
+			android:id="@+id/page_file_options_sorter_name"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="@string/page_file_options_sorter_name"
+			android:textColor="@color/text_normal"
+			android:textSize="15sp" />
+
+		<RadioButton
+			android:id="@+id/page_file_options_sorter_size"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="@string/page_file_options_sorter_size"
+			android:textColor="@color/text_normal"
+			android:textSize="15sp" />
+
+		<RadioButton
+			android:id="@+id/page_file_options_sorter_time"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:maxLines="1"
+			android:text="@string/page_file_options_sorter_time"
+			android:textColor="@color/text_normal"
+			android:textSize="15sp" />
+
+	</RadioGroup>
+
+	<RadioGroup
+		android:id="@+id/page_file_options_sorter_direction"
+		android:layout_width="wrap_content"
+		android:layout_height="match_parent"
+		android:orientation="vertical"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toLeftOf="@id/page_file_options_sorter_policy"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toTopOf="parent">
+
+		<RadioButton
+			android:id="@+id/page_file_options_sorter_ascend"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:maxLines="1"
+			android:text="@string/page_file_options_sorter_ascend"
+			android:textColor="@color/text_normal"
+			android:textSize="15sp" />
+
+		<RadioButton
+			android:id="@+id/page_file_options_sorter_descend"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:maxLines="1"
+			android:text="@string/page_file_options_sorter_descend"
+			android:textColor="@color/text_normal"
+			android:textSize="15sp" />
+
+	</RadioGroup>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

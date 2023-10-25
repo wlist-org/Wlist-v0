@@ -57,6 +57,12 @@
 	<string name="page_file_options_refresh">重新与网盘同步</string>
 	<string name="page_file_options_refresh_warning">注意：重新与网盘同步可能需要较长时间</string>
 	<string name="page_file_options_sorter">排序</string>
+	<string name="page_file_options_sorter_name">按名称排序</string>
+	<string name="page_file_options_sorter_size">按大小排序</string>
+	<string name="page_file_options_sorter_time">按修改时间排序</string>
+	<string name="page_file_options_sorter_ascend">升序排序</string>
+	<string name="page_file_options_sorter_descend">降序排序</string>
+	<string name="page_file_options_sorter_not_chose">请选择排序方式！</string>
 	<string name="page_file_options_filter">过滤</string>
 	<string name="page_user_disconnect">断开连接</string>
 	<string name="page_user_close_server">关闭服务端</string>

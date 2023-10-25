@@ -13,6 +13,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AbsListView;
+import android.widget.AdapterView;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.SimpleAdapter;
@@ -50,6 +51,7 @@ import com.xuxiaocheng.WList.AndroidSupports.StorageTypeGetter;
 import com.xuxiaocheng.WList.Client.Assistants.BroadcastAssistant;
 import com.xuxiaocheng.WList.Client.Assistants.FilesAssistant;
 import com.xuxiaocheng.WList.Client.Assistants.TokenAssistant;
+import com.xuxiaocheng.WList.Client.ClientConfiguration;
 import com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper;
 import com.xuxiaocheng.WList.Client.Operations.OperateProvidersHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
@@ -59,7 +61,8 @@ import com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFilesListInformation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
-import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Options.DuplicatePolicy;
+import com.xuxiaocheng.WList.Commons.Options.OrderDirection;
 import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInterface;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
@@ -74,6 +77,7 @@ import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileDirectoryBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileOperationBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileOptionsRefreshBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageFileOptionsSorterBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileRenameBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileUploadBinding;
 import io.netty.util.internal.EmptyArrays;
@@ -87,6 +91,7 @@ import java.net.InetSocketAddress;
 import java.text.MessageFormat;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -706,7 +711,7 @@ public class PageFile implements ActivityMainChooser.MainPage {
                                 HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Creating directory.",
                                         ParametersMap.create().add("address", this.address()).add("location", location).add("name", name));
                                 try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address())) {
-                                    OperateFilesHelper.createDirectory(client, TokenAssistant.getToken(this.address(), this.username()), location, name, Options.DuplicatePolicy.ERROR);
+                                    OperateFilesHelper.createDirectory(client, TokenAssistant.getToken(this.address(), this.username()), location, name, DuplicatePolicy.ERROR);
                                 }
                                 Main.showToast(this.activity, R.string.page_file_upload_success_directory);
                             }, () -> Main.runOnUiThread(this.activity, loading::cancel)));
@@ -799,33 +804,97 @@ public class PageFile implements ActivityMainChooser.MainPage {
                     Map.of("image", R.drawable.page_file_filter, "name", this.activity.getResources().getString(R.string.page_file_options_filter))
             ), R.layout.page_file_options_cell, new String[]{"image", "name"},
                     new int[]{R.id.activity_main_options_cell_image, R.id.activity_main_options_cell_name}));
-            popup.setOnItemClickListener((p, w, pos, i) -> {
-                popup.dismiss();
-                if (pos == 0) { // Refresh.
-                    if (this.stacks.isEmpty()) return;
-                    final PageFileOptionsRefreshBinding refresh = PageFileOptionsRefreshBinding.inflate(this.activity.getLayoutInflater());
-                    new AlertDialog.Builder(this.activity)
-                            .setTitle(R.string.page_file_options_refresh)
-                            .setView(refresh.getRoot())
-                            .setNegativeButton(R.string.cancel, null)
-                            .setPositiveButton(R.string.confirm, (d, h) -> {
-                                final FileLocation location = this.currentLocation.get();
-                                final AtomicLong max = new AtomicLong(0);
-                                Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
-                                    this.listLoadingAnimation(true, 0, 0);
-                                    FilesAssistant.refresh(this.address(), this.username(), location, Main.ClientExecutors, state -> {
-                                        final Pair.ImmutablePair<Long, Long> pair = InstantaneousProgressStateGetter.merge(state);
-                                        max.set(pair.getSecond().longValue());
-                                        this.listLoadingAnimation(true, pair.getFirst().longValue(), pair.getSecond().longValue());
-                                    });
-                                }, () -> this.listLoadingAnimation(false, max.get(), max.get())));
-                            }).show();
-                }
-                if (pos == 1) { // Sort
-                    // TODO
-                }
-                if (pos == 2) { // Filter
-                    // TODO
+            final AtomicBoolean clickable = new AtomicBoolean(true);
+            popup.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(final AdapterView<?> p, final View w, final int pos, final long i) {
+                    if (!clickable.compareAndSet(true, false)) return;
+                    popup.dismiss();
+                    if (pos == 0) { // Refresh.
+                        final PageFileOptionsRefreshBinding refresh = PageFileOptionsRefreshBinding.inflate(PageFile.this.activity.getLayoutInflater());
+                        new AlertDialog.Builder(PageFile.this.activity)
+                                .setTitle(R.string.page_file_options_refresh)
+                                .setView(refresh.getRoot())
+                                .setNegativeButton(R.string.cancel, null)
+                                .setPositiveButton(R.string.confirm, (d, h) -> {
+                                    final FileLocation location = PageFile.this.currentLocation.get();
+                                    final AtomicLong max = new AtomicLong(0);
+                                    Main.runOnBackgroundThread(PageFile.this.activity, HExceptionWrapper.wrapRunnable(() -> {
+                                        PageFile.this.listLoadingAnimation(true, 0, 0);
+                                        if (PageFile.this.stacks.isEmpty()) return;
+                                        FilesAssistant.refresh(PageFile.this.address(), PageFile.this.username(), location, Main.ClientExecutors, state -> {
+                                            final Pair.ImmutablePair<Long, Long> pair = InstantaneousProgressStateGetter.merge(state);
+                                            max.set(pair.getSecond().longValue());
+                                            PageFile.this.listLoadingAnimation(true, pair.getFirst().longValue(), pair.getSecond().longValue());
+                                        });
+                                    }, () -> PageFile.this.listLoadingAnimation(false, max.get(), max.get())));
+                                }).show();
+                    }
+                    if (pos == 1) { // Sort
+                        final PageFileOptionsSorterBinding sorter = PageFileOptionsSorterBinding.inflate(PageFile.this.activity.getLayoutInflater());
+                        final SharedPreferences saved = PageFile.this.activity.getSharedPreferences("page_file_options_sorter", Context.MODE_PRIVATE);
+                        final AtomicReference<FileInformationGetter.Order> orderPolicy = new AtomicReference<>();
+                        final AtomicReference<OrderDirection> orderDirection = new AtomicReference<>();
+                        if (!saved.getBoolean("advanced", false)) {
+                            orderPolicy.set(Objects.requireNonNullElse(FileInformationGetter.Order.of(saved.getString("policy", "")), FileInformationGetter.Order.Name));
+                            sorter.pageFileOptionsSorterPolicy.check(switch (orderPolicy.get()) {
+                                case Size -> R.id.page_file_options_sorter_size;
+                                case UpdateTime -> R.id.page_file_options_sorter_time;
+                                default -> R.id.page_file_options_sorter_name;
+                            });
+                            orderDirection.set(Objects.requireNonNullElse(OrderDirection.of(saved.getString("direction", "")), OrderDirection.ASCEND));
+                            sorter.pageFileOptionsSorterDirection.check(switch (orderDirection.get()) {
+                                case ASCEND -> R.id.page_file_options_sorter_ascend;
+                                case DESCEND -> R.id.page_file_options_sorter_descend;
+                            });
+                        }
+                        sorter.pageFileOptionsSorterName.setOnClickListener(r -> orderPolicy.set(FileInformationGetter.Order.Name));
+                        sorter.pageFileOptionsSorterSize.setOnClickListener(r -> orderPolicy.set(FileInformationGetter.Order.Size));
+                        sorter.pageFileOptionsSorterTime.setOnClickListener(r -> orderPolicy.set(FileInformationGetter.Order.UpdateTime));
+                        sorter.pageFileOptionsSorterAscend.setOnClickListener(r -> orderDirection.set(OrderDirection.ASCEND));
+                        sorter.pageFileOptionsSorterDescend.setOnClickListener(r -> orderDirection.set(OrderDirection.DESCEND));
+                        new AlertDialog.Builder(PageFile.this.activity)
+                                .setTitle(R.string.page_file_options_sorter)
+                                .setView(sorter.getRoot())
+                                .setNegativeButton(R.string.cancel, null)
+                                .setPositiveButton(R.string.confirm, (d, h) -> Main.runOnBackgroundThread(PageFile.this.activity, HExceptionWrapper.wrapRunnable(() -> {
+                                    final FileInformationGetter.Order policy = orderPolicy.get();
+                                    final OrderDirection direction = orderDirection.get();
+                                    if (policy == null || direction == null) {
+                                        Main.showToast(PageFile.this.activity, R.string.page_file_options_sorter_not_chose);
+                                        clickable.set(true);
+                                        Main.runOnUiThread(PageFile.this.activity, () -> this.onItemClick(p, w, 1, i));
+                                        return;
+                                    }
+                                    saved.edit().putBoolean("advanced", false).putString("policy", policy.name()).putString("direction", direction.name()).apply();
+                                    final LinkedHashMap<VisibleFileInformation.Order, OrderDirection> orders = new LinkedHashMap<>(3);
+                                    orders.put(FileInformationGetter.Order.Directory.order(), OrderDirection.DESCEND);
+                                    orders.put(policy.order(), direction);
+                                    if (policy != FileInformationGetter.Order.Name)
+                                        orders.put(FileInformationGetter.Order.Name.order(), direction);
+                                    final ClientConfiguration old = ClientConfigurationSupporter.get();
+                                    ClientConfigurationSupporter.set(new ClientConfiguration(
+                                            ClientConfigurationSupporter.threadCount(old),
+                                            ClientConfigurationSupporter.progressStartDelay(old),
+                                            ClientConfigurationSupporter.progressInterval(old),
+                                            ClientConfigurationSupporter.limitPerPage(old),
+                                            ClientConfigurationSupporter.filterPolicy(old),
+                                            orders,
+                                            ClientConfigurationSupporter.duplicatePolicy(old),
+                                            ClientConfigurationSupporter.userOrders(old),
+                                            ClientConfigurationSupporter.userGroupOrders(old),
+                                            ClientConfigurationSupporter.copyNoTempFile(old)));
+                                    final FileLocation location = PageFile.this.currentLocation.get();
+                                    if (IdentifierNames.RootSelector.equals(FileLocationGetter.storage(location)))
+                                        Main.runOnUiThread(PageFile.this.activity, () -> PageFile.this.onRootPage(PageFile.this.getCurrentPosition()));
+                                    else
+                                        Main.runOnUiThread(PageFile.this.activity, () -> PageFile.this.onInsidePage(PageFile.this.pageCache.getInstance().pageFileName.getText(), location, PageFile.this.getCurrentPosition()));
+                                }))).show();
+                        // TODO
+                    }
+                    if (pos == 2) { // Filter
+                        // TODO
+                    }
                 }
             });
             popup.show();

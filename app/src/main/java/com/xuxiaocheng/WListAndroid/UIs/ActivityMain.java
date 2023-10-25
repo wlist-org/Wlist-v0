@@ -130,7 +130,7 @@ public class ActivityMain extends AppCompatActivity {
         Main.runOnBackgroundThread(this, HExceptionWrapper.wrapRunnable(() -> {
             BroadcastAssistant.start(this.address.getInstance());
             ClientConfigurationSupporter.location().reinitialize(new File(this.getExternalFilesDir("client"), "client.yaml"));
-            ClientConfigurationSupporter.parseFromFile(); // TODO.
+            ClientConfigurationSupporter.parseFromFile();
             Main.runOnUiThread(this, () -> chooser.click(ActivityMainChooser.MainChoice.File));
         }));
     }
