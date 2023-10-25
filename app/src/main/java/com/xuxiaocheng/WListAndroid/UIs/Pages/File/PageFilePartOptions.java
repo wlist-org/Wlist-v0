@@ -101,11 +101,11 @@ public class PageFilePartOptions {
                         return;
                     }
                     saved.edit().putBoolean("advanced", false).putString("policy", policy.name()).putString("direction", direction.name()).apply();
-                    final LinkedHashMap<VisibleFileInformation.Order, OrderDirection> orders = new LinkedHashMap<>(3);
+                    final LinkedHashMap<VisibleFileInformation.Order, OrderDirection> orders = new LinkedHashMap<>(4);
                     orders.put(FileInformationGetter.Order.Directory.order(), OrderDirection.DESCEND);
                     orders.put(policy.order(), direction);
-                    if (policy != FileInformationGetter.Order.Name)
-                        orders.put(FileInformationGetter.Order.Name.order(), direction);
+                    orders.putIfAbsent(FileInformationGetter.Order.Name.order(), direction);
+                    orders.putIfAbsent(FileInformationGetter.Order.CreateTime.order(), direction);
                     final ClientConfiguration old = ClientConfigurationSupporter.get();
                     ClientConfigurationSupporter.set(new ClientConfiguration(
                             ClientConfigurationSupporter.threadCount(old),
@@ -126,7 +126,6 @@ public class PageFilePartOptions {
                 }))).setNegativeButton(R.string.advance, (d, h) -> {
                     this.sortAdvance();
                 }).show();
-        
     }
     
     @UiThread
