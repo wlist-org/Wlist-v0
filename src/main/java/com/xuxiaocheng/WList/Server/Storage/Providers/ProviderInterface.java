@@ -5,7 +5,9 @@ import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Ranges.LongRange;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
-import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Options.DuplicatePolicy;
+import com.xuxiaocheng.WList.Commons.Options.FilterPolicy;
+import com.xuxiaocheng.WList.Commons.Options.OrderDirection;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
@@ -63,7 +65,7 @@ public interface ProviderInterface<C extends StorageConfiguration> {
      * @param consumer empty: directory is not available / does not exist in web server. success: list of files. failure: need build index.
      * @see #ListNotExisted
      */
-    void list(final long directoryId, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FilesListInformation, RefreshRequirements>>, Throwable>> consumer) throws Exception;
+    void list(final long directoryId, final @NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, @NotNull OrderDirection> orders, final long position, final int limit, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FilesListInformation, RefreshRequirements>>, Throwable>> consumer) throws Exception;
 
     @NotNull UnionPair<Optional<FileInformation>, Throwable> InfoNotExisted = UnionPair.ok(Optional.empty());
     /**
@@ -103,12 +105,12 @@ public interface ProviderInterface<C extends StorageConfiguration> {
     /**
      * Create an empty directory.
      */
-    void createDirectory(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) throws Exception;
+    void createDirectory(final long parentId, final @NotNull String directoryName, final @NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) throws Exception;
 
     /**
      * Upload a file.
      */
-    void uploadFile(final long parentId, final @NotNull String filename, final @LongRange(minimum = 0) long size, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) throws Exception;
+    void uploadFile(final long parentId, final @NotNull String filename, final @LongRange(minimum = 0) long size, final @NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) throws Exception;
 
     @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable> CMTooComplex = UnionPair.ok(Optional.empty());
     @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable> CMToInside = UnionPair.ok(Optional.of(UnionPair.fail(Optional.empty())));
@@ -118,19 +120,19 @@ public interface ProviderInterface<C extends StorageConfiguration> {
      * @see #CMTooComplex
      * @see #CMToInside
      */
-    void copyDirectly(final long id, final boolean isDirectory, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> consumer) throws Exception;
+    void copyDirectly(final long id, final boolean isDirectory, final long parentId, final @NotNull String name, final @NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> consumer) throws Exception;
 
     /**
      * Move a file/directory.
      * @see #CMTooComplex
      * @see #CMToInside
      */
-    void moveDirectly(final long id, final boolean isDirectory, final long parentId, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> consumer) throws Exception;
+    void moveDirectly(final long id, final boolean isDirectory, final long parentId, final @NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> consumer) throws Exception;
 
     @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable> RenameTooComplex = UnionPair.ok(Optional.empty());
     /**
      * Rename a file/directory.
      * @see #RenameTooComplex
      */
-    void renameDirectly(final long id, final boolean isDirectory, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) throws Exception;
+    void renameDirectly(final long id, final boolean isDirectory, final @NotNull String name, final @NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) throws Exception;
 }

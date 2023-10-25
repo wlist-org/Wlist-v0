@@ -7,7 +7,8 @@ import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleUserInformation;
 import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import com.xuxiaocheng.WList.Commons.Operations.ResponseState;
-import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Options.OrderPolicies;
+import com.xuxiaocheng.WList.Commons.Options.OrderDirection;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
@@ -58,21 +59,21 @@ public final class OperateUsersHelper {
         }
     }
 
-    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull VisibleUserInformation>> listUsers(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit) throws IOException, InterruptedException, WrongStateException {
+    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull VisibleUserInformation>> listUsers(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, @NotNull OrderDirection> orders, final long position, final int limit) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.ListUsers, token);
-        Options.dumpOrderPolicies(send, orders);
+        OrderPolicies.dump(send, orders);
         ByteBufIOUtil.writeVariableLenLong(send, position);
         ByteBufIOUtil.writeVariableLenInt(send, limit);
         return OperateUsersHelper.pairListOperation(client, send, OperationType.ListUsers, token, p -> p.add("orders", orders).add("position", position).add("limit", limit));
     }
 
-    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull VisibleUserInformation>> listUsersInGroups(final @NotNull WListClientInterface client, final @NotNull String token, @SuppressWarnings("TypeMayBeWeakened") final @NotNull Set<@NotNull Long> chooser, final boolean blacklist, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit) throws IOException, InterruptedException, WrongStateException {
+    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull VisibleUserInformation>> listUsersInGroups(final @NotNull WListClientInterface client, final @NotNull String token, @SuppressWarnings("TypeMayBeWeakened") final @NotNull Set<@NotNull Long> chooser, final boolean blacklist, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, @NotNull OrderDirection> orders, final long position, final int limit) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.ListUsersInGroups, token);
         ByteBufIOUtil.writeVariableLenInt(send, chooser.size());
         for (final Long id: chooser)
             ByteBufIOUtil.writeVariableLenLong(send, id.longValue());
         ByteBufIOUtil.writeBoolean(send, blacklist);
-        Options.dumpOrderPolicies(send, orders);
+        OrderPolicies.dump(send, orders);
         ByteBufIOUtil.writeVariableLenLong(send, position);
         ByteBufIOUtil.writeVariableLenInt(send, limit);
         return OperateUsersHelper.pairListOperation(client, send, OperationType.ListUsersInGroups, token, p -> p.add("chooser", chooser).add("blacklist", blacklist).add("orders", orders).add("position", position).add("limit", limit));
@@ -104,10 +105,10 @@ public final class OperateUsersHelper {
         }
     }
 
-    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull VisibleUserInformation>> searchUsersRegex(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String regex, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit) throws IOException, InterruptedException, WrongStateException {
+    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull VisibleUserInformation>> searchUsersRegex(final @NotNull WListClientInterface client, final @NotNull String token, final @NotNull String regex, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, @NotNull OrderDirection> orders, final long position, final int limit) throws IOException, InterruptedException, WrongStateException {
         final ByteBuf send = OperateHelper.operateWithToken(OperationType.SearchUserRegex, token);
         ByteBufIOUtil.writeUTF(send, regex);
-        Options.dumpOrderPolicies(send, orders);
+        OrderPolicies.dump(send, orders);
         ByteBufIOUtil.writeVariableLenLong(send, position);
         ByteBufIOUtil.writeVariableLenInt(send, limit);
         return OperateUsersHelper.pairListOperation(client, send, OperationType.SearchUserRegex, token, p -> p.add("regex", regex).add("orders", orders).add("position", position).add("limit", limit));

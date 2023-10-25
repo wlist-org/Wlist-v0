@@ -1,7 +1,8 @@
 package com.xuxiaocheng.WList.Commons.Beans;
 
 import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
-import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Options.OrderPolicies;
+import com.xuxiaocheng.WList.Commons.Options.OrderDirection;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
@@ -32,7 +33,7 @@ public record VisibleUserGroupInformation(long id, @NotNull String name, @NotNul
     /**
      * @see UserPermission
      */
-    public enum Order implements Options.OrderPolicy {
+    public enum Order implements OrderPolicies.OrderPolicy {
         Id, Name, CreateTime, UpdateTime,
         Permissions_ServerOperate,
         Permissions_Broadcast,
@@ -57,8 +58,8 @@ public record VisibleUserGroupInformation(long id, @NotNull String name, @NotNul
         }
     }
 
-    private static final @NotNull @Unmodifiable LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> ListEmptyOrder = new LinkedHashMap<>(0);
-    public static @NotNull @Unmodifiable LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> emptyOrder() {
+    private static final @NotNull @Unmodifiable LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, @NotNull OrderDirection> ListEmptyOrder = new LinkedHashMap<>(0);
+    public static @NotNull @Unmodifiable LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, @NotNull OrderDirection> emptyOrder() {
         return VisibleUserGroupInformation.ListEmptyOrder;
     }
 }

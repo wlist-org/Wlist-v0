@@ -6,7 +6,8 @@ import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Initializers.HMultiInitializers;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
-import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Options.FilterPolicy;
+import com.xuxiaocheng.WList.Commons.Options.OrderDirection;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
 import org.jetbrains.annotations.NotNull;
@@ -136,7 +137,7 @@ public record FileManager(@NotNull FileSqlInterface innerSqlInstance) implements
     }
 
     @Override
-    public @NotNull FilesListInformation selectInfosInDirectory(final long directoryId, final Options.@NotNull FilterPolicy filter, final @NotNull LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+    public @NotNull FilesListInformation selectInfosInDirectory(final long directoryId, final @NotNull FilterPolicy filter, final @NotNull LinkedHashMap<VisibleFileInformation.@NotNull Order, @NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
         return this.innerSqlInstance.selectInfosInDirectory(directoryId, filter, orders, position, limit, _connectionId);
     }
 

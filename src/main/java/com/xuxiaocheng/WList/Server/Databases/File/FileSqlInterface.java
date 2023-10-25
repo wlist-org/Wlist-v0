@@ -2,7 +2,8 @@ package com.xuxiaocheng.WList.Server.Databases.File;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
-import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Options.FilterPolicy;
+import com.xuxiaocheng.WList.Commons.Options.OrderDirection;
 import com.xuxiaocheng.WList.Server.Databases.DatabaseInterface;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
 import org.jetbrains.annotations.Contract;
@@ -90,7 +91,7 @@ public interface FileSqlInterface extends DatabaseInterface {
     /**
      * Select all files in directory. (Do NOT select root directory.)
      */
-    @NotNull FilesListInformation selectInfosInDirectory(final long directoryId, final Options.@NotNull FilterPolicy filter, final @NotNull LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException;
+    @NotNull FilesListInformation selectInfosInDirectory(final long directoryId, final @NotNull FilterPolicy filter, final @NotNull LinkedHashMap<VisibleFileInformation.@NotNull Order, @NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException;
 
     /**
      * Select all files' id in directory. (For refreshing.) (Do NOT select root directory.)

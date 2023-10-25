@@ -3,7 +3,7 @@ package com.xuxiaocheng.WListTest.Databases;
 import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleUserInformation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
-import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Options.OrderDirection;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
@@ -148,8 +148,8 @@ public final class UsersTest {
                 Assertions.assertNotNull(UserManager.getInstance().updateUserGroup(information.id(), HRandomHelper.DefaultSecureRandom.nextInt(1, 4), connectionId.get()));
                 informationList.add(UserManager.getInstance().selectUser(information.id(), connectionId.get()));
             }
-            final LinkedHashMap<VisibleUserInformation.Order, Options.OrderDirection> orders = new LinkedHashMap<>();
-            orders.put(VisibleUserInformation.Order.Id, Options.OrderDirection.ASCEND);
+            final LinkedHashMap<VisibleUserInformation.Order, OrderDirection> orders = new LinkedHashMap<>();
+            orders.put(VisibleUserInformation.Order.Id, OrderDirection.ASCEND);
             Assumptions.assumeTrue(UserManager.getInstance().selectUsers(orders, 0, 0, connectionId.get()).getFirst().longValue() == count + 1);
             Assertions.assertEquals(informationList, UserManager.getInstance().selectUsers(orders, 0, count + 1, connectionId.get()).getSecond());
 
@@ -164,15 +164,15 @@ public final class UsersTest {
             }
 
             // Test order.
-            orders.put(VisibleUserInformation.Order.Name, Options.OrderDirection.ASCEND);
-            orders.put(VisibleUserInformation.Order.CreateTime, Options.OrderDirection.ASCEND);
-            orders.put(VisibleUserInformation.Order.UpdateTime, Options.OrderDirection.ASCEND);
-            orders.put(VisibleUserInformation.Order.GroupId, Options.OrderDirection.ASCEND);
-            orders.put(VisibleUserInformation.Order.GroupName, Options.OrderDirection.ASCEND);
+            orders.put(VisibleUserInformation.Order.Name, OrderDirection.ASCEND);
+            orders.put(VisibleUserInformation.Order.CreateTime, OrderDirection.ASCEND);
+            orders.put(VisibleUserInformation.Order.UpdateTime, OrderDirection.ASCEND);
+            orders.put(VisibleUserInformation.Order.GroupId, OrderDirection.ASCEND);
+            orders.put(VisibleUserInformation.Order.GroupName, OrderDirection.ASCEND);
             Assertions.assertEquals(informationList, UserManager.getInstance().selectUsers(orders, 0, count + 1, connectionId.get()).getSecond());
             orders.clear();
-            orders.put(VisibleUserInformation.Order.GroupId, Options.OrderDirection.ASCEND);
-            orders.put(VisibleUserInformation.Order.Id, Options.OrderDirection.DESCEND);
+            orders.put(VisibleUserInformation.Order.GroupId, OrderDirection.ASCEND);
+            orders.put(VisibleUserInformation.Order.Id, OrderDirection.DESCEND);
             Assertions.assertEquals(informationList.stream().sorted((a, b) -> {
                 final int c1 = Comparator.comparingLong((UserInformation p) -> p.group().id()).compare(a, b);
                 if (c1 != 0)
@@ -183,7 +183,7 @@ public final class UsersTest {
 
             // By groups
             orders.clear();
-            orders.put(VisibleUserInformation.Order.Id, Options.OrderDirection.ASCEND);
+            orders.put(VisibleUserInformation.Order.Id, OrderDirection.ASCEND);
             for (int i = 0; i < 5; ++i) {
                 final Set<Long> chooser = new HashSet<>();
                 for (int k = 1; k < 4; ++k)
@@ -218,8 +218,8 @@ public final class UsersTest {
                 Assertions.assertNotNull(information);
                 informationList.add(information);
             }
-            final LinkedHashMap<VisibleUserInformation.Order, Options.OrderDirection> orders = new LinkedHashMap<>();
-            orders.put(VisibleUserInformation.Order.Id, Options.OrderDirection.ASCEND);
+            final LinkedHashMap<VisibleUserInformation.Order, OrderDirection> orders = new LinkedHashMap<>();
+            orders.put(VisibleUserInformation.Order.Id, OrderDirection.ASCEND);
             Assumptions.assumeTrue(UserManager.getInstance().selectUsers(orders, 0, 0, connectionId.get()).getFirst().longValue() == count + 1);
 
             Assertions.assertEquals(informationList.stream().skip(1).collect(Collectors.toList()),

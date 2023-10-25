@@ -5,7 +5,9 @@ import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Ranges.IntRange;
 import com.xuxiaocheng.HeadLibs.Ranges.LongRange;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
-import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Options.DuplicatePolicy;
+import com.xuxiaocheng.WList.Commons.Options.FilterPolicy;
+import com.xuxiaocheng.WList.Commons.Options.OrderDirection;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
@@ -33,12 +35,12 @@ public final class ProviderHelper {
         super();
     }
 
-    public static @NotNull Optional<FilesListInformation> list(final @NotNull ProviderInterface<?> provider, final long directoryId, final Options.@NotNull FilterPolicy filter, final @LongRange(minimum = 0) long position, final @IntRange(minimum = 0) int limit) throws Exception {
+    public static @NotNull Optional<FilesListInformation> list(final @NotNull ProviderInterface<?> provider, final long directoryId, final @NotNull FilterPolicy filter, final @LongRange(minimum = 0) long position, final @IntRange(minimum = 0) int limit) throws Exception {
         final CountDownLatch latch = new CountDownLatch(1);
         final AtomicReference<UnionPair<Optional<UnionPair<FilesListInformation, RefreshRequirements>>, Throwable>> result = new AtomicReference<>();
         final AtomicBoolean barrier = new AtomicBoolean(true);
-        final LinkedHashMap<VisibleFileInformation.Order, Options.OrderDirection> orders = new LinkedHashMap<>();
-        orders.put(VisibleFileInformation.Order.Id, Options.OrderDirection.ASCEND);
+        final LinkedHashMap<VisibleFileInformation.Order, OrderDirection> orders = new LinkedHashMap<>();
+        orders.put(VisibleFileInformation.Order.Id, OrderDirection.ASCEND);
         provider.list(directoryId, filter, orders, position, limit, p -> {
             if (!barrier.compareAndSet(true, false)) {
                 HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), new RuntimeException("Duplicate message.(list) " + p));
@@ -68,7 +70,7 @@ public final class ProviderHelper {
             MiscellaneousUtil.throwException(result2.get());
         return ProviderHelper.list(provider, directoryId, filter, position, limit);
     }
-    public static void testList(final @NotNull FilesListInformation list, final @NotNull Collection<@NotNull FileInformation> collection, final Options.@NotNull FilterPolicy filter) {
+    public static void testList(final @NotNull FilesListInformation list, final @NotNull Collection<@NotNull FileInformation> collection, final @NotNull FilterPolicy filter) {
         Assertions.assertEquals(collection.size(), list.total());
         final List<FileInformation> information = (switch (filter) {
             case Both -> collection.stream();
@@ -151,7 +153,7 @@ public final class ProviderHelper {
         return result.get().getT();
     }
 
-    public static @NotNull UnionPair<FileInformation, FailureReason> create(final @NotNull ProviderInterface<?> provider, final long id, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+    public static @NotNull UnionPair<FileInformation, FailureReason> create(final @NotNull ProviderInterface<?> provider, final long id, final @NotNull String name, final @NotNull DuplicatePolicy policy) throws Exception {
         final CountDownLatch latch = new CountDownLatch(1);
         final AtomicReference<UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> result = new AtomicReference<>();
         final AtomicBoolean barrier = new AtomicBoolean(true);
@@ -171,7 +173,7 @@ public final class ProviderHelper {
         return result.get().getT();
     }
 
-    public static @NotNull Optional<UnionPair<FileInformation, Optional<FailureReason>>> copy(final @NotNull ProviderInterface<?> provider, final long id, final boolean isDirectory, final long parent, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+    public static @NotNull Optional<UnionPair<FileInformation, Optional<FailureReason>>> copy(final @NotNull ProviderInterface<?> provider, final long id, final boolean isDirectory, final long parent, final @NotNull String name, final @NotNull DuplicatePolicy policy) throws Exception {
         final CountDownLatch latch = new CountDownLatch(1);
         final AtomicReference<UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> result = new AtomicReference<>();
         final AtomicBoolean barrier = new AtomicBoolean(true);
@@ -191,7 +193,7 @@ public final class ProviderHelper {
         return result.get().getT();
     }
 
-    public static @NotNull Optional<UnionPair<FileInformation, Optional<FailureReason>>> move(final @NotNull ProviderInterface<?> provider, final long id, final boolean isDirectory, final long parent, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+    public static @NotNull Optional<UnionPair<FileInformation, Optional<FailureReason>>> move(final @NotNull ProviderInterface<?> provider, final long id, final boolean isDirectory, final long parent, final @NotNull DuplicatePolicy policy) throws Exception {
         final CountDownLatch latch = new CountDownLatch(1);
         final AtomicReference<UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> result = new AtomicReference<>();
         final AtomicBoolean barrier = new AtomicBoolean(true);
@@ -211,7 +213,7 @@ public final class ProviderHelper {
         return result.get().getT();
     }
 
-    public static @NotNull Optional<UnionPair<FileInformation, FailureReason>> rename(final @NotNull ProviderInterface<?> provider, final long id, final boolean isDirectory, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy) throws Exception {
+    public static @NotNull Optional<UnionPair<FileInformation, FailureReason>> rename(final @NotNull ProviderInterface<?> provider, final long id, final boolean isDirectory, final @NotNull String name, final @NotNull DuplicatePolicy policy) throws Exception {
         final CountDownLatch latch = new CountDownLatch(1);
         final AtomicReference<UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> result = new AtomicReference<>();
         final AtomicBoolean barrier = new AtomicBoolean(true);

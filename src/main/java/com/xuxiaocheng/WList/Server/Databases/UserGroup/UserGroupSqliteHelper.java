@@ -6,7 +6,7 @@ import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
-import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Options.OrderDirection;
 import com.xuxiaocheng.WList.Server.Databases.DatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.SqlHelper;
 import org.jetbrains.annotations.Contract;
@@ -277,11 +277,11 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
     /* --- Select --- */
 
     @Contract(pure = true)
-    protected static @NotNull String orderBy(@SuppressWarnings("TypeMayBeWeakened") final @NotNull @Unmodifiable LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> orders) {
+    protected static @NotNull String orderBy(@SuppressWarnings("TypeMayBeWeakened") final @NotNull @Unmodifiable LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, @NotNull OrderDirection> orders) {
         if (orders.isEmpty())
             return "ORDER BY name_order ASC, group_id ASC";
         final StringBuilder builder = new StringBuilder("ORDER BY ");
-        for (final Map.Entry<VisibleUserGroupInformation.Order, Options.OrderDirection> order: orders.entrySet()) {
+        for (final Map.Entry<VisibleUserGroupInformation.Order, OrderDirection> order: orders.entrySet()) {
             builder.append(switch (order.getKey()) {
                 case Id -> "group_id";
                 case Name -> "name_order";
@@ -327,7 +327,7 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
     }
 
     @Override
-    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserGroupInformation>> selectGroups(final @NotNull LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserGroupInformation>> selectGroups(final @NotNull LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, @NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
         final long count;
         final List<UserGroupInformation> groups;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
@@ -357,7 +357,7 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
     }
 
     @Override
-    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserGroupInformation>> selectGroupsByPermissions(final @NotNull Map<@NotNull UserPermission, @Nullable Boolean> chooser, final @NotNull LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserGroupInformation>> selectGroupsByPermissions(final @NotNull Map<@NotNull UserPermission, @Nullable Boolean> chooser, final @NotNull LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, @NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
         final long count;
         final List<UserGroupInformation> groups;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
@@ -410,7 +410,7 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
     /* --- Search --- */
 
     @Override
-    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserGroupInformation>> searchGroupsByRegex(final @NotNull String regex, final @NotNull LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserGroupInformation>> searchGroupsByRegex(final @NotNull String regex, final @NotNull LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, @NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
         final long count;
         final List<UserGroupInformation> groups;
         try (final Connection connection = this.getConnection(_connectionId, null)) {

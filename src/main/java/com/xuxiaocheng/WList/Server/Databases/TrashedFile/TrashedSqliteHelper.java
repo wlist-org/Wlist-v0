@@ -1,7 +1,8 @@
 package com.xuxiaocheng.WList.Server.Databases.TrashedFile;
 
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Options.OrderPolicies;
+import com.xuxiaocheng.WList.Commons.Options.OrderDirection;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -33,7 +34,7 @@ public final class TrashedSqliteHelper implements TrashedSqlInterface {
     }
 
     @Contract(pure = true)
-    private static @NotNull String getOrderPolicy(final Options.@NotNull OrderPolicy policy) {
+    private static @NotNull String getOrderPolicy(final OrderPolicies.@NotNull OrderPolicy policy) {
         return "name";
 //        return switch (policy) {
 //            case FileName -> "name";
@@ -43,7 +44,7 @@ public final class TrashedSqliteHelper implements TrashedSqlInterface {
 //        };
     }
     @Contract(pure = true)
-    private static @NotNull String getOrderDirection(final Options.@NotNull OrderDirection policy) {
+    private static @NotNull String getOrderDirection(final @NotNull OrderDirection policy) {
         return switch (policy) {
             case ASCEND -> "ASC";
             case DESCEND -> "DESC";
@@ -258,7 +259,7 @@ public final class TrashedSqliteHelper implements TrashedSqlInterface {
     }
 
     @Override
-    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull TrashedFileInformation>> selectFilesInPage(final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final @Nullable String _connectionId) throws SQLException {
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull TrashedFileInformation>> selectFilesInPage(final int limit, final long offset, final @NotNull OrderDirection direction, final OrderPolicies.@NotNull OrderPolicy policy, final @Nullable String _connectionId) throws SQLException {
         final AtomicReference<String> connectionId = new AtomicReference<>();
         try (final Connection connection = this.getConnection(_connectionId, connectionId)) {
             final long count = this.selectFileCount(connectionId.get());

@@ -3,7 +3,8 @@ package com.xuxiaocheng.WList.Server.Databases.File;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
-import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Options.FilterPolicy;
+import com.xuxiaocheng.WList.Commons.Options.OrderDirection;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.SqlHelper;
 import com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation;
@@ -470,11 +471,11 @@ public class FileSqliteHelper implements FileSqlInterface {
     /* --- Select --- */
 
     @Contract(pure = true)
-    protected static @NotNull String orderBy(@SuppressWarnings("TypeMayBeWeakened") final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders) {
+    protected static @NotNull String orderBy(@SuppressWarnings("TypeMayBeWeakened") final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, @NotNull OrderDirection> orders) {
         if (orders.isEmpty())
             return "ORDER BY name_order ASC, double_id ASC";
         final StringBuilder builder = new StringBuilder("ORDER BY ");
-        for (final Map.Entry<VisibleFileInformation.Order, Options.OrderDirection> order: orders.entrySet()) {
+        for (final Map.Entry<VisibleFileInformation.Order, OrderDirection> order: orders.entrySet()) {
             builder.append(switch (order.getKey()) {
                 case Id -> "double_id";
                 case Name -> "name_order";
@@ -491,7 +492,7 @@ public class FileSqliteHelper implements FileSqlInterface {
     }
 
     @Contract(pure = true)
-    protected static @NotNull String whereFilter(final Options.@NotNull FilterPolicy filter) {
+    protected static @NotNull String whereFilter(final @NotNull FilterPolicy filter) {
         return switch (filter) {
             case Both -> "";
             case OnlyDirectories -> "AND double_id & 1 == 0";
@@ -517,7 +518,7 @@ public class FileSqliteHelper implements FileSqlInterface {
     }
 
     @Override
-    public @NotNull FilesListInformation selectInfosInDirectory(final long directoryId, final Options.@NotNull FilterPolicy filter, final @NotNull LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+    public @NotNull FilesListInformation selectInfosInDirectory(final long directoryId, final @NotNull FilterPolicy filter, final @NotNull LinkedHashMap<VisibleFileInformation.@NotNull Order, @NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
         final long count, filtered;
         final List<FileInformation> files;
         try (final Connection connection = this.getConnection(_connectionId, null)) {

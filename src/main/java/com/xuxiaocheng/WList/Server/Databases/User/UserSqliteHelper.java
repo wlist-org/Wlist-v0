@@ -7,7 +7,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleUserInformation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
-import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Options.OrderDirection;
 import com.xuxiaocheng.WList.Server.Databases.DatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.SqlHelper;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupInformation;
@@ -264,11 +264,11 @@ public class UserSqliteHelper implements UserSqlInterface {
     /* --- Select --- */
 
     @Contract(pure = true)
-    protected static @NotNull String orderBy(@SuppressWarnings("TypeMayBeWeakened") final @NotNull @Unmodifiable LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders) {
+    protected static @NotNull String orderBy(@SuppressWarnings("TypeMayBeWeakened") final @NotNull @Unmodifiable LinkedHashMap<VisibleUserInformation.@NotNull Order, @NotNull OrderDirection> orders) {
         if (orders.isEmpty())
             return "ORDER BY temp.name_order ASC, id ASC";
         final StringBuilder builder = new StringBuilder("ORDER BY ");
-        for (final Map.Entry<VisibleUserInformation.Order, Options.OrderDirection> order: orders.entrySet()) {
+        for (final Map.Entry<VisibleUserInformation.Order, OrderDirection> order: orders.entrySet()) {
             builder.append(switch (order.getKey()) {
                 case Id -> "temp.id";
                 case Name -> "temp.name_order";
@@ -332,7 +332,7 @@ public class UserSqliteHelper implements UserSqlInterface {
     }
 
     @Override
-    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> selectUsers(final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> selectUsers(final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, @NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
         final long count;
         final List<UserInformation> users;
         try (final Connection connection = this.getConnection(_connectionId, null)) {
@@ -363,7 +363,7 @@ public class UserSqliteHelper implements UserSqlInterface {
     }
 
     @Override
-    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> selectUsersByGroups(final @NotNull Set<@NotNull Long> chooser, final boolean blacklist, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> selectUsersByGroups(final @NotNull Set<@NotNull Long> chooser, final boolean blacklist, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, @NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
         if (chooser.isEmpty())
             return blacklist ? this.selectUsers(orders, position, limit, _connectionId) : Pair.ImmutablePair.makeImmutablePair(0L, List.of());
         final long count;
@@ -434,7 +434,7 @@ public class UserSqliteHelper implements UserSqlInterface {
     /* --- Search --- */
 
     @Override
-    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> searchUsersByRegex(final @NotNull String regex, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
+    public Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @Unmodifiable List<@NotNull UserInformation>> searchUsersByRegex(final @NotNull String regex, final @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, @NotNull OrderDirection> orders, final long position, final int limit, final @Nullable String _connectionId) throws SQLException {
         final long count;
         final List<UserInformation> users;
         try (final Connection connection = this.getConnection(_connectionId, null)) {

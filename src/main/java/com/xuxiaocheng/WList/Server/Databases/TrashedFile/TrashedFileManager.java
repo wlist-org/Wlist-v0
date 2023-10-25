@@ -3,7 +3,8 @@ package com.xuxiaocheng.WList.Server.Databases.TrashedFile;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HMultiInitializers;
-import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Options.OrderPolicies;
+import com.xuxiaocheng.WList.Commons.Options.OrderDirection;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -91,7 +92,7 @@ public final class TrashedFileManager {
         return TrashedFileManager.sqlInstances.getInstance(driverName).selectFileCount(_connectionId);
     }
 
-    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull TrashedFileInformation>> selectFilesInPage(final @NotNull String driverName, final int limit, final long offset, final Options.@NotNull OrderDirection direction, final Options.@NotNull OrderPolicy policy, final @Nullable String _connectionId) throws SQLException {
+    public static Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull @UnmodifiableView List<@NotNull TrashedFileInformation>> selectFilesInPage(final @NotNull String driverName, final int limit, final long offset, final @NotNull OrderDirection direction, final OrderPolicies.@NotNull OrderPolicy policy, final @Nullable String _connectionId) throws SQLException {
         return TrashedFileManager.sqlInstances.getInstance(driverName).selectFilesInPage(limit, offset, direction, policy, _connectionId);
     }
 

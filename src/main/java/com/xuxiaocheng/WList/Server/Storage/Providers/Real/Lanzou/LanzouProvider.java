@@ -20,7 +20,7 @@ import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
-import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Options.DuplicatePolicy;
 import com.xuxiaocheng.WList.Commons.Utils.I18NUtil;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
@@ -576,7 +576,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     @Override
-    protected void create0(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) {
+    protected void create0(final long parentId, final @NotNull String directoryName, final @NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) {
         this.task(2, f -> f.add("parent_id", String.valueOf(parentId)).add("folder_name", directoryName).add("folder_description", ""),
                 e -> consumer.accept(UnionPair.fail(e)), json -> {
             final ZonedDateTime now = MiscellaneousUtil.now();
@@ -610,7 +610,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     @Override
-    protected void upload0(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) {
+    protected void upload0(final long parentId, final @NotNull String filename, final long size, final @NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) {
         consumer.accept(UnionPair.ok(UnionPair.ok(new UploadRequirements(List.of(), ignore -> {
             final AtomicReference<FileInformation> information = new AtomicReference<>(null);
             final Pair.ImmutablePair<List<UploadRequirements.OrderedConsumers>, Runnable> pair = UploadRequirements.splitUploadBuffer((content, listener) -> {
@@ -644,7 +644,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     @Override
-    protected void copyDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) {
+    protected void copyDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String name, final @NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) {
         consumer.accept(AbstractIdBaseProvider.CopyNotSupport);
     }
 
@@ -655,7 +655,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     @Override
-    protected void moveDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) {
+    protected void moveDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String name, final @NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) {
         assert this.doesSupportMoveDirectly(information, parentId);
         this.task(20, f -> f.add("folder_id", String.valueOf(parentId)).add("file_id", String.valueOf(information.id())), e -> consumer.accept(UnionPair.fail(e)), json -> {
             final ZonedDateTime now = MiscellaneousUtil.now();
@@ -689,7 +689,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
     }
 
     @Override
-    protected void renameDirectly0(final @NotNull FileInformation information, final @NotNull String name, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) {
+    protected void renameDirectly0(final @NotNull FileInformation information, final @NotNull String name, final @NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) {
         assert this.doesSupportRenameDirectly(information, name);
         if (information.isDirectory())
             this.task(4, f -> f.add("folder_id", String.valueOf(information.id())).add("folder_name", name).add("folder_description", ""), e -> consumer.accept(UnionPair.fail(e)), json -> {

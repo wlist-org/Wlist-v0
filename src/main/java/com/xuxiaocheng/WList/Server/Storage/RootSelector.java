@@ -9,7 +9,9 @@ import com.xuxiaocheng.HeadLibs.Ranges.LongRange;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
-import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Options.DuplicatePolicy;
+import com.xuxiaocheng.WList.Commons.Options.FilterPolicy;
+import com.xuxiaocheng.WList.Commons.Options.OrderDirection;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Storage.Providers.ProviderInterface;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
@@ -54,17 +56,17 @@ public final class RootSelector {
 
 
     /**
-     * @see ProviderInterface#list(long, Options.FilterPolicy, LinkedHashMap, long, int, Consumer)
+     * @see ProviderInterface#list(long, FilterPolicy, LinkedHashMap, long, int, Consumer)
      */
-    public static void list(final @NotNull FileLocation directory, final Options.@NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders, final @LongRange(minimum = 0) long position, final @IntRange(minimum = 0) int limit, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FilesListInformation, RefreshRequirements>>, Throwable>> consumer) {
+    public static void list(final @NotNull FileLocation directory, final @NotNull FilterPolicy filter, final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, @NotNull OrderDirection> orders, final @LongRange(minimum = 0) long position, final @IntRange(minimum = 0) int limit, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FilesListInformation, RefreshRequirements>>, Throwable>> consumer) {
         try {
             if (IdentifierNames.RootSelector.equals(directory.storage())) {
-                if (filter == Options.FilterPolicy.OnlyFiles) {
+                if (filter == FilterPolicy.OnlyFiles) {
                     consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(new FilesListInformation(StorageManager.getProvidersCount(), 0L, List.of())))));
                     return;
                 }
                 Comparator<StorageConfiguration> comparators = null;
-                for (final Map.Entry<VisibleFileInformation.Order, Options.OrderDirection> order: orders.entrySet()) {
+                for (final Map.Entry<VisibleFileInformation.Order, OrderDirection> order: orders.entrySet()) {
                     final Comparator<StorageConfiguration> select = switch (order.getKey()) {
                         case Id, Name -> Comparator.comparing(StorageConfiguration::getName);
                         case Directory -> (m, n) -> 0;
@@ -175,9 +177,9 @@ public final class RootSelector {
     }
 
     /**
-     * @see ProviderInterface#createDirectory(long, String, Options.DuplicatePolicy, Consumer)
+     * @see ProviderInterface#createDirectory(long, String, DuplicatePolicy, Consumer)
      */
-    public static void createDirectory(final @NotNull FileLocation parent, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) {
+    public static void createDirectory(final @NotNull FileLocation parent, final @NotNull String directoryName, final @NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) {
         try {
             final ProviderInterface<?> real = StorageManager.getProvider(parent.storage());
             if (real == null) {
@@ -191,9 +193,9 @@ public final class RootSelector {
     }
 
     /**
-     * @see ProviderInterface#uploadFile(long, String, long, Options.DuplicatePolicy, Consumer)
+     * @see ProviderInterface#uploadFile(long, String, long, DuplicatePolicy, Consumer)
      */
-    public static void uploadFile(final @NotNull FileLocation parent, final @NotNull String filename, final @LongRange(minimum = 0) long size, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) {
+    public static void uploadFile(final @NotNull FileLocation parent, final @NotNull String filename, final @LongRange(minimum = 0) long size, final @NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) {
         try {
             final ProviderInterface<?> real = StorageManager.getProvider(parent.storage());
             if (real == null) {
@@ -220,9 +222,9 @@ public final class RootSelector {
     }
 
     /**
-     * @see ProviderInterface#copyDirectly(long, boolean, long, String, Options.DuplicatePolicy, Consumer)
+     * @see ProviderInterface#copyDirectly(long, boolean, long, String, DuplicatePolicy, Consumer)
      */
-    public static void copyDirectly(final @NotNull FileLocation location, final boolean isDirectory, final @NotNull FileLocation parent, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> consumer) {
+    public static void copyDirectly(final @NotNull FileLocation location, final boolean isDirectory, final @NotNull FileLocation parent, final @NotNull String name, final @NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> consumer) {
         try {
             final ProviderInterface<?> real = RootSelector.checkCMAvailable(location, isDirectory, parent, consumer);
             if (real != null)
@@ -233,9 +235,9 @@ public final class RootSelector {
     }
 
     /**
-     * @see ProviderInterface#moveDirectly(long, boolean, long, Options.DuplicatePolicy, Consumer)
+     * @see ProviderInterface#moveDirectly(long, boolean, long, DuplicatePolicy, Consumer)
      */
-    public static void moveDirectly(final @NotNull FileLocation location, final boolean isDirectory, final @NotNull FileLocation parent, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> consumer) {
+    public static void moveDirectly(final @NotNull FileLocation location, final boolean isDirectory, final @NotNull FileLocation parent, final @NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> consumer) {
         try {
             final ProviderInterface<?> real = RootSelector.checkCMAvailable(location, isDirectory, parent, consumer);
             if (real != null)
@@ -246,9 +248,9 @@ public final class RootSelector {
     }
 
     /**
-     * @see ProviderInterface#renameDirectly(long, boolean, String, Options.DuplicatePolicy, Consumer)
+     * @see ProviderInterface#renameDirectly(long, boolean, String, DuplicatePolicy, Consumer)
      */
-    public static void renameDirectly(final @NotNull FileLocation location, final boolean isDirectory, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) {
+    public static void renameDirectly(final @NotNull FileLocation location, final boolean isDirectory, final @NotNull String name, final @NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) {
         try {
             final ProviderInterface<?> real = StorageManager.getProvider(location.storage());
             if (real == null) {

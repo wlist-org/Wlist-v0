@@ -13,12 +13,12 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public final class Options {
-    private Options() {
+public final class OrderPolicies {
+    private OrderPolicies() {
         super();
     }
 
-    @FunctionalInterface
+    @SuppressWarnings("InterfaceMayBeAnnotatedFunctional")
     public interface OrderPolicy {
         @NotNull String name();
     }
@@ -28,10 +28,10 @@ public final class Options {
         return Arrays.stream(type.getEnumConstants()).collect(Collectors.toMap(Enum::name, Function.identity()));
     }
 
-    public static <T extends Enum<T> & OrderPolicy> @Nullable UnionPair<LinkedHashMap<@NotNull T, @NotNull OrderDirection>, String> parseOrderPolicies(final @NotNull ByteBuf buffer, final @NotNull Class<T> type, final int maxCount_) throws IOException {
+    public static <T extends Enum<T> & OrderPolicy> @Nullable UnionPair<LinkedHashMap<@NotNull T, @NotNull OrderDirection>, String> parse(final @NotNull ByteBuf buffer, final @NotNull Class<T> type, final int maxCount_) throws IOException {
         final int length = ByteBufIOUtil.readVariableLenInt(buffer);
         @SuppressWarnings("unchecked")
-        final Map<String, T> enums = (Map<String, T>) Options.typesCache.computeIfAbsent(type, t -> Options.computeTypeCache((Class<T>) t));
+        final Map<String, T> enums = (Map<String, T>) OrderPolicies.typesCache.computeIfAbsent(type, t -> OrderPolicies.computeTypeCache((Class<T>) t));
         if (length < 0 || (maxCount_ < 0 ? enums.size() : Math.min(maxCount_, enums.size())) < length)
             return null;
         final LinkedHashMap<T, OrderDirection> orders = new LinkedHashMap<>(length);
@@ -46,56 +46,14 @@ public final class Options {
         return UnionPair.ok(orders);
     }
 
-    public static <T extends Enum<T>& OrderPolicy> void dumpOrderPolicies(final @NotNull ByteBuf buffer, @SuppressWarnings("TypeMayBeWeakened") final @NotNull LinkedHashMap<@NotNull T, @NotNull OrderDirection> orders) throws IOException {
+    public static <T extends Enum<T> & OrderPolicy> void dump(final @NotNull ByteBuf buffer, @SuppressWarnings("TypeMayBeWeakened") final @NotNull LinkedHashMap<@NotNull T, @NotNull OrderDirection> orders) throws IOException {
         ByteBufIOUtil.writeVariableLenInt(buffer, orders.size());
         for (final Map.Entry<T, OrderDirection> policy: orders.entrySet()) {
             ByteBufIOUtil.writeUTF(buffer, policy.getKey().name());
             ByteBufIOUtil.writeBoolean(buffer, switch (policy.getValue()) {
                 case ASCEND -> true;
                 case DESCEND -> false;
-            });// policy.getValue() == OrderDirection.ASCEND
-        }
-    }
-
-    public enum OrderDirection {
-        ASCEND, DESCEND,
-        ;
-        public static @Nullable OrderDirection of(final @NotNull String policy) {
-            try {
-                return OrderDirection.valueOf(policy);
-            } catch (final IllegalArgumentException exception) {
-                return null;
-            }
-        }
-    }
-
-
-    public enum FilterPolicy {
-        OnlyDirectories,
-        OnlyFiles,
-        Both,
-        ;
-        public static @Nullable FilterPolicy of(final byte policy) {
-            return switch (policy) {
-                case 0 -> FilterPolicy.OnlyDirectories;
-                case 1 -> FilterPolicy.OnlyFiles;
-                case 2 -> FilterPolicy.Both;
-                default -> null;
-            };
-        }
-    }
-
-    public enum DuplicatePolicy {
-        ERROR,
-        OVER,
-        KEEP,
-        ;
-        public static @Nullable DuplicatePolicy of(final @NotNull String policy) {
-            try {
-                return DuplicatePolicy.valueOf(policy);
-            } catch (final IllegalArgumentException exception) {
-                return null;
-            }
+            });
         }
     }
 }

@@ -11,7 +11,10 @@ import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import com.xuxiaocheng.WList.Commons.Operations.ResponseState;
 import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
-import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Options.DuplicatePolicy;
+import com.xuxiaocheng.WList.Commons.Options.FilterPolicy;
+import com.xuxiaocheng.WList.Commons.Options.OrderPolicies;
+import com.xuxiaocheng.WList.Commons.Options.OrderDirection;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.User.UserInformation;
@@ -88,15 +91,15 @@ public final class OperateFilesHandler {
     }
 
     /**
-     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#listFiles(WListClientInterface, String, FileLocation, Options.FilterPolicy, LinkedHashMap, long, int)
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#listFiles(WListClientInterface, String, FileLocation, FilterPolicy, LinkedHashMap, long, int)
      */
     private static final @NotNull ServerHandler doListFiles = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FilesList);
         final FileLocation directory = FileLocation.parse(buffer);
-        final Options.FilterPolicy filter = Options.FilterPolicy.of(ByteBufIOUtil.readByte(buffer));
-        final UnionPair<LinkedHashMap<VisibleFileInformation.Order, Options.OrderDirection>, String> orders =
-                Options.parseOrderPolicies(buffer, VisibleFileInformation.Order.class, -1);
+        final FilterPolicy filter = FilterPolicy.of(ByteBufIOUtil.readByte(buffer));
+        final UnionPair<LinkedHashMap<VisibleFileInformation.Order, OrderDirection>, String> orders =
+                OrderPolicies.parse(buffer, VisibleFileInformation.Order.class, -1);
         final long position = ByteBufIOUtil.readVariableLenLong(buffer);
         final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
         ServerHandler.logOperation(channel, OperationType.ListFiles, user, () -> ParametersMap.create()
@@ -459,14 +462,14 @@ public final class OperateFilesHandler {
     };
 
     /**
-     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#createDirectory(WListClientInterface, String, FileLocation, String, Options.DuplicatePolicy)
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#createDirectory(WListClientInterface, String, FileLocation, String, DuplicatePolicy)
      */
     private static final @NotNull ServerHandler doCreateDirectory = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.FilesList, UserPermission.FileUpload);
         final FileLocation parent = FileLocation.parse(buffer);
         final String directoryName = ByteBufIOUtil.readUTF(buffer);
-        final Options.DuplicatePolicy policy = Options.DuplicatePolicy.of(ByteBufIOUtil.readUTF(buffer));
+        final DuplicatePolicy policy = DuplicatePolicy.of(ByteBufIOUtil.readUTF(buffer));
         ServerHandler.logOperation(channel, OperationType.CreateDirectory, user, () -> ParametersMap.create()
                 .add("parent", parent).add("directoryName", directoryName).add("policy", policy));
         MessageProto message = null;
@@ -474,7 +477,7 @@ public final class OperateFilesHandler {
             message = user.getE();
         else if (policy == null)
             message = OperateFilesHandler.PolicyDataError;
-        else if (policy == Options.DuplicatePolicy.OVER && !user.getT().group().permissions().contains(UserPermission.FileTrash))
+        else if (policy == DuplicatePolicy.OVER && !user.getT().group().permissions().contains(UserPermission.FileTrash))
             message = OperateSelfHandler.NoPermission(List.of(UserPermission.FileTrash));
         if (message != null) {
             WListServer.ServerChannelHandler.write(channel, message);
@@ -503,7 +506,7 @@ public final class OperateFilesHandler {
     };
 
     /**
-     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#requestUploadFile(WListClientInterface, String, FileLocation, String, long, Options.DuplicatePolicy)
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#requestUploadFile(WListClientInterface, String, FileLocation, String, long, DuplicatePolicy)
      */
     private static final @NotNull ServerHandler doRequestUploadFile = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
@@ -511,10 +514,10 @@ public final class OperateFilesHandler {
         final FileLocation parent = FileLocation.parse(buffer);
         final String filename = ByteBufIOUtil.readUTF(buffer);
         final long size = ByteBufIOUtil.readVariable2LenLong(buffer);
-        final Options.DuplicatePolicy policy = Options.DuplicatePolicy.of(ByteBufIOUtil.readUTF(buffer));
+        final DuplicatePolicy policy = DuplicatePolicy.of(ByteBufIOUtil.readUTF(buffer));
         ServerHandler.logOperation(channel, OperationType.RequestUploadFile, user, () -> ParametersMap.create()
                 .add("parent", parent).add("filename", filename).add("size", size).add("policy", policy)
-                .optionallyAddSupplier(policy == Options.DuplicatePolicy.OVER && user.isSuccess(), "allow", () ->
+                .optionallyAddSupplier(policy == DuplicatePolicy.OVER && user.isSuccess(), "allow", () ->
                         user.getT().group().permissions().contains(UserPermission.FileTrash)));
         MessageProto message = null;
         if (user.isFailure())
@@ -523,7 +526,7 @@ public final class OperateFilesHandler {
             message = MessageProto.WrongParameters;
         else if (policy == null)
             message = OperateFilesHandler.PolicyDataError;
-        else if (policy == Options.DuplicatePolicy.OVER && !user.getT().group().permissions().contains(UserPermission.FileTrash))
+        else if (policy == DuplicatePolicy.OVER && !user.getT().group().permissions().contains(UserPermission.FileTrash))
             message = OperateSelfHandler.NoPermission(List.of(UserPermission.FileTrash));
         if (message != null) {
             WListServer.ServerChannelHandler.write(channel, message);
@@ -683,7 +686,7 @@ public final class OperateFilesHandler {
     };
 
     /**
-     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#copyDirectly(WListClientInterface, String, FileLocation, boolean, FileLocation, String, Options.DuplicatePolicy)
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#copyDirectly(WListClientInterface, String, FileLocation, boolean, FileLocation, String, DuplicatePolicy)
      */
     private static final @NotNull ServerHandler doCopyFile = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
@@ -692,17 +695,17 @@ public final class OperateFilesHandler {
         final boolean isDirectory = ByteBufIOUtil.readBoolean(buffer);
         final FileLocation parent = FileLocation.parse(buffer);
         final String name = ByteBufIOUtil.readUTF(buffer);
-        final Options.DuplicatePolicy policy = Options.DuplicatePolicy.of(ByteBufIOUtil.readUTF(buffer));
+        final DuplicatePolicy policy = DuplicatePolicy.of(ByteBufIOUtil.readUTF(buffer));
         ServerHandler.logOperation(channel, OperationType.CopyDirectly, user, () -> ParametersMap.create()
                 .add("location", location).add("isDirectory", isDirectory).add("parent", parent).add("name", name).add("policy", policy)
-                .optionallyAddSupplier(policy == Options.DuplicatePolicy.OVER && user.isSuccess(), "allow", () ->
+                .optionallyAddSupplier(policy == DuplicatePolicy.OVER && user.isSuccess(), "allow", () ->
                         user.getT().group().permissions().contains(UserPermission.FileTrash)));
         MessageProto message = null;
         if (user.isFailure())
             message = user.getE();
         else if (policy == null)
             message = OperateFilesHandler.PolicyDataError;
-        else if (policy == Options.DuplicatePolicy.OVER && !user.getT().group().permissions().contains(UserPermission.FileTrash))
+        else if (policy == DuplicatePolicy.OVER && !user.getT().group().permissions().contains(UserPermission.FileTrash))
             message = OperateSelfHandler.NoPermission(List.of(UserPermission.FileTrash));
         if (message != null) {
             WListServer.ServerChannelHandler.write(channel, message);
@@ -736,7 +739,7 @@ public final class OperateFilesHandler {
     };
 
     /**
-     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#moveDirectly(WListClientInterface, String, FileLocation, boolean, FileLocation, Options.DuplicatePolicy)
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#moveDirectly(WListClientInterface, String, FileLocation, boolean, FileLocation, DuplicatePolicy)
      */
     private static final @NotNull ServerHandler doMoveFile = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
@@ -744,17 +747,17 @@ public final class OperateFilesHandler {
         final FileLocation location = FileLocation.parse(buffer);
         final boolean isDirectory = ByteBufIOUtil.readBoolean(buffer);
         final FileLocation parent = FileLocation.parse(buffer);
-        final Options.DuplicatePolicy policy = Options.DuplicatePolicy.of(ByteBufIOUtil.readUTF(buffer));
+        final DuplicatePolicy policy = DuplicatePolicy.of(ByteBufIOUtil.readUTF(buffer));
         ServerHandler.logOperation(channel, OperationType.MoveDirectly, user, () -> ParametersMap.create()
                 .add("location", location).add("isDirectory", isDirectory).add("parent", parent).add("policy", policy)
-                .optionallyAddSupplier(policy == Options.DuplicatePolicy.OVER && user.isSuccess(), "allow", () ->
+                .optionallyAddSupplier(policy == DuplicatePolicy.OVER && user.isSuccess(), "allow", () ->
                         user.getT().group().permissions().contains(UserPermission.FileTrash)));
         MessageProto message = null;
         if (user.isFailure())
             message = user.getE();
         else if (policy == null)
             message = OperateFilesHandler.PolicyDataError;
-        else if (policy == Options.DuplicatePolicy.OVER && !user.getT().group().permissions().contains(UserPermission.FileTrash))
+        else if (policy == DuplicatePolicy.OVER && !user.getT().group().permissions().contains(UserPermission.FileTrash))
             message = OperateSelfHandler.NoPermission(List.of(UserPermission.FileTrash));
         if (message != null) {
             WListServer.ServerChannelHandler.write(channel, message);
@@ -788,7 +791,7 @@ public final class OperateFilesHandler {
     };
 
     /**
-     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#renameDirectly(WListClientInterface, String, FileLocation, boolean, String, Options.DuplicatePolicy)
+     * @see com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper#renameDirectly(WListClientInterface, String, FileLocation, boolean, String, DuplicatePolicy)
      */
     private static final @NotNull ServerHandler doRenameFile = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
@@ -796,17 +799,17 @@ public final class OperateFilesHandler {
         final FileLocation location = FileLocation.parse(buffer);
         final boolean isDirectory = ByteBufIOUtil.readBoolean(buffer);
         final String name = ByteBufIOUtil.readUTF(buffer);
-        final Options.DuplicatePolicy policy = Options.DuplicatePolicy.of(ByteBufIOUtil.readUTF(buffer));
+        final DuplicatePolicy policy = DuplicatePolicy.of(ByteBufIOUtil.readUTF(buffer));
         ServerHandler.logOperation(channel, OperationType.RenameDirectly, user, () -> ParametersMap.create()
                 .add("location", location).add("isDirectory", isDirectory).add("name", name).add("policy", policy)
-                .optionallyAddSupplier(policy == Options.DuplicatePolicy.OVER && user.isSuccess(), "allow", () ->
+                .optionallyAddSupplier(policy == DuplicatePolicy.OVER && user.isSuccess(), "allow", () ->
                         user.getT().group().permissions().contains(UserPermission.FileTrash)));
         MessageProto message = null;
         if (user.isFailure())
             message = user.getE();
         else if (policy == null)
             message = OperateFilesHandler.PolicyDataError;
-        else if (policy == Options.DuplicatePolicy.OVER && !user.getT().group().permissions().contains(UserPermission.FileTrash))
+        else if (policy == DuplicatePolicy.OVER && !user.getT().group().permissions().contains(UserPermission.FileTrash))
             message = OperateSelfHandler.NoPermission(List.of(UserPermission.FileTrash));
         if (message != null) {
             WListServer.ServerChannelHandler.write(channel, message);

@@ -6,7 +6,8 @@ import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.StaticLoader;
 import com.xuxiaocheng.WList.Commons.Operations.FailureKind;
-import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Options.DuplicatePolicy;
+import com.xuxiaocheng.WList.Commons.Options.FilterPolicy;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
@@ -134,22 +135,22 @@ public class AbstractProviderTest {
             prepare.accept(provider().root());
             final List<FileInformation> list = provider().root().children().stream().map(AbstractProvider.AbstractProviderFile::get).toList();
 
-            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, list.size());
-            ProviderHelper.testList(result.orElseThrow(), list, Options.FilterPolicy.Both);
+            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, list.size());
+            ProviderHelper.testList(result.orElseThrow(), list, FilterPolicy.Both);
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
-            final Optional<FilesListInformation> resultD = ProviderHelper.list(provider(), 0, Options.FilterPolicy.OnlyDirectories, 0, list.size());
-            ProviderHelper.testList(resultD.orElseThrow(), list, Options.FilterPolicy.OnlyDirectories);
+            final Optional<FilesListInformation> resultD = ProviderHelper.list(provider(), 0, FilterPolicy.OnlyDirectories, 0, list.size());
+            ProviderHelper.testList(resultD.orElseThrow(), list, FilterPolicy.OnlyDirectories);
             Assertions.assertEquals(List.of(), provider().checkOperations());
 
-            final Optional<FilesListInformation> resultF = ProviderHelper.list(provider(), 0, Options.FilterPolicy.OnlyFiles, 0, list.size());
-            ProviderHelper.testList(resultF.orElseThrow(), list, Options.FilterPolicy.OnlyFiles);
+            final Optional<FilesListInformation> resultF = ProviderHelper.list(provider(), 0, FilterPolicy.OnlyFiles, 0, list.size());
+            ProviderHelper.testList(resultF.orElseThrow(), list, FilterPolicy.OnlyFiles);
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
         @Test
         public void notAvailable() throws Exception {
-            final Optional<FilesListInformation> result1 = ProviderHelper.list(provider(), 1, Options.FilterPolicy.Both, 0, 5);
+            final Optional<FilesListInformation> result1 = ProviderHelper.list(provider(), 1, FilterPolicy.Both, 0, 5);
             Assertions.assertFalse(result1.isPresent());
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
@@ -158,17 +159,17 @@ public class AbstractProviderTest {
         public void delete() throws Exception {
             final AbstractProvider.AbstractProviderFile directory = AbstractProvider.build(1, 0, true);
             provider().root().add(directory);
-            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5);
-            ProviderHelper.testList(result.orElseThrow(), List.of(directory.get()), Options.FilterPolicy.Both);
+            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 5);
+            ProviderHelper.testList(result.orElseThrow(), List.of(directory.get()), FilterPolicy.Both);
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
             provider().root().del(1, true);
-            final Optional<FilesListInformation> result1 = ProviderHelper.list(provider(), 1, Options.FilterPolicy.Both, 0, 5);
+            final Optional<FilesListInformation> result1 = ProviderHelper.list(provider(), 1, FilterPolicy.Both, 0, 5);
             Assertions.assertFalse(result1.isPresent());
             Assertions.assertEquals(List.of("Login.", "List: 1"), provider().checkOperations());
 
-            final Optional<FilesListInformation> result2 = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5);
-            ProviderHelper.testList(result2.orElseThrow(), List.of(), Options.FilterPolicy.Both);
+            final Optional<FilesListInformation> result2 = ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 5);
+            ProviderHelper.testList(result2.orElseThrow(), List.of(), FilterPolicy.Both);
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
@@ -186,7 +187,7 @@ public class AbstractProviderTest {
                 }
             });
             Assertions.assertThrows(RuntimeException.class, () ->
-                    ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5)
+                    ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 5)
             );
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
         }
@@ -218,7 +219,7 @@ public class AbstractProviderTest {
             final CountDownLatch latch1 = new CountDownLatch(1);
             final AtomicReference<Optional<FilesListInformation>> result1 = new AtomicReference<>();
             WListServer.IOExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
-                result1.set(ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5));
+                result1.set(ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 5));
                 latch1.countDown();
             })).addListener(MiscellaneousUtil.exceptionListener());
             latch.await();
@@ -226,16 +227,16 @@ public class AbstractProviderTest {
             final CountDownLatch latch2 = new CountDownLatch(1);
             final AtomicReference<Optional<FilesListInformation>> result2 = new AtomicReference<>();
             WListServer.IOExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
-                result2.set(ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5));
+                result2.set(ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 5));
                 latch2.countDown();
             })).addListener(MiscellaneousUtil.exceptionListener());
             Assumptions.assumeTrue(latch2.getCount() == 1);
 
             listIteratorNext.countDown();
             latch1.await();
-            ProviderHelper.testList(result1.get().orElseThrow(), List.of(info.get()), Options.FilterPolicy.Both);
+            ProviderHelper.testList(result1.get().orElseThrow(), List.of(info.get()), FilterPolicy.Both);
             latch2.await();
-            ProviderHelper.testList(result2.get().orElseThrow(), List.of(info.get()), Options.FilterPolicy.Both);
+            ProviderHelper.testList(result2.get().orElseThrow(), List.of(info.get()), FilterPolicy.Both);
 
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
         }
@@ -263,7 +264,7 @@ public class AbstractProviderTest {
             });
             final CountDownLatch latch1 = new CountDownLatch(1);
             WListServer.IOExecutors.submit(() -> Assertions.assertThrows(RuntimeException.class, () ->
-                            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5)))
+                            ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 5)))
                     .addListener(f -> {if (!f.isSuccess()) HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), f.cause());
                         latch1.countDown();});
             latch.await();
@@ -271,7 +272,7 @@ public class AbstractProviderTest {
             final CountDownLatch latch2 = new CountDownLatch(1);
             final AtomicReference<Optional<FilesListInformation>> result2 = new AtomicReference<>();
             WListServer.IOExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
-                result2.set(ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5));
+                result2.set(ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 5));
                 latch2.countDown();
             })).addListener(MiscellaneousUtil.exceptionListener());
             Assumptions.assumeTrue(latch2.getCount() == 1);
@@ -279,7 +280,7 @@ public class AbstractProviderTest {
             listIteratorNext.countDown();
             latch1.await();
             latch2.await();
-            ProviderHelper.testList(result2.get().orElseThrow(), List.of(), Options.FilterPolicy.Both);
+            ProviderHelper.testList(result2.get().orElseThrow(), List.of(), FilterPolicy.Both);
 
             Assertions.assertEquals(List.of("Login.", "List: 0", "Login.", "List: 0"), provider().checkOperations());
         }
@@ -297,7 +298,7 @@ public class AbstractProviderTest {
             final AbstractProvider.AbstractProviderFile file = AbstractProvider.build(1, 0, false);
             provider().root().add(directory);
             provider().root().add(file);
-            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 0);
+            ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 0);
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
             final Optional<FileInformation> resultD = ProviderHelper.info(provider(), 1, true);
@@ -321,7 +322,7 @@ public class AbstractProviderTest {
         public void update() throws Exception {
             final AbstractProvider.AbstractProviderFile file = AbstractProvider.build(1, 0, false);
             provider().root().add(file);
-            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 0);
+            ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 0);
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
             final FileInformation newFile = new FileInformation(1, 0, "file", false, 1, null, null, "123");
@@ -336,7 +337,7 @@ public class AbstractProviderTest {
         public void delete() throws Exception {
             final AbstractProvider.AbstractProviderFile file = AbstractProvider.build(1, 0, false);
             provider().root().add(file);
-            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 0);
+            ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 0);
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
             provider().root().del(1, false);
@@ -351,8 +352,8 @@ public class AbstractProviderTest {
             final AbstractProvider.AbstractProviderFile file = AbstractProvider.build(2, 0, false);
             provider().root().add(directory);
             provider().root().add(file);
-            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 0);
-            ProviderHelper.list(provider(), 1, Options.FilterPolicy.Both, 0, 0);
+            ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 0);
+            ProviderHelper.list(provider(), 1, FilterPolicy.Both, 0, 0);
             Assertions.assertEquals(List.of("Login.", "List: 0", "Login.", "List: 1"), provider().checkOperations());
 
             final AbstractProvider.AbstractProviderFile newFile = AbstractProvider.build(2, 1, false);
@@ -370,7 +371,7 @@ public class AbstractProviderTest {
             final AbstractProvider.AbstractProviderFile file = AbstractProvider.build(2, 0, false);
             provider().root().add(directory);
             provider().root().add(file);
-            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 0);
+            ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 0);
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
             final AbstractProvider.AbstractProviderFile newFile = AbstractProvider.build(2, 1, false);
@@ -398,7 +399,7 @@ public class AbstractProviderTest {
         public void concurrent() throws Exception {
             final AbstractProvider.AbstractProviderFile file = AbstractProvider.build(1, 0, false);
             provider().root().add(file);
-            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 0);
+            ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 0);
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
             final CountDownLatch latch = new CountDownLatch(1);
@@ -442,7 +443,7 @@ public class AbstractProviderTest {
         public void concurrentException() throws Exception {
             final AbstractProvider.AbstractProviderFile file = AbstractProvider.build(1, 0, false);
             provider().root().add(file);
-            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 0);
+            ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 0);
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
             final CountDownLatch latch = new CountDownLatch(1);
@@ -487,9 +488,9 @@ public class AbstractProviderTest {
     public final class RefreshTest {
         @Test
         public void refresh() throws Exception {
-            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 1);
+            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 1);
             Assertions.assertTrue(result.isPresent());
-            ProviderHelper.testList(result.get(), List.of(), Options.FilterPolicy.Both);
+            ProviderHelper.testList(result.get(), List.of(), FilterPolicy.Both);
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
             TimeUnit.MILLISECONDS.sleep(100); // Refresh immediately after list will be skipped.
 
@@ -500,9 +501,9 @@ public class AbstractProviderTest {
             Assertions.assertTrue(ProviderHelper.refresh(provider(), 0));
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
-            final Optional<FilesListInformation> result1 = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 3);
+            final Optional<FilesListInformation> result1 = ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 3);
             Assertions.assertTrue(result1.isPresent());
-            ProviderHelper.testList(result1.get(), List.of(file1.get(), file2.get()), Options.FilterPolicy.Both);
+            ProviderHelper.testList(result1.get(), List.of(file1.get(), file2.get()), FilterPolicy.Both);
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
@@ -524,9 +525,9 @@ public class AbstractProviderTest {
             Assertions.assertTrue(ProviderHelper.refresh(provider(), 0));
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
-            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5);
+            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 5);
             Assertions.assertTrue(result.isPresent());
-            ProviderHelper.testList(result.get(), List.of(newFile), Options.FilterPolicy.Both);
+            ProviderHelper.testList(result.get(), List.of(newFile), FilterPolicy.Both);
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
@@ -543,9 +544,9 @@ public class AbstractProviderTest {
             Assertions.assertTrue(ProviderHelper.refresh(provider(), 0));
             Assertions.assertEquals(List.of("Login.", "List: 0", "Info: 2 f"), provider().checkOperations());
 
-            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5);
+            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 5);
             Assertions.assertTrue(result.isPresent());
-            ProviderHelper.testList(result.get(), List.of(file1.get()), Options.FilterPolicy.Both);
+            ProviderHelper.testList(result.get(), List.of(file1.get()), FilterPolicy.Both);
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
@@ -561,9 +562,9 @@ public class AbstractProviderTest {
             Assertions.assertTrue(ProviderHelper.refresh(provider(), 0));
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
-            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5);
+            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 5);
             Assertions.assertTrue(result.isPresent());
-            ProviderHelper.testList(result.get(), List.of(), Options.FilterPolicy.Both);
+            ProviderHelper.testList(result.get(), List.of(), FilterPolicy.Both);
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
@@ -579,9 +580,9 @@ public class AbstractProviderTest {
             Assertions.assertTrue(ProviderHelper.refresh(provider(), 0));
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
-            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5);
+            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 5);
             Assertions.assertTrue(result.isPresent());
-            ProviderHelper.testList(result.get(), List.of(file1.get(), file2.get()), Options.FilterPolicy.Both);
+            ProviderHelper.testList(result.get(), List.of(file1.get(), file2.get()), FilterPolicy.Both);
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
@@ -602,9 +603,9 @@ public class AbstractProviderTest {
             Assertions.assertTrue(ProviderHelper.refresh(provider(), 0));
             Assertions.assertEquals(List.of("Login.", "List: 0", "Info: 2 f"), provider().checkOperations());
 
-            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5);
+            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 5);
             Assertions.assertTrue(result.isPresent());
-            ProviderHelper.testList(result.get(), List.of(newFile, file3.get()), Options.FilterPolicy.Both);
+            ProviderHelper.testList(result.get(), List.of(newFile, file3.get()), FilterPolicy.Both);
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
@@ -671,9 +672,9 @@ public class AbstractProviderTest {
             latch2.await();
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
-            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5);
+            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 5);
             Assertions.assertTrue(result.isPresent());
-            ProviderHelper.testList(result.get(), List.of(info.get()), Options.FilterPolicy.Both);
+            ProviderHelper.testList(result.get(), List.of(info.get()), FilterPolicy.Both);
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
@@ -717,9 +718,9 @@ public class AbstractProviderTest {
             latch2.await();
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
-            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5);
+            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 5);
             Assertions.assertTrue(result.isPresent());
-            ProviderHelper.testList(result.get(), List.of(), Options.FilterPolicy.Both);
+            ProviderHelper.testList(result.get(), List.of(), FilterPolicy.Both);
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
     }
@@ -744,10 +745,10 @@ public class AbstractProviderTest {
             Assertions.assertTrue(resultD.orElseThrow().booleanValue());
             Assertions.assertEquals(List.of("Login.", "Trash: 2 f"), provider().checkOperations());
 
-            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 5);
+            final Optional<FilesListInformation> result = ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 5);
             Assertions.assertTrue(result.isPresent());
             Assertions.assertEquals(List.of(), provider().checkOperations());
-            ProviderHelper.testList(result.get(), List.of(), Options.FilterPolicy.Both);
+            ProviderHelper.testList(result.get(), List.of(), FilterPolicy.Both);
         }
 
         @Test
@@ -814,7 +815,7 @@ public class AbstractProviderTest {
         public void concurrent() throws Exception {
             final AbstractProvider.AbstractProviderFile file = AbstractProvider.build(1, 0, false);
             provider().root().add(file);
-            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 0);
+            ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 0);
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
             final CountDownLatch latch = new CountDownLatch(1);
@@ -859,7 +860,7 @@ public class AbstractProviderTest {
         public void concurrentException() throws Exception {
             final AbstractProvider.AbstractProviderFile file = AbstractProvider.build(1, 0, false);
             provider().root().add(file);
-            ProviderHelper.list(provider(), 0, Options.FilterPolicy.Both, 0, 0);
+            ProviderHelper.list(provider(), 0, FilterPolicy.Both, 0, 0);
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
             final CountDownLatch latch = new CountDownLatch(1);
@@ -909,13 +910,13 @@ public class AbstractProviderTest {
 
             final FileInformation directory = new FileInformation(1, 0, "directory", true, 0, null, null, null);
             provider().create.initialize(() -> directory);
-            Assertions.assertEquals(directory, ProviderHelper.create(provider(), 0, "directory", Options.DuplicatePolicy.ERROR).getT());
+            Assertions.assertEquals(directory, ProviderHelper.create(provider(), 0, "directory", DuplicatePolicy.ERROR).getT());
             Assertions.assertEquals(List.of("Login.", "Create: 0 directory"), provider().checkOperations());
         }
 
         @Test
         public void notAvailable() throws Exception {
-            Assertions.assertEquals(FailureKind.NoSuchFile, ProviderHelper.create(provider(), 1, "directory", Options.DuplicatePolicy.ERROR).getE().kind());
+            Assertions.assertEquals(FailureKind.NoSuchFile, ProviderHelper.create(provider(), 1, "directory", DuplicatePolicy.ERROR).getE().kind());
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
@@ -926,9 +927,9 @@ public class AbstractProviderTest {
             ProviderHelper.refresh(provider(), 0);
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
-            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.create(provider(), 0, "directory", Options.DuplicatePolicy.ERROR).getE().kind());
+            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.create(provider(), 0, "directory", DuplicatePolicy.ERROR).getE().kind());
             Assertions.assertEquals(List.of(), provider().checkOperations());
-            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.create(provider(), 0, "file", Options.DuplicatePolicy.ERROR).getE().kind());
+            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.create(provider(), 0, "file", DuplicatePolicy.ERROR).getE().kind());
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
@@ -941,12 +942,12 @@ public class AbstractProviderTest {
 
             final FileInformation d = new FileInformation(3, 0, "directory (1)", true, 0, null, null, null);
             provider().create.initialize(() -> d);
-            Assertions.assertEquals(d, ProviderHelper.create(provider(), 0, "directory", Options.DuplicatePolicy.KEEP).getT());
+            Assertions.assertEquals(d, ProviderHelper.create(provider(), 0, "directory", DuplicatePolicy.KEEP).getT());
             Assertions.assertEquals(List.of("Login.", "Create: 0 directory (1)"), provider().checkOperations());
 
             final FileInformation f = new FileInformation(4, 0, "file (1)", true, 0, null, null, null);
             provider().create.initialize(() -> f);
-            Assertions.assertEquals(f, ProviderHelper.create(provider(), 0, "file", Options.DuplicatePolicy.KEEP).getT());
+            Assertions.assertEquals(f, ProviderHelper.create(provider(), 0, "file", DuplicatePolicy.KEEP).getT());
             Assertions.assertEquals(List.of("Login.", "Create: 0 file (1)"), provider().checkOperations());
         }
 
@@ -960,12 +961,12 @@ public class AbstractProviderTest {
             provider().supportTrashRecursively.set(false);
             final FileInformation d = new FileInformation(3, 0, "directory", true, 0, null, null, null);
             provider().create.initialize(() -> d);
-            Assertions.assertEquals(d, ProviderHelper.create(provider(), 0, "directory", Options.DuplicatePolicy.OVER).getT());
+            Assertions.assertEquals(d, ProviderHelper.create(provider(), 0, "directory", DuplicatePolicy.OVER).getT());
             Assertions.assertEquals(List.of("Login.", "List: 1", "Login.", "Trash: 1 d", "Login.", "Create: 0 directory"), provider().checkOperations());
 
             final FileInformation f = new FileInformation(4, 0, "file", true, 0, null, null, null);
             provider().create.initialize(() -> f);
-            Assertions.assertEquals(f, ProviderHelper.create(provider(), 0, "file", Options.DuplicatePolicy.OVER).getT());
+            Assertions.assertEquals(f, ProviderHelper.create(provider(), 0, "file", DuplicatePolicy.OVER).getT());
             Assertions.assertEquals(List.of("Login.", "Trash: 2 f", "Login.", "Create: 0 file"), provider().checkOperations());
         }
 
@@ -973,7 +974,7 @@ public class AbstractProviderTest {
         public void exception() {
             provider().create.initialize(() -> {throw new RuntimeException();});
             Assertions.assertThrows(RuntimeException.class, () ->
-                    ProviderHelper.create(provider(), 0, "directory", Options.DuplicatePolicy.ERROR));
+                    ProviderHelper.create(provider(), 0, "directory", DuplicatePolicy.ERROR));
             Assertions.assertEquals(List.of("Login.", "List: 0", "Login.", "Create: 0 directory"), provider().checkOperations());
         }
     }
@@ -989,7 +990,7 @@ public class AbstractProviderTest {
 
             final FileInformation copied = AbstractProvider.build(2, 0, false).get();
             provider().copy.initialize(() -> copied);
-            final Optional<UnionPair<FileInformation, Optional<FailureReason>>> result = ProviderHelper.copy(provider(), 1, false, 0, copied.name(), Options.DuplicatePolicy.ERROR);
+            final Optional<UnionPair<FileInformation, Optional<FailureReason>>> result = ProviderHelper.copy(provider(), 1, false, 0, copied.name(), DuplicatePolicy.ERROR);
             Assertions.assertEquals(copied, result.orElseThrow().getT());
             Assertions.assertEquals(List.of("Login.", "Copy: 1 f 0 " + copied.name()), provider().checkOperations());
         }
@@ -1004,7 +1005,7 @@ public class AbstractProviderTest {
 
             final FileInformation copied = AbstractProvider.build(3, 0, true).get();
             provider().copy.initialize(() -> copied);
-            final Optional<UnionPair<FileInformation, Optional<FailureReason>>> result = ProviderHelper.copy(provider(), 1, true, 0, copied.name(), Options.DuplicatePolicy.ERROR);
+            final Optional<UnionPair<FileInformation, Optional<FailureReason>>> result = ProviderHelper.copy(provider(), 1, true, 0, copied.name(), DuplicatePolicy.ERROR);
             Assertions.assertEquals(copied, result.orElseThrow().getT());
             Assertions.assertEquals(List.of("Login.", "Copy: 1 d 0 " + copied.name()), provider().checkOperations());
         }
@@ -1015,11 +1016,11 @@ public class AbstractProviderTest {
             ProviderHelper.refresh(provider(), 0);
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
-            final Optional<UnionPair<FileInformation, Optional<FailureReason>>> resultF = ProviderHelper.copy(provider(), 2, false, 0, "", Options.DuplicatePolicy.ERROR);
+            final Optional<UnionPair<FileInformation, Optional<FailureReason>>> resultF = ProviderHelper.copy(provider(), 2, false, 0, "", DuplicatePolicy.ERROR);
             Assertions.assertEquals(FailureKind.NoSuchFile, resultF.orElseThrow().getE().orElseThrow().kind());
             Assertions.assertEquals(List.of(), provider().checkOperations());
 
-            final Optional<UnionPair<FileInformation, Optional<FailureReason>>> resultD = ProviderHelper.copy(provider(), 1, false, 2, "", Options.DuplicatePolicy.ERROR);
+            final Optional<UnionPair<FileInformation, Optional<FailureReason>>> resultD = ProviderHelper.copy(provider(), 1, false, 2, "", DuplicatePolicy.ERROR);
             Assertions.assertEquals(FailureKind.NoSuchFile, resultD.orElseThrow().getE().orElseThrow().kind());
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
@@ -1031,9 +1032,9 @@ public class AbstractProviderTest {
             ProviderHelper.refresh(provider(), 0);
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
-            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.copy(provider(), 1, true, 0, "directory", Options.DuplicatePolicy.ERROR).orElseThrow().getE().orElseThrow().kind());
+            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.copy(provider(), 1, true, 0, "directory", DuplicatePolicy.ERROR).orElseThrow().getE().orElseThrow().kind());
             Assertions.assertEquals(List.of(), provider().checkOperations());
-            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.copy(provider(), 2, false, 0, "file", Options.DuplicatePolicy.ERROR).orElseThrow().getE().orElseThrow().kind());
+            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.copy(provider(), 2, false, 0, "file", DuplicatePolicy.ERROR).orElseThrow().getE().orElseThrow().kind());
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
@@ -1046,12 +1047,12 @@ public class AbstractProviderTest {
 
             final FileInformation d = new FileInformation(3, 0, "directory (1)", true, -1, null, null, null);
             provider().copy.initialize(() -> d);
-            Assertions.assertEquals(d, ProviderHelper.copy(provider(), 1, true, 0, "directory", Options.DuplicatePolicy.KEEP).orElseThrow().getT());
+            Assertions.assertEquals(d, ProviderHelper.copy(provider(), 1, true, 0, "directory", DuplicatePolicy.KEEP).orElseThrow().getT());
             Assertions.assertEquals(List.of("Login.", "Copy: 1 d 0 directory (1)"), provider().checkOperations());
 
             final FileInformation f = new FileInformation(4, 0, "file (1)", false, 0, null, null, null);
             provider().copy.initialize(() -> f);
-            Assertions.assertEquals(f, ProviderHelper.copy(provider(), 2, false, 0, "file", Options.DuplicatePolicy.KEEP).orElseThrow().getT());
+            Assertions.assertEquals(f, ProviderHelper.copy(provider(), 2, false, 0, "file", DuplicatePolicy.KEEP).orElseThrow().getT());
             Assertions.assertEquals(List.of("Login.", "Copy: 2 f 0 file (1)"), provider().checkOperations());
         }
 
@@ -1070,22 +1071,22 @@ public class AbstractProviderTest {
 
             final FileInformation dd = new FileInformation(10, 0, "dd", true, -1, null, null, "r");
             provider().copy.initialize(() -> dd);
-            Assertions.assertEquals(dd, ProviderHelper.copy(provider(), 2, true, 0, "dd", Options.DuplicatePolicy.OVER).orElseThrow().getT());
+            Assertions.assertEquals(dd, ProviderHelper.copy(provider(), 2, true, 0, "dd", DuplicatePolicy.OVER).orElseThrow().getT());
             Assertions.assertEquals(List.of("Login.", "Trash: 1 d", "Login.", "Copy: 2 d 0 dd"), provider().checkOperations());
 
             final FileInformation df = new FileInformation(11, 0, "df", true, -1, null, null, "r");
             provider().copy.initialize(() -> df);
-            Assertions.assertEquals(df, ProviderHelper.copy(provider(), 4, true, 0, "df", Options.DuplicatePolicy.OVER).orElseThrow().getT());
+            Assertions.assertEquals(df, ProviderHelper.copy(provider(), 4, true, 0, "df", DuplicatePolicy.OVER).orElseThrow().getT());
             Assertions.assertEquals(List.of("Login.", "Trash: 3 f", "Login.", "Copy: 4 d 0 df"), provider().checkOperations());
 
             final FileInformation fd = new FileInformation(12, 0, "fd", false, 0, null, null, "r");
             provider().copy.initialize(() -> fd);
-            Assertions.assertEquals(fd, ProviderHelper.copy(provider(), 6, false, 0, "fd", Options.DuplicatePolicy.OVER).orElseThrow().getT());
+            Assertions.assertEquals(fd, ProviderHelper.copy(provider(), 6, false, 0, "fd", DuplicatePolicy.OVER).orElseThrow().getT());
             Assertions.assertEquals(List.of("Login.", "Trash: 5 d", "Login.", "Copy: 6 f 0 fd"), provider().checkOperations());
 
             final FileInformation ff = new FileInformation(13, 0, "ff", false, 0, null, null, "r");
             provider().copy.initialize(() -> ff);
-            Assertions.assertEquals(ff, ProviderHelper.copy(provider(), 8, false, 0, "ff", Options.DuplicatePolicy.OVER).orElseThrow().getT());
+            Assertions.assertEquals(ff, ProviderHelper.copy(provider(), 8, false, 0, "ff", DuplicatePolicy.OVER).orElseThrow().getT());
             Assertions.assertEquals(List.of("Login.", "Trash: 7 f", "Login.", "Copy: 8 f 0 ff"), provider().checkOperations());
         }
 
@@ -1098,8 +1099,8 @@ public class AbstractProviderTest {
             ProviderHelper.refresh(provider(), 0);
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
-            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.copy(provider(), 1, false, 0, file.get().name(), Options.DuplicatePolicy.ERROR).orElseThrow().getE().orElseThrow().kind());
-            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.copy(provider(), 2, true, 0, directory.get().name(), Options.DuplicatePolicy.ERROR).orElseThrow().getE().orElseThrow().kind());
+            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.copy(provider(), 1, false, 0, file.get().name(), DuplicatePolicy.ERROR).orElseThrow().getE().orElseThrow().kind());
+            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.copy(provider(), 2, true, 0, directory.get().name(), DuplicatePolicy.ERROR).orElseThrow().getE().orElseThrow().kind());
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
@@ -1112,8 +1113,8 @@ public class AbstractProviderTest {
             ProviderHelper.refresh(provider(), 2);
             Assertions.assertEquals(List.of("Login.", "List: 0", "Login.", "List: 1", "Login.", "List: 2"), provider().checkOperations());
 
-            Assertions.assertFalse(ProviderHelper.copy(provider(), 1, true, 1, "", Options.DuplicatePolicy.ERROR).orElseThrow().getE().isPresent());
-            Assertions.assertFalse(ProviderHelper.copy(provider(), 1, true, 2, "", Options.DuplicatePolicy.ERROR).orElseThrow().getE().isPresent());
+            Assertions.assertFalse(ProviderHelper.copy(provider(), 1, true, 1, "", DuplicatePolicy.ERROR).orElseThrow().getE().isPresent());
+            Assertions.assertFalse(ProviderHelper.copy(provider(), 1, true, 2, "", DuplicatePolicy.ERROR).orElseThrow().getE().isPresent());
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
@@ -1125,7 +1126,7 @@ public class AbstractProviderTest {
 
             provider().copy.initialize(() -> {throw new RuntimeException();});
             Assertions.assertThrows(RuntimeException.class, () ->
-                    ProviderHelper.copy(provider(), 1, false, 0, "", Options.DuplicatePolicy.ERROR));
+                    ProviderHelper.copy(provider(), 1, false, 0, "", DuplicatePolicy.ERROR));
             Assertions.assertEquals(List.of("Login.", "Copy: 1 f 0 "), provider().checkOperations());
         }
     }
@@ -1144,7 +1145,7 @@ public class AbstractProviderTest {
 
             final FileInformation moved = AbstractProvider.build(2, 1, false).get();
             provider().move.initialize(() -> moved);
-            Assertions.assertEquals(moved, ProviderHelper.move(provider(), 2, false, 1, Options.DuplicatePolicy.ERROR).orElseThrow().getT());
+            Assertions.assertEquals(moved, ProviderHelper.move(provider(), 2, false, 1, DuplicatePolicy.ERROR).orElseThrow().getT());
             Assertions.assertEquals(List.of("Login.", "Move: 2 f 1 " + file.get().name()), provider().checkOperations());
         }
 
@@ -1159,7 +1160,7 @@ public class AbstractProviderTest {
 
             final FileInformation moved = AbstractProvider.build(2, 1, true).get();
             provider().move.initialize(() -> moved);
-            Assertions.assertEquals(moved, ProviderHelper.move(provider(), 2, true, 1, Options.DuplicatePolicy.ERROR).orElseThrow().getT());
+            Assertions.assertEquals(moved, ProviderHelper.move(provider(), 2, true, 1, DuplicatePolicy.ERROR).orElseThrow().getT());
             Assertions.assertEquals(List.of("Login.", "Move: 2 d 1 " + directory.get().name()), provider().checkOperations());
         }
 
@@ -1170,10 +1171,10 @@ public class AbstractProviderTest {
             ProviderHelper.refresh(provider(), 1);
             Assertions.assertEquals(List.of("Login.", "List: 0", "Login.", "List: 1"), provider().checkOperations());
 
-            Assertions.assertEquals(FailureKind.NoSuchFile, ProviderHelper.copy(provider(), 2, false, 0, "", Options.DuplicatePolicy.ERROR).orElseThrow().getE().orElseThrow().kind());
+            Assertions.assertEquals(FailureKind.NoSuchFile, ProviderHelper.copy(provider(), 2, false, 0, "", DuplicatePolicy.ERROR).orElseThrow().getE().orElseThrow().kind());
             Assertions.assertEquals(List.of(), provider().checkOperations());
 
-            Assertions.assertEquals(FailureKind.NoSuchFile, ProviderHelper.copy(provider(), 2, false, 1, "", Options.DuplicatePolicy.ERROR).orElseThrow().getE().orElseThrow().kind());
+            Assertions.assertEquals(FailureKind.NoSuchFile, ProviderHelper.copy(provider(), 2, false, 1, "", DuplicatePolicy.ERROR).orElseThrow().getE().orElseThrow().kind());
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
@@ -1187,9 +1188,9 @@ public class AbstractProviderTest {
             ProviderHelper.refresh(provider(), 1);
             Assertions.assertEquals(List.of("Login.", "List: 0", "Login.", "List: 1"), provider().checkOperations());
 
-            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.move(provider(), 2, true, 1, Options.DuplicatePolicy.ERROR).orElseThrow().getE().orElseThrow().kind());
+            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.move(provider(), 2, true, 1, DuplicatePolicy.ERROR).orElseThrow().getE().orElseThrow().kind());
             Assertions.assertEquals(List.of(), provider().checkOperations());
-            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.move(provider(), 3, false, 1, Options.DuplicatePolicy.ERROR).orElseThrow().getE().orElseThrow().kind());
+            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.move(provider(), 3, false, 1, DuplicatePolicy.ERROR).orElseThrow().getE().orElseThrow().kind());
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
@@ -1205,12 +1206,12 @@ public class AbstractProviderTest {
 
             final FileInformation d = new FileInformation(2, 1, "m (1)", true, -1, null, null, null);
             provider().move.initialize(() -> d);
-            Assertions.assertEquals(d, ProviderHelper.move(provider(), 2, true, 1, Options.DuplicatePolicy.KEEP).orElseThrow().getT());
+            Assertions.assertEquals(d, ProviderHelper.move(provider(), 2, true, 1, DuplicatePolicy.KEEP).orElseThrow().getT());
             Assertions.assertEquals(List.of("Login.", "Move: 2 d 1 m (1)"), provider().checkOperations());
 
             final FileInformation f = new FileInformation(3, 1, "m (2)", false, 0, null, null, null);
             provider().move.initialize(() -> f);
-            Assertions.assertEquals(f, ProviderHelper.move(provider(), 3, false, 1, Options.DuplicatePolicy.KEEP).orElseThrow().getT());
+            Assertions.assertEquals(f, ProviderHelper.move(provider(), 3, false, 1, DuplicatePolicy.KEEP).orElseThrow().getT());
             Assertions.assertEquals(List.of("Login.", "Move: 3 f 1 m (2)"), provider().checkOperations());
         }
 
@@ -1226,12 +1227,12 @@ public class AbstractProviderTest {
 
             final FileInformation d = new FileInformation(2, 1, "m", true, -1, null, null, null);
             provider().move.initialize(() -> d);
-            Assertions.assertEquals(d, ProviderHelper.move(provider(), 2, true, 1, Options.DuplicatePolicy.OVER).orElseThrow().getT());
+            Assertions.assertEquals(d, ProviderHelper.move(provider(), 2, true, 1, DuplicatePolicy.OVER).orElseThrow().getT());
             Assertions.assertEquals(List.of("Login.", "Trash: 4 f", "Login.", "Move: 2 d 1 m"), provider().checkOperations());
 
             final FileInformation f = new FileInformation(3, 1, "m", false, 0, null, null, null);
             provider().move.initialize(() -> f);
-            Assertions.assertEquals(f, ProviderHelper.move(provider(), 3, false, 1, Options.DuplicatePolicy.OVER).orElseThrow().getT());
+            Assertions.assertEquals(f, ProviderHelper.move(provider(), 3, false, 1, DuplicatePolicy.OVER).orElseThrow().getT());
             Assertions.assertEquals(List.of("Login.", "Trash: 2 d", "Login.", "Move: 3 f 1 m"), provider().checkOperations());
         }
 
@@ -1244,8 +1245,8 @@ public class AbstractProviderTest {
             ProviderHelper.refresh(provider(), 0);
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
-            Assertions.assertEquals(file.get(), ProviderHelper.move(provider(), 1, false, 0, Options.DuplicatePolicy.ERROR).orElseThrow().getT());
-            Assertions.assertEquals(directory.get(), ProviderHelper.move(provider(), 2, true, 0, Options.DuplicatePolicy.ERROR).orElseThrow().getT());
+            Assertions.assertEquals(file.get(), ProviderHelper.move(provider(), 1, false, 0, DuplicatePolicy.ERROR).orElseThrow().getT());
+            Assertions.assertEquals(directory.get(), ProviderHelper.move(provider(), 2, true, 0, DuplicatePolicy.ERROR).orElseThrow().getT());
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
@@ -1259,8 +1260,8 @@ public class AbstractProviderTest {
             ProviderHelper.refresh(provider(), 2);
             Assertions.assertEquals(List.of("Login.", "List: 0", "Login.", "List: 1", "Login.", "List: 2"), provider().checkOperations());
 
-            Assertions.assertFalse(ProviderHelper.move(provider(), 1, true, 2, Options.DuplicatePolicy.ERROR).orElseThrow().getE().isPresent());
-            Assertions.assertFalse(ProviderHelper.move(provider(), 1, true, 3, Options.DuplicatePolicy.ERROR).orElseThrow().getE().isPresent());
+            Assertions.assertFalse(ProviderHelper.move(provider(), 1, true, 2, DuplicatePolicy.ERROR).orElseThrow().getE().isPresent());
+            Assertions.assertFalse(ProviderHelper.move(provider(), 1, true, 3, DuplicatePolicy.ERROR).orElseThrow().getE().isPresent());
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
@@ -1274,7 +1275,7 @@ public class AbstractProviderTest {
 
             provider().move.initialize(() -> {throw new RuntimeException();});
             Assertions.assertThrows(RuntimeException.class, () ->
-                    ProviderHelper.move(provider(), 2, false, 1, Options.DuplicatePolicy.ERROR));
+                    ProviderHelper.move(provider(), 2, false, 1, DuplicatePolicy.ERROR));
             Assertions.assertEquals(List.of("Login.", "List: 1", "Login.", "Move: 2 f 1 " + file.get().name()), provider().checkOperations());
         }
     }
@@ -1292,12 +1293,12 @@ public class AbstractProviderTest {
 
             final FileInformation f = new FileInformation(1, 0, "f", false, 0, null, null, null);
             provider().rename.initialize(() -> f);
-            Assertions.assertEquals(f, ProviderHelper.rename(provider(), 1, false, "f", Options.DuplicatePolicy.ERROR).orElseThrow().getT());
+            Assertions.assertEquals(f, ProviderHelper.rename(provider(), 1, false, "f", DuplicatePolicy.ERROR).orElseThrow().getT());
             Assertions.assertEquals(List.of("Login.", "Rename: 1 f f"), provider().checkOperations());
 
             final FileInformation d = new FileInformation(2, 0, "d", true, 0, null, null, null);
             provider().rename.initialize(() -> d);
-            Assertions.assertEquals(d, ProviderHelper.rename(provider(), 2, true, "d", Options.DuplicatePolicy.ERROR).orElseThrow().getT());
+            Assertions.assertEquals(d, ProviderHelper.rename(provider(), 2, true, "d", DuplicatePolicy.ERROR).orElseThrow().getT());
             Assertions.assertEquals(List.of("Login.", "Rename: 2 d d"), provider().checkOperations());
         }
 
@@ -1306,7 +1307,7 @@ public class AbstractProviderTest {
             ProviderHelper.refresh(provider(), 0);
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
-            Assertions.assertEquals(FailureKind.NoSuchFile, ProviderHelper.rename(provider(), 1, false, "", Options.DuplicatePolicy.ERROR).orElseThrow().getE().kind());
+            Assertions.assertEquals(FailureKind.NoSuchFile, ProviderHelper.rename(provider(), 1, false, "", DuplicatePolicy.ERROR).orElseThrow().getE().kind());
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
@@ -1318,7 +1319,7 @@ public class AbstractProviderTest {
             ProviderHelper.refresh(provider(), 0);
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
-            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.rename(provider(), 2, false, name.get().name(), Options.DuplicatePolicy.ERROR).orElseThrow().getE().kind());
+            Assertions.assertEquals(FailureKind.DuplicateError, ProviderHelper.rename(provider(), 2, false, name.get().name(), DuplicatePolicy.ERROR).orElseThrow().getE().kind());
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
@@ -1333,7 +1334,7 @@ public class AbstractProviderTest {
 
             final FileInformation r = new FileInformation(2, 0, name + " (1)", false, 0, null, null, null);
             provider().rename.initialize(() -> r);
-            Assertions.assertEquals(r, ProviderHelper.rename(provider(), 2, false, name, Options.DuplicatePolicy.KEEP).orElseThrow().getT());
+            Assertions.assertEquals(r, ProviderHelper.rename(provider(), 2, false, name, DuplicatePolicy.KEEP).orElseThrow().getT());
             Assertions.assertEquals(List.of("Login.", "Rename: 2 f " + name + " (1)"), provider().checkOperations());
         }
 
@@ -1348,7 +1349,7 @@ public class AbstractProviderTest {
 
             final FileInformation r = new FileInformation(2, 0, name, false, 0, null, null, null);
             provider().rename.initialize(() -> r);
-            Assertions.assertEquals(r, ProviderHelper.rename(provider(), 2, false, name, Options.DuplicatePolicy.OVER).orElseThrow().getT());
+            Assertions.assertEquals(r, ProviderHelper.rename(provider(), 2, false, name, DuplicatePolicy.OVER).orElseThrow().getT());
             Assertions.assertEquals(List.of("Login.", "Trash: 1 d", "Login.", "Rename: 2 f " + name), provider().checkOperations());
         }
 
@@ -1359,7 +1360,7 @@ public class AbstractProviderTest {
             ProviderHelper.refresh(provider(), 0);
             Assertions.assertEquals(List.of("Login.", "List: 0"), provider().checkOperations());
 
-            Assertions.assertEquals(file.get(), ProviderHelper.rename(provider(), 1, false, file.get().name(), Options.DuplicatePolicy.ERROR).orElseThrow().getT());
+            Assertions.assertEquals(file.get(), ProviderHelper.rename(provider(), 1, false, file.get().name(), DuplicatePolicy.ERROR).orElseThrow().getT());
             Assertions.assertEquals(List.of(), provider().checkOperations());
         }
 
@@ -1372,7 +1373,7 @@ public class AbstractProviderTest {
 
             provider().rename.initialize(() -> {throw new RuntimeException();});
             Assertions.assertThrows(RuntimeException.class, () ->
-                    ProviderHelper.rename(provider(), 1, false, "", Options.DuplicatePolicy.ERROR));
+                    ProviderHelper.rename(provider(), 1, false, "", DuplicatePolicy.ERROR));
             Assertions.assertEquals(List.of("Login.", "Rename: 1 f "), provider().checkOperations());
         }
     }

@@ -4,7 +4,7 @@ import com.xuxiaocheng.HeadLibs.Helpers.HRandomHelper;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
-import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Options.OrderDirection;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupInformation;
@@ -137,8 +137,8 @@ public final class UserGroupsTest {
                 UserGroupManager.getInstance().updateGroupPermission(information.id(), permissions, connectionId.get());
                 informationList.add(UserGroupManager.getInstance().selectGroup(information.id(), connectionId.get()));
             }
-            final LinkedHashMap<VisibleUserGroupInformation.Order, Options.OrderDirection> orders = new LinkedHashMap<>();
-            orders.put(VisibleUserGroupInformation.Order.Id, Options.OrderDirection.ASCEND);
+            final LinkedHashMap<VisibleUserGroupInformation.Order, OrderDirection> orders = new LinkedHashMap<>();
+            orders.put(VisibleUserGroupInformation.Order.Id, OrderDirection.ASCEND);
             Assumptions.assumeTrue(UserGroupManager.getInstance().selectGroups(orders, 0, 0, connectionId.get()).getFirst().longValue() == count + 2);
             Assertions.assertEquals(informationList, UserGroupManager.getInstance().selectGroups(orders, 0, count + 2, connectionId.get()).getSecond());
 
@@ -153,9 +153,9 @@ public final class UserGroupsTest {
             }
 
             // Test order.
-            orders.put(VisibleUserGroupInformation.Order.Name, Options.OrderDirection.ASCEND);
-            orders.put(VisibleUserGroupInformation.Order.CreateTime, Options.OrderDirection.ASCEND);
-            orders.put(VisibleUserGroupInformation.Order.UpdateTime, Options.OrderDirection.ASCEND);
+            orders.put(VisibleUserGroupInformation.Order.Name, OrderDirection.ASCEND);
+            orders.put(VisibleUserGroupInformation.Order.CreateTime, OrderDirection.ASCEND);
+            orders.put(VisibleUserGroupInformation.Order.UpdateTime, OrderDirection.ASCEND);
             Assertions.assertEquals(informationList, UserGroupManager.getInstance().selectGroups(orders, 0, count + 2, connectionId.get()).getSecond());
             for (int i = 0; i < 5; ++i) {
                 orders.clear();
@@ -164,8 +164,8 @@ public final class UserGroupsTest {
                 for (final UserPermission permission: UserPermission.All)
                     if (random.nextBoolean())
                         orders.put(VisibleUserGroupInformation.Order.valueOf("Permissions_" + permission.name()),
-                                random.nextBoolean() ? Options.OrderDirection.ASCEND : Options.OrderDirection.DESCEND);
-                orders.put(VisibleUserGroupInformation.Order.Id, random.nextBoolean() ? Options.OrderDirection.ASCEND : Options.OrderDirection.DESCEND);
+                                random.nextBoolean() ? OrderDirection.ASCEND : OrderDirection.DESCEND);
+                orders.put(VisibleUserGroupInformation.Order.Id, random.nextBoolean() ? OrderDirection.ASCEND : OrderDirection.DESCEND);
                 final Comparator<UserGroupInformation> id = Comparator.comparingLong(UserGroupInformation::id);
                 Assertions.assertEquals(informationList.stream().sorted((a, b) -> {
                     final RandomGenerator r = new Random(seed);
@@ -184,7 +184,7 @@ public final class UserGroupsTest {
 
             // By permissions
             orders.clear();
-            orders.put(VisibleUserGroupInformation.Order.Id, Options.OrderDirection.ASCEND);
+            orders.put(VisibleUserGroupInformation.Order.Id, OrderDirection.ASCEND);
             for (int i = 0; i < 5; ++i) {
                 final Map<UserPermission, Boolean> chooser = new EnumMap<>(UserPermission.class);
                 final long seed = HRandomHelper.DefaultSecureRandom.nextLong();
@@ -223,8 +223,8 @@ public final class UserGroupsTest {
                 Assertions.assertNotNull(UserGroupManager.getInstance().updateGroupPermission(information.id(), permissions, connectionId.get()));
                 informationList.add(UserGroupManager.getInstance().selectGroup(information.id(), connectionId.get()));
             }
-            final LinkedHashMap<VisibleUserGroupInformation.Order, Options.OrderDirection> orders = new LinkedHashMap<>();
-            orders.put(VisibleUserGroupInformation.Order.Id, Options.OrderDirection.ASCEND);
+            final LinkedHashMap<VisibleUserGroupInformation.Order, OrderDirection> orders = new LinkedHashMap<>();
+            orders.put(VisibleUserGroupInformation.Order.Id, OrderDirection.ASCEND);
             Assumptions.assumeTrue(UserGroupManager.getInstance().selectGroups(orders, 0, 0, connectionId.get()).getFirst().longValue() == count + 2);
 
             Assertions.assertEquals(informationList.stream().skip(2).collect(Collectors.toList()),

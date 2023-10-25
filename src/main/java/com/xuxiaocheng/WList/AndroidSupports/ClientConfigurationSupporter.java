@@ -5,7 +5,9 @@ import com.xuxiaocheng.WList.Client.ClientConfiguration;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleUserGroupInformation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleUserInformation;
-import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Options.DuplicatePolicy;
+import com.xuxiaocheng.WList.Commons.Options.FilterPolicy;
+import com.xuxiaocheng.WList.Commons.Options.OrderDirection;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -32,23 +34,23 @@ public final class ClientConfigurationSupporter {
         return configuration.limitPerPage();
     }
 
-    public static Options.@NotNull FilterPolicy filterPolicy(final @NotNull ClientConfiguration configuration) {
+    public static @NotNull FilterPolicy filterPolicy(final @NotNull ClientConfiguration configuration) {
         return configuration.filterPolicy();
     }
 
-    public static @NotNull LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> fileOrders(final @NotNull ClientConfiguration configuration) {
+    public static @NotNull LinkedHashMap<VisibleFileInformation.@NotNull Order, @NotNull OrderDirection> fileOrders(final @NotNull ClientConfiguration configuration) {
         return configuration.fileOrders();
     }
 
-    public static Options.@NotNull DuplicatePolicy duplicatePolicy(final @NotNull ClientConfiguration configuration) {
+    public static @NotNull DuplicatePolicy duplicatePolicy(final @NotNull ClientConfiguration configuration) {
         return configuration.duplicatePolicy();
     }
 
-    public static @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, Options.@NotNull OrderDirection> userOrders(final @NotNull ClientConfiguration configuration) {
+    public static @NotNull LinkedHashMap<VisibleUserInformation.@NotNull Order, @NotNull OrderDirection> userOrders(final @NotNull ClientConfiguration configuration) {
         return configuration.userOrders();
     }
 
-    public static @NotNull LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, Options.@NotNull OrderDirection> userGroupOrders(final @NotNull ClientConfiguration configuration) {
+    public static @NotNull LinkedHashMap<VisibleUserGroupInformation.@NotNull Order, @NotNull OrderDirection> userGroupOrders(final @NotNull ClientConfiguration configuration) {
         return configuration.userGroupOrders();
     }
 

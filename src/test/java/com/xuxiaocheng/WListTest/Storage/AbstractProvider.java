@@ -3,7 +3,7 @@ package com.xuxiaocheng.WListTest.Storage;
 import com.xuxiaocheng.HeadLibs.CheckRules.CheckRule;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
-import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Options.DuplicatePolicy;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.ProgressBar;
 import com.xuxiaocheng.WList.Server.Storage.Providers.AbstractIdBaseProvider;
@@ -269,7 +269,7 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
     }
 
     @Override
-    protected void create0(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) {
+    protected void create0(final long parentId, final @NotNull String directoryName, final @NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) {
         this.operations.add("Create: " + parentId + " " + directoryName);
         final FileInformation information = this.create.uninitialize().get();
         Assertions.assertEquals(parentId, information.parentId());
@@ -285,7 +285,7 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
     }
 
     @Override
-    protected void upload0(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) {
+    protected void upload0(final long parentId, final @NotNull String filename, final long size, final @NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) {
         throw new UnsupportedOperationException("Not tested.");
     }
 
@@ -299,7 +299,7 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
     }
 
     @Override
-    protected void copyDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) {
+    protected void copyDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String name, final @NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) {
         this.operations.add("Copy: " + information.id() + (information.isDirectory() ? " d " : " f ") + parentId + " " + name);
         final FileInformation info = this.copy.uninitialize().get();
         Assertions.assertEquals(information.isDirectory(), info.isDirectory());
@@ -319,7 +319,7 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
     }
 
     @Override
-    protected void moveDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) {
+    protected void moveDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String name, final @NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) {
         this.operations.add("Move: " + information.id() + (information.isDirectory() ? " d " : " f ") + parentId + " " + name);
         final FileInformation info = this.move.uninitialize().get();
         Assertions.assertEquals(information.id(), info.id());
@@ -342,7 +342,7 @@ public class AbstractProvider extends AbstractIdBaseProvider<AbstractProvider.Ab
     }
 
     @Override
-    protected void renameDirectly0(final @NotNull FileInformation information, final @NotNull String name, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) {
+    protected void renameDirectly0(final @NotNull FileInformation information, final @NotNull String name, final @NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) {
         this.operations.add("Rename: " + information.id() + (information.isDirectory() ? " d " : " f ") + name);
         final FileInformation info = this.rename.uninitialize().get();
         Assertions.assertEquals(information.id(), info.id());

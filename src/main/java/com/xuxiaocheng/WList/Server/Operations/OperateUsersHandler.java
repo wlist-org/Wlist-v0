@@ -10,7 +10,8 @@ import com.xuxiaocheng.WList.Commons.Beans.VisibleUserInformation;
 import com.xuxiaocheng.WList.Commons.Operations.OperationType;
 import com.xuxiaocheng.WList.Commons.Operations.ResponseState;
 import com.xuxiaocheng.WList.Commons.Operations.UserPermission;
-import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Options.OrderPolicies;
+import com.xuxiaocheng.WList.Commons.Options.OrderDirection;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.BroadcastManager;
 import com.xuxiaocheng.WList.Server.Databases.User.UserInformation;
@@ -115,8 +116,8 @@ public final class OperateUsersHandler {
     private static final @NotNull ServerHandler doListUsers = (channel, buffer) -> {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.UsersList);
-        final UnionPair<LinkedHashMap<VisibleUserInformation.Order, Options.OrderDirection>, String> orders =
-                Options.parseOrderPolicies(buffer, VisibleUserInformation.Order.class, -1);
+        final UnionPair<LinkedHashMap<VisibleUserInformation.Order, OrderDirection>, String> orders =
+                OrderPolicies.parse(buffer, VisibleUserInformation.Order.class, -1);
         final long position = ByteBufIOUtil.readVariableLenLong(buffer);
         final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
         ServerHandler.logOperation(channel, OperationType.ListUsers, user, () -> ParametersMap.create()
@@ -155,8 +156,8 @@ public final class OperateUsersHandler {
         for (int i = 0; i < length; ++i)
             chooser.add(ByteBufIOUtil.readVariableLenLong(buffer));
         final boolean blacklist = ByteBufIOUtil.readBoolean(buffer);
-        final UnionPair<LinkedHashMap<VisibleUserInformation.Order, Options.OrderDirection>, String> orders =
-                Options.parseOrderPolicies(buffer, VisibleUserInformation.Order.class, -1);
+        final UnionPair<LinkedHashMap<VisibleUserInformation.Order, OrderDirection>, String> orders =
+                OrderPolicies.parse(buffer, VisibleUserInformation.Order.class, -1);
         final long position = ByteBufIOUtil.readVariableLenLong(buffer);
         final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
         ServerHandler.logOperation(channel, OperationType.ListUsersInGroups, user, () -> ParametersMap.create()
@@ -256,8 +257,8 @@ public final class OperateUsersHandler {
         final String token = ByteBufIOUtil.readUTF(buffer);
         final UnionPair<UserInformation, MessageProto> user = OperateSelfHandler.checkToken(token, UserPermission.UsersList);
         final String regex = ByteBufIOUtil.readUTF(buffer);
-        final UnionPair<LinkedHashMap<VisibleUserInformation.Order, Options.OrderDirection>, String> orders =
-                Options.parseOrderPolicies(buffer, VisibleUserInformation.Order.class, -1);
+        final UnionPair<LinkedHashMap<VisibleUserInformation.Order, OrderDirection>, String> orders =
+                OrderPolicies.parse(buffer, VisibleUserInformation.Order.class, -1);
         final long position = ByteBufIOUtil.readVariableLenLong(buffer);
         final int limit = ByteBufIOUtil.readVariableLenInt(buffer);
         ServerHandler.logOperation(channel, OperationType.SearchUserRegex, user, () -> ParametersMap.create()

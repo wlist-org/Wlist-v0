@@ -14,7 +14,9 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
-import com.xuxiaocheng.WList.Commons.Options.Options;
+import com.xuxiaocheng.WList.Commons.Options.DuplicatePolicy;
+import com.xuxiaocheng.WList.Commons.Options.FilterPolicy;
+import com.xuxiaocheng.WList.Commons.Options.OrderDirection;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Server.Databases.File.FileInformation;
 import com.xuxiaocheng.WList.Server.Databases.File.FileManager;
@@ -34,7 +36,6 @@ import com.xuxiaocheng.WList.Server.WListServer;
 import okhttp3.Call;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
-import okhttp3.OkHttpClient;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -188,8 +189,8 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
     protected abstract void list0(final long directoryId, final @Nullable ProgressBar progress, final @NotNull Consumer<? super UnionPair<Optional<Iterator<FileInformation>>, Throwable>> consumer) throws Exception;
 
     @Override
-    public void list(final long directoryId, final Options.@NotNull FilterPolicy filter,
-                     final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, Options.@NotNull OrderDirection> orders,
+    public void list(final long directoryId, final @NotNull FilterPolicy filter,
+                     final @NotNull @Unmodifiable LinkedHashMap<VisibleFileInformation.@NotNull Order, @NotNull OrderDirection> orders,
                      final long position, final int limit,
                      final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FilesListInformation, RefreshRequirements>>, Throwable>> consumer) throws Exception {
         final FileManager manager = this.manager.getInstance();
@@ -553,7 +554,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         }
         if (isDirectory && !this.doesSupportTrashNotEmptyDirectory()) {
             final FileManager manager = this.manager.getInstance();
-            final FilesListInformation indexed = manager.selectInfosInDirectory(id, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0, null);
+            final FilesListInformation indexed = manager.selectInfosInDirectory(id, FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0, null);
             if (indexed.total() > 0) {
                 consumer.accept(ProviderInterface.TrashTooComplex);
                 return;
@@ -574,7 +575,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                             }
                             try {
                                 final AtomicBoolean barrier2 = new AtomicBoolean(true);
-                                this.list(id, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 1, u -> {
+                                this.list(id, FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 1, u -> {
                                     if (this.checkBarrier(barrier2, u, "trash#list", p -> p.add("id", id)) || this.transferException(u, null, consumer)) return;
                                     UnionPair<Optional<Boolean>, Throwable> result1 = null;
                                     boolean flag1 = true;
@@ -732,9 +733,9 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
         return AbstractIdBaseProvider.DefaultRetryBracketPair;
     }
 
-    private <R> void getDuplicatedName(final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @NotNull UnaryOperator<@NotNull ParametersMap> parameters, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<R, FailureReason>, Throwable>> consumer, final @NotNull BiConsumerE<? super @NotNull String, ? super BackgroundTaskManager.@NotNull BackgroundTaskIdentifier> runnable) throws Exception {
+    private <R> void getDuplicatedName(final long parentId, final @NotNull String name, final @NotNull DuplicatePolicy policy, final @NotNull UnaryOperator<@NotNull ParametersMap> parameters, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<R, FailureReason>, Throwable>> consumer, final @NotNull BiConsumerE<? super @NotNull String, ? super BackgroundTaskManager.@NotNull BackgroundTaskIdentifier> runnable) throws Exception {
         final AtomicBoolean barrier = new AtomicBoolean(true);
-        this.list(parentId, Options.FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0, t -> {
+        this.list(parentId, FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, 0, t -> {
             if (this.checkBarrier(barrier, t, "getDuplicatedName#list", p -> parameters.apply(p.add("parentId", parentId))) || this.transferException(t, null, consumer)) return;
             UnionPair<UnionPair<R, FailureReason>, Throwable> result = null;
             boolean flag = true;
@@ -753,11 +754,11 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                                 flag1 = false;
                                 return;
                             }
-                            if (policy == Options.DuplicatePolicy.ERROR) {
+                            if (policy == DuplicatePolicy.ERROR) {
                                 result1 = UnionPair.ok(UnionPair.fail(FailureReason.byDuplicateError(this.getLocation(parentId), name)));
                                 return;
                             }
-                            if (policy == Options.DuplicatePolicy.KEEP) {
+                            if (policy == DuplicatePolicy.KEEP) {
                                 final int index = name.lastIndexOf('.');
                                 final Pair.ImmutablePair<String, String> bracket = this.retryBracketPair();
                                 final String left = (index < 0 ? name : name.substring(0, index)) + bracket.getFirst();
@@ -774,7 +775,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                                 flag1 = false;
                                 return;
                             }
-                            assert policy == Options.DuplicatePolicy.OVER;
+                            assert policy == DuplicatePolicy.OVER;
                             if (duplicate == null) {
                                 result1 = UnionPair.ok(UnionPair.fail(FailureReason.byDuplicateError(this.getLocation(parentId), name)));
                                 return;
@@ -854,10 +855,10 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
     /**
      * Create an empty directory. {@code size == 0}
      */
-    protected abstract void create0(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) throws Exception;
+    protected abstract void create0(final long parentId, final @NotNull String directoryName, final @NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) throws Exception;
 
     @Override
-    public void createDirectory(final long parentId, final @NotNull String directoryName, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) throws Exception {
+    public void createDirectory(final long parentId, final @NotNull String directoryName, final @NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<FileInformation, FailureReason>, Throwable>> consumer) throws Exception {
         final CheckRule<String> nameChecker = this.directoryNameChecker();
         if (!nameChecker.test(directoryName)) {
             consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(this.getLocation(parentId), directoryName, nameChecker.description()))));
@@ -873,7 +874,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                 }
                 this.loginIfNot();
                 final AtomicBoolean barrier = new AtomicBoolean(true);
-                this.create0(parentId, name, Options.DuplicatePolicy.ERROR, t -> {
+                this.create0(parentId, name, DuplicatePolicy.ERROR, t -> {
                     if (this.checkBarrier(barrier, t, "createDirectory#create0", p -> p.add("parentId", parentId))) return;
                     UnionPair<UnionPair<FileInformation, FailureReason>, Throwable> result1 = null;
                     try {
@@ -912,10 +913,10 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
      * Upload a file. {@code size >= 0}
      * @see UploadRequirements#splitUploadBuffer(BiConsumerE, long, int)
      */
-    protected abstract void upload0(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) throws Exception;
+    protected abstract void upload0(final long parentId, final @NotNull String filename, final long size, final @NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) throws Exception;
 
     @Override
-    public void uploadFile(final long parentId, final @NotNull String filename, final long size, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) throws Exception {
+    public void uploadFile(final long parentId, final @NotNull String filename, final long size, final @NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) throws Exception {
         final CheckRule<String> nameChecker = this.fileNameChecker();
         if (!nameChecker.test(filename)) {
             consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byInvalidName(this.getLocation(parentId), filename, nameChecker.description()))));
@@ -935,7 +936,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                 }
                 this.loginIfNot();
                 final AtomicBoolean barrier = new AtomicBoolean(true);
-                this.upload0(parentId, name, size, Options.DuplicatePolicy.ERROR, t -> {
+                this.upload0(parentId, name, size, DuplicatePolicy.ERROR, t -> {
                     if (this.checkBarrier(barrier, t, "uploadFile#upload0", p -> p.add("parentId", parentId).add("filename", filename).add("size", size))) return;
                     if (t.isSuccess() && t.getT().isSuccess()) {
                         final UploadRequirements requirements = t.getT().getT();
@@ -1030,10 +1031,10 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
      * @see #doesSupportCopyDirectly(FileInformation, long)
      * @see #CopyNotSupport
      */
-    protected abstract void copyDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) throws Exception;
+    protected abstract void copyDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String name, final @NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) throws Exception;
 
     @Override
-    public void copyDirectly(final long id, final boolean isDirectory, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> consumer) throws Exception {
+    public void copyDirectly(final long id, final boolean isDirectory, final long parentId, final @NotNull String name, final @NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> consumer) throws Exception {
         if (this.checkCMNameAvailable(name, isDirectory, parentId, consumer))
             return;
         final FileInformation information = this.checkCMAvailable(id, isDirectory, parentId, consumer);
@@ -1050,7 +1051,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                     return;
                 this.loginIfNot();
                 final AtomicBoolean barrier = new AtomicBoolean(true);
-                this.copyDirectly0(information, parentId, duplicatedName, Options.DuplicatePolicy.ERROR, t -> {
+                this.copyDirectly0(information, parentId, duplicatedName, DuplicatePolicy.ERROR, t -> {
                     if (this.checkBarrier(barrier, t, "copyDirectly#copyDirectly0", p -> p.add("information", information).add("parentId", parentId).add("name", duplicatedName))
                             || this.transferException(t, identifier, consumer)) return;
                     UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable> result = null;
@@ -1093,10 +1094,10 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
      * @see #doesSupportMoveDirectly(FileInformation, long)
      * @see #MoveNotSupport
      */
-    protected abstract void moveDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String name, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) throws Exception;
+    protected abstract void moveDirectly0(final @NotNull FileInformation information, final long parentId, final @NotNull String name, final @NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) throws Exception;
 
     @Override
-    public void moveDirectly(final long id, final boolean isDirectory, final long parentId, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> consumer) throws Exception {
+    public void moveDirectly(final long id, final boolean isDirectory, final long parentId, final @NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable>> consumer) throws Exception {
         final FileInformation information = this.checkCMAvailable(id, isDirectory, parentId, consumer);
         if (information == null)
             return;
@@ -1117,7 +1118,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                     return;
                 this.loginIfNot();
                 final AtomicBoolean barrier = new AtomicBoolean(true);
-                this.moveDirectly0(information, parentId, name, Options.DuplicatePolicy.ERROR, t -> {
+                this.moveDirectly0(information, parentId, name, DuplicatePolicy.ERROR, t -> {
                     if (this.checkBarrier(barrier, t, "moveDirectly#moveDirectly0", p -> p.add("information", information).add("parentId", parentId).add("name", name))
                             || this.transferException(t, identifier, consumer)) return;
                     UnionPair<Optional<UnionPair<FileInformation, Optional<FailureReason>>>, Throwable> result = null;
@@ -1161,10 +1162,10 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
      * @see #doesSupportRenameDirectly(FileInformation, String)
      * @see #RenameNotSupport
      */
-    protected abstract void renameDirectly0(final @NotNull FileInformation information, final @NotNull String name, final Options.@NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) throws Exception;
+    protected abstract void renameDirectly0(final @NotNull FileInformation information, final @NotNull String name, final @NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) throws Exception;
 
     @Override
-    public void renameDirectly(final long id, final boolean isDirectory, final @NotNull String name, final Options.@NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) throws Exception {
+    public void renameDirectly(final long id, final boolean isDirectory, final @NotNull String name, final @NotNull DuplicatePolicy policy, final @NotNull Consumer<? super @NotNull UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable>> consumer) throws Exception {
         if (isDirectory && id == this.getConfiguration().getRootDirectoryId()) {
             consumer.accept(UnionPair.ok(Optional.of(UnionPair.fail(FailureReason.byNoSuchFile(this.getLocation(id), true)))));
             return;
@@ -1207,7 +1208,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                 }
                 this.loginIfNot();
                 final AtomicBoolean barrier = new AtomicBoolean(true);
-                this.renameDirectly0(information, duplicatedName, Options.DuplicatePolicy.ERROR, t -> {
+                this.renameDirectly0(information, duplicatedName, DuplicatePolicy.ERROR, t -> {
                     if (this.checkBarrier(barrier, t, "moveDirectly#moveDirectly0", p -> p.add("information", information).add("name", duplicatedName))
                             || this.transferException(t, identifier, consumer)) return;
                     UnionPair<Optional<UnionPair<FileInformation, FailureReason>>, Throwable> result = null;
