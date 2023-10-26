@@ -30,13 +30,21 @@
 	<color name="loading_g">@color/loading_f</color>
 	<color name="loading_h">@color/loading_g</color>
 	<color name="water_selector">@color/gray</color>
+	<color name="loading_bar_a">@color/light_gray</color>
+	<color name="loading_bar_b">@color/red</color>
+	<color name="loading_bar_c">@color/gray</color>
 	<color name="page_file_uploader_a">@color/white</color>
 	<color name="page_file_uploader_b">@color/red</color>
 	<color name="page_file_uploader_c">@color/red</color>
 	<color name="page_file_options">@color/gray</color>
+	<color name="page_file_options_refresh">@color/page_file_options</color>
+	<color name="page_file_options_sorter">@color/page_file_options</color>
+	<color name="page_file_options_filter">@color/page_file_options</color>
 	<color name="page_file_operation">@color/gray</color>
-	<color name="loading_bar_a">@color/light_gray</color>
-	<color name="loading_bar_b">@color/red</color>
-	<color name="loading_bar_c">@color/gray</color>
+	<color name="page_file_operation_trash">@color/page_file_operation</color>
+	<color name="page_file_operation_copy">@color/page_file_operation</color>
+	<color name="page_file_operation_move">@color/page_file_operation</color>
+	<color name="page_file_operation_rename">@color/page_file_operation</color>
+	<color name="page_file_operation_download">@color/page_file_operation</color>
 
 </resources>

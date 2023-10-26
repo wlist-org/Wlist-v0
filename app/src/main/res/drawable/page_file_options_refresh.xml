@@ -13,9 +13,9 @@
 		<path
 			android:pathData="M0,40 A40,40,0,1,1,40,0"
 			android:strokeWidth="5"
-			android:strokeColor="@color/page_file_operation" />
+			android:strokeColor="@color/page_file_options_refresh" />
 		<path
-			android:fillColor="@color/page_file_operation"
+			android:fillColor="@color/page_file_options_refresh"
 			android:pathData="M30,0 H50 L40,15 Z" />
 	</group>
 
@@ -27,7 +27,7 @@
 		<path
 			android:pathData="M0,40 A40,40,0,0,0,40,0"
 			android:strokeWidth="5"
-			android:strokeColor="@color/page_file_operation" />
+			android:strokeColor="@color/page_file_options_refresh" />
 	</group>
 
 </vector>

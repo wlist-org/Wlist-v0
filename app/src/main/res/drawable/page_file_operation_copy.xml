@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+        android:width="64dp"
+        android:height="64dp"
+        android:viewportWidth="100"
+        android:viewportHeight="100">
+
+	<path
+		android:pathData="M60,30 V10 H20 V70 H40"
+		android:strokeWidth="5"
+		android:strokeColor="@color/page_file_operation_copy"
+		android:strokeLineJoin="round" />
+
+	<path
+		android:pathData="M40,30 H80 V90 H40 Z"
+		android:strokeWidth="5"
+		android:strokeColor="@color/page_file_operation_copy"
+		android:strokeLineJoin="round" />
+
+</vector>

@@ -192,9 +192,9 @@ public class PageFile implements PageChooser.MainPage {
             popup.setWidth(this.pageCache.getInstance().pageFileList.getWidth() >> 1);
             popup.setAnchorView(options);
             popup.setAdapter(new SimpleAdapter(this.activity, List.of(
-                    Map.of("image", R.drawable.page_file_refresh, "name", this.activity.getResources().getString(R.string.page_file_options_refresh)),
-                    Map.of("image", R.drawable.page_file_sorter, "name", this.activity.getResources().getString(R.string.page_file_options_sorter)),
-                    Map.of("image", R.drawable.page_file_filter, "name", this.activity.getResources().getString(R.string.page_file_options_filter))
+                    Map.of("image", R.drawable.page_file_options_refresh, "name", this.activity.getResources().getString(R.string.page_file_options_refresh)),
+                    Map.of("image", R.drawable.page_file_options_sorter, "name", this.activity.getResources().getString(R.string.page_file_options_sorter)),
+                    Map.of("image", R.drawable.page_file_options_filter, "name", this.activity.getResources().getString(R.string.page_file_options_filter))
             ), R.layout.page_file_options_cell, new String[]{"image", "name"},
                     new int[]{R.id.activity_main_options_cell_image, R.id.activity_main_options_cell_name}));
             final AtomicBoolean clickable = new AtomicBoolean(true);
