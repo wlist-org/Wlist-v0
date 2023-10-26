@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListAndroid.UIs.Fragments.File;
+package com.xuxiaocheng.WListAndroid.UIs.Pages.File;
 
 import android.database.Cursor;
 import android.net.Uri;
@@ -45,19 +45,19 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class PageFilePartUpload {
-    protected final @NotNull FragmentFile fragmentFile;
+    protected final @NotNull PageFile pageFile;
 
-    public PageFilePartUpload(final @NotNull FragmentFile fragmentFile) {
+    public PageFilePartUpload(final @NotNull PageFile pageFile) {
         super();
-        this.fragmentFile = fragmentFile;
+        this.pageFile = pageFile;
     }
 
     private @NotNull ActivityMain activity() {
-        return this.fragmentFile.getMainActivity();
+        return this.pageFile.getMainActivity();
     }
 
     private @NotNull FileLocation currentLocation() {
-        return this.fragmentFile.partList.currentLocation();
+        return this.pageFile.partList.currentLocation();
     }
 
 
@@ -142,7 +142,7 @@ public class PageFilePartUpload {
             }
             HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Uploading files.",
                     ParametersMap.create().add("address", this.activity().address()).add("location", location).add("filename", filename).add("size", size).add("uri", uri));
-            this.fragmentFile.partList.listLoadingAnimation(true, 0, 0);
+            this.pageFile.partList.listLoadingAnimation(true, 0, 0);
             Main.runOnUiThread(this.activity(), () -> {
                 final AlertDialog loader = new AlertDialog.Builder(this.activity()).setTitle(filename).setCancelable(false).show();
                 Main.runOnUiThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
@@ -158,7 +158,7 @@ public class PageFilePartUpload {
                             total += pair.getSecond().longValue();
                         }
                         final long c = current, t = total;
-                        this.fragmentFile.partList.listLoadingAnimation(true, c, t);
+                        this.pageFile.partList.listLoadingAnimation(true, c, t);
                     });
                     assert res != null;
                     if (res.isFailure()) // TODO
@@ -166,7 +166,7 @@ public class PageFilePartUpload {
                     else
                         Main.showToast(this.activity(), R.string.page_file_upload_success_file);
                 }, () -> {
-                    this.fragmentFile.partList.listLoadingAnimation(false, 0, 0);
+                    this.pageFile.partList.listLoadingAnimation(false, 0, 0);
                     Main.runOnUiThread(this.activity(), loader::cancel);
                 }));
             });

@@ -1,14 +1,12 @@
-package com.xuxiaocheng.WListAndroid.UIs.Fragments.File;
+package com.xuxiaocheng.WListAndroid.UIs.Pages.File;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.SimpleAdapter;
 import androidx.activity.result.ActivityResultLauncher;
@@ -29,7 +27,6 @@ import com.xuxiaocheng.WListAndroid.UIs.IFragment;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileUploadBinding;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.net.InetSocketAddress;
@@ -42,14 +39,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class FragmentFile extends IFragment<PageFileBinding> {
+public class PageFile extends IFragment<PageFileBinding> {
     protected final @NotNull PageFilePartList partList = new PageFilePartList(this);
     protected final @NotNull PageFilePartOptions partOptions = new PageFilePartOptions(this);
     protected final @NotNull PageFilePartOperation partOperation = new PageFilePartOperation(this);
     protected final @NotNull PageFilePartPreview partPreview = new PageFilePartPreview(this);
     protected final @NotNull PageFilePartUpload partUpload = new PageFilePartUpload(this);
 
-    public FragmentFile(final @NotNull ActivityMain activity) {
+    public PageFile(final @NotNull ActivityMain activity) {
         super(activity);
     }
 
@@ -63,9 +60,13 @@ public class FragmentFile extends IFragment<PageFileBinding> {
 
 
     @Override
-    public @NotNull View onCreateView(final @NotNull LayoutInflater inflater, final @Nullable ViewGroup container, final @Nullable Bundle savedInstanceState) {
-        this.mainActivity.findViewById(R.id.activity_main_options).setVisibility(View.VISIBLE);
-        return super.onCreateView(inflater, container, savedInstanceState);
+    public void onShow() {
+        this.mainActivity.getContent().activityMainOptions.setVisibility(View.VISIBLE);
+    }
+
+    @Override
+    public void onHide() {
+        this.mainActivity.getContent().activityMainOptions.setVisibility(View.GONE);
     }
 
     @Override
@@ -74,12 +75,7 @@ public class FragmentFile extends IFragment<PageFileBinding> {
     }
 
     @Override
-    public void onHide() {
-        this.mainActivity.findViewById(R.id.activity_main_options).setVisibility(View.GONE);
-    }
-
-    @Override
-    public void onShow(final @NotNull PageFileBinding page) {
+    public void onBuild(final @NotNull PageFileBinding page) {
         page.pageFileList.setLayoutManager(new LinearLayoutManager(this.mainActivity));
         page.pageFileList.setHasFixedSize(true);
         this.partList.onRootPage(0);

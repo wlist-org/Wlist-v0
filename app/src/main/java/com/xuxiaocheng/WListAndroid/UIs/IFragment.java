@@ -29,7 +29,7 @@ public abstract class IFragment<P extends ViewBinding> extends Fragment {
         if (cache != null) return cache;
         final P page = this.onCreate(this.mainActivity.getLayoutInflater());
         this.pageCache.initialize(page);
-        this.onShow(page);
+        this.onBuild(page);
         return page;
     }
 
@@ -43,7 +43,11 @@ public abstract class IFragment<P extends ViewBinding> extends Fragment {
     protected abstract @NotNull P onCreate(final @NotNull LayoutInflater inflater);
 
     @UiThread
-    protected abstract void onShow(final @NotNull P page);
+    protected abstract void onBuild(final @NotNull P page);
+
+    @UiThread
+    public void onShow() {
+    }
 
     @UiThread
     public void onHide() {

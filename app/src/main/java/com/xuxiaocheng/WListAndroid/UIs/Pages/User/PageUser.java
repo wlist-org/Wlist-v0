@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListAndroid.UIs.Fragments.User;
+package com.xuxiaocheng.WListAndroid.UIs.Pages.User;
 
 import android.view.LayoutInflater;
 import android.widget.TextView;
@@ -16,10 +16,10 @@ import org.jetbrains.annotations.NotNull;
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class FragmentUser extends IFragment<PageUserBinding> {
+public class PageUser extends IFragment<PageUserBinding> {
     protected final @NotNull ActivityMain activity;
 
-    public FragmentUser(final @NotNull ActivityMain activity) {
+    public PageUser(final @NotNull ActivityMain activity) {
         super(activity);
         this.activity = activity;
     }
@@ -39,7 +39,7 @@ public class FragmentUser extends IFragment<PageUserBinding> {
     }
 
     @Override
-    public void onShow(final @NotNull PageUserBinding page) {
+    public void onBuild(final @NotNull PageUserBinding page) {
         final TextView close = page.pageUserCloseServer;
         final TextView disconnection = page.pageUserDisconnect;
         // TODO

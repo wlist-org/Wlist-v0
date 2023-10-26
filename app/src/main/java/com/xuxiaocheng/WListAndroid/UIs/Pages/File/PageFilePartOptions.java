@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListAndroid.UIs.Fragments.File;
+package com.xuxiaocheng.WListAndroid.UIs.Pages.File;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -29,15 +29,15 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PageFilePartOptions {
-    protected final @NotNull FragmentFile fragmentFile;
+    protected final @NotNull PageFile pageFile;
 
-    public PageFilePartOptions(final @NotNull FragmentFile fragmentFile) {
+    public PageFilePartOptions(final @NotNull PageFile pageFile) {
         super();
-        this.fragmentFile = fragmentFile;
+        this.pageFile = pageFile;
     }
 
     private @NotNull ActivityMain activity() {
-        return this.fragmentFile.getMainActivity();
+        return this.pageFile.getMainActivity();
     }
 
     
@@ -49,17 +49,17 @@ public class PageFilePartOptions {
                 .setView(refresh.getRoot())
                 .setNegativeButton(R.string.cancel, null)
                 .setPositiveButton(R.string.confirm, (d, h) -> {
-                    final FileLocation location = this.fragmentFile.partList.currentLocation();
+                    final FileLocation location = this.pageFile.partList.currentLocation();
                     final AtomicLong max = new AtomicLong(0);
                     Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
-                        this.fragmentFile.partList.listLoadingAnimation(true, 0, 0);
-                        if (this.fragmentFile.partList.isOnRoot()) return;
+                        this.pageFile.partList.listLoadingAnimation(true, 0, 0);
+                        if (this.pageFile.partList.isOnRoot()) return;
                         FilesAssistant.refresh(this.activity().address(), this.activity().username(), location, Main.ClientExecutors, state -> {
                             final Pair.ImmutablePair<Long, Long> pair = InstantaneousProgressStateGetter.merge(state);
                             max.set(pair.getSecond().longValue());
-                            this.fragmentFile.partList.listLoadingAnimation(true, pair.getFirst().longValue(), pair.getSecond().longValue());
+                            this.pageFile.partList.listLoadingAnimation(true, pair.getFirst().longValue(), pair.getSecond().longValue());
                         });
-                    }, () -> this.fragmentFile.partList.listLoadingAnimation(false, max.get(), max.get())));
+                    }, () -> this.pageFile.partList.listLoadingAnimation(false, max.get(), max.get())));
                 }).show();
     }
     
@@ -118,11 +118,11 @@ public class PageFilePartOptions {
                             ClientConfigurationSupporter.userOrders(old),
                             ClientConfigurationSupporter.userGroupOrders(old),
                             ClientConfigurationSupporter.copyNoTempFile(old)));
-                    final FileLocation location = this.fragmentFile.partList.currentLocation();
+                    final FileLocation location = this.pageFile.partList.currentLocation();
                     if (IdentifierNames.RootSelector.equals(FileLocationGetter.storage(location)))
-                        Main.runOnUiThread(this.activity(), () -> this.fragmentFile.partList.onRootPage(this.fragmentFile.partList.getCurrentPosition()));
+                        Main.runOnUiThread(this.activity(), () -> this.pageFile.partList.onRootPage(this.pageFile.partList.getCurrentPosition()));
                     else
-                        Main.runOnUiThread(this.activity(), () -> this.fragmentFile.partList.onInsidePage(this.fragmentFile.getPage().pageFileName.getText(), location, this.fragmentFile.partList.getCurrentPosition()));
+                        Main.runOnUiThread(this.activity(), () -> this.pageFile.partList.onInsidePage(this.pageFile.getPage().pageFileName.getText(), location, this.pageFile.partList.getCurrentPosition()));
                 }))).setNegativeButton(R.string.advance, (d, h) -> {
                     this.sortAdvance();
                 }).show();

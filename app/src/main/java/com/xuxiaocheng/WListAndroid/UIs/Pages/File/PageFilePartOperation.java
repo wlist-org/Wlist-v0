@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListAndroid.UIs.Fragments.File;
+package com.xuxiaocheng.WListAndroid.UIs.Pages.File;
 
 import android.Manifest;
 import android.os.Environment;
@@ -44,19 +44,19 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PageFilePartOperation {
-    protected final @NotNull FragmentFile fragmentFile;
+    protected final @NotNull PageFile pageFile;
 
-    public PageFilePartOperation(final @NotNull FragmentFile fragmentFile) {
+    public PageFilePartOperation(final @NotNull PageFile pageFile) {
         super();
-        this.fragmentFile = fragmentFile;
+        this.pageFile = pageFile;
     }
 
     private @NotNull ActivityMain activity() {
-        return this.fragmentFile.getMainActivity();
+        return this.pageFile.getMainActivity();
     }
 
     private @NotNull PageFileBinding page() {
-        return this.fragmentFile.getPage();
+        return this.pageFile.getPage();
     }
 
 
@@ -96,11 +96,11 @@ public class PageFilePartOperation {
                     .setPositiveButton(R.string.confirm, (d, w) -> {
                         final String renamed = ViewUtil.getText(renamer.pageFileRenameName);
                         if (AndroidSupporter.isBlank(renamed) || FileInformationGetter.name(information).equals(renamed)) return;
-                        final AlertDialog dialog = this.fragmentFile.partUpload.loadingDialog(R.string.page_file_operation_rename);
+                        final AlertDialog dialog = this.pageFile.partUpload.loadingDialog(R.string.page_file_operation_rename);
                         Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
                             HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Renaming.",
-                                    ParametersMap.create().add("address", this.fragmentFile.address()).add("information", information).add("renamed", renamed));
-                            final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.rename(this.fragmentFile.address(), this.fragmentFile.username(), current, FileInformationGetter.isDirectory(information), renamed,
+                                    ParametersMap.create().add("address", this.pageFile.address()).add("information", information).add("renamed", renamed));
+                            final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.rename(this.pageFile.address(), this.pageFile.username(), current, FileInformationGetter.isDirectory(information), renamed,
                                     Main.ClientExecutors, HExceptionWrapper.wrapPredicate(p -> this.queryNotSupportedOperation()));
                             if (res == null) return;
                             if (res.isFailure())
@@ -118,12 +118,12 @@ public class PageFilePartOperation {
                 final FileLocation target = this.queryTargetDirectory(R.string.page_file_operation_move/*, FileInformationGetter.isDirectory(information) ? current : null*/);
                 if (target == null) return;
                 HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Moving.",
-                        ParametersMap.create().add("address", this.fragmentFile.address()).add("information", information).add("target", target));
+                        ParametersMap.create().add("address", this.pageFile.address()).add("information", information).add("target", target));
                 Main.runOnUiThread(this.activity(), () -> {
-                    final AlertDialog dialog = this.fragmentFile.partUpload.loadingDialog(R.string.page_file_operation_move);
+                    final AlertDialog dialog = this.pageFile.partUpload.loadingDialog(R.string.page_file_operation_move);
                     Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
                         final AtomicBoolean queried = new AtomicBoolean(false);
-                        final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.move(this.fragmentFile.address(), this.fragmentFile.username(), current, FileInformationGetter.isDirectory(information), target, Main.ClientExecutors, HExceptionWrapper.wrapPredicate(p -> {
+                        final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.move(this.pageFile.address(), this.pageFile.username(), current, FileInformationGetter.isDirectory(information), target, Main.ClientExecutors, HExceptionWrapper.wrapPredicate(p -> {
                             if (queried.getAndSet(true)) return true;
                             return this.queryNotSupportedOperation();
                         }));
@@ -144,12 +144,12 @@ public class PageFilePartOperation {
                 final FileLocation target = this.queryTargetDirectory(R.string.page_file_operation_copy/*, FileInformationGetter.isDirectory(information) ? current : null*/);
                 if (target == null) return;
                 HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Copying.",
-                        ParametersMap.create().add("address", this.fragmentFile.address()).add("information", information).add("target", target));
+                        ParametersMap.create().add("address", this.pageFile.address()).add("information", information).add("target", target));
                 Main.runOnUiThread(this.activity(), () -> {
-                    final AlertDialog dialog = this.fragmentFile.partUpload.loadingDialog(R.string.page_file_operation_copy);
+                    final AlertDialog dialog = this.pageFile.partUpload.loadingDialog(R.string.page_file_operation_copy);
                     Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
                         final AtomicBoolean queried = new AtomicBoolean(false);
-                        final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.copy(this.fragmentFile.address(), this.fragmentFile.username(), current, FileInformationGetter.isDirectory(information), target, FileInformationGetter.name(information), Main.ClientExecutors, HExceptionWrapper.wrapPredicate(p -> {
+                        final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.copy(this.pageFile.address(), this.pageFile.username(), current, FileInformationGetter.isDirectory(information), target, FileInformationGetter.name(information), Main.ClientExecutors, HExceptionWrapper.wrapPredicate(p -> {
                             if (queried.getAndSet(true)) return true;
                             return this.queryNotSupportedOperation();
                         }));
@@ -169,11 +169,11 @@ public class PageFilePartOperation {
             new AlertDialog.Builder(this.activity()).setTitle(R.string.page_file_operation_trash)
                     .setNegativeButton(R.string.cancel, null)
                     .setPositiveButton(R.string.confirm, (d, w) -> {
-                        final AlertDialog dialog = this.fragmentFile.partUpload.loadingDialog(R.string.page_file_operation_trash);
+                        final AlertDialog dialog = this.pageFile.partUpload.loadingDialog(R.string.page_file_operation_trash);
                         Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
                             HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Deleting.",
-                                    ParametersMap.create().add("address", this.fragmentFile.address()).add("information", information));
-                            if (FilesAssistant.trash(this.fragmentFile.address(), this.fragmentFile.username(), new FileLocation(storage, FileInformationGetter.id(information)), FileInformationGetter.isDirectory(information), HExceptionWrapper.wrapPredicate(unused -> this.queryNotSupportedOperation())))
+                                    ParametersMap.create().add("address", this.pageFile.address()).add("information", information));
+                            if (FilesAssistant.trash(this.pageFile.address(), this.pageFile.username(), new FileLocation(storage, FileInformationGetter.id(information)), FileInformationGetter.isDirectory(information), HExceptionWrapper.wrapPredicate(unused -> this.queryNotSupportedOperation())))
                                 Main.showToast(this.activity(), R.string.page_file_operation_delete_success);
                         }, () -> Main.runOnUiThread(this.activity(), dialog::cancel)));
                     }).show();
@@ -195,21 +195,21 @@ public class PageFilePartOperation {
                                 PermissionUtil.tryGetPermission(this.activity(), Permissions.build(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE), R.string.toast_no_read_permissions);
                                 HFileHelper.ensureFileAccessible(file, true);
                                 HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Downloading.",
-                                        ParametersMap.create().add("address", this.fragmentFile.address()).add("information", information).add("file", file));
+                                        ParametersMap.create().add("address", this.pageFile.address()).add("information", information).add("file", file));
                                 final VisibleFailureReason res;
                                 try {
-                                    this.fragmentFile.partList.listLoadingAnimation(true, 0, 0); // TODO: download progress.
-                                    res = FilesAssistant.download(this.fragmentFile.address(), this.fragmentFile.username(), new FileLocation(storage, FileInformationGetter.id(information)), file, PredicateE.truePredicate(), s -> {
+                                    this.pageFile.partList.listLoadingAnimation(true, 0, 0); // TODO: download progress.
+                                    res = FilesAssistant.download(this.pageFile.address(), this.pageFile.username(), new FileLocation(storage, FileInformationGetter.id(information)), file, PredicateE.truePredicate(), s -> {
                                         long curr = 0, total = 0;
                                         for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
                                             curr += pair.getFirst().longValue();
                                             total += pair.getSecond().longValue();
                                         }
                                         final long l = curr, t = total;
-                                        this.fragmentFile.partList.listLoadingAnimation(true, l, t);
+                                        this.pageFile.partList.listLoadingAnimation(true, l, t);
                                     });
                                 } finally {
-                                    this.fragmentFile.partList.listLoadingAnimation(false, 0, 0);
+                                    this.pageFile.partList.listLoadingAnimation(false, 0, 0);
                                 }
                                 if (res != null)
                                     Main.runOnUiThread(this.activity(), () -> Toast.makeText(this.activity(), FailureReasonGetter.kind(res) + FailureReasonGetter.message(res), Toast.LENGTH_SHORT).show());
@@ -244,7 +244,7 @@ public class PageFilePartOperation {
     public @Nullable FileLocation queryTargetDirectory(@StringRes final int title/*, final @Nullable FileLocation current*/) throws InterruptedException {
         final CountDownLatch latch = new CountDownLatch(1);
         final AtomicReference<FileLocation> result = new AtomicReference<>();
-        final FragmentFile page = new FragmentFile(this.activity()); // TODO
+        final PageFile page = new PageFile(this.activity()); // TODO
         Main.runOnUiThread(this.activity(), () -> {
             final View p = this.page().getRoot();
             new AlertDialog.Builder(this.activity())

@@ -3,9 +3,9 @@ package com.xuxiaocheng.WListAndroid.UIs;
 import androidx.fragment.app.Fragment;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
-import com.xuxiaocheng.WListAndroid.UIs.Fragments.File.FragmentFile;
-import com.xuxiaocheng.WListAndroid.UIs.Fragments.Trans.FragmentTrans;
-import com.xuxiaocheng.WListAndroid.UIs.Fragments.User.FragmentUser;
+import com.xuxiaocheng.WListAndroid.UIs.Pages.File.PageFile;
+import com.xuxiaocheng.WListAndroid.UIs.Pages.Trans.PageTrans;
+import com.xuxiaocheng.WListAndroid.UIs.Pages.User.PageUser;
 import org.jetbrains.annotations.NotNull;
 
 public class FragmentsAdapter extends FragmentStateAdapter {
@@ -33,16 +33,16 @@ public class FragmentsAdapter extends FragmentStateAdapter {
     }
 
     protected final @NotNull ActivityMain activity;
-    protected final @NotNull FragmentFile fragmentFileInstance;
-    protected final @NotNull FragmentUser fragmentUserInstance;
-    protected final @NotNull FragmentTrans fragmentTransInstance;
+    protected final @NotNull PageFile fragmentFileInstance;
+    protected final @NotNull PageUser fragmentUserInstance;
+    protected final @NotNull PageTrans fragmentTransInstance;
 
     public FragmentsAdapter(final @NotNull ActivityMain activity) {
         super(activity);
         this.activity = activity;
-        this.fragmentFileInstance = new FragmentFile(this.activity);
-        this.fragmentUserInstance = new FragmentUser(this.activity);
-        this.fragmentTransInstance = new FragmentTrans(this.activity);
+        this.fragmentFileInstance = new PageFile(this.activity);
+        this.fragmentUserInstance = new PageUser(this.activity);
+        this.fragmentTransInstance = new PageTrans(this.activity);
     }
 
     public @NotNull IFragment<?> getFragment(final @NotNull FragmentTypes type) {

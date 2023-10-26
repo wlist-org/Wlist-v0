@@ -119,6 +119,7 @@ public class ActivityMain extends AppCompatActivity {
             public void onPageSelected(final int position) {
                 super.onPageSelected(position);
                 final FragmentsAdapter.FragmentTypes now = FragmentsAdapter.FragmentTypes.fromPosition(position);
+                final FragmentsAdapter.FragmentTypes old = ActivityMain.this.currentChoice.getAndSet(now);
                 switch (now) {
                     case File -> {
                         if (fileButton.isClicked()) return;
@@ -139,9 +140,9 @@ public class ActivityMain extends AppCompatActivity {
                         transButton.setClickable(false);
                     }
                 }
-                final FragmentsAdapter.FragmentTypes old = ActivityMain.this.currentChoice.getAndSet(now);
                 if (old != null)
                     ActivityMain.this.fragmentsAdapterInstance.getFragment(old).onHide();
+                ActivityMain.this.fragmentsAdapterInstance.getFragment(now).onShow();
             }
         });
         Arrays.stream(FragmentsAdapter.FragmentTypes.values()).forEach(t -> this.fragmentsAdapterInstance.getFragment(t).onActivityCreateHook());

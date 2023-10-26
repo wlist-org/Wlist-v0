@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListAndroid.UIs.Fragments.File;
+package com.xuxiaocheng.WListAndroid.UIs.Pages.File;
 
 import android.view.View;
 import android.view.ViewGroup;
@@ -48,19 +48,19 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
 public class PageFilePartList {
-    protected final @NotNull FragmentFile fragmentFile;
+    protected final @NotNull PageFile pageFile;
 
-    public PageFilePartList(final @NotNull FragmentFile fragmentFile) {
+    public PageFilePartList(final @NotNull PageFile pageFile) {
         super();
-        this.fragmentFile = fragmentFile;
+        this.pageFile = pageFile;
     }
 
     private @NotNull ActivityMain activity() {
-        return this.fragmentFile.getMainActivity();
+        return this.pageFile.getMainActivity();
     }
 
     private @NotNull PageFileBinding page() {
-        return this.fragmentFile.getPage();
+        return this.pageFile.getPage();
     }
 
 
@@ -214,7 +214,7 @@ public class PageFilePartList {
                     try {
                         limit = ClientConfigurationSupporter.limitPerPage(ClientConfigurationSupporter.get());
                         final int need = isDown ? limit : Math.toIntExact(Math.min(loadedUp.get(), limit));
-                        list = FilesAssistant.list(PageFilePartList.this.fragmentFile.address(), PageFilePartList.this.fragmentFile.username(), location, null, null,
+                        list = FilesAssistant.list(PageFilePartList.this.pageFile.address(), PageFilePartList.this.pageFile.username(), location, null, null,
                                 isDown ? loadedDown.getAndAdd(need) : loadedUp.addAndGet(-need), need, Main.ClientExecutors, c -> {
                                     PageFilePartList.this.listLoadingAnimation(true, 0, 0);
                                     showed.set(true);
@@ -278,7 +278,7 @@ public class PageFilePartList {
         this.updatePage(new FileLocation(IdentifierNames.RootSelector, 0), position, new AtomicBoolean(true),
                 (information, c) -> this.onInsidePage(FileInformationGetter.name(information),
                                 new FileLocation(FileInformationGetter.name(information), FileInformationGetter.id(information)), 0),
-                this.fragmentFile.partOperation::rootOperation);
+                this.pageFile.partOperation::rootOperation);
     }
 
     @UiThread
@@ -296,8 +296,8 @@ public class PageFilePartList {
             if (FileInformationGetter.isDirectory(information))
                 this.onInsidePage(FileInformationGetter.name(information), new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.id(information)), 0);
             else
-                this.fragmentFile.partPreview.preview(FileLocationGetter.storage(location), information, c);
-        }, (information, c) -> this.fragmentFile.partOperation.insideOperation(FileLocationGetter.storage(location), information, c));
+                this.pageFile.partPreview.preview(FileLocationGetter.storage(location), information, c);
+        }, (information, c) -> this.pageFile.partOperation.insideOperation(FileLocationGetter.storage(location), information, c));
     }
 
     @AnyThread
@@ -319,8 +319,8 @@ public class PageFilePartList {
         page.pageFileList.setAdapter(EmptyRecyclerAdapter.Instance);
         Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
             final VisibleFileInformation current;
-            try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.fragmentFile.address())) {
-                current = OperateFilesHelper.getFileOrDirectory(client, TokenAssistant.getToken(this.fragmentFile.address(), this.fragmentFile.username()), this.currentLocation(), true);
+            try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.pageFile.address())) {
+                current = OperateFilesHelper.getFileOrDirectory(client, TokenAssistant.getToken(this.pageFile.address(), this.pageFile.username()), this.currentLocation(), true);
             }
             if (current == null) {
                 this.backToRootPage();
@@ -337,8 +337,8 @@ public class PageFilePartList {
                 position = p.getC().get();
             }
             final VisibleFileInformation directory;
-            try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.fragmentFile.address())) {
-                directory = OperateFilesHelper.getFileOrDirectory(client, TokenAssistant.getToken(this.fragmentFile.address(), this.fragmentFile.username()), parent, true);
+            try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.pageFile.address())) {
+                directory = OperateFilesHelper.getFileOrDirectory(client, TokenAssistant.getToken(this.pageFile.address(), this.pageFile.username()), parent, true);
             }
             if (directory == null) {
                 this.backToRootPage();

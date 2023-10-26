@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListAndroid.UIs.Fragments.Trans;
+package com.xuxiaocheng.WListAndroid.UIs.Pages.Trans;
 
 import android.view.LayoutInflater;
 import com.xuxiaocheng.WListAndroid.UIs.ActivityMain;
@@ -6,8 +6,8 @@ import com.xuxiaocheng.WListAndroid.UIs.IFragment;
 import com.xuxiaocheng.WListAndroid.databinding.PageTransBinding;
 import org.jetbrains.annotations.NotNull;
 
-public class FragmentTrans extends IFragment<PageTransBinding> {
-    public FragmentTrans(final @NotNull ActivityMain activity) {
+public class PageTrans extends IFragment<PageTransBinding> {
+    public PageTrans(final @NotNull ActivityMain activity) {
         super(activity);
     }
 
@@ -17,7 +17,7 @@ public class FragmentTrans extends IFragment<PageTransBinding> {
     }
 
     @Override
-    protected void onShow(final @NotNull PageTransBinding page) {
+    protected void onBuild(final @NotNull PageTransBinding page) {
 
     }
 }
