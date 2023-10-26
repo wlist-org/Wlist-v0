@@ -192,7 +192,7 @@ public class PageFilePartOperation {
                             final AlertDialog loader = new AlertDialog.Builder(this.activity()).setTitle(FileInformationGetter.name(information)).setCancelable(false).show();
                             Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
                                 final File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "wlist/" + FileInformationGetter.name(information));
-                                PermissionUtil.tryGetPermission(this.activity(), Permissions.build(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE));
+                                PermissionUtil.tryGetPermission(this.activity(), Permissions.build(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE), R.string.toast_no_read_permissions);
                                 HFileHelper.ensureFileAccessible(file, true);
                                 HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Downloading.",
                                         ParametersMap.create().add("address", this.pageFile.address()).add("information", information).add("file", file));

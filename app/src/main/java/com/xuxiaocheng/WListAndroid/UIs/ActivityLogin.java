@@ -92,6 +92,7 @@ public class ActivityLogin extends AppCompatActivity {
                     });
                     final Intent intent = new Intent(ActivityLogin.this, ActivityLogin.class);
                     ActivityLogin.this.startActivity(intent);
+                    Main.showToast(ActivityLogin.this, R.string.activity_login_loading_relogin);
                     ActivityLogin.this.finish();
                 }
             }, Context.BIND_AUTO_CREATE | Context.BIND_ABOVE_CLIENT | Context.BIND_IMPORTANT);

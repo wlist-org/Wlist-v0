@@ -1,6 +1,7 @@
 package com.xuxiaocheng.WListAndroid.Utils;
 
 import android.app.Activity;
+import androidx.annotation.StringRes;
 import androidx.annotation.WorkerThread;
 import com.qw.soul.permission.SoulPermission;
 import com.qw.soul.permission.bean.Permission;
@@ -17,7 +18,7 @@ public final class PermissionUtil {
     }
 
     @WorkerThread
-    public static void tryGetPermission(final @NotNull Activity activity, final @NotNull Permissions permissions) throws InterruptedException {
+    public static void tryGetPermission(final @NotNull Activity activity, final @NotNull Permissions permissions, @StringRes final int toast) throws InterruptedException {
         final CountDownLatch latch = new CountDownLatch(1);
         Main.runOnUiThread(activity, () -> SoulPermission.getInstance().checkAndRequestPermissions(permissions, new CheckRequestPermissionsListener() {
             @Override
@@ -27,6 +28,7 @@ public final class PermissionUtil {
 
             @Override
             public void onPermissionDenied(final Permission[] refusedPermissions) {
+                Main.showToast(activity, toast);
                 latch.countDown();
             }
         }));
