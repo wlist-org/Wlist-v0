@@ -110,7 +110,7 @@ public class PageFilePartOperation {
                         }, () -> Main.runOnUiThread(this.activity(), dialog::cancel)));
                     }).show();
         });
-        operationBinding.pageFileOperationRenameIcon.setOnClickListener(u -> operationBinding.pageFileOperationRename.performClick());
+        operationBinding.pageFileOperationRenameImage.setOnClickListener(u -> operationBinding.pageFileOperationRename.performClick());
         operationBinding.pageFileOperationMove.setOnClickListener(u -> {
             if (!clickable.compareAndSet(true, false)) return;
             modifier.cancel();
@@ -136,7 +136,7 @@ public class PageFilePartOperation {
                 });
             }));
         });
-        operationBinding.pageFileOperationMoveIcon.setOnClickListener(u -> operationBinding.pageFileOperationMove.performClick());
+        operationBinding.pageFileOperationMoveImage.setOnClickListener(u -> operationBinding.pageFileOperationMove.performClick());
         operationBinding.pageFileOperationCopy.setOnClickListener(u -> {
             if (!clickable.compareAndSet(true, false)) return;
             modifier.cancel();
@@ -162,7 +162,7 @@ public class PageFilePartOperation {
                 });
             }));
         });
-        operationBinding.pageFileOperationCopyIcon.setOnClickListener(u -> operationBinding.pageFileOperationCopy.performClick());
+        operationBinding.pageFileOperationCopyImage.setOnClickListener(u -> operationBinding.pageFileOperationCopy.performClick());
         operationBinding.pageFileOperationTrash.setOnClickListener(u -> {
             if (!clickable.compareAndSet(true, false)) return;
             modifier.cancel();
@@ -178,10 +178,10 @@ public class PageFilePartOperation {
                         }, () -> Main.runOnUiThread(this.activity(), dialog::cancel)));
                     }).show();
         });
-        operationBinding.pageFileOperationTrashIcon.setOnClickListener(u -> operationBinding.pageFileOperationTrash.performClick());
+        operationBinding.pageFileOperationTrashImage.setOnClickListener(u -> operationBinding.pageFileOperationTrash.performClick());
         if (FileInformationGetter.isDirectory(information)) {
             operationBinding.pageFileOperationDownload.setVisibility(View.GONE);
-            operationBinding.pageFileOperationDownloadIcon.setVisibility(View.GONE);
+            operationBinding.pageFileOperationDownloadImage.setVisibility(View.GONE);
         } else {
             operationBinding.pageFileOperationDownload.setOnClickListener(u -> {
                 if (!clickable.compareAndSet(true, false)) return;
@@ -218,7 +218,7 @@ public class PageFilePartOperation {
                             }, () -> Main.runOnUiThread(this.activity(), loader::cancel)));
                         }).show();
             });
-            operationBinding.pageFileOperationDownloadIcon.setOnClickListener(u -> operationBinding.pageFileOperationDownload.performClick());
+            operationBinding.pageFileOperationDownloadImage.setOnClickListener(u -> operationBinding.pageFileOperationDownload.performClick());
         }
         modifier.show();
     }
