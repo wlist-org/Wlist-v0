@@ -1,12 +1,19 @@
 package com.xuxiaocheng.WListAndroid.UIs;
 
+import androidx.annotation.UiThread;
 import androidx.fragment.app.Fragment;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.WListAndroid.UIs.Pages.Connect.PageConnect;
 import com.xuxiaocheng.WListAndroid.UIs.Pages.File.PageFile;
 import com.xuxiaocheng.WListAndroid.UIs.Pages.Trans.PageTrans;
 import com.xuxiaocheng.WListAndroid.UIs.Pages.User.PageUser;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class FragmentsAdapter extends FragmentStateAdapter {
     public enum FragmentTypes {
@@ -34,23 +41,48 @@ public class FragmentsAdapter extends FragmentStateAdapter {
 
     protected final @NotNull ActivityMain activity;
     protected final @NotNull PageFile fragmentFileInstance;
+    protected final @NotNull PageConnect fragmentConnectFileInstance;
     protected final @NotNull PageUser fragmentUserInstance;
+    protected final @NotNull PageConnect fragmentConnectUserInstance;
     protected final @NotNull PageTrans fragmentTransInstance;
+    protected final @NotNull PageConnect fragmentConnectTransInstance;
 
     public FragmentsAdapter(final @NotNull ActivityMain activity) {
         super(activity);
         this.activity = activity;
         this.fragmentFileInstance = new PageFile(this.activity);
+        this.fragmentConnectFileInstance = new PageConnect(this.activity);
         this.fragmentUserInstance = new PageUser(this.activity);
+        this.fragmentConnectUserInstance = new PageConnect(this.activity);
         this.fragmentTransInstance = new PageTrans(this.activity);
+        this.fragmentConnectTransInstance = new PageConnect(this.activity);
     }
 
+    public @NotNull List<@NotNull IFragment<?>> getAllFragments() {
+        return List.of(this.fragmentFileInstance, this.fragmentUserInstance, this.fragmentTransInstance,
+                this.fragmentConnectFileInstance, this.fragmentConnectUserInstance, this.fragmentConnectTransInstance);
+    }
+
+    private final AtomicBoolean connected = new AtomicBoolean(false);
+
     public @NotNull IFragment<?> getFragment(final @NotNull FragmentTypes type) {
-        return switch (type) {
+        return this.connected.get() ? switch (type) {
             case File -> this.fragmentFileInstance;
             case User -> this.fragmentUserInstance;
             case Trans -> this.fragmentTransInstance;
+        } : switch (type) {
+            case File -> this.fragmentConnectFileInstance;
+            case User -> this.fragmentConnectUserInstance;
+            case Trans -> this.fragmentConnectTransInstance;
         };
+    }
+
+    @UiThread
+    public void notifyConnected(final boolean connected, final @Nullable FragmentTypes current) {
+        if (!this.connected.compareAndSet(!connected, connected)) return;
+        this.notifyItemRangeChanged(0, this.getItemCount());
+        this.activity.getContent().activityMainContent.setAdapter(this);
+        this.activity.getContent().activityMainContent.setCurrentItem(FragmentTypes.toPosition(Objects.requireNonNullElse(current, FragmentTypes.File)), false);
     }
 
     public @NotNull IFragment<?> getFragment(final int position) {
@@ -72,8 +104,11 @@ public class FragmentsAdapter extends FragmentStateAdapter {
         return "FragmentsAdapter{" +
                 "activity=" + this.activity +
                 ", fragmentFileInstance=" + this.fragmentFileInstance +
+                ", fragmentConnectFileInstance=" + this.fragmentConnectFileInstance +
                 ", fragmentUserInstance=" + this.fragmentUserInstance +
+                ", fragmentConnectUserInstance=" + this.fragmentConnectUserInstance +
                 ", fragmentTransInstance=" + this.fragmentTransInstance +
+                ", fragmentConnectTransInstance=" + this.fragmentConnectTransInstance +
                 '}';
     }
 }

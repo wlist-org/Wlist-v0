@@ -25,7 +25,8 @@ public final class ChooserButtonGroup {
     @DrawableRes
     private final int imageChose;
 
-    public ChooserButtonGroup(final @NotNull ActivityMain activity, final @NotNull ImageView button, @DrawableRes final int image, @DrawableRes final int imageChose,
+    public ChooserButtonGroup(final @NotNull ActivityMain activity, final FragmentsAdapter.@NotNull FragmentTypes type, final @NotNull ImageView button,
+                              @DrawableRes final int image, @DrawableRes final int imageChose,
                               final @Nullable TextView text, final @NotNull View @NotNull ... layouts) {
         super();
         this.activity = activity;
@@ -38,10 +39,7 @@ public final class ChooserButtonGroup {
             this.layouts.add(this.text);
         this.layouts.addAll(Arrays.asList(layouts));
         this.layouts.forEach(v -> v.setOnClickListener(u -> this.button.performClick()));
-    }
-
-    public void setOnClickListener(final View.@Nullable OnClickListener listener) {
-        this.button.setOnClickListener(listener);
+        this.button.setOnClickListener(v -> activity.getContent().activityMainContent.setCurrentItem(FragmentsAdapter.FragmentTypes.toPosition(type)));
     }
 
     public void callOnClick() {
@@ -56,7 +54,7 @@ public final class ChooserButtonGroup {
         this.button.setImageResource(clickable ? this.image : this.imageChose);
         if (this.text != null) {
             this.text.setClickable(clickable);
-            this.text.setTextColor(activity.getResources().getColor(clickable ? R.color.text_normal : R.color.text_warning, activity.getTheme()));
+            this.text.setTextColor(this.activity.getResources().getColor(clickable ? R.color.text_normal : R.color.text_warning, this.activity.getTheme()));
         }
         this.layouts.forEach(v -> v.setClickable(clickable));
     }

@@ -22,10 +22,12 @@ public final class InternalServerBinder extends Binder {
 
     public static final int Code = 2168877; // IBinder.FIRST_CALL_TRANSACTION <= Code=-"InternalServerBinder".hashCode()/100 <= IBinder.LAST_CALL_TRANSACTION
 
-    public static @NotNull InetSocketAddress getAddress(final @NotNull IBinder iService) throws RemoteException {
+    public static @Nullable InetSocketAddress getAddress(final @NotNull IBinder iService) throws RemoteException {
         final InetSocketAddress[] address = new InetSocketAddress[1];
         InternalServerBinder.sendTransact(iService, TransactOperate.GetAddress, p -> {
             final int success = p.readInt();
+            if (success == 1) // Usually, the server is closing.
+                return;
             if (success != 0)
                 throw new IllegalStateException("Failed to get internal server address." + ParametersMap.create().add("code", success));
             final String hostname = p.readString();

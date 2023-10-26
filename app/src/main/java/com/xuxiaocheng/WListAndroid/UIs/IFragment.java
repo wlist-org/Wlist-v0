@@ -5,6 +5,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.UiThread;
+import androidx.annotation.WorkerThread;
 import androidx.fragment.app.Fragment;
 import androidx.viewbinding.ViewBinding;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
@@ -60,6 +61,14 @@ public abstract class IFragment<P extends ViewBinding> extends Fragment {
 
     @UiThread
     public void onActivityCreateHook() {
+    }
+
+    @WorkerThread
+    public void onConnected() {
+    }
+
+    @WorkerThread
+    public void onDisconnected() {
     }
 
     @Override

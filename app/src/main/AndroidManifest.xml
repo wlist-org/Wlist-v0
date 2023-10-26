@@ -24,16 +24,14 @@
 		tools:targetApi="s">
 
 		<activity
-			android:name=".UIs.ActivityLogin"
+			android:name=".UIs.ActivityMain"
+			android:launchMode="singleInstance"
 			android:exported="true">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />
 				<category android:name="android.intent.category.LAUNCHER" />
 			</intent-filter>
 		</activity>
-		<activity
-			android:name=".UIs.ActivityMain"
-			android:launchMode="singleInstance" />
 
 		<service
 			android:name=".Services.InternalServer.InternalServerService"

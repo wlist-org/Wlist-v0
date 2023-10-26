@@ -7,17 +7,14 @@ import android.util.DisplayMetrics;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
-import android.widget.ImageView;
 import android.widget.SimpleAdapter;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.widget.ListPopupWindow;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
-import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMathHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
-import com.xuxiaocheng.WList.AndroidSupports.ClientConfigurationSupporter;
 import com.xuxiaocheng.WList.Client.Assistants.BroadcastAssistant;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
@@ -28,7 +25,6 @@ import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileUploadBinding;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.time.ZonedDateTime;
@@ -80,24 +76,10 @@ public class PageFile extends IFragment<PageFileBinding> {
         page.pageFileList.setHasFixedSize(true);
         this.partList.onRootPage(0);
         this.buildUploader();
-        Main.runOnBackgroundThread(this.mainActivity, HExceptionWrapper.wrapRunnable(() -> {
-            BroadcastAssistant.start(this.address());
-            ClientConfigurationSupporter.location().reinitialize(new File(this.mainActivity.getExternalFilesDir("client"), "client.yaml"));
-            ClientConfigurationSupporter.parseFromFile();
-            final BroadcastAssistant.BroadcastSet set;
-            try {
-                set = BroadcastAssistant.get(this.address());
-            } catch (final IllegalStateException exception) {
-                Main.runOnUiThread(this.mainActivity, this.mainActivity::close);
-                return;
-            }
-            set.ServerClose.register(id -> Main.runOnUiThread(this.mainActivity, this.mainActivity::close));
-            this.partList.listenBroadcast(set);
-        }));
     }
 
 
-    protected final @NotNull HInitializer<ActivityResultLauncher<String>> chooserLauncher = new HInitializer<>("PageFileChooserLauncher");
+    private final @NotNull HInitializer<ActivityResultLauncher<String>> chooserLauncher = new HInitializer<>("PageFileChooserLauncher");
 
     @SuppressLint("ClickableViewAccessibility")
     private void buildUploader() {
@@ -203,12 +185,11 @@ public class PageFile extends IFragment<PageFileBinding> {
             if (uri != null)
                 this.partUpload.uploadFile(uri);
         }));
-        final ImageView options = this.mainActivity.findViewById(R.id.activity_main_options);
-        options.setOnClickListener(v -> {
+        this.mainActivity.getContent().activityMainOptions.setOnClickListener(v -> {
             if (this.mainActivity.currentChoice() != FragmentsAdapter.FragmentTypes.File) return;
             final ListPopupWindow popup = new ListPopupWindow(this.mainActivity);
             popup.setWidth(this.pageCache.getInstance().pageFileList.getWidth() >> 1);
-            popup.setAnchorView(options);
+            popup.setAnchorView(this.mainActivity.getContent().activityMainOptions);
             popup.setAdapter(new SimpleAdapter(this.mainActivity, List.of(
                     Map.of("image", R.drawable.page_file_options_refresh, "name", this.mainActivity.getResources().getString(R.string.page_file_options_refresh)),
                     Map.of("image", R.drawable.page_file_options_sorter, "name", this.mainActivity.getResources().getString(R.string.page_file_options_sorter)),
@@ -231,6 +212,11 @@ public class PageFile extends IFragment<PageFileBinding> {
     }
 
     @Override
+    public void onConnected() {
+        this.partList.listenBroadcast(BroadcastAssistant.get(this.address()));
+    }
+
+    @Override
     public boolean onBackPressed() {
         return this.partList.popFileList();
     }
@@ -238,13 +224,13 @@ public class PageFile extends IFragment<PageFileBinding> {
     @Override
     public @NotNull String toString() {
         return "PageFile{" +
-                "activity=" + this.mainActivity +
-                ", partList=" + this.partList +
+                "partList=" + this.partList +
                 ", partOptions=" + this.partOptions +
                 ", partOperation=" + this.partOperation +
                 ", partPreview=" + this.partPreview +
                 ", partUpload=" + this.partUpload +
                 ", pageCache=" + this.pageCache +
+                ", super=" + super.toString() +
                 '}';
     }
 }
