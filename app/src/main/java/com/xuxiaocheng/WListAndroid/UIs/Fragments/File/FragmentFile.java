@@ -33,11 +33,14 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.net.InetSocketAddress;
+import java.time.Duration;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class FragmentFile extends IFragment<PageFileBinding> {
     protected final @NotNull PageFilePartList partList = new PageFilePartList(this);
@@ -105,28 +108,33 @@ public class FragmentFile extends IFragment<PageFileBinding> {
         final PageFileBinding page = this.pageCache.getInstance();
         final AtomicBoolean scrolling = new AtomicBoolean();
         final AtomicInteger startX = new AtomicInteger(), startY = new AtomicInteger();
+        final AtomicReference<ZonedDateTime> startTime = new AtomicReference<>();
         page.pageFileUploader.setOnTouchListener((v, e) -> {
             switch (e.getAction()) {
                 case MotionEvent.ACTION_DOWN -> {
                     scrolling.set(false);
                     startX.set(Float.floatToIntBits(v.getX()));
                     startY.set(Float.floatToIntBits(v.getY()));
+                    startTime.set(ZonedDateTime.now());
                 }
                 case MotionEvent.ACTION_MOVE -> {
                     if (scrolling.get()) {
                         final float parentX = page.pageFileList.getX(), parentY = page.pageFileList.getY();
                         v.setX(HMathHelper.clamp(v.getX() + e.getX() - parentX, 0, page.pageFileList.getWidth()) + parentX - v.getWidth() / 2.0f);
                         v.setY(HMathHelper.clamp(v.getY() + e.getY() - parentY, -50, page.pageFileList.getHeight()) + parentY - v.getHeight() / 2.0f);
-                    } else if (Math.abs(v.getX() + e.getX() - Float.intBitsToFloat(startX.get())) > v.getWidth() / 2.0f || Math.abs(v.getY() + e.getY() - Float.intBitsToFloat(startY.get())) > v.getHeight() / 2.0f) {
+                    } else if (Math.abs(v.getX() + e.getX() - Float.intBitsToFloat(startX.get())) > v.getWidth() / 2.0f
+                            || Math.abs(v.getY() + e.getY() - Float.intBitsToFloat(startY.get())) > v.getHeight() / 2.0f
+                            || Duration.between(startTime.get(), ZonedDateTime.now()).toMillis() >= 500) {
                         scrolling.set(true);
                         this.getPage().pageFileList.requestDisallowInterceptTouchEvent(true);
                     }
                 }
                 case MotionEvent.ACTION_UP -> {
-                    if (scrolling.get())
+                    if (scrolling.get()) {
                         this.mainActivity.getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE).edit()
                                 .putFloat("x", v.getX()).putFloat("y", v.getY()).apply();
-                    else return v.performClick();
+                        this.getPage().pageFileList.requestDisallowInterceptTouchEvent(false);
+                    } else return v.performClick();
                 }
             }
             return true;
