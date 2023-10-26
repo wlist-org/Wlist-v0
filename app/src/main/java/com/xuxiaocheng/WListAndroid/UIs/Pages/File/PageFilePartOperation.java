@@ -70,16 +70,16 @@ public class PageFilePartOperation {
     @UiThread
     protected void insideOperation(final @NotNull String storage, final @NotNull VisibleFileInformation information, final @NotNull AtomicBoolean c) {
         final PageFileOperationBinding operationBinding = PageFileOperationBinding.inflate(this.activity().getLayoutInflater());
+        final AlertDialog modifier = new AlertDialog.Builder(this.activity())
+                .setTitle(R.string.page_file_operation).setView(operationBinding.getRoot())
+                .setOnCancelListener(d -> c.set(true))
+                .setPositiveButton(R.string.cancel, (d, w) -> c.set(true)).create();
         operationBinding.pageFileOperationName.setText(FileInformationGetter.name(information));
         final long size = FileInformationGetter.size(information);
         final String unknown = this.activity().getString(R.string.unknown);
         operationBinding.pageFileOperationSize.setText(ViewUtil.formatSizeDetail(size, unknown));
         operationBinding.pageFileOperationCreate.setText(ViewUtil.formatTime(FileInformationGetter.createTime(information), unknown));
         operationBinding.pageFileOperationUpdate.setText(ViewUtil.formatTime(FileInformationGetter.updateTime(information), unknown));
-        final AlertDialog modifier = new AlertDialog.Builder(this.activity())
-                .setTitle(R.string.page_file_operation).setView(operationBinding.getRoot())
-                .setOnCancelListener(d -> c.set(true))
-                .setPositiveButton(R.string.cancel, (d, w) -> c.set(true)).create();
         final FileLocation current = new FileLocation(storage, FileInformationGetter.id(information));
         final AtomicBoolean clickable = new AtomicBoolean(true);
         operationBinding.pageFileOperationRename.setOnClickListener(u -> {
@@ -163,13 +163,13 @@ public class PageFilePartOperation {
             }));
         });
         operationBinding.pageFileOperationCopyIcon.setOnClickListener(u -> operationBinding.pageFileOperationCopy.performClick());
-        operationBinding.pageFileOperationDelete.setOnClickListener(u -> {
+        operationBinding.pageFileOperationTrash.setOnClickListener(u -> {
             if (!clickable.compareAndSet(true, false)) return;
             modifier.cancel();
-            new AlertDialog.Builder(this.activity()).setTitle(R.string.page_file_operation_delete)
+            new AlertDialog.Builder(this.activity()).setTitle(R.string.page_file_operation_trash)
                     .setNegativeButton(R.string.cancel, null)
                     .setPositiveButton(R.string.confirm, (d, w) -> {
-                        final AlertDialog dialog = this.pageFile.partUpload.loadingDialog(R.string.page_file_operation_delete);
+                        final AlertDialog dialog = this.pageFile.partUpload.loadingDialog(R.string.page_file_operation_trash);
                         Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
                             HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Deleting.",
                                     ParametersMap.create().add("address", this.pageFile.address()).add("information", information));
@@ -178,7 +178,7 @@ public class PageFilePartOperation {
                         }, () -> Main.runOnUiThread(this.activity(), dialog::cancel)));
                     }).show();
         });
-        operationBinding.pageFileOperationDeleteIcon.setOnClickListener(u -> operationBinding.pageFileOperationDelete.performClick());
+        operationBinding.pageFileOperationTrashIcon.setOnClickListener(u -> operationBinding.pageFileOperationTrash.performClick());
         if (FileInformationGetter.isDirectory(information)) {
             operationBinding.pageFileOperationDownload.setVisibility(View.GONE);
             operationBinding.pageFileOperationDownloadIcon.setVisibility(View.GONE);

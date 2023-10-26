@@ -35,7 +35,7 @@
 	<string name="page_file_operation_rename">Rename</string>
 	<string name="page_file_operation_move">Move</string>
 	<string name="page_file_operation_copy">Copy</string>
-	<string name="page_file_operation_delete">Delete</string>
+	<string name="page_file_operation_trash">Delete</string>
 	<string name="page_file_operation_download">Download</string>
 	<string name="page_file_operation_rename_success">Renamed.</string>
 	<string name="page_file_operation_move_success">Moved.</string>
