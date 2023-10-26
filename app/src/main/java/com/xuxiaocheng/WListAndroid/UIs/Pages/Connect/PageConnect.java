@@ -50,7 +50,7 @@ public class PageConnect extends IFragment<PageConnectBinding> {
             final Intent serverIntent = new Intent(this.mainActivity, InternalServerService.class);
             final HLog logger = HLogManager.getInstance("DefaultLogger");
             logger.log(HLogLevel.LESS, "Starting internal server...");
-            page.pageConnectionInternalServer.setText(R.string.activity_login_loading_starting_internal_server);
+            page.pageConnectionInternalServer.setText(R.string.page_connect_internal_server_starting);
             this.mainActivity.startService(serverIntent);
             this.connection.initializeIfNot(() -> new ServiceConnection() {
                     private final @NotNull ActivityMain activity = PageConnect.this.mainActivity;
@@ -64,17 +64,18 @@ public class PageConnect extends IFragment<PageConnectBinding> {
                             final InetSocketAddress address = InternalServerBinder.getAddress(iService);
                             if (address == null) {
                                 PageConnect.this.mainActivity.unbindService(this);
-                                return; // TODO: toast
+                                Main.showToast(PageConnect.this.mainActivity, R.string.page_connect_closing);
+                                return;
                             }
                             logger.log(HLogLevel.FINE, "Connecting to service: ", address);
-                            Main.runOnUiThread(this.activity, () -> this.text.setText(R.string.activity_login_loading_connecting));
+                            Main.runOnUiThread(this.activity, () -> this.text.setText(R.string.page_connect_connecting));
                             this.address.initialize(address);
                             WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
                             logger.log(HLogLevel.LESS, "Clients initialized.");
                             final String initPassword = InternalServerBinder.getAndDeleteAdminPassword(iService);
                             final String password = PasswordHelper.updateInternalPassword(this.activity, IdentifierNames.UserName.Admin.getIdentifier(), initPassword);
                             logger.log(HLogLevel.INFO, "Got server password.", ParametersMap.create().add("init", initPassword != null).add("password", password));
-                            Main.runOnUiThread(this.activity, () -> this.text.setText(R.string.activity_login_loading_logging_in));
+                            Main.runOnUiThread(this.activity, () -> this.text.setText(R.string.page_connect_logging_in));
                             if (password == null || !TokenAssistant.login(address, IdentifierNames.UserName.Admin.getIdentifier(), password, Main.ClientExecutors)) {
                                 // TODO get password from user.
                                 Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, "No password!!!", Toast.LENGTH_SHORT).show());
@@ -82,7 +83,7 @@ public class PageConnect extends IFragment<PageConnectBinding> {
                             }
                             this.activity.connect(address, IdentifierNames.UserName.Admin.getIdentifier(), iService);
                         }, e -> {
-                            Main.runOnUiThread(this.activity, () -> this.text.setText(R.string.activity_login_login_internal_server));
+                            Main.runOnUiThread(this.activity, () -> this.text.setText(R.string.page_connect_internal_server));
                             PageConnect.clickable.set(true);
                             if (e != null) {
                                 logger.log(HLogLevel.FAULT, "Failed to initialize wlist clients.", e);
@@ -102,7 +103,7 @@ public class PageConnect extends IFragment<PageConnectBinding> {
                                 WListClientManager.quicklyUninitialize(address);
                             }
                         });
-                        Main.showToast(this.activity, R.string.activity_login_loading_relogin);
+                        Main.showToast(this.activity, R.string.page_connect_internal_server_disconnected);
                         this.activity.close();
                     }
                 });

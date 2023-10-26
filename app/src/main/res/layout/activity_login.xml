@@ -158,7 +158,7 @@
 		android:gravity="center"
 		android:paddingTop="5dp"
 		android:paddingBottom="5dp"
-		android:text="@string/activity_login_login_internal_server"
+		android:text="@string/page_connect_internal_server"
 		android:textColor="@color/background_normal"
 		app:layout_constraintBottom_toTopOf="@id/activity_login_guideline_login_bottom"
 		app:layout_constraintLeft_toRightOf="@id/activity_login_guideline_edit_left"
