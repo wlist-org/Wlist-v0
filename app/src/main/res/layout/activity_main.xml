@@ -8,71 +8,51 @@
                                                    android:background="@color/background_differ"
                                                    android:orientation="vertical">
 
-	<androidx.constraintlayout.widget.Guideline
-		android:id="@+id/activity_main_guideline_title"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:orientation="horizontal"
-		app:layout_constraintGuide_begin="50dp" />
-
-	<androidx.appcompat.widget.LinearLayoutCompat
+	<View
 		android:id="@+id/activity_main_title"
 		android:layout_width="match_parent"
-		android:layout_height="0dp"
+		android:layout_height="50dp"
 		android:background="@color/background_normal"
-		android:gravity="end"
 		android:orientation="horizontal"
-		app:layout_constraintBottom_toBottomOf="@id/activity_main_guideline_title"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toTopOf="parent">
+		app:layout_constraintTop_toTopOf="parent" />
 
-		<androidx.appcompat.widget.AppCompatImageView
-			android:id="@+id/activity_main_trans"
-			android:layout_width="wrap_content"
-			android:layout_height="match_parent"
-			android:adjustViewBounds="true"
-			android:paddingStart="10dp"
-			android:paddingTop="15dp"
-			android:paddingEnd="10dp"
-			android:paddingBottom="15dp"
-			android:src="@mipmap/main_chooser_trans" />
-
-		<androidx.appcompat.widget.AppCompatImageView
-			android:id="@+id/activity_main_options"
-			android:layout_width="wrap_content"
-			android:layout_height="match_parent"
-			android:adjustViewBounds="true"
-			android:src="@drawable/page_file_options" />
-
-	</androidx.appcompat.widget.LinearLayoutCompat>
-
-	<androidx.constraintlayout.widget.Guideline
-		android:id="@+id/activity_main_guideline_chooser"
+	<androidx.appcompat.widget.AppCompatImageView
+		android:id="@+id/activity_main_trans"
 		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:orientation="horizontal"
-		app:layout_constraintGuide_end="60dp" />
+		android:layout_height="50dp"
+		android:adjustViewBounds="true"
+		android:paddingStart="10dp"
+		android:paddingTop="15dp"
+		android:paddingEnd="10dp"
+		android:paddingBottom="15dp"
+		android:src="@mipmap/main_chooser_trans"
+		app:layout_constraintBottom_toBottomOf="@id/activity_main_title"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toTopOf="parent" />
+
+	<androidx.appcompat.widget.AppCompatImageView
+		android:id="@+id/activity_main_options"
+		android:layout_width="wrap_content"
+		android:layout_height="50dp"
+		android:adjustViewBounds="true"
+		android:src="@drawable/page_file_options"
+		app:layout_constraintBottom_toBottomOf="@id/activity_main_title"
+		app:layout_constraintRight_toLeftOf="@id/activity_main_trans"
+		app:layout_constraintTop_toTopOf="parent" />
 
 	<View
 		android:id="@+id/activity_main_chooser_file"
 		android:layout_width="0dp"
-		android:layout_height="0dp"
+		android:layout_height="60dp"
 		android:background="@color/background_normal"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toLeftOf="parent"
-		app:layout_constraintRight_toLeftOf="@id/activity_main_chooser_user"
-		app:layout_constraintTop_toBottomOf="@id/activity_main_guideline_chooser" />
-
-	<androidx.constraintlayout.widget.Guideline
-		android:id="@+id/activity_main_chooser_guideline_file"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:orientation="vertical"
-		app:layout_constraintGuide_percent="0.3" />
+		app:layout_constraintRight_toLeftOf="@id/activity_main_chooser_user" />
 
 	<androidx.appcompat.widget.AppCompatImageView
-		android:id="@+id/activity_main_chooser_file_button"
+		android:id="@+id/activity_main_chooser_file_image"
 		android:layout_width="wrap_content"
 		android:layout_height="0dp"
 		android:layout_marginTop="5dp"
@@ -80,9 +60,9 @@
 		android:scaleType="centerInside"
 		android:src="@mipmap/main_chooser_file"
 		app:layout_constraintBottom_toTopOf="@id/activity_main_chooser_file_text"
-		app:layout_constraintLeft_toLeftOf="@id/activity_main_chooser_guideline_file"
-		app:layout_constraintRight_toRightOf="@id/activity_main_chooser_guideline_file"
-		app:layout_constraintTop_toBottomOf="@id/activity_main_guideline_chooser"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toLeftOf="@id/activity_main_chooser_user_image"
+		app:layout_constraintTop_toTopOf="@id/activity_main_chooser_file"
 		tools:ignore="TouchTargetSizeCheck,SpeakableTextPresentCheck" />
 
 	<androidx.appcompat.widget.AppCompatTextView
@@ -94,29 +74,21 @@
 		android:text="@string/activity_main_chooser_file"
 		android:textColor="@color/text_normal"
 		app:layout_constraintBottom_toBottomOf="parent"
-		app:layout_constraintLeft_toLeftOf="@id/activity_main_chooser_guideline_file"
-		app:layout_constraintRight_toRightOf="@id/activity_main_chooser_guideline_file"
-		app:layout_constraintTop_toBottomOf="@id/activity_main_chooser_file_button" />
+		app:layout_constraintLeft_toLeftOf="@id/activity_main_chooser_file_image"
+		app:layout_constraintRight_toRightOf="@id/activity_main_chooser_file_image"
+		app:layout_constraintTop_toBottomOf="@id/activity_main_chooser_file_image" />
 
 	<View
 		android:id="@+id/activity_main_chooser_user"
 		android:layout_width="0dp"
-		android:layout_height="0dp"
+		android:layout_height="60dp"
 		android:background="@color/background_normal"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toRightOf="@id/activity_main_chooser_file"
-		app:layout_constraintRight_toRightOf="parent"
-		app:layout_constraintTop_toBottomOf="@id/activity_main_guideline_chooser" />
-
-	<androidx.constraintlayout.widget.Guideline
-		android:id="@+id/activity_main_chooser_guideline_user"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:orientation="vertical"
-		app:layout_constraintGuide_percent="0.7" />
+		app:layout_constraintRight_toRightOf="parent" />
 
 	<androidx.appcompat.widget.AppCompatImageView
-		android:id="@+id/activity_main_chooser_user_button"
+		android:id="@+id/activity_main_chooser_user_image"
 		android:layout_width="wrap_content"
 		android:layout_height="0dp"
 		android:layout_marginTop="5dp"
@@ -124,9 +96,9 @@
 		android:scaleType="fitCenter"
 		android:src="@mipmap/main_chooser_user"
 		app:layout_constraintBottom_toTopOf="@id/activity_main_chooser_user_text"
-		app:layout_constraintLeft_toLeftOf="@id/activity_main_chooser_guideline_user"
-		app:layout_constraintRight_toRightOf="@id/activity_main_chooser_guideline_user"
-		app:layout_constraintTop_toBottomOf="@id/activity_main_guideline_chooser"
+		app:layout_constraintLeft_toRightOf="@id/activity_main_chooser_file_image"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toTopOf="@id/activity_main_chooser_file"
 		tools:ignore="TouchTargetSizeCheck,SpeakableTextPresentCheck" />
 
 	<androidx.appcompat.widget.AppCompatTextView
@@ -138,8 +110,17 @@
 		android:text="@string/activity_main_chooser_user"
 		android:textColor="@color/text_normal"
 		app:layout_constraintBottom_toBottomOf="parent"
-		app:layout_constraintLeft_toLeftOf="@id/activity_main_chooser_guideline_user"
-		app:layout_constraintRight_toRightOf="@id/activity_main_chooser_guideline_user"
-		app:layout_constraintTop_toBottomOf="@id/activity_main_chooser_user_button" />
+		app:layout_constraintLeft_toLeftOf="@id/activity_main_chooser_user_image"
+		app:layout_constraintRight_toRightOf="@id/activity_main_chooser_user_image"
+		app:layout_constraintTop_toBottomOf="@id/activity_main_chooser_user_image" />
+
+	<androidx.viewpager2.widget.ViewPager2
+		android:id="@+id/activity_main_content"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		app:layout_constraintBottom_toTopOf="@id/activity_main_chooser_file"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/activity_main_title" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

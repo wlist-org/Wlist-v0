@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListAndroid.UIs.Pages.File;
+package com.xuxiaocheng.WListAndroid.UIs.Fragments.File;
 
 import android.app.Activity;
 import android.widget.Toast;

@@ -7,38 +7,26 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.view.View;
-import android.view.ViewGroup;
 import androidx.annotation.UiThread;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.constraintlayout.widget.ConstraintLayout;
-import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import androidx.viewpager2.widget.ViewPager2;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.WList.AndroidSupports.ClientConfigurationSupporter;
-import com.xuxiaocheng.WList.Client.Assistants.BroadcastAssistant;
 import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.Services.InternalServer.InternalServerService;
-import com.xuxiaocheng.WListAndroid.UIs.Pages.File.PageFile;
-import com.xuxiaocheng.WListAndroid.UIs.Pages.PageChooser;
-import com.xuxiaocheng.WListAndroid.UIs.Pages.Trans.PageTrans;
-import com.xuxiaocheng.WListAndroid.UIs.Pages.User.PageUser;
 import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
 import com.xuxiaocheng.WListAndroid.databinding.ActivityMainBinding;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.time.ZonedDateTime;
-import java.util.EnumMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class ActivityMain extends AppCompatActivity {
@@ -74,6 +62,21 @@ public class ActivityMain extends AppCompatActivity {
         return false;
     }
 
+
+    protected final @NotNull HInitializer<ActivityMainBinding> contentCache = new HInitializer<>("ActivityMainCache");
+    protected final @NotNull FragmentsAdapter fragmentsAdapterInstance = new FragmentsAdapter(this);
+
+    public @NotNull ActivityMainBinding getContent() {
+        return this.contentCache.getInstance();
+    }
+
+    protected final @NotNull AtomicReference<FragmentsAdapter.FragmentTypes> currentChoice = new AtomicReference<>();
+
+    public FragmentsAdapter.@NotNull FragmentTypes currentChoice() {
+        return this.currentChoice.get();
+    }
+
+
     protected final @NotNull HInitializer<InetSocketAddress> address = new HInitializer<>("ActivityMainAddress");
     protected final @NotNull HInitializer<String> username = new HInitializer<>("ActivityMainUsername");
     protected final @NotNull HInitializer<IBinder> binder = new HInitializer<>("ActivityMainServiceBinder");
@@ -86,16 +89,6 @@ public class ActivityMain extends AppCompatActivity {
         return this.username.getInstance();
     }
 
-    protected final @NotNull AtomicReference<PageChooser.MainChoice> currentChoice = new AtomicReference<>();
-    protected final @NotNull Map<PageChooser.MainChoice, PageChooser.MainPage> pages = new EnumMap<>(PageChooser.MainChoice.class); {
-        this.pages.put(PageChooser.MainChoice.File, new PageFile(this));
-        this.pages.put(PageChooser.MainChoice.User, new PageUser(this));
-        this.pages.put(PageChooser.MainChoice.Trans, new PageTrans(this));
-    }
-
-    public PageChooser.@NotNull MainChoice currentChoice() {
-        return this.currentChoice.get();
-    }
 
     @Override
     protected void onCreate(final @Nullable Bundle savedInstanceState) {
@@ -105,63 +98,61 @@ public class ActivityMain extends AppCompatActivity {
         logger.log(HLogLevel.VERBOSE, "Creating ActivityMain.");
         final ActivityMainBinding activity = ActivityMainBinding.inflate(this.getLayoutInflater());
         this.setContentView(activity.getRoot());
+        this.contentCache.reinitialize(activity);
+
+
         if (this.extraAddress()) {
             HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), new IllegalStateException("No address received."));
             this.close();
             return;
         }
-        final PageChooser chooser = new PageChooser(
-                new PageChooser.ButtonGroup(this, activity.activityMainChooserFileButton, R.mipmap.main_chooser_file, R.mipmap.main_chooser_file_chose,
-                        activity.activityMainChooserFileText, activity.activityMainChooserFile),
-                new PageChooser.ButtonGroup(this, activity.activityMainChooserUserButton, R.mipmap.main_chooser_user, R.mipmap.main_chooser_user_chose,
-                        activity.activityMainChooserUserText, activity.activityMainChooserUser),
-                new PageChooser.ButtonGroup(this, activity.activityMainTrans, R.mipmap.main_chooser_trans, R.mipmap.main_chooser_trans_chose, null)
-        );
-        final AtomicReference<View> currentView = new AtomicReference<>(null);
-        final ConstraintLayout.LayoutParams contentParams = new ConstraintLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ConstraintLayout.LayoutParams.MATCH_CONSTRAINT);
-        contentParams.bottomToTop = R.id.activity_main_guideline_chooser;
-        contentParams.leftToLeft = R.id.activity_main;
-        contentParams.rightToRight = R.id.activity_main;
-        contentParams.topToBottom = R.id.activity_main_guideline_title;
-        chooser.setOnChangeListener(choice -> {
-            final View oldView;
-            final PageChooser.MainChoice oldChoice;
-            synchronized (currentView) {
-                oldView = currentView.getAndSet(null);
-                oldChoice = this.currentChoice.getAndSet(null);
+
+        activity.activityMainContent.setAdapter(this.fragmentsAdapterInstance);
+        final ChooserButtonGroup fileButton = new ChooserButtonGroup(this, activity.activityMainChooserFileImage, R.mipmap.main_chooser_file, R.mipmap.main_chooser_file_chose, activity.activityMainChooserFileText, activity.activityMainChooserFile);
+        final ChooserButtonGroup userButton = new ChooserButtonGroup(this, activity.activityMainChooserUserImage, R.mipmap.main_chooser_user, R.mipmap.main_chooser_user_chose, activity.activityMainChooserUserText, activity.activityMainChooserUser);
+        final ChooserButtonGroup transButton = new ChooserButtonGroup(this, activity.activityMainTrans, R.mipmap.main_chooser_trans, R.mipmap.main_chooser_trans_chose, null);
+        fileButton.setOnClickListener(v -> activity.activityMainContent.setCurrentItem(FragmentsAdapter.FragmentTypes.toPosition(FragmentsAdapter.FragmentTypes.File)));
+        userButton.setOnClickListener(v -> activity.activityMainContent.setCurrentItem(FragmentsAdapter.FragmentTypes.toPosition(FragmentsAdapter.FragmentTypes.User)));
+        transButton.setOnClickListener(v -> activity.activityMainContent.setCurrentItem(FragmentsAdapter.FragmentTypes.toPosition(FragmentsAdapter.FragmentTypes.Trans)));
+        activity.activityMainContent.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+            @Override
+            public void onPageSelected(final int position) {
+                super.onPageSelected(position);
+                final FragmentsAdapter.FragmentTypes now = FragmentsAdapter.FragmentTypes.fromPosition(position);
+                switch (now) {
+                    case File -> {
+                        if (fileButton.isClicked()) return;
+                        fileButton.setClickable(false);
+                        userButton.setClickable(true);
+                        transButton.setClickable(true);
+                    }
+                    case User -> {
+                        if (userButton.isClicked()) return;
+                        fileButton.setClickable(true);
+                        userButton.setClickable(false);
+                        transButton.setClickable(true);
+                    }
+                    case Trans -> {
+                        if (transButton.isClicked()) return;
+                        fileButton.setClickable(true);
+                        userButton.setClickable(true);
+                        transButton.setClickable(false);
+                    }
+                }
+                final FragmentsAdapter.FragmentTypes old = ActivityMain.this.currentChoice.getAndSet(now);
+                if (old != null)
+                    ActivityMain.this.fragmentsAdapterInstance.getFragment(old).onHide();
             }
-            if (oldView != null)
-                activity.getRoot().removeView(oldView);
-            if (oldChoice != null)
-                Objects.requireNonNull(this.pages.get(oldChoice)).onHide();
-            final View newView = Objects.requireNonNull(this.pages.get(choice)).onShow();
-            final boolean ok;
-            synchronized (currentView) {
-                ok = currentView.compareAndSet(null, newView);
-                this.currentChoice.set(choice);
-            }
-            if (ok)
-                activity.getRoot().addView(newView, contentParams);
         });
-        this.pages.values().forEach(PageChooser.MainPage::onActivityCreateHook);
-        Main.runOnBackgroundThread(this, HExceptionWrapper.wrapRunnable(() -> {
-            BroadcastAssistant.start(this.address.getInstance());
-            ClientConfigurationSupporter.location().reinitialize(new File(this.getExternalFilesDir("client"), "client.yaml"));
-            ClientConfigurationSupporter.parseFromFile();
-            Main.runOnUiThread(this, () -> chooser.click(PageChooser.MainChoice.File));
-        }));
+        Arrays.stream(FragmentsAdapter.FragmentTypes.values()).forEach(t -> this.fragmentsAdapterInstance.getFragment(t).onActivityCreateHook());
+        fileButton.callOnClick();
     }
 
     protected @Nullable ZonedDateTime lastBackPressedTime;
     @Override
     public void onBackPressed() {
-        final PageChooser.MainChoice choice = this.currentChoice.get();
-        if (choice != null) {
-            final PageChooser.MainPage page = this.pages.get(choice);
-            assert page != null;
-            if (page.onBackPressed())
-                return;
-        }
+        final FragmentsAdapter.FragmentTypes choice = this.currentChoice.get();
+        if (choice != null && this.fragmentsAdapterInstance.getFragment(choice).onBackPressed()) return;
         final ZonedDateTime now = ZonedDateTime.now();
         if (this.lastBackPressedTime != null && Duration.between(this.lastBackPressedTime, now).toMillis() < 2000) {
             super.onBackPressed(); // this.finish();

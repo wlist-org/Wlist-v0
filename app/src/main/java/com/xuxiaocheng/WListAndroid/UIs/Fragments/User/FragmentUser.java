@@ -1,8 +1,7 @@
-package com.xuxiaocheng.WListAndroid.UIs.Pages.User;
+package com.xuxiaocheng.WListAndroid.UIs.Fragments.User;
 
-import android.view.View;
+import android.view.LayoutInflater;
 import android.widget.TextView;
-import androidx.constraintlayout.widget.ConstraintLayout;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.WList.Client.Assistants.TokenAssistant;
 import com.xuxiaocheng.WList.Client.Operations.OperateServerHelper;
@@ -10,19 +9,18 @@ import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.UIs.ActivityMain;
-import com.xuxiaocheng.WListAndroid.UIs.Pages.PageChooser;
+import com.xuxiaocheng.WListAndroid.UIs.IFragment;
 import com.xuxiaocheng.WListAndroid.databinding.PageUserBinding;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
-public class PageUser implements PageChooser.MainPage {
+public class FragmentUser extends IFragment<PageUserBinding> {
     protected final @NotNull ActivityMain activity;
 
-    public PageUser(final @NotNull ActivityMain activity) {
-        super();
+    public FragmentUser(final @NotNull ActivityMain activity) {
+        super(activity);
         this.activity = activity;
     }
 
@@ -35,13 +33,13 @@ public class PageUser implements PageChooser.MainPage {
     }
 
 
-    private final @NotNull AtomicReference<ConstraintLayout> pageCache = new AtomicReference<>();
     @Override
-    public @NotNull View onShow() {
-        final ConstraintLayout cache = this.pageCache.get();
-        if (cache != null) return cache;
-        final PageUserBinding page = PageUserBinding.inflate(this.activity.getLayoutInflater());
-        this.pageCache.set(page.getRoot());
+    protected @NotNull PageUserBinding onCreate(final @NotNull LayoutInflater inflater) {
+        return PageUserBinding.inflate(inflater);
+    }
+
+    @Override
+    public void onShow(final @NotNull PageUserBinding page) {
         final TextView close = page.pageUserCloseServer;
         final TextView disconnection = page.pageUserDisconnect;
         // TODO
@@ -64,7 +62,6 @@ public class PageUser implements PageChooser.MainPage {
                 clickable.set(true);
             }
         });
-        return page.getRoot();
     }
 
     @Override

@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListAndroid.UIs.Pages.File;
+package com.xuxiaocheng.WListAndroid.UIs.Fragments.File;
 
 import androidx.annotation.UiThread;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
@@ -10,15 +10,15 @@ import org.jetbrains.annotations.NotNull;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PageFilePartPreview {
-    protected final @NotNull PageFile pageFile;
+    protected final @NotNull FragmentFile fragmentFile;
 
-    public PageFilePartPreview(final @NotNull PageFile pageFile) {
+    public PageFilePartPreview(final @NotNull FragmentFile fragmentFile) {
         super();
-        this.pageFile = pageFile;
+        this.fragmentFile = fragmentFile;
     }
 
     private @NotNull ActivityMain activity() {
-        return this.pageFile.activity;
+        return this.fragmentFile.getMainActivity();
     }
 
 
