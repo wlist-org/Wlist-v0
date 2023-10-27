@@ -244,8 +244,15 @@ public class PageFilePartOperation {
     public @Nullable FileLocation queryTargetDirectory(@StringRes final int title/*, final @Nullable FileLocation current*/) throws InterruptedException {
         final CountDownLatch latch = new CountDownLatch(1);
         final AtomicReference<FileLocation> result = new AtomicReference<>();
-        final PageFile page = new PageFile(); // TODO
+        final ActivityMain activity = this.activity();
+        final PageFile page = new PageFile() {
+            @Override
+            public @NotNull ActivityMain activity() {
+                return activity;
+            }
+        }; // TODO
         Main.runOnUiThread(this.activity(), () -> {
+            page.onCreateView(this.activity().getLayoutInflater(), null, null);
             final View p = this.page().getRoot();
             new AlertDialog.Builder(this.activity())
                     .setTitle(title).setView(page.getPage().getRoot())
@@ -256,8 +263,8 @@ public class PageFilePartOperation {
                         latch.countDown();
                     }).show()
                     .getWindow().setLayout(p.getWidth(), p.getHeight());
-            this.page().getRoot().setLayoutParams(new FrameLayout.LayoutParams(p.getWidth(), p.getHeight()));
-            this.page().pageFileUploader.setVisibility(View.GONE);
+            page.getPage().getRoot().setLayoutParams(new FrameLayout.LayoutParams(p.getWidth(), p.getHeight()));
+            page.getPage().pageFileUploader.setVisibility(View.GONE);
         });
         latch.await();
         return result.get();

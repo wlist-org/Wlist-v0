@@ -25,7 +25,6 @@ import java.io.File;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.time.ZonedDateTime;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class ActivityMain extends AppCompatActivity {
@@ -157,8 +156,7 @@ public class ActivityMain extends AppCompatActivity {
                     WListClientManager.removeAllListeners(this.address.getInstance());
                 }
             });
-        } else
-            Main.runOnBackgroundThread(this, this::disconnect, 500, TimeUnit.MILLISECONDS);
+        }
     }
 
     @AnyThread
