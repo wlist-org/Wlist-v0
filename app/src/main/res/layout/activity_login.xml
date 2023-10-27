@@ -154,7 +154,7 @@
 		android:layout_width="0dp"
 		android:layout_height="0dp"
 		android:autoSizeTextType="uniform"
-		android:background="@drawable/activity_login_button"
+		android:background="@drawable/page_connect_login_button"
 		android:gravity="center"
 		android:paddingTop="5dp"
 		android:paddingBottom="5dp"

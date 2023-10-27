@@ -10,7 +10,7 @@
 		android:layout_height="wrap_content"
 		android:layout_marginLeft="30dp"
 		android:layout_marginRight="30dp"
-		android:background="@drawable/activity_login_button"
+		android:background="@drawable/page_connect_login_button"
 		android:gravity="center"
 		android:maxLines="1"
 		android:paddingTop="5dp"
