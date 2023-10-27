@@ -2,6 +2,7 @@ package com.xuxiaocheng.WListAndroid.UIs;
 
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.RemoteException;
 import androidx.annotation.AnyThread;
 import androidx.annotation.UiThread;
 import androidx.appcompat.app.AppCompatActivity;
@@ -24,6 +25,7 @@ import java.io.File;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.time.ZonedDateTime;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class ActivityMain extends AppCompatActivity {
@@ -31,7 +33,7 @@ public class ActivityMain extends AppCompatActivity {
     public @NotNull ActivityMainBinding getContent() {
         return this.contentCache.getInstance();
     }
-    protected final @NotNull FragmentsAdapter fragmentsAdapterInstance = new FragmentsAdapter(this);
+    protected final @NotNull HInitializer<FragmentsAdapter> fragmentsAdapter = new HInitializer<>("FragmentsAdapter");
 
     protected final @NotNull AtomicReference<FragmentsAdapter.FragmentTypes> currentChoice = new AtomicReference<>();
     public FragmentsAdapter.@NotNull FragmentTypes currentChoice() {
@@ -45,10 +47,20 @@ public class ActivityMain extends AppCompatActivity {
         return this.address.isInitialized() && this.username.isInitialized();
     }
     public @NotNull InetSocketAddress address() {
-        return this.address.getInstance();
+        InetSocketAddress address = this.address.getInstanceNullable();
+        if (address == null) {
+            this.disconnect();
+            address = this.address.getInstance();
+        }
+        return address;
     }
     public @NotNull String username() {
-        return this.username.getInstance();
+        String username = this.username.getInstanceNullable();
+        if (username == null) {
+            this.disconnect();
+            username = this.username.getInstance();
+        }
+        return username;
     }
 
     @Override
@@ -60,7 +72,9 @@ public class ActivityMain extends AppCompatActivity {
         final ActivityMainBinding activity = ActivityMainBinding.inflate(this.getLayoutInflater());
         this.setContentView(activity.getRoot());
         this.contentCache.reinitialize(activity);
-        activity.activityMainContent.setAdapter(this.fragmentsAdapterInstance);
+        final FragmentsAdapter fragmentsAdapter = new FragmentsAdapter(this);
+        activity.activityMainContent.setAdapter(fragmentsAdapter);
+        this.fragmentsAdapter.reinitialize(fragmentsAdapter);
         final ChooserButtonGroup fileButton = new ChooserButtonGroup(this, FragmentsAdapter.FragmentTypes.File, activity.activityMainChooserFileImage, R.mipmap.main_chooser_file, R.mipmap.main_chooser_file_chose, activity.activityMainChooserFileText, activity.activityMainChooserFile);
         final ChooserButtonGroup userButton = new ChooserButtonGroup(this, FragmentsAdapter.FragmentTypes.User, activity.activityMainChooserUserImage, R.mipmap.main_chooser_user, R.mipmap.main_chooser_user_chose, activity.activityMainChooserUserText, activity.activityMainChooserUser);
         final ChooserButtonGroup transButton = new ChooserButtonGroup(this, FragmentsAdapter.FragmentTypes.Trans, activity.activityMainTrans, R.mipmap.main_chooser_trans, R.mipmap.main_chooser_trans_chose, null);
@@ -92,13 +106,13 @@ public class ActivityMain extends AppCompatActivity {
                         transButton.setClickable(false);
                     }
                 }
-                final IFragment<?> now = ActivityMain.this.fragmentsAdapterInstance.getFragment(current);
+                final IFragment<?> now = fragmentsAdapter.getFragment(current);
                 final IFragment<?> old = this.oldFragment.getAndSet(now);
                 if (old != null) old.onHide();
                 now.onShow();
             }
         });
-        this.fragmentsAdapterInstance.getAllFragments().forEach(f -> f.onActivityCreateHook(this));
+        fragmentsAdapter.getAllFragments().forEach(f -> f.onActivityCreateHook(this));
         activity.activityMainContent.setCurrentItem(FragmentsAdapter.FragmentTypes.toPosition(FragmentsAdapter.FragmentTypes.File), false);
     }
 
@@ -107,7 +121,7 @@ public class ActivityMain extends AppCompatActivity {
     @Override
     public void onBackPressed() {
         final FragmentsAdapter.FragmentTypes choice = this.currentChoice.get();
-        if (choice != null && this.fragmentsAdapterInstance.getFragment(choice).onBackPressed()) return;
+        if (choice != null && this.fragmentsAdapter.getInstance().getFragment(choice).onBackPressed()) return;
         final ZonedDateTime now = ZonedDateTime.now();
         if (this.lastBackPressedTime != null && Duration.between(this.lastBackPressedTime, now).toMillis() < 2000) {
             this.disconnect();
@@ -143,7 +157,8 @@ public class ActivityMain extends AppCompatActivity {
                     WListClientManager.removeAllListeners(this.address.getInstance());
                 }
             });
-        }
+        } else
+            Main.runOnBackgroundThread(this, this::disconnect, 500, TimeUnit.MILLISECONDS);
     }
 
     @AnyThread
@@ -151,8 +166,15 @@ public class ActivityMain extends AppCompatActivity {
         this.address.reinitialize(address);
         this.username.reinitialize(username);
         this.binder.reinitializeNullable(binder);
+        if (binder != null)
+            try {
+                binder.linkToDeath(this::disconnect, 0);
+            } catch (final RemoteException ignore) {
+                this.disconnect();
+                return;
+            }
         Main.runOnUiThread(this, () -> {
-            this.fragmentsAdapterInstance.notifyConnected(true, this.currentChoice.get());
+            this.fragmentsAdapter.getInstance().notifyConnected(true, this.currentChoice.get());
             Main.runOnBackgroundThread(this, HExceptionWrapper.wrapRunnable(() -> {
                 BroadcastAssistant.start(this.address());
                 ClientConfigurationSupporter.location().reinitialize(new File(this.getExternalFilesDir("client"), "client.yaml"));
@@ -165,7 +187,7 @@ public class ActivityMain extends AppCompatActivity {
                     return;
                 }
                 set.ServerClose.register(id -> Main.runOnUiThread(this, this::disconnect));
-                this.fragmentsAdapterInstance.getAllFragments().forEach(f -> f.onConnected(this));
+                this.fragmentsAdapter.getInstance().getAllFragments().forEach(f -> f.onConnected(this));
             }));
         });
     }
@@ -175,8 +197,8 @@ public class ActivityMain extends AppCompatActivity {
         this.address.uninitializeNullable();
         this.username.uninitializeNullable();
         Main.runOnUiThread(this, () -> {
-            this.fragmentsAdapterInstance.notifyConnected(false, this.currentChoice.get());
-            Main.runOnBackgroundThread(this, () -> this.fragmentsAdapterInstance.getAllFragments().forEach(f -> f.onDisconnected(this)));
+            this.fragmentsAdapter.getInstance().notifyConnected(false, this.currentChoice.get());
+            Main.runOnBackgroundThread(this, () -> this.fragmentsAdapter.getInstance().getAllFragments().forEach(f -> f.onDisconnected(this)));
         });
     }
 
@@ -184,6 +206,7 @@ public class ActivityMain extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Destroying ActivityMain.");
+        this.fragmentsAdapter.uninitializeNullable();
     }
 
     @Override

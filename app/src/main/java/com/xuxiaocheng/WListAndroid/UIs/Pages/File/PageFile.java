@@ -62,7 +62,8 @@ public class PageFile extends IFragment<PageFileBinding> {
     @Override
     @SuppressLint("ClickableViewAccessibility")
     public void onBuild(final @NotNull PageFileBinding page) {
-        page.pageFileList.setLayoutManager(new LinearLayoutManager(this.activity()));
+        final ActivityMain activity = this.activity();
+        page.pageFileList.setLayoutManager(new LinearLayoutManager(activity));
         page.pageFileList.setHasFixedSize(true);
         this.partList.onRootPage(0);
         final AtomicBoolean scrolling = new AtomicBoolean();
@@ -91,7 +92,7 @@ public class PageFile extends IFragment<PageFileBinding> {
                 }
                 case MotionEvent.ACTION_UP -> {
                     if (scrolling.get()) {
-                        this.activity().getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE).edit()
+                        activity.getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE).edit()
                                 .putFloat("x", v.getX()).putFloat("y", v.getY()).apply();
                         this.getPage().pageFileList.requestDisallowInterceptTouchEvent(false);
                     } else return v.performClick();
@@ -99,14 +100,14 @@ public class PageFile extends IFragment<PageFileBinding> {
             }
             return true;
         });
-        Main.runOnBackgroundThread(this.activity(), () -> {
-            final SharedPreferences preferences = this.activity().getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE);
-            final DisplayMetrics displayMetrics = this.activity().getResources().getDisplayMetrics();
+        Main.runOnBackgroundThread(activity, () -> {
+            final SharedPreferences preferences = activity.getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE);
+            final DisplayMetrics displayMetrics = activity.getResources().getDisplayMetrics();
             final float x = preferences.getFloat("x", (displayMetrics.widthPixels - page.pageFileUploader.getWidth()) * 0.8f);
             final float y = preferences.getFloat("y", (displayMetrics.heightPixels - page.pageFileUploader.getHeight()) * 0.7f);
             if (!preferences.contains("x") || !preferences.contains("y"))
                 preferences.edit().putFloat("x", x).putFloat("y", y).apply();
-            Main.runOnUiThread(this.activity(), () -> {
+            Main.runOnUiThread(activity, () -> {
                 page.pageFileUploader.setX(x);
                 page.pageFileUploader.setY(y);
                 page.pageFileUploader.setVisibility(View.VISIBLE);
@@ -117,8 +118,8 @@ public class PageFile extends IFragment<PageFileBinding> {
                 this.partUpload.addStorage();
                 return;
             }
-            final BottomSheetDialog dialog = new BottomSheetDialog(this.activity(), R.style.BottomSheetDialog);
-            final PageFileUploadBinding uploader = PageFileUploadBinding.inflate(this.activity().getLayoutInflater());
+            final BottomSheetDialog dialog = new BottomSheetDialog(activity, R.style.BottomSheetDialog);
+            final PageFileUploadBinding uploader = PageFileUploadBinding.inflate(activity.getLayoutInflater());
             uploader.pageFileUploadCancel.setOnClickListener(v -> dialog.cancel());
             final AtomicBoolean clickable = new AtomicBoolean(true);
             uploader.pageFileUploadStorageImage.setOnClickListener(v -> {

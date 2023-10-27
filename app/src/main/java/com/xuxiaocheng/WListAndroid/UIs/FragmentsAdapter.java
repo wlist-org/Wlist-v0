@@ -13,7 +13,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class FragmentsAdapter extends FragmentStateAdapter {
     public enum FragmentTypes {
@@ -63,10 +62,8 @@ public class FragmentsAdapter extends FragmentStateAdapter {
                 this.fragmentConnectFileInstance, this.fragmentConnectUserInstance, this.fragmentConnectTransInstance);
     }
 
-    private final AtomicBoolean connected = new AtomicBoolean(false);
-
     public @NotNull IFragment<?> getFragment(final @NotNull FragmentTypes type) {
-        return this.connected.get() ? switch (type) {
+        return this.activity.isConnected() ? switch (type) {
             case File -> this.fragmentFileInstance;
             case User -> this.fragmentUserInstance;
             case Trans -> this.fragmentTransInstance;
@@ -79,7 +76,6 @@ public class FragmentsAdapter extends FragmentStateAdapter {
 
     @UiThread
     public void notifyConnected(final boolean connected, final @Nullable FragmentTypes current) {
-        if (!this.connected.compareAndSet(!connected, connected)) return;
         this.notifyItemRangeChanged(0, this.getItemCount());
         this.activity.getContent().activityMainContent.setAdapter(this);
         this.activity.getContent().activityMainContent.setCurrentItem(FragmentTypes.toPosition(Objects.requireNonNullElse(current, FragmentTypes.File)), false);
