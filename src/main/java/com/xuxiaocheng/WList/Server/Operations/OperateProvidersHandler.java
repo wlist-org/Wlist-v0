@@ -23,6 +23,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public final class OperateProvidersHandler {
     private OperateProvidersHandler() {
@@ -77,7 +78,7 @@ public final class OperateProvidersHandler {
                 }));
                 return;
             }
-            BroadcastManager.onProviderInitialized(name);
+            BroadcastManager.onProviderInitialized(name, Objects.requireNonNull(StorageManager.getProvider(name)).getConfiguration().getRootDirectoryId());
             WListServer.ServerChannelHandler.write(channel, MessageProto.Success);
         };
     };

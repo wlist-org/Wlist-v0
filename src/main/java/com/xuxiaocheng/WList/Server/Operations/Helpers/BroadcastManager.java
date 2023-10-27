@@ -50,7 +50,7 @@ public final class BroadcastManager {
     }
 
     /**
-     * @see #onProviderInitialized(String)
+     * @see #onProviderInitialized(String, long)
      * @see #onProviderUninitialized(String)
      * @see #onProviderLogin(String, boolean)
      */
@@ -172,9 +172,10 @@ public final class BroadcastManager {
     }
 
 
-    public static void onProviderInitialized(final @NotNull String storage) {
+    public static void onProviderInitialized(final @NotNull String storage, final long id) {
         BroadcastManager.broadcast(OperationType.AddProvider, buf -> {
             ByteBufIOUtil.writeUTF(buf, storage);
+            ByteBufIOUtil.writeVariableLenLong(buf, id);
             return buf;
         }).addListener(MiscellaneousUtil.exceptionListener());
     }

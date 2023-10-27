@@ -105,7 +105,7 @@ public final class BroadcastAssistant {
         public final @NotNull CallbackSet<Triad.@NotNull ImmutableTriad<@NotNull Long/*id*/, Pair.@NotNull ImmutablePair<@NotNull Long/*groupId*/, @NotNull String/*groupName*/>, @NotNull ZonedDateTime/*updateTime*/>> UserChangeGroup = new CallbackSet<>("UserChangeGroup");
         public final @NotNull CallbackSet<@NotNull Long/*groupId*/> UsersLogoff = new CallbackSet<>("UsersLogoff");
 
-        public final @NotNull CallbackSet<@NotNull String/*storage*/> ProviderInitialized = new CallbackSet<>("ProviderInitialized");
+        public final @NotNull CallbackSet<Pair.@NotNull ImmutablePair<@NotNull String/*storage*/, @NotNull Long/*id*/>> ProviderInitialized = new CallbackSet<>("ProviderInitialized");
         public final @NotNull CallbackSet<@NotNull String/*storage*/> ProviderUninitialized = new CallbackSet<>("ProviderUninitialized");
         public final @NotNull CallbackSet<Pair.@NotNull ImmutablePair<@NotNull String/*storage*/, @NotNull Boolean/*enter*/>> ProviderLogin = new CallbackSet<>("ProviderLogin");
 
@@ -207,7 +207,8 @@ public final class BroadcastAssistant {
 
             case AddProvider -> {
                 final String storage = ByteBufIOUtil.readUTF(buffer);
-                set.ProviderInitialized.callback(storage);
+                final long id = ByteBufIOUtil.readVariableLenLong(buffer);
+                set.ProviderInitialized.callback(Pair.ImmutablePair.makeImmutablePair(storage, id));
             }
             case RemoveProvider -> {
                 final String storage = ByteBufIOUtil.readUTF(buffer);
