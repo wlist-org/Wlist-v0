@@ -82,7 +82,9 @@ public class FragmentsAdapter extends FragmentStateAdapter {
         if (!this.lastConnect.compareAndSet(!connected, connected)) return;
         this.notifyItemRangeChanged(0, this.getItemCount());
         this.activity.getContent().activityMainContent.setAdapter(this);
-        this.activity.getContent().activityMainContent.setCurrentItem(FragmentTypes.toPosition(Objects.requireNonNullElse(current, FragmentTypes.File)), false);
+        final int position = FragmentTypes.toPosition(Objects.requireNonNullElse(current, FragmentTypes.File));
+        this.activity.getContent().activityMainContent.setCurrentItem(position, false);
+//        this.activity.fragmentsCallback.getInstance().onPageSelected(position);
     }
 
     public @NotNull IFragment<?> getFragment(final int position) {

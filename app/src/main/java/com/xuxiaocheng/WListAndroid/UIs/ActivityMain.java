@@ -33,6 +33,7 @@ public class ActivityMain extends AppCompatActivity {
         return this.contentCache.getInstance();
     }
     protected final @NotNull HInitializer<FragmentsAdapter> fragmentsAdapter = new HInitializer<>("FragmentsAdapter");
+    protected final @NotNull HInitializer<ViewPager2.OnPageChangeCallback> fragmentsCallback = new HInitializer<>("FragmentsCallback");
 
     protected final @NotNull AtomicReference<FragmentsAdapter.FragmentTypes> currentChoice = new AtomicReference<>();
     public FragmentsAdapter.@NotNull FragmentTypes currentChoice() {
@@ -77,7 +78,7 @@ public class ActivityMain extends AppCompatActivity {
         final ChooserButtonGroup fileButton = new ChooserButtonGroup(this, FragmentsAdapter.FragmentTypes.File, activity.activityMainChooserFileImage, R.mipmap.main_chooser_file, R.mipmap.main_chooser_file_chose, activity.activityMainChooserFileText, activity.activityMainChooserFile);
         final ChooserButtonGroup userButton = new ChooserButtonGroup(this, FragmentsAdapter.FragmentTypes.User, activity.activityMainChooserUserImage, R.mipmap.main_chooser_user, R.mipmap.main_chooser_user_chose, activity.activityMainChooserUserText, activity.activityMainChooserUser);
         final ChooserButtonGroup transButton = new ChooserButtonGroup(this, FragmentsAdapter.FragmentTypes.Trans, activity.activityMainTrans, R.mipmap.main_chooser_trans, R.mipmap.main_chooser_trans_chose, null);
-        activity.activityMainContent.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+        final ViewPager2.OnPageChangeCallback callback = new ViewPager2.OnPageChangeCallback() {
             private final @NotNull AtomicReference<IFragment<?>> oldFragment = new AtomicReference<>();
 
             @Override
@@ -87,19 +88,19 @@ public class ActivityMain extends AppCompatActivity {
                 ActivityMain.this.currentChoice.set(current);
                 switch (current) {
                     case File -> {
-                        if (fileButton.isClicked()) return;
+                        if (fileButton.isClicked()) break;
                         fileButton.setClickable(false);
                         userButton.setClickable(true);
                         transButton.setClickable(true);
                     }
                     case User -> {
-                        if (userButton.isClicked()) return;
+                        if (userButton.isClicked()) break;
                         fileButton.setClickable(true);
                         userButton.setClickable(false);
                         transButton.setClickable(true);
                     }
                     case Trans -> {
-                        if (transButton.isClicked()) return;
+                        if (transButton.isClicked()) break;
                         fileButton.setClickable(true);
                         userButton.setClickable(true);
                         transButton.setClickable(false);
@@ -107,10 +108,12 @@ public class ActivityMain extends AppCompatActivity {
                 }
                 final IFragment<?> now = fragmentsAdapter.getFragment(current);
                 final IFragment<?> old = this.oldFragment.getAndSet(now);
-                if (old != null) old.onHide();
-                now.onShow();
+                if (old != null) old.onHide(ActivityMain.this);
+                now.onShow(ActivityMain.this);
             }
-        });
+        };
+        activity.activityMainContent.registerOnPageChangeCallback(callback);
+        this.fragmentsCallback.reinitialize(callback);
         fragmentsAdapter.getAllFragments().forEach(f -> f.onActivityCreateHook(this));
         activity.activityMainContent.setCurrentItem(FragmentsAdapter.FragmentTypes.toPosition(FragmentsAdapter.FragmentTypes.File), false);
     }
@@ -120,7 +123,7 @@ public class ActivityMain extends AppCompatActivity {
     @Override
     public void onBackPressed() {
         final FragmentsAdapter.FragmentTypes choice = this.currentChoice.get();
-        if (choice != null && this.fragmentsAdapter.getInstance().getFragment(choice).onBackPressed()) return;
+        if (choice != null && this.fragmentsAdapter.getInstance().getFragment(choice).onBackPressed(this)) return;
         final ZonedDateTime now = ZonedDateTime.now();
         if (this.lastBackPressedTime != null && Duration.between(this.lastBackPressedTime, now).toMillis() < 2000) {
             this.disconnect();
@@ -205,6 +208,7 @@ public class ActivityMain extends AppCompatActivity {
         super.onDestroy();
         HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Destroying ActivityMain.");
         this.fragmentsAdapter.uninitializeNullable();
+        this.fragmentsCallback.uninitializeNullable();
     }
 
     @Override

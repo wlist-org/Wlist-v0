@@ -34,7 +34,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-@SuppressWarnings("ClassHasNoToStringMethod")
 public class PageFile extends IFragment<PageFileBinding> {
     protected final @NotNull PageFilePartList partList = new PageFilePartList(this);
     protected final @NotNull PageFilePartOptions partOptions = new PageFilePartOptions(this);
@@ -43,13 +42,13 @@ public class PageFile extends IFragment<PageFileBinding> {
     protected final @NotNull PageFilePartUpload partUpload = new PageFilePartUpload(this);
 
     @Override
-    public void onShow() {
-        this.activity().getContent().activityMainOptions.setVisibility(View.VISIBLE);
+    public void onShow(final @NotNull ActivityMain activity) {
+        activity.getContent().activityMainOptions.setVisibility(View.VISIBLE);
     }
 
     @Override
-    public void onHide() {
-        this.activity().getContent().activityMainOptions.setVisibility(View.GONE);
+    public void onHide(final @NotNull ActivityMain activity) {
+        activity.getContent().activityMainOptions.setVisibility(View.GONE);
     }
 
     @Override
@@ -61,8 +60,7 @@ public class PageFile extends IFragment<PageFileBinding> {
 
     @Override
     @SuppressLint("ClickableViewAccessibility")
-    public void onBuild(final @NotNull PageFileBinding page) {
-        final ActivityMain activity = this.activity();
+    public void onBuild(final @NotNull ActivityMain activity, final @NotNull PageFileBinding page) {
         page.pageFileList.setLayoutManager(new LinearLayoutManager(activity));
         page.pageFileList.setHasFixedSize(true);
         this.partList.onRootPage(0);
@@ -196,7 +194,7 @@ public class PageFile extends IFragment<PageFileBinding> {
     }
 
     @Override
-    public boolean onBackPressed() {
+    public boolean onBackPressed(final @NotNull ActivityMain activity) {
         return this.partList.popFileList();
     }
 }

@@ -40,8 +40,7 @@ public class PageConnect extends IFragment<PageConnectBinding> {
     private static final @NotNull HInitializer<ServiceConnection> connection = new HInitializer<>("ServiceConnection");
 
     @Override
-    protected void onBuild(final @NotNull PageConnectBinding page) {
-        final ActivityMain activity = this.activity();
+    protected void onBuild(final @NotNull ActivityMain activity, final @NotNull PageConnectBinding page) {
         page.pageConnectionInternalServer.setOnClickListener(v -> {
             if (PageConnect.connection.isInitialized() || !PageConnect.clickable.compareAndSet(true, false)) return;
             final Intent serverIntent = new Intent(activity, InternalServerService.class);

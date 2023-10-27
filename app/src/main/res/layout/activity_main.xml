@@ -38,6 +38,7 @@
 		android:layout_height="50dp"
 		android:adjustViewBounds="true"
 		android:src="@drawable/page_file_options"
+		android:visibility="gone"
 		app:layout_constraintBottom_toBottomOf="@id/activity_main_title"
 		app:layout_constraintRight_toLeftOf="@id/activity_main_trans"
 		app:layout_constraintTop_toTopOf="parent" />

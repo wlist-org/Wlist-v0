@@ -17,17 +17,20 @@ import java.net.InetSocketAddress;
 public abstract class IFragment<P extends ViewBinding> extends Fragment {
     protected final @NotNull HInitializer<P> pageCache = new HInitializer<>("FragmentPageCache");
 
+    @Deprecated
     public @NotNull ActivityMain activity() {
         return (ActivityMain) this.requireActivity();
     }
-    public @NotNull P getPage() {
-        return this.pageCache.getInstance();
-    }
+    @Deprecated
     public @NotNull InetSocketAddress address() {
         return this.activity().address();
     }
+    @Deprecated
     public @NotNull String username() {
         return this.activity().username();
+    }
+    public @NotNull P getPage() {
+        return this.pageCache.getInstance();
     }
 
     @Override
@@ -35,7 +38,7 @@ public abstract class IFragment<P extends ViewBinding> extends Fragment {
     public @NotNull View onCreateView(final @NotNull LayoutInflater inflater, final @Nullable ViewGroup container, final @Nullable Bundle savedInstanceState) {
         final P page = this.onCreate(inflater);
         this.pageCache.reinitialize(page);
-        this.onBuild(page);
+        this.onBuild((ActivityMain) this.requireActivity(), page);
         return page.getRoot();
     }
 
@@ -43,18 +46,18 @@ public abstract class IFragment<P extends ViewBinding> extends Fragment {
     protected abstract @NotNull P onCreate(final @NotNull LayoutInflater inflater);
 
     @UiThread
-    protected abstract void onBuild(final @NotNull P page);
+    protected abstract void onBuild(final @NotNull ActivityMain activity, final @NotNull P page);
 
     @UiThread
-    public void onShow() {
+    public void onShow(final @NotNull ActivityMain activity) {
     }
 
     @UiThread
-    public void onHide() {
+    public void onHide(final @NotNull ActivityMain activity) {
     }
 
     @UiThread
-    public boolean onBackPressed() {
+    public boolean onBackPressed(final @NotNull ActivityMain activity) {
         return false;
     }
 
