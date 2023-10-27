@@ -43,70 +43,70 @@ public class PageConnect extends IFragment<PageConnectBinding> {
     protected void onBuild(final @NotNull PageConnectBinding page) {
         final ActivityMain activity = this.activity();
         page.pageConnectionInternalServer.setOnClickListener(v -> {
-            if (!PageConnect.clickable.compareAndSet(true, false)) return;
+            if (PageConnect.connection.isInitialized() || !PageConnect.clickable.compareAndSet(true, false)) return;
             final Intent serverIntent = new Intent(activity, InternalServerService.class);
             final HLog logger = HLogManager.getInstance("DefaultLogger");
             logger.log(HLogLevel.LESS, "Starting internal server...");
-            page.pageConnectionInternalServer.setText(R.string.page_connect_internal_server_starting);
-            activity.startService(serverIntent);
-            if (!PageConnect.connection.initializeIfNot(() -> {
-                final ServiceConnection service = new ServiceConnection() {
-                    private final @NotNull TextView text = PageConnect.this.getPage().pageConnectionInternalServer;
-                    private final @NotNull HInitializer<InetSocketAddress> address = new HInitializer<>("InternalServerAddress");
+            final TextView text = page.pageConnectionInternalServer;
+            final ServiceConnection connection = new ServiceConnection() {
+                private final @NotNull HInitializer<InetSocketAddress> address = new HInitializer<>("InternalServerAddress");
 
-                    @Override
-                    public void onServiceConnected(final ComponentName name, final @NotNull IBinder iService) {
+                @Override
+                public void onServiceConnected(final ComponentName name, final @NotNull IBinder iService) {
+                    Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> {
+                        final InetSocketAddress address = InternalServerBinder.getAddress(iService);
+                        if (address == null) {
+                            activity.unbindService(this);
+                            PageConnect.connection.uninitializeNullable();
+                            Main.showToast(activity, R.string.page_connect_closing);
+                            return;
+                        }
                         final HLog logger = HLogManager.getInstance("DefaultLogger");
-                        Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> {
-                            final InetSocketAddress address = InternalServerBinder.getAddress(iService);
-                            if (address == null) {
-                                activity.unbindService(this);
-                                Main.showToast(activity, R.string.page_connect_closing);
-                                return;
-                            }
-                            logger.log(HLogLevel.FINE, "Connecting to service: ", address);
-                            Main.runOnUiThread(activity, () -> this.text.setText(R.string.page_connect_connecting));
-                            this.address.initialize(address);
-                            WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
-                            logger.log(HLogLevel.LESS, "Clients initialized.");
-                            final String initPassword = InternalServerBinder.getAndDeleteAdminPassword(iService);
-                            final String password = PasswordHelper.updateInternalPassword(activity, IdentifierNames.UserName.Admin.getIdentifier(), initPassword);
-                            logger.log(HLogLevel.INFO, "Got server password.", ParametersMap.create().add("init", initPassword != null).add("password", password));
-                            Main.runOnUiThread(activity, () -> this.text.setText(R.string.page_connect_logging_in));
-                            if (password == null || !TokenAssistant.login(address, IdentifierNames.UserName.Admin.getIdentifier(), password, Main.ClientExecutors)) {
-                                // TODO get password from user.
-                                Main.runOnUiThread(activity, () -> Toast.makeText(activity, "No password!!!", Toast.LENGTH_SHORT).show());
-                                return;
-                            }
-                            activity.connect(address, IdentifierNames.UserName.Admin.getIdentifier(), iService);
-                        }, e -> {
-                            Main.runOnUiThread(activity, () -> this.text.setText(R.string.page_connect_internal_server));
-                            PageConnect.clickable.set(true);
-                            if (e != null) {
-                                logger.log(HLogLevel.FAULT, "Failed to initialize wlist clients.", e);
-                                Main.showToast(activity, R.string.toast_fatal_application_initialization);
-                            }
-                        }, true));
-                    }
-
-                    @Override
-                    public void onServiceDisconnected(final ComponentName name) {
+                        logger.log(HLogLevel.FINE, "Connecting to service: ", address);
+                        Main.runOnUiThread(activity, () -> text.setText(R.string.page_connect_connecting));
+                        this.address.initialize(address);
+                        WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
+                        logger.log(HLogLevel.LESS, "Clients initialized.");
+                        final String initPassword = InternalServerBinder.getAndDeleteAdminPassword(iService);
+                        final String password = PasswordHelper.updateInternalPassword(activity, IdentifierNames.UserName.Admin.getIdentifier(), initPassword);
+                        logger.log(HLogLevel.INFO, "Got server password.", ParametersMap.create().add("init", initPassword != null).add("password", password));
+                        Main.runOnUiThread(activity, () -> text.setText(R.string.page_connect_logging_in));
+                        if (password == null || !TokenAssistant.login(address, IdentifierNames.UserName.Admin.getIdentifier(), password, Main.ClientExecutors)) {
+                            // TODO get password from user.
+                            Main.runOnUiThread(activity, () -> Toast.makeText(activity, "No password!!!", Toast.LENGTH_SHORT).show());
+                            return;
+                        }
+                        activity.connect(address, IdentifierNames.UserName.Admin.getIdentifier(), iService);
+                    }, e -> {
+                        Main.runOnUiThread(activity, () -> text.setText(R.string.page_connect_internal_server));
                         PageConnect.clickable.set(true);
-                        final HLog logger = HLogManager.getInstance("DefaultLogger");
-                        Main.runOnBackgroundThread(activity, () -> {
-                            final InetSocketAddress address = this.address.uninitializeNullable();
-                            if (address != null) {
-                                logger.log(HLogLevel.INFO, "Disconnecting to service: ", activity.address());
-                                WListClientManager.quicklyUninitialize(address);
-                            }
-                        });
-                        Main.showToast(activity, R.string.page_connect_internal_server_disconnected);
-                        activity.disconnect();
-                    }
-                };
-                activity.bindService(serverIntent, service, Context.BIND_AUTO_CREATE | Context.BIND_ABOVE_CLIENT | Context.BIND_IMPORTANT);
-                return service;
-            })) PageConnect.clickable.set(true);
+                        if (e != null) {
+                            logger.log(HLogLevel.FAULT, "Failed to initialize wlist clients.", e);
+                            Main.showToast(activity, R.string.toast_fatal_application_initialization);
+                        }
+                    }, true));
+                }
+
+                @Override
+                public void onServiceDisconnected(final ComponentName name) {
+                    PageConnect.clickable.set(true);
+                    final HLog logger = HLogManager.getInstance("DefaultLogger");
+                    logger.log(HLogLevel.FAULT, "Disconnecting to service.");
+                    Main.runOnBackgroundThread(activity, () -> {
+                        final InetSocketAddress address = this.address.uninitializeNullable();
+                        if (address != null) {
+                            logger.log(HLogLevel.INFO, "Disconnecting to service: ", activity.address());
+                            WListClientManager.quicklyUninitialize(address);
+                        }
+                    });
+                    Main.showToast(activity, R.string.page_connect_internal_server_disconnected);
+                    activity.disconnect();
+                }
+            };
+            text.setText(R.string.page_connect_internal_server_starting);
+            activity.startService(serverIntent);
+            PageConnect.connection.initialize(connection);
+            activity.bindService(serverIntent, connection, Context.BIND_AUTO_CREATE | Context.BIND_ABOVE_CLIENT | Context.BIND_IMPORTANT);
         });
 //        activity.activityLoginIcon.setOnClickListener(v -> { // TODO
 //            if (!clickable.compareAndSet(true, false)) return;
