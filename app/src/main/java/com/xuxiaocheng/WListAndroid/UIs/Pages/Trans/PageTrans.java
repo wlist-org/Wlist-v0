@@ -16,4 +16,10 @@ public class PageTrans extends IFragment<PageTransBinding> {
     protected void onBuild(final @NotNull ActivityMain activity, final @NotNull PageTransBinding page) {
 
     }
+    @Override
+    public @NotNull String toString() {
+        return "PageTrans{" +
+                "super=" + super.toString() +
+                '}';
+    }
 }

@@ -63,7 +63,7 @@ public class PageFile extends IFragment<PageFileBinding> {
     public void onBuild(final @NotNull ActivityMain activity, final @NotNull PageFileBinding page) {
         page.pageFileList.setLayoutManager(new LinearLayoutManager(activity));
         page.pageFileList.setHasFixedSize(true);
-        this.partList.onRootPage(0);
+        this.partList.onRootPage(activity, 0);
         final AtomicBoolean scrolling = new AtomicBoolean();
         final AtomicInteger startX = new AtomicInteger(), startY = new AtomicInteger();
         final AtomicReference<ZonedDateTime> startTime = new AtomicReference<>();
@@ -113,7 +113,7 @@ public class PageFile extends IFragment<PageFileBinding> {
         }, 300, TimeUnit.MILLISECONDS);
         page.pageFileUploader.setOnClickListener(u -> {
             if (this.partList.isOnRoot()) {
-                this.partUpload.addStorage();
+                this.partUpload.addStorage(activity);
                 return;
             }
             final BottomSheetDialog dialog = new BottomSheetDialog(activity, R.style.BottomSheetDialog);
@@ -123,13 +123,13 @@ public class PageFile extends IFragment<PageFileBinding> {
             uploader.pageFileUploadStorageImage.setOnClickListener(v -> {
                 if (!clickable.compareAndSet(true, false)) return;
                 dialog.cancel();
-                this.partUpload.addStorage();
+                this.partUpload.addStorage(activity);
             });
             uploader.pageFileUploadStorageText.setOnClickListener(v -> uploader.pageFileUploadStorageImage.performClick());
             uploader.pageFileUploadDirectoryImage.setOnClickListener(v -> {
                 if (this.partList.isOnRoot() || !clickable.compareAndSet(true, false)) return;
                 dialog.cancel();
-                this.partUpload.createDirectory();
+                this.partUpload.createDirectory(activity);
             });
             uploader.pageFileUploadDirectoryText.setOnClickListener(v -> uploader.pageFileUploadDirectoryImage.performClick());
             uploader.pageFileUploadFileImage.setOnClickListener(v -> {
@@ -160,7 +160,7 @@ public class PageFile extends IFragment<PageFileBinding> {
     public void onActivityCreateHook(final @NotNull ActivityMain activity) {
         this.chooserLauncher.reinitialize(activity.registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
             if (uri != null)
-                this.partUpload.uploadFile(uri);
+                this.partUpload.uploadFile(activity, uri);
         }));
         activity.getContent().activityMainOptions.setOnClickListener(v -> {
             if (activity.currentChoice() != FragmentsAdapter.FragmentTypes.File) return;
@@ -178,11 +178,11 @@ public class PageFile extends IFragment<PageFileBinding> {
                 if (!clickable.compareAndSet(true, false)) return;
                 popup.dismiss();
                 if (pos == 0)
-                    this.partOptions.refresh();
+                    this.partOptions.refresh(activity);
                 if (pos == 1)
-                    this.partOptions.sort();
+                    this.partOptions.sort(activity);
                 if (pos == 2)
-                    this.partOptions.filter();
+                    this.partOptions.filter(activity);
             });
             popup.show();
         });
@@ -190,11 +190,24 @@ public class PageFile extends IFragment<PageFileBinding> {
 
     @Override
     public void onConnected(final @NotNull ActivityMain activity) {
-        this.partList.listenBroadcast(BroadcastAssistant.get(activity.address()));
+        this.partList.listenBroadcast(activity, BroadcastAssistant.get(activity.address()));
     }
 
     @Override
     public boolean onBackPressed(final @NotNull ActivityMain activity) {
-        return this.partList.popFileList();
+        return this.partList.popFileList(activity);
+    }
+
+    @Override
+    public @NotNull String toString() {
+        return "PageFile{" +
+                "partList=" + this.partList +
+                ", partOptions=" + this.partOptions +
+                ", partOperation=" + this.partOperation +
+                ", partPreview=" + this.partPreview +
+                ", partUpload=" + this.partUpload +
+                ", chooserLauncher=" + this.chooserLauncher +
+                ", super=" + super.toString() +
+                '}';
     }
 }

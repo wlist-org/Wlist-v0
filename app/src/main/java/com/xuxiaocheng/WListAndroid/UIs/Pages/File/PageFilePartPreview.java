@@ -17,14 +17,9 @@ public class PageFilePartPreview {
         this.pageFile = pageFile;
     }
 
-    private @NotNull ActivityMain activity() {
-        return this.pageFile.activity();
-    }
-
-
     @UiThread
-    protected void preview(final @NotNull String storage, final @NotNull VisibleFileInformation information, final @NotNull AtomicBoolean clickable) {
-        Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
+    protected void preview(final @NotNull ActivityMain activity, final @NotNull String storage, final @NotNull VisibleFileInformation information, final @NotNull AtomicBoolean clickable) {
+        Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> {
             throw new UnsupportedOperationException("WIP");
         }, () -> clickable.set(true))); // TODO
     }

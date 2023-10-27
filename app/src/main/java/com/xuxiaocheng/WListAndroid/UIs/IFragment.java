@@ -9,28 +9,40 @@ import androidx.annotation.WorkerThread;
 import androidx.fragment.app.Fragment;
 import androidx.viewbinding.ViewBinding;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
+import com.xuxiaocheng.WList.Client.Assistants.TokenAssistant;
+import com.xuxiaocheng.WList.Client.WListClientInterface;
+import com.xuxiaocheng.WList.Client.WListClientManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 
 public abstract class IFragment<P extends ViewBinding> extends Fragment {
     protected final @NotNull HInitializer<P> pageCache = new HInitializer<>("FragmentPageCache");
 
-    @Deprecated
-    public @NotNull ActivityMain activity() {
-        return (ActivityMain) this.requireActivity();
-    }
-    @Deprecated
-    public @NotNull InetSocketAddress address() {
-        return this.activity().address();
-    }
-    @Deprecated
-    public @NotNull String username() {
-        return this.activity().username();
-    }
     public @NotNull P getPage() {
         return this.pageCache.getInstance();
+    }
+    public @NotNull InetSocketAddress address(final @NotNull ActivityMain activity) {
+        return activity.address();
+    }
+    public @NotNull String username(final @NotNull ActivityMain activity) {
+        return activity.username();
+    }
+    public @NotNull WListClientInterface client(final @NotNull ActivityMain activity) throws IOException {
+        return WListClientManager.quicklyGetClient(activity.address());
+    }
+    public @NotNull String token(final @NotNull ActivityMain activity) {
+        return TokenAssistant.getToken(activity.address(), activity.username());
+    }
+
+    /**
+     * Inject Only.
+     */
+    @Deprecated
+    protected @NotNull ActivityMain activity() {
+        return (ActivityMain) this.requireActivity();
     }
 
     @Override
@@ -38,7 +50,7 @@ public abstract class IFragment<P extends ViewBinding> extends Fragment {
     public @NotNull View onCreateView(final @NotNull LayoutInflater inflater, final @Nullable ViewGroup container, final @Nullable Bundle savedInstanceState) {
         final P page = this.onCreate(inflater);
         this.pageCache.reinitialize(page);
-        this.onBuild((ActivityMain) this.requireActivity(), page);
+        this.onBuild(this.activity(), page);
         return page.getRoot();
     }
 

@@ -127,4 +127,11 @@ public class PageConnect extends IFragment<PageConnectBinding> {
         if (connection != null)
             activity.unbindService(connection);
     }
+
+    @Override
+    public @NotNull String toString() {
+        return "PageConnect{" +
+                "super=" + super.toString() +
+                '}';
+    }
 }

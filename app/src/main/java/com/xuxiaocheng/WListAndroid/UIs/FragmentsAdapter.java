@@ -34,7 +34,7 @@ public class FragmentsAdapter extends FragmentStateAdapter {
                 case 0 -> FragmentTypes.Trans;
                 case 1 -> FragmentTypes.File;
                 case 2 -> FragmentTypes.User;
-                default -> {throw new IllegalArgumentException("Invalid fragment position." + ParametersMap.create().add("position", position));}
+                default -> throw new IllegalArgumentException("Invalid fragment position." + ParametersMap.create().add("position", position));
             };
         }
     }

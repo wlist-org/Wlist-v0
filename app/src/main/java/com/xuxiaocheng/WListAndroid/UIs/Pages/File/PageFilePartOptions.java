@@ -36,38 +36,33 @@ public class PageFilePartOptions {
         this.pageFile = pageFile;
     }
 
-    private @NotNull ActivityMain activity() {
-        return this.pageFile.activity();
-    }
-
-    
     @UiThread
-    protected void refresh() {
-        final PageFileOptionsRefreshBinding refresh = PageFileOptionsRefreshBinding.inflate(this.activity().getLayoutInflater());
-        new AlertDialog.Builder(this.activity())
+    protected void refresh(final @NotNull ActivityMain activity) {
+        final PageFileOptionsRefreshBinding refresh = PageFileOptionsRefreshBinding.inflate(activity.getLayoutInflater());
+        new AlertDialog.Builder(activity)
                 .setTitle(R.string.page_file_options_refresh)
                 .setView(refresh.getRoot())
                 .setNegativeButton(R.string.cancel, null)
                 .setPositiveButton(R.string.confirm, (d, h) -> {
                     final FileLocation location = this.pageFile.partList.currentLocation();
                     final AtomicLong max = new AtomicLong(0);
-                    Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
-                        this.pageFile.partList.listLoadingAnimation(true, 0, 0);
+                    Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> {
+                        this.pageFile.partList.listLoadingAnimation(activity, true, 0, 0);
                         if (this.pageFile.partList.isOnRoot()) return;
-                        FilesAssistant.refresh(this.activity().address(), this.activity().username(), location, Main.ClientExecutors, state -> {
+                        FilesAssistant.refresh(activity.address(), activity.username(), location, Main.ClientExecutors, state -> {
                             final Pair.ImmutablePair<Long, Long> pair = InstantaneousProgressStateGetter.merge(state);
                             max.set(pair.getSecond().longValue());
-                            this.pageFile.partList.listLoadingAnimation(true, pair.getFirst().longValue(), pair.getSecond().longValue());
+                            this.pageFile.partList.listLoadingAnimation(activity, true, pair.getFirst().longValue(), pair.getSecond().longValue());
                         });
-                    }, () -> this.pageFile.partList.listLoadingAnimation(false, max.get(), max.get())));
+                    }, () -> this.pageFile.partList.listLoadingAnimation(activity, false, max.get(), max.get())));
                 }).show();
     }
     
     
     @UiThread
-    protected void sort() {
-        final PageFileOptionsSorterBinding sorter = PageFileOptionsSorterBinding.inflate(this.activity().getLayoutInflater());
-        final SharedPreferences saved = this.activity().getSharedPreferences("page_file_options_sorter", Context.MODE_PRIVATE);
+    protected void sort(final @NotNull ActivityMain activity) {
+        final PageFileOptionsSorterBinding sorter = PageFileOptionsSorterBinding.inflate(activity.getLayoutInflater());
+        final SharedPreferences saved = activity.getSharedPreferences("page_file_options_sorter", Context.MODE_PRIVATE);
         final AtomicReference<FileInformationGetter.Order> orderPolicy = new AtomicReference<>();
         final AtomicReference<OrderDirection> orderDirection = new AtomicReference<>();
         if (!saved.getBoolean("advanced", false)) {
@@ -88,16 +83,16 @@ public class PageFilePartOptions {
         sorter.pageFileOptionsSorterTime.setOnClickListener(r -> orderPolicy.set(FileInformationGetter.Order.UpdateTime));
         sorter.pageFileOptionsSorterAscend.setOnClickListener(r -> orderDirection.set(OrderDirection.ASCEND));
         sorter.pageFileOptionsSorterDescend.setOnClickListener(r -> orderDirection.set(OrderDirection.DESCEND));
-        new AlertDialog.Builder(this.activity())
+        new AlertDialog.Builder(activity)
                 .setTitle(R.string.page_file_options_sorter)
                 .setView(sorter.getRoot())
                 .setNegativeButton(R.string.cancel, null)
-                .setPositiveButton(R.string.confirm, (d, h) -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
+                .setPositiveButton(R.string.confirm, (d, h) -> Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> {
                     final FileInformationGetter.Order policy = orderPolicy.get();
                     final OrderDirection direction = orderDirection.get();
                     if (policy == null || direction == null) {
-                        Main.showToast(this.activity(), R.string.page_file_options_sorter_not_chose);
-                        Main.runOnUiThread(this.activity(), this::sort);
+                        Main.showToast(activity, R.string.page_file_options_sorter_not_chose);
+                        Main.runOnUiThread(activity, () -> this.sort(activity));
                         return;
                     }
                     saved.edit().putBoolean("advanced", false).putString("policy", policy.name()).putString("direction", direction.name()).apply();
@@ -120,21 +115,19 @@ public class PageFilePartOptions {
                             ClientConfigurationSupporter.copyNoTempFile(old)));
                     final FileLocation location = this.pageFile.partList.currentLocation();
                     if (IdentifierNames.RootSelector.equals(FileLocationGetter.storage(location)))
-                        Main.runOnUiThread(this.activity(), () -> this.pageFile.partList.onRootPage(this.pageFile.partList.getCurrentPosition()));
+                        Main.runOnUiThread(activity, () -> this.pageFile.partList.onRootPage(activity, this.pageFile.partList.getCurrentPosition()));
                     else
-                        Main.runOnUiThread(this.activity(), () -> this.pageFile.partList.onInsidePage(this.pageFile.getPage().pageFileName.getText(), location, this.pageFile.partList.getCurrentPosition()));
-                }))).setNegativeButton(R.string.advance, (d, h) -> {
-                    this.sortAdvance();
-                }).show();
-    }
-    
-    @UiThread
-    protected void sortAdvance() {
-        Main.runOnBackgroundThread(this.activity(), () -> {throw new RuntimeException("WIP");}); // TODO
+                        Main.runOnUiThread(activity, () -> this.pageFile.partList.onInsidePage(activity, this.pageFile.getPage().pageFileName.getText(), location, this.pageFile.partList.getCurrentPosition()));
+                }))).setNeutralButton(R.string.advance, (d, h) -> this.sortAdvance(activity)).show();
     }
 
     @UiThread
-    protected void filter() {
-        Main.runOnBackgroundThread(this.activity(), () -> {throw new RuntimeException("WIP");}); // TODO
+    protected void sortAdvance(final @NotNull ActivityMain activity) {
+        Main.runOnBackgroundThread(activity, () -> {throw new RuntimeException("WIP");}); // TODO
+    }
+
+    @UiThread
+    protected void filter(final @NotNull ActivityMain activity) {
+        Main.runOnBackgroundThread(activity, () -> {throw new RuntimeException("WIP");}); // TODO
     }
 }

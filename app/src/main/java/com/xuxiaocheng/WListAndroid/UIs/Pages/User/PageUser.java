@@ -1,12 +1,9 @@
 package com.xuxiaocheng.WListAndroid.UIs.Pages.User;
 
 import android.view.LayoutInflater;
-import android.widget.TextView;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
-import com.xuxiaocheng.WList.Client.Assistants.TokenAssistant;
 import com.xuxiaocheng.WList.Client.Operations.OperateServerHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
-import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.UIs.ActivityMain;
 import com.xuxiaocheng.WListAndroid.UIs.IFragment;
@@ -23,28 +20,32 @@ public class PageUser extends IFragment<PageUserBinding> {
 
     @Override
     public void onBuild(final @NotNull ActivityMain activity, final @NotNull PageUserBinding page) {
-        final TextView close = page.pageUserCloseServer;
-        final TextView disconnection = page.pageUserDisconnect;
         // TODO
         final AtomicBoolean clickable = new AtomicBoolean(true);
-        close.setOnClickListener(v -> {
+        page.pageUserCloseServer.setOnClickListener(v -> {
             if (!clickable.compareAndSet(true, false))
                 return;
-            Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
-                try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address())) {
-                    OperateServerHelper.closeServer(client, TokenAssistant.getToken(this.address(), this.username()));
+            Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> {
+                try (final WListClientInterface client = this.client(activity)) {
+                    OperateServerHelper.closeServer(client, this.token(activity));
                 }
             }, () -> clickable.set(true)));
         });
-        disconnection.setOnClickListener(v -> {
+        page.pageUserDisconnect.setOnClickListener(v -> {
             if (!clickable.compareAndSet(true, false))
                 return;
             try {
-                this.activity().disconnect();
+                activity.disconnect();
             } finally {
                 clickable.set(true);
             }
         });
     }
 
+    @Override
+    public @NotNull String toString() {
+        return "PageUser{" +
+                "super=" + super.toString() +
+                '}';
+    }
 }
