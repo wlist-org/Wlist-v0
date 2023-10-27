@@ -39,6 +39,7 @@ import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
 import org.jetbrains.annotations.NotNull;
 
+import java.net.InetSocketAddress;
 import java.text.MessageFormat;
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -47,6 +48,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
+@SuppressWarnings("ClassHasNoToStringMethod")
 public class PageFilePartList {
     protected final @NotNull PageFile pageFile;
 
@@ -56,11 +58,16 @@ public class PageFilePartList {
     }
 
     private @NotNull ActivityMain activity() {
-        return this.pageFile.getMainActivity();
+        return this.pageFile.activity();
     }
-
     private @NotNull PageFileBinding page() {
         return this.pageFile.getPage();
+    }
+    private @NotNull InetSocketAddress address() {
+        return this.activity().address();
+    }
+    private @NotNull String username() {
+        return this.activity().username();
     }
 
 
@@ -221,7 +228,7 @@ public class PageFilePartList {
                                     return true;
                                 }, PageFilePartList.this::listLoadingCallback);
                     } catch (final IllegalStateException exception) { // Server closed.
-                        Main.runOnUiThread(PageFilePartList.this.activity(), PageFilePartList.this.activity()::close);
+                        Main.runOnUiThread(PageFilePartList.this.activity(), PageFilePartList.this.activity()::disconnect);
                         return;
                     } finally {
                         if (showed.get()) {

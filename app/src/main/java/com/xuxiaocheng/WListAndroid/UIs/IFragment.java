@@ -12,32 +12,31 @@ import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.net.InetSocketAddress;
+
 public abstract class IFragment<P extends ViewBinding> extends Fragment {
-    protected final @NotNull ActivityMain mainActivity;
     protected final @NotNull HInitializer<P> pageCache = new HInitializer<>("FragmentPageCache");
 
-    protected IFragment(final @NotNull ActivityMain mainActivity) {
-        super();
-        this.mainActivity = mainActivity;
+    public @NotNull ActivityMain activity() {
+        return (ActivityMain) this.requireActivity();
     }
-
-    public @NotNull ActivityMain getMainActivity() {
-        return this.mainActivity;
-    }
-
     public @NotNull P getPage() {
-        final P cache = this.pageCache.getInstanceNullable();
-        if (cache != null) return cache;
-        final P page = this.onCreate(this.mainActivity.getLayoutInflater());
-        this.pageCache.initialize(page);
-        this.onBuild(page);
-        return page;
+        return this.pageCache.getInstance();
+    }
+    public @NotNull InetSocketAddress address() {
+        return this.activity().address();
+    }
+    public @NotNull String username() {
+        return this.activity().username();
     }
 
     @Override
     @UiThread
     public @NotNull View onCreateView(final @NotNull LayoutInflater inflater, final @Nullable ViewGroup container, final @Nullable Bundle savedInstanceState) {
-        return this.getPage().getRoot();
+        final P page = this.onCreate(inflater);
+        this.pageCache.reinitialize(page);
+        this.onBuild(page);
+        return page.getRoot();
     }
 
     @UiThread
@@ -47,28 +46,20 @@ public abstract class IFragment<P extends ViewBinding> extends Fragment {
     protected abstract void onBuild(final @NotNull P page);
 
     @UiThread
-    public void onShow() {
-    }
-
-    @UiThread
-    public void onHide() {
-    }
-
-    @UiThread
     public boolean onBackPressed() {
         return false;
     }
 
     @UiThread
-    public void onActivityCreateHook() {
+    public void onActivityCreateHook(final @NotNull ActivityMain activity) {
     }
 
     @WorkerThread
-    public void onConnected() {
+    public void onConnected(final @NotNull ActivityMain activity) {
     }
 
     @WorkerThread
-    public void onDisconnected() {
+    public void onDisconnected(final @NotNull ActivityMain activity) {
     }
 
     @Override

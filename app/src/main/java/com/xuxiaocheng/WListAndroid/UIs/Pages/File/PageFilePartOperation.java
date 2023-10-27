@@ -52,7 +52,7 @@ public class PageFilePartOperation {
     }
 
     private @NotNull ActivityMain activity() {
-        return this.pageFile.getMainActivity();
+        return this.pageFile.activity();
     }
 
     private @NotNull PageFileBinding page() {
@@ -244,7 +244,7 @@ public class PageFilePartOperation {
     public @Nullable FileLocation queryTargetDirectory(@StringRes final int title/*, final @Nullable FileLocation current*/) throws InterruptedException {
         final CountDownLatch latch = new CountDownLatch(1);
         final AtomicReference<FileLocation> result = new AtomicReference<>();
-        final PageFile page = new PageFile(this.activity()); // TODO
+        final PageFile page = new PageFile(); // TODO
         Main.runOnUiThread(this.activity(), () -> {
             final View p = this.page().getRoot();
             new AlertDialog.Builder(this.activity())

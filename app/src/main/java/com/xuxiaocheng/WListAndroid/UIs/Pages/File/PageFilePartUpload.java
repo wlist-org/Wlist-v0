@@ -53,7 +53,7 @@ public class PageFilePartUpload {
     }
 
     private @NotNull ActivityMain activity() {
-        return this.pageFile.getMainActivity();
+        return this.pageFile.activity();
     }
 
     private @NotNull FileLocation currentLocation() {

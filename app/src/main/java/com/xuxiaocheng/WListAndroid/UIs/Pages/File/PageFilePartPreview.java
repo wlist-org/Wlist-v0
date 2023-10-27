@@ -18,7 +18,7 @@ public class PageFilePartPreview {
     }
 
     private @NotNull ActivityMain activity() {
-        return this.pageFile.getMainActivity();
+        return this.pageFile.activity();
     }
 
 

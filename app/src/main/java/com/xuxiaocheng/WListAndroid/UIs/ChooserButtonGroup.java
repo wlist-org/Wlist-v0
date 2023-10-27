@@ -42,10 +42,6 @@ public final class ChooserButtonGroup {
         this.button.setOnClickListener(v -> activity.getContent().activityMainContent.setCurrentItem(FragmentsAdapter.FragmentTypes.toPosition(type)));
     }
 
-    public void callOnClick() {
-        this.button.callOnClick();
-    }
-
     @UiThread
     public void setClickable(final boolean clickable) {
         if (this.button.isClickable() == clickable)

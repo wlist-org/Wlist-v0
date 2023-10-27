@@ -8,31 +8,13 @@ import com.xuxiaocheng.WList.Client.Operations.OperateServerHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WListAndroid.Main;
-import com.xuxiaocheng.WListAndroid.UIs.ActivityMain;
 import com.xuxiaocheng.WListAndroid.UIs.IFragment;
 import com.xuxiaocheng.WListAndroid.databinding.PageUserBinding;
 import org.jetbrains.annotations.NotNull;
 
-import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PageUser extends IFragment<PageUserBinding> {
-    protected final @NotNull ActivityMain activity;
-
-    public PageUser(final @NotNull ActivityMain activity) {
-        super(activity);
-        this.activity = activity;
-    }
-
-    protected @NotNull InetSocketAddress address() {
-        return this.activity.address();
-    }
-
-    protected @NotNull String username() {
-        return this.activity.username();
-    }
-
-
     @Override
     protected @NotNull PageUserBinding onCreate(final @NotNull LayoutInflater inflater) {
         return PageUserBinding.inflate(inflater);
@@ -47,7 +29,7 @@ public class PageUser extends IFragment<PageUserBinding> {
         close.setOnClickListener(v -> {
             if (!clickable.compareAndSet(true, false))
                 return;
-            Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
+            Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
                 try (final WListClientInterface client = WListClientManager.quicklyGetClient(this.address())) {
                     OperateServerHelper.closeServer(client, TokenAssistant.getToken(this.address(), this.username()));
                 }
@@ -57,18 +39,11 @@ public class PageUser extends IFragment<PageUserBinding> {
             if (!clickable.compareAndSet(true, false))
                 return;
             try {
-                this.activity.close();
+                this.activity().disconnect();
             } finally {
                 clickable.set(true);
             }
         });
     }
 
-    @Override
-    public @NotNull String toString() {
-        return "PageUser{" +
-                "activity=" + this.activity +
-                ", pageCache=" + this.pageCache +
-                '}';
-    }
 }

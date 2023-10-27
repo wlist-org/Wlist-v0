@@ -31,63 +31,60 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PageConnect extends IFragment<PageConnectBinding> {
-    public PageConnect(final @NotNull ActivityMain mainActivity) {
-        super(mainActivity);
-    }
-
     @Override
     protected @NotNull PageConnectBinding onCreate(final @NotNull LayoutInflater inflater) {
         return PageConnectBinding.inflate(inflater);
     }
 
     private static final @NotNull AtomicBoolean clickable = new AtomicBoolean(true);
-    private final @NotNull HInitializer<ServiceConnection> connection = new HInitializer<>("ServiceConnection");
+    private static final @NotNull HInitializer<ServiceConnection> connection = new HInitializer<>("ServiceConnection");
 
     @Override
     protected void onBuild(final @NotNull PageConnectBinding page) {
+        final ActivityMain activity = this.activity();
         page.pageConnectionInternalServer.setOnClickListener(v -> {
             if (!PageConnect.clickable.compareAndSet(true, false)) return;
-            final Intent serverIntent = new Intent(this.mainActivity, InternalServerService.class);
+            final Intent serverIntent = new Intent(activity, InternalServerService.class);
             final HLog logger = HLogManager.getInstance("DefaultLogger");
             logger.log(HLogLevel.LESS, "Starting internal server...");
             page.pageConnectionInternalServer.setText(R.string.page_connect_internal_server_starting);
-            this.mainActivity.startService(serverIntent);
-            this.connection.initializeIfNot(() -> new ServiceConnection() {
-                    private final @NotNull ActivityMain activity = PageConnect.this.mainActivity;
+            activity.startService(serverIntent);
+            if (!PageConnect.connection.initializeIfNot(() -> {
+                final ServiceConnection service = new ServiceConnection() {
                     private final @NotNull TextView text = PageConnect.this.getPage().pageConnectionInternalServer;
                     private final @NotNull HInitializer<InetSocketAddress> address = new HInitializer<>("InternalServerAddress");
 
                     @Override
                     public void onServiceConnected(final ComponentName name, final @NotNull IBinder iService) {
                         final HLog logger = HLogManager.getInstance("DefaultLogger");
-                        Main.runOnBackgroundThread(this.activity, HExceptionWrapper.wrapRunnable(() -> {
+                        Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> {
                             final InetSocketAddress address = InternalServerBinder.getAddress(iService);
                             if (address == null) {
-                                PageConnect.this.mainActivity.unbindService(this);
-                                Main.showToast(PageConnect.this.mainActivity, R.string.page_connect_closing);
+                                activity.unbindService(this);
+                                Main.showToast(activity, R.string.page_connect_closing);
                                 return;
                             }
                             logger.log(HLogLevel.FINE, "Connecting to service: ", address);
-                            Main.runOnUiThread(this.activity, () -> this.text.setText(R.string.page_connect_connecting));
+                            Main.runOnUiThread(activity, () -> this.text.setText(R.string.page_connect_connecting));
                             this.address.initialize(address);
                             WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
                             logger.log(HLogLevel.LESS, "Clients initialized.");
                             final String initPassword = InternalServerBinder.getAndDeleteAdminPassword(iService);
-                            final String password = PasswordHelper.updateInternalPassword(this.activity, IdentifierNames.UserName.Admin.getIdentifier(), initPassword);
+                            final String password = PasswordHelper.updateInternalPassword(activity, IdentifierNames.UserName.Admin.getIdentifier(), initPassword);
                             logger.log(HLogLevel.INFO, "Got server password.", ParametersMap.create().add("init", initPassword != null).add("password", password));
-                            Main.runOnUiThread(this.activity, () -> this.text.setText(R.string.page_connect_logging_in));
+                            Main.runOnUiThread(activity, () -> this.text.setText(R.string.page_connect_logging_in));
                             if (password == null || !TokenAssistant.login(address, IdentifierNames.UserName.Admin.getIdentifier(), password, Main.ClientExecutors)) {
                                 // TODO get password from user.
-                                Main.runOnUiThread(this.activity, () -> Toast.makeText(this.activity, "No password!!!", Toast.LENGTH_SHORT).show());
+                                Main.runOnUiThread(activity, () -> Toast.makeText(activity, "No password!!!", Toast.LENGTH_SHORT).show());
                                 return;
                             }
-                            this.activity.connect(address, IdentifierNames.UserName.Admin.getIdentifier(), iService);
+                            activity.connect(address, IdentifierNames.UserName.Admin.getIdentifier(), iService);
                         }, e -> {
-                            Main.runOnUiThread(this.activity, () -> this.text.setText(R.string.page_connect_internal_server));
+                            Main.runOnUiThread(activity, () -> this.text.setText(R.string.page_connect_internal_server));
                             PageConnect.clickable.set(true);
                             if (e != null) {
                                 logger.log(HLogLevel.FAULT, "Failed to initialize wlist clients.", e);
-                                Main.showToast(this.activity, R.string.toast_fatal_application_initialization);
+                                Main.showToast(activity, R.string.toast_fatal_application_initialization);
                             }
                         }, true));
                     }
@@ -96,19 +93,20 @@ public class PageConnect extends IFragment<PageConnectBinding> {
                     public void onServiceDisconnected(final ComponentName name) {
                         PageConnect.clickable.set(true);
                         final HLog logger = HLogManager.getInstance("DefaultLogger");
-                        Main.runOnBackgroundThread(this.activity, () -> {
+                        Main.runOnBackgroundThread(activity, () -> {
                             final InetSocketAddress address = this.address.uninitializeNullable();
                             if (address != null) {
-                                logger.log(HLogLevel.INFO, "Disconnecting to service: ", address);
+                                logger.log(HLogLevel.INFO, "Disconnecting to service: ", activity.address());
                                 WListClientManager.quicklyUninitialize(address);
                             }
                         });
-                        Main.showToast(this.activity, R.string.page_connect_internal_server_disconnected);
-                        this.activity.close();
+                        Main.showToast(activity, R.string.page_connect_internal_server_disconnected);
+                        activity.disconnect();
                     }
-                });
-            this.mainActivity.bindService(serverIntent, this.connection.getInstance(),
-                    Context.BIND_AUTO_CREATE | Context.BIND_ABOVE_CLIENT | Context.BIND_IMPORTANT);
+                };
+                activity.bindService(serverIntent, service, Context.BIND_AUTO_CREATE | Context.BIND_ABOVE_CLIENT | Context.BIND_IMPORTANT);
+                return service;
+            })) PageConnect.clickable.set(true);
         });
 //        activity.activityLoginIcon.setOnClickListener(v -> { // TODO
 //            if (!clickable.compareAndSet(true, false)) return;
@@ -124,9 +122,9 @@ public class PageConnect extends IFragment<PageConnectBinding> {
     }
 
     @Override
-    public void onDisconnected() {
-        final ServiceConnection connection = this.connection.uninitializeNullable();
+    public void onDisconnected(final @NotNull ActivityMain activity) {
+        final ServiceConnection connection = PageConnect.connection.uninitializeNullable();
         if (connection != null)
-            this.mainActivity.unbindService(connection);
+            activity.unbindService(connection);
     }
 }

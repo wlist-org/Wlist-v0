@@ -50,12 +50,12 @@ public class FragmentsAdapter extends FragmentStateAdapter {
     public FragmentsAdapter(final @NotNull ActivityMain activity) {
         super(activity);
         this.activity = activity;
-        this.fragmentFileInstance = new PageFile(this.activity);
-        this.fragmentConnectFileInstance = new PageConnect(this.activity);
-        this.fragmentUserInstance = new PageUser(this.activity);
-        this.fragmentConnectUserInstance = new PageConnect(this.activity);
-        this.fragmentTransInstance = new PageTrans(this.activity);
-        this.fragmentConnectTransInstance = new PageConnect(this.activity);
+        this.fragmentFileInstance = new PageFile();
+        this.fragmentConnectFileInstance = new PageConnect();
+        this.fragmentUserInstance = new PageUser();
+        this.fragmentConnectUserInstance = new PageConnect();
+        this.fragmentTransInstance = new PageTrans();
+        this.fragmentConnectTransInstance = new PageConnect();
     }
 
     public @NotNull List<@NotNull IFragment<?>> getAllFragments() {

@@ -37,7 +37,7 @@ public class PageFilePartOptions {
     }
 
     private @NotNull ActivityMain activity() {
-        return this.pageFile.getMainActivity();
+        return this.pageFile.activity();
     }
 
     
