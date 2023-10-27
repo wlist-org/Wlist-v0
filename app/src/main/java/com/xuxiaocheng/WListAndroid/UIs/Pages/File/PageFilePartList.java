@@ -8,6 +8,7 @@ import android.widget.ImageView;
 import androidx.annotation.AnyThread;
 import androidx.annotation.UiThread;
 import androidx.annotation.WorkerThread;
+import androidx.appcompat.app.AlertDialog;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -36,6 +37,7 @@ import com.xuxiaocheng.WListAndroid.Utils.EmptyRecyclerAdapter;
 import com.xuxiaocheng.WListAndroid.Utils.EnhancedRecyclerViewAdapter;
 import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageFileLoadingBinding;
 import org.jetbrains.annotations.NotNull;
 
 import java.text.MessageFormat;
@@ -70,31 +72,26 @@ public class PageFilePartList {
 
     private static final @NotNull HInitializer<String> listLoadingAnimationMessage = new HInitializer<>("PageFileListLoadingAnimationMessage");
     private static final @NotNull HInitializer<String> listLoadingAnimationPercent = new HInitializer<>("PageFileListLoadingAnimationPercent");
+    private final @NotNull HInitializer<PageFileLoadingBinding> listLoadingAnimationBinding = new HInitializer<>("PageFileListLoadingAnimationBinding");
+    private final @NotNull HInitializer<AlertDialog> listLoadingAnimationDialog = new HInitializer<>("PageFileListLoadingAnimationDialog");
+
     @WorkerThread
     protected void listLoadingAnimation(final @NotNull ActivityMain activity, final boolean show, final long current, final long total) {
-        final PageFileBinding page = this.pageFile.getPage();
         PageFilePartList.listLoadingAnimationMessage.initializeIfNot(() -> activity.getString(R.string.page_file_loading_text));
         PageFilePartList.listLoadingAnimationPercent.initializeIfNot(() -> activity.getString(R.string.page_file_loading_percent));
-        final double percent = total <= 0 ? show ? 0 : 1 : ((double) current) / total;
+        this.listLoadingAnimationBinding.initializeIfNot(() -> PageFileLoadingBinding.inflate(activity.getLayoutInflater()));
+        final float percent = total <= 0 ? show ? 0 : 1 : ((float) current) / total;
         final String textPercent = MessageFormat.format(PageFilePartList.listLoadingAnimationPercent.getInstance(), percent);
         final String textMessage = MessageFormat.format(PageFilePartList.listLoadingAnimationMessage.getInstance(), current, total);
-        //noinspection NumericCastThatLosesPrecision
-        final float guidelinePercent = ((float) percent) * 0.8f + 0.1f;
         Main.runOnUiThread(activity, () -> {
-            page.pageFileGuidelineLoaded.setGuidelinePercent(guidelinePercent);
-            page.pageFileLoadingPercent.setText(textPercent);
-            page.pageFileLoadingText.setText(textMessage);
-            if (show) {
-                ViewUtil.fadeIn(page.pageFileLoading, 100);
-                ViewUtil.fadeIn(page.pageFileLoadingBar, 100);
-                ViewUtil.fadeIn(page.pageFileLoadingPercent, 200);
-                ViewUtil.fadeIn(page.pageFileLoadingText, 200);
-            } else {
-                ViewUtil.fadeOut(page.pageFileLoading, 300);
-                ViewUtil.fadeOut(page.pageFileLoadingBar, 300);
-                ViewUtil.fadeOut(page.pageFileLoadingPercent, 300);
-                ViewUtil.fadeOut(page.pageFileLoadingText, 300);
-            }
+            this.listLoadingAnimationDialog.initializeIfNot(() -> new AlertDialog.Builder(activity).setView(this.listLoadingAnimationBinding.getInstance().getRoot()).setCancelable(false).show());
+            this.listLoadingAnimationBinding.getInstance().pageFileLoadingGuideline.setGuidelinePercent(percent);
+            this.listLoadingAnimationBinding.getInstance().pageFileLoadingPercent.setText(textPercent);
+            this.listLoadingAnimationBinding.getInstance().pageFileLoadingText.setText(textMessage);
+            if (show)
+                this.listLoadingAnimationDialog.getInstance().show();
+            else
+                this.listLoadingAnimationDialog.getInstance().cancel();
         });
     }
 
