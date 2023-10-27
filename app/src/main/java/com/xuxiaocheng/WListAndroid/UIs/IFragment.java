@@ -46,6 +46,14 @@ public abstract class IFragment<P extends ViewBinding> extends Fragment {
     protected abstract void onBuild(final @NotNull P page);
 
     @UiThread
+    public void onShow() {
+    }
+
+    @UiThread
+    public void onHide() {
+    }
+
+    @UiThread
     public boolean onBackPressed() {
         return false;
     }

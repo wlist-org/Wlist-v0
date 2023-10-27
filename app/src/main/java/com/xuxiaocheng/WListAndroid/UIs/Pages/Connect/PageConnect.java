@@ -58,6 +58,7 @@ public class PageConnect extends IFragment<PageConnectBinding> {
                         if (address == null) {
                             activity.unbindService(this);
                             PageConnect.connection.uninitializeNullable();
+                            logger.log(HLogLevel.LESS, "Internal server is stopping...");
                             Main.showToast(activity, R.string.page_connect_closing);
                             return;
                         }

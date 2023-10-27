@@ -43,14 +43,12 @@ public class PageFile extends IFragment<PageFileBinding> {
     protected final @NotNull PageFilePartUpload partUpload = new PageFilePartUpload(this);
 
     @Override
-    public void onStart() {
-        super.onStart();
+    public void onShow() {
         this.activity().getContent().activityMainOptions.setVisibility(View.VISIBLE);
     }
 
     @Override
-    public void onStop() {
-        super.onStop();
+    public void onHide() {
         this.activity().getContent().activityMainOptions.setVisibility(View.GONE);
     }
 

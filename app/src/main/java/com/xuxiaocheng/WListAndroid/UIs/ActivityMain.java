@@ -65,6 +65,8 @@ public class ActivityMain extends AppCompatActivity {
         final ChooserButtonGroup userButton = new ChooserButtonGroup(this, FragmentsAdapter.FragmentTypes.User, activity.activityMainChooserUserImage, R.mipmap.main_chooser_user, R.mipmap.main_chooser_user_chose, activity.activityMainChooserUserText, activity.activityMainChooserUser);
         final ChooserButtonGroup transButton = new ChooserButtonGroup(this, FragmentsAdapter.FragmentTypes.Trans, activity.activityMainTrans, R.mipmap.main_chooser_trans, R.mipmap.main_chooser_trans_chose, null);
         activity.activityMainContent.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+            private final @NotNull AtomicReference<IFragment<?>> oldFragment = new AtomicReference<>();
+
             @Override
             public void onPageSelected(final int position) {
                 super.onPageSelected(position);
@@ -90,6 +92,10 @@ public class ActivityMain extends AppCompatActivity {
                         transButton.setClickable(false);
                     }
                 }
+                final IFragment<?> now = ActivityMain.this.fragmentsAdapterInstance.getFragment(current);
+                final IFragment<?> old = this.oldFragment.getAndSet(now);
+                if (old != null) old.onHide();
+                now.onShow();
             }
         });
         this.fragmentsAdapterInstance.getAllFragments().forEach(f -> f.onActivityCreateHook(this));
