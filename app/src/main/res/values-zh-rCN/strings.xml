@@ -25,7 +25,7 @@
 	<string name="page_file_counter">项</string>
 	<string name="page_file_loading">正在加载更多……</string>
 	<string name="page_file_no_more">没有更多了</string>
-	<string name="page_file_operation">详情</string>
+	<string name="page_file_operation">详细信息</string>
 	<string name="page_file_operation_name">名称：</string>
 	<string name="page_file_operation_size">大小：</string>
 	<string name="page_file_operation_create">创建时间：</string>
@@ -52,12 +52,10 @@
 	<string name="page_file_upload_directory_hint">请输入文件夹名称</string>
 	<string name="page_file_upload_success_directory">创建文件夹成功</string>
 	<string name="page_file_upload_success_file">上传文件成功</string>
-	<string name="page_file_provider_lanzou">蓝奏云</string>
-	<string name="page_file_provider_name">目录名称：</string>
-	<string name="page_file_provider_passport">网盘账号：</string>
-	<string name="page_file_provider_password">网盘密码：</string>
+	<string name="page_file_listing_title">首次进入，正在建立索引: {0}</string>
 	<string name="page_file_options_refresh">重新与网盘同步</string>
 	<string name="page_file_options_refresh_warning">注意：重新与网盘同步可能需要较长时间</string>
+	<string name="page_file_options_refresh_title">正在与网盘同步：{0}</string>
 	<string name="page_file_options_sorter">设置排序方式</string>
 	<string name="page_file_options_sorter_name">按名称排序</string>
 	<string name="page_file_options_sorter_size">按大小排序</string>
@@ -66,6 +64,10 @@
 	<string name="page_file_options_sorter_descend">降序排序</string>
 	<string name="page_file_options_sorter_not_chose">请选择排序方式！</string>
 	<string name="page_file_options_filter">过滤</string>
+	<string name="page_file_provider_lanzou">蓝奏云</string>
+	<string name="page_file_provider_name">目录名称：</string>
+	<string name="page_file_provider_passport">网盘账号：</string>
+	<string name="page_file_provider_password">网盘密码：</string>
 	<string name="page_user_disconnect">断开连接</string>
 	<string name="page_user_close_server">关闭服务端</string>
 </resources>

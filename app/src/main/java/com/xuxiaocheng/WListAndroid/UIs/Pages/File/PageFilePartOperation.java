@@ -195,7 +195,7 @@ public class PageFilePartOperation {
                                         ParametersMap.create().add("address", this.pageFile.address(activity)).add("information", information).add("file", file));
                                 final VisibleFailureReason res;
                                 try {
-                                    this.pageFile.partList.listLoadingAnimation(activity, true, 0, 0); // TODO: download progress.
+                                    this.pageFile.partList.listLoadingAnimation(activity, "Downloading", true, 0, 0); // TODO: download progress.
                                     res = FilesAssistant.download(this.pageFile.address(activity), this.pageFile.username(activity), new FileLocation(storage, FileInformationGetter.id(information)), file, PredicateE.truePredicate(), s -> {
                                         long curr = 0, total = 0;
                                         for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
@@ -203,10 +203,10 @@ public class PageFilePartOperation {
                                             total += pair.getSecond().longValue();
                                         }
                                         final long l = curr, t = total;
-                                        this.pageFile.partList.listLoadingAnimation(activity, true, l, t);
+                                        this.pageFile.partList.listLoadingAnimation(activity, "Downloading", true, l, t);
                                     });
                                 } finally {
-                                    this.pageFile.partList.listLoadingAnimation(activity, false, 0, 0);
+                                    this.pageFile.partList.listLoadingAnimation(activity, "Downloading", false, 0, 0);
                                 }
                                 if (res != null)
                                     Main.runOnUiThread(activity, () -> Toast.makeText(activity, FailureReasonGetter.kind(res) + FailureReasonGetter.message(res), Toast.LENGTH_SHORT).show());

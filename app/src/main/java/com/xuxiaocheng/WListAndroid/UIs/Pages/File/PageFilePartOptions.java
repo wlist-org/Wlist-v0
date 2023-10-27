@@ -12,6 +12,8 @@ import com.xuxiaocheng.WList.AndroidSupports.FileLocationGetter;
 import com.xuxiaocheng.WList.AndroidSupports.InstantaneousProgressStateGetter;
 import com.xuxiaocheng.WList.Client.Assistants.FilesAssistant;
 import com.xuxiaocheng.WList.Client.ClientConfiguration;
+import com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper;
+import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
@@ -23,6 +25,7 @@ import com.xuxiaocheng.WListAndroid.databinding.PageFileOptionsRefreshBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileOptionsSorterBinding;
 import org.jetbrains.annotations.NotNull;
 
+import java.text.MessageFormat;
 import java.util.LinkedHashMap;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
@@ -44,17 +47,28 @@ public class PageFilePartOptions {
                 .setView(refresh.getRoot())
                 .setNegativeButton(R.string.cancel, null)
                 .setPositiveButton(R.string.confirm, (d, h) -> {
+                    if (this.pageFile.partList.isOnRoot()) return;
                     final FileLocation location = this.pageFile.partList.currentLocation();
                     final AtomicLong max = new AtomicLong(0);
                     Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> {
-                        this.pageFile.partList.listLoadingAnimation(activity, true, 0, 0);
-                        if (this.pageFile.partList.isOnRoot()) return;
-                        FilesAssistant.refresh(activity.address(), activity.username(), location, Main.ClientExecutors, state -> {
-                            final Pair.ImmutablePair<Long, Long> pair = InstantaneousProgressStateGetter.merge(state);
-                            max.set(pair.getSecond().longValue());
-                            this.pageFile.partList.listLoadingAnimation(activity, true, pair.getFirst().longValue(), pair.getSecond().longValue());
-                        });
-                    }, () -> this.pageFile.partList.listLoadingAnimation(activity, false, max.get(), max.get())));
+                        final VisibleFileInformation information;
+                        try (final WListClientInterface client = this.pageFile.client(activity)) {
+                            information = OperateFilesHelper.getFileOrDirectory(client, this.pageFile.token(activity), location, true);
+                            if (information == null) return;
+                        }
+                        final String title = MessageFormat.format(activity.getString(R.string.page_file_options_refresh_title), FileInformationGetter.name(information));
+                        try {
+                            this.pageFile.partList.listLoadingAnimation(activity, title, true, 0, 0);
+                            if (this.pageFile.partList.isOnRoot()) return;
+                            FilesAssistant.refresh(activity.address(), activity.username(), location, Main.ClientExecutors, state -> {
+                                final Pair.ImmutablePair<Long, Long> pair = InstantaneousProgressStateGetter.merge(state);
+                                max.set(pair.getSecond().longValue());
+                                this.pageFile.partList.listLoadingAnimation(activity, title, true, pair.getFirst().longValue(), pair.getSecond().longValue());
+                            });
+                        } finally {
+                            this.pageFile.partList.listLoadingAnimation(activity, title, false, max.get(), max.get());
+                        }
+                    }));
                 }).show();
     }
     

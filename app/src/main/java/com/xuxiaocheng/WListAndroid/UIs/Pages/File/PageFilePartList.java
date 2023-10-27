@@ -76,7 +76,7 @@ public class PageFilePartList {
     private final @NotNull HInitializer<AlertDialog> listLoadingAnimationDialog = new HInitializer<>("PageFileListLoadingAnimationDialog");
 
     @WorkerThread
-    protected void listLoadingAnimation(final @NotNull ActivityMain activity, final boolean show, final long current, final long total) {
+    protected void listLoadingAnimation(final @NotNull ActivityMain activity, final @NotNull CharSequence title, final boolean show, final long current, final long total) {
         PageFilePartList.listLoadingAnimationMessage.initializeIfNot(() -> activity.getString(R.string.page_file_loading_text));
         PageFilePartList.listLoadingAnimationPercent.initializeIfNot(() -> activity.getString(R.string.page_file_loading_percent));
         this.listLoadingAnimationBinding.initializeIfNot(() -> PageFileLoadingBinding.inflate(activity.getLayoutInflater()));
@@ -84,7 +84,9 @@ public class PageFilePartList {
         final String textPercent = MessageFormat.format(PageFilePartList.listLoadingAnimationPercent.getInstance(), percent);
         final String textMessage = MessageFormat.format(PageFilePartList.listLoadingAnimationMessage.getInstance(), current, total);
         Main.runOnUiThread(activity, () -> {
-            this.listLoadingAnimationDialog.initializeIfNot(() -> new AlertDialog.Builder(activity).setView(this.listLoadingAnimationBinding.getInstance().getRoot()).setCancelable(false).show());
+            this.listLoadingAnimationDialog.initializeIfNot(() -> new AlertDialog.Builder(activity).setView(this.listLoadingAnimationBinding.getInstance().getRoot())
+                    .setTitle(title).setCancelable(false).setPositiveButton(R.string.cancel, null).show());
+            this.listLoadingAnimationDialog.getInstance().setTitle(title);
             this.listLoadingAnimationBinding.getInstance().pageFileLoadingGuideline.setGuidelinePercent(percent);
             this.listLoadingAnimationBinding.getInstance().pageFileLoadingPercent.setText(textPercent);
             this.listLoadingAnimationBinding.getInstance().pageFileLoadingText.setText(textMessage);
@@ -96,9 +98,9 @@ public class PageFilePartList {
     }
 
     @WorkerThread
-    private void listLoadingCallback(final @NotNull ActivityMain activity, final @NotNull InstantaneousProgressState state) {
+    private void listLoadingCallback(final @NotNull ActivityMain activity, final @NotNull CharSequence title, final @NotNull InstantaneousProgressState state) {
         final Pair.ImmutablePair<Long, Long> pair = InstantaneousProgressStateGetter.merge(state);
-        this.listLoadingAnimation(activity, true, pair.getFirst().longValue(), pair.getSecond().longValue());
+        this.listLoadingAnimation(activity, title, true, pair.getFirst().longValue(), pair.getSecond().longValue());
     }
 
     protected int getCurrentPosition() {
@@ -198,23 +200,24 @@ public class PageFilePartList {
                     (isDown ? noMoreDown : noMoreUp).set(false); // prevent retry forever when server error.
                     VisibleFilesListInformation list = null;
                     final int limit;
+                    final String title = MessageFormat.format(activity.getString(R.string.page_file_listing_title), page.pageFileName.getText());
                     final AtomicBoolean showed = new AtomicBoolean(false);
                     try {
                         limit = ClientConfigurationSupporter.limitPerPage(ClientConfigurationSupporter.get());
                         final int need = isDown ? limit : Math.toIntExact(Math.min(loadedUp.get(), limit));
                         list = FilesAssistant.list(PageFilePartList.this.pageFile.address(activity), PageFilePartList.this.pageFile.username(activity), location, null, null,
                                 isDown ? loadedDown.getAndAdd(need) : loadedUp.addAndGet(-need), need, Main.ClientExecutors, c -> {
-                                    PageFilePartList.this.listLoadingAnimation(activity, true, 0, 0);
+                                    PageFilePartList.this.listLoadingAnimation(activity, title, true, 0, 0);
                                     showed.set(true);
                                     return true;
-                                }, s -> PageFilePartList.this.listLoadingCallback(activity, s));
+                                }, s -> PageFilePartList.this.listLoadingCallback(activity, title, s));
                     } catch (final IllegalStateException exception) { // Server closed.
                         Main.runOnUiThread(activity, activity::disconnect);
                         return;
                     } finally {
                         if (showed.get()) {
                             final long total = list == null ? 0 : FilesListInformationGetter.total(list);
-                            PageFilePartList.this.listLoadingAnimation(activity, false, total, total);
+                            PageFilePartList.this.listLoadingAnimation(activity, title, false, total, total);
                         }
                     }
                     if (list == null) {
