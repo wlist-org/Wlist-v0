@@ -201,12 +201,7 @@ public class PageFile extends IFragment<PageFileBinding> {
     @Override
     public @NotNull String toString() {
         return "PageFile{" +
-                "partList=" + this.partList +
-                ", partOptions=" + this.partOptions +
-                ", partOperation=" + this.partOperation +
-                ", partPreview=" + this.partPreview +
-                ", partUpload=" + this.partUpload +
-                ", chooserLauncher=" + this.chooserLauncher +
+                "chooserLauncher=" + this.chooserLauncher.isInitialized() +
                 ", super=" + super.toString() +
                 '}';
     }

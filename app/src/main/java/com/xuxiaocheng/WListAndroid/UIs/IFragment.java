@@ -99,7 +99,7 @@ public abstract class IFragment<P extends ViewBinding> extends Fragment {
     @Override
     public @NotNull String toString() {
         return "IFragment{" +
-                "pageCache=" + this.pageCache +
+                "pageCache=" + this.pageCache.isInitialized() +
                 '}';
     }
 }

@@ -20,7 +20,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class FragmentsAdapter extends FragmentStateAdapter {
     public enum FragmentTypes {
@@ -93,11 +92,8 @@ public class FragmentsAdapter extends FragmentStateAdapter {
         };
     }
 
-    protected final @NotNull AtomicBoolean lastConnect = new AtomicBoolean(false);
-
     @UiThread
-    public void notifyConnected(final boolean connected, final @Nullable FragmentTypes current) {
-//        if (!this.lastConnect.compareAndSet(!connected, connected)) return;
+    public void notifyConnectStateChanged(final @Nullable FragmentTypes current) {
         Arrays.stream(FragmentTypes.values()).forEach(f -> this.activity.getContent().activityMainContent.setCurrentItem(FragmentTypes.toPosition(f), false)); // Force build cache.
         this.notifyItemRangeChanged(0, this.getItemCount());
         if (this.activity.getContent().activityMainContent.getAdapter() == this)
@@ -126,12 +122,6 @@ public class FragmentsAdapter extends FragmentStateAdapter {
     public @NotNull String toString() {
         return "FragmentsAdapter{" +
                 "activity=" + this.activity +
-                ", fragmentFileInstance=" + this.fragmentFileInstance +
-                ", fragmentConnectFileInstance=" + this.fragmentConnectFileInstance +
-                ", fragmentUserInstance=" + this.fragmentUserInstance +
-                ", fragmentConnectUserInstance=" + this.fragmentConnectUserInstance +
-                ", fragmentTransInstance=" + this.fragmentTransInstance +
-                ", fragmentConnectTransInstance=" + this.fragmentConnectTransInstance +
                 '}';
     }
 }

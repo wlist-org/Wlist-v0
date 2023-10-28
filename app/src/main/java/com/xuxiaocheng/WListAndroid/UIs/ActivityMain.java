@@ -169,7 +169,7 @@ public class ActivityMain extends AppCompatActivity {
         Main.runOnBackgroundThread(this, () -> {
             this.fragmentsAdapter.setArguments(address, username);
             Main.runOnUiThread(this, () -> {
-                this.fragmentsAdapter.notifyConnected(true, this.currentChoice.get());
+                this.fragmentsAdapter.notifyConnectStateChanged(this.currentChoice.get());
                 Main.runOnBackgroundThread(this, HExceptionWrapper.wrapRunnable(() -> {
                     BroadcastAssistant.start(this.address());
                     ClientConfigurationSupporter.location().reinitialize(new File(this.getExternalFilesDir("client"), "client.yaml"));
@@ -199,7 +199,7 @@ public class ActivityMain extends AppCompatActivity {
         }
         WListClientManager.removeAllListeners(address);
         Main.runOnUiThread(this, () -> {
-            this.fragmentsAdapter.notifyConnected(false, this.currentChoice.get());
+            this.fragmentsAdapter.notifyConnectStateChanged(this.currentChoice.get());
             Main.runOnBackgroundThread(this, () -> this.fragmentsAdapter.getAllFragments().forEach(f -> f.onDisconnected(this)));
         });
     }
@@ -213,7 +213,7 @@ public class ActivityMain extends AppCompatActivity {
     @Override
     public @NotNull String toString() {
         return "ActivityMain{" +
-                "contentCache=" + this.contentCache +
+                "contentCache=" + this.contentCache.isInitialized() +
                 ", currentChoice=" + this.currentChoice +
                 ", address=" + this.address +
                 ", username=" + this.username +
