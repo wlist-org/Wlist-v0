@@ -6,6 +6,9 @@ import org.jetbrains.annotations.Nullable;
 
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
 
 /**
  * @see VisibleFileInformation
@@ -75,5 +78,18 @@ public final class FileInformationGetter {
                 return null;
             }
         }
+    }
+
+    public static @NotNull Comparator<VisibleFileInformation> buildComparator() {
+        return VisibleFileInformation.buildComparator();
+    }
+
+    public static final @NotNull VisibleFileInformation[] EmptyInformationArray = new VisibleFileInformation[0];
+    public static @NotNull VisibleFileInformation @NotNull [] asArray(final @NotNull Collection<@NotNull VisibleFileInformation> list) {
+        return list.toArray(FileInformationGetter.EmptyInformationArray);
+    }
+
+    public static int binarySearch(final @NotNull VisibleFileInformation @NotNull [] list, final @NotNull VisibleFileInformation target, final @NotNull Comparator<? super VisibleFileInformation> comparator) {
+        return Arrays.binarySearch(list, target, comparator);
     }
 }

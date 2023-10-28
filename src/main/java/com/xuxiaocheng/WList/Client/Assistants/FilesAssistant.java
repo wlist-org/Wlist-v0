@@ -151,7 +151,6 @@ public final class FilesAssistant {
     }
 
 
-    // All callback function should be sync.
     private static @NotNull @Unmodifiable List<@NotNull String> calculateChecksumsCore(final @NotNull Collection<@NotNull UploadChecksum> requirements, final @NotNull Consumer<? super @NotNull BiConsumer<? super @NotNull Consumer<? super @NotNull Long>, ? super @NotNull BiConsumer<? super @NotNull Long, ? super @NotNull Consumer<? super @NotNull BiFunction<? super @NotNull Integer, ? super @NotNull ByteBuf, @NotNull Integer>>>>> runner) {
         if (requirements.isEmpty())
             return List.of();

@@ -1,5 +1,7 @@
 package com.xuxiaocheng.WList.Commons.Beans;
 
+import com.xuxiaocheng.WList.AndroidSupports.ClientConfigurationSupporter;
+import com.xuxiaocheng.WList.AndroidSupports.FileInformationGetter;
 import com.xuxiaocheng.WList.Commons.Options.OrderPolicies;
 import com.xuxiaocheng.WList.Commons.Options.OrderDirection;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
@@ -11,7 +13,9 @@ import org.jetbrains.annotations.Unmodifiable;
 import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 
 public record VisibleFileInformation(long id, long parentId, @NotNull String name, boolean isDirectory, long size,
@@ -53,5 +57,29 @@ public record VisibleFileInformation(long id, long parentId, @NotNull String nam
     private static final @NotNull @Unmodifiable LinkedHashMap<@NotNull Order, @NotNull OrderDirection> ListEmptyOrder = new LinkedHashMap<>(0);
     public static @NotNull @Unmodifiable LinkedHashMap<@NotNull Order, @NotNull OrderDirection> emptyOrder() {
         return VisibleFileInformation.ListEmptyOrder;
+    }
+
+    public static @NotNull Comparator<VisibleFileInformation> buildComparator() {
+        final LinkedHashMap<VisibleFileInformation.Order, OrderDirection> orders = ClientConfigurationSupporter.fileOrders(ClientConfigurationSupporter.get());
+        Comparator<VisibleFileInformation> comparators = null;
+        for (final Map.Entry<VisibleFileInformation.Order, OrderDirection> order: orders.entrySet()) {
+            final Comparator<VisibleFileInformation> select = switch (order.getKey()) {
+                case Id -> Comparator.comparing(FileInformationGetter::id);
+                case Name -> Comparator.comparing(FileInformationGetter::name);
+                case Directory -> Comparator.comparing(FileInformationGetter::isDirectory).reversed();
+                case Size -> Comparator.comparing(FileInformationGetter::size, Long::compareUnsigned);
+                case CreateTime -> Comparator.comparing(FileInformationGetter::createTime);
+                case UpdateTime -> Comparator.comparing(FileInformationGetter::updateTime);
+            };
+            final Comparator<VisibleFileInformation> real = (switch (order.getValue()) {
+                case ASCEND -> select;
+                case DESCEND -> select.reversed();
+            });
+            if (comparators == null)
+                comparators = real;
+            else
+                comparators = comparators.thenComparing(real);
+        }
+        return Objects.requireNonNullElse(comparators, Comparator.comparing(FileInformationGetter::name));
     }
 }
