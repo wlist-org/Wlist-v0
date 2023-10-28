@@ -53,6 +53,7 @@ public final class InternalServerService extends Service {
         Main.runOnBackgroundThread(null, HExceptionWrapper.wrapRunnable(() -> {
             WListServer.getInstance().stop();
             this.ServerMainThread.join();
+            HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Internal WList Server stopped.", ParametersMap.create().add("pid", Process.myPid()));
             //noinspection CallToSystemExit
             System.exit(0); // Require JVM exit to reboot WList class.
         }));

@@ -1,9 +1,13 @@
 package com.xuxiaocheng.WListAndroid.UIs;
 
+import android.os.Bundle;
 import androidx.annotation.UiThread;
+import androidx.annotation.WorkerThread;
 import androidx.fragment.app.Fragment;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.WListAndroid.Helpers.BundleHelper;
+import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.UIs.Pages.Connect.PageConnect;
 import com.xuxiaocheng.WListAndroid.UIs.Pages.File.PageFile;
 import com.xuxiaocheng.WListAndroid.UIs.Pages.Trans.PageTrans;
@@ -11,6 +15,7 @@ import com.xuxiaocheng.WListAndroid.UIs.Pages.User.PageUser;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -58,6 +63,17 @@ public class FragmentsAdapter extends FragmentStateAdapter {
         this.fragmentConnectTransInstance = new PageConnect();
     }
 
+    @WorkerThread
+    public void setArguments(final @NotNull InetSocketAddress address, final @NotNull String username) {
+        final Bundle bundle = new Bundle();
+        BundleHelper.saveClient(address, username, bundle);
+        Main.runOnUiThread(this.activity, () -> {
+            this.fragmentFileInstance.setArguments(bundle);
+            this.fragmentUserInstance.setArguments(bundle);
+            this.fragmentTransInstance.setArguments(bundle);
+        });
+    }
+
     public @NotNull List<@NotNull IFragment<?>> getAllFragments() {
         return List.of(this.fragmentFileInstance, this.fragmentUserInstance, this.fragmentTransInstance,
                 this.fragmentConnectFileInstance, this.fragmentConnectUserInstance, this.fragmentConnectTransInstance);
@@ -79,12 +95,13 @@ public class FragmentsAdapter extends FragmentStateAdapter {
 
     @UiThread
     public void notifyConnected(final boolean connected, final @Nullable FragmentTypes current) {
-        if (!this.lastConnect.compareAndSet(!connected, connected)) return;
+//        if (!this.lastConnect.compareAndSet(!connected, connected)) return;
         this.notifyItemRangeChanged(0, this.getItemCount());
-        this.activity.getContent().activityMainContent.setAdapter(this);
-        final int position = FragmentTypes.toPosition(Objects.requireNonNullElse(current, FragmentTypes.File));
-        this.activity.getContent().activityMainContent.setCurrentItem(position, false);
-//        this.activity.fragmentsCallback.getInstance().onPageSelected(position);
+        if (this.activity.getContent().activityMainContent.getAdapter() == this) {
+            this.activity.getContent().activityMainContent.setAdapter(this); // Fix cache when dragging.
+            final int position = FragmentTypes.toPosition(Objects.requireNonNullElse(current, FragmentTypes.File));
+            this.activity.getContent().activityMainContent.setCurrentItem(position, false);
+        }
     }
 
     public @NotNull IFragment<?> getFragment(final int position) {

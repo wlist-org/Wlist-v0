@@ -37,7 +37,7 @@ public final class HLogManager {
             throw new RuntimeException("Unreachable!", exception);
         }
         final OutputStream fileOutputStream = HMergedStreams.getFileOutputStreamNoException(null);
-        HLog.LoggerCreateCore.reinitialize(name -> HLog.createInstance(name, HLogLevel.FINE.getLevel(), true, false, new OutputStream() {
+        HLog.LoggerCreateCore.reinitialize(name -> HLog.createInstance(name, HLogLevel.VERBOSE.getLevel(), true, false, new OutputStream() {
             private final ByteArrayOutputStream cache = new ByteArrayOutputStream(256);
             private int lastPriority = Log.INFO;
 

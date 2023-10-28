@@ -18,6 +18,8 @@ import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Client.Assistants.BroadcastAssistant;
 import com.xuxiaocheng.WList.Client.Operations.OperateHelper;
 import com.xuxiaocheng.WList.Client.WListClientManager;
+import com.xuxiaocheng.WList.Commons.Codecs.MessageClientCiphers;
+import com.xuxiaocheng.WList.Commons.Codecs.MessageServerCiphers;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Server.Operations.ServerHandler;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
@@ -74,6 +76,8 @@ public final class Main extends Application {
             }
         }); // Kill in main thread.
         HLog.setLogTimeFLength(3);
+        MessageClientCiphers.LogNetwork.set(false);
+        MessageServerCiphers.LogNetwork.set(false);
         OperateHelper.LogOperation.set(false);
         BroadcastAssistant.LogBroadcastEvent.set(false);
         ServerHandler.LogActive.set(false);

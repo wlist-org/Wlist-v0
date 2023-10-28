@@ -16,6 +16,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
+import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.AndroidSupports.ClientConfigurationSupporter;
 import com.xuxiaocheng.WList.AndroidSupports.FileInformationGetter;
 import com.xuxiaocheng.WList.AndroidSupports.FileLocationGetter;
@@ -32,9 +33,9 @@ import com.xuxiaocheng.WList.Commons.Beans.VisibleFilesListInformation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
-import com.xuxiaocheng.WListAndroid.UIs.ActivityMain;
 import com.xuxiaocheng.WListAndroid.Utils.EmptyRecyclerAdapter;
 import com.xuxiaocheng.WListAndroid.Utils.EnhancedRecyclerViewAdapter;
+import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
 import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileLoadingBinding;
@@ -78,15 +79,15 @@ public class PageFilePartList {
     private final @NotNull HInitializer<AlertDialog> listLoadingAnimationDialog = new HInitializer<>("PageFileListLoadingAnimationDialog");
 
     @WorkerThread
-    protected void listLoadingAnimation(final @NotNull ActivityMain activity, final @NotNull CharSequence title, final boolean show, final long current, final long total) {
-        PageFilePartList.listLoadingAnimationMessage.initializeIfNot(() -> activity.getString(R.string.page_file_loading_text));
-        PageFilePartList.listLoadingAnimationPercent.initializeIfNot(() -> activity.getString(R.string.page_file_loading_percent));
-        this.listLoadingAnimationBinding.initializeIfNot(() -> PageFileLoadingBinding.inflate(activity.getLayoutInflater()));
+    protected void listLoadingAnimation(final @NotNull CharSequence title, final boolean show, final long current, final long total) {
+        PageFilePartList.listLoadingAnimationMessage.initializeIfNot(() -> this.pageFile.activity().getString(R.string.page_file_loading_text));
+        PageFilePartList.listLoadingAnimationPercent.initializeIfNot(() -> this.pageFile.activity().getString(R.string.page_file_loading_percent));
+        this.listLoadingAnimationBinding.initializeIfNot(() -> PageFileLoadingBinding.inflate(this.pageFile.activity().getLayoutInflater()));
         final float percent = total <= 0 ? show ? 0 : 1 : ((float) current) / total;
         final String textPercent = MessageFormat.format(PageFilePartList.listLoadingAnimationPercent.getInstance(), percent);
         final String textMessage = MessageFormat.format(PageFilePartList.listLoadingAnimationMessage.getInstance(), current, total);
-        Main.runOnUiThread(activity, () -> {
-            this.listLoadingAnimationDialog.initializeIfNot(() -> new AlertDialog.Builder(activity).setView(this.listLoadingAnimationBinding.getInstance().getRoot())
+        Main.runOnUiThread(this.pageFile.activity(), () -> {
+            this.listLoadingAnimationDialog.initializeIfNot(() -> new AlertDialog.Builder(this.pageFile.activity()).setView(this.listLoadingAnimationBinding.getInstance().getRoot())
                     .setTitle(title).setCancelable(false).setPositiveButton(R.string.cancel, null).show());
             this.listLoadingAnimationDialog.getInstance().setTitle(title);
             this.listLoadingAnimationBinding.getInstance().pageFileLoadingGuideline.setGuidelinePercent(percent);
@@ -100,9 +101,9 @@ public class PageFilePartList {
     }
 
     @WorkerThread
-    private void listLoadingCallback(final @NotNull ActivityMain activity, final @NotNull CharSequence title, final @NotNull InstantaneousProgressState state) {
+    private void listLoadingCallback(final @NotNull CharSequence title, final @NotNull InstantaneousProgressState state) {
         final Pair.ImmutablePair<Long, Long> pair = InstantaneousProgressStateGetter.merge(state);
-        this.listLoadingAnimation(activity, title, true, pair.getFirst().longValue(), pair.getSecond().longValue());
+        this.listLoadingAnimation(title, true, pair.getFirst().longValue(), pair.getSecond().longValue());
     }
 
     protected int getCurrentPosition() {
@@ -138,11 +139,11 @@ public class PageFilePartList {
 
     @WorkerThread
     @SuppressWarnings("unchecked")
-    protected void listenBroadcast(final @NotNull ActivityMain activity, final BroadcastAssistant.@NotNull BroadcastSet set) {
+    protected void listenBroadcast(final BroadcastAssistant.@NotNull BroadcastSet set) {
         set.ProviderInitialized.register(HExceptionWrapper.wrapConsumer(p -> {
             final VisibleFileInformation information;
-            try (final WListClientInterface client = this.pageFile.client(activity)) {
-                information = OperateFilesHelper.getFileOrDirectory(client, this.pageFile.token(activity), new FileLocation(p.getFirst(), p.getSecond().longValue()), true);
+            try (final WListClientInterface client = this.pageFile.client()) {
+                information = OperateFilesHelper.getFileOrDirectory(client, this.pageFile.token(), new FileLocation(p.getFirst(), p.getSecond().longValue()), true);
             }
             if (information == null) return;
             final EnhancedRecyclerViewAdapter<VisibleFileInformation, PageFileViewHolder> adapter = (EnhancedRecyclerViewAdapter<VisibleFileInformation, PageFileViewHolder>) Objects.requireNonNull(this.pageFile.getPage().pageFileList.getAdapter());
@@ -180,7 +181,7 @@ public class PageFilePartList {
 
 
     @UiThread
-    private void updatePage(final @NotNull ActivityMain activity, final @NotNull FileLocation location, final long position, final @NotNull AtomicBoolean clickable,
+    private void updatePage(final @NotNull FileLocation location, final long position, final @NotNull AtomicBoolean clickable,
                             @UiThread final @NotNull BiConsumer<? super @NotNull VisibleFileInformation, ? super @NotNull AtomicBoolean> clicker,
                             @UiThread final @NotNull BiConsumer<? super @NotNull VisibleFileInformation, ? super @NotNull AtomicBoolean> operation) {
         final PageFileBinding page = this.pageFile.getPage();
@@ -189,7 +190,7 @@ public class PageFilePartList {
         final EnhancedRecyclerViewAdapter<VisibleFileInformation, PageFileViewHolder> adapter = new EnhancedRecyclerViewAdapter<>() {
             @Override
             protected @NotNull PageFileViewHolder createViewHolder(final @NotNull ViewGroup parent) {
-                return new PageFileViewHolder(EnhancedRecyclerViewAdapter.buildView(activity.getLayoutInflater(), R.layout.page_file_cell, page.pageFileList), information -> {
+                return new PageFileViewHolder(EnhancedRecyclerViewAdapter.buildView(PageFilePartList.this.pageFile.activity().getLayoutInflater(), R.layout.page_file_cell, page.pageFileList), information -> {
                     if (!clickable.compareAndSet(true, false)) return;
                     if (FileInformationGetter.isDirectory(information)) {
                         final int p = PageFilePartList.this.getCurrentPosition();
@@ -224,36 +225,37 @@ public class PageFilePartList {
                 else return;
                 if (!onLoading.compareAndSet(false, true)) return;
                 if (isDown)
-                    adapter.addTailor(PageFilePartList.this.listLoadingView(activity.getLayoutInflater()));
+                    adapter.addTailor(PageFilePartList.this.listLoadingView(PageFilePartList.this.pageFile.activity().getLayoutInflater()));
                 else
-                    adapter.addHeader(PageFilePartList.this.listLoadingView(activity.getLayoutInflater()));
-                Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> {
+                    adapter.addHeader(PageFilePartList.this.listLoadingView(PageFilePartList.this.pageFile.activity().getLayoutInflater()));
+                Main.runOnBackgroundThread(PageFilePartList.this.pageFile.activity(), HExceptionWrapper.wrapRunnable(() -> {
                     (isDown ? noMoreDown : noMoreUp).set(false); // prevent retry forever when server error.
                     VisibleFilesListInformation list = null;
                     final int limit;
-                    final String title = MessageFormat.format(activity.getString(R.string.page_file_listing_title), page.pageFileName.getText());
+                    final String title = MessageFormat.format(PageFilePartList.this.pageFile.activity().getString(R.string.page_file_listing_title), page.pageFileName.getText());
                     final AtomicBoolean showed = new AtomicBoolean(false);
                     try {
                         limit = ClientConfigurationSupporter.limitPerPage(ClientConfigurationSupporter.get());
                         final int need = isDown ? limit : Math.toIntExact(Math.min(loadedUp.get(), limit));
-                        list = FilesAssistant.list(PageFilePartList.this.pageFile.address(activity), PageFilePartList.this.pageFile.username(activity), location, null, null,
+                        list = FilesAssistant.list(PageFilePartList.this.pageFile.address(), PageFilePartList.this.pageFile.username(), location, null, null,
                                 isDown ? loadedDown.getAndAdd(need) : loadedUp.addAndGet(-need), need, Main.ClientExecutors, c -> {
-                                    PageFilePartList.this.listLoadingAnimation(activity, title, true, 0, 0);
+                                    PageFilePartList.this.listLoadingAnimation(title, true, 0, 0);
                                     showed.set(true);
                                     return true;
-                                }, s -> PageFilePartList.this.listLoadingCallback(activity, title, s));
-                    } catch (final IllegalStateException exception) { // Server closed.
-                        Main.runOnUiThread(activity, activity::disconnect);
+                                }, s -> PageFilePartList.this.listLoadingCallback(title, s));
+                    } catch (final IllegalStateException exception) {
+                        HLogManager.getInstance("DefaultLogger").log(HLogLevel.MISTAKE, exception.getLocalizedMessage());
+                        Main.runOnUiThread(PageFilePartList.this.pageFile.activity(), PageFilePartList.this.pageFile.activity()::disconnect);
                         return;
                     } finally {
                         if (showed.get()) {
                             final long total = list == null ? 0 : FilesListInformationGetter.total(list);
-                            PageFilePartList.this.listLoadingAnimation(activity, title, false, total, total);
+                            PageFilePartList.this.listLoadingAnimation(title, false, total, total);
                         }
                     }
                     if (list == null) {
-                        Main.showToast(activity, R.string.page_file_unavailable_directory);
-                        Main.runOnUiThread(activity, () -> PageFilePartList.this.popFileList(activity));
+                        Main.showToast(PageFilePartList.this.pageFile.activity(), R.string.page_file_unavailable_directory);
+                        Main.runOnUiThread(PageFilePartList.this.pageFile.activity(), PageFilePartList.this::popFileList);
                         return;
                     }
                     if (isDown)
@@ -261,7 +263,7 @@ public class PageFilePartList {
                     else
                         noMoreUp.set(loadedUp.get() <= 0);
                     final VisibleFilesListInformation l = list;
-                    Main.runOnUiThread(activity, () -> {
+                    Main.runOnUiThread(PageFilePartList.this.pageFile.activity(), () -> {
                         page.pageFileCounter.setText(String.valueOf(FilesListInformationGetter.total(l)));
                         page.pageFileCounter.setVisibility(View.VISIBLE);
                         page.pageFileCounterText.setVisibility(View.VISIBLE);
@@ -272,10 +274,10 @@ public class PageFilePartList {
                     });
                 }, e -> {
                     onLoading.set(false);
-                    Main.runOnUiThread(activity, () -> {
+                    Main.runOnUiThread(PageFilePartList.this.pageFile.activity(), () -> {
                         if (isDown) {
                             if (noMoreDown.get())
-                                adapter.setTailor(0, PageFilePartList.this.listNoMoreView(activity.getLayoutInflater()));
+                                adapter.setTailor(0, PageFilePartList.this.listNoMoreView(PageFilePartList.this.pageFile.activity().getLayoutInflater()));
                             else
                                 adapter.removeTailor(0);
                         } else
@@ -291,46 +293,46 @@ public class PageFilePartList {
     }
 
     @UiThread
-    protected void onRootPage(final @NotNull ActivityMain activity, final long position) {
+    protected void onRootPage(final long position) {
         final PageFileBinding page = this.pageFile.getPage();
         page.pageFileBacker.setImageResource(R.drawable.backer_nonclickable);
         page.pageFileBacker.setOnClickListener(null);
         page.pageFileBacker.setClickable(false);
         page.pageFileName.setText(R.string.app_name);
-        this.updatePage(activity, new FileLocation(IdentifierNames.RootSelector, 0), position, new AtomicBoolean(true),
-                (information, c) -> this.onInsidePage(activity, FileInformationGetter.name(information),
+        this.updatePage(new FileLocation(IdentifierNames.RootSelector, 0), position, new AtomicBoolean(true),
+                (information, c) -> this.onInsidePage(FileInformationGetter.name(information),
                                 new FileLocation(FileInformationGetter.name(information), FileInformationGetter.id(information)), 0),
-                (information, c) -> this.pageFile.partOperation.rootOperation(activity, information, c));
+                (information, c) -> this.pageFile.partOperation.rootOperation(information, c));
     }
 
     @UiThread
-    protected void onInsidePage(final @NotNull ActivityMain activity, final @NotNull CharSequence name, final @NotNull FileLocation location, final long position) {
+    protected void onInsidePage(final @NotNull CharSequence name, final @NotNull FileLocation location, final long position) {
         final PageFileBinding page = this.pageFile.getPage();
         final AtomicBoolean clickable = new AtomicBoolean(true);
         page.pageFileBacker.setImageResource(R.drawable.backer);
         page.pageFileBacker.setOnClickListener(v -> {
             if (clickable.compareAndSet(true, false))
-                this.popFileList(activity);
+                this.popFileList();
         });
         page.pageFileBacker.setClickable(true);
         page.pageFileName.setText(name);
-        this.updatePage(activity, location, position, clickable, (information, c) -> {
+        this.updatePage(location, position, clickable, (information, c) -> {
             if (FileInformationGetter.isDirectory(information))
-                this.onInsidePage(activity, FileInformationGetter.name(information), new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.id(information)), 0);
+                this.onInsidePage(FileInformationGetter.name(information), new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.id(information)), 0);
             else
-                this.pageFile.partPreview.preview(activity, FileLocationGetter.storage(location), information, c);
-        }, (information, c) -> this.pageFile.partOperation.insideOperation(activity, FileLocationGetter.storage(location), information, c));
+                this.pageFile.partPreview.preview(this.pageFile.activity(), FileLocationGetter.storage(location), information, c);
+        }, (information, c) -> this.pageFile.partOperation.insideOperation(FileLocationGetter.storage(location), information, c));
     }
 
     @AnyThread
-    private void backToRootPage(final @NotNull ActivityMain activity) {
+    private void backToRootPage() {
         final Triad.ImmutableTriad<FileLocation, VisibleFileInformation, AtomicLong> r = this.stacks.pollLast();
         final long position = r == null || !IdentifierNames.RootSelector.equals(FileLocationGetter.storage(r.getA())) ? 0 : r.getC().get();
-        Main.runOnUiThread(activity, () -> this.onRootPage(activity, position));
+        Main.runOnUiThread(this.pageFile.activity(), () -> this.onRootPage(position));
     }
 
     @UiThread
-    protected boolean popFileList(final @NotNull ActivityMain activity) {
+    protected boolean popFileList() {
         final Triad.ImmutableTriad<FileLocation, VisibleFileInformation, AtomicLong> p = this.stacks.poll();
         if (p == null && this.isOnRoot()) return false;
         final PageFileBinding page = this.pageFile.getPage();
@@ -339,13 +341,13 @@ public class PageFilePartList {
         page.pageFileCounterText.setVisibility(View.GONE);
         page.pageFileList.clearOnScrollListeners();
         page.pageFileList.setAdapter(EmptyRecyclerAdapter.Instance);
-        Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> {
+        Main.runOnBackgroundThread(this.pageFile.activity(), HExceptionWrapper.wrapRunnable(() -> {
             final VisibleFileInformation current;
-            try (final WListClientInterface client = this.pageFile.client(activity)) {
-                current = OperateFilesHelper.getFileOrDirectory(client, this.pageFile.token(activity), this.currentLocation(), true);
+            try (final WListClientInterface client = this.pageFile.client()) {
+                current = OperateFilesHelper.getFileOrDirectory(client, this.pageFile.token(), this.currentLocation(), true);
             }
             if (current == null) {
-                this.backToRootPage(activity);
+                this.backToRootPage();
                 return;
             }
             final FileLocation parent;
@@ -359,17 +361,17 @@ public class PageFilePartList {
                 position = p.getC().get();
             }
             final VisibleFileInformation directory;
-            try (final WListClientInterface client = this.pageFile.client(activity)) {
-                directory = OperateFilesHelper.getFileOrDirectory(client, this.pageFile.token(activity), parent, true);
+            try (final WListClientInterface client = this.pageFile.client()) {
+                directory = OperateFilesHelper.getFileOrDirectory(client, this.pageFile.token(), parent, true);
             }
             if (directory == null) {
-                this.backToRootPage(activity);
+                this.backToRootPage();
                 return;
             }
             if (FileInformationGetter.id(current) == FileInformationGetter.id(directory))
-                Main.runOnUiThread(activity, () -> this.onRootPage(activity, position));
+                Main.runOnUiThread(this.pageFile.activity(), () -> this.onRootPage(position));
             else
-                Main.runOnUiThread(activity, () -> this.onInsidePage(activity, FileInformationGetter.name(directory), parent, position));
+                Main.runOnUiThread(this.pageFile.activity(), () -> this.onInsidePage(FileInformationGetter.name(directory), parent, position));
         }));
         return true;
     }

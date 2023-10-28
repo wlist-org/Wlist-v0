@@ -2,11 +2,12 @@ package com.xuxiaocheng.WListAndroid.UIs.Pages.User;
 
 import android.view.LayoutInflater;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Client.Operations.OperateServerHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WListAndroid.Main;
-import com.xuxiaocheng.WListAndroid.UIs.ActivityMain;
 import com.xuxiaocheng.WListAndroid.UIs.IFragment;
+import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
 import com.xuxiaocheng.WListAndroid.databinding.PageUserBinding;
 import org.jetbrains.annotations.NotNull;
 
@@ -19,15 +20,15 @@ public class PageUser extends IFragment<PageUserBinding> {
     }
 
     @Override
-    public void onBuild(final @NotNull ActivityMain activity, final @NotNull PageUserBinding page) {
+    public void onBuild(final @NotNull PageUserBinding page) {
         // TODO
         final AtomicBoolean clickable = new AtomicBoolean(true);
         page.pageUserCloseServer.setOnClickListener(v -> {
             if (!clickable.compareAndSet(true, false))
                 return;
-            Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> {
-                try (final WListClientInterface client = this.client(activity)) {
-                    OperateServerHelper.closeServer(client, this.token(activity));
+            Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
+                try (final WListClientInterface client = this.client()) {
+                    OperateServerHelper.closeServer(client, this.token());
                 }
             }, () -> clickable.set(true)));
         });
@@ -35,7 +36,9 @@ public class PageUser extends IFragment<PageUserBinding> {
             if (!clickable.compareAndSet(true, false))
                 return;
             try {
-                activity.disconnect();
+                this.activity().disconnect();
+            } catch (final IllegalArgumentException exception) {
+                HLogManager.getInstance("DefaultLogger").log(HLogLevel.MISTAKE, exception.getLocalizedMessage());
             } finally {
                 clickable.set(true);
             }

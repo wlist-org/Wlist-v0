@@ -37,12 +37,14 @@ public class PageConnect extends IFragment<PageConnectBinding> {
     }
 
     private static final @NotNull AtomicBoolean clickable = new AtomicBoolean(true);
-    private static final @NotNull HInitializer<ServiceConnection> connection = new HInitializer<>("ServiceConnection");
+    private static final @NotNull HInitializer<ActivityMain> binderActivity = new HInitializer<>("BinderActivityMain");
+    private static final @NotNull HInitializer<ServiceConnection> connection = new HInitializer<>("BinderConnection");
 
     @Override
-    protected void onBuild(final @NotNull ActivityMain activity, final @NotNull PageConnectBinding page) {
+    protected void onBuild(final @NotNull PageConnectBinding page) {
         page.pageConnectionInternalServer.setOnClickListener(v -> {
             if (PageConnect.connection.isInitialized() || !PageConnect.clickable.compareAndSet(true, false)) return;
+            final ActivityMain activity = this.activity();
             final Intent serverIntent = new Intent(activity, InternalServerService.class);
             final HLog logger = HLogManager.getInstance("DefaultLogger");
             logger.log(HLogLevel.LESS, "Starting internal server...");
@@ -95,7 +97,7 @@ public class PageConnect extends IFragment<PageConnectBinding> {
                     Main.runOnBackgroundThread(activity, () -> {
                         final InetSocketAddress address = this.address.uninitializeNullable();
                         if (address != null) {
-                            logger.log(HLogLevel.INFO, "Disconnecting to service: ", activity.address());
+                            logger.log(HLogLevel.INFO, "Disconnecting to service: ", address);
                             WListClientManager.quicklyUninitialize(address);
                         }
                     });
@@ -106,6 +108,7 @@ public class PageConnect extends IFragment<PageConnectBinding> {
             text.setText(R.string.page_connect_internal_server_starting);
             activity.startService(serverIntent);
             PageConnect.connection.initialize(connection);
+            PageConnect.binderActivity.reinitialize(activity);
             activity.bindService(serverIntent, connection, Context.BIND_AUTO_CREATE | Context.BIND_ABOVE_CLIENT | Context.BIND_IMPORTANT);
         });
 //        activity.activityLoginIcon.setOnClickListener(v -> { // TODO
@@ -123,13 +126,10 @@ public class PageConnect extends IFragment<PageConnectBinding> {
 
     @Override
     public void onDisconnected(final @NotNull ActivityMain activity) {
+        final ActivityMain binderActivity = PageConnect.binderActivity.uninitializeNullable();
         final ServiceConnection connection = PageConnect.connection.uninitializeNullable();
-        if (connection != null)
-            try {
-                activity.unbindService(connection);
-            } catch (final IllegalArgumentException exception) {
-                HLogManager.getInstance("DefaultLogger").log(HLogLevel.WARN, exception.getLocalizedMessage());
-            }
+        if (connection != null && binderActivity != null)
+            binderActivity.unbindService(connection);
     }
 
     @Override

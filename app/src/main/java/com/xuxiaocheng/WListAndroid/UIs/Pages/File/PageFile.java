@@ -60,10 +60,10 @@ public class PageFile extends IFragment<PageFileBinding> {
 
     @Override
     @SuppressLint("ClickableViewAccessibility")
-    public void onBuild(final @NotNull ActivityMain activity, final @NotNull PageFileBinding page) {
-        page.pageFileList.setLayoutManager(new LinearLayoutManager(activity));
+    public void onBuild(final @NotNull PageFileBinding page) {
+        page.pageFileList.setLayoutManager(new LinearLayoutManager(this.activity()));
         page.pageFileList.setHasFixedSize(true);
-        this.partList.onRootPage(activity, 0);
+        this.partList.onRootPage(0);
         final AtomicBoolean scrolling = new AtomicBoolean();
         final AtomicInteger startX = new AtomicInteger(), startY = new AtomicInteger();
         final AtomicReference<ZonedDateTime> startTime = new AtomicReference<>();
@@ -90,7 +90,7 @@ public class PageFile extends IFragment<PageFileBinding> {
                 }
                 case MotionEvent.ACTION_UP -> {
                     if (scrolling.get()) {
-                        activity.getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE).edit()
+                        this.activity().getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE).edit()
                                 .putFloat("x", v.getX()).putFloat("y", v.getY()).apply();
                         this.getPage().pageFileList.requestDisallowInterceptTouchEvent(false);
                     } else return v.performClick();
@@ -98,14 +98,14 @@ public class PageFile extends IFragment<PageFileBinding> {
             }
             return true;
         });
-        Main.runOnBackgroundThread(activity, () -> {
-            final SharedPreferences preferences = activity.getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE);
-            final DisplayMetrics displayMetrics = activity.getResources().getDisplayMetrics();
+        Main.runOnBackgroundThread(this.activity(), () -> {
+            final SharedPreferences preferences = this.activity().getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE);
+            final DisplayMetrics displayMetrics = this.activity().getResources().getDisplayMetrics();
             final float x = preferences.getFloat("x", (displayMetrics.widthPixels - page.pageFileUploader.getWidth()) * 0.8f);
             final float y = preferences.getFloat("y", (displayMetrics.heightPixels - page.pageFileUploader.getHeight()) * 0.7f);
             if (!preferences.contains("x") || !preferences.contains("y"))
                 preferences.edit().putFloat("x", x).putFloat("y", y).apply();
-            Main.runOnUiThread(activity, () -> {
+            Main.runOnUiThread(this.activity(), () -> {
                 page.pageFileUploader.setX(x);
                 page.pageFileUploader.setY(y);
                 page.pageFileUploader.setVisibility(View.VISIBLE);
@@ -113,23 +113,23 @@ public class PageFile extends IFragment<PageFileBinding> {
         }, 300, TimeUnit.MILLISECONDS);
         page.pageFileUploader.setOnClickListener(u -> {
             if (this.partList.isOnRoot()) {
-                this.partUpload.addStorage(activity);
+                this.partUpload.addStorage(this.activity());
                 return;
             }
-            final BottomSheetDialog dialog = new BottomSheetDialog(activity, R.style.BottomSheetDialog);
-            final PageFileUploadBinding uploader = PageFileUploadBinding.inflate(activity.getLayoutInflater());
+            final BottomSheetDialog dialog = new BottomSheetDialog(this.activity(), R.style.BottomSheetDialog);
+            final PageFileUploadBinding uploader = PageFileUploadBinding.inflate(this.activity().getLayoutInflater());
             uploader.pageFileUploadCancel.setOnClickListener(v -> dialog.cancel());
             final AtomicBoolean clickable = new AtomicBoolean(true);
             uploader.pageFileUploadStorageImage.setOnClickListener(v -> {
                 if (!clickable.compareAndSet(true, false)) return;
                 dialog.cancel();
-                this.partUpload.addStorage(activity);
+                this.partUpload.addStorage(this.activity());
             });
             uploader.pageFileUploadStorageText.setOnClickListener(v -> uploader.pageFileUploadStorageImage.performClick());
             uploader.pageFileUploadDirectoryImage.setOnClickListener(v -> {
                 if (this.partList.isOnRoot() || !clickable.compareAndSet(true, false)) return;
                 dialog.cancel();
-                this.partUpload.createDirectory(activity);
+                this.partUpload.createDirectory(this.activity());
             });
             uploader.pageFileUploadDirectoryText.setOnClickListener(v -> uploader.pageFileUploadDirectoryImage.performClick());
             uploader.pageFileUploadFileImage.setOnClickListener(v -> {
@@ -160,17 +160,17 @@ public class PageFile extends IFragment<PageFileBinding> {
     public void onActivityCreateHook(final @NotNull ActivityMain activity) {
         this.chooserLauncher.reinitialize(activity.registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
             if (uri != null)
-                this.partUpload.uploadFile(activity, uri);
+                this.partUpload.uploadFile(this.activity(), uri);
         }));
         activity.getContent().activityMainOptions.setOnClickListener(v -> {
-            if (activity.currentChoice() != FragmentsAdapter.FragmentTypes.File) return;
-            final ListPopupWindow popup = new ListPopupWindow(activity);
+            if (this.activity().currentChoice() != FragmentsAdapter.FragmentTypes.File) return;
+            final ListPopupWindow popup = new ListPopupWindow(this.activity());
             popup.setWidth(this.getPage().pageFileList.getWidth() >> 1);
-            popup.setAnchorView(activity.getContent().activityMainOptions);
-            popup.setAdapter(new SimpleAdapter(activity, List.of(
-                    Map.of("image", R.drawable.page_file_options_refresh, "name", activity.getResources().getString(R.string.page_file_options_refresh)),
-                    Map.of("image", R.drawable.page_file_options_sorter, "name", activity.getResources().getString(R.string.page_file_options_sorter)),
-                    Map.of("image", R.drawable.page_file_options_filter, "name", activity.getResources().getString(R.string.page_file_options_filter))
+            popup.setAnchorView(this.activity().getContent().activityMainOptions);
+            popup.setAdapter(new SimpleAdapter(this.activity(), List.of(
+                    Map.of("image", R.drawable.page_file_options_refresh, "name", this.activity().getResources().getString(R.string.page_file_options_refresh)),
+                    Map.of("image", R.drawable.page_file_options_sorter, "name", this.activity().getResources().getString(R.string.page_file_options_sorter)),
+                    Map.of("image", R.drawable.page_file_options_filter, "name", this.activity().getResources().getString(R.string.page_file_options_filter))
             ), R.layout.page_file_options_cell, new String[]{"image", "name"},
                     new int[]{R.id.activity_main_options_cell_image, R.id.activity_main_options_cell_name}));
             final AtomicBoolean clickable = new AtomicBoolean(true);
@@ -178,11 +178,11 @@ public class PageFile extends IFragment<PageFileBinding> {
                 if (!clickable.compareAndSet(true, false)) return;
                 popup.dismiss();
                 if (pos == 0)
-                    this.partOptions.refresh(activity);
+                    this.partOptions.refresh();
                 if (pos == 1)
-                    this.partOptions.sort(activity);
+                    this.partOptions.sort();
                 if (pos == 2)
-                    this.partOptions.filter(activity);
+                    this.partOptions.filter();
             });
             popup.show();
         });
@@ -190,12 +190,12 @@ public class PageFile extends IFragment<PageFileBinding> {
 
     @Override
     public void onConnected(final @NotNull ActivityMain activity) {
-        this.partList.listenBroadcast(activity, BroadcastAssistant.get(activity.address()));
+        this.partList.listenBroadcast(BroadcastAssistant.get(activity.address()));
     }
 
     @Override
-    public boolean onBackPressed(final @NotNull ActivityMain activity) {
-        return this.partList.popFileList(activity);
+    public boolean onBackPressed() {
+        return this.partList.popFileList();
     }
 
     @Override

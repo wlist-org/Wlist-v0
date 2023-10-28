@@ -137,7 +137,7 @@ public class PageFilePartUpload {
             }
             HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Uploading files.",
                     ParametersMap.create().add("address", activity.address()).add("location", location).add("filename", filename).add("size", size).add("uri", uri));
-            this.pageFile.partList.listLoadingAnimation(activity, "Uploading", true, 0, 0);
+            this.pageFile.partList.listLoadingAnimation("Uploading", true, 0, 0);
             Main.runOnUiThread(activity, () -> {
                 final AlertDialog loader = new AlertDialog.Builder(activity).setTitle(filename).setCancelable(false).show();
                 Main.runOnUiThread(activity, HExceptionWrapper.wrapRunnable(() -> {
@@ -153,7 +153,7 @@ public class PageFilePartUpload {
                             total += pair.getSecond().longValue();
                         }
                         final long c = current, t = total;
-                        this.pageFile.partList.listLoadingAnimation(activity, "Uploading", true, c, t);
+                        this.pageFile.partList.listLoadingAnimation("Uploading", true, c, t);
                     });
                     assert res != null;
                     if (res.isFailure()) // TODO
@@ -161,7 +161,7 @@ public class PageFilePartUpload {
                     else
                         Main.showToast(activity, R.string.page_file_upload_success_file);
                 }, () -> {
-                    this.pageFile.partList.listLoadingAnimation(activity, "Uploading", false, 0, 0);
+                    this.pageFile.partList.listLoadingAnimation("Uploading", false, 0, 0);
                     Main.runOnUiThread(activity, loader::cancel);
                 }));
             });
