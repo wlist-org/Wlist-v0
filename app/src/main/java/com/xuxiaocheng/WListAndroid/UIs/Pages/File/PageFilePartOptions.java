@@ -115,6 +115,7 @@ public class PageFilePartOptions {
                     orders.put(policy.order(), direction);
                     orders.putIfAbsent(FileInformationGetter.Order.Name.order(), direction);
                     orders.putIfAbsent(FileInformationGetter.Order.CreateTime.order(), direction);
+                    orders.putIfAbsent(FileInformationGetter.Order.Id.order(), direction);
                     final ClientConfiguration old = ClientConfigurationSupporter.get();
                     ClientConfigurationSupporter.set(new ClientConfiguration(
                             ClientConfigurationSupporter.threadCount(old),
@@ -127,6 +128,7 @@ public class PageFilePartOptions {
                             ClientConfigurationSupporter.userOrders(old),
                             ClientConfigurationSupporter.userGroupOrders(old),
                             ClientConfigurationSupporter.copyNoTempFile(old)));
+                    PageFilePartList.comparator.uninitializeNullable();
                     final FileLocation location = this.pageFile.partList.currentLocation();
                     if (IdentifierNames.RootSelector.equals(FileLocationGetter.storage(location)))
                         Main.runOnUiThread(activity, () -> this.pageFile.partList.onRootPage(activity, this.pageFile.partList.getCurrentPosition()));

@@ -42,7 +42,9 @@ import org.jetbrains.annotations.NotNull;
 
 import java.text.MessageFormat;
 import java.util.ArrayDeque;
+import java.util.Comparator;
 import java.util.Deque;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -114,6 +116,8 @@ public class PageFilePartList {
 
 
     private final @NotNull AtomicReference<FileLocation> currentLocation = new AtomicReference<>();
+    private final @NotNull AtomicReference<AtomicLong> currentLoadingUp = new AtomicReference<>();
+    private final @NotNull AtomicReference<AtomicLong> currentLoadingDown = new AtomicReference<>();
     private final @NotNull Deque<Triad.@NotNull ImmutableTriad<@NotNull FileLocation, @NotNull VisibleFileInformation, @NotNull AtomicLong>> stacks = new ArrayDeque<>();
 
     protected boolean isOnRoot() {
@@ -125,14 +129,41 @@ public class PageFilePartList {
         return this.currentLocation.get();
     }
 
+    public static final @NotNull HInitializer<Comparator<VisibleFileInformation>> comparator = new HInitializer<>("InformationComparator");
+    @SuppressWarnings("Convert2MethodRef") // AndroidSupport
+    private int compareInformation(final @NotNull VisibleFileInformation a, final @NotNull VisibleFileInformation b) {
+        PageFilePartList.comparator.initializeIfNot(() -> FileInformationGetter.buildComparator());
+        return PageFilePartList.comparator.getInstance().compare(a, b);
+    }
+
     @WorkerThread
+    @SuppressWarnings("unchecked")
     protected void listenBroadcast(final @NotNull ActivityMain activity, final BroadcastAssistant.@NotNull BroadcastSet set) {
+        set.ProviderInitialized.register(HExceptionWrapper.wrapConsumer(p -> {
+            final VisibleFileInformation information;
+            try (final WListClientInterface client = this.pageFile.client(activity)) {
+                information = OperateFilesHelper.getFileOrDirectory(client, this.pageFile.token(activity), new FileLocation(p.getFirst(), p.getSecond().longValue()), true);
+            }
+            if (information == null) return;
+            final EnhancedRecyclerViewAdapter<VisibleFileInformation, PageFileViewHolder> adapter = (EnhancedRecyclerViewAdapter<VisibleFileInformation, PageFileViewHolder>) Objects.requireNonNull(this.pageFile.getPage().pageFileList.getAdapter());
+            if (this.isOnRoot()) {
+                final VisibleFileInformation[] list = FileInformationGetter.asArray(adapter.getData());
+                if (list.length == 0)
+                    adapter.addData(information);
+                else {
+                    final int index = FileInformationGetter.binarySearch(list, information, this::compareInformation);
+                    if (index >= 0)
+                        adapter.addData(index, information);
+                    else
+                        adapter.addData(-index - 1, information);
+                }
+            } else {
+                final Triad.ImmutableTriad<FileLocation, VisibleFileInformation, AtomicLong> last = this.stacks.peekLast();
+                if (last != null && IdentifierNames.RootSelector.equals(FileLocationGetter.storage(last.getA())) && this.compareInformation(information, last.getB()) < 0)
+                    last.getC().getAndIncrement();
+            }
+        }));
 //         TODO auto insert.
-//        final Runnable onRoot = () -> {
-//            if (this.stacks.isEmpty())
-//                Main.runOnUiThread(activity, () -> this.onRootPage(this.getCurrentPosition()));
-//        };
-//        set.ProviderInitialized.register(s -> onRoot.run());
 //        set.ProviderUninitialized.register(s -> onRoot.run());
 //        final Consumer<Pair.ImmutablePair<FileLocation, Boolean>> update = s -> {
 //            final FileLocation location = this.currentLocation.get();
@@ -177,6 +208,8 @@ public class PageFilePartList {
         page.pageFileCounterText.setVisibility(View.GONE);
         final AtomicLong loadedUp = new AtomicLong(position);
         final AtomicLong loadedDown = new AtomicLong(position);
+        this.currentLoadingUp.set(loadedUp);
+        this.currentLoadingDown.set(loadedDown);
         final AtomicBoolean noMoreUp = new AtomicBoolean(position <= 0);
         final AtomicBoolean noMoreDown = new AtomicBoolean(false);
         final RecyclerView.OnScrollListener listener = new RecyclerView.OnScrollListener() {
@@ -191,6 +224,9 @@ public class PageFilePartList {
                 else if (!recyclerView.canScrollVertically(-1) && !noMoreUp.get())
                     isDown = false;
                 else return;
+                Main.runOnBackgroundThread(activity, () -> {
+                    return;
+                });
                 if (!onLoading.compareAndSet(false, true)) return;
                 if (isDown)
                     adapter.addTailor(PageFilePartList.this.listLoadingView(activity.getLayoutInflater()));
