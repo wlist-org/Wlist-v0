@@ -9,6 +9,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
 import com.xuxiaocheng.Rust.NetworkTransmission;
+import com.xuxiaocheng.WList.Commons.Codecs.MessageServerCiphers;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
@@ -87,7 +88,11 @@ public final class WList {
             if ("-NoLogNetwork".equalsIgnoreCase(arg))
                 ServerHandler.LogNetwork.set(false);
             if ("-LogNetwork".equalsIgnoreCase(arg))
-                ServerHandler.LogActive.set(true);
+                ServerHandler.LogNetwork.set(true);
+            if ("-NoLogCipher".equalsIgnoreCase(arg))
+                MessageServerCiphers.LogNetwork.set(false);
+            if ("-LogCipher".equalsIgnoreCase(arg))
+                MessageServerCiphers.LogNetwork.set(true);
             if (arg.startsWith("-Path:"))
                 runtimePath = new File(arg.substring("-Path:".length())).getAbsoluteFile();
             if (arg.startsWith("-LogLevel:")) {
@@ -103,12 +108,13 @@ public final class WList {
             if ("/?".equals(arg) || arg.endsWith("help")) {
                 //noinspection UseOfSystemOutOrSystemErr
                 System.out.println("""
-Usage: [-Debug|-NoDebug] [-Inside|-Outside] [-NoLogOperation|-LogOperation] [-NoLogActive|-LogActive] [-NoLogNetwork|-LogNetwork] [-Path:<path>] [-LogLevel:<level>]
+Usage: [-Debug|-NoDebug] [-Inside|-Outside] [-NoLogOperation|-LogOperation] [-NoLogActive|-LogActive] [-NoLogNetwork|-LogNetwork] [-NoLogCipher|-LogCipher] [-Path:<path>] [-LogLevel:<level>]
 
 Debug: Set debug mode.
 Inside: Disallow logon.
 NoLogOperation: Do not log user operation message.
 NoLogActive: Do not log client active/inactive message.
+NoLogCipher: Do not log server read/write from client message.
 Path: The core runtime path.
 LogLevel: The log level.
     -1000   : VERBOSE,

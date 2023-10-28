@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class MessageClientCiphers extends MessageToMessageCodec<ByteBuf, ByteBuf> {
     private static final @NotNull String application = "WList@operation=0.2";
+    public static final @NotNull AtomicBoolean LogNetwork = new AtomicBoolean(false);
 
     protected NetworkTransmission.RsaPrivateKey rsaPrivateKey;
     protected NetworkTransmission.AesKeyPair aesKeyPair;
@@ -51,8 +52,9 @@ public class MessageClientCiphers extends MessageToMessageCodec<ByteBuf, ByteBuf
         final ByteBuf encrypted = NetworkTransmission.clientEncrypt(this.aesKeyPair, msg);
         if (encrypted == null)
             throw new IllegalStateException("Something went wrong when client encrypted message." + ParametersMap.create().add("msg", msg));
-        HLog.getInstance("ClientLogger").log(HLogLevel.VERBOSE, "Write: ", ctx.channel().localAddress(),
-                ParametersMap.create().add("length", msg.readableBytes()).add("network", encrypted.readableBytes()));
+        if (MessageClientCiphers.LogNetwork.get())
+            HLog.getInstance("ClientLogger").log(HLogLevel.VERBOSE, "Write: ", ctx.channel().localAddress(),
+                    ParametersMap.create().add("length", msg.readableBytes()).add("network", encrypted.readableBytes()));
         out.add(encrypted);
     }
 
@@ -88,8 +90,9 @@ public class MessageClientCiphers extends MessageToMessageCodec<ByteBuf, ByteBuf
         final ByteBuf decrypted = NetworkTransmission.clientDecrypt(this.aesKeyPair, msg);
         if (decrypted == null)
             throw new IllegalStateException("Something went wrong when client decrypted message." + ParametersMap.create().add("msg", msg));
-        HLog.getInstance("ClientLogger").log(HLogLevel.VERBOSE, "Read: ", ctx.channel().localAddress(),
-                ParametersMap.create().add("length", decrypted.readableBytes()).add("network", msg.readableBytes()));
+        if (MessageClientCiphers.LogNetwork.get())
+            HLog.getInstance("ClientLogger").log(HLogLevel.VERBOSE, "Read: ", ctx.channel().localAddress(),
+                    ParametersMap.create().add("length", decrypted.readableBytes()).add("network", msg.readableBytes()));
         out.add(decrypted);
     }
 
