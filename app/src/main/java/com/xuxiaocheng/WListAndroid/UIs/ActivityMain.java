@@ -40,27 +40,17 @@ public class ActivityMain extends AppCompatActivity {
         return this.currentChoice.get();
     }
 
-    protected final @NotNull HInitializer<InetSocketAddress> address = new HInitializer<>("ActivityMainAddress");
-    protected final @NotNull HInitializer<String> username = new HInitializer<>("ActivityMainUsername");
-    protected final @NotNull HInitializer<IBinder> binder = new HInitializer<>("ActivityMainServiceBinder");
+    protected static final @NotNull HInitializer<InetSocketAddress> address = new HInitializer<>("ActivityMainAddress");
+    protected static final @NotNull HInitializer<String> username = new HInitializer<>("ActivityMainUsername");
+    protected static final @NotNull HInitializer<IBinder> binder = new HInitializer<>("ActivityMainServiceBinder");
     public boolean isConnected() {
-        return this.address.isInitialized() && this.username.isInitialized();
+        return ActivityMain.address.isInitialized() && ActivityMain.username.isInitialized();
     }
     public @NotNull InetSocketAddress address() {
-        InetSocketAddress address = this.address.getInstanceNullable();
-        if (address == null) {
-            this.disconnect();
-            address = this.address.getInstance();
-        }
-        return address;
+        return ActivityMain.address.getInstance();
     }
     public @NotNull String username() {
-        String username = this.username.getInstanceNullable();
-        if (username == null) {
-            this.disconnect();
-            username = this.username.getInstance();
-        }
-        return username;
+        return ActivityMain.username.getInstance();
     }
 
     @Override
@@ -68,7 +58,7 @@ public class ActivityMain extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         HLogManager.initialize(this, HLogManager.ProcessType.Activity);
         final HLog logger = HLogManager.getInstance("DefaultLogger");
-        logger.log(HLogLevel.VERBOSE, "Creating ActivityMain.");
+        logger.log(HLogLevel.VERBOSE, "Creating ActivityMain. " + this.hashCode());
         final ActivityMainBinding activity = ActivityMainBinding.inflate(this.getLayoutInflater());
         this.setContentView(activity.getRoot());
         this.contentCache.reinitialize(activity);
@@ -138,25 +128,25 @@ public class ActivityMain extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         if (this.isConnected())
-            WListClientManager.removeAllListeners(this.address.getInstance());
+            WListClientManager.removeAllListeners(ActivityMain.address.getInstance());
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         if (this.isConnected()) {
-            if (WListClientManager.instances.isNotInitialized(this.address.getInstance())) {
+            if (WListClientManager.instances.isNotInitialized(ActivityMain.address.getInstance())) {
                 Main.showToast(this, R.string.activity_main_server_closed);
                 this.disconnect();
                 return;
             }
-            WListClientManager.addListener(this.address.getInstance(), i -> {
+            WListClientManager.addListener(ActivityMain.address.getInstance(), i -> {
                 if (!i.booleanValue()) {
                     Main.runOnUiThread(this, () -> {
                         Main.showToast(this, R.string.activity_main_server_closed);
                         this.disconnect();
                     });
-                    WListClientManager.removeAllListeners(this.address.getInstance());
+                    WListClientManager.removeAllListeners(ActivityMain.address.getInstance());
                 }
             });
         }
@@ -164,9 +154,9 @@ public class ActivityMain extends AppCompatActivity {
 
     @AnyThread
     public void connect(final @NotNull InetSocketAddress address, final @NotNull String username, final @Nullable IBinder binder) {
-        this.address.reinitialize(address);
-        this.username.reinitialize(username);
-        this.binder.reinitializeNullable(binder);
+        ActivityMain.address.reinitialize(address);
+        ActivityMain.username.reinitialize(username);
+        ActivityMain.binder.reinitializeNullable(binder);
         if (binder != null)
             try {
                 binder.linkToDeath(this::disconnect, 0);
@@ -195,18 +185,21 @@ public class ActivityMain extends AppCompatActivity {
 
     @AnyThread
     public void disconnect() {
-        this.address.uninitializeNullable();
-        this.username.uninitializeNullable();
+        ActivityMain.address.uninitializeNullable();
+        ActivityMain.username.uninitializeNullable();
         Main.runOnUiThread(this, () -> {
-            this.fragmentsAdapter.getInstance().notifyConnected(false, this.currentChoice.get());
-            Main.runOnBackgroundThread(this, () -> this.fragmentsAdapter.getInstance().getAllFragments().forEach(f -> f.onDisconnected(this)));
+            final FragmentsAdapter adapter = this.fragmentsAdapter.getInstanceNullable();
+            if (adapter == null) return;
+            adapter.notifyConnected(false, this.currentChoice.get());
+            Main.runOnBackgroundThread(this, () -> adapter.getAllFragments().forEach(f -> f.onDisconnected(this)));
         });
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Destroying ActivityMain.");
+        HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Destroying ActivityMain. " + this.hashCode());
+//        this.disconnect();
         this.fragmentsAdapter.uninitializeNullable();
         this.fragmentsCallback.uninitializeNullable();
     }
@@ -216,9 +209,9 @@ public class ActivityMain extends AppCompatActivity {
         return "ActivityMain{" +
                 "contentCache=" + this.contentCache +
                 ", currentChoice=" + this.currentChoice +
-                ", address=" + this.address +
-                ", username=" + this.username +
-                ", binder=" + this.binder.isInitialized() +
+                ", address=" + ActivityMain.address +
+                ", username=" + ActivityMain.username +
+                ", binder=" + ActivityMain.binder.isInitialized() +
                 ", lastBackPressedTime=" + this.lastBackPressedTime +
                 '}';
     }

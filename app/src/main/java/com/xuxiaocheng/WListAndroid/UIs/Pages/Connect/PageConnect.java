@@ -125,7 +125,11 @@ public class PageConnect extends IFragment<PageConnectBinding> {
     public void onDisconnected(final @NotNull ActivityMain activity) {
         final ServiceConnection connection = PageConnect.connection.uninitializeNullable();
         if (connection != null)
-            activity.unbindService(connection);
+            try {
+                activity.unbindService(connection);
+            } catch (final IllegalArgumentException exception) {
+                HLogManager.getInstance("DefaultLogger").log(HLogLevel.WARN, exception.getLocalizedMessage());
+            }
     }
 
     @Override

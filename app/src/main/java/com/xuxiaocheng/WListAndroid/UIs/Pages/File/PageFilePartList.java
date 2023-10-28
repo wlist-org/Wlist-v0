@@ -152,10 +152,8 @@ public class PageFilePartList {
                     adapter.addData(information);
                 else {
                     final int index = FileInformationGetter.binarySearch(list, information, this::compareInformation);
-                    if (index >= 0)
-                        adapter.addData(index, information);
-                    else
-                        adapter.addData(-index - 1, information);
+                    if (index >= 0 && Objects.equals(list[index], information)) return;
+                    adapter.addData(index >= 0 ? index : -index - 1, information);
                 }
             } else {
                 final Triad.ImmutableTriad<FileLocation, VisibleFileInformation, AtomicLong> last = this.stacks.peekLast();
@@ -224,9 +222,6 @@ public class PageFilePartList {
                 else if (!recyclerView.canScrollVertically(-1) && !noMoreUp.get())
                     isDown = false;
                 else return;
-                Main.runOnBackgroundThread(activity, () -> {
-                    return;
-                });
                 if (!onLoading.compareAndSet(false, true)) return;
                 if (isDown)
                     adapter.addTailor(PageFilePartList.this.listLoadingView(activity.getLayoutInflater()));
