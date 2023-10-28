@@ -33,6 +33,7 @@ import com.xuxiaocheng.WList.Commons.Beans.VisibleFilesListInformation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
+import com.xuxiaocheng.WListAndroid.UIs.ActivityMain;
 import com.xuxiaocheng.WListAndroid.Utils.EmptyRecyclerAdapter;
 import com.xuxiaocheng.WListAndroid.Utils.EnhancedRecyclerViewAdapter;
 import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
@@ -223,16 +224,17 @@ public class PageFilePartList {
                 else if (!recyclerView.canScrollVertically(-1) && !noMoreUp.get())
                     isDown = false;
                 else return;
-                if (!onLoading.compareAndSet(false, true)) return;
+                final ActivityMain activityMain = PageFilePartList.this.pageFile.activityNullable();
+                if (!onLoading.compareAndSet(false, true) || activityMain == null) return;
                 if (isDown)
-                    adapter.addTailor(PageFilePartList.this.listLoadingView(PageFilePartList.this.pageFile.activity().getLayoutInflater()));
+                    adapter.addTailor(PageFilePartList.this.listLoadingView(activityMain.getLayoutInflater()));
                 else
-                    adapter.addHeader(PageFilePartList.this.listLoadingView(PageFilePartList.this.pageFile.activity().getLayoutInflater()));
-                Main.runOnBackgroundThread(PageFilePartList.this.pageFile.activity(), HExceptionWrapper.wrapRunnable(() -> {
+                    adapter.addHeader(PageFilePartList.this.listLoadingView(activityMain.getLayoutInflater()));
+                Main.runOnBackgroundThread(activityMain, HExceptionWrapper.wrapRunnable(() -> {
                     (isDown ? noMoreDown : noMoreUp).set(false); // prevent retry forever when server error.
                     VisibleFilesListInformation list = null;
                     final int limit;
-                    final String title = MessageFormat.format(PageFilePartList.this.pageFile.activity().getString(R.string.page_file_listing_title), page.pageFileName.getText());
+                    final String title = MessageFormat.format(activityMain.getString(R.string.page_file_listing_title), page.pageFileName.getText());
                     final AtomicBoolean showed = new AtomicBoolean(false);
                     try {
                         limit = ClientConfigurationSupporter.limitPerPage(ClientConfigurationSupporter.get());
@@ -245,7 +247,7 @@ public class PageFilePartList {
                                 }, s -> PageFilePartList.this.listLoadingCallback(title, s));
                     } catch (final IllegalStateException exception) {
                         HLogManager.getInstance("DefaultLogger").log(HLogLevel.MISTAKE, exception.getLocalizedMessage());
-                        Main.runOnUiThread(PageFilePartList.this.pageFile.activity(), PageFilePartList.this.pageFile.activity()::disconnect);
+                        Main.runOnUiThread(activityMain, activityMain::disconnect);
                         return;
                     } finally {
                         if (showed.get()) {
@@ -254,8 +256,8 @@ public class PageFilePartList {
                         }
                     }
                     if (list == null) {
-                        Main.showToast(PageFilePartList.this.pageFile.activity(), R.string.page_file_unavailable_directory);
-                        Main.runOnUiThread(PageFilePartList.this.pageFile.activity(), PageFilePartList.this::popFileList);
+                        Main.showToast(activityMain, R.string.page_file_unavailable_directory);
+                        Main.runOnUiThread(activityMain, PageFilePartList.this::popFileList);
                         return;
                     }
                     if (isDown)
@@ -263,7 +265,7 @@ public class PageFilePartList {
                     else
                         noMoreUp.set(loadedUp.get() <= 0);
                     final VisibleFilesListInformation l = list;
-                    Main.runOnUiThread(PageFilePartList.this.pageFile.activity(), () -> {
+                    Main.runOnUiThread(activityMain, () -> {
                         page.pageFileCounter.setText(String.valueOf(FilesListInformationGetter.total(l)));
                         page.pageFileCounter.setVisibility(View.VISIBLE);
                         page.pageFileCounterText.setVisibility(View.VISIBLE);
@@ -274,10 +276,10 @@ public class PageFilePartList {
                     });
                 }, e -> {
                     onLoading.set(false);
-                    Main.runOnUiThread(PageFilePartList.this.pageFile.activity(), () -> {
+                    Main.runOnUiThread(activityMain, () -> {
                         if (isDown) {
                             if (noMoreDown.get())
-                                adapter.setTailor(0, PageFilePartList.this.listNoMoreView(PageFilePartList.this.pageFile.activity().getLayoutInflater()));
+                                adapter.setTailor(0, PageFilePartList.this.listNoMoreView(activityMain.getLayoutInflater()));
                             else
                                 adapter.removeTailor(0);
                         } else

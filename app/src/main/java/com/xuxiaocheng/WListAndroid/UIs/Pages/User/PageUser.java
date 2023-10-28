@@ -24,8 +24,7 @@ public class PageUser extends IFragment<PageUserBinding> {
         // TODO
         final AtomicBoolean clickable = new AtomicBoolean(true);
         page.pageUserCloseServer.setOnClickListener(v -> {
-            if (!clickable.compareAndSet(true, false))
-                return;
+            if (!clickable.compareAndSet(true, false)) return;
             Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
                 try (final WListClientInterface client = this.client()) {
                     OperateServerHelper.closeServer(client, this.token());
@@ -33,8 +32,7 @@ public class PageUser extends IFragment<PageUserBinding> {
             }, () -> clickable.set(true)));
         });
         page.pageUserDisconnect.setOnClickListener(v -> {
-            if (!clickable.compareAndSet(true, false))
-                return;
+            if (!clickable.compareAndSet(true, false)) return;
             try {
                 this.activity().disconnect();
             } catch (final IllegalArgumentException exception) {

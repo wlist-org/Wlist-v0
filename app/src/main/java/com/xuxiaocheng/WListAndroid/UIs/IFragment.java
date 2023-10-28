@@ -1,6 +1,5 @@
 package com.xuxiaocheng.WListAndroid.UIs;
 
-import android.content.Context;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -9,14 +8,11 @@ import androidx.annotation.UiThread;
 import androidx.annotation.WorkerThread;
 import androidx.fragment.app.Fragment;
 import androidx.viewbinding.ViewBinding;
-import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
-import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Client.Assistants.TokenAssistant;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WListAndroid.Helpers.BundleHelper;
-import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -48,14 +44,16 @@ public abstract class IFragment<P extends ViewBinding> extends Fragment {
     public void onCreate(final @Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         final Bundle bundle = this.getArguments();
-        HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Creating. ", ParametersMap.create()
-                .add("this", this.getClass().getSimpleName()).add("this.hash", this.hashCode()).add("arguments", bundle));
         if (bundle != null)
             BundleHelper.restoreClient(bundle, this.address, this.username, null);
     }
 
     public @NotNull ActivityMain activity() {
         return (ActivityMain) this.requireActivity();
+    }
+
+    public @Nullable ActivityMain activityNullable() {
+        return (ActivityMain) this.getActivity();
     }
 
     @Override
@@ -96,20 +94,6 @@ public abstract class IFragment<P extends ViewBinding> extends Fragment {
 
     @WorkerThread
     public void onDisconnected(final @NotNull ActivityMain activity) {
-    }
-
-    @Override
-    public void onAttach(final @NotNull Context context) {
-        super.onAttach(context);
-        HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Attaching. ", ParametersMap.create()
-                .add("this", this.getClass().getSimpleName()).add("this.hash", this.hashCode()).add("context.hash", context.hashCode()));
-    }
-
-    @Override
-    public void onDetach() {
-        super.onDetach();
-        HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Detaching. ", ParametersMap.create()
-                .add("this", this.getClass().getSimpleName()).add("this.hash", this.hashCode()));
     }
 
     @Override

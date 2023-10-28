@@ -16,8 +16,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class FragmentsAdapter extends FragmentStateAdapter {
@@ -96,12 +98,14 @@ public class FragmentsAdapter extends FragmentStateAdapter {
     @UiThread
     public void notifyConnected(final boolean connected, final @Nullable FragmentTypes current) {
 //        if (!this.lastConnect.compareAndSet(!connected, connected)) return;
+        Arrays.stream(FragmentTypes.values()).forEach(f -> this.activity.getContent().activityMainContent.setCurrentItem(FragmentTypes.toPosition(f), false)); // Force build cache.
         this.notifyItemRangeChanged(0, this.getItemCount());
-        if (this.activity.getContent().activityMainContent.getAdapter() == this) {
-            this.activity.getContent().activityMainContent.setAdapter(this); // Fix cache when dragging.
-            final int position = FragmentTypes.toPosition(Objects.requireNonNullElse(current, FragmentTypes.File));
-            this.activity.getContent().activityMainContent.setCurrentItem(position, false);
-        }
+        if (this.activity.getContent().activityMainContent.getAdapter() == this)
+            Main.runOnUiThread(this.activity, () -> {
+                this.activity.getContent().activityMainContent.setAdapter(this); // Fix cache when dragging.
+                final int position = FragmentTypes.toPosition(Objects.requireNonNullElse(current, FragmentTypes.File));
+                this.activity.getContent().activityMainContent.setCurrentItem(position, false);
+            }, 100, TimeUnit.MILLISECONDS);
     }
 
     public @NotNull IFragment<?> getFragment(final int position) {

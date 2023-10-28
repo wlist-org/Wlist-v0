@@ -98,14 +98,14 @@ public class PageFile extends IFragment<PageFileBinding> {
             }
             return true;
         });
+        final SharedPreferences preferences = this.activity().getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE);
+        final DisplayMetrics displayMetrics = this.activity().getResources().getDisplayMetrics();
         Main.runOnBackgroundThread(this.activity(), () -> {
-            final SharedPreferences preferences = this.activity().getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE);
-            final DisplayMetrics displayMetrics = this.activity().getResources().getDisplayMetrics();
             final float x = preferences.getFloat("x", (displayMetrics.widthPixels - page.pageFileUploader.getWidth()) * 0.8f);
             final float y = preferences.getFloat("y", (displayMetrics.heightPixels - page.pageFileUploader.getHeight()) * 0.7f);
             if (!preferences.contains("x") || !preferences.contains("y"))
                 preferences.edit().putFloat("x", x).putFloat("y", y).apply();
-            Main.runOnUiThread(this.activity(), () -> {
+            Main.runOnUiThread(this.getActivity(), () -> {
                 page.pageFileUploader.setX(x);
                 page.pageFileUploader.setY(y);
                 page.pageFileUploader.setVisibility(View.VISIBLE);
