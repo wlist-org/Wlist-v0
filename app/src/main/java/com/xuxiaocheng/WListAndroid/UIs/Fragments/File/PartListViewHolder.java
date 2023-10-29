@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListAndroid.UIs.Pages.File;
+package com.xuxiaocheng.WListAndroid.UIs.Fragments.File;
 
 import android.view.View;
 import android.widget.ImageView;
@@ -16,7 +16,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-public class PageFileViewHolder extends EnhancedRecyclerViewAdapter.WrappedViewHolder<ConstraintLayout, VisibleFileInformation> {
+class PartListViewHolder extends EnhancedRecyclerViewAdapter.WrappedViewHolder<ConstraintLayout, VisibleFileInformation> {
     protected final @NotNull Consumer<VisibleFileInformation> clicker;
     protected final @NotNull Consumer<VisibleFileInformation> listener;
     protected final @NotNull ImageView image;
@@ -24,7 +24,7 @@ public class PageFileViewHolder extends EnhancedRecyclerViewAdapter.WrappedViewH
     protected final @NotNull TextView tips;
     protected final @NotNull View operation;
 
-    protected PageFileViewHolder(final @NotNull ConstraintLayout cell, @UiThread final @NotNull Consumer<@NotNull VisibleFileInformation> clicker, @UiThread final @NotNull Consumer<@NotNull VisibleFileInformation> operation) {
+    protected PartListViewHolder(final @NotNull ConstraintLayout cell, @UiThread final @NotNull Consumer<@NotNull VisibleFileInformation> clicker, @UiThread final @NotNull Consumer<@NotNull VisibleFileInformation> operation) {
         super(cell);
         this.clicker = clicker;
         this.listener = operation;
@@ -46,7 +46,7 @@ public class PageFileViewHolder extends EnhancedRecyclerViewAdapter.WrappedViewH
     @Override
     public boolean equals(final @Nullable Object o) {
         if (this == o) return true;
-        if (!(o instanceof PageFileViewHolder that)) return false;
+        if (!(o instanceof PartListViewHolder that)) return false;
         return this.image.equals(that.image) && this.name.equals(that.name) && this.tips.equals(that.tips) && this.operation.equals(that.operation);
     }
 
@@ -57,7 +57,7 @@ public class PageFileViewHolder extends EnhancedRecyclerViewAdapter.WrappedViewH
 
     @Override
     public @NotNull String toString() {
-        return "PageFileViewHolder{" +
+        return "PartListViewHolder{" +
                 "clicker=" + this.clicker +
                 ", listener=" + this.listener +
                 ", image=" + this.image +

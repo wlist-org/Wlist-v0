@@ -13,6 +13,7 @@ import com.xuxiaocheng.WList.Client.Assistants.TokenAssistant;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WListAndroid.Helpers.BundleHelper;
+import com.xuxiaocheng.WListAndroid.Main;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -55,9 +56,9 @@ public abstract class IFragment<P extends ViewBinding, F extends IFragment<P, F>
     @Override
     public void onCreate(final @Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        final Bundle bundle = this.getArguments();
-        if (bundle != null)
-            BundleHelper.restoreClient(bundle, this.address, this.username, null);
+        this.setArguments(this.getArguments());
+        if (savedInstanceState != null)
+            this.onRestoreInstanceState(savedInstanceState);
     }
 
     @Override
@@ -75,6 +76,32 @@ public abstract class IFragment<P extends ViewBinding, F extends IFragment<P, F>
     @UiThread
     public boolean onBackPressed() {
         return false;
+    }
+
+    @Override
+    @UiThread
+    public void onSaveInstanceState(final @NotNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        this.parts.forEach(f -> f.onSaveInstanceState(outState));
+        outState.putBoolean("connected", this.isConnected());
+    }
+
+    @UiThread
+    public void onRestoreInstanceState(final @NotNull Bundle savedInstanceState) {
+        this.parts.forEach(f -> f.onRestoreInstanceState(savedInstanceState));
+        Main.runOnBackgroundThread(this.activity(), () -> {
+            if (savedInstanceState.getBoolean("connected", false))
+                this.onConnected(this.activity());
+            else
+                this.onDisconnected(this.activity());
+        });
+    }
+
+    @Override
+    public void setArguments(final @Nullable Bundle args) {
+        super.setArguments(args);
+        if (args != null)
+            BundleHelper.restoreClient(args, this.address, this.username, null);
     }
 
     @UiThread

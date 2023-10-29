@@ -1,21 +1,21 @@
-package com.xuxiaocheng.WListAndroid.UIs.Pages.File;
+package com.xuxiaocheng.WListAndroid.UIs.Fragments.File;
 
 import androidx.annotation.UiThread;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.UIs.ActivityMain;
+import com.xuxiaocheng.WListAndroid.UIs.IFragmentPart;
+import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class PageFilePartPreview {
-    protected final @NotNull PageFile pageFile;
-
-    public PageFilePartPreview(final @NotNull PageFile pageFile) {
-        super();
-        this.pageFile = pageFile;
+class PartPreview extends IFragmentPart<PageFileBinding, FragmentFile> {
+    protected PartPreview(final @NotNull FragmentFile fragment) {
+        super(fragment);
     }
+
 
     @UiThread
     protected void preview(final @NotNull ActivityMain activity, final @NotNull String storage, final @NotNull VisibleFileInformation information, final @NotNull AtomicBoolean clickable) {

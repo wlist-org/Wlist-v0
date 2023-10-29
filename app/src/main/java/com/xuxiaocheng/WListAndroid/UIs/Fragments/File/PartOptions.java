@@ -47,18 +47,21 @@ class PartOptions extends IFragmentPart<PageFileBinding, FragmentFile> {
     }
 
     @Override
-    protected void onActivityCreateHook(final @NotNull ActivityMain activity) {
-        super.onActivityCreateHook(activity);
-        activity.getContent().activityMainOptions.setOnClickListener(v -> {
+    protected void onBuild(final @NotNull PageFileBinding page) {
+        super.onBuild(page);
+        this.activity().getContent().activityMainOptions.setOnClickListener(v -> {
             if (this.activity().currentChoice() != FragmentsAdapter.FragmentTypes.File) return;
             final ListPopupWindow popup = new ListPopupWindow(this.activity());
             popup.setWidth(this.page().pageFileList.getWidth() >> 1);
             popup.setAnchorView(this.activity().getContent().activityMainOptions);
             final List<Map<String, Object>> list = new ArrayList<>();
-            list.add(Map.of("pos", 1, "image", R.drawable.page_file_options_sorter, "name", this.activity().getResources().getString(R.string.page_file_options_sorter)));
-            list.add(Map.of("pos", 2, "image", R.drawable.page_file_options_filter, "name", this.activity().getResources().getString(R.string.page_file_options_filter)));
-            if (this.isConnected())
-                list.add(Map.of("pos", 3, "image", R.drawable.page_file_options_refresh, "name", this.activity().getResources().getString(R.string.page_file_options_refresh)));
+            list.add(Map.of("pos", 1, "image", R.drawable.page_file_options_sorter, "name", this.activity().getString(R.string.page_file_options_sorter)));
+            list.add(Map.of("pos", 2, "image", R.drawable.page_file_options_filter, "name", this.activity().getString(R.string.page_file_options_filter)));
+            if (this.isConnected()) {
+                list.add(Map.of("pos", 3, "image", R.drawable.page_file_options_refresh, "name", this.activity().getString(R.string.page_file_options_refresh)));
+                list.add(Map.of("pos", 4, "image", R.mipmap.app_logo, "name", this.activity().getString(R.string.page_file_options_disconnect)));
+                list.add(Map.of("pos", 5, "image", R.mipmap.app_logo, "name", this.activity().getString(R.string.page_file_options_close_server)));
+            }
             popup.setAdapter(new SimpleAdapter(this.activity(), list, R.layout.page_file_options_cell, new String[]{"image", "name"}, new int[]{R.id.activity_main_options_cell_image, R.id.activity_main_options_cell_name}));
             final AtomicBoolean clickable = new AtomicBoolean(true);
             popup.setOnItemClickListener((p, w, pos, i) -> {
@@ -69,6 +72,8 @@ class PartOptions extends IFragmentPart<PageFileBinding, FragmentFile> {
                     case 1 -> this.sort();
                     case 2 -> this.filter();
                     case 3 -> this.refresh();
+                    case 4 -> this.activity().disconnect();
+                    case 5 -> this.fragment.partConnect.tryDisconnect();
                 }
             });
             popup.show();
@@ -163,7 +168,8 @@ class PartOptions extends IFragmentPart<PageFileBinding, FragmentFile> {
                             ClientConfigurationSupporter.userOrders(old),
                             ClientConfigurationSupporter.userGroupOrders(old),
                             ClientConfigurationSupporter.copyNoTempFile(old)));
-                    this.fragment.partList.onConfigurationChanged();
+                    PartList.comparator.uninitializeNullable();
+                    this.fragment.partList.clearCurrentPosition();
                 }))).setNeutralButton(R.string.advance, (d, h) -> this.sortAdvance()).show();
     }
 
@@ -176,4 +182,5 @@ class PartOptions extends IFragmentPart<PageFileBinding, FragmentFile> {
     protected void filter() {
         Main.runOnBackgroundThread(this.activity(), () -> {throw new RuntimeException("WIP");}); // TODO
     }
+
 }

@@ -66,10 +66,10 @@
 	<string name="page_file_options_sorter_descend">DESCEND</string>
 	<string name="page_file_options_sorter_not_chose">Please choose the sort policy.</string>
 	<string name="page_file_options_filter">Filter.</string>
+	<string name="page_file_options_disconnect">Disconnection.</string>
+	<string name="page_file_options_close_server">Close server.</string>
 	<string name="page_file_provider_lanzou">Lanzou</string>
 	<string name="page_file_provider_name">Storage name: </string>
 	<string name="page_file_provider_passport">Storage passport: </string>
 	<string name="page_file_provider_password">Storage password: </string>
-	<string name="page_user_disconnect">Disconnection</string>
-	<string name="page_user_close_server">Close server</string>
 </resources>

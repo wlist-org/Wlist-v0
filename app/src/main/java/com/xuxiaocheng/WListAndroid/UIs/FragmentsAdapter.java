@@ -9,7 +9,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.WListAndroid.Helpers.BundleHelper;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.UIs.Fragments.File.FragmentFile;
-import com.xuxiaocheng.WListAndroid.UIs.Pages.User.PageUser;
+import com.xuxiaocheng.WListAndroid.UIs.Fragments.User.FragmentUser;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -41,13 +41,13 @@ public class FragmentsAdapter extends FragmentStateAdapter {
 
     protected final @NotNull ActivityMain activity;
     protected final @NotNull FragmentFile file;
-    protected final @NotNull PageUser fragmentUserInstance;
+    protected final @NotNull FragmentUser user;
 
     public FragmentsAdapter(final @NotNull ActivityMain activity) {
         super(activity);
         this.activity = activity;
         this.file = new FragmentFile();
-        this.fragmentUserInstance = new PageUser();
+        this.user = new FragmentUser();
     }
 
     @WorkerThread
@@ -58,13 +58,13 @@ public class FragmentsAdapter extends FragmentStateAdapter {
     }
 
     public @NotNull List<@NotNull IFragment<?, ?>> getAllFragments() {
-        return List.of(this.file, this.fragmentUserInstance);
+        return List.of(this.file, this.user);
     }
 
     public @NotNull IFragment<?, ?> getFragment(final @NotNull FragmentTypes type) {
         return switch (type) {
             case File -> this.file;
-            case User -> this.fragmentUserInstance;
+            case User -> this.user;
         };
     }
 

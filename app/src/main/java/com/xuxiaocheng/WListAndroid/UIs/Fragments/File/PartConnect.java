@@ -15,6 +15,8 @@ import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.Client.Assistants.TokenAssistant;
+import com.xuxiaocheng.WList.Client.Operations.OperateServerHelper;
+import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
 import com.xuxiaocheng.WListAndroid.Helpers.PasswordHelper;
@@ -164,5 +166,18 @@ class PartConnect extends IFragmentPart<PageFileBinding, FragmentFile> {
 
     @UiThread
     private void disconnectExternalServer() {
+    }
+
+    @UiThread
+    protected void tryDisconnect() {
+        Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
+            try (final WListClientInterface client = this.client()) {
+                OperateServerHelper.closeServer(client, this.token());
+            }
+        }, e -> {
+            //noinspection VariableNotUsedInsideIf
+            if (e != null)
+                this.activity().disconnect();
+        }, false));
     }
 }

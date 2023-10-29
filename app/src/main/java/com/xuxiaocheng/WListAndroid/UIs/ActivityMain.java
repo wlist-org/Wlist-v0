@@ -25,6 +25,7 @@ import java.io.File;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.time.ZonedDateTime;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class ActivityMain extends AppCompatActivity {
@@ -33,7 +34,7 @@ public class ActivityMain extends AppCompatActivity {
         return this.contentCache.getInstance();
     }
     protected final @NotNull FragmentsAdapter fragmentsAdapter = new FragmentsAdapter(this);
-    protected final @NotNull AtomicReference<FragmentsAdapter.FragmentTypes> currentChoice = new AtomicReference<>();
+    protected final @NotNull AtomicReference<FragmentsAdapter.FragmentTypes> currentChoice = new AtomicReference<>(FragmentsAdapter.FragmentTypes.File);
     public FragmentsAdapter.@NotNull FragmentTypes currentChoice() {
         return this.currentChoice.get();
     }
@@ -48,13 +49,23 @@ public class ActivityMain extends AppCompatActivity {
     @Override
     protected void onSaveInstanceState(final @NotNull Bundle outState) {
         super.onSaveInstanceState(outState);
+        outState.putInt("choice", FragmentsAdapter.FragmentTypes.toPosition(this.currentChoice.get()));
         BundleHelper.saveClient(this.address, this.username, outState, null);
+        final IBinder binder = this.binder.getInstanceNullable();
+        if (binder != null)
+            outState.putBinder("binder", binder);
     }
 
     @Override
     protected void onRestoreInstanceState(final @NotNull Bundle savedInstanceState) {
         super.onRestoreInstanceState(savedInstanceState);
+        final int choice = savedInstanceState.getInt("choice");
+        if (choice != 0 || savedInstanceState.containsKey("choice"))
+            this.currentChoice.set(FragmentsAdapter.FragmentTypes.fromPosition(choice));
         BundleHelper.restoreClient(savedInstanceState, this.address, this.username, (a, u) -> Main.runOnBackgroundThread(this, () -> this.fragmentsAdapter.setArguments(a, u)));
+        final IBinder binder = savedInstanceState.getBinder("binder");
+        if (binder != null)
+            this.binder.reinitialize(binder);
     }
 
     @Override
@@ -97,8 +108,7 @@ public class ActivityMain extends AppCompatActivity {
         };
         activity.activityMainContent.registerOnPageChangeCallback(callback);
         this.fragmentsAdapter.getAllFragments().forEach(f -> f.onActivityCreateHook(this));
-        if (savedInstanceState == null)
-            activity.activityMainContent.setCurrentItem(FragmentsAdapter.FragmentTypes.toPosition(FragmentsAdapter.FragmentTypes.File), false);
+        activity.activityMainContent.setCurrentItem(FragmentsAdapter.FragmentTypes.toPosition(this.currentChoice.get()), false);
     }
 
     protected @Nullable ZonedDateTime lastBackPressedTime;
@@ -145,37 +155,36 @@ public class ActivityMain extends AppCompatActivity {
         }
     }
 
+    private final @NotNull AtomicBoolean connected = new AtomicBoolean(false);
+
     @AnyThread
     public void connect(final @NotNull InetSocketAddress address, final @NotNull String username, final @Nullable IBinder binder) {
         HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Connecting. " + this.hashCode());
+        this.connected.set(true);
         this.address.reinitialize(address);
         this.username.reinitialize(username);
         this.binder.reinitializeNullable(binder);
-        Main.runOnBackgroundThread(this, () -> {
+        Main.runOnBackgroundThread(this, HExceptionWrapper.wrapRunnable(() -> {
             this.fragmentsAdapter.setArguments(address, username);
-            Main.runOnUiThread(this, () -> {
-                this.fragmentsAdapter.notifyConnectStateChanged(true, this.currentChoice.get());
-                Main.runOnBackgroundThread(this, HExceptionWrapper.wrapRunnable(() -> {
-                    BroadcastAssistant.start(address);
-                    ClientConfigurationSupporter.location().reinitialize(new File(this.getExternalFilesDir("client"), "client.yaml"));
-                    ClientConfigurationSupporter.parseFromFile();
-                    final BroadcastAssistant.BroadcastSet set;
-                    try {
-                        set = BroadcastAssistant.get(address);
-                    } catch (final IllegalStateException exception) {
-                        Main.runOnUiThread(this, this::disconnect);
-                        return;
-                    }
-                    set.ServerClose.register(id -> Main.runOnUiThread(this, this::disconnect));
-                    this.fragmentsAdapter.getAllFragments().forEach(f -> f.onConnected(this));
-                }));
-            });
-        });
+            BroadcastAssistant.start(address);
+            ClientConfigurationSupporter.location().reinitialize(new File(this.getExternalFilesDir("client"), "client.yaml"));
+            ClientConfigurationSupporter.parseFromFile();
+            final BroadcastAssistant.BroadcastSet set;
+            try {
+                set = BroadcastAssistant.get(address);
+            } catch (final IllegalStateException exception) {
+                Main.runOnUiThread(this, this::disconnect);
+                return;
+            }
+            set.ServerClose.register(id -> Main.runOnUiThread(this, this::disconnect));
+            this.fragmentsAdapter.getAllFragments().forEach(f -> f.onConnected(this));
+        }));
     }
 
     @AnyThread
     public void disconnect() {
         HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Disconnecting. " + this.hashCode());
+        this.connected.set(false);
         final InetSocketAddress address = this.address.uninitializeNullable();
         final String username = this.username.uninitializeNullable();
         if (address == null || username == null) {

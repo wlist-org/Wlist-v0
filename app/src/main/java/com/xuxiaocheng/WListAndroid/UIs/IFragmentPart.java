@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WListAndroid.UIs;
 
+import android.os.Bundle;
 import androidx.annotation.UiThread;
 import androidx.annotation.WorkerThread;
 import androidx.viewbinding.ViewBinding;
@@ -44,6 +45,14 @@ public abstract class IFragmentPart<P extends ViewBinding, F extends IFragment<P
     }
 
     @UiThread
+    protected void onSaveInstanceState(final @NotNull Bundle outState) {
+    }
+
+    @UiThread
+    protected void onRestoreInstanceState(final @NotNull Bundle savedInstanceState) {
+    }
+
+    @UiThread
     protected void onShow(final @NotNull ActivityMain activity) {
     }
 
@@ -66,7 +75,7 @@ public abstract class IFragmentPart<P extends ViewBinding, F extends IFragment<P
     @Override
     public @NotNull String toString() {
         return "IFragmentPart{" +
-                "super=" + super.toString() +
+                "hash=" + super.hashCode() +
                 '}';
     }
 }
