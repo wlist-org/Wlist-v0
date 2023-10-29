@@ -58,6 +58,7 @@
 		android:text="0"
 		android:textColor="@color/text_normal"
 		android:textSize="20sp"
+		android:visibility="invisible"
 		app:layout_constraintBottom_toTopOf="@id/page_file_guideline_title"
 		app:layout_constraintLeft_toRightOf="@id/page_file_name"
 		app:layout_constraintRight_toLeftOf="@id/page_file_counter_text"
@@ -74,6 +75,7 @@
 		android:text="@string/page_file_counter"
 		android:textColor="@color/text_normal"
 		android:textSize="15sp"
+		android:visibility="invisible"
 		app:layout_constraintBaseline_toBaselineOf="@id/page_file_counter"
 		app:layout_constraintLeft_toRightOf="@id/page_file_counter"
 		app:layout_constraintRight_toRightOf="parent" />
@@ -82,6 +84,7 @@
 		android:id="@+id/page_file_list"
 		android:layout_width="match_parent"
 		android:layout_height="0dp"
+		android:visibility="invisible"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toLeftOf="parent"
 		app:layout_constraintRight_toRightOf="parent"
@@ -95,5 +98,24 @@
 		android:visibility="invisible"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintRight_toRightOf="parent" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_file_connection_internal_server"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:layout_marginLeft="30dp"
+		android:layout_marginRight="30dp"
+		android:background="@drawable/page_connect_login_button"
+		android:gravity="center"
+		android:maxLines="1"
+		android:paddingTop="5dp"
+		android:paddingBottom="5dp"
+		android:text="@string/page_connect_internal_server"
+		android:textColor="@color/text_on_red"
+		android:textSize="25sp"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

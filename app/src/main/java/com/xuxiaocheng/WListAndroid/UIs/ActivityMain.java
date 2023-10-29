@@ -41,14 +41,8 @@ public class ActivityMain extends AppCompatActivity {
     protected final @NotNull HInitializer<InetSocketAddress> address = new HInitializer<>("ActivityMainAddress");
     protected final @NotNull HInitializer<String> username = new HInitializer<>("ActivityMainUsername");
     protected final @NotNull HInitializer<IBinder> binder = new HInitializer<>("ActivityMainServiceBinder");
-    public boolean isConnected() {
+    protected boolean isConnected() {
         return this.address.isInitialized() && this.username.isInitialized();
-    }
-    public @NotNull InetSocketAddress address() {
-        return this.address.getInstance();
-    }
-    public @NotNull String username() {
-        return this.username.getInstance();
     }
 
     @Override
@@ -75,9 +69,8 @@ public class ActivityMain extends AppCompatActivity {
         activity.activityMainContent.setAdapter(this.fragmentsAdapter);
         final ChooserButtonGroup fileButton = new ChooserButtonGroup(this, FragmentsAdapter.FragmentTypes.File, activity.activityMainChooserFileImage, R.mipmap.main_chooser_file, R.mipmap.main_chooser_file_chose, activity.activityMainChooserFileText, activity.activityMainChooserFile);
         final ChooserButtonGroup userButton = new ChooserButtonGroup(this, FragmentsAdapter.FragmentTypes.User, activity.activityMainChooserUserImage, R.mipmap.main_chooser_user, R.mipmap.main_chooser_user_chose, activity.activityMainChooserUserText, activity.activityMainChooserUser);
-        final ChooserButtonGroup transButton = new ChooserButtonGroup(this, FragmentsAdapter.FragmentTypes.Trans, activity.activityMainTrans, R.mipmap.main_chooser_trans, R.mipmap.main_chooser_trans_chose, null);
         final ViewPager2.OnPageChangeCallback callback = new ViewPager2.OnPageChangeCallback() {
-            private final @NotNull AtomicReference<IFragment<?>> oldFragment = new AtomicReference<>();
+            private final @NotNull AtomicReference<IFragment<?, ?>> oldFragment = new AtomicReference<>();
 
             @Override
             public void onPageSelected(final int position) {
@@ -89,23 +82,15 @@ public class ActivityMain extends AppCompatActivity {
                         if (fileButton.isClicked()) break;
                         fileButton.setClickable(false);
                         userButton.setClickable(true);
-                        transButton.setClickable(true);
                     }
                     case User -> {
                         if (userButton.isClicked()) break;
                         fileButton.setClickable(true);
                         userButton.setClickable(false);
-                        transButton.setClickable(true);
-                    }
-                    case Trans -> {
-                        if (transButton.isClicked()) break;
-                        fileButton.setClickable(true);
-                        userButton.setClickable(true);
-                        transButton.setClickable(false);
                     }
                 }
-                final IFragment<?> now = ActivityMain.this.fragmentsAdapter.getFragment(current);
-                final IFragment<?> old = this.oldFragment.getAndSet(now);
+                final IFragment<?, ?> now = ActivityMain.this.fragmentsAdapter.getFragment(current);
+                final IFragment<?, ?> old = this.oldFragment.getAndSet(now);
                 if (old != null) old.onHide(ActivityMain.this);
                 now.onShow(ActivityMain.this);
             }
@@ -169,14 +154,14 @@ public class ActivityMain extends AppCompatActivity {
         Main.runOnBackgroundThread(this, () -> {
             this.fragmentsAdapter.setArguments(address, username);
             Main.runOnUiThread(this, () -> {
-                this.fragmentsAdapter.notifyConnectStateChanged(this.currentChoice.get());
+                this.fragmentsAdapter.notifyConnectStateChanged(true, this.currentChoice.get());
                 Main.runOnBackgroundThread(this, HExceptionWrapper.wrapRunnable(() -> {
-                    BroadcastAssistant.start(this.address());
+                    BroadcastAssistant.start(address);
                     ClientConfigurationSupporter.location().reinitialize(new File(this.getExternalFilesDir("client"), "client.yaml"));
                     ClientConfigurationSupporter.parseFromFile();
                     final BroadcastAssistant.BroadcastSet set;
                     try {
-                        set = BroadcastAssistant.get(this.address());
+                        set = BroadcastAssistant.get(address);
                     } catch (final IllegalStateException exception) {
                         Main.runOnUiThread(this, this::disconnect);
                         return;
@@ -195,11 +180,12 @@ public class ActivityMain extends AppCompatActivity {
         final String username = this.username.uninitializeNullable();
         if (address == null || username == null) {
             HLogManager.getInstance("DefaultLogger").log(HLogLevel.MISTAKE, "Disconnected twice. " + this.hashCode());
+            Main.runOnUiThread(this, () -> this.fragmentsAdapter.notifyConnectStateChanged(false, this.currentChoice.get()));
             return;
         }
         WListClientManager.removeAllListeners(address);
         Main.runOnUiThread(this, () -> {
-            this.fragmentsAdapter.notifyConnectStateChanged(this.currentChoice.get());
+            this.fragmentsAdapter.notifyConnectStateChanged(false, this.currentChoice.get());
             Main.runOnBackgroundThread(this, () -> this.fragmentsAdapter.getAllFragments().forEach(f -> f.onDisconnected(this)));
         });
     }
@@ -215,8 +201,6 @@ public class ActivityMain extends AppCompatActivity {
         return "ActivityMain{" +
                 "contentCache=" + this.contentCache.isInitialized() +
                 ", currentChoice=" + this.currentChoice +
-                ", address=" + this.address +
-                ", username=" + this.username +
                 ", binder=" + this.binder.isInitialized() +
                 ", lastBackPressedTime=" + this.lastBackPressedTime +
                 '}';

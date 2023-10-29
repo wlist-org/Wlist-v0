@@ -13,9 +13,9 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class PageUser extends IFragment<PageUserBinding> {
+public class PageUser extends IFragment<PageUserBinding, PageUser> {
     @Override
-    protected @NotNull PageUserBinding onCreate(final @NotNull LayoutInflater inflater) {
+    protected @NotNull PageUserBinding inflate(final @NotNull LayoutInflater inflater) {
         return PageUserBinding.inflate(inflater);
     }
 
@@ -29,7 +29,13 @@ public class PageUser extends IFragment<PageUserBinding> {
                 try (final WListClientInterface client = this.client()) {
                     OperateServerHelper.closeServer(client, this.token());
                 }
-            }, () -> clickable.set(true)));
+            }, e -> {
+                //noinspection VariableNotUsedInsideIf
+                if (e == null)
+                    clickable.set(true);
+                else
+                    this.activity().disconnect();
+            }, false));
         });
         page.pageUserDisconnect.setOnClickListener(v -> {
             if (!clickable.compareAndSet(true, false)) return;

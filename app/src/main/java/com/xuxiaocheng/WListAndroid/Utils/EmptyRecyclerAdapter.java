@@ -21,12 +21,12 @@ public final class EmptyRecyclerAdapter extends RecyclerView.Adapter<EmptyRecycl
     @Deprecated
     @Override
     public @NotNull EmptyViewHolder onCreateViewHolder(final @NotNull ViewGroup parent, final int viewType) {
-        return new EmptyViewHolder(parent.getChildAt(0));
+        throw new UnsupportedOperationException("This adapter doesn't support view holder creation.");
     }
 
     @Deprecated
     @Override
-    public void onBindViewHolder(final @NotNull EmptyRecyclerAdapter.EmptyViewHolder holder, final int position) {
+    public void onBindViewHolder(final EmptyRecyclerAdapter.@NotNull EmptyViewHolder holder, final int position) {
     }
 
     @Deprecated

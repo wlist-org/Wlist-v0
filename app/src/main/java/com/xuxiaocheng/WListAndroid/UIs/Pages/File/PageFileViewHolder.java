@@ -16,7 +16,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-class PageFileViewHolder extends EnhancedRecyclerViewAdapter.WrappedViewHolder<ConstraintLayout, VisibleFileInformation> {
+public class PageFileViewHolder extends EnhancedRecyclerViewAdapter.WrappedViewHolder<ConstraintLayout, VisibleFileInformation> {
     protected final @NotNull Consumer<VisibleFileInformation> clicker;
     protected final @NotNull Consumer<VisibleFileInformation> listener;
     protected final @NotNull ImageView image;

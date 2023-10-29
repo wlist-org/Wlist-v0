@@ -15,13 +15,11 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
-import com.xuxiaocheng.HeadLibs.Functions.PredicateE;
 import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.AndroidSupports.FailureReasonGetter;
 import com.xuxiaocheng.WList.AndroidSupports.FileInformationGetter;
 import com.xuxiaocheng.WList.AndroidSupports.FileLocationGetter;
-import com.xuxiaocheng.WList.AndroidSupports.InstantaneousProgressStateGetter;
 import com.xuxiaocheng.WList.Client.Assistants.FilesAssistant;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason;
@@ -193,25 +191,25 @@ public class PageFilePartOperation {
                                 HFileHelper.ensureFileAccessible(file, true);
                                 HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Downloading.",
                                         ParametersMap.create().add("address", this.pageFile.address()).add("information", information).add("file", file));
-                                final VisibleFailureReason res;
-                                try {
-                                    this.pageFile.partList.listLoadingAnimation("Downloading", true, 0, 0); // TODO: download progress.
-                                    res = FilesAssistant.download(this.pageFile.address(), this.pageFile.username(), new FileLocation(storage, FileInformationGetter.id(information)), file, PredicateE.truePredicate(), s -> {
-                                        long curr = 0, total = 0;
-                                        for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
-                                            curr += pair.getFirst().longValue();
-                                            total += pair.getSecond().longValue();
-                                        }
-                                        final long l = curr, t = total;
-                                        this.pageFile.partList.listLoadingAnimation("Downloading", true, l, t);
-                                    });
-                                } finally {
-                                    this.pageFile.partList.listLoadingAnimation("Downloading", false, 0, 0);
-                                }
-                                if (res != null)
-                                    Main.runOnUiThread(this.pageFile.activity(), () -> Toast.makeText(this.pageFile.activity(), FailureReasonGetter.kind(res) + FailureReasonGetter.message(res), Toast.LENGTH_SHORT).show());
-                                else
-                                    Main.showToast(this.pageFile.activity(), R.string.page_file_operation_download_success);
+//                                final VisibleFailureReason res;
+//                                try {
+//                                    this.pageFile.partList.listLoadingAnimation("Downloading", true, 0, 0); // TODO: download progress.
+//                                    res = FilesAssistant.download(this.pageFile.address(), this.pageFile.username(), new FileLocation(storage, FileInformationGetter.id(information)), file, PredicateE.truePredicate(), s -> {
+//                                        long curr = 0, total = 0;
+//                                        for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
+//                                            curr += pair.getFirst().longValue();
+//                                            total += pair.getSecond().longValue();
+//                                        }
+//                                        final long l = curr, t = total;
+//                                        this.pageFile.partList.listLoadingAnimation("Downloading", true, l, t);
+//                                    });
+//                                } finally {
+//                                    this.pageFile.partList.listLoadingAnimation("Downloading", false, 0, 0);
+//                                }
+//                                if (res != null)
+//                                    Main.runOnUiThread(this.pageFile.activity(), () -> Toast.makeText(this.pageFile.activity(), FailureReasonGetter.kind(res) + FailureReasonGetter.message(res), Toast.LENGTH_SHORT).show());
+//                                else
+//                                    Main.showToast(this.pageFile.activity(), R.string.page_file_operation_download_success);
                             }, () -> Main.runOnUiThread(this.pageFile.activity(), loader::cancel)));
                         }).show();
             });
@@ -249,18 +247,18 @@ public class PageFilePartOperation {
         }; // TODO
         Main.runOnUiThread(this.pageFile.activity(), () -> {
             page.onCreateView(this.pageFile.activity().getLayoutInflater(), null, null);
-            final View p = this.pageFile.getPage().getRoot();
+            final View p = this.pageFile.page().getRoot();
             new AlertDialog.Builder(this.pageFile.activity())
-                    .setTitle(title).setView(page.getPage().getRoot())
+                    .setTitle(title).setView(page.page().getRoot())
                     .setOnCancelListener(a -> latch.countDown())
                     .setNegativeButton(R.string.cancel, (a, b) -> latch.countDown())
                     .setPositiveButton(R.string.confirm, (a, k) -> {
-                        result.set(page.partList.currentLocation());
+//                        result.set(page.partList.currentLocation());
                         latch.countDown();
                     }).show()
                     .getWindow().setLayout(p.getWidth(), p.getHeight());
-            page.getPage().getRoot().setLayoutParams(new FrameLayout.LayoutParams(p.getWidth(), p.getHeight()));
-            page.getPage().pageFileUploader.setVisibility(View.GONE);
+            page.page().getRoot().setLayoutParams(new FrameLayout.LayoutParams(p.getWidth(), p.getHeight()));
+            page.page().pageFileUploader.setVisibility(View.GONE);
         });
         latch.await();
         final FileLocation choice = result.get();
