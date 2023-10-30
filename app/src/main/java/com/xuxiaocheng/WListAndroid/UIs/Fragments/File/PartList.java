@@ -70,7 +70,11 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
     @Override
     protected void onConnected(final @NotNull ActivityMain activity) {
         super.onConnected(activity);
-        Main.runOnUiThread(activity, () -> this.page().pageFileList.setVisibility(View.VISIBLE));
+        Main.runOnUiThread(activity, () -> {
+            this.page().pageFileName.setVisibility(View.VISIBLE);
+            this.page().pageFileBacker.setVisibility(View.VISIBLE);
+            this.page().pageFileList.setVisibility(View.VISIBLE);
+        });
         Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> this.toPage(this.currentLocation(), this.currentLoadingUp.get().get())));
         this.listenBroadcast(BroadcastAssistant.get(this.address()));
     }
@@ -78,7 +82,13 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
     @Override
     protected void onDisconnected(final @NotNull ActivityMain activity) {
         super.onDisconnected(activity);
-        Main.runOnUiThread(activity, () -> this.page().pageFileList.setVisibility(View.GONE));
+        Main.runOnUiThread(activity, () -> {
+            this.page().pageFileName.setVisibility(View.GONE);
+            this.page().pageFileBacker.setVisibility(View.GONE);
+            this.page().pageFileList.setVisibility(View.GONE);
+            this.page().pageFileCounter.setVisibility(View.GONE);
+            this.page().pageFileCounterText.setVisibility(View.GONE);
+        });
     }
 
     @Override
@@ -387,7 +397,6 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
             Main.runOnUiThread(this.activity(), () -> this.onRootPage(this.getCurrentPosition()));
         else
             Main.runOnUiThread(this.activity(), () -> this.onInsidePage(this.page().pageFileName.getText(), location, this.getCurrentPosition()));
-
     }
 
 
