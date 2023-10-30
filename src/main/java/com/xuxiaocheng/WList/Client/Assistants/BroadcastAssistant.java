@@ -250,12 +250,7 @@ public final class BroadcastAssistant {
             new Thread(HExceptionWrapper.wrapRunnable(() -> {
                 boolean flag = true;
                 try (client) {
-                    try {
-                        client.open();
-                    } catch (final IOException exception) {
-                        flag = false;
-                        throw exception;
-                    }
+                    client.open();
                     OperateServerHelper.setBroadcastMode(client, true);
                     while (client.isActive()) {
                         final UnionPair<Pair.ImmutablePair<OperationType, ByteBuf>, Pair.ImmutablePair<String, String>> pair = OperateServerHelper.waitBroadcast(client);
@@ -276,9 +271,11 @@ public final class BroadcastAssistant {
                         else
                             runner.run();
                     }
-                } catch (final IOException exception) {
+                } catch (final IOException | IllegalStateException exception) {
                     if (WListClientManager.instances.isInitialized(address))
                         HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
+                    else
+                        flag = false;
                 } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                     HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
                 } finally {
