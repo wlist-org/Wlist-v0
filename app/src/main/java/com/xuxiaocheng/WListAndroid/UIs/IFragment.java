@@ -13,7 +13,6 @@ import com.xuxiaocheng.WList.Client.Assistants.TokenAssistant;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WListAndroid.Helpers.BundleHelper;
-import com.xuxiaocheng.WListAndroid.Main;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -73,28 +72,16 @@ public abstract class IFragment<P extends ViewBinding, F extends IFragment<P, F>
     @UiThread
     protected abstract @NotNull P inflate(final @NotNull LayoutInflater inflater);
 
-    @UiThread
-    public boolean onBackPressed() {
-        return false;
-    }
-
     @Override
     @UiThread
     public void onSaveInstanceState(final @NotNull Bundle outState) {
         super.onSaveInstanceState(outState);
         this.parts.forEach(f -> f.onSaveInstanceState(outState));
-        outState.putBoolean("connected", this.isConnected());
     }
 
     @UiThread
     public void onRestoreInstanceState(final @NotNull Bundle savedInstanceState) {
         this.parts.forEach(f -> f.onRestoreInstanceState(savedInstanceState));
-        Main.runOnBackgroundThread(this.activity(), () -> {
-            if (savedInstanceState.getBoolean("connected", false))
-                this.onConnected(this.activity());
-            else
-                this.onDisconnected(this.activity());
-        });
     }
 
     @Override
@@ -110,13 +97,13 @@ public abstract class IFragment<P extends ViewBinding, F extends IFragment<P, F>
     }
 
     @UiThread
-    public void onShow(final @NotNull ActivityMain activity) {
-        this.parts.forEach(f -> f.onShow(activity));
+    public void onPositionChanged(final @NotNull ActivityMain activity, final FragmentsAdapter.@NotNull FragmentTypes position) {
+        this.parts.forEach(f -> f.onPositionChanged(activity, position));
     }
 
     @UiThread
-    public void onHide(final @NotNull ActivityMain activity) {
-        this.parts.forEach(f -> f.onHide(activity));
+    public boolean onBackPressed(final @NotNull ActivityMain activity) {
+        return false;
     }
 
     @UiThread
@@ -143,6 +130,7 @@ public abstract class IFragment<P extends ViewBinding, F extends IFragment<P, F>
                 ", address=" + this.address +
                 ", username=" + this.username +
                 ", connected=" + this.connected +
+                ", hash=" + super.hashCode() +
                 '}';
     }
 }

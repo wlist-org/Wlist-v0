@@ -12,6 +12,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.AndroidSupports.ClientConfigurationSupporter;
 import com.xuxiaocheng.WList.Client.Assistants.BroadcastAssistant;
+import com.xuxiaocheng.WList.Client.Assistants.TokenAssistant;
 import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WListAndroid.Helpers.BundleHelper;
 import com.xuxiaocheng.WListAndroid.Main;
@@ -62,7 +63,7 @@ public class ActivityMain extends AppCompatActivity {
         final int choice = savedInstanceState.getInt("choice");
         if (choice != 0 || savedInstanceState.containsKey("choice"))
             this.currentChoice.set(FragmentsAdapter.FragmentTypes.fromPosition(choice));
-        BundleHelper.restoreClient(savedInstanceState, this.address, this.username, (a, u) -> Main.runOnBackgroundThread(this, () -> this.fragmentsAdapter.setArguments(a, u)));
+        BundleHelper.restoreClient(savedInstanceState, this.address, this.username, null);
         final IBinder binder = savedInstanceState.getBinder("binder");
         if (binder != null)
             this.binder.reinitialize(binder);
@@ -80,9 +81,7 @@ public class ActivityMain extends AppCompatActivity {
         activity.activityMainContent.setAdapter(this.fragmentsAdapter);
         final ChooserButtonGroup fileButton = new ChooserButtonGroup(this, FragmentsAdapter.FragmentTypes.File, activity.activityMainChooserFileImage, R.mipmap.main_chooser_file, R.mipmap.main_chooser_file_chose, activity.activityMainChooserFileText, activity.activityMainChooserFile);
         final ChooserButtonGroup userButton = new ChooserButtonGroup(this, FragmentsAdapter.FragmentTypes.User, activity.activityMainChooserUserImage, R.mipmap.main_chooser_user, R.mipmap.main_chooser_user_chose, activity.activityMainChooserUserText, activity.activityMainChooserUser);
-        final ViewPager2.OnPageChangeCallback callback = new ViewPager2.OnPageChangeCallback() {
-            private final @NotNull AtomicReference<IFragment<?, ?>> oldFragment = new AtomicReference<>();
-
+        activity.activityMainContent.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
             public void onPageSelected(final int position) {
                 super.onPageSelected(position);
@@ -100,13 +99,9 @@ public class ActivityMain extends AppCompatActivity {
                         userButton.setClickable(false);
                     }
                 }
-                final IFragment<?, ?> now = ActivityMain.this.fragmentsAdapter.getFragment(current);
-                final IFragment<?, ?> old = this.oldFragment.getAndSet(now);
-                if (old != null) old.onHide(ActivityMain.this);
-                now.onShow(ActivityMain.this);
+                ActivityMain.this.fragmentsAdapter.getAllFragments().forEach(f -> f.onPositionChanged(ActivityMain.this, current));
             }
-        };
-        activity.activityMainContent.registerOnPageChangeCallback(callback);
+        });
         this.fragmentsAdapter.getAllFragments().forEach(f -> f.onActivityCreateHook(this));
         activity.activityMainContent.setCurrentItem(FragmentsAdapter.FragmentTypes.toPosition(this.currentChoice.get()), false);
     }
@@ -116,7 +111,7 @@ public class ActivityMain extends AppCompatActivity {
     @Override
     public void onBackPressed() {
         final FragmentsAdapter.FragmentTypes choice = this.currentChoice.get();
-        if (choice != null && this.fragmentsAdapter.getFragment(choice).onBackPressed()) return;
+        if (choice != null && this.fragmentsAdapter.getAllFragments().stream().anyMatch(f -> f.onBackPressed(this))) return;
         final ZonedDateTime now = ZonedDateTime.now();
         if (this.lastBackPressedTime != null && Duration.between(this.lastBackPressedTime, now).toMillis() < 2000) {
             this.disconnect();
@@ -155,6 +150,16 @@ public class ActivityMain extends AppCompatActivity {
         }
     }
 
+    @Override
+    protected void onPostResume() {
+        super.onPostResume();
+        if (this.isConnected() != this.connected.get())
+            if (this.isConnected())
+                this.connect(this.address.getInstance(), this.username.getInstance(), this.binder.getInstanceNullable());
+            else
+                this.disconnect();
+    }
+
     private final @NotNull AtomicBoolean connected = new AtomicBoolean(false);
 
     @AnyThread
@@ -169,14 +174,7 @@ public class ActivityMain extends AppCompatActivity {
             BroadcastAssistant.start(address);
             ClientConfigurationSupporter.location().reinitialize(new File(this.getExternalFilesDir("client"), "client.yaml"));
             ClientConfigurationSupporter.parseFromFile();
-            final BroadcastAssistant.BroadcastSet set;
-            try {
-                set = BroadcastAssistant.get(address);
-            } catch (final IllegalStateException exception) {
-                Main.runOnUiThread(this, this::disconnect);
-                return;
-            }
-            set.ServerClose.register(id -> Main.runOnUiThread(this, this::disconnect));
+            BroadcastAssistant.get(address).ServerClose.register(id -> Main.runOnUiThread(this, this::disconnect));
             this.fragmentsAdapter.getAllFragments().forEach(f -> f.onConnected(this));
         }));
     }
@@ -189,13 +187,14 @@ public class ActivityMain extends AppCompatActivity {
         final String username = this.username.uninitializeNullable();
         if (address == null || username == null) {
             HLogManager.getInstance("DefaultLogger").log(HLogLevel.MISTAKE, "Disconnected twice. " + this.hashCode());
-            Main.runOnUiThread(this, () -> this.fragmentsAdapter.notifyConnectStateChanged(false, this.currentChoice.get()));
             return;
         }
-        WListClientManager.removeAllListeners(address);
-        Main.runOnUiThread(this, () -> {
-            this.fragmentsAdapter.notifyConnectStateChanged(false, this.currentChoice.get());
-            Main.runOnBackgroundThread(this, () -> this.fragmentsAdapter.getAllFragments().forEach(f -> f.onDisconnected(this)));
+        Main.runOnBackgroundThread(this, () -> {
+            WListClientManager.removeAllListeners(address);
+            BroadcastAssistant.stop(address);
+            TokenAssistant.removeToken(address, username);
+            WListClientManager.quicklyUninitialize(address);
+            this.fragmentsAdapter.getAllFragments().forEach(f -> f.onDisconnected(this));
         });
     }
 

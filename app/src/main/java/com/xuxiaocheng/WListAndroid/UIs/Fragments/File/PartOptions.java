@@ -37,22 +37,21 @@ class PartOptions extends IFragmentPart<PageFileBinding, FragmentFile> {
     }
 
     @Override
-    protected void onShow(final @NotNull ActivityMain activity) {
-        activity.getContent().activityMainOptions.setVisibility(View.VISIBLE);
+    protected void onPositionChanged(@NotNull final ActivityMain activity, final FragmentsAdapter.@NotNull FragmentTypes position) {
+        super.onPositionChanged(activity, position);
+        if (position == FragmentsAdapter.FragmentTypes.File)
+            activity.getContent().activityMainOptions.setVisibility(View.VISIBLE);
+        else
+            activity.getContent().activityMainOptions.setVisibility(View.GONE);
     }
 
     @Override
-    protected void onHide(final @NotNull ActivityMain activity) {
-        activity.getContent().activityMainOptions.setVisibility(View.GONE);
-    }
-
-    @Override
-    protected void onBuild(final @NotNull PageFileBinding page) {
+    protected void onBuild(@NotNull final PageFileBinding page) {
         super.onBuild(page);
         this.activity().getContent().activityMainOptions.setOnClickListener(v -> {
             if (this.activity().currentChoice() != FragmentsAdapter.FragmentTypes.File) return;
             final ListPopupWindow popup = new ListPopupWindow(this.activity());
-            popup.setWidth(this.page().pageFileList.getWidth() >> 1);
+            popup.setWidth(this.page().getRoot().getWidth() >> 1);
             popup.setAnchorView(this.activity().getContent().activityMainOptions);
             final List<Map<String, Object>> list = new ArrayList<>();
             list.add(Map.of("pos", 1, "image", R.drawable.page_file_options_sorter, "name", this.activity().getString(R.string.page_file_options_sorter)));
@@ -182,5 +181,4 @@ class PartOptions extends IFragmentPart<PageFileBinding, FragmentFile> {
     protected void filter() {
         Main.runOnBackgroundThread(this.activity(), () -> {throw new RuntimeException("WIP");}); // TODO
     }
-
 }

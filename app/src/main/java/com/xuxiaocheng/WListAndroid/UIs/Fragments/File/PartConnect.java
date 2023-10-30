@@ -62,11 +62,13 @@ class PartConnect extends IFragmentPart<PageFileBinding, FragmentFile> {
         final AtomicBoolean clickable = new AtomicBoolean(true);
         page.pageFileConnectionInternalServer.setOnClickListener(v -> {
             if (!clickable.compareAndSet(true, false)) return;
+            page.pageFileConnectionInternalServer.setText(R.string.page_connect_internal_server_starting);
             this.connectInternalServer((a, s) -> Main.runOnUiThread(a, () -> page.pageFileConnectionInternalServer.setText(s)), a -> {
                 clickable.set(true);
                 Main.runOnUiThread(a, () -> page.pageFileConnectionInternalServer.setText(R.string.page_connect_internal_server));
             });
         });
+        page.pageFileConnectionInternalServer.setText(R.string.page_connect_internal_server);
     }
 
     private static final @NotNull HInitializer<ActivityMain> binderActivity = new HInitializer<>("BinderActivityMain");

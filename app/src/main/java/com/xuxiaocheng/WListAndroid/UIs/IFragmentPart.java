@@ -53,11 +53,7 @@ public abstract class IFragmentPart<P extends ViewBinding, F extends IFragment<P
     }
 
     @UiThread
-    protected void onShow(final @NotNull ActivityMain activity) {
-    }
-
-    @UiThread
-    protected void onHide(final @NotNull ActivityMain activity) {
+    protected void onPositionChanged(final @NotNull ActivityMain activity, final FragmentsAdapter.@NotNull FragmentTypes position) {
     }
 
     @UiThread
