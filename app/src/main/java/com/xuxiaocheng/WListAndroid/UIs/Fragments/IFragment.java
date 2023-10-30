@@ -1,5 +1,6 @@
-package com.xuxiaocheng.WListAndroid.UIs;
+package com.xuxiaocheng.WListAndroid.UIs.Fragments;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -7,6 +8,9 @@ import android.view.ViewGroup;
 import androidx.annotation.UiThread;
 import androidx.annotation.WorkerThread;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Lifecycle;
+import androidx.lifecycle.LifecycleEventObserver;
+import androidx.lifecycle.LifecycleOwner;
 import androidx.viewbinding.ViewBinding;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WList.Client.Assistants.TokenAssistant;
@@ -14,6 +18,8 @@ import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WListAndroid.Helpers.BundleHelper;
 import com.xuxiaocheng.WListAndroid.Main;
+import com.xuxiaocheng.WListAndroid.UIs.ActivityMain;
+import com.xuxiaocheng.WListAndroid.UIs.FragmentsAdapter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -24,9 +30,9 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class IFragment<P extends ViewBinding, F extends IFragment<P, F>> extends Fragment {
-    protected final @NotNull HInitializer<P> pageCache = new HInitializer<>("FragmentPageCache");
-    public @NotNull P page() {
-        return this.pageCache.getInstance();
+    protected final @NotNull HInitializer<P> fragmentCache = new HInitializer<>("FragmentCache");
+    public @NotNull P fragment() {
+        return this.fragmentCache.getInstance();
     }
 
     protected final @NotNull HInitializer<InetSocketAddress> address = new HInitializer<>("FragmentAddress");
@@ -63,10 +69,10 @@ public abstract class IFragment<P extends ViewBinding, F extends IFragment<P, F>
     @Override
     @UiThread
     public @NotNull View onCreateView(final @NotNull LayoutInflater inflater, final @Nullable ViewGroup container, final @Nullable Bundle savedInstanceState) {
-        final P page = this.inflate(inflater);
-        this.pageCache.reinitialize(page);
-        this.onBuild(page);
-        return page.getRoot();
+        final P fragment = this.inflate(inflater);
+        this.fragmentCache.reinitialize(fragment);
+        this.onBuild(fragment);
+        return fragment.getRoot();
     }
 
     @UiThread
@@ -92,8 +98,8 @@ public abstract class IFragment<P extends ViewBinding, F extends IFragment<P, F>
     }
 
     @UiThread
-    protected void onBuild(final @NotNull P page) {
-        this.parts.forEach(f -> f.onBuild(page));
+    protected void onBuild(final @NotNull P fragment) {
+        this.parts.forEach(f -> f.onBuild(fragment));
     }
 
     @UiThread
@@ -106,8 +112,22 @@ public abstract class IFragment<P extends ViewBinding, F extends IFragment<P, F>
         return false;
     }
 
+    @Override
+    public void onAttach(final @NotNull Context context) {
+        super.onAttach(context);
+        ((LifecycleOwner) context).getLifecycle().addObserver(new LifecycleEventObserver() {
+            @Override
+            public void onStateChanged(final @NotNull LifecycleOwner source, final Lifecycle.@NotNull Event event) {
+                if (event == Lifecycle.Event.ON_CREATE) {
+                    source.getLifecycle().removeObserver(this);
+                    IFragment.this.onActivityCreate((ActivityMain) source);
+                }
+            }
+        });
+    }
+
     @UiThread
-    public void onActivityCreateHook(final @NotNull ActivityMain activity) {
+    public void onActivityCreate(final @NotNull ActivityMain activity) {
         this.parts.forEach(f -> f.onActivityCreateHook(activity));
     }
 
@@ -127,7 +147,7 @@ public abstract class IFragment<P extends ViewBinding, F extends IFragment<P, F>
     @Override
     public @NotNull String toString() {
         return "IFragment{" +
-                "pageCache=" + this.pageCache.isInitialized() +
+                "pageCache=" + this.fragmentCache.isInitialized() +
                 ", address=" + this.address +
                 ", username=" + this.username +
                 ", connected=" + this.connected +

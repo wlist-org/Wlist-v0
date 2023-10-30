@@ -1,7 +1,7 @@
 package com.xuxiaocheng.WListAndroid.UIs.Fragments.User;
 
 import android.view.LayoutInflater;
-import com.xuxiaocheng.WListAndroid.UIs.IFragment;
+import com.xuxiaocheng.WListAndroid.UIs.Fragments.IFragment;
 import com.xuxiaocheng.WListAndroid.databinding.PageUserBinding;
 import org.jetbrains.annotations.NotNull;
 

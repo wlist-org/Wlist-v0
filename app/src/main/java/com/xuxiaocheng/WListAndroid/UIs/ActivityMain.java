@@ -2,6 +2,7 @@ package com.xuxiaocheng.WListAndroid.UIs;
 
 import android.os.Bundle;
 import android.os.IBinder;
+import android.view.View;
 import androidx.annotation.AnyThread;
 import androidx.annotation.UiThread;
 import androidx.appcompat.app.AppCompatActivity;
@@ -28,6 +29,7 @@ import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 
 public class ActivityMain extends AppCompatActivity {
     protected final @NotNull HInitializer<ActivityMainBinding> contentCache = new HInitializer<>("ActivityMainCache");
@@ -79,7 +81,6 @@ public class ActivityMain extends AppCompatActivity {
         this.setContentView(activity.getRoot());
         this.contentCache.reinitialize(activity);
         activity.activityMainContent.setAdapter(this.fragmentsAdapter);
-        activity.activityMainContent.setUserInputEnabled(false);
         final ChooserButtonGroup fileButton = new ChooserButtonGroup(this, FragmentsAdapter.FragmentTypes.File, activity.activityMainChooserFileImage, R.mipmap.main_chooser_file, R.mipmap.main_chooser_file_chose, activity.activityMainChooserFileText, activity.activityMainChooserFile);
         final ChooserButtonGroup userButton = new ChooserButtonGroup(this, FragmentsAdapter.FragmentTypes.User, activity.activityMainChooserUserImage, R.mipmap.main_chooser_user, R.mipmap.main_chooser_user_chose, activity.activityMainChooserUserText, activity.activityMainChooserUser);
         activity.activityMainContent.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
@@ -103,7 +104,7 @@ public class ActivityMain extends AppCompatActivity {
                 ActivityMain.this.fragmentsAdapter.getAllFragments().forEach(f -> f.onPositionChanged(ActivityMain.this, current));
             }
         });
-        this.fragmentsAdapter.getAllFragments().forEach(f -> f.onActivityCreateHook(this));
+        this.fragmentsAdapter.getAllFragments().forEach(f -> f.onActivityCreate(this));
         activity.activityMainContent.setCurrentItem(FragmentsAdapter.FragmentTypes.toPosition(this.currentChoice.get()), false);
     }
 
@@ -111,6 +112,12 @@ public class ActivityMain extends AppCompatActivity {
     @UiThread
     @Override
     public void onBackPressed() {
+        if (this.otherPageBackListener.get() != null && this.otherPageBackListener.get().test(null))
+            return;
+        if (!this.isMainPage.get()) {
+            this.resetPage();
+            return;
+        }
         final FragmentsAdapter.FragmentTypes choice = this.currentChoice.get();
         if (choice != null && this.fragmentsAdapter.getAllFragments().stream().anyMatch(f -> f.onBackPressed(this))) return;
         final ZonedDateTime now = ZonedDateTime.now();
@@ -195,6 +202,25 @@ public class ActivityMain extends AppCompatActivity {
             WListClientManager.quicklyUninitialize(address);
             this.fragmentsAdapter.getAllFragments().forEach(f -> f.onDisconnected(this));
         });
+    }
+
+    private final @NotNull AtomicBoolean isMainPage = new AtomicBoolean(true);
+    private final @NotNull AtomicReference<Predicate<@Nullable Void>> otherPageBackListener = new AtomicReference<>();
+
+    @UiThread
+    public void transferPage(final @NotNull View view, final @Nullable Predicate<@Nullable Void> backListener) {
+        this.setContentView(view);
+        HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Transfer page. ", this.hashCode());
+        this.isMainPage.set(false);
+        this.otherPageBackListener.set(backListener);
+    }
+
+    @UiThread
+    public void resetPage() {
+        this.setContentView(this.getContent().getRoot());
+        HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Reset page. ", this.hashCode());
+        this.isMainPage.set(true);
+        this.otherPageBackListener.set(null);
     }
 
     @Override

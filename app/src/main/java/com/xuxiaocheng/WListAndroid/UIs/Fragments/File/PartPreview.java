@@ -5,7 +5,7 @@ import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.UIs.ActivityMain;
-import com.xuxiaocheng.WListAndroid.UIs.IFragmentPart;
+import com.xuxiaocheng.WListAndroid.UIs.Fragments.IFragmentPart;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
 import org.jetbrains.annotations.NotNull;
 

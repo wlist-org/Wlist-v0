@@ -3,7 +3,7 @@ package com.xuxiaocheng.WListAndroid.UIs.Fragments.File;
 import android.view.LayoutInflater;
 import com.xuxiaocheng.WListAndroid.UIs.ActivityMain;
 import com.xuxiaocheng.WListAndroid.UIs.FragmentsAdapter;
-import com.xuxiaocheng.WListAndroid.UIs.IFragment;
+import com.xuxiaocheng.WListAndroid.UIs.Fragments.IFragment;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
 import org.jetbrains.annotations.NotNull;
 
@@ -14,6 +14,7 @@ public class FragmentFile extends IFragment<PageFileBinding, FragmentFile> {
     protected final @NotNull PartOperation partOperation = new PartOperation(this);
     protected final @NotNull PartUpload partUpload = new PartUpload(this);
     protected final @NotNull PartPreview partPreview = new PartPreview(this);
+    protected final @NotNull PageTask pageTask = new PageTask(this);
 
     public FragmentFile() {
         super();
@@ -23,6 +24,7 @@ public class FragmentFile extends IFragment<PageFileBinding, FragmentFile> {
         this.parts.add(this.partOperation);
         this.parts.add(this.partUpload);
         this.parts.add(this.partPreview);
+        this.parts.add(this.pageTask);
     }
 
     @Override

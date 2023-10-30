@@ -25,7 +25,7 @@ import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.Services.InternalServer.InternalServerBinder;
 import com.xuxiaocheng.WListAndroid.Services.InternalServer.InternalServerService;
 import com.xuxiaocheng.WListAndroid.UIs.ActivityMain;
-import com.xuxiaocheng.WListAndroid.UIs.IFragmentPart;
+import com.xuxiaocheng.WListAndroid.UIs.Fragments.IFragmentPart;
 import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
 import org.jetbrains.annotations.NotNull;
@@ -43,31 +43,31 @@ class PartConnect extends IFragmentPart<PageFileBinding, FragmentFile> {
     @Override
     protected void onConnected(final @NotNull ActivityMain activity) {
         super.onConnected(activity);
-        Main.runOnUiThread(activity, () -> this.page().pageFileConnectionInternalServer.setVisibility(View.GONE));
+        Main.runOnUiThread(activity, () -> this.fragment().pageFileConnectionInternalServer.setVisibility(View.GONE));
     }
 
     @Override
     protected void onDisconnected(final @NotNull ActivityMain activity) {
         super.onDisconnected(activity);
         Main.runOnUiThread(activity, () -> {
-            this.onBuild(this.page());
+            this.onBuild(this.fragment());
             this.disconnectInternalServer();
             this.disconnectExternalServer();
         });
     }
 
     @Override
-    protected void onBuild(@NotNull final PageFileBinding page) {
-        super.onBuild(page);
+    protected void onBuild(@NotNull final PageFileBinding fragment) {
+        super.onBuild(fragment);
         final AtomicBoolean clickable = new AtomicBoolean(true);
-        page.pageFileConnectionInternalServer.setVisibility(View.VISIBLE);
-        page.pageFileConnectionInternalServer.setText(R.string.page_file_connect_internal_server);
-        page.pageFileConnectionInternalServer.setOnClickListener(v -> {
+        fragment.pageFileConnectionInternalServer.setVisibility(View.VISIBLE);
+        fragment.pageFileConnectionInternalServer.setText(R.string.page_file_connect_internal_server);
+        fragment.pageFileConnectionInternalServer.setOnClickListener(v -> {
             if (!clickable.compareAndSet(true, false)) return;
-            page.pageFileConnectionInternalServer.setText(R.string.page_file_connect_internal_server_starting);
-            this.connectInternalServer((a, s) -> Main.runOnUiThread(a, () -> page.pageFileConnectionInternalServer.setText(s)), a -> {
+            fragment.pageFileConnectionInternalServer.setText(R.string.page_file_connect_internal_server_starting);
+            this.connectInternalServer((a, s) -> Main.runOnUiThread(a, () -> fragment.pageFileConnectionInternalServer.setText(s)), a -> {
                 clickable.set(true);
-                Main.runOnUiThread(a, () -> page.pageFileConnectionInternalServer.setText(R.string.page_file_connect_internal_server));
+                Main.runOnUiThread(a, () -> fragment.pageFileConnectionInternalServer.setText(R.string.page_file_connect_internal_server));
             });
         });
     }

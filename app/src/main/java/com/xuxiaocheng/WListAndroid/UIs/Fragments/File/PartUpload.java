@@ -3,16 +3,22 @@ package com.xuxiaocheng.WListAndroid.UIs.Fragments.File;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.view.MotionEvent;
 import android.view.View;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.UiThread;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.xuxiaocheng.HeadLibs.Helpers.HMathHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
+import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WListAndroid.Main;
+import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.UIs.ActivityMain;
-import com.xuxiaocheng.WListAndroid.UIs.IFragmentPart;
+import com.xuxiaocheng.WListAndroid.UIs.Fragments.IFragmentPart;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageFileUploadBinding;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
@@ -37,30 +43,30 @@ class PartUpload extends IFragmentPart<PageFileBinding, FragmentFile> {
         if (!preferences.contains("x") || !preferences.contains("y"))
             preferences.edit().putFloat("x", percentX).putFloat("y", percentY).apply();
         Main.runOnUiThread(activity, () -> {
-            final View v = this.page().pageFileUploader;
-            final float parentX = this.page().pageFileList.getX(), parentY = this.page().pageFileList.getY();
-            final float width = this.page().pageFileList.getWidth(), height = this.page().pageFileList.getHeight();
+            final View v = this.fragment().pageFileUploader;
+            final float parentX = this.fragment().pageFileList.getX(), parentY = this.fragment().pageFileList.getY();
+            final float width = this.fragment().pageFileList.getWidth(), height = this.fragment().pageFileList.getHeight();
             final float halfWidth = v.getWidth() / 2.0f, halfHeight = v.getHeight() / 2.0f;
             v.setX(HMathHelper.clamp(percentX * width + parentX - parentX, halfWidth, width - halfWidth) + parentX - halfWidth);
             v.setY(HMathHelper.clamp(percentY * height + parentY - parentY, halfHeight, height - halfHeight) + parentY - halfHeight);
-            this.page().pageFileUploader.setVisibility(View.VISIBLE);
+            this.fragment().pageFileUploader.setVisibility(View.VISIBLE);
         });
     }
 
     @Override
     protected void onDisconnected(final @NotNull ActivityMain activity) {
         super.onDisconnected(activity);
-        Main.runOnUiThread(activity, () -> this.page().pageFileUploader.setVisibility(View.GONE));
+        Main.runOnUiThread(activity, () -> this.fragment().pageFileUploader.setVisibility(View.GONE));
     }
 
     @Override
     @SuppressLint("ClickableViewAccessibility")
-    protected void onBuild(final @NotNull PageFileBinding page) {
-        super.onBuild(page);
+    protected void onBuild(final @NotNull PageFileBinding fragment) {
+        super.onBuild(fragment);
         final AtomicBoolean scrolling = new AtomicBoolean();
         final AtomicInteger startX = new AtomicInteger(), startY = new AtomicInteger();
         final AtomicReference<ZonedDateTime> startTime = new AtomicReference<>();
-        page.pageFileUploader.setOnTouchListener((v, e) -> {
+        fragment.pageFileUploader.setOnTouchListener((v, e) -> {
             switch (e.getAction()) {
                 case MotionEvent.ACTION_DOWN -> {
                     scrolling.set(false);
@@ -70,80 +76,80 @@ class PartUpload extends IFragmentPart<PageFileBinding, FragmentFile> {
                 }
                 case MotionEvent.ACTION_MOVE -> {
                     if (scrolling.get()) {
-                        final float parentX = page.pageFileList.getX(), parentY = page.pageFileList.getY();
+                        final float parentX = fragment.pageFileList.getX(), parentY = fragment.pageFileList.getY();
                         final float halfWidth = v.getWidth() / 2.0f, halfHeight = v.getHeight() / 2.0f;
-                        v.setX(HMathHelper.clamp(v.getX() + e.getX() - parentX, halfWidth, page.pageFileList.getWidth() - halfWidth) + parentX - halfWidth);
-                        v.setY(HMathHelper.clamp(v.getY() + e.getY() - parentY, halfHeight, page.pageFileList.getHeight() - halfHeight) + parentY - halfHeight);
+                        v.setX(HMathHelper.clamp(v.getX() + e.getX() - parentX, halfWidth, fragment.pageFileList.getWidth() - halfWidth) + parentX - halfWidth);
+                        v.setY(HMathHelper.clamp(v.getY() + e.getY() - parentY, halfHeight, fragment.pageFileList.getHeight() - halfHeight) + parentY - halfHeight);
                     } else if (Math.abs(v.getX() + e.getX() - Float.intBitsToFloat(startX.get())) > v.getWidth() / 2.0f
                             || Math.abs(v.getY() + e.getY() - Float.intBitsToFloat(startY.get())) > v.getHeight() / 2.0f
                             || Duration.between(startTime.get(), ZonedDateTime.now()).toMillis() >= 500) {
                         scrolling.set(true);
-                        page.pageFileList.requestDisallowInterceptTouchEvent(true);
+                        fragment.pageFileList.requestDisallowInterceptTouchEvent(true);
                     }
                 }
                 case MotionEvent.ACTION_UP -> {
                     if (scrolling.get()) {
-                        final float percentX = (v.getX() - page.pageFileList.getX()) / page.pageFileList.getWidth();
-                        final float percentY = (v.getY() - page.pageFileList.getY()) / page.pageFileList.getHeight();
+                        final float percentX = (v.getX() - fragment.pageFileList.getX()) / fragment.pageFileList.getWidth();
+                        final float percentY = (v.getY() - fragment.pageFileList.getY()) / fragment.pageFileList.getHeight();
                         this.activity().getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE).edit()
                                 .putFloat("x", percentX).putFloat("y", percentY).apply();
-                        page.pageFileList.requestDisallowInterceptTouchEvent(false);
+                        fragment.pageFileList.requestDisallowInterceptTouchEvent(false);
                     } else return v.performClick();
                 }
             }
             return true;
         });
-//        page.pageFileUploader.setOnClickListener(u -> {
-//            if (this.fragment.partList.isOnRoot()) {
-//                this.addStorage(this.activity());
-//                return;
-//            }
-//            final BottomSheetDialog dialog = new BottomSheetDialog(this.pageFile.activity(), R.style.BottomSheetDialog);
-//            final PageFileUploadBinding uploader = PageFileUploadBinding.inflate(this.pageFile.activity().getLayoutInflater());
-//            uploader.pageFileUploadCancel.setOnClickListener(v -> dialog.cancel());
-//            final AtomicBoolean clickable = new AtomicBoolean(true);
-//            uploader.pageFileUploadStorageImage.setOnClickListener(v -> {
-//                if (!clickable.compareAndSet(true, false)) return;
-//                dialog.cancel();
-//                this.addStorage(this.pageFile.activity());
-//            });
-//            uploader.pageFileUploadStorageText.setOnClickListener(v -> uploader.pageFileUploadStorageImage.performClick());
-//            uploader.pageFileUploadDirectoryImage.setOnClickListener(v -> {
-//                if (this.pageFile.partList.isOnRoot() || !clickable.compareAndSet(true, false)) return;
-//                dialog.cancel();
-//                this.createDirectory(this.pageFile.activity());
-//            });
-//            uploader.pageFileUploadDirectoryText.setOnClickListener(v -> uploader.pageFileUploadDirectoryImage.performClick());
-//            uploader.pageFileUploadFileImage.setOnClickListener(v -> {
-//                if (this.pageFile.partList.isOnRoot() || !clickable.compareAndSet(true, false)) return;
-//                dialog.cancel();
-//                this.chooserLauncher.getInstance().launch("*/*");
-//            });
-//            uploader.pageFileUploadFileText.setOnClickListener(v -> uploader.pageFileUploadFileImage.performClick());
-//            uploader.pageFileUploadPictureImage.setOnClickListener(v -> {
-//                if (this.pageFile.partList.isOnRoot() || !clickable.compareAndSet(true, false)) return;
-//                dialog.cancel();
-//                this.chooserLauncher.getInstance().launch("image/*");
-//            });
-//            uploader.pageFileUploadPictureText.setOnClickListener(v -> uploader.pageFileUploadPictureImage.performClick());
-//            uploader.pageFileUploadVideoImage.setOnClickListener(v -> {
-//                if (this.pageFile.partList.isOnRoot() || !clickable.compareAndSet(true, false)) return;
-//                dialog.cancel();
-//                this.chooserLauncher.getInstance().launch("video/*");
-//            });
-//            uploader.pageFileUploadVideoText.setOnClickListener(v -> uploader.pageFileUploadVideoImage.performClick());
-//            dialog.setCanceledOnTouchOutside(true);
-//            dialog.setContentView(uploader.getRoot());
-//            dialog.show();
-//        });
+        fragment.pageFileUploader.setOnClickListener(u -> {
+            if (this.fragment.partList.isOnRoot()) {
+                this.addStorage(this.activity());
+                return;
+            }
+            final BottomSheetDialog dialog = new BottomSheetDialog(this.activity(), R.style.BottomSheetDialog);
+            final PageFileUploadBinding uploader = PageFileUploadBinding.inflate(this.activity().getLayoutInflater());
+            uploader.pageFileUploadCancel.setOnClickListener(v -> dialog.cancel());
+            final AtomicBoolean clickable = new AtomicBoolean(true);
+            uploader.pageFileUploadStorageImage.setOnClickListener(v -> {
+                if (!clickable.compareAndSet(true, false)) return;
+                dialog.cancel();
+                this.addStorage(this.activity());
+            });
+            uploader.pageFileUploadStorageText.setOnClickListener(v -> uploader.pageFileUploadStorageImage.performClick());
+            uploader.pageFileUploadDirectoryImage.setOnClickListener(v -> {
+                if (this.fragment.partList.isOnRoot() || !clickable.compareAndSet(true, false)) return;
+                dialog.cancel();
+                this.createDirectory(this.activity());
+            });
+            uploader.pageFileUploadDirectoryText.setOnClickListener(v -> uploader.pageFileUploadDirectoryImage.performClick());
+            uploader.pageFileUploadFileImage.setOnClickListener(v -> {
+                if (this.fragment.partList.isOnRoot() || !clickable.compareAndSet(true, false)) return;
+                dialog.cancel();
+                this.chooserLauncher.getInstance().launch("*/*");
+            });
+            uploader.pageFileUploadFileText.setOnClickListener(v -> uploader.pageFileUploadFileImage.performClick());
+            uploader.pageFileUploadPictureImage.setOnClickListener(v -> {
+                if (this.fragment.partList.isOnRoot() || !clickable.compareAndSet(true, false)) return;
+                dialog.cancel();
+                this.chooserLauncher.getInstance().launch("image/*");
+            });
+            uploader.pageFileUploadPictureText.setOnClickListener(v -> uploader.pageFileUploadPictureImage.performClick());
+            uploader.pageFileUploadVideoImage.setOnClickListener(v -> {
+                if (this.fragment.partList.isOnRoot() || !clickable.compareAndSet(true, false)) return;
+                dialog.cancel();
+                this.chooserLauncher.getInstance().launch("video/*");
+            });
+            uploader.pageFileUploadVideoText.setOnClickListener(v -> uploader.pageFileUploadVideoImage.performClick());
+            dialog.setCanceledOnTouchOutside(true);
+            dialog.setContentView(uploader.getRoot());
+            dialog.show();
+        });
     }
 
     @Override
     protected void onActivityCreateHook(final @NotNull ActivityMain activity) {
         super.onActivityCreateHook(activity);
-        this.chooserLauncher.reinitialize(activity.registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
-//            if (uri != null)
-//                this.uploadFile(uri);
+        this.chooserLauncher.reinitialize(activity.getActivityResultRegistry().register("wlist:activity_rq_for_result#uploader_chooser", new ActivityResultContracts.GetContent(), uri -> {
+            if (uri != null)
+                this.uploadFile(uri);
         }));
     }
 
@@ -162,9 +168,9 @@ class PartUpload extends IFragmentPart<PageFileBinding, FragmentFile> {
 //    protected @NotNull AlertDialog loadingDialog(final @NotNull ActivityMain activity, @StringRes final int title) {
 //        return new AlertDialog.Builder(activity).setTitle(title).setView(this.loadingView(activity)).setCancelable(false).show();
 //    }
-//
-//    @UiThread
-//    protected void createDirectory(final @NotNull ActivityMain activity) {
+
+    @UiThread
+    protected void createDirectory(final @NotNull ActivityMain activity) {
 //        final FileLocation location = this.currentLocation();
 //        final PageFileDirectoryBinding editor = PageFileDirectoryBinding.inflate(activity.getLayoutInflater());
 //        editor.pageFileDirectoryName.setText(R.string.page_file_upload_directory_name);
@@ -189,11 +195,11 @@ class PartUpload extends IFragmentPart<PageFileBinding, FragmentFile> {
 //                        Main.showToast(activity, R.string.page_file_upload_success_directory);
 //                    }, () -> Main.runOnUiThread(activity, loading::cancel)));
 //                }).show();
-//    }
-//
-//    @UiThread
-//    @SuppressWarnings("unchecked")
-//    protected <C extends StorageConfiguration> void addStorage(final @NotNull ActivityMain activity) {
+    }
+
+    @UiThread
+    @SuppressWarnings("unchecked")
+    protected <C extends StorageConfiguration> void addStorage(final @NotNull ActivityMain activity) {
 //        final String[] storages = StorageTypeGetter.getAll().keySet().toArray(EmptyArrays.EMPTY_STRINGS);
 //        final AtomicInteger choice = new AtomicInteger(-1);
 //        new AlertDialog.Builder(activity).setTitle(R.string.page_file_create_storage)
@@ -214,10 +220,10 @@ class PartUpload extends IFragmentPart<PageFileBinding, FragmentFile> {
 //                        }, () -> Main.runOnUiThread(activity, loading::cancel)));
 //                    }));
 //                }).show();
-//    }
-//
-//    @UiThread
-//    protected void uploadFile(final @NotNull Uri uri) {
+    }
+
+    @UiThread
+    protected void uploadFile(final @NotNull Uri uri) {
 //        Main.runOnBackgroundThread(this.pageFile.activity(), HExceptionWrapper.wrapRunnable(() -> {
 //            final FileLocation location = this.currentLocation();
 //            // TODO: serialize uploading task.
@@ -260,5 +266,5 @@ class PartUpload extends IFragmentPart<PageFileBinding, FragmentFile> {
 //                }));
 //            });
 //        }));
-//    }
+    }
 }

@@ -1,10 +1,12 @@
-package com.xuxiaocheng.WListAndroid.UIs;
+package com.xuxiaocheng.WListAndroid.UIs.Fragments;
 
 import android.os.Bundle;
 import androidx.annotation.UiThread;
 import androidx.annotation.WorkerThread;
 import androidx.viewbinding.ViewBinding;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
+import com.xuxiaocheng.WListAndroid.UIs.ActivityMain;
+import com.xuxiaocheng.WListAndroid.UIs.FragmentsAdapter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -19,8 +21,8 @@ public abstract class IFragmentPart<P extends ViewBinding, F extends IFragment<P
         this.fragment = fragment;
     }
 
-    protected @NotNull P page() {
-        return this.fragment.page();
+    protected @NotNull P fragment() {
+        return this.fragment.fragment();
     }
     protected boolean isConnected() {
         return this.fragment.isConnected();
@@ -42,7 +44,7 @@ public abstract class IFragmentPart<P extends ViewBinding, F extends IFragment<P
     }
 
     @UiThread
-    protected void onBuild(final @NotNull P page) {
+    protected void onBuild(final @NotNull P fragment) {
     }
 
     @UiThread

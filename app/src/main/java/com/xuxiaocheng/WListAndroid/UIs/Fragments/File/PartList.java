@@ -35,7 +35,7 @@ import com.xuxiaocheng.WListAndroid.Helpers.BundleHelper;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.UIs.ActivityMain;
-import com.xuxiaocheng.WListAndroid.UIs.IFragmentPart;
+import com.xuxiaocheng.WListAndroid.UIs.Fragments.IFragmentPart;
 import com.xuxiaocheng.WListAndroid.Utils.EnhancedRecyclerViewAdapter;
 import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
@@ -61,19 +61,19 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
     }
 
     @Override
-    protected void onBuild(final @NotNull PageFileBinding page) {
-        super.onBuild(page);
-        page.pageFileList.setLayoutManager(new LinearLayoutManager(this.activity()));
-        page.pageFileList.setHasFixedSize(true);
+    protected void onBuild(final @NotNull PageFileBinding fragment) {
+        super.onBuild(fragment);
+        fragment.pageFileList.setLayoutManager(new LinearLayoutManager(this.activity()));
+        fragment.pageFileList.setHasFixedSize(true);
     }
 
     @Override
     protected void onConnected(final @NotNull ActivityMain activity) {
         super.onConnected(activity);
         Main.runOnUiThread(activity, () -> {
-            this.page().pageFileName.setVisibility(View.VISIBLE);
-            this.page().pageFileBacker.setVisibility(View.VISIBLE);
-            this.page().pageFileList.setVisibility(View.VISIBLE);
+            this.fragment().pageFileName.setVisibility(View.VISIBLE);
+            this.fragment().pageFileBacker.setVisibility(View.VISIBLE);
+            this.fragment().pageFileList.setVisibility(View.VISIBLE);
         });
         Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> this.toPage(this.currentLocation(), this.currentLoadingUp.get().get())));
         this.listenBroadcast(BroadcastAssistant.get(this.address()));
@@ -83,11 +83,11 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
     protected void onDisconnected(final @NotNull ActivityMain activity) {
         super.onDisconnected(activity);
         Main.runOnUiThread(activity, () -> {
-            this.page().pageFileName.setVisibility(View.GONE);
-            this.page().pageFileBacker.setVisibility(View.GONE);
-            this.page().pageFileList.setVisibility(View.GONE);
-            this.page().pageFileCounter.setVisibility(View.GONE);
-            this.page().pageFileCounterText.setVisibility(View.GONE);
+            this.fragment().pageFileName.setVisibility(View.GONE);
+            this.fragment().pageFileBacker.setVisibility(View.GONE);
+            this.fragment().pageFileList.setVisibility(View.GONE);
+            this.fragment().pageFileCounter.setVisibility(View.GONE);
+            this.fragment().pageFileCounterText.setVisibility(View.GONE);
         });
     }
 
@@ -129,18 +129,18 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
 
     @UiThread
     private @NotNull View listLoadingView(final @NotNull LayoutInflater inflater) {
-        final ConstraintLayout loading = EnhancedRecyclerViewAdapter.buildView(inflater, R.layout.page_file_tailor_loading, this.page().pageFileList);
+        final ConstraintLayout loading = EnhancedRecyclerViewAdapter.buildView(inflater, R.layout.page_file_tailor_loading, this.fragment().pageFileList);
         final ImageView image = (ImageView) loading.getViewById(R.id.page_file_tailor_loading_image);
         ViewUtil.startDrawableAnimation(image);
         return loading;
     }
     @UiThread
     private @NotNull View listNoMoreView(final @NotNull LayoutInflater inflater) {
-        return EnhancedRecyclerViewAdapter.buildView(inflater, R.layout.page_file_tailor_no_more, this.page().pageFileList);
+        return EnhancedRecyclerViewAdapter.buildView(inflater, R.layout.page_file_tailor_no_more, this.fragment().pageFileList);
     }
     @UiThread
     private @NotNull ConstraintLayout listCellView(final @NotNull LayoutInflater inflater) {
-        return EnhancedRecyclerViewAdapter.buildView(inflater, R.layout.page_file_cell, this.page().pageFileList);
+        return EnhancedRecyclerViewAdapter.buildView(inflater, R.layout.page_file_cell, this.fragment().pageFileList);
     }
 
     private final @NotNull HInitializer<PageFileLoadingBinding> loadingBarBinding = new HInitializer<>("LoadingBarBinding");
@@ -166,7 +166,7 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
 
     @AnyThread
     protected int getCurrentPosition() {
-        final RecyclerView list = this.page().pageFileList;
+        final RecyclerView list = this.fragment().pageFileList;
         final RecyclerView.LayoutManager manager = list.getLayoutManager();
         final RecyclerView.Adapter<?> adapter = list.getAdapter();
         if (!(manager instanceof LinearLayoutManager) || !(adapter instanceof EnhancedRecyclerViewAdapter<?, ?>)) return 0;
@@ -196,8 +196,8 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
                 });
             }
         };
-        this.page().pageFileCounter.setVisibility(View.GONE);
-        this.page().pageFileCounterText.setVisibility(View.GONE);
+        this.fragment().pageFileCounter.setVisibility(View.GONE);
+        this.fragment().pageFileCounterText.setVisibility(View.GONE);
         final AtomicLong loadedUp = new AtomicLong(position);
         final AtomicLong loadedDown = new AtomicLong(position);
         this.currentLoadingUp.set(loadedUp);
@@ -227,7 +227,7 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
                     (isDown ? noMoreDown : noMoreUp).set(false); // prevent retry forever when server error.
                     VisibleFilesListInformation list = null;
                     final int limit;
-                    final String title = MessageFormat.format(activity.getString(R.string.page_file_listing_title), PartList.this.page().pageFileName.getText());
+                    final String title = MessageFormat.format(activity.getString(R.string.page_file_listing_title), PartList.this.fragment().pageFileName.getText());
                     final AtomicBoolean showed = new AtomicBoolean(false);
                     try {
                         limit = ClientConfigurationSupporter.limitPerPage(ClientConfigurationSupporter.get());
@@ -258,9 +258,9 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
                         noMoreUp.set(loadedUp.get() <= 0);
                     final VisibleFilesListInformation l = list;
                     Main.runOnUiThread(activity, () -> {
-                        PartList.this.page().pageFileCounter.setText(String.valueOf(FilesListInformationGetter.total(l)));
-                        PartList.this.page().pageFileCounter.setVisibility(View.VISIBLE);
-                        PartList.this.page().pageFileCounterText.setVisibility(View.VISIBLE);
+                        PartList.this.fragment().pageFileCounter.setText(String.valueOf(FilesListInformationGetter.total(l)));
+                        PartList.this.fragment().pageFileCounter.setVisibility(View.VISIBLE);
+                        PartList.this.fragment().pageFileCounterText.setVisibility(View.VISIBLE);
                         final boolean empty = adapter.getData().isEmpty();
                         if (isDown)
                             adapter.addDataRange(FilesListInformationGetter.informationList(l));
@@ -286,19 +286,19 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
                 }, false));
             }
         };
-        this.page().pageFileList.setAdapter(adapter);
-        this.page().pageFileList.clearOnScrollListeners();
-        this.page().pageFileList.addOnScrollListener(listener);
-        listener.onScrollStateChanged(this.page().pageFileList, AbsListView.OnScrollListener.SCROLL_STATE_IDLE);
+        this.fragment().pageFileList.setAdapter(adapter);
+        this.fragment().pageFileList.clearOnScrollListeners();
+        this.fragment().pageFileList.addOnScrollListener(listener);
+        listener.onScrollStateChanged(this.fragment().pageFileList, AbsListView.OnScrollListener.SCROLL_STATE_IDLE);
     }
 
     @UiThread
     private void onRootPage(final long position) {
-        final PageFileBinding page = this.page();
-        page.pageFileBacker.setImageResource(R.drawable.backer_nonclickable);
-        page.pageFileBacker.setOnClickListener(null);
-        page.pageFileBacker.setClickable(false);
-        page.pageFileName.setText(R.string.app_name);
+        final PageFileBinding fragment = this.fragment();
+        fragment.pageFileBacker.setImageResource(R.drawable.backer_nonclickable);
+        fragment.pageFileBacker.setOnClickListener(null);
+        fragment.pageFileBacker.setClickable(false);
+        fragment.pageFileName.setText(R.string.app_name);
         final AtomicBoolean clickable = new AtomicBoolean(true);
         this.updatePage(new FileLocation(IdentifierNames.RootSelector, 0), position, clickable,
                 information -> this.onInsidePage(FileInformationGetter.name(information), new FileLocation(FileInformationGetter.name(information), FileInformationGetter.id(information)), 0),
@@ -307,15 +307,15 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
 
     @UiThread
     private void onInsidePage(final @NotNull CharSequence name, final @NotNull FileLocation location, final long position) {
-        final PageFileBinding page = this.page();
+        final PageFileBinding fragment = this.fragment();
         final AtomicBoolean clickable = new AtomicBoolean(true);
-        page.pageFileBacker.setImageResource(R.drawable.backer);
-        page.pageFileBacker.setOnClickListener(v -> {
+        fragment.pageFileBacker.setImageResource(R.drawable.backer);
+        fragment.pageFileBacker.setOnClickListener(v -> {
             if (clickable.compareAndSet(true, false))
                 this.popFileList();
         });
-        page.pageFileBacker.setClickable(true);
-        page.pageFileName.setText(name);
+        fragment.pageFileBacker.setClickable(true);
+        fragment.pageFileName.setText(name);
         this.updatePage(location, position, clickable, information -> {
             if (FileInformationGetter.isDirectory(information))
                 this.onInsidePage(FileInformationGetter.name(information), new FileLocation(FileLocationGetter.storage(location), FileInformationGetter.id(information)), 0);
@@ -352,12 +352,12 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
     protected boolean popFileList() {
         final Triad.ImmutableTriad<FileLocation, VisibleFileInformation, AtomicLong> p = this.stacks.poll();
         if (p == null && this.isOnRoot()) return false;
-        final PageFileBinding page = this.page();
-        page.pageFileBacker.setClickable(false);
-        page.pageFileCounter.setVisibility(View.GONE);
-        page.pageFileCounterText.setVisibility(View.GONE);
-        page.pageFileList.clearOnScrollListeners();
-        page.pageFileList.setAdapter(null);
+        final PageFileBinding fragment = this.fragment();
+        fragment.pageFileBacker.setClickable(false);
+        fragment.pageFileCounter.setVisibility(View.GONE);
+        fragment.pageFileCounterText.setVisibility(View.GONE);
+        fragment.pageFileList.clearOnScrollListeners();
+        fragment.pageFileList.setAdapter(null);
         final ActivityMain activity = this.activity();
         Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> {
             final VisibleFileInformation current;
@@ -400,7 +400,7 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
         if (IdentifierNames.RootSelector.equals(FileLocationGetter.storage(location)))
             Main.runOnUiThread(this.activity(), () -> this.onRootPage(this.getCurrentPosition()));
         else
-            Main.runOnUiThread(this.activity(), () -> this.onInsidePage(this.page().pageFileName.getText(), location, this.getCurrentPosition()));
+            Main.runOnUiThread(this.activity(), () -> this.onInsidePage(this.fragment().pageFileName.getText(), location, this.getCurrentPosition()));
     }
 
 
@@ -420,7 +420,7 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
                 information = OperateFilesHelper.getFileOrDirectory(client, this.token(), new FileLocation(p.getFirst(), p.getSecond().longValue()), true);
             }
             if (information == null) return;
-            final EnhancedRecyclerViewAdapter<VisibleFileInformation, PartListViewHolder> adapter = (EnhancedRecyclerViewAdapter<VisibleFileInformation, PartListViewHolder>) Objects.requireNonNull(this.page().pageFileList.getAdapter());
+            final EnhancedRecyclerViewAdapter<VisibleFileInformation, PartListViewHolder> adapter = (EnhancedRecyclerViewAdapter<VisibleFileInformation, PartListViewHolder>) Objects.requireNonNull(this.fragment().pageFileList.getAdapter());
             if (this.isOnRoot()) {
                 final VisibleFileInformation[] list = FileInformationGetter.asArray(adapter.getData());
                 if (list.length == 0)

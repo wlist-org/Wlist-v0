@@ -9,7 +9,7 @@ import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
-import com.xuxiaocheng.WListAndroid.UIs.IFragmentPart;
+import com.xuxiaocheng.WListAndroid.UIs.Fragments.IFragmentPart;
 import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileOperationBinding;
@@ -241,26 +241,26 @@ class PartOperation extends IFragmentPart<PageFileBinding, FragmentFile> {
 //    public Pair.@Nullable ImmutablePair<@NotNull String, @NotNull Long> queryTargetDirectory(@StringRes final int title, final @Nullable String currentStorage, final long currentDirectoryId) throws InterruptedException {
 //        final CountDownLatch latch = new CountDownLatch(1);
 //        final AtomicReference<FileLocation> result = new AtomicReference<>();
-//        final PageFile page = new PageFile() {
+//        final PageFile fragment = new PageFile() {
 //            @Override
 //            public @NotNull ActivityMain activity() {
 //                return PageFilePartOperation.this.pageFile.activity();
 //            }
 //        }; // TODO
 //        Main.runOnUiThread(this.pageFile.activity(), () -> {
-//            page.onCreateView(this.pageFile.activity().getLayoutInflater(), null, null);
-//            final View p = this.pageFile.page().getRoot();
+//            fragment.onCreateView(this.pageFile.activity().getLayoutInflater(), null, null);
+//            final View p = this.pageFile.fragment().getRoot();
 //            new AlertDialog.Builder(this.pageFile.activity())
-//                    .setTitle(title).setView(page.page().getRoot())
+//                    .setTitle(title).setView(fragment.fragment().getRoot())
 //                    .setOnCancelListener(a -> latch.countDown())
 //                    .setNegativeButton(R.string.cancel, (a, b) -> latch.countDown())
 //                    .setPositiveButton(R.string.confirm, (a, k) -> {
-////                        result.set(page.partList.currentLocation());
+////                        result.set(fragment.partList.currentLocation());
 //                        latch.countDown();
 //                    }).show()
 //                    .getWindow().setLayout(p.getWidth(), p.getHeight());
-//            page.page().getRoot().setLayoutParams(new FrameLayout.LayoutParams(p.getWidth(), p.getHeight()));
-//            page.page().pageFileUploader.setVisibility(View.GONE);
+//            fragment.fragment().getRoot().setLayoutParams(new FrameLayout.LayoutParams(p.getWidth(), p.getHeight()));
+//            fragment.fragment().pageFileUploader.setVisibility(View.GONE);
 //        });
 //        latch.await();
 //        final FileLocation choice = result.get();

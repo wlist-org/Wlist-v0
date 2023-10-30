@@ -5,8 +5,7 @@
                                                    android:id="@+id/activity_main"
                                                    android:layout_width="match_parent"
                                                    android:layout_height="match_parent"
-                                                   android:background="@color/background_differ"
-                                                   android:orientation="vertical">
+                                                   android:background="@color/background_differ">
 
 	<View
 		android:id="@+id/activity_main_title"
@@ -19,7 +18,7 @@
 		app:layout_constraintTop_toTopOf="parent" />
 
 	<androidx.appcompat.widget.AppCompatImageView
-		android:id="@+id/activity_main_trans"
+		android:id="@+id/activity_main_tasks"
 		android:layout_width="wrap_content"
 		android:layout_height="50dp"
 		android:adjustViewBounds="true"
@@ -28,6 +27,7 @@
 		android:paddingEnd="10dp"
 		android:paddingBottom="15dp"
 		android:src="@mipmap/main_chooser_trans"
+		android:visibility="gone"
 		app:layout_constraintBottom_toBottomOf="@id/activity_main_title"
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toTopOf="parent" />
@@ -40,7 +40,7 @@
 		android:src="@drawable/page_file_options"
 		android:visibility="gone"
 		app:layout_constraintBottom_toBottomOf="@id/activity_main_title"
-		app:layout_constraintRight_toLeftOf="@id/activity_main_trans"
+		app:layout_constraintRight_toLeftOf="@id/activity_main_tasks"
 		app:layout_constraintTop_toTopOf="parent" />
 
 	<View
