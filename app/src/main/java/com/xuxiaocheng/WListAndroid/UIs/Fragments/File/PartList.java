@@ -49,6 +49,7 @@ import java.util.ArrayDeque;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -170,7 +171,7 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
         final AtomicBoolean onLoading = new AtomicBoolean(false);
         final EnhancedRecyclerViewAdapter<VisibleFileInformation, PartListViewHolder> adapter = new EnhancedRecyclerViewAdapter<>() {
             @Override
-            protected @NotNull PartListViewHolder createViewHolder(final @NotNull ViewGroup parent) {
+            protected @NotNull PartListViewHolder createDataViewHolder(final @NotNull ViewGroup parent, final int realPosition) {
                 return new PartListViewHolder(PartList.this.listCellView(PartList.this.activity().getLayoutInflater()), information -> {
                     if (!clickable.compareAndSet(true, false)) return;
                     if (FileInformationGetter.isDirectory(information)) {
@@ -197,6 +198,7 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
             @Override
             public void onScrollStateChanged(final @NotNull RecyclerView recyclerView, final int newState) {
                 super.onScrollStateChanged(recyclerView, newState);
+                if (recyclerView.getAdapter() != adapter) return;
                 // TODO: Remove the pages on the top.
                 final boolean isDown;
                 if (!recyclerView.canScrollVertically(1) && !noMoreDown.get())
@@ -251,7 +253,7 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
                         else
                             adapter.addDataRange(0, FilesListInformationGetter.informationList(l));
                         if (empty)
-                            Main.runOnNextUiThread(activity, () -> PartList.this.page().pageFileList.scrollToPosition(0));
+                            recyclerView.scrollToPosition(0);
                     });
                 }, e -> {
                     onLoading.set(false);
@@ -263,6 +265,9 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
                                 adapter.removeTailor(0);
                         } else
                             adapter.removeHeader(0);
+                        if (e == null)
+                            Main.runOnUiThread(activity, () -> this.onScrollStateChanged(recyclerView, AbsListView.OnScrollListener.SCROLL_STATE_IDLE),
+                                    300, TimeUnit.MILLISECONDS); // Wait animation finish.
                     });
                 }, false));
             }

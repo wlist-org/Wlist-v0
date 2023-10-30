@@ -79,6 +79,7 @@ public class ActivityMain extends AppCompatActivity {
         this.setContentView(activity.getRoot());
         this.contentCache.reinitialize(activity);
         activity.activityMainContent.setAdapter(this.fragmentsAdapter);
+        activity.activityMainContent.setUserInputEnabled(false);
         final ChooserButtonGroup fileButton = new ChooserButtonGroup(this, FragmentsAdapter.FragmentTypes.File, activity.activityMainChooserFileImage, R.mipmap.main_chooser_file, R.mipmap.main_chooser_file_chose, activity.activityMainChooserFileText, activity.activityMainChooserFile);
         final ChooserButtonGroup userButton = new ChooserButtonGroup(this, FragmentsAdapter.FragmentTypes.User, activity.activityMainChooserUserImage, R.mipmap.main_chooser_user, R.mipmap.main_chooser_user_chose, activity.activityMainChooserUserText, activity.activityMainChooserUser);
         activity.activityMainContent.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {

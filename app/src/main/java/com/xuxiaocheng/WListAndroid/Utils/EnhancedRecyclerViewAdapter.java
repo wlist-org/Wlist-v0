@@ -1,10 +1,12 @@
 package com.xuxiaocheng.WListAndroid.Utils;
 
+import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.LayoutRes;
 import androidx.annotation.UiThread;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.StaggeredGridLayoutManager;
@@ -35,16 +37,31 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
 
     @Override
     public int getItemViewType(final int position) {
-        if (position < this.headers.size())
-            return position + 1; // TYPE_HEADER > 0
-        if (position > this.headers.size() + this.data.size() - 1)
-            return -position + this.headers.size() + this.data.size() - 1; // TYPE_TAILOR < 0
-        return 0;
+        if (position < this.headers.size() || this.headers.size() + this.data.size() - 1 < position)
+            return -1;
+        return position - this.headers.size();
     }
 
-    protected static class HeaderAndTailorViewHolder<V extends View, T> extends WrappedViewHolder<V, T> {
-        protected HeaderAndTailorViewHolder(final @NotNull V itemView) {
-            super(itemView);
+    private static final class WrappedView extends ConstraintLayout {
+        private WrappedView(final @NotNull Context context) {
+            super(context);
+        }
+
+        private void setView(final @NotNull View view) {
+            this.removeAllViews();
+            this.setLayoutParams(view.getLayoutParams());
+            final LayoutParams params = new LayoutParams(LayoutParams.MATCH_CONSTRAINT, LayoutParams.MATCH_CONSTRAINT);
+            params.bottomToBottom = LayoutParams.PARENT_ID;
+            params.leftToLeft = LayoutParams.PARENT_ID;
+            params.rightToRight = LayoutParams.PARENT_ID;
+            params.topToTop = LayoutParams.PARENT_ID;
+            this.addView(view, params);
+        }
+    }
+
+    protected static class HeaderAndTailorViewHolder<T> extends WrappedViewHolder<View, T> {
+        protected HeaderAndTailorViewHolder(final @NotNull Context context) {
+            super(new WrappedView(context));
         }
         @Override
         public void onBind(@NotNull final T data) {
@@ -53,23 +70,27 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
 
     @Override
     public @NotNull WrappedViewHolder<?, T> onCreateViewHolder(final @NotNull ViewGroup parent, final int viewType) {
-        if (viewType > 0) return new HeaderAndTailorViewHolder<>(this.headers.get(viewType - 1));
-        if (viewType < 0) return new HeaderAndTailorViewHolder<>(this.tailors.get(-viewType - 1));
-        return this.createViewHolder(parent);
+        if (viewType < 0) return new HeaderAndTailorViewHolder<>(parent.getContext());
+        return this.createDataViewHolder(parent, viewType);
     }
 
-    protected abstract @NotNull VH createViewHolder(final @NotNull ViewGroup parent);
+    protected abstract @NotNull VH createDataViewHolder(final @NotNull ViewGroup parent, final int realPosition);
 
     @Override
     public void onBindViewHolder(final @NotNull WrappedViewHolder<?, T> holder, final int position) {
-        if (this.getItemViewType(position) == 0)
-            holder.onBind(this.data.get(position - this.headers.size()));
+        final int viewType = this.getItemViewType(position);
+        if (viewType < 0)
+            ((WrappedView) holder.itemView).setView(position < this.headers.size() ? this.headers.get(position)
+                    : this.tailors.get(position - this.headers.size() - this.data.size()));
+        else
+            holder.onBind(this.data.get(viewType));
     }
 
     @Override
     public int getItemCount() {
         return this.headers.size() + this.data.size() + this.tailors.size();
     }
+
 
     @UiThread
     public void addData(final @NotNull T data) {
