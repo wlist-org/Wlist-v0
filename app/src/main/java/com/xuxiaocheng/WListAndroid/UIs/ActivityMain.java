@@ -3,6 +3,8 @@ package com.xuxiaocheng.WListAndroid.UIs;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import androidx.annotation.AnyThread;
 import androidx.annotation.UiThread;
 import androidx.appcompat.app.AppCompatActivity;
@@ -18,6 +20,7 @@ import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WListAndroid.Helpers.BundleHelper;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
+import com.xuxiaocheng.WListAndroid.Utils.StackWrappedView;
 import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
 import com.xuxiaocheng.WListAndroid.databinding.ActivityMainBinding;
 import org.jetbrains.annotations.NotNull;
@@ -32,7 +35,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
 public class ActivityMain extends AppCompatActivity {
-    protected final @NotNull HInitializer<ActivityMainBinding> contentCache = new HInitializer<>("ActivityMainCache");
+    protected final @NotNull HInitializer<ActivityMainBinding> contentCache = new HInitializer<>("ContentCache");
+    protected final @NotNull HInitializer<StackWrappedView> wrappedView = new HInitializer<>("WrappedView");
     public @NotNull ActivityMainBinding getContent() {
         return this.contentCache.getInstance();
     }
@@ -78,7 +82,10 @@ public class ActivityMain extends AppCompatActivity {
         final HLog logger = HLogManager.getInstance("DefaultLogger");
         logger.log(HLogLevel.VERBOSE, "Creating ActivityMain. ", this.hashCode());
         final ActivityMainBinding activity = ActivityMainBinding.inflate(this.getLayoutInflater());
-        this.setContentView(activity.getRoot());
+        this.wrappedView.reinitialize(new StackWrappedView(this, 300, false));
+        this.setContentView(this.wrappedView.getInstance());
+        this.wrappedView.getInstance().push(activity.getRoot());
+        activity.getRoot().setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         this.contentCache.reinitialize(activity);
         activity.activityMainContent.setAdapter(this.fragmentsAdapter);
         final ChooserButtonGroup fileButton = new ChooserButtonGroup(this, FragmentsAdapter.FragmentTypes.File, activity.activityMainChooserFileImage, R.mipmap.main_chooser_file, R.mipmap.main_chooser_file_chose, activity.activityMainChooserFileText, activity.activityMainChooserFile);
@@ -209,17 +216,17 @@ public class ActivityMain extends AppCompatActivity {
 
     @UiThread
     public void transferPage(final @NotNull View view, final @Nullable Predicate<@Nullable Void> backListener) {
-        this.setContentView(view);
+        if (!this.isMainPage.compareAndSet(true, false)) throw new IllegalStateException("Transfer page twice. " + this.hashCode());
         HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Transfer page. ", this.hashCode());
-        this.isMainPage.set(false);
+        this.wrappedView.getInstance().push(view);
         this.otherPageBackListener.set(backListener);
     }
 
     @UiThread
     public void resetPage() {
-        this.setContentView(this.getContent().getRoot());
+        if (!this.isMainPage.compareAndSet(false, true)) throw new IllegalStateException("Reset page twice. " + this.hashCode());
         HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Reset page. ", this.hashCode());
-        this.isMainPage.set(true);
+        this.wrappedView.getInstance().pop();
         this.otherPageBackListener.set(null);
     }
 

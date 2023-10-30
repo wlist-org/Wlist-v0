@@ -6,7 +6,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.LayoutRes;
 import androidx.annotation.UiThread;
-import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.StaggeredGridLayoutManager;
@@ -42,26 +41,9 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
         return position - this.headers.size();
     }
 
-    private static final class WrappedView extends ConstraintLayout {
-        private WrappedView(final @NotNull Context context) {
-            super(context);
-        }
-
-        private void setView(final @NotNull View view) {
-            this.removeAllViews();
-            this.setLayoutParams(view.getLayoutParams());
-            final LayoutParams params = new LayoutParams(LayoutParams.MATCH_CONSTRAINT, LayoutParams.MATCH_CONSTRAINT);
-            params.bottomToBottom = LayoutParams.PARENT_ID;
-            params.leftToLeft = LayoutParams.PARENT_ID;
-            params.rightToRight = LayoutParams.PARENT_ID;
-            params.topToTop = LayoutParams.PARENT_ID;
-            this.addView(view, params);
-        }
-    }
-
     protected static class HeaderAndTailorViewHolder<T> extends WrappedViewHolder<View, T> {
         protected HeaderAndTailorViewHolder(final @NotNull Context context) {
-            super(new WrappedView(context));
+            super(new WrappedView(context, true));
         }
         @Override
         public void onBind(@NotNull final T data) {

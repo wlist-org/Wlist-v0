@@ -37,28 +37,8 @@ public final class Main extends Application {
         super.onCreate();
         HeadLibs.setDebugMode(true);
         HUncaughtExceptionHelper.disableUncaughtExceptionListener(HUncaughtExceptionHelper.DefaultKey);
-        HUncaughtExceptionHelper.setUncaughtExceptionListener(HUncaughtExceptionHelper.ListenerKey, (t, e) -> {
-            try {
-//                if (e instanceof IOException && e.getMessage() != null) {
-//                    final Matcher matcher = ips.matcher(e.getMessage());
-//                    if (matcher.find()) {
-//                        final String host = Objects.requireNonNullElseGet(matcher.group("ipv6"), () -> matcher.group("ipv4"));
-//                        final int port = Integer.parseInt(Objects.requireNonNull(matcher.group("port")));
-//                        final SocketAddress address = new InetSocketAddress(host, port);
-//                        final WListClientManager manager = WListClientManager.instances.getInstanceNullable(address);
-//                        if (manager == null) return;
-//                        try {
-//                            manager.getClient().close();
-//                        } catch (final ConnectException | RuntimeException exception) {
-//                            return;
-//                        }
-//                    }
-//                }
-            } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
-                e.addSuppressed(exception);
-            }
-            HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Uncaught exception listened by WList Android.", ParametersMap.create().add("thread", t.getName()), e);
-        });
+        HUncaughtExceptionHelper.setUncaughtExceptionListener(HUncaughtExceptionHelper.ListenerKey, (t, e) ->
+                HLog.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Uncaught exception listened by WList Android.", ParametersMap.create().add("thread", t.getName()), e));
         final Thread.UncaughtExceptionHandler defaulter = HUncaughtExceptionHelper.getUncaughtExceptionListener(HUncaughtExceptionHelper.DefaultKey);
         final Thread.UncaughtExceptionHandler killer = HUncaughtExceptionHelper.getUncaughtExceptionListener(HUncaughtExceptionHelper.KillerKey);
         HUncaughtExceptionHelper.replaceUncaughtExceptionListener(HUncaughtExceptionHelper.KillerKey, (t, e) -> {
