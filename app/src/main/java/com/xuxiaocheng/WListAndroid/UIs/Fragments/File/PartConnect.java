@@ -61,13 +61,13 @@ class PartConnect extends IFragmentPart<PageFileBinding, FragmentFile> {
         super.onBuild(page);
         final AtomicBoolean clickable = new AtomicBoolean(true);
         page.pageFileConnectionInternalServer.setVisibility(View.VISIBLE);
-        page.pageFileConnectionInternalServer.setText(R.string.page_connect_internal_server);
+        page.pageFileConnectionInternalServer.setText(R.string.page_file_connect_internal_server);
         page.pageFileConnectionInternalServer.setOnClickListener(v -> {
             if (!clickable.compareAndSet(true, false)) return;
-            page.pageFileConnectionInternalServer.setText(R.string.page_connect_internal_server_starting);
+            page.pageFileConnectionInternalServer.setText(R.string.page_file_connect_internal_server_starting);
             this.connectInternalServer((a, s) -> Main.runOnUiThread(a, () -> page.pageFileConnectionInternalServer.setText(s)), a -> {
                 clickable.set(true);
-                Main.runOnUiThread(a, () -> page.pageFileConnectionInternalServer.setText(R.string.page_connect_internal_server));
+                Main.runOnUiThread(a, () -> page.pageFileConnectionInternalServer.setText(R.string.page_file_connect_internal_server));
             });
         });
     }
@@ -97,18 +97,18 @@ class PartConnect extends IFragmentPart<PageFileBinding, FragmentFile> {
                             PartConnect.binderConnection.uninitialize();
                             PartConnect.binderActivity.uninitialize();
                             logger.log(HLogLevel.LESS, "Internal server is stopping...");
-                            Main.showToast(activity, R.string.page_connect_closing);
+                            Main.showToast(activity, R.string.page_file_connect_closing);
                             Main.runOnUiThread(activity, () -> failure.accept(activity));
                             return;
                         }
                         logger.log(HLogLevel.FINE, "Connecting to service: ", address);
-                        text.accept(activity, activity.getString(R.string.page_connect_connecting));
+                        text.accept(activity, activity.getString(R.string.page_file_connect_connecting));
                         WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
                         logger.log(HLogLevel.LESS, "Clients initialized.");
                         final String initPassword = InternalServerBinder.getAndDeleteAdminPassword(iService);
                         final String password = PasswordHelper.updateInternalPassword(activity, IdentifierNames.UserName.Admin.getIdentifier(), initPassword);
                         logger.log(HLogLevel.INFO, "Got server password.", ParametersMap.create().add("init", initPassword != null).add("password", password));
-                        text.accept(activity, activity.getString(R.string.page_connect_logging_in));
+                        text.accept(activity, activity.getString(R.string.page_file_connect_logging_in));
                         if (password == null || !TokenAssistant.login(address, IdentifierNames.UserName.Admin.getIdentifier(), password, Main.ClientExecutors)) {
                             // TODO get password from user.
                             Main.runOnUiThread(activity, () -> Toast.makeText(activity, "No password!!!", Toast.LENGTH_SHORT).show());
@@ -129,17 +129,17 @@ class PartConnect extends IFragmentPart<PageFileBinding, FragmentFile> {
                     final HLog logger = HLogManager.getInstance("DefaultLogger");
                     logger.log(HLogLevel.FAULT, "Disconnecting to service.");
                     activity.disconnect();
-                    Main.showToast(activity, R.string.page_connect_internal_server_disconnected);
+                    Main.showToast(activity, R.string.page_file_connect_internal_server_disconnected);
                     failure.accept(activity);
                 }
             };
-            text.accept(activity, activity.getString(R.string.page_connect_internal_server_starting));
+            text.accept(activity, activity.getString(R.string.page_file_connect_internal_server_starting));
             PartConnect.binderActivity.initialize(activity);
             PartConnect.binderConnection.initialize(connection);
             activity.startService(serverIntent);
             activity.bindService(serverIntent, connection, Context.BIND_AUTO_CREATE | Context.BIND_ABOVE_CLIENT | Context.BIND_IMPORTANT);
         } finally {
-            text.accept(activity, activity.getString(R.string.page_connect_internal_server));
+            text.accept(activity, activity.getString(R.string.page_file_connect_internal_server));
         }
     }
 

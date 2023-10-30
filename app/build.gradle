@@ -18,13 +18,16 @@ android {
     buildTypes {
         release {
             minifyEnabled false
+            shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+
     buildFeatures {
         viewBinding true
     }
@@ -35,15 +38,6 @@ android {
         exclude 'META-INF/DEPENDENCIES'
     }
 }
-
-//buildTypes {
-//    release {
-//        minifyEnabled
-//        shrinkResources
-//        zipAlignEnabled
-//        proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-//    }
-//}
 
 dependencies {
     implementation 'org.jetbrains:annotations:24.0.1'

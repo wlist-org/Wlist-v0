@@ -115,7 +115,8 @@ public class ActivityMain extends AppCompatActivity {
         if (choice != null && this.fragmentsAdapter.getAllFragments().stream().anyMatch(f -> f.onBackPressed(this))) return;
         final ZonedDateTime now = ZonedDateTime.now();
         if (this.lastBackPressedTime != null && Duration.between(this.lastBackPressedTime, now).toMillis() < 2000) {
-            this.disconnect();
+            if (this.isConnected())
+                this.disconnect();
             super.onBackPressed(); // this.finish();
             return;
         }
@@ -133,21 +134,9 @@ public class ActivityMain extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (this.isConnected()) {
-            if (WListClientManager.instances.isNotInitialized(this.address.getInstance())) {
-                Main.showToast(this, R.string.activity_main_server_closed);
-                this.disconnect();
-                return;
-            }
-            WListClientManager.addListener(this.address.getInstance(), i -> {
-                if (!i.booleanValue()) {
-                    Main.runOnUiThread(this, () -> {
-                        Main.showToast(this, R.string.activity_main_server_closed);
-                        this.disconnect();
-                    });
-                    WListClientManager.removeAllListeners(this.address.getInstance());
-                }
-            });
+        if (this.isConnected() && WListClientManager.instances.isNotInitialized(this.address.getInstance())) {
+            Main.showToast(this, R.string.activity_main_server_closed);
+            this.disconnect();
         }
     }
 
@@ -171,6 +160,15 @@ public class ActivityMain extends AppCompatActivity {
         this.username.reinitialize(username);
         this.binder.reinitializeNullable(binder);
         Main.runOnBackgroundThread(this, HExceptionWrapper.wrapRunnable(() -> {
+            WListClientManager.addListener(address, i -> {
+                if (!i.booleanValue()) {
+                    Main.runOnUiThread(this, () -> {
+                        Main.showToast(this, R.string.activity_main_server_closed);
+                        this.disconnect();
+                    });
+                    WListClientManager.removeAllListeners(address);
+                }
+            });
             this.fragmentsAdapter.setArguments(address, username);
             BroadcastAssistant.start(address);
             ClientConfigurationSupporter.location().reinitialize(new File(this.getExternalFilesDir("client"), "client.yaml"));

@@ -40,11 +40,9 @@ class PartUpload extends IFragmentPart<PageFileBinding, FragmentFile> {
             final View v = this.page().pageFileUploader;
             final float parentX = this.page().pageFileList.getX(), parentY = this.page().pageFileList.getY();
             final float width = this.page().pageFileList.getWidth(), height = this.page().pageFileList.getHeight();
-            v.setX(percentX * width + parentX);
-            v.setY(percentY * height + parentY);
             final float halfWidth = v.getWidth() / 2.0f, halfHeight = v.getHeight() / 2.0f;
-            v.setX(HMathHelper.clamp(v.getX() - parentX, halfWidth, width - halfWidth) + parentX - halfWidth);
-            v.setY(HMathHelper.clamp(v.getY() - parentY, halfHeight, height - halfHeight) + parentY - halfHeight);
+            v.setX(HMathHelper.clamp(percentX * width + parentX - parentX, halfWidth, width - halfWidth) + parentX - halfWidth);
+            v.setY(HMathHelper.clamp(percentY * height + parentY - parentY, halfHeight, height - halfHeight) + parentY - halfHeight);
             this.page().pageFileUploader.setVisibility(View.VISIBLE);
         });
     }
@@ -96,8 +94,8 @@ class PartUpload extends IFragmentPart<PageFileBinding, FragmentFile> {
             return true;
         });
 //        page.pageFileUploader.setOnClickListener(u -> {
-//            if (this.pageFile.partList.isOnRoot()) {
-//                this.addStorage(this.pageFile.activity());
+//            if (this.fragment.partList.isOnRoot()) {
+//                this.addStorage(this.activity());
 //                return;
 //            }
 //            final BottomSheetDialog dialog = new BottomSheetDialog(this.pageFile.activity(), R.style.BottomSheetDialog);
@@ -195,7 +193,7 @@ class PartUpload extends IFragmentPart<PageFileBinding, FragmentFile> {
 //
 //    @UiThread
 //    @SuppressWarnings("unchecked")
-//    protected  <C extends StorageConfiguration> void addStorage(final @NotNull ActivityMain activity) {
+//    protected <C extends StorageConfiguration> void addStorage(final @NotNull ActivityMain activity) {
 //        final String[] storages = StorageTypeGetter.getAll().keySet().toArray(EmptyArrays.EMPTY_STRINGS);
 //        final AtomicInteger choice = new AtomicInteger(-1);
 //        new AlertDialog.Builder(activity).setTitle(R.string.page_file_create_storage)
