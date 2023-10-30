@@ -51,6 +51,7 @@ class PartConnect extends IFragmentPart<PageFileBinding, FragmentFile> {
         super.onDisconnected(activity);
         Main.runOnUiThread(activity, () -> {
             this.page().pageFileConnectionInternalServer.setVisibility(View.VISIBLE);
+            this.page().pageFileConnectionInternalServer.setText(R.string.page_connect_internal_server);
             this.disconnectInternalServer();
             this.disconnectExternalServer();
         });
@@ -68,7 +69,6 @@ class PartConnect extends IFragmentPart<PageFileBinding, FragmentFile> {
                 Main.runOnUiThread(a, () -> page.pageFileConnectionInternalServer.setText(R.string.page_connect_internal_server));
             });
         });
-        page.pageFileConnectionInternalServer.setText(R.string.page_connect_internal_server);
     }
 
     private static final @NotNull HInitializer<ActivityMain> binderActivity = new HInitializer<>("BinderActivityMain");

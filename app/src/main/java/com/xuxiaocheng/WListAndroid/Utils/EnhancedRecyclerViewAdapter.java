@@ -114,8 +114,10 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
         this.notifyItemChanged(this.headers.size() + index);
     }
 
+    private final @NotNull @UnmodifiableView List<T> unmodifiableData = Collections.unmodifiableList(this.data);
+    @SuppressWarnings("SuspiciousGetterSetter")
     public @NotNull @UnmodifiableView List<T> getData() {
-        return Collections.unmodifiableList(this.data);
+        return this.unmodifiableData;
     }
 
     public @NotNull T getData(final int index) {
@@ -144,8 +146,10 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
         super.notifyItemRemoved(index);
     }
 
+    private final @NotNull @UnmodifiableView List<@NotNull View> unmodifiableHeaders = Collections.unmodifiableList(this.headers);
+    @SuppressWarnings("SuspiciousGetterSetter")
     public @NotNull @UnmodifiableView List<@NotNull View> getHeaders() {
-        return Collections.unmodifiableList(this.headers);
+        return this.unmodifiableHeaders;
     }
 
     public @NotNull View getHeader(final int index) {
@@ -174,8 +178,10 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
         super.notifyItemRemoved(this.headers.size() + this.data.size() + index);
     }
 
+    private final @NotNull @UnmodifiableView List<@NotNull View> unmodifiableTailors = Collections.unmodifiableList(this.tailors);
+    @SuppressWarnings("SuspiciousGetterSetter")
     public @NotNull @UnmodifiableView List<View> getTailors() {
-        return Collections.unmodifiableList(this.tailors);
+        return this.unmodifiableTailors;
     }
 
     public @NotNull View getTailor(final int index) {

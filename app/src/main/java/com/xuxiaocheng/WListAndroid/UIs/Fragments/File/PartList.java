@@ -246,10 +246,13 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
                         PartList.this.page().pageFileCounter.setText(String.valueOf(FilesListInformationGetter.total(l)));
                         PartList.this.page().pageFileCounter.setVisibility(View.VISIBLE);
                         PartList.this.page().pageFileCounterText.setVisibility(View.VISIBLE);
+                        final boolean empty = adapter.getData().isEmpty();
                         if (isDown)
                             adapter.addDataRange(FilesListInformationGetter.informationList(l));
                         else
                             adapter.addDataRange(0, FilesListInformationGetter.informationList(l));
+                        if (empty)
+                            Main.runOnNextUiThread(activity, () -> PartList.this.page().pageFileList.scrollToPosition(0));
                     });
                 }, e -> {
                     onLoading.set(false);
