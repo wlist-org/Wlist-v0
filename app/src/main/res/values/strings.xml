@@ -66,6 +66,9 @@
 	<string name="page_file_options_sorter_descend">DESCEND</string>
 	<string name="page_file_options_sorter_not_chose">Please choose the sort policy.</string>
 	<string name="page_file_options_filter">Filter.</string>
+	<string name="page_file_options_filter_both">Both directories and files.</string>
+	<string name="page_file_options_filter_directory">Only directories.</string>
+	<string name="page_file_options_filter_file">Only files.</string>
 	<string name="page_file_options_disconnect">Disconnection.</string>
 	<string name="page_file_options_close_server">Close server.</string>
 	<string name="page_file_provider_lanzou">Lanzou</string>

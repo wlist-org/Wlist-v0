@@ -7,11 +7,20 @@ import android.widget.SimpleAdapter;
 import androidx.annotation.UiThread;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.ListPopupWindow;
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.WList.AndroidSupports.ClientConfigurationSupporter;
 import com.xuxiaocheng.WList.AndroidSupports.FileInformationGetter;
+import com.xuxiaocheng.WList.AndroidSupports.FileLocationGetter;
+import com.xuxiaocheng.WList.AndroidSupports.InstantaneousProgressStateGetter;
+import com.xuxiaocheng.WList.Client.Assistants.FilesAssistant;
 import com.xuxiaocheng.WList.Client.ClientConfiguration;
+import com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper;
+import com.xuxiaocheng.WList.Client.WListClientInterface;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
+import com.xuxiaocheng.WList.Commons.IdentifierNames;
+import com.xuxiaocheng.WList.Commons.Options.FilterPolicy;
 import com.xuxiaocheng.WList.Commons.Options.OrderDirection;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
@@ -19,16 +28,19 @@ import com.xuxiaocheng.WListAndroid.UIs.ActivityMain;
 import com.xuxiaocheng.WListAndroid.UIs.FragmentsAdapter;
 import com.xuxiaocheng.WListAndroid.UIs.IFragmentPart;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageFileOptionsFilterBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileOptionsRefreshBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileOptionsSorterBinding;
 import org.jetbrains.annotations.NotNull;
 
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 class PartOptions extends IFragmentPart<PageFileBinding, FragmentFile> {
@@ -57,7 +69,8 @@ class PartOptions extends IFragmentPart<PageFileBinding, FragmentFile> {
             list.add(Map.of("pos", 1, "image", R.drawable.page_file_options_sorter, "name", this.activity().getString(R.string.page_file_options_sorter)));
             list.add(Map.of("pos", 2, "image", R.drawable.page_file_options_filter, "name", this.activity().getString(R.string.page_file_options_filter)));
             if (this.isConnected()) {
-                list.add(Map.of("pos", 3, "image", R.drawable.page_file_options_refresh, "name", this.activity().getString(R.string.page_file_options_refresh)));
+                if (!this.fragment.partList.isOnRoot())
+                    list.add(Map.of("pos", 3, "image", R.drawable.page_file_options_refresh, "name", this.activity().getString(R.string.page_file_options_refresh)));
                 list.add(Map.of("pos", 4, "image", R.mipmap.app_logo, "name", this.activity().getString(R.string.page_file_options_disconnect)));
                 list.add(Map.of("pos", 5, "image", R.mipmap.app_logo, "name", this.activity().getString(R.string.page_file_options_close_server)));
             }
@@ -81,34 +94,37 @@ class PartOptions extends IFragmentPart<PageFileBinding, FragmentFile> {
 
     @UiThread
     protected void refresh() {
+        if (this.fragment.partList.isOnRoot()) return;
         final PageFileOptionsRefreshBinding refresh = PageFileOptionsRefreshBinding.inflate(this.activity().getLayoutInflater());
         new AlertDialog.Builder(this.activity())
                 .setTitle(R.string.page_file_options_refresh)
                 .setView(refresh.getRoot())
                 .setNegativeButton(R.string.cancel, null)
                 .setPositiveButton(R.string.confirm, (d, h) -> {
-//                    if (this.pageFile.partList.isOnRoot()) return;
-//                    final FileLocation location = this.pageFile.partList.currentLocation();
-//                    final AtomicLong max = new AtomicLong(0);
-//                    Main.runOnBackgroundThread(this.pageFile.activity(), HExceptionWrapper.wrapRunnable(() -> {
-//                        final VisibleFileInformation information;
-//                        try (final WListClientInterface client = this.pageFile.client()) {
-//                            information = OperateFilesHelper.getFileOrDirectory(client, this.pageFile.token(), location, true);
-//                            if (information == null) return;
-//                        }
-//                        final String title = MessageFormat.format(this.pageFile.activity().getString(R.string.page_file_options_refresh_title), FileInformationGetter.name(information));
-//                        try {
-//                            this.pageFile.partList.listLoadingAnimation(title, true, 0, 0);
-//                            if (this.pageFile.partList.isOnRoot()) return;
-//                            FilesAssistant.refresh(this.pageFile.address(), this.pageFile.username(), location, Main.ClientExecutors, state -> {
-//                                final Pair.ImmutablePair<Long, Long> pair = InstantaneousProgressStateGetter.merge(state);
-//                                max.set(pair.getSecond().longValue());
-//                                this.pageFile.partList.listLoadingAnimation(title, true, pair.getFirst().longValue(), pair.getSecond().longValue());
-//                            });
-//                        } finally {
-//                            this.pageFile.partList.listLoadingAnimation(title, false, max.get(), max.get());
-//                        }
-//                    }));
+                    final FileLocation location = this.fragment.partList.currentLocation();
+                    Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
+                        if (IdentifierNames.RootSelector.equals(FileLocationGetter.storage(location))) return;
+                        String title = MessageFormat.format(this.activity().getString(R.string.page_file_options_refresh_title), "");
+                        final AtomicLong max = new AtomicLong(0);
+                        try {
+                            this.fragment.partList.listLoadingAnimation(title, true, 0, 0);
+                            final VisibleFileInformation information;
+                            try (final WListClientInterface client = this.client()) {
+                                information = OperateFilesHelper.getFileOrDirectory(client, this.token(), location, true);
+                                if (information == null) return;
+                            }
+                            title = MessageFormat.format(this.activity().getString(R.string.page_file_options_refresh_title), FileInformationGetter.name(information));
+                            this.fragment.partList.listLoadingAnimation(title, true, 0, 0);
+                            final String finalTitle = title;
+                            FilesAssistant.refresh(this.address(), this.username(), location, Main.ClientExecutors, state -> {
+                                final Pair.ImmutablePair<Long, Long> pair = InstantaneousProgressStateGetter.merge(state);
+                                max.set(pair.getSecond().longValue()); // TODO: save state.
+                                this.fragment.partList.listLoadingAnimation(finalTitle, true, pair.getFirst().longValue(), pair.getSecond().longValue());
+                            });
+                        } finally {
+                            this.fragment.partList.listLoadingAnimation(title, false, max.get(), max.get());
+                        }
+                    }));
                 }).show();
     }
 
@@ -179,6 +195,39 @@ class PartOptions extends IFragmentPart<PageFileBinding, FragmentFile> {
 
     @UiThread
     protected void filter() {
-        Main.runOnBackgroundThread(this.activity(), () -> {throw new RuntimeException("WIP");}); // TODO
+        final PageFileOptionsFilterBinding filter = PageFileOptionsFilterBinding.inflate(this.activity().getLayoutInflater());
+        final SharedPreferences saved = this.activity().getSharedPreferences("page_file_options_filter", Context.MODE_PRIVATE);
+        //noinspection NumericCastThatLosesPrecision
+        final AtomicReference<FilterPolicy> filterPolicy = new AtomicReference<>(Objects.requireNonNullElse(FilterPolicy.of(
+                (byte) saved.getInt("policy", FilterPolicy.Both.ordinal())), FilterPolicy.Both));
+        filter.pageFileOptionsFilterPolicy.check(switch (filterPolicy.get()) {
+            case Both -> R.id.page_file_options_filter_both;
+            case OnlyDirectories -> R.id.page_file_options_filter_directory;
+            case OnlyFiles -> R.id.page_file_options_filter_file;
+        });
+        filter.pageFileOptionsFilterBoth.setOnClickListener(r -> filterPolicy.set(FilterPolicy.Both));
+        filter.pageFileOptionsFilterDirectory.setOnClickListener(r -> filterPolicy.set(FilterPolicy.OnlyDirectories));
+        filter.pageFileOptionsFilterFile.setOnClickListener(r -> filterPolicy.set(FilterPolicy.OnlyFiles));
+        new AlertDialog.Builder(this.activity())
+                .setTitle(R.string.page_file_options_filter)
+                .setView(filter.getRoot())
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.confirm, (d, h) -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
+                    final FilterPolicy policy = filterPolicy.get();
+                    saved.edit().putInt("policy", policy.ordinal()).apply();
+                    final ClientConfiguration old = ClientConfigurationSupporter.get();
+                    ClientConfigurationSupporter.set(new ClientConfiguration(
+                            ClientConfigurationSupporter.threadCount(old),
+                            ClientConfigurationSupporter.progressStartDelay(old),
+                            ClientConfigurationSupporter.progressInterval(old),
+                            ClientConfigurationSupporter.limitPerPage(old),
+                            policy,
+                            ClientConfigurationSupporter.fileOrders(old),
+                            ClientConfigurationSupporter.duplicatePolicy(old),
+                            ClientConfigurationSupporter.userOrders(old),
+                            ClientConfigurationSupporter.userGroupOrders(old),
+                            ClientConfigurationSupporter.copyNoTempFile(old)));
+                    this.fragment.partList.clearCurrentPosition();
+                }))).show();
     }
 }

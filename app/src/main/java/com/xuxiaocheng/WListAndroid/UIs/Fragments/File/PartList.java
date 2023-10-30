@@ -28,7 +28,6 @@ import com.xuxiaocheng.WList.Client.Exceptions.WrongStateException;
 import com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
-import com.xuxiaocheng.WList.Commons.Beans.InstantaneousProgressState;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFilesListInformation;
 import com.xuxiaocheng.WList.Commons.IdentifierNames;
@@ -164,11 +163,6 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
             if (show) dialog.show();else dialog.cancel();
         });
     }
-    @WorkerThread
-    private void listLoadingCallback(final @NotNull CharSequence title, final @NotNull InstantaneousProgressState state) {
-        final Pair.ImmutablePair<Long, Long> pair = InstantaneousProgressStateGetter.merge(state);
-        this.listLoadingAnimation(title, true, pair.getFirst().longValue(), pair.getSecond().longValue());
-    }
 
     @AnyThread
     protected int getCurrentPosition() {
@@ -243,7 +237,10 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
                                     PartList.this.listLoadingAnimation(title, true, 0, 0);
                                     showed.set(true);
                                     return true;
-                                }, s -> PartList.this.listLoadingCallback(title, s));
+                                }, state -> {
+                                    final Pair.ImmutablePair<Long, Long> pair = InstantaneousProgressStateGetter.merge(state);
+                                    PartList.this.listLoadingAnimation(title, true, pair.getFirst().longValue(), pair.getSecond().longValue());
+                                });
                     } finally {
                         if (showed.get()) {
                             final long total = list == null ? 0 : FilesListInformationGetter.total(list);
