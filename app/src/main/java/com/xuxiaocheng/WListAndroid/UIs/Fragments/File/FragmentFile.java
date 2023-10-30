@@ -12,6 +12,7 @@ public class FragmentFile extends IFragment<PageFileBinding, FragmentFile> {
     protected final @NotNull PartOptions partOptions = new PartOptions(this);
     protected final @NotNull PartList partList = new PartList(this);
     protected final @NotNull PartOperation partOperation = new PartOperation(this);
+    protected final @NotNull PartUpload partUpload = new PartUpload(this);
     protected final @NotNull PartPreview partPreview = new PartPreview(this);
 
     public FragmentFile() {
@@ -20,6 +21,7 @@ public class FragmentFile extends IFragment<PageFileBinding, FragmentFile> {
         this.parts.add(this.partOptions);
         this.parts.add(this.partList);
         this.parts.add(this.partOperation);
+        this.parts.add(this.partUpload);
         this.parts.add(this.partPreview);
     }
 
@@ -42,6 +44,7 @@ public class FragmentFile extends IFragment<PageFileBinding, FragmentFile> {
                 ", partOptions=" + this.partOptions +
                 ", partList=" + this.partList +
                 ", partOperation=" + this.partOperation +
+                ", partUpload=" + this.partUpload +
                 ", partPreview=" + this.partPreview +
                 ", super=" + super.toString() +
                 '}';

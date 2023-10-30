@@ -5,6 +5,7 @@
 	<string name="cancel">Cancel</string>
 	<string name="unknown">Unknown</string>
 	<string name="advance">Advance</string>
+	<string name="normal">Normal</string>
 	<string name="toast_no_read_permissions">File read permission not granted, unable to upload file。</string>
 	<string name="toast_no_write_permissions">File write permission not granted, unable to download file。</string>
 	<string name="toast_fatal_application_initialization">Failed to initialize application.</string>

@@ -1,11 +1,19 @@
 package com.xuxiaocheng.WListAndroid.UIs.Fragments.File;
 
 import androidx.annotation.UiThread;
+import androidx.appcompat.app.AlertDialog;
+import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.WList.AndroidSupports.FileInformationGetter;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WListAndroid.Main;
+import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.UIs.IFragmentPart;
+import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageFileOperationBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageFileOperationRenameBinding;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -15,7 +23,6 @@ class PartOperation extends IFragmentPart<PageFileBinding, FragmentFile> {
         super(fragment);
     }
 
-
     @UiThread
     protected void rootOperation(final @NotNull VisibleFileInformation information, final @NotNull AtomicBoolean clickable) {
         Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
@@ -24,10 +31,33 @@ class PartOperation extends IFragmentPart<PageFileBinding, FragmentFile> {
     }
 
     @UiThread
-    protected void insideOperation(final @NotNull String storage, final @NotNull VisibleFileInformation information, final @NotNull AtomicBoolean clickable) {
-        Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
-            throw new UnsupportedOperationException("WIP");
-        }, () -> clickable.set(true))); // TODO
+    protected void insideOperation(final @NotNull String storage, final @NotNull VisibleFileInformation information, final @NotNull AtomicBoolean c) {
+        final PageFileOperationBinding operationBinding = PageFileOperationBinding.inflate(this.activity().getLayoutInflater());
+        final AlertDialog modifier = new AlertDialog.Builder(this.activity())
+                .setTitle(R.string.page_file_operation).setView(operationBinding.getRoot())
+                .setOnCancelListener(d -> c.set(true))
+                .setPositiveButton(R.string.cancel, (d, w) -> c.set(true)).create();
+        operationBinding.pageFileOperationName.setText(FileInformationGetter.name(information));
+        final long size = FileInformationGetter.size(information);
+        final String unknown = this.activity().getString(R.string.unknown);
+        operationBinding.pageFileOperationSize.setText(ViewUtil.formatSizeDetail(size, unknown));
+        operationBinding.pageFileOperationCreate.setText(ViewUtil.formatTime(FileInformationGetter.createTime(information), unknown));
+        operationBinding.pageFileOperationUpdate.setText(ViewUtil.formatTime(FileInformationGetter.updateTime(information), unknown));
+        final FileLocation current = new FileLocation(storage, FileInformationGetter.id(information));
+        final AtomicBoolean clickable = new AtomicBoolean(true);
+        operationBinding.pageFileOperationRename.setOnClickListener(u -> {
+            if (!clickable.compareAndSet(true, false)) return;
+            final PageFileOperationRenameBinding rename = PageFileOperationRenameBinding.inflate(this.activity().getLayoutInflater());
+            ViewUtil.focusEdit(rename.pageFileRenameName, FileInformationGetter.name(information));
+            new AlertDialog.Builder(this.activity()).setTitle(R.string.page_file_operation_rename).setView(rename.getRoot())
+                    .setNegativeButton(R.string.cancel, null)
+                    .setPositiveButton(R.string.confirm, (d, w) -> {
+                        final String renamed = ViewUtil.getText(rename.pageFileRenameName);
+                        if (AndroidSupporter.isBlank(renamed) || FileInformationGetter.name(information).equals(renamed)) return;
+
+                        Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
+                            throw new UnsupportedOperationException("WIP");
+                        }, () -> clickable.set(true))); // TODO
 //        final PageFileOperationBinding operationBinding = PageFileOperationBinding.inflate(this.pageFile.activity().getLayoutInflater());
 //        final AlertDialog modifier = new AlertDialog.Builder(this.pageFile.activity())
 //                .setTitle(R.string.page_file_operation).setView(operationBinding.getRoot())
@@ -55,6 +85,7 @@ class PartOperation extends IFragmentPart<PageFileBinding, FragmentFile> {
 //                    .setPositiveButton(R.string.confirm, (d, w) -> {
 //                        final String renamed = ViewUtil.getText(renamer.pageFileRenameName);
 //                        if (AndroidSupporter.isBlank(renamed) || FileInformationGetter.name(information).equals(renamed)) return;
+
 //                        final AlertDialog dialog = this.pageFile.partUpload.loadingDialog(this.pageFile.activity(), R.string.page_file_operation_rename);
 //                        Main.runOnBackgroundThread(this.pageFile.activity(), HExceptionWrapper.wrapRunnable(() -> {
 //                            HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Renaming.",
@@ -67,9 +98,10 @@ class PartOperation extends IFragmentPart<PageFileBinding, FragmentFile> {
 //                            else
 //                                Main.showToast(this.pageFile.activity(), R.string.page_file_operation_rename_success);
 //                        }, () -> Main.runOnUiThread(this.pageFile.activity(), dialog::cancel)));
-//                    }).show();
-//        });
-//        operationBinding.pageFileOperationRenameImage.setOnClickListener(u -> operationBinding.pageFileOperationRename.performClick());
+                    }).show();
+            modifier.cancel();
+        });
+        operationBinding.pageFileOperationRenameImage.setOnClickListener(u -> operationBinding.pageFileOperationRename.performClick());
 //        operationBinding.pageFileOperationMove.setOnClickListener(u -> {
 //            if (!clickable.compareAndSet(true, false)) return;
 //            modifier.cancel();

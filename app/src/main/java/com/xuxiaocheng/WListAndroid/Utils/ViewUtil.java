@@ -1,9 +1,7 @@
 package com.xuxiaocheng.WListAndroid.Utils;
 
 import android.graphics.drawable.Animatable;
-import android.view.View;
-import android.view.animation.AlphaAnimation;
-import android.view.animation.Animation;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.UiThread;
@@ -22,41 +20,19 @@ public final class ViewUtil {
         super();
     }
 
+    @UiThread
+    public static void focusEdit(final @NotNull EditText editText, final @Nullable CharSequence text) {
+        if (text != null)
+            editText.setText(text);
+        if (editText.requestFocus()) {
+            editText.setSelectAllOnFocus(true);
+            editText.setSelection(Objects.requireNonNullElse(editText.getText(), "").length());
+        }
+    }
+
     public static @NotNull String getText(final @NotNull TextView textView) {
         return Objects.requireNonNullElse(textView.getText(), "").toString();
     }
-
-    @UiThread
-    public static void fadeIn(final @NotNull View view, final long time) {
-        if (view.getVisibility() == View.VISIBLE) return;
-        final Animation animation = new AlphaAnimation(0.0F, 1.0F);
-        animation.setDuration(time);
-        view.startAnimation(animation);
-        view.setVisibility(View.VISIBLE);
-    }
-
-    @UiThread
-    public static void fadeOut(final @NotNull View view, final long time) {
-        if (view.getVisibility() != View.VISIBLE) return;
-        final Animation animation = new AlphaAnimation(1.0F, 0.0F);
-        animation.setDuration(time);
-        animation.setAnimationListener(new Animation.AnimationListener() {
-            @Override
-            public void onAnimationStart(final @NotNull Animation animation) {
-            }
-
-            @Override
-            public void onAnimationEnd(final @NotNull Animation animation) {
-                view.setVisibility(View.GONE);
-            }
-
-            @Override
-            public void onAnimationRepeat(final @NotNull Animation animation) {
-            }
-        });
-        view.startAnimation(animation);
-    }
-
 
     private static final float SizeFactor = 0.9F;
     private static final @NotNull String @NotNull [] SizeUnits = new String[]{"B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
@@ -78,6 +54,12 @@ public final class ViewUtil {
         return time.toOffsetDateTime().atZoneSameInstant(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.getDefault()));
     }
 
+    @UiThread
+    public static void startDrawableAnimation(final @NotNull ImageView loading) {
+        if (loading.getDrawable() instanceof Animatable animatable)
+            animatable.start();
+    }
+
     public static void setFileImage(final @NotNull ImageView image, final boolean isDirectory, final @NotNull String name) {
         if (isDirectory) {
             image.setImageResource(R.mipmap.page_file_image_directory);
@@ -97,11 +79,5 @@ public final class ViewUtil {
             case "zip", "7z", "rar", "gz", "tar" -> R.mipmap.page_file_image_zip;
             default -> R.mipmap.page_file_image_file;
         });
-    }
-
-    @UiThread
-    public static void startDrawableAnimation(final @NotNull ImageView loading) {
-        if (loading.getDrawable() instanceof Animatable animatable)
-            animatable.start();
     }
 }

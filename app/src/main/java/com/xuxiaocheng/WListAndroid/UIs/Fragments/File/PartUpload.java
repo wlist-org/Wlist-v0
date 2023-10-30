@@ -1,47 +1,64 @@
-package com.xuxiaocheng.WListAndroid.UIs.Pages.File;
+package com.xuxiaocheng.WListAndroid.UIs.Fragments.File;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.util.DisplayMetrics;
 import android.view.MotionEvent;
 import android.view.View;
-import android.widget.ImageView;
-import androidx.activity.result.ActivityResultCaller;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.StringRes;
-import androidx.annotation.UiThread;
-import androidx.appcompat.app.AlertDialog;
 import com.xuxiaocheng.HeadLibs.Helpers.HMathHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WListAndroid.Main;
-import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.UIs.ActivityMain;
-import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
+import com.xuxiaocheng.WListAndroid.UIs.IFragmentPart;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
 import java.time.ZonedDateTime;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class PageFilePartUpload {
-    protected final @NotNull PageFile pageFile;
-
-    public PageFilePartUpload(final @NotNull PageFile pageFile) {
-        super();
-        this.pageFile = pageFile;
+class PartUpload extends IFragmentPart<PageFileBinding, FragmentFile> {
+    protected PartUpload(final @NotNull FragmentFile fragment) {
+        super(fragment);
     }
 
     private final @NotNull HInitializer<ActivityResultLauncher<String>> chooserLauncher = new HInitializer<>("PageFileChooserLauncher");
 
-    @UiThread
+    @Override
+    protected void onConnected(final @NotNull ActivityMain activity) {
+        super.onConnected(activity);
+        final SharedPreferences preferences = activity.getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE);
+        final float percentX = preferences.getFloat("x", 0.7f);
+        final float percentY = preferences.getFloat("y", 0.7f);
+        if (!preferences.contains("x") || !preferences.contains("y"))
+            preferences.edit().putFloat("x", percentX).putFloat("y", percentY).apply();
+        Main.runOnUiThread(activity, () -> {
+            final View v = this.page().pageFileUploader;
+            final float parentX = this.page().pageFileList.getX(), parentY = this.page().pageFileList.getY();
+            final float width = this.page().pageFileList.getWidth(), height = this.page().pageFileList.getHeight();
+            v.setX(percentX * width + parentX);
+            v.setY(percentY * height + parentY);
+            final float halfWidth = v.getWidth() / 2.0f, halfHeight = v.getHeight() / 2.0f;
+            v.setX(HMathHelper.clamp(v.getX() - parentX, halfWidth, width - halfWidth) + parentX - halfWidth);
+            v.setY(HMathHelper.clamp(v.getY() - parentY, halfHeight, height - halfHeight) + parentY - halfHeight);
+            this.page().pageFileUploader.setVisibility(View.VISIBLE);
+        });
+    }
+
+    @Override
+    protected void onDisconnected(final @NotNull ActivityMain activity) {
+        super.onDisconnected(activity);
+        Main.runOnUiThread(activity, () -> this.page().pageFileUploader.setVisibility(View.GONE));
+    }
+
+    @Override
     @SuppressLint("ClickableViewAccessibility")
-    protected void onBind(final @NotNull PageFileBinding page) {
+    protected void onBuild(final @NotNull PageFileBinding page) {
+        super.onBuild(page);
         final AtomicBoolean scrolling = new AtomicBoolean();
         final AtomicInteger startX = new AtomicInteger(), startY = new AtomicInteger();
         final AtomicReference<ZonedDateTime> startTime = new AtomicReference<>();
@@ -58,7 +75,7 @@ public class PageFilePartUpload {
                         final float parentX = page.pageFileList.getX(), parentY = page.pageFileList.getY();
                         final float halfWidth = v.getWidth() / 2.0f, halfHeight = v.getHeight() / 2.0f;
                         v.setX(HMathHelper.clamp(v.getX() + e.getX() - parentX, halfWidth, page.pageFileList.getWidth() - halfWidth) + parentX - halfWidth);
-                        v.setY(HMathHelper.clamp(v.getY() + e.getY() - parentY, halfHeight, page.pageFileList.getHeight() - halfHeight) + parentY- halfHeight);
+                        v.setY(HMathHelper.clamp(v.getY() + e.getY() - parentY, halfHeight, page.pageFileList.getHeight() - halfHeight) + parentY - halfHeight);
                     } else if (Math.abs(v.getX() + e.getX() - Float.intBitsToFloat(startX.get())) > v.getWidth() / 2.0f
                             || Math.abs(v.getY() + e.getY() - Float.intBitsToFloat(startY.get())) > v.getHeight() / 2.0f
                             || Duration.between(startTime.get(), ZonedDateTime.now()).toMillis() >= 500) {
@@ -68,27 +85,16 @@ public class PageFilePartUpload {
                 }
                 case MotionEvent.ACTION_UP -> {
                     if (scrolling.get()) {
-                        this.pageFile.activity().getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE).edit()
-                                .putFloat("x", v.getX()).putFloat("y", v.getY()).apply();
+                        final float percentX = (v.getX() - page.pageFileList.getX()) / page.pageFileList.getWidth();
+                        final float percentY = (v.getY() - page.pageFileList.getY()) / page.pageFileList.getHeight();
+                        this.activity().getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE).edit()
+                                .putFloat("x", percentX).putFloat("y", percentY).apply();
                         page.pageFileList.requestDisallowInterceptTouchEvent(false);
                     } else return v.performClick();
                 }
             }
             return true;
         });
-        final SharedPreferences preferences = this.pageFile.activity().getSharedPreferences("page_file_uploader_position", Context.MODE_PRIVATE);
-        final DisplayMetrics displayMetrics = this.pageFile.activity().getResources().getDisplayMetrics();
-        Main.runOnBackgroundThread(this.pageFile.activity(), () -> {
-            final float x = preferences.getFloat("x", (displayMetrics.widthPixels - page.pageFileUploader.getWidth()) * 0.8f);
-            final float y = preferences.getFloat("y", (displayMetrics.heightPixels - page.pageFileUploader.getHeight()) * 0.7f);
-            if (!preferences.contains("x") || !preferences.contains("y"))
-                preferences.edit().putFloat("x", x).putFloat("y", y).apply();
-            Main.runOnUiThread(this.pageFile.activity(), () -> {
-                page.pageFileUploader.setX(x);
-                page.pageFileUploader.setY(y);
-                page.pageFileUploader.setVisibility(View.VISIBLE);
-            });
-        }, 300, TimeUnit.MILLISECONDS);
 //        page.pageFileUploader.setOnClickListener(u -> {
 //            if (this.pageFile.partList.isOnRoot()) {
 //                this.addStorage(this.pageFile.activity());
@@ -134,7 +140,9 @@ public class PageFilePartUpload {
 //        });
     }
 
-    protected void onActivityCreateHook(final @NotNull ActivityResultCaller activity) {
+    @Override
+    protected void onActivityCreateHook(final @NotNull ActivityMain activity) {
+        super.onActivityCreateHook(activity);
         this.chooserLauncher.reinitialize(activity.registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
 //            if (uri != null)
 //                this.uploadFile(uri);
@@ -144,19 +152,19 @@ public class PageFilePartUpload {
 //    private @NotNull FileLocation currentLocation() {
 //        return this.pageFile.partList.currentLocation();
 //    }
-
-    private @NotNull ImageView loadingView(final @NotNull ActivityMain activity) {
-        final ImageView loading = new ImageView(activity);
-        loading.setImageResource(R.drawable.loading);
-        ViewUtil.startDrawableAnimation(loading);
-        return loading;
-    }
-
-    @UiThread
-    protected @NotNull AlertDialog loadingDialog(final @NotNull ActivityMain activity, @StringRes final int title) {
-        return new AlertDialog.Builder(activity).setTitle(title).setView(this.loadingView(activity)).setCancelable(false).show();
-    }
-
+//
+//    private @NotNull ImageView loadingView(final @NotNull ActivityMain activity) {
+//        final ImageView loading = new ImageView(activity);
+//        loading.setImageResource(R.drawable.loading);
+//        ViewUtil.startDrawableAnimation(loading);
+//        return loading;
+//    }
+//
+//    @UiThread
+//    protected @NotNull AlertDialog loadingDialog(final @NotNull ActivityMain activity, @StringRes final int title) {
+//        return new AlertDialog.Builder(activity).setTitle(title).setView(this.loadingView(activity)).setCancelable(false).show();
+//    }
+//
 //    @UiThread
 //    protected void createDirectory(final @NotNull ActivityMain activity) {
 //        final FileLocation location = this.currentLocation();
