@@ -13,6 +13,7 @@ import com.xuxiaocheng.WList.Client.Assistants.TokenAssistant;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WListAndroid.Helpers.BundleHelper;
+import com.xuxiaocheng.WListAndroid.Main;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -56,8 +57,7 @@ public abstract class IFragment<P extends ViewBinding, F extends IFragment<P, F>
     public void onCreate(final @Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         this.setArguments(this.getArguments());
-        if (savedInstanceState != null)
-            this.onRestoreInstanceState(savedInstanceState);
+        this.onRestoreInstanceState(savedInstanceState);
     }
 
     @Override
@@ -80,7 +80,7 @@ public abstract class IFragment<P extends ViewBinding, F extends IFragment<P, F>
     }
 
     @UiThread
-    public void onRestoreInstanceState(final @NotNull Bundle savedInstanceState) {
+    public void onRestoreInstanceState(final @Nullable Bundle savedInstanceState) {
         this.parts.forEach(f -> f.onRestoreInstanceState(savedInstanceState));
     }
 
@@ -121,6 +121,7 @@ public abstract class IFragment<P extends ViewBinding, F extends IFragment<P, F>
     public void onDisconnected(final @NotNull ActivityMain activity) {
         this.connected.set(false);
         this.parts.forEach(f -> f.onDisconnected(activity));
+        Main.runOnUiThread(activity, () -> this.onRestoreInstanceState(null)); // Reset state.
     }
 
     @Override

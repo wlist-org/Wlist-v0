@@ -6,6 +6,7 @@ import androidx.annotation.WorkerThread;
 import androidx.viewbinding.ViewBinding;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -49,7 +50,7 @@ public abstract class IFragmentPart<P extends ViewBinding, F extends IFragment<P
     }
 
     @UiThread
-    protected void onRestoreInstanceState(final @NotNull Bundle savedInstanceState) {
+    protected void onRestoreInstanceState(final @Nullable Bundle savedInstanceState) {
     }
 
     @UiThread

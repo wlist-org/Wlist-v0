@@ -42,6 +42,7 @@ import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileLoadingBinding;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.text.MessageFormat;
@@ -99,18 +100,24 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
     }
 
     @Override
-    protected void onRestoreInstanceState(final @NotNull Bundle savedInstanceState) {
+    protected void onRestoreInstanceState(final @Nullable Bundle savedInstanceState) {
         super.onRestoreInstanceState(savedInstanceState);
-        BundleHelper.restoreLocation(savedInstanceState, "current", this.currentLocation, null);
-        final long position = savedInstanceState.getLong("position");
-        this.currentLoadingUp.set(new AtomicLong(position));
-        this.currentLoadingDown.set(new AtomicLong(position));
+        if (savedInstanceState != null) {
+            BundleHelper.restoreLocation(savedInstanceState, "current", this.currentLocation, null);
+            final long position = savedInstanceState.getLong("position");
+            this.currentLoadingUp.set(new AtomicLong(position));
+            this.currentLoadingDown.set(new AtomicLong(position));
+        } else {
+            this.currentLocation.set(new FileLocation(IdentifierNames.RootSelector, 0));
+            this.currentLoadingUp.set(new AtomicLong(0));
+            this.currentLoadingDown.set(new AtomicLong(0));
+        }
     }
 
 
-    private final @NotNull AtomicReference<FileLocation> currentLocation = new AtomicReference<>(new FileLocation(IdentifierNames.RootSelector, 0));
-    private final @NotNull AtomicReference<AtomicLong> currentLoadingUp = new AtomicReference<>(new AtomicLong(0));
-    private final @NotNull AtomicReference<AtomicLong> currentLoadingDown = new AtomicReference<>(new AtomicLong(0));
+    private final @NotNull AtomicReference<FileLocation> currentLocation = new AtomicReference<>();
+    private final @NotNull AtomicReference<AtomicLong> currentLoadingUp = new AtomicReference<>();
+    private final @NotNull AtomicReference<AtomicLong> currentLoadingDown = new AtomicReference<>();
     private final @NotNull Deque<Triad.@NotNull ImmutableTriad<@NotNull FileLocation, @NotNull VisibleFileInformation, @NotNull AtomicLong>> stacks = new ArrayDeque<>();
     protected boolean isOnRoot() {
         final FileLocation location = this.currentLocation.get();
@@ -448,4 +455,5 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
 //                this.partList.onInsidePage(this.pageCache.getInstance().pageFileName.getText(), location, this.partList.getCurrentPosition(this));
 //        }));
     }
+
 }
