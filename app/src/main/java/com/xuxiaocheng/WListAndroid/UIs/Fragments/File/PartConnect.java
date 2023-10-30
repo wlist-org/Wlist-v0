@@ -50,8 +50,7 @@ class PartConnect extends IFragmentPart<PageFileBinding, FragmentFile> {
     protected void onDisconnected(final @NotNull ActivityMain activity) {
         super.onDisconnected(activity);
         Main.runOnUiThread(activity, () -> {
-            this.page().pageFileConnectionInternalServer.setVisibility(View.VISIBLE);
-            this.page().pageFileConnectionInternalServer.setText(R.string.page_connect_internal_server);
+            this.onBuild(this.page());
             this.disconnectInternalServer();
             this.disconnectExternalServer();
         });
@@ -61,6 +60,8 @@ class PartConnect extends IFragmentPart<PageFileBinding, FragmentFile> {
     protected void onBuild(@NotNull final PageFileBinding page) {
         super.onBuild(page);
         final AtomicBoolean clickable = new AtomicBoolean(true);
+        page.pageFileConnectionInternalServer.setVisibility(View.VISIBLE);
+        page.pageFileConnectionInternalServer.setText(R.string.page_connect_internal_server);
         page.pageFileConnectionInternalServer.setOnClickListener(v -> {
             if (!clickable.compareAndSet(true, false)) return;
             page.pageFileConnectionInternalServer.setText(R.string.page_connect_internal_server_starting);

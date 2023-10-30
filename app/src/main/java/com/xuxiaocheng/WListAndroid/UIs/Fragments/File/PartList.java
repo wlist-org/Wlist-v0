@@ -37,7 +37,6 @@ import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.UIs.ActivityMain;
 import com.xuxiaocheng.WListAndroid.UIs.IFragmentPart;
-import com.xuxiaocheng.WListAndroid.Utils.EmptyRecyclerAdapter;
 import com.xuxiaocheng.WListAndroid.Utils.EnhancedRecyclerViewAdapter;
 import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
@@ -339,7 +338,7 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
         page.pageFileCounter.setVisibility(View.GONE);
         page.pageFileCounterText.setVisibility(View.GONE);
         page.pageFileList.clearOnScrollListeners();
-        page.pageFileList.setAdapter(EmptyRecyclerAdapter.Instance);
+        page.pageFileList.setAdapter(null);
         final ActivityMain activity = this.activity();
         Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> {
             final VisibleFileInformation current;

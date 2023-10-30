@@ -186,7 +186,7 @@ public class ActivityMain extends AppCompatActivity {
         final InetSocketAddress address = this.address.uninitializeNullable();
         final String username = this.username.uninitializeNullable();
         if (address == null || username == null) {
-            HLogManager.getInstance("DefaultLogger").log(HLogLevel.MISTAKE, "Disconnected twice. " + this.hashCode());
+            HLogManager.getInstance("DefaultLogger").log(HLogLevel.MISTAKE, "Disconnect twice. " + this.hashCode());
             return;
         }
         Main.runOnBackgroundThread(this, () -> {
