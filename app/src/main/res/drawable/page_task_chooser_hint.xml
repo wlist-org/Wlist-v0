@@ -5,7 +5,7 @@
 	<size
 		android:width="10dp"
 		android:height="2dp" />
-	<solid android:color="@color/page_task_chooser" />
-	<corners android:radius="10dp" />
+	<solid android:color="@color/page_task_chooser_hint" />
+	<corners android:radius="100dp" />
 
 </shape>

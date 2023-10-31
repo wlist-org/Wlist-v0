@@ -4,7 +4,9 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.TextView;
+import androidx.annotation.IdRes;
 import androidx.annotation.UiThread;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.viewpager2.widget.ViewPager2;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WListAndroid.Main;
@@ -69,62 +71,36 @@ public class PageTask extends IPage<PageTaskBinding, PageFileBinding, FragmentFi
                 super.onPageSelected(position);
                 final PageTaskAdapter.TaskTypes current = PageTaskAdapter.TaskTypes.fromPosition(position);
                 PageTask.this.currentChoice.set(current);
-                switch (current) {
-                    case Download -> {
-                        if (download.isClicked()) break;
-                        download.setClickable(false);
-                        upload.setClickable(true);
-                        trash.setClickable(true);
-                        copy.setClickable(true);
-                        move.setClickable(true);
-                        rename.setClickable(true);
-                    }
-                    case Upload -> {
-                        if (upload.isClicked()) break;
-                        download.setClickable(true);
-                        upload.setClickable(false);
-                        trash.setClickable(true);
-                        copy.setClickable(true);
-                        move.setClickable(true);
-                        rename.setClickable(true);
-                    }
-                    case Trash -> {
-                        if (trash.isClicked()) break;
-                        download.setClickable(true);
-                        upload.setClickable(true);
-                        trash.setClickable(false);
-                        copy.setClickable(true);
-                        move.setClickable(true);
-                        rename.setClickable(true);
-                    }
-                    case Copy -> {
-                        if (copy.isClicked()) break;
-                        download.setClickable(true);
-                        upload.setClickable(true);
-                        trash.setClickable(true);
-                        copy.setClickable(false);
-                        move.setClickable(true);
-                        rename.setClickable(true);
-                    }
-                    case Move -> {
-                        if (move.isClicked()) break;
-                        download.setClickable(true);
-                        upload.setClickable(true);
-                        trash.setClickable(true);
-                        copy.setClickable(true);
-                        move.setClickable(false);
-                        rename.setClickable(true);
-                    }
-                    case Rename -> {
-                        if (rename.isClicked()) break;
-                        download.setClickable(true);
-                        upload.setClickable(true);
-                        trash.setClickable(true);
-                        copy.setClickable(true);
-                        move.setClickable(true);
-                        rename.setClickable(false);
-                    }
-                }
+                final ChooserButtonGroup currentGroup = switch (current) {
+                    case Download -> download;
+                    case Upload -> upload;
+                    case Trash -> trash;
+                    case Copy -> copy;
+                    case Move -> move;
+                    case Rename -> rename;
+                };
+                if (currentGroup.isClicked()) return;
+                download.setClickable(true);
+                upload.setClickable(true);
+                trash.setClickable(true);
+                copy.setClickable(true);
+                move.setClickable(true);
+                rename.setClickable(true);
+                currentGroup.setClickable(false);
+                final ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) page.pageTaskChooserHint.getLayoutParams();
+                @IdRes final int currentId = switch (current) {
+                    case Download -> R.id.page_task_chooser_download;
+                    case Upload -> R.id.page_task_chooser_upload;
+                    case Trash -> R.id.page_task_chooser_trash;
+                    case Copy -> R.id.page_task_chooser_copy;
+                    case Move -> R.id.page_task_chooser_move;
+                    case Rename -> R.id.page_task_chooser_rename;
+                };
+                params.topToTop = currentId;
+                params.bottomToBottom = currentId;
+                params.leftToLeft = currentId;
+                params.rightToRight = currentId;
+                page.pageTaskChooserHint.setLayoutParams(params);
             }
         });
         page.pageTaskPager.setCurrentItem(PageTaskAdapter.TaskTypes.toPosition(this.currentChoice.get()), false);
