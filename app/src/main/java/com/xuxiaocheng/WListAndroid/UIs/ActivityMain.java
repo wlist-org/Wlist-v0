@@ -93,6 +93,7 @@ public class ActivityMain extends AppCompatActivity {
         this.setContentView(this.wrappedView.getInstance());
         this.wrappedView.getInstance().push(activity.getRoot());
         activity.getRoot().setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        this.wrappedView.getInstance().setBackgroundColor(this.getResources().getColor(R.color.background_differ, this.getTheme()));
         this.contentCache.reinitialize(activity);
         activity.activityMainContent.setAdapter(this.fragmentsAdapter);
         final ChooserButtonGroup fileButton = new ChooserButtonGroup(this, ActivityMainAdapter.FragmentTypes.File, activity.activityMainChooserFileImage, R.mipmap.main_chooser_file, R.mipmap.main_chooser_file_chose, activity.activityMainChooserFileText, activity.activityMainChooserFile);
@@ -224,7 +225,9 @@ public class ActivityMain extends AppCompatActivity {
     public void transferPage(final @NotNull View view, final @Nullable Predicate<@Nullable Void> backListener) {
         if (!this.isMainPage.compareAndSet(true, false)) throw new IllegalStateException("Transfer page twice. " + this.hashCode());
         HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Transfer page. ", this.hashCode());
+        this.wrappedView.getInstance().pop();
         this.wrappedView.getInstance().push(view);
+        view.setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         this.otherPageBackListener.set(backListener);
     }
 
@@ -233,6 +236,8 @@ public class ActivityMain extends AppCompatActivity {
         if (!this.isMainPage.compareAndSet(false, true)) throw new IllegalStateException("Reset page twice. " + this.hashCode());
         HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Reset page. ", this.hashCode());
         this.wrappedView.getInstance().pop();
+        this.wrappedView.getInstance().push(this.getContent().getRoot());
+        this.getContent().getRoot().setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         this.otherPageBackListener.set(null);
     }
 
