@@ -49,5 +49,6 @@
 	<color name="page_file_operation_move">@color/page_file_operation</color>
 	<color name="page_file_operation_rename">@color/page_file_operation</color>
 	<color name="page_file_operation_download">@color/page_file_operation</color>
+	<color name="page_task_chooser">#F8F8F8</color>
 
 </resources>

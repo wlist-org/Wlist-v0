@@ -25,7 +25,7 @@ import com.xuxiaocheng.WList.Commons.Options.OrderDirection;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.UIs.ActivityMain;
-import com.xuxiaocheng.WListAndroid.UIs.FragmentsAdapter;
+import com.xuxiaocheng.WListAndroid.UIs.ActivityMainAdapter;
 import com.xuxiaocheng.WListAndroid.UIs.Fragments.IFragmentPart;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileOptionsFilterBinding;
@@ -49,9 +49,9 @@ class PartOptions extends IFragmentPart<PageFileBinding, FragmentFile> {
     }
 
     @Override
-    protected void onPositionChanged(@NotNull final ActivityMain activity, final FragmentsAdapter.@NotNull FragmentTypes position) {
+    protected void onPositionChanged(@NotNull final ActivityMain activity, final ActivityMainAdapter.@NotNull FragmentTypes position) {
         super.onPositionChanged(activity, position);
-        if (position == FragmentsAdapter.FragmentTypes.File)
+        if (position == ActivityMainAdapter.FragmentTypes.File)
             activity.getContent().activityMainOptions.setVisibility(View.VISIBLE);
         else
             activity.getContent().activityMainOptions.setVisibility(View.GONE);
@@ -61,7 +61,7 @@ class PartOptions extends IFragmentPart<PageFileBinding, FragmentFile> {
     protected void onBuild(@NotNull final PageFileBinding fragment) {
         super.onBuild(fragment);
         this.activity().getContent().activityMainOptions.setOnClickListener(v -> {
-            if (this.activity().currentChoice() != FragmentsAdapter.FragmentTypes.File) return;
+            if (this.activity().currentChoice() != ActivityMainAdapter.FragmentTypes.File) return;
             final ListPopupWindow popup = new ListPopupWindow(this.activity());
             popup.setWidth(this.fragment().getRoot().getWidth() >> 1);
             popup.setAnchorView(this.activity().getContent().activityMainOptions);

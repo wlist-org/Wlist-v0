@@ -1,11 +1,15 @@
 package com.xuxiaocheng.WListAndroid.UIs;
 
+import android.app.Activity;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.TextView;
 import androidx.annotation.AnyThread;
+import androidx.annotation.DrawableRes;
 import androidx.annotation.UiThread;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.viewpager2.widget.ViewPager2;
@@ -30,6 +34,9 @@ import java.io.File;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
@@ -40,9 +47,9 @@ public class ActivityMain extends AppCompatActivity {
     public @NotNull ActivityMainBinding getContent() {
         return this.contentCache.getInstance();
     }
-    protected final @NotNull FragmentsAdapter fragmentsAdapter = new FragmentsAdapter(this);
-    protected final @NotNull AtomicReference<FragmentsAdapter.FragmentTypes> currentChoice = new AtomicReference<>(FragmentsAdapter.FragmentTypes.File);
-    public FragmentsAdapter.@NotNull FragmentTypes currentChoice() {
+    protected final @NotNull ActivityMainAdapter fragmentsAdapter = new ActivityMainAdapter(this);
+    protected final @NotNull AtomicReference<ActivityMainAdapter.FragmentTypes> currentChoice = new AtomicReference<>(ActivityMainAdapter.FragmentTypes.File);
+    public ActivityMainAdapter.@NotNull FragmentTypes currentChoice() {
         return this.currentChoice.get();
     }
 
@@ -56,7 +63,7 @@ public class ActivityMain extends AppCompatActivity {
     @Override
     protected void onSaveInstanceState(final @NotNull Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putInt("choice", FragmentsAdapter.FragmentTypes.toPosition(this.currentChoice.get()));
+        outState.putInt("choice", ActivityMainAdapter.FragmentTypes.toPosition(this.currentChoice.get()));
         BundleHelper.saveClient(this.address, this.username, outState, null);
         final IBinder binder = this.binder.getInstanceNullable();
         if (binder != null)
@@ -68,7 +75,7 @@ public class ActivityMain extends AppCompatActivity {
         super.onRestoreInstanceState(savedInstanceState);
         final int choice = savedInstanceState.getInt("choice");
         if (choice != 0 || savedInstanceState.containsKey("choice"))
-            this.currentChoice.set(FragmentsAdapter.FragmentTypes.fromPosition(choice));
+            this.currentChoice.set(ActivityMainAdapter.FragmentTypes.fromPosition(choice));
         BundleHelper.restoreClient(savedInstanceState, this.address, this.username, null);
         final IBinder binder = savedInstanceState.getBinder("binder");
         if (binder != null)
@@ -88,13 +95,13 @@ public class ActivityMain extends AppCompatActivity {
         activity.getRoot().setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         this.contentCache.reinitialize(activity);
         activity.activityMainContent.setAdapter(this.fragmentsAdapter);
-        final ChooserButtonGroup fileButton = new ChooserButtonGroup(this, FragmentsAdapter.FragmentTypes.File, activity.activityMainChooserFileImage, R.mipmap.main_chooser_file, R.mipmap.main_chooser_file_chose, activity.activityMainChooserFileText, activity.activityMainChooserFile);
-        final ChooserButtonGroup userButton = new ChooserButtonGroup(this, FragmentsAdapter.FragmentTypes.User, activity.activityMainChooserUserImage, R.mipmap.main_chooser_user, R.mipmap.main_chooser_user_chose, activity.activityMainChooserUserText, activity.activityMainChooserUser);
+        final ChooserButtonGroup fileButton = new ChooserButtonGroup(this, ActivityMainAdapter.FragmentTypes.File, activity.activityMainChooserFileImage, R.mipmap.main_chooser_file, R.mipmap.main_chooser_file_chose, activity.activityMainChooserFileText, activity.activityMainChooserFile);
+        final ChooserButtonGroup userButton = new ChooserButtonGroup(this, ActivityMainAdapter.FragmentTypes.User, activity.activityMainChooserUserImage, R.mipmap.main_chooser_user, R.mipmap.main_chooser_user_chose, activity.activityMainChooserUserText, activity.activityMainChooserUser);
         activity.activityMainContent.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
             public void onPageSelected(final int position) {
                 super.onPageSelected(position);
-                final FragmentsAdapter.FragmentTypes current = FragmentsAdapter.FragmentTypes.fromPosition(position);
+                final ActivityMainAdapter.FragmentTypes current = ActivityMainAdapter.FragmentTypes.fromPosition(position);
                 ActivityMain.this.currentChoice.set(current);
                 switch (current) {
                     case File -> {
@@ -111,7 +118,7 @@ public class ActivityMain extends AppCompatActivity {
                 ActivityMain.this.fragmentsAdapter.getAllFragments().forEach(f -> f.onPositionChanged(ActivityMain.this, current));
             }
         });
-        activity.activityMainContent.setCurrentItem(FragmentsAdapter.FragmentTypes.toPosition(this.currentChoice.get()), false);
+        activity.activityMainContent.setCurrentItem(ActivityMainAdapter.FragmentTypes.toPosition(this.currentChoice.get()), false);
     }
 
     protected @Nullable ZonedDateTime lastBackPressedTime;
@@ -124,7 +131,7 @@ public class ActivityMain extends AppCompatActivity {
             this.resetPage();
             return;
         }
-        final FragmentsAdapter.FragmentTypes choice = this.currentChoice.get();
+        final ActivityMainAdapter.FragmentTypes choice = this.currentChoice.get();
         if (choice != null && this.fragmentsAdapter.getAllFragments().stream().anyMatch(f -> f.onBackPressed(this))) return;
         final ZonedDateTime now = ZonedDateTime.now();
         if (this.lastBackPressedTime != null && Duration.between(this.lastBackPressedTime, now).toMillis() < 2000) {
@@ -243,5 +250,62 @@ public class ActivityMain extends AppCompatActivity {
                 ", binder=" + this.binder.isInitialized() +
                 ", lastBackPressedTime=" + this.lastBackPressedTime +
                 '}';
+    }
+
+    private static final class ChooserButtonGroup {
+        private final @NotNull Activity activity;
+        private final @NotNull ImageView button;
+        private final @Nullable TextView text;
+        private final @NotNull Collection<@NotNull View> layouts = new ArrayList<>();
+
+        @DrawableRes
+        private final int image;
+        @DrawableRes
+        private final int imageChose;
+
+        private ChooserButtonGroup(final @NotNull ActivityMain activity, final ActivityMainAdapter.@NotNull FragmentTypes type, final @NotNull ImageView button,
+                                   @DrawableRes final int image, @DrawableRes final int imageChose,
+                                   final @Nullable TextView text, final @NotNull View @NotNull ... layouts) {
+            super();
+            this.activity = activity;
+            this.button = button;
+            this.text = text;
+            this.image = image;
+            this.imageChose = imageChose;
+            this.layouts.add(button);
+            if (this.text != null)
+                this.layouts.add(this.text);
+            this.layouts.addAll(Arrays.asList(layouts));
+            this.layouts.forEach(v -> v.setOnClickListener(u -> this.button.performClick()));
+            this.button.setOnClickListener(v -> activity.getContent().activityMainContent.setCurrentItem(ActivityMainAdapter.FragmentTypes.toPosition(type)));
+        }
+
+        @UiThread
+        public void setClickable(final boolean clickable) {
+            if (this.button.isClickable() == clickable)
+                return;
+            this.button.setClickable(clickable);
+            this.button.setImageResource(clickable ? this.image : this.imageChose);
+            if (this.text != null) {
+                this.text.setClickable(clickable);
+                this.text.setTextColor(this.activity.getResources().getColor(clickable ? R.color.text_normal : R.color.text_warning, this.activity.getTheme()));
+            }
+            this.layouts.forEach(v -> v.setClickable(clickable));
+        }
+
+        public boolean isClicked() {
+            return !this.button.isClickable();
+        }
+
+        @Override
+        public @NotNull String toString() {
+            return "ButtonGroup{" +
+                    "button=" + this.button +
+                    ", text=" + this.text +
+                    ", layouts=" + this.layouts +
+                    ", image=" + this.image +
+                    ", imageChose=" + this.imageChose +
+                    '}';
+        }
     }
 }

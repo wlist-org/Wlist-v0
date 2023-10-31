@@ -33,11 +33,11 @@ public abstract class IPage<V extends ViewBinding, P extends ViewBinding, F exte
     }
 
     @UiThread
-    protected boolean onBackPressed(final @NotNull ActivityMain activity) {
+    protected boolean onBackPressed() {
         return false;
     }
 
     protected void start(final @NotNull ActivityMain activity) {
-        activity.transferPage(this.page().getRoot(), unused -> this.onBackPressed(activity));
+        activity.transferPage(this.page().getRoot(), unused -> this.onBackPressed());
     }
 }

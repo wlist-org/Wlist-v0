@@ -15,7 +15,7 @@ import org.jetbrains.annotations.NotNull;
 import java.net.InetSocketAddress;
 import java.util.List;
 
-public class FragmentsAdapter extends FragmentStateAdapter {
+public class ActivityMainAdapter extends FragmentStateAdapter {
     public enum FragmentTypes {
         File,
         User,
@@ -38,7 +38,7 @@ public class FragmentsAdapter extends FragmentStateAdapter {
 
     protected final @NotNull ActivityMain activity;
 
-    public FragmentsAdapter(final @NotNull ActivityMain activity) {
+    public ActivityMainAdapter(final @NotNull ActivityMain activity) {
         super(activity);
         this.activity = activity;
     }

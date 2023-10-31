@@ -72,6 +72,13 @@
 	<string name="page_file_options_filter_file">Only files.</string>
 	<string name="page_file_options_disconnect">Disconnection.</string>
 	<string name="page_file_options_close_server">Close server.</string>
+	<string name="page_task">Tasks</string>
+	<string name="page_task_download" translatable="false">@string/page_file_operation_download</string>
+	<string name="page_task_upload" translatable="false">@string/page_file_upload</string>
+	<string name="page_task_trash" translatable="false">@string/page_file_operation_trash</string>
+	<string name="page_task_copy" translatable="false">@string/page_file_operation_copy</string>
+	<string name="page_task_move" translatable="false">@string/page_file_operation_move</string>
+	<string name="page_task_rename" translatable="false">@string/page_file_operation_rename</string>
 	<string name="page_file_provider_lanzou">Lanzou</string>
 	<string name="page_file_provider_name">Storage name: </string>
 	<string name="page_file_provider_passport">Storage passport: </string>

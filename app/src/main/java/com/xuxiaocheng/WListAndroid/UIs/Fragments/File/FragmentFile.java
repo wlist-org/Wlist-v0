@@ -2,8 +2,9 @@ package com.xuxiaocheng.WListAndroid.UIs.Fragments.File;
 
 import android.view.LayoutInflater;
 import com.xuxiaocheng.WListAndroid.UIs.ActivityMain;
-import com.xuxiaocheng.WListAndroid.UIs.FragmentsAdapter;
+import com.xuxiaocheng.WListAndroid.UIs.Fragments.File.Task.PageTask;
 import com.xuxiaocheng.WListAndroid.UIs.Fragments.IFragment;
+import com.xuxiaocheng.WListAndroid.UIs.ActivityMainAdapter;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
 import org.jetbrains.annotations.NotNull;
 
@@ -34,7 +35,7 @@ public class FragmentFile extends IFragment<PageFileBinding, FragmentFile> {
 
     @Override
     public boolean onBackPressed(final @NotNull ActivityMain activity) {
-        if (activity.currentChoice() != FragmentsAdapter.FragmentTypes.File)
+        if (activity.currentChoice() != ActivityMainAdapter.FragmentTypes.File)
             return false;
         return this.connected.get() && this.partList.popFileList();
     }

@@ -6,7 +6,7 @@ import androidx.annotation.WorkerThread;
 import androidx.viewbinding.ViewBinding;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WListAndroid.UIs.ActivityMain;
-import com.xuxiaocheng.WListAndroid.UIs.FragmentsAdapter;
+import com.xuxiaocheng.WListAndroid.UIs.ActivityMainAdapter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -56,7 +56,7 @@ public abstract class IFragmentPart<P extends ViewBinding, F extends IFragment<P
     }
 
     @UiThread
-    protected void onPositionChanged(final @NotNull ActivityMain activity, final FragmentsAdapter.@NotNull FragmentTypes position) {
+    protected void onPositionChanged(final @NotNull ActivityMain activity, final ActivityMainAdapter.@NotNull FragmentTypes position) {
     }
 
     @UiThread

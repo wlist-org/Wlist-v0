@@ -70,6 +70,7 @@
 	<string name="page_file_options_filter_file">仅查看文件</string>
 	<string name="page_file_options_disconnect">断开连接</string>
 	<string name="page_file_options_close_server">关闭服务端</string>
+	<string name="page_task">任务</string>
 	<string name="page_file_provider_lanzou">蓝奏云</string>
 	<string name="page_file_provider_name">目录名称：</string>
 	<string name="page_file_provider_passport">网盘账号：</string>

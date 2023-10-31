@@ -16,7 +16,7 @@ import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WListAndroid.Helpers.BundleHelper;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.UIs.ActivityMain;
-import com.xuxiaocheng.WListAndroid.UIs.FragmentsAdapter;
+import com.xuxiaocheng.WListAndroid.UIs.ActivityMainAdapter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -100,7 +100,7 @@ public abstract class IFragment<P extends ViewBinding, F extends IFragment<P, F>
     }
 
     @UiThread
-    public void onPositionChanged(final @NotNull ActivityMain activity, final FragmentsAdapter.@NotNull FragmentTypes position) {
+    public void onPositionChanged(final @NotNull ActivityMain activity, final ActivityMainAdapter.@NotNull FragmentTypes position) {
         this.parts.forEach(f -> f.onPositionChanged(activity, position));
     }
 
