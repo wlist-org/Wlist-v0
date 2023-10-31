@@ -75,7 +75,7 @@
 		app:layout_constraintTop_toBottomOf="@id/page_task_title">
 
 		<View
-			android:id="@+id/page_task_chooser_hint"
+			android:id="@+id/page_task_chooser_hint_top"
 			android:layout_width="0dp"
 			android:layout_height="0dp"
 			android:layout_marginLeft="10dp"
@@ -85,6 +85,19 @@
 			app:layout_constraintLeft_toLeftOf="@id/page_task_chooser_download"
 			app:layout_constraintRight_toRightOf="@id/page_task_chooser_download"
 			app:layout_constraintTop_toTopOf="@id/page_task_chooser_download" />
+
+		<View
+			android:id="@+id/page_task_chooser_hint_bottom"
+			android:layout_width="0dp"
+			android:layout_height="0dp"
+			android:layout_marginLeft="10dp"
+			android:layout_marginRight="10dp"
+			android:background="@drawable/page_task_chooser_hint"
+			android:visibility="gone"
+			app:layout_constraintBottom_toBottomOf="@id/page_task_chooser_copy"
+			app:layout_constraintLeft_toLeftOf="@id/page_task_chooser_copy"
+			app:layout_constraintRight_toRightOf="@id/page_task_chooser_copy"
+			app:layout_constraintTop_toTopOf="@id/page_task_chooser_copy" />
 
 		<androidx.appcompat.widget.AppCompatTextView
 			android:id="@+id/page_task_chooser_download"

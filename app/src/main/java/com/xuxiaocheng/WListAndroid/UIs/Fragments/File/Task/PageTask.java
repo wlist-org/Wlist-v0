@@ -3,10 +3,9 @@ package com.xuxiaocheng.WListAndroid.UIs.Fragments.File.Task;
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.TextView;
-import androidx.annotation.IdRes;
 import androidx.annotation.UiThread;
-import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.viewpager2.widget.ViewPager2;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WListAndroid.Main;
@@ -87,20 +86,39 @@ public class PageTask extends IPage<PageTaskBinding, PageFileBinding, FragmentFi
                 move.setClickable(true);
                 rename.setClickable(true);
                 currentGroup.setClickable(false);
-                final ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) page.pageTaskChooserHint.getLayoutParams();
-                @IdRes final int currentId = switch (current) {
-                    case Download -> R.id.page_task_chooser_download;
-                    case Upload -> R.id.page_task_chooser_upload;
-                    case Trash -> R.id.page_task_chooser_trash;
-                    case Copy -> R.id.page_task_chooser_copy;
-                    case Move -> R.id.page_task_chooser_move;
-                    case Rename -> R.id.page_task_chooser_rename;
+            }
+
+            @Override
+            public void onPageScrolled(final int position, final float positionOffset, final int positionOffsetPixels) {
+                super.onPageScrolled(position, positionOffset, positionOffsetPixels);
+                final PageTaskAdapter.TaskTypes type = PageTaskAdapter.TaskTypes.fromPosition(position);
+                final View current = switch (type) {
+                    case Download -> page.pageTaskChooserDownload;
+                    case Upload -> page.pageTaskChooserUpload;
+                    case Trash -> page.pageTaskChooserTrash;
+                    case Copy -> page.pageTaskChooserCopy;
+                    case Move -> page.pageTaskChooserMove;
+                    case Rename -> page.pageTaskChooserRename;
                 };
-                params.topToTop = currentId;
-                params.bottomToBottom = currentId;
-                params.leftToLeft = currentId;
-                params.rightToRight = currentId;
-                page.pageTaskChooserHint.setLayoutParams(params);
+                switch (type) {
+                    case Download, Upload -> {
+                        page.pageTaskChooserHintTop.setVisibility(View.VISIBLE);
+                        page.pageTaskChooserHintBottom.setVisibility(View.GONE);
+                        page.pageTaskChooserHintTop.setX(current.getX() + positionOffset * page.pageTaskChooserHintTop.getWidth() + ((ViewGroup.MarginLayoutParams) page.pageTaskChooserHintTop.getLayoutParams()).leftMargin);
+                    }
+                    case Copy, Move, Rename -> {
+                        page.pageTaskChooserHintTop.setVisibility(View.GONE);
+                        page.pageTaskChooserHintBottom.setVisibility(View.VISIBLE);
+                        page.pageTaskChooserHintBottom.setX(current.getX() + positionOffset * page.pageTaskChooserHintBottom.getWidth() + ((ViewGroup.MarginLayoutParams) page.pageTaskChooserHintBottom.getLayoutParams()).leftMargin);
+                    }
+                    case Trash -> {
+                        page.pageTaskChooserHintTop.setVisibility(View.VISIBLE);
+                        page.pageTaskChooserHintBottom.setVisibility(positionOffset == 0 ? View.GONE : View.VISIBLE);
+                        page.pageTaskChooserHintTop.setX(current.getX() + ((ViewGroup.MarginLayoutParams) page.pageTaskChooserHintTop.getLayoutParams()).leftMargin);
+                        page.pageTaskChooserHintTop.setAlpha(1 - positionOffset);
+                        page.pageTaskChooserHintBottom.setAlpha(positionOffset);
+                    }
+                }
             }
         });
         page.pageTaskPager.setCurrentItem(PageTaskAdapter.TaskTypes.toPosition(this.currentChoice.get()), false);
