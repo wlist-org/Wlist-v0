@@ -144,16 +144,26 @@ class PartUpload extends IFragmentPart<PageFileBinding, FragmentFile> {
         });
     }
 
+    public static final @NotNull String UploadChooserTag = "wlist:activity_rq_for_result#upload_chooser";
+
     @Override
-    protected void onActivityCreateHook(final @NotNull ActivityMain activity) {
-        super.onActivityCreateHook(activity);
-        this.chooserLauncher.reinitialize(activity.getActivityResultRegistry().register("wlist:activity_rq_for_result#uploader_chooser", new ActivityResultContracts.GetContent(), uri -> {
+    protected void onAttach() {
+        super.onAttach();
+        this.chooserLauncher.reinitialize(this.activity().getActivityResultRegistry().register(PartUpload.UploadChooserTag, new ActivityResultContracts.GetContent(), uri -> {
             if (uri != null)
                 this.uploadFile(uri);
         }));
     }
 
-//    private @NotNull FileLocation currentLocation() {
+    @Override
+    protected void onDetach() {
+        super.onDetach();
+        final ActivityResultLauncher<String> chooser = this.chooserLauncher.uninitializeNullable();
+        if (chooser != null)
+            chooser.unregister();
+    }
+
+    //    private @NotNull FileLocation currentLocation() {
 //        return this.pageFile.partList.currentLocation();
 //    }
 //

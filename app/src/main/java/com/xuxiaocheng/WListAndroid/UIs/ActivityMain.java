@@ -111,7 +111,6 @@ public class ActivityMain extends AppCompatActivity {
                 ActivityMain.this.fragmentsAdapter.getAllFragments().forEach(f -> f.onPositionChanged(ActivityMain.this, current));
             }
         });
-        this.fragmentsAdapter.getAllFragments().forEach(f -> f.onActivityCreate(this));
         activity.activityMainContent.setCurrentItem(FragmentsAdapter.FragmentTypes.toPosition(this.currentChoice.get()), false);
     }
 

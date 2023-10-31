@@ -25,9 +25,9 @@ public abstract class IPage<V extends ViewBinding, P extends ViewBinding, F exte
     }
 
     @Override
-    protected void onActivityCreateHook(final @NotNull ActivityMain activity) {
-        super.onActivityCreateHook(activity);
-        final V page = this.inflate(activity.getLayoutInflater());
+    protected void onAttach() {
+        super.onAttach();
+        final V page = this.inflate(this.activity().getLayoutInflater());
         this.pageCache.reinitialize(page);
         this.onBuildPage(page);
     }

@@ -60,7 +60,11 @@ public abstract class IFragmentPart<P extends ViewBinding, F extends IFragment<P
     }
 
     @UiThread
-    protected void onActivityCreateHook(final @NotNull ActivityMain activity) {
+    protected void onAttach() {
+    }
+
+    @UiThread
+    protected void onDetach() {
     }
 
     @WorkerThread

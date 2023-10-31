@@ -8,9 +8,6 @@ import android.view.ViewGroup;
 import androidx.annotation.UiThread;
 import androidx.annotation.WorkerThread;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.Lifecycle;
-import androidx.lifecycle.LifecycleEventObserver;
-import androidx.lifecycle.LifecycleOwner;
 import androidx.viewbinding.ViewBinding;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.WList.Client.Assistants.TokenAssistant;
@@ -115,20 +112,13 @@ public abstract class IFragment<P extends ViewBinding, F extends IFragment<P, F>
     @Override
     public void onAttach(final @NotNull Context context) {
         super.onAttach(context);
-        ((LifecycleOwner) context).getLifecycle().addObserver(new LifecycleEventObserver() {
-            @Override
-            public void onStateChanged(final @NotNull LifecycleOwner source, final Lifecycle.@NotNull Event event) {
-                if (event == Lifecycle.Event.ON_CREATE) {
-                    source.getLifecycle().removeObserver(this);
-                    IFragment.this.onActivityCreate((ActivityMain) source);
-                }
-            }
-        });
+        this.parts.forEach(IFragmentPart::onAttach);
     }
 
-    @UiThread
-    public void onActivityCreate(final @NotNull ActivityMain activity) {
-        this.parts.forEach(f -> f.onActivityCreateHook(activity));
+    @Override
+    public void onDetach() {
+        super.onDetach();
+        this.parts.forEach(IFragmentPart::onDetach);
     }
 
     @WorkerThread
