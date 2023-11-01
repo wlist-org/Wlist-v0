@@ -71,6 +71,10 @@ public abstract class IFragmentPart<P extends ViewBinding, F extends IFragment<P
     protected void onDetach() {
     }
 
+    @UiThread
+    protected void onResumeState() {
+    }
+
     @WorkerThread
     protected void onConnected(final @NotNull ActivityMain activity) {
     }

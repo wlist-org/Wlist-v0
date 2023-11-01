@@ -125,6 +125,11 @@ public abstract class IFragment<P extends ViewBinding, F extends IFragment<P, F>
         this.parts.forEach(IFragmentPart::onDetach);
     }
 
+    @UiThread
+    public void onResumeState() {
+        this.parts.forEach(IFragmentPart::onResumeState);
+    }
+
     @WorkerThread
     public void onConnected(final @NotNull ActivityMain activity) {
         this.connected.set(true);

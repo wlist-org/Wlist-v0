@@ -24,6 +24,7 @@ import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WListAndroid.Helpers.BundleHelper;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
+import com.xuxiaocheng.WListAndroid.UIs.Fragments.IFragment;
 import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
 import com.xuxiaocheng.WListAndroid.Utils.StackWrappedView;
 import com.xuxiaocheng.WListAndroid.databinding.ActivityMainBinding;
@@ -168,6 +169,7 @@ public class ActivityMain extends AppCompatActivity {
                 this.connect(this.address.getInstance(), this.username.getInstance(), this.binder.getInstanceNullable());
             else
                 this.disconnect();
+        this.fragmentsAdapter.getAllFragments().forEach(IFragment::onResumeState);
     }
 
     private final @NotNull AtomicBoolean connected = new AtomicBoolean(false);
@@ -219,13 +221,14 @@ public class ActivityMain extends AppCompatActivity {
 
     private final @NotNull AtomicBoolean isMainPage = new AtomicBoolean(true);
     private final @NotNull AtomicReference<Predicate<@Nullable Void>> otherPageBackListener = new AtomicReference<>();
+    private final @NotNull AtomicReference<Runnable> otherPageResetListener = new AtomicReference<>();
 
     @UiThread
     public void transferPage(final @NotNull View view, @UiThread final @Nullable Predicate<@Nullable Void> backListener, @UiThread final @Nullable Runnable resetListener) {
         if (!this.isMainPage.compareAndSet(true, false)) throw new IllegalStateException("Transfer page twice. " + this.hashCode());
         HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Transfer page. ", this.hashCode());
-        this.wrappedView.getInstance().pop();
         this.wrappedView.getInstance().push(view);
+        view.setClickable(true);
         view.setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         this.otherPageBackListener.set(backListener);
         this.otherPageResetListener.set(resetListener);
@@ -236,7 +239,6 @@ public class ActivityMain extends AppCompatActivity {
         if (!this.isMainPage.compareAndSet(false, true)) throw new IllegalStateException("Reset page twice. " + this.hashCode());
         HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Reset page. ", this.hashCode());
         this.wrappedView.getInstance().pop();
-        this.wrappedView.getInstance().push(this.getContent().getRoot());
         this.getContent().getRoot().setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         this.otherPageBackListener.set(null);
         final Runnable resetListener = this.otherPageResetListener.getAndSet(null);

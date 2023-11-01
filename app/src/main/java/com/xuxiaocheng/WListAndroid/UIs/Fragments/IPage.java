@@ -51,18 +51,9 @@ public abstract class IPage<V extends ViewBinding, P extends ViewBinding, F exte
     }
 
     @Override
-    protected void onConnected(final @NotNull ActivityMain activity) {
-        super.onConnected(activity);
+    protected void onResumeState() {
+        super.onResumeState();
         if (this.showed.get() != this.realShowed.get() && this.showed.get())
-            Main.runOnUiThread(this.activity(), () -> this.start(this.activity()));
-    }
-
-    @Override
-    protected void onDisconnected(final @NotNull ActivityMain activity) {
-        super.onDisconnected(activity);
-        if (this.realShowed.get())
-            Main.runOnUiThread(this.activity(), () -> this.activity().resetPage());
-        else if (this.showed.get())
             Main.runOnUiThread(this.activity(), () -> this.start(this.activity()));
     }
 

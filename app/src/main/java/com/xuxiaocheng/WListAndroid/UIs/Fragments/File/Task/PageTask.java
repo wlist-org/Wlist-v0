@@ -1,6 +1,7 @@
 package com.xuxiaocheng.WListAndroid.UIs.Fragments.File.Task;
 
 import android.content.Context;
+import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,6 +17,7 @@ import com.xuxiaocheng.WListAndroid.UIs.Fragments.IPage;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageTaskBinding;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -46,6 +48,35 @@ public class PageTask extends IPage<PageTaskBinding, PageFileBinding, FragmentFi
     protected void onDetach() {
         super.onDetach();
         this.pageTaskAdapter.uninitializeNullable();
+    }
+
+    @Override
+    protected void onSaveInstanceState(final @NotNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt("wlist:page_task:choice", PageTaskAdapter.TaskTypes.toPosition(this.currentChoice.get()));
+    }
+
+    @Override
+    protected void onRestoreInstanceState(final @Nullable Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        if (savedInstanceState != null) {
+            final int choice = savedInstanceState.getInt("wlist:page_task:choice");
+            if (choice != 0 || savedInstanceState.containsKey("wlist:page_task:choice"))
+                this.currentChoice.set(PageTaskAdapter.TaskTypes.fromPosition(choice));
+            else
+                this.currentChoice.set(this.getSuggestedChoice());
+        } else
+            this.currentChoice.set(this.getSuggestedChoice());
+    }
+
+    private PageTaskAdapter.@NotNull TaskTypes getSuggestedChoice() {
+        return PageTaskAdapter.TaskTypes.Download; // TODO
+    }
+
+    @Override
+    protected void onResumeState() {
+        super.onResumeState();
+        this.page().pageTaskPager.setCurrentItem(PageTaskAdapter.TaskTypes.toPosition(this.currentChoice.get()), false);
     }
 
     @Override
@@ -103,13 +134,10 @@ public class PageTask extends IPage<PageTaskBinding, PageFileBinding, FragmentFi
                 switch (type) {
                     case Download, Upload -> {
                         page.pageTaskChooserHintTop.setVisibility(View.VISIBLE);
+                        page.pageTaskChooserHintTop.setAlpha(1);
                         page.pageTaskChooserHintBottom.setVisibility(View.GONE);
+                        page.pageTaskChooserHintBottom.setAlpha(0);
                         page.pageTaskChooserHintTop.setX(current.getX() + positionOffset * page.pageTaskChooserHintTop.getWidth() + ((ViewGroup.MarginLayoutParams) page.pageTaskChooserHintTop.getLayoutParams()).leftMargin);
-                    }
-                    case Copy, Move, Rename -> {
-                        page.pageTaskChooserHintTop.setVisibility(View.GONE);
-                        page.pageTaskChooserHintBottom.setVisibility(View.VISIBLE);
-                        page.pageTaskChooserHintBottom.setX(current.getX() + positionOffset * page.pageTaskChooserHintBottom.getWidth() + ((ViewGroup.MarginLayoutParams) page.pageTaskChooserHintBottom.getLayoutParams()).leftMargin);
                     }
                     case Trash -> {
                         page.pageTaskChooserHintTop.setVisibility(View.VISIBLE);
@@ -117,6 +145,13 @@ public class PageTask extends IPage<PageTaskBinding, PageFileBinding, FragmentFi
                         page.pageTaskChooserHintTop.setX(current.getX() + ((ViewGroup.MarginLayoutParams) page.pageTaskChooserHintTop.getLayoutParams()).leftMargin);
                         page.pageTaskChooserHintTop.setAlpha(1 - positionOffset);
                         page.pageTaskChooserHintBottom.setAlpha(positionOffset);
+                    }
+                    case Copy, Move, Rename -> {
+                        page.pageTaskChooserHintTop.setVisibility(View.GONE);
+                        page.pageTaskChooserHintTop.setAlpha(0);
+                        page.pageTaskChooserHintBottom.setVisibility(View.VISIBLE);
+                        page.pageTaskChooserHintBottom.setAlpha(1);
+                        page.pageTaskChooserHintBottom.setX(current.getX() + positionOffset * page.pageTaskChooserHintBottom.getWidth() + ((ViewGroup.MarginLayoutParams) page.pageTaskChooserHintBottom.getLayoutParams()).leftMargin);
                     }
                 }
             }
