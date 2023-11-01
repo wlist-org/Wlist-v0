@@ -1,10 +1,12 @@
 package com.xuxiaocheng.WList.AndroidSupports;
 
+import com.xuxiaocheng.WList.Client.ClientConfiguration;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -56,5 +58,17 @@ public final class ServerConfigurationSupporter {
 
     public static void dump(final @NotNull ServerConfiguration configuration, final @NotNull OutputStream stream) throws IOException {
         ServerConfiguration.dump(configuration, stream);
+    }
+
+    public static synchronized void parseFromFile() throws IOException {
+        ServerConfiguration.parseFromFile();
+    }
+
+    public static synchronized void dumpToFile() throws IOException {
+        ServerConfiguration.dumpToFile();
+    }
+
+    public static void quicklySetLocation(final @NotNull File file) throws IOException {
+        ServerConfiguration.quicklySetLocation(file);
     }
 }

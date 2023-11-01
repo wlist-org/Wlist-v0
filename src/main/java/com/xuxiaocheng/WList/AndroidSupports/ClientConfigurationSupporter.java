@@ -89,4 +89,8 @@ public final class ClientConfigurationSupporter {
     public static synchronized void dumpToFile() throws IOException {
         ClientConfiguration.dumpToFile();
     }
+
+    public static void quicklySetLocation(final @NotNull File file) throws IOException {
+        ClientConfiguration.quicklySetLocation(file);
+    }
 }

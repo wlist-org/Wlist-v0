@@ -180,4 +180,19 @@ public record ClientConfiguration(int threadCount, int progressStartDelay, int p
         final ClientConfiguration configuration = ClientConfiguration.instance.getInstance();
         HFileHelper.writeFileAtomically(file, stream -> ClientConfiguration.dump(configuration, stream));
     }
+
+    public static void quicklySetLocation(final @NotNull File file) throws IOException {
+        ClientConfiguration.Location.reinitialize(file);
+        try {
+            ClientConfiguration.parseFromFile();
+        } catch (final IOException exception) {
+            try {
+                ClientConfiguration.set(ClientConfiguration.parse(null));
+            } catch (final IOException e) {
+                exception.addSuppressed(e);
+                ClientConfiguration.Location.uninitializeNullable();
+            }
+            throw exception;
+        }
+    }
 }

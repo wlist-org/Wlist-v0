@@ -123,4 +123,19 @@ public record ServerConfiguration(int port, int maxServerBacklog,
         final ServerConfiguration configuration = ServerConfiguration.instance.getInstance();
         HFileHelper.writeFileAtomically(file, stream -> ServerConfiguration.dump(configuration, stream));
     }
+
+    public static void quicklySetLocation(final @NotNull File file) throws IOException {
+        ServerConfiguration.Location.reinitialize(file);
+        try {
+            ServerConfiguration.parseFromFile();
+        } catch (final IOException exception) {
+            try {
+                ServerConfiguration.set(ServerConfiguration.parse(null));
+            } catch (final IOException e) {
+                exception.addSuppressed(e);
+                ServerConfiguration.Location.uninitializeNullable();
+            }
+            throw exception;
+        }
+    }
 }
