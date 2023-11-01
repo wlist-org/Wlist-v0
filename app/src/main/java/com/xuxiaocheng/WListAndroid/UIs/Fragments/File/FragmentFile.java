@@ -49,6 +49,7 @@ public class FragmentFile extends IFragment<PageFileBinding, FragmentFile> {
                 ", partOperation=" + this.partOperation +
                 ", partUpload=" + this.partUpload +
                 ", partPreview=" + this.partPreview +
+                ", pageTask=" + this.pageTask +
                 ", super=" + super.toString() +
                 '}';
     }

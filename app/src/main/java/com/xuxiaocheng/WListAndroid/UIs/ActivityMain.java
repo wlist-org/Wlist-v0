@@ -24,8 +24,8 @@ import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WListAndroid.Helpers.BundleHelper;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
-import com.xuxiaocheng.WListAndroid.Utils.StackWrappedView;
 import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
+import com.xuxiaocheng.WListAndroid.Utils.StackWrappedView;
 import com.xuxiaocheng.WListAndroid.databinding.ActivityMainBinding;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -63,21 +63,21 @@ public class ActivityMain extends AppCompatActivity {
     @Override
     protected void onSaveInstanceState(final @NotNull Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putInt("choice", ActivityMainAdapter.FragmentTypes.toPosition(this.currentChoice.get()));
-        BundleHelper.saveClient(this.address, this.username, outState, null);
+        outState.putInt("wlist:activity_main:choice", ActivityMainAdapter.FragmentTypes.toPosition(this.currentChoice.get()));
+        BundleHelper.saveClient(this.address, this.username, outState, "wlist:activity_main:client", null);
         final IBinder binder = this.binder.getInstanceNullable();
         if (binder != null)
-            outState.putBinder("binder", binder);
+            outState.putBinder("wlist:activity_main:binder", binder);
     }
 
     @Override
     protected void onRestoreInstanceState(final @NotNull Bundle savedInstanceState) {
         super.onRestoreInstanceState(savedInstanceState);
-        final int choice = savedInstanceState.getInt("choice");
-        if (choice != 0 || savedInstanceState.containsKey("choice"))
+        final int choice = savedInstanceState.getInt("wlist:activity_main:choice");
+        if (choice != 0 || savedInstanceState.containsKey("wlist:activity_main:choice"))
             this.currentChoice.set(ActivityMainAdapter.FragmentTypes.fromPosition(choice));
-        BundleHelper.restoreClient(savedInstanceState, this.address, this.username, null);
-        final IBinder binder = savedInstanceState.getBinder("binder");
+        BundleHelper.restoreClient(savedInstanceState, "wlist:activity_main:client", this.address, this.username, null);
+        final IBinder binder = savedInstanceState.getBinder("wlist:activity_main:binder");
         if (binder != null)
             this.binder.reinitialize(binder);
     }
@@ -126,9 +126,10 @@ public class ActivityMain extends AppCompatActivity {
     @UiThread
     @Override
     public void onBackPressed() {
-        if (this.otherPageBackListener.get() != null && this.otherPageBackListener.get().test(null))
-            return;
         if (!this.isMainPage.get()) {
+            final Predicate<Void> backListener = this.otherPageBackListener.get();
+            if (backListener != null && backListener.test(null))
+                return;
             this.resetPage();
             return;
         }
@@ -136,8 +137,6 @@ public class ActivityMain extends AppCompatActivity {
         if (choice != null && this.fragmentsAdapter.getAllFragments().stream().anyMatch(f -> f.onBackPressed(this))) return;
         final ZonedDateTime now = ZonedDateTime.now();
         if (this.lastBackPressedTime != null && Duration.between(this.lastBackPressedTime, now).toMillis() < 2000) {
-            if (this.isConnected())
-                this.disconnect();
             super.onBackPressed(); // this.finish();
             return;
         }
@@ -222,13 +221,14 @@ public class ActivityMain extends AppCompatActivity {
     private final @NotNull AtomicReference<Predicate<@Nullable Void>> otherPageBackListener = new AtomicReference<>();
 
     @UiThread
-    public void transferPage(final @NotNull View view, final @Nullable Predicate<@Nullable Void> backListener) {
+    public void transferPage(final @NotNull View view, @UiThread final @Nullable Predicate<@Nullable Void> backListener, @UiThread final @Nullable Runnable resetListener) {
         if (!this.isMainPage.compareAndSet(true, false)) throw new IllegalStateException("Transfer page twice. " + this.hashCode());
         HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Transfer page. ", this.hashCode());
         this.wrappedView.getInstance().pop();
         this.wrappedView.getInstance().push(view);
         view.setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         this.otherPageBackListener.set(backListener);
+        this.otherPageResetListener.set(resetListener);
     }
 
     @UiThread
@@ -239,6 +239,9 @@ public class ActivityMain extends AppCompatActivity {
         this.wrappedView.getInstance().push(this.getContent().getRoot());
         this.getContent().getRoot().setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         this.otherPageBackListener.set(null);
+        final Runnable resetListener = this.otherPageResetListener.getAndSet(null);
+        if (resetListener != null)
+            resetListener.run();
     }
 
     @Override

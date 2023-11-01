@@ -48,6 +48,10 @@ public abstract class IFragmentPart<P extends ViewBinding, F extends IFragment<P
     }
 
     @UiThread
+    public void onHandleArguments(final @Nullable Bundle arguments) {
+    }
+
+    @UiThread
     protected void onSaveInstanceState(final @NotNull Bundle outState) {
     }
 

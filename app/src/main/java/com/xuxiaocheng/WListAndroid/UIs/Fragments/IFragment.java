@@ -14,7 +14,6 @@ import com.xuxiaocheng.WList.Client.Assistants.TokenAssistant;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WListAndroid.Helpers.BundleHelper;
-import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.UIs.ActivityMain;
 import com.xuxiaocheng.WListAndroid.UIs.ActivityMainAdapter;
 import org.jetbrains.annotations.NotNull;
@@ -59,8 +58,20 @@ public abstract class IFragment<P extends ViewBinding, F extends IFragment<P, F>
     @Override
     public void onCreate(final @Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        this.setArguments(this.getArguments());
         this.onRestoreInstanceState(savedInstanceState);
+    }
+
+    @Override
+    public void setArguments(final @Nullable Bundle args) {
+        super.setArguments(args);
+        this.onHandleArguments(args);
+    }
+
+    @UiThread
+    protected void onHandleArguments(final @Nullable Bundle arguments) {
+        if (arguments != null)
+            BundleHelper.restoreClient(arguments, "wlist:i_fragment:client", this.address, this.username, null);
+        this.parts.forEach(f -> f.onHandleArguments(arguments));
     }
 
     @Override
@@ -85,13 +96,6 @@ public abstract class IFragment<P extends ViewBinding, F extends IFragment<P, F>
     @UiThread
     public void onRestoreInstanceState(final @Nullable Bundle savedInstanceState) {
         this.parts.forEach(f -> f.onRestoreInstanceState(savedInstanceState));
-    }
-
-    @Override
-    public void setArguments(final @Nullable Bundle args) {
-        super.setArguments(args);
-        if (args != null)
-            BundleHelper.restoreClient(args, this.address, this.username, null);
     }
 
     @UiThread
@@ -131,7 +135,6 @@ public abstract class IFragment<P extends ViewBinding, F extends IFragment<P, F>
     public void onDisconnected(final @NotNull ActivityMain activity) {
         this.connected.set(false);
         this.parts.forEach(f -> f.onDisconnected(activity));
-        Main.runOnUiThread(activity, () -> this.onRestoreInstanceState(null)); // Reset state.
     }
 
     @Override

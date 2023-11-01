@@ -46,7 +46,7 @@ public class ActivityMainAdapter extends FragmentStateAdapter {
     @WorkerThread
     public void setArguments(final @NotNull InetSocketAddress address, final @NotNull String username) {
         final Bundle bundle = new Bundle();
-        BundleHelper.saveClient(address, username, bundle);
+        BundleHelper.saveClient(address, username, bundle, "wlist:i_fragment:client");
         Main.runOnUiThread(this.activity, () -> this.getAllFragments().forEach(f -> f.setArguments(bundle)));
     }
 

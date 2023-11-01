@@ -94,16 +94,16 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
     @Override
     protected void onSaveInstanceState(final @NotNull Bundle outState) {
         super.onSaveInstanceState(outState);
-        BundleHelper.saveLocation(this.currentLocation, outState, "current", null);
-        outState.putLong("position", this.getCurrentPosition() + this.currentLoadingUp.get().get());
+        BundleHelper.saveLocation(this.currentLocation, outState, "wlist:fragment_file:part_list:current", null);
+        outState.putLong("wlist:fragment_file:part_list:position", this.getCurrentPosition() + this.currentLoadingUp.get().get());
     }
 
     @Override
     protected void onRestoreInstanceState(final @Nullable Bundle savedInstanceState) {
         super.onRestoreInstanceState(savedInstanceState);
         if (savedInstanceState != null) {
-            BundleHelper.restoreLocation(savedInstanceState, "current", this.currentLocation, null);
-            final long position = savedInstanceState.getLong("position");
+            BundleHelper.restoreLocation(savedInstanceState, "wlist:fragment_file:part_list:current", this.currentLocation, null);
+            final long position = savedInstanceState.getLong("wlist:fragment_file:part_list:position");
             this.currentLoadingUp.set(new AtomicLong(position));
             this.currentLoadingDown.set(new AtomicLong(position));
         } else {
@@ -170,7 +170,9 @@ class PartList extends IFragmentPart<PageFileBinding, FragmentFile> {
         final RecyclerView.LayoutManager manager = list.getLayoutManager();
         final RecyclerView.Adapter<?> adapter = list.getAdapter();
         if (!(manager instanceof LinearLayoutManager) || !(adapter instanceof EnhancedRecyclerViewAdapter<?, ?>)) return 0;
-        return ((LinearLayoutManager) manager).findFirstVisibleItemPosition() - ((EnhancedRecyclerViewAdapter<?, ?>) adapter).headersSize();
+        final int position = ((LinearLayoutManager) manager).findFirstVisibleItemPosition();
+        if (position == RecyclerView.NO_POSITION) return -1;
+        return position - ((EnhancedRecyclerViewAdapter<?, ?>) adapter).headersSize();
     }
 
 

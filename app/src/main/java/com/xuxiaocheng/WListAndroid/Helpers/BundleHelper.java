@@ -33,30 +33,34 @@ public final class BundleHelper {
         return bundle.getString("username");
     }
 
-    public static void saveClient(final @Nullable InetSocketAddress address, final @Nullable String username, final @NotNull Bundle bundle) {
+    public static void saveClient(final @Nullable InetSocketAddress address, final @Nullable String username, final @NotNull Bundle bundle, final @NotNull String key) {
         if (address != null && username != null) {
-            BundleHelper.saveAddress(address, bundle);
-            BundleHelper.saveUsername(username, bundle);
+            final Bundle value = new Bundle();
+            BundleHelper.saveAddress(address, value);
+            BundleHelper.saveUsername(username, value);
+            bundle.putBundle(key, value);
         }
     }
-    public static void saveClient(final @NotNull HInitializer<? extends InetSocketAddress> address, final @NotNull HInitializer<String> username, final @NotNull Bundle bundle, final @Nullable BiConsumer<? super @NotNull InetSocketAddress, ? super @NotNull String> callback) {
+    public static void saveClient(final @NotNull HInitializer<? extends InetSocketAddress> address, final @NotNull HInitializer<String> username, final @NotNull Bundle bundle, final @NotNull String key, final @Nullable BiConsumer<? super @NotNull InetSocketAddress, ? super @NotNull String> callback) {
         final InetSocketAddress socketAddress = address.getInstanceNullable();
         final String name = username.getInstanceNullable();
         if (socketAddress != null && name != null) {
-            BundleHelper.saveAddress(socketAddress, bundle);
-            BundleHelper.saveUsername(name, bundle);
+            BundleHelper.saveClient(socketAddress, name, bundle, key);
             if (callback != null)
                 callback.accept(socketAddress, name);
         }
     }
-    public static void restoreClient(final @NotNull Bundle bundle, final @NotNull HInitializer<? super InetSocketAddress> address, final @NotNull HInitializer<? super String> username, final @Nullable BiConsumer<? super @NotNull InetSocketAddress, ? super @NotNull String> callback) {
-        final InetSocketAddress socketAddress = BundleHelper.restoreAddress(bundle);
-        final String name = BundleHelper.restoreUsername(bundle);
-        if (socketAddress != null && name != null) {
-            address.reinitialize(socketAddress);
-            username.reinitialize(name);
-            if (callback != null)
-                callback.accept(socketAddress, name);
+    public static void restoreClient(final @NotNull Bundle bundle, final @NotNull String key, final @NotNull HInitializer<? super InetSocketAddress> address, final @NotNull HInitializer<? super String> username, final @Nullable BiConsumer<? super @NotNull InetSocketAddress, ? super @NotNull String> callback) {
+        final Bundle value = bundle.getBundle(key);
+        if (value != null) {
+            final InetSocketAddress socketAddress = BundleHelper.restoreAddress(value);
+            final String name = BundleHelper.restoreUsername(value);
+            if (socketAddress != null && name != null) {
+                address.reinitialize(socketAddress);
+                username.reinitialize(name);
+                if (callback != null)
+                    callback.accept(socketAddress, name);
+            }
         }
     }
 
