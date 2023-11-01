@@ -1,70 +1,70 @@
 package com.xuxiaocheng.WListAndroid.UIs;
 
-import android.app.Activity;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.FrameLayout;
-import android.widget.ImageView;
-import android.widget.TextView;
 import androidx.annotation.AnyThread;
-import androidx.annotation.DrawableRes;
-import androidx.annotation.UiThread;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.viewpager2.widget.ViewPager2;
+import androidx.annotation.WorkerThread;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
-import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.AndroidSupports.ClientConfigurationSupporter;
 import com.xuxiaocheng.WList.Client.Assistants.BroadcastAssistant;
 import com.xuxiaocheng.WList.Client.Assistants.TokenAssistant;
+import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WListAndroid.Helpers.BundleHelper;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
-import com.xuxiaocheng.WListAndroid.UIs.Fragments.IFragment;
+import com.xuxiaocheng.WListAndroid.UIs.Pages.PageMain;
 import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
-import com.xuxiaocheng.WListAndroid.Utils.StackWrappedView;
-import com.xuxiaocheng.WListAndroid.databinding.ActivityMainBinding;
+import com.xuxiaocheng.WListAndroid.databinding.ActivityBinding;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.time.Duration;
-import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Predicate;
 
-public class ActivityMain extends AppCompatActivity {
-    protected final @NotNull HInitializer<ActivityMainBinding> contentCache = new HInitializer<>("ContentCache");
-    protected final @NotNull HInitializer<StackWrappedView> wrappedView = new HInitializer<>("WrappedView");
-    public @NotNull ActivityMainBinding getContent() {
-        return this.contentCache.getInstance();
-    }
-    protected final @NotNull ActivityMainAdapter fragmentsAdapter = new ActivityMainAdapter(this);
-    protected final @NotNull AtomicReference<ActivityMainAdapter.FragmentTypes> currentChoice = new AtomicReference<>(ActivityMainAdapter.FragmentTypes.File);
-    public ActivityMainAdapter.@NotNull FragmentTypes currentChoice() {
-        return this.currentChoice.get();
-    }
-
+public class ActivityMain extends IPagedActivity {
     protected final @NotNull HInitializer<InetSocketAddress> address = new HInitializer<>("ActivityMainAddress");
     protected final @NotNull HInitializer<String> username = new HInitializer<>("ActivityMainUsername");
-    protected final @NotNull HInitializer<IBinder> binder = new HInitializer<>("ActivityMainServiceBinder");
-    protected boolean isConnected() {
+    protected final @NotNull HInitializer<IBinder> binder = new HInitializer<>("ActivityMainServerBinder");
+    protected final @NotNull AtomicBoolean realConnected = new AtomicBoolean(false);
+    public boolean isConnected() {
         return this.address.isInitialized() && this.username.isInitialized();
+    }
+    public @NotNull InetSocketAddress address() {
+        return this.address.getInstance();
+    }
+    public @NotNull String username() {
+        return this.username.getInstance();
+    }
+    public @NotNull WListClientInterface client() throws IOException {
+        return WListClientManager.quicklyGetClient(this.address());
+    }
+    public @NotNull String token() {
+        return TokenAssistant.getToken(this.address(), this.username());
     }
 
     @Override
-    protected void onSaveInstanceState(final @NotNull Bundle outState) {
-        super.onSaveInstanceState(outState);
-        outState.putInt("wlist:activity_main:choice", ActivityMainAdapter.FragmentTypes.toPosition(this.currentChoice.get()));
+    protected void iOnRestoreInstanceState(final @Nullable Bundle savedInstanceState) {
+        super.iOnRestoreInstanceState(savedInstanceState);
+        this.address.uninitializeNullable();
+        this.username.uninitializeNullable();
+        this.binder.uninitializeNullable();
+        if (savedInstanceState != null) {
+            BundleHelper.restoreClient(savedInstanceState, "wlist:activity_main:client", this.address, this.username, null);
+            final IBinder binder = savedInstanceState.getBinder("wlist:activity_main:binder");
+            if (binder != null)
+                this.binder.reinitialize(binder);
+        }
+    }
+
+    @Override
+    protected void iOnSaveInstanceState(final @NotNull Bundle outState) {
+        super.iOnSaveInstanceState(outState);
         BundleHelper.saveClient(this.address, this.username, outState, "wlist:activity_main:client", null);
         final IBinder binder = this.binder.getInstanceNullable();
         if (binder != null)
@@ -72,77 +72,27 @@ public class ActivityMain extends AppCompatActivity {
     }
 
     @Override
-    protected void onRestoreInstanceState(final @NotNull Bundle savedInstanceState) {
-        super.onRestoreInstanceState(savedInstanceState);
-        final int choice = savedInstanceState.getInt("wlist:activity_main:choice");
-        if (choice != 0 || savedInstanceState.containsKey("wlist:activity_main:choice"))
-            this.currentChoice.set(ActivityMainAdapter.FragmentTypes.fromPosition(choice));
-        BundleHelper.restoreClient(savedInstanceState, "wlist:activity_main:client", this.address, this.username, null);
-        final IBinder binder = savedInstanceState.getBinder("wlist:activity_main:binder");
-        if (binder != null)
-            this.binder.reinitialize(binder);
+    protected void iOnBuildActivity(final @NotNull ActivityBinding content, final boolean isFirstTime) {
+        super.iOnBuildActivity(content, isFirstTime);
+        if (isFirstTime)
+            this.push(new PageMain(), "main", false);
     }
 
     @Override
-    protected void onCreate(final @Nullable Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        HLogManager.initialize(this, HLogManager.ProcessType.Activity);
-        final HLog logger = HLogManager.getInstance("DefaultLogger");
-        logger.log(HLogLevel.VERBOSE, "Creating ActivityMain. ", this.hashCode());
-        final ActivityMainBinding activity = ActivityMainBinding.inflate(this.getLayoutInflater());
-        this.wrappedView.reinitialize(new StackWrappedView(this, 300, false));
-        this.setContentView(this.wrappedView.getInstance());
-        this.wrappedView.getInstance().push(activity.getRoot());
-        activity.getRoot().setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        this.wrappedView.getInstance().setBackgroundColor(this.getResources().getColor(R.color.background_differ, this.getTheme()));
-        this.contentCache.reinitialize(activity);
-        activity.activityMainContent.setAdapter(this.fragmentsAdapter);
-        final ChooserButtonGroup fileButton = new ChooserButtonGroup(this, ActivityMainAdapter.FragmentTypes.File, activity.activityMainChooserFileImage, R.mipmap.main_chooser_file, R.mipmap.main_chooser_file_chose, activity.activityMainChooserFileText, activity.activityMainChooserFile);
-        final ChooserButtonGroup userButton = new ChooserButtonGroup(this, ActivityMainAdapter.FragmentTypes.User, activity.activityMainChooserUserImage, R.mipmap.main_chooser_user, R.mipmap.main_chooser_user_chose, activity.activityMainChooserUserText, activity.activityMainChooserUser);
-        activity.activityMainContent.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
-            @Override
-            public void onPageSelected(final int position) {
-                super.onPageSelected(position);
-                final ActivityMainAdapter.FragmentTypes current = ActivityMainAdapter.FragmentTypes.fromPosition(position);
-                ActivityMain.this.currentChoice.set(current);
-                switch (current) {
-                    case File -> {
-                        if (fileButton.isClicked()) break;
-                        fileButton.setClickable(false);
-                        userButton.setClickable(true);
-                    }
-                    case User -> {
-                        if (userButton.isClicked()) break;
-                        fileButton.setClickable(true);
-                        userButton.setClickable(false);
-                    }
-                }
-                ActivityMain.this.fragmentsAdapter.getAllFragments().forEach(f -> f.onPositionChanged(ActivityMain.this, current));
-            }
-        });
-        activity.activityMainContent.setCurrentItem(ActivityMainAdapter.FragmentTypes.toPosition(this.currentChoice.get()), false);
+    protected void onStart() {
+        super.onStart();
+        if (this.isConnected() != this.realConnected.get() && this.isConnected())
+            Main.runOnBackgroundThread(this, HExceptionWrapper.wrapRunnable(() -> this.connect(this.address.getInstance(), this.username.getInstance(), this.binder.getInstanceNullable())));
     }
 
-    protected @Nullable ZonedDateTime lastBackPressedTime;
-    @UiThread
     @Override
-    public void onBackPressed() {
-        if (!this.isMainPage.get()) {
-            final Predicate<Void> backListener = this.otherPageBackListener.get();
-            if (backListener != null && backListener.test(null))
-                return;
-            this.resetPage();
-            return;
-        }
-        final ActivityMainAdapter.FragmentTypes choice = this.currentChoice.get();
-        if (choice != null && this.fragmentsAdapter.getAllFragments().stream().anyMatch(f -> f.onBackPressed(this))) return;
-        final ZonedDateTime now = ZonedDateTime.now();
-        if (this.lastBackPressedTime != null && Duration.between(this.lastBackPressedTime, now).toMillis() < 2000) {
-            super.onBackPressed(); // this.finish();
-            return;
-        }
-        Main.showToast(this, R.string.toast_press_again_to_exit);
-        this.lastBackPressedTime = now;
+    protected void onResume() {
+        super.onResume();
+        if (this.isConnected())
+            if (WListClientManager.instances.isNotInitialized(this.address.getInstance())) {
+                Main.showToast(this, R.string.activity_main_server_closed);
+                Main.runOnBackgroundThread(this, this::disconnect);
+            } else this.addWListCloseListener(this.address.getInstance());
     }
 
     @Override
@@ -152,170 +102,58 @@ public class ActivityMain extends AppCompatActivity {
             WListClientManager.removeAllListeners(this.address.getInstance());
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (this.isConnected() && WListClientManager.instances.isNotInitialized(this.address.getInstance())) {
-            Main.showToast(this, R.string.activity_main_server_closed);
-            this.disconnect();
-        }
-    }
-
-    @Override
-    protected void onPostResume() {
-        super.onPostResume();
-        if (this.isConnected() != this.connected.get())
-            if (this.isConnected())
-                this.connect(this.address.getInstance(), this.username.getInstance(), this.binder.getInstanceNullable());
-            else
+    @AnyThread
+    private void addWListCloseListener(final @NotNull InetSocketAddress address) {
+        WListClientManager.addListener(address, i -> {
+            if (!i.booleanValue()) {
+                Main.showToast(this, R.string.activity_main_server_closed);
                 this.disconnect();
-        this.fragmentsAdapter.getAllFragments().forEach(IFragment::onResumeState);
-    }
-
-    private final @NotNull AtomicBoolean connected = new AtomicBoolean(false);
-
-    @AnyThread
-    public void connect(final @NotNull InetSocketAddress address, final @NotNull String username, final @Nullable IBinder binder) {
-        HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Connecting. " + this.hashCode());
-        this.connected.set(true);
-        this.address.reinitialize(address);
-        this.username.reinitialize(username);
-        this.binder.reinitializeNullable(binder);
-        Main.runOnBackgroundThread(this, HExceptionWrapper.wrapRunnable(() -> {
-            WListClientManager.addListener(address, i -> {
-                if (!i.booleanValue()) {
-                    Main.runOnUiThread(this, () -> {
-                        Main.showToast(this, R.string.activity_main_server_closed);
-                        this.disconnect();
-                    });
-                    WListClientManager.removeAllListeners(address);
-                }
-            });
-            this.fragmentsAdapter.setArguments(address, username);
-            BroadcastAssistant.start(address);
-            ClientConfigurationSupporter.location().reinitialize(new File(this.getExternalFilesDir("client"), "client.yaml"));
-            ClientConfigurationSupporter.parseFromFile();
-            BroadcastAssistant.get(address).ServerClose.register(id -> Main.runOnUiThread(this, this::disconnect));
-            this.fragmentsAdapter.getAllFragments().forEach(f -> f.onConnected(this));
-        }));
-    }
-
-    @AnyThread
-    public void disconnect() {
-        HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Disconnecting. " + this.hashCode());
-        this.connected.set(false);
-        final InetSocketAddress address = this.address.uninitializeNullable();
-        final String username = this.username.uninitializeNullable();
-        if (address == null || username == null) {
-            HLogManager.getInstance("DefaultLogger").log(HLogLevel.MISTAKE, "Disconnect twice. " + this.hashCode());
-            return;
-        }
-        Main.runOnBackgroundThread(this, () -> {
-            WListClientManager.removeAllListeners(address);
-            BroadcastAssistant.stop(address);
-            TokenAssistant.removeToken(address, username);
-            WListClientManager.quicklyUninitialize(address);
-            this.fragmentsAdapter.getAllFragments().forEach(f -> f.onDisconnected(this));
+                WListClientManager.removeAllListeners(address);
+            }
         });
     }
 
-    private final @NotNull AtomicBoolean isMainPage = new AtomicBoolean(true);
-    private final @NotNull AtomicReference<Predicate<@Nullable Void>> otherPageBackListener = new AtomicReference<>();
-    private final @NotNull AtomicReference<Runnable> otherPageResetListener = new AtomicReference<>();
-
-    @UiThread
-    public void transferPage(final @NotNull View view, @UiThread final @Nullable Predicate<@Nullable Void> backListener, @UiThread final @Nullable Runnable resetListener) {
-        if (!this.isMainPage.compareAndSet(true, false)) throw new IllegalStateException("Transfer page twice. " + this.hashCode());
-        HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Transfer page. ", this.hashCode());
-        this.wrappedView.getInstance().push(view);
-        view.setClickable(true);
-        view.setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        this.otherPageBackListener.set(backListener);
-        this.otherPageResetListener.set(resetListener);
+    @WorkerThread
+    public void connect(final @NotNull InetSocketAddress address, final @NotNull String username, final @Nullable IBinder binder) throws IOException {
+        HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Connecting.", ParametersMap.create()
+                .add("address", address).add("username", username).add("binder", binder != null));
+        this.realConnected.set(true);
+        this.address.reinitialize(address);
+        this.username.reinitialize(username);
+        this.binder.reinitializeNullable(binder);
+        this.addWListCloseListener(address);
+        BroadcastAssistant.start(address);
+        BroadcastAssistant.get(address).ServerClose.register(id -> this.disconnect());
+        ClientConfigurationSupporter.quicklySetLocation(new File(this.getExternalFilesDir("client"), "client.yaml"));
     }
 
-    @UiThread
-    public void resetPage() {
-        if (!this.isMainPage.compareAndSet(false, true)) throw new IllegalStateException("Reset page twice. " + this.hashCode());
-        HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Reset page. ", this.hashCode());
-        this.wrappedView.getInstance().pop();
-        this.getContent().getRoot().setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        this.otherPageBackListener.set(null);
-        final Runnable resetListener = this.otherPageResetListener.getAndSet(null);
-        if (resetListener != null)
-            resetListener.run();
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Destroying ActivityMain. ", this.hashCode());
+    @WorkerThread
+    public void disconnect() {
+        this.realConnected.set(false);
+        final InetSocketAddress address = this.address.uninitializeNullable();
+        final String username = this.username.uninitializeNullable();
+        final boolean binder = this.binder.uninitializeNullable() != null;
+        if (address == null || username == null) {
+            HLogManager.getInstance("DefaultLogger").log(HLogLevel.MISTAKE, "Disconnect twice.", ParametersMap.create()
+                    .add("address", address).add("username", username).add("binder", binder));
+            return;
+        }
+        HLogManager.getInstance("DefaultLogger").log(HLogLevel.VERBOSE, "Disconnecting.", ParametersMap.create()
+                .add("address", address).add("username", username).add("binder", binder));
+        WListClientManager.removeAllListeners(address);
+        BroadcastAssistant.stop(address);
+        TokenAssistant.removeToken(address, username);
+        WListClientManager.quicklyUninitialize(address);
     }
 
     @Override
     public @NotNull String toString() {
         return "ActivityMain{" +
-                "contentCache=" + this.contentCache.isInitialized() +
-                ", currentChoice=" + this.currentChoice +
-                ", binder=" + this.binder.isInitialized() +
-                ", lastBackPressedTime=" + this.lastBackPressedTime +
+                "address=" + this.address +
+                ", username=" + this.username +
+                ", binder=" + this.binder +
+                ", realConnected=" + this.realConnected +
+                ", super=" + super.toString() +
                 '}';
-    }
-
-    private static final class ChooserButtonGroup {
-        private final @NotNull Activity activity;
-        private final @NotNull ImageView button;
-        private final @Nullable TextView text;
-        private final @NotNull Collection<@NotNull View> layouts = new ArrayList<>();
-
-        @DrawableRes
-        private final int image;
-        @DrawableRes
-        private final int imageChose;
-
-        private ChooserButtonGroup(final @NotNull ActivityMain activity, final ActivityMainAdapter.@NotNull FragmentTypes type, final @NotNull ImageView button,
-                                   @DrawableRes final int image, @DrawableRes final int imageChose,
-                                   final @Nullable TextView text, final @NotNull View @NotNull ... layouts) {
-            super();
-            this.activity = activity;
-            this.button = button;
-            this.text = text;
-            this.image = image;
-            this.imageChose = imageChose;
-            this.layouts.add(button);
-            if (this.text != null)
-                this.layouts.add(this.text);
-            this.layouts.addAll(Arrays.asList(layouts));
-            this.layouts.forEach(v -> v.setOnClickListener(u -> this.button.performClick()));
-            this.button.setOnClickListener(v -> activity.getContent().activityMainContent.setCurrentItem(ActivityMainAdapter.FragmentTypes.toPosition(type)));
-        }
-
-        @UiThread
-        public void setClickable(final boolean clickable) {
-            if (this.button.isClickable() == clickable)
-                return;
-            this.button.setClickable(clickable);
-            this.button.setImageResource(clickable ? this.image : this.imageChose);
-            if (this.text != null) {
-                this.text.setClickable(clickable);
-                this.text.setTextColor(this.activity.getResources().getColor(clickable ? R.color.text_normal : R.color.text_warning, this.activity.getTheme()));
-            }
-            this.layouts.forEach(v -> v.setClickable(clickable));
-        }
-
-        public boolean isClicked() {
-            return !this.button.isClickable();
-        }
-
-        @Override
-        public @NotNull String toString() {
-            return "ButtonGroup{" +
-                    "button=" + this.button +
-                    ", text=" + this.text +
-                    ", layouts=" + this.layouts +
-                    ", image=" + this.image +
-                    ", imageChose=" + this.imageChose +
-                    '}';
-        }
     }
 }
