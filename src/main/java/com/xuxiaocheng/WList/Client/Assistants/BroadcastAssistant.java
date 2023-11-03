@@ -57,12 +57,9 @@ public final class BroadcastAssistant {
             super();
             this.name = name;
         }
-        protected final @NotNull Set<Consumer<T>> callbacks = ConcurrentHashMap.newKeySet();
-        public void register(final @NotNull Consumer<T> callback) {
-            this.callbacks.add(callback);
-        }
-        public void unregister(final @NotNull Consumer<T> callback) {
-            this.callbacks.remove(callback);
+        protected final @NotNull Map<@NotNull String, @NotNull Consumer<T>> callbacks = new ConcurrentHashMap<>();
+        public @NotNull Map<@NotNull String, @NotNull Consumer<T>> getCallbacks() {
+            return this.callbacks;
         }
         protected void callback(final @NotNull T t) throws InterruptedException {
             if (this.callbacks.isEmpty()) {
@@ -71,7 +68,7 @@ public final class BroadcastAssistant {
             }
             if (BroadcastAssistant.LogBroadcastEvent.get())
                 HLog.getInstance("ClientLogger").log(HLogLevel.LESS, "Broadcast callback: ", ParametersMap.create().add("name", this.name).add("event", t));
-            HMultiRunHelper.runConsumers(BroadcastAssistant.CallbackExecutors, this.callbacks, c -> c.accept(t));
+            HMultiRunHelper.runConsumers(BroadcastAssistant.CallbackExecutors, this.callbacks.values(), c -> c.accept(t));
         }
         @Override
         public @NotNull String toString() {
