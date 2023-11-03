@@ -46,6 +46,10 @@ public abstract class IFragmentPart<F extends IFragment<?>> {
     }
 
     @UiThread
+    public void onAttach() {
+    }
+
+    @UiThread
     public void onCreate() {
     }
 
@@ -67,6 +71,10 @@ public abstract class IFragmentPart<F extends IFragment<?>> {
 
     @UiThread
     public void onDestroy() {
+    }
+
+    @UiThread
+    public void onDetach() {
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WListAndroid.UIs;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -43,6 +44,12 @@ public abstract class IFragment<F extends ViewBinding> extends IFragmentBase<F> 
     }
 
     @Override
+    public void onAttach(final @NotNull Context context) {
+        super.onAttach(context);
+        this.parts().forEach(IFragmentPart::onAttach);
+    }
+
+    @Override
     public @NotNull View onCreateView(final @NotNull LayoutInflater inflater, final @Nullable ViewGroup container, final @Nullable Bundle savedInstanceState) {
         HLogManager.getInstance("UiLogger").log(HLogLevel.VERBOSE, "Creating fragment.", ParametersMap.create()
                 .add("class", this.getClass().getSimpleName()));
@@ -80,6 +87,12 @@ public abstract class IFragment<F extends ViewBinding> extends IFragmentBase<F> 
                 .add("class", this.getClass().getSimpleName()));
         this.parts().forEach(IFragmentPart::onDestroy);
         super.onDestroy();
+    }
+
+    @Override
+    public void onDetach() {
+        super.onDetach();
+        this.parts().forEach(IFragmentPart::onDetach);
     }
 
     @Override
