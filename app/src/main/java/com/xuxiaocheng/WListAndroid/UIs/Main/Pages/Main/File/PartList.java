@@ -86,7 +86,8 @@ public class PartList extends SFragmentFilePart {
     public void iOnSaveInstanceState(@NotNull final Bundle outState) {
         super.iOnSaveInstanceState(outState);
         BundleHelper.saveLocation(this.currentLocation, outState, "wlist:fragment_file:part_list:current", null);
-        outState.putLong("wlist:fragment_file:part_list:position", this.getCurrentPosition() + this.currentLoadingUp.get().get());
+        // TODO: handle -1;
+        outState.putLong("wlist:fragment_file:part_list:position", Math.max(this.getCurrentPosition() + this.currentLoadingUp.get().get(), 0));
     }
 
     @Override
@@ -169,12 +170,9 @@ public class PartList extends SFragmentFilePart {
     @AnyThread
     protected int getCurrentPosition() {
         final RecyclerView list = this.fragmentContent().pageFileList;
-        final RecyclerView.LayoutManager manager = list.getLayoutManager();
-        final RecyclerView.Adapter<?> adapter = list.getAdapter();
-        if (!(manager instanceof LinearLayoutManager) || !(adapter instanceof EnhancedRecyclerViewAdapter<?, ?>)) return 0;
-        final int position = ((LinearLayoutManager) manager).findFirstVisibleItemPosition();
+        final int position = ViewUtil.requireLinearLayoutManager(list).findFirstVisibleItemPosition();
         if (position == RecyclerView.NO_POSITION) return -1;
-        return position - ((EnhancedRecyclerViewAdapter<?, ?>) adapter).headersSize();
+        return position - ViewUtil.requireEnhancedRecyclerAdapter(list).headersSize();
     }
 
 

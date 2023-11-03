@@ -5,6 +5,8 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.UiThread;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import com.xuxiaocheng.WListAndroid.R;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -32,6 +34,14 @@ public final class ViewUtil {
 
     public static @NotNull String getText(final @NotNull TextView textView) {
         return Objects.requireNonNullElse(textView.getText(), "").toString();
+    }
+
+    public static @NotNull LinearLayoutManager requireLinearLayoutManager(final @NotNull RecyclerView recyclerView) {
+        return (LinearLayoutManager) Objects.requireNonNull(recyclerView.getLayoutManager());
+    }
+
+    public static @NotNull EnhancedRecyclerViewAdapter<?, ?> requireEnhancedRecyclerAdapter(final @NotNull RecyclerView recyclerView) {
+        return (EnhancedRecyclerViewAdapter<?, ?>) Objects.requireNonNull(recyclerView.getAdapter());
     }
 
     private static final float SizeFactor = 0.9F;
