@@ -15,7 +15,7 @@ import java.util.List;
 
 public abstract class IPage<P extends ViewBinding> extends IFragmentBase<P> {
     @Override
-    protected @NotNull IPagedActivity activity() {
+    public @NotNull IPagedActivity activity() {
         return (IPagedActivity) super.activity();
     }
 

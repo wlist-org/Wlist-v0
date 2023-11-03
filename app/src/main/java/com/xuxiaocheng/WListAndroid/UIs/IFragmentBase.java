@@ -13,7 +13,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public abstract class IFragmentBase<V extends ViewBinding> extends Fragment {
-    protected @NotNull IActivity<?> activity() {
+    public @NotNull IActivity<?> activity() {
         return (IActivity<?>) this.requireActivity();
     }
 
