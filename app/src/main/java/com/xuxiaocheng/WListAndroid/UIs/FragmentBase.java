@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListAndroid.UIs.Pages;
+package com.xuxiaocheng.WListAndroid.UIs;
 
 import android.content.Context;
 import android.os.Bundle;
@@ -8,26 +8,23 @@ import android.view.ViewGroup;
 import androidx.annotation.UiThread;
 import androidx.fragment.app.Fragment;
 import androidx.viewbinding.ViewBinding;
-import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
-import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.WListAndroid.UIs.IActivity;
-import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public abstract class IPage<P extends ViewBinding> extends Fragment {
-    protected final @NotNull HInitializer<P> pageCache = new HInitializer<>("FragmentCache");
-    public @NotNull P page() {
-        return this.pageCache.getInstance();
-    }
+public abstract class FragmentBase<V extends ViewBinding> extends Fragment {
     @SuppressWarnings("unchecked")
     protected <A extends IActivity<?>> @NotNull A activity() {
         return (A) this.requireActivity();
     }
 
+
+    protected final @NotNull HInitializer<V> contentCache = new HInitializer<>("FragmentBaseContentCache");
+    public @NotNull V content() {
+        return this.contentCache.getInstance();
+    }
     @UiThread
-    protected abstract @NotNull P iOnInflater();
+    protected abstract @NotNull V iOnInflater();
     @UiThread
     protected void iOnRestoreInstanceState(final @Nullable Bundle arguments, final @Nullable Bundle savedInstanceState) {
     }
@@ -35,7 +32,7 @@ public abstract class IPage<P extends ViewBinding> extends Fragment {
     protected void iOnSaveInstanceState(final @NotNull Bundle outState) {
     }
     @UiThread
-    protected void iOnBuildPage(final @NotNull P page, final boolean isFirstTime) {
+    protected void iOnBuildPage(final @NotNull V page, final boolean isFirstTime) {
     }
     @UiThread
     protected boolean iOnBackPressed() {
@@ -45,20 +42,18 @@ public abstract class IPage<P extends ViewBinding> extends Fragment {
 
     @UiThread
     @Override
-    public void onAttach(final @NotNull Context context) {
-        super.onAttach(context);
+    public @NotNull View onCreateView(final @NotNull LayoutInflater inflater, final @Nullable ViewGroup container, final @Nullable Bundle savedInstanceState) {
+        final V fragment = this.iOnInflater();
+        this.contentCache.reinitialize(fragment);
+        this.iOnRestoreInstanceState(this.getArguments(), savedInstanceState == null ? null : savedInstanceState.getBundle("i:fragment"));
+        this.iOnBuildPage(fragment, savedInstanceState == null);
+        return fragment.getRoot();
     }
 
     @UiThread
     @Override
-    public @NotNull View onCreateView(final @NotNull LayoutInflater inflater, final @Nullable ViewGroup container, final @Nullable Bundle savedInstanceState) {
-        HLogManager.getInstance("UiLogger").log(HLogLevel.VERBOSE, "Creating page.", ParametersMap.create()
-                .add("class", this.getClass().getSimpleName()));
-        final P page = this.iOnInflater();
-        this.pageCache.reinitialize(page);
-        this.iOnRestoreInstanceState(this.getArguments(), savedInstanceState == null ? null : savedInstanceState.getBundle("i:page"));
-        this.iOnBuildPage(page, savedInstanceState == null);
-        return page.getRoot();
+    public void onAttach(final @NotNull Context context) {
+        super.onAttach(context);
     }
 
     @UiThread
@@ -91,15 +86,13 @@ public abstract class IPage<P extends ViewBinding> extends Fragment {
         super.onSaveInstanceState(outState);
         final Bundle bundle = new Bundle();
         this.iOnSaveInstanceState(bundle);
-        outState.putBundle("i:page", bundle);
+        outState.putBundle("i:fragment", bundle);
     }
 
     @UiThread
     @Override
     public void onDestroy() {
         super.onDestroy();
-        HLogManager.getInstance("UiLogger").log(HLogLevel.VERBOSE, "Destroyed page.", ParametersMap.create()
-                .add("class", this.getClass().getSimpleName()));
     }
 
     @UiThread
@@ -115,8 +108,8 @@ public abstract class IPage<P extends ViewBinding> extends Fragment {
 
     @Override
     public @NotNull String toString() {
-        return "IPage{" +
-                "pageCache=" + this.pageCache.isInitialized() +
+        return "FragmentBase{" +
+                "contentCached=" + this.contentCache.isInitialized() +
                 '}';
     }
 }

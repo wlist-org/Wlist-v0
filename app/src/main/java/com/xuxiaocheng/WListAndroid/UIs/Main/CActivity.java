@@ -1,4 +1,4 @@
-package com.xuxiaocheng.WListAndroid.UIs;
+package com.xuxiaocheng.WListAndroid.UIs.Main;
 
 import android.os.Bundle;
 import android.os.IBinder;
@@ -16,21 +16,28 @@ import com.xuxiaocheng.WList.Client.WListClientManager;
 import com.xuxiaocheng.WListAndroid.Helpers.BundleHelper;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
-import com.xuxiaocheng.WListAndroid.UIs.Pages.PageMain;
+import com.xuxiaocheng.WListAndroid.UIs.IPage;
+import com.xuxiaocheng.WListAndroid.UIs.IPagedActivity;
+import com.xuxiaocheng.WListAndroid.UIs.Main.Pages.CPage;
 import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
-import com.xuxiaocheng.WListAndroid.databinding.ActivityBinding;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class ActivityMain extends IPagedActivity {
-    protected final @NotNull HInitializer<InetSocketAddress> address = new HInitializer<>("ActivityMainAddress");
-    protected final @NotNull HInitializer<String> username = new HInitializer<>("ActivityMainUsername");
-    protected final @NotNull HInitializer<IBinder> binder = new HInitializer<>("ActivityMainServerBinder");
+public abstract class CActivity extends IPagedActivity {
+    protected CActivity(final @NotNull IPage<?> page, final @Nullable String tag) {
+        super(page, tag);
+    }
+
+    protected final @NotNull HInitializer<InetSocketAddress> address = new HInitializer<>("CActivityAddress");
+    protected final @NotNull HInitializer<String> username = new HInitializer<>("CActivityUsername");
+    protected final @NotNull HInitializer<IBinder> binder = new HInitializer<>("CActivityServerBinder");
     protected final @NotNull AtomicBoolean realConnected = new AtomicBoolean(false);
     public boolean isConnected() {
         return this.address.isInitialized() && this.username.isInitialized();
@@ -55,8 +62,8 @@ public class ActivityMain extends IPagedActivity {
         this.username.uninitializeNullable();
         this.binder.uninitializeNullable();
         if (savedInstanceState != null) {
-            BundleHelper.restoreClient(savedInstanceState, "wlist:activity_main:client", this.address, this.username, null);
-            final IBinder binder = savedInstanceState.getBinder("wlist:activity_main:binder");
+            BundleHelper.restoreClient(savedInstanceState, "c:activity:client", this.address, this.username, null);
+            final IBinder binder = savedInstanceState.getBinder("c:activity:binder");
             if (binder != null)
                 this.binder.reinitialize(binder);
         }
@@ -65,17 +72,10 @@ public class ActivityMain extends IPagedActivity {
     @Override
     protected void iOnSaveInstanceState(final @NotNull Bundle outState) {
         super.iOnSaveInstanceState(outState);
-        BundleHelper.saveClient(this.address, this.username, outState, "wlist:activity_main:client", null);
+        BundleHelper.saveClient(this.address, this.username, outState, "c:activity:client", null);
         final IBinder binder = this.binder.getInstanceNullable();
         if (binder != null)
-            outState.putBinder("wlist:activity_main:binder", binder);
-    }
-
-    @Override
-    protected void iOnBuildActivity(final @NotNull ActivityBinding content, final boolean isFirstTime) {
-        super.iOnBuildActivity(content, isFirstTime);
-        if (isFirstTime)
-            this.push(new PageMain(), "main", false);
+            outState.putBinder("c:activity:binder", binder);
     }
 
     @Override
@@ -125,6 +125,7 @@ public class ActivityMain extends IPagedActivity {
         BroadcastAssistant.start(address);
         BroadcastAssistant.get(address).ServerClose.register(id -> this.disconnect());
         ClientConfigurationSupporter.quicklySetLocation(new File(this.getExternalFilesDir("client"), "client.yaml"));
+        this.existingPages().forEach(CPage::onConnect);
     }
 
     @WorkerThread
@@ -144,11 +145,29 @@ public class ActivityMain extends IPagedActivity {
         BroadcastAssistant.stop(address);
         TokenAssistant.removeToken(address, username);
         WListClientManager.quicklyUninitialize(address);
+        this.existingPages().forEach(CPage::onDisconnect);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public @NotNull List<? extends @NotNull CPage<?>> existingPages() {
+        return (List<CPage<?>>) super.existingPages();
+    }
+
+    public void push(final @NotNull CPage<?> page, final @Nullable String tag) {
+        super.push(page, tag);
+    }
+
+    @Deprecated
+    @Contract("_, _ -> fail")
+    @Override
+    public void push(final @NotNull IPage<?> page, final @Nullable String tag) {
+        throw new ClassCastException("IPage '" + page.getClass().getName() + "' cannot cast to '" + CPage.class.getName() + "'.");
     }
 
     @Override
     public @NotNull String toString() {
-        return "ActivityMain{" +
+        return "CActivity{" +
                 "address=" + this.address +
                 ", username=" + this.username +
                 ", binder=" + this.binder +

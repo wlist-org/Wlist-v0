@@ -10,6 +10,7 @@
 	<color name="lighter_gray">#E6E6E6</color>
 
 	<color name="text_normal">@color/black</color>
+	<color name="text_chose">@color/red</color>
 	<color name="text_hint">@color/light_gray</color>
 	<color name="text_edited">@color/black</color>
 	<color name="text_warning">@color/red</color>
