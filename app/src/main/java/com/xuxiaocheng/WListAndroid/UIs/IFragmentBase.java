@@ -12,10 +12,9 @@ import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public abstract class FragmentBase<V extends ViewBinding> extends Fragment {
-    @SuppressWarnings("unchecked")
-    protected <A extends IActivity<?>> @NotNull A activity() {
-        return (A) this.requireActivity();
+public abstract class IFragmentBase<V extends ViewBinding> extends Fragment {
+    protected @NotNull IActivity<?> activity() {
+        return (IActivity<?>) this.requireActivity();
     }
 
 

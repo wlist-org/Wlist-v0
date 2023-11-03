@@ -11,7 +11,11 @@ import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public abstract class IFragment<F extends ViewBinding> extends FragmentBase<F> {
+public abstract class IFragment<F extends ViewBinding> extends IFragmentBase<F> {
+    protected @NotNull IPage<?> page() {
+        return (IPage<?>) this.requireParentFragment();
+    }
+
     @Override
     public @NotNull View onCreateView(final @NotNull LayoutInflater inflater, final @Nullable ViewGroup container, final @Nullable Bundle savedInstanceState) {
         HLogManager.getInstance("UiLogger").log(HLogLevel.VERBOSE, "Creating fragment.", ParametersMap.create()

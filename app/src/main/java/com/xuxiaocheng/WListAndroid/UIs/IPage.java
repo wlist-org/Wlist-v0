@@ -11,7 +11,14 @@ import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public abstract class IPage<P extends ViewBinding> extends FragmentBase<P> {
+import java.util.List;
+
+public abstract class IPage<P extends ViewBinding> extends IFragmentBase<P> {
+    @Override
+    protected @NotNull IPagedActivity activity() {
+        return (IPagedActivity) super.activity();
+    }
+
     @Override
     public @NotNull View onCreateView(final @NotNull LayoutInflater inflater, final @Nullable ViewGroup container, final @Nullable Bundle savedInstanceState) {
         HLogManager.getInstance("UiLogger").log(HLogLevel.VERBOSE, "Creating page.", ParametersMap.create()
@@ -24,6 +31,11 @@ public abstract class IPage<P extends ViewBinding> extends FragmentBase<P> {
         HLogManager.getInstance("UiLogger").log(HLogLevel.VERBOSE, "Destroying page.", ParametersMap.create()
                 .add("class", this.getClass().getSimpleName()));
         super.onDestroy();
+    }
+
+    @SuppressWarnings("unchecked")
+    public @NotNull List<? extends @NotNull IFragment<?>> existingFragments() {
+        return (List<IFragment<?>>) (List<?>) this.getChildFragmentManager().getFragments();
     }
 
     @Override

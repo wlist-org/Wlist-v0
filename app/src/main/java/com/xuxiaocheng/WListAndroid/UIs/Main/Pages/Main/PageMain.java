@@ -10,11 +10,12 @@ import androidx.annotation.DrawableRes;
 import androidx.annotation.UiThread;
 import androidx.viewpager2.widget.ViewPager2;
 import com.xuxiaocheng.WListAndroid.R;
-import com.xuxiaocheng.WListAndroid.UIs.Main.Pages.CPage;
+import com.xuxiaocheng.WListAndroid.UIs.Main.CPage;
 import com.xuxiaocheng.WListAndroid.databinding.ActivityMainBinding;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -32,7 +33,7 @@ public class PageMain extends CPage<ActivityMainBinding> {
         if (savedInstanceState != null && savedInstanceState.containsKey("w:page_main:current_type"))
             this.currentType.set(PageMainAdapter.Types.fromPosition(savedInstanceState.getInt("w:page_main:current_type", PageMainAdapter.Types.toPosition(PageMainAdapter.Types.File))));
         else
-            this.currentType.set(PageMainAdapter.Types.User);
+            this.currentType.set(PageMainAdapter.Types.File);
     }
 
     @Override
@@ -67,6 +68,7 @@ public class PageMain extends CPage<ActivityMainBinding> {
                         fileButton.release();
                     }
                 }
+                PageMain.this.existingFragments().forEach(f -> f.sOnTypeChanged(current));
             }
         });
     }
@@ -75,6 +77,12 @@ public class PageMain extends CPage<ActivityMainBinding> {
     public void onStart() {
         super.onStart();
         this.content().activityMainContent.setCurrentItem(PageMainAdapter.Types.toPosition(this.currentType.get()), false);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public @NotNull List<? extends @NotNull SPageMainFragment<?>> existingFragments() {
+        return (List<SPageMainFragment<?>>) super.existingFragments();
     }
 
     private static final class ChooserButtonGroup {
@@ -130,7 +138,7 @@ public class PageMain extends CPage<ActivityMainBinding> {
     public @NotNull String toString() {
         return "PageMain{" +
                 "currentType=" + this.currentType +
-                "super=" + super.toString() +
+                ", super=" + super.toString() +
                 '}';
     }
 }

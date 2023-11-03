@@ -18,7 +18,6 @@ import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.UIs.IPage;
 import com.xuxiaocheng.WListAndroid.UIs.IPagedActivity;
-import com.xuxiaocheng.WListAndroid.UIs.Main.Pages.CPage;
 import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -125,7 +124,7 @@ public abstract class CActivity extends IPagedActivity {
         BroadcastAssistant.start(address);
         BroadcastAssistant.get(address).ServerClose.register(id -> this.disconnect());
         ClientConfigurationSupporter.quicklySetLocation(new File(this.getExternalFilesDir("client"), "client.yaml"));
-        this.existingPages().forEach(CPage::onConnect);
+        this.existingPages().forEach(CPage::cOnConnect);
     }
 
     @WorkerThread
@@ -145,7 +144,7 @@ public abstract class CActivity extends IPagedActivity {
         BroadcastAssistant.stop(address);
         TokenAssistant.removeToken(address, username);
         WListClientManager.quicklyUninitialize(address);
-        this.existingPages().forEach(CPage::onDisconnect);
+        this.existingPages().forEach(CPage::cOnDisconnect);
     }
 
     @SuppressWarnings("unchecked")

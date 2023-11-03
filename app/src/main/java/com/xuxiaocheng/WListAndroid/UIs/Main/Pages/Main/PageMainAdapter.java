@@ -4,9 +4,8 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
-import com.xuxiaocheng.WListAndroid.UIs.Main.Pages.Main.Fragments.File.FragmentFile;
-import com.xuxiaocheng.WListAndroid.UIs.Main.Pages.Main.Fragments.IPageMainFragment;
-import com.xuxiaocheng.WListAndroid.UIs.Main.Pages.Main.Fragments.User.FragmentUser;
+import com.xuxiaocheng.WListAndroid.UIs.Main.Pages.Main.File.FragmentFile;
+import com.xuxiaocheng.WListAndroid.UIs.Main.Pages.Main.User.FragmentUser;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -46,8 +45,9 @@ public class PageMainAdapter extends FragmentStateAdapter {
         };
     }
 
+    @Deprecated
     @SuppressWarnings("unchecked")
-    public static <F extends IPageMainFragment<?>> @Nullable F getFragment(final @NotNull FragmentManager manager, final @NotNull Types type) {
+    public static <F extends SPageMainFragment<?>> @Nullable F getFragment(final @NotNull FragmentManager manager, final @NotNull Types type) {
         //noinspection StringConcatenationMissingWhitespace
         return (F) manager.findFragmentByTag("f" + Types.toPosition(type));
     }
