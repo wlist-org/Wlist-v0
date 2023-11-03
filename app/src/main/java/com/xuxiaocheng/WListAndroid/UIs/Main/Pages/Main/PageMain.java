@@ -33,10 +33,8 @@ public class PageMain extends CPage<ActivityMainBinding> {
     @Override
     protected void iOnRestoreInstanceState(final @Nullable Bundle arguments, final @Nullable Bundle savedInstanceState) {
         super.iOnRestoreInstanceState(arguments, savedInstanceState);
-        if (savedInstanceState != null && savedInstanceState.containsKey("w:page_main:current_type"))
-            this.currentType.set(PageMainAdapter.Types.fromPosition(savedInstanceState.getInt("w:page_main:current_type", PageMainAdapter.Types.toPosition(PageMainAdapter.Types.File))));
-        else
-            this.currentType.set(PageMainAdapter.Types.File);
+        final int type = savedInstanceState != null ? savedInstanceState.getInt("w:page_main:current_type", -1) : -1;
+        this.currentType.set(type == -1 ? PageMainAdapter.Types.File : PageMainAdapter.Types.fromPosition(type));
     }
 
     @Override

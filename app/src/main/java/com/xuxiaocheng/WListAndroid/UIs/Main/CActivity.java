@@ -122,7 +122,7 @@ public abstract class CActivity extends IPagedActivity {
         this.binder.reinitializeNullable(binder);
         this.addWListCloseListener(address);
         BroadcastAssistant.start(address);
-        BroadcastAssistant.get(address).ServerClose.register(id -> this.disconnect());
+        BroadcastAssistant.get(address).ServerClose.getCallbacks().put("cActivity", id -> this.disconnect());
         ClientConfigurationSupporter.quicklySetLocation(new File(this.getExternalFilesDir("client"), "client.yaml"));
         this.existingPages().forEach(CPage::cOnConnect);
     }
@@ -153,6 +153,7 @@ public abstract class CActivity extends IPagedActivity {
         return (List<CPage<?>>) super.existingPages();
     }
 
+    @AnyThread
     public void push(final @NotNull CPage<?> page, final @Nullable String tag) {
         super.push(page, tag);
     }

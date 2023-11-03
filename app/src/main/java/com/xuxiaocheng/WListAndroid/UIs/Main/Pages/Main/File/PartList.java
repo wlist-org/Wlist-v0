@@ -418,7 +418,7 @@ public class PartList extends SFragmentFilePart {
     @WorkerThread
     @SuppressWarnings("unchecked")
     protected void listenBroadcast(final BroadcastAssistant.@NotNull BroadcastSet set) {
-        set.ProviderInitialized.register(HExceptionWrapper.wrapConsumer(p -> {
+        set.ProviderInitialized.getCallbacks().put("list", HExceptionWrapper.wrapConsumer(p -> {
             final VisibleFileInformation information;
             try (final WListClientInterface client = this.client()) {
                 information = OperateFilesHelper.getFileOrDirectory(client, this.token(), new FileLocation(p.getFirst(), p.getSecond().longValue()), true);

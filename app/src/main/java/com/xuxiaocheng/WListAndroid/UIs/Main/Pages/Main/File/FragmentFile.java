@@ -14,6 +14,7 @@ public final class FragmentFile extends SPageMainFragment<PageFileBinding> {
     private final @NotNull PartOperation partOperation = new PartOperation(this);
     private final @NotNull PartUpload partUpload = new PartUpload(this);
     private final @NotNull PartPreview partPreview = new PartPreview(this);
+    private final @NotNull PartTask partTask = new PartTask(this);
 
     public FragmentFile() {
         super();
@@ -23,6 +24,7 @@ public final class FragmentFile extends SPageMainFragment<PageFileBinding> {
         this.parts().add(this.partOperation);
         this.parts().add(this.partUpload);
         this.parts().add(this.partPreview);
+        this.parts().add(this.partTask);
     }
 
     @SuppressWarnings("unchecked")
@@ -65,6 +67,10 @@ public final class FragmentFile extends SPageMainFragment<PageFileBinding> {
 
     @NotNull PartPreview partPreview() {
         return this.partPreview;
+    }
+
+    @NotNull PartTask partTask() {
+        return this.partTask;
     }
 
     @Override
