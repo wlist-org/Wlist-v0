@@ -42,6 +42,10 @@ public abstract class IFragmentPart<F extends IFragment<?>> {
     }
 
     @UiThread
+    protected void iOnBuildPage() {
+    }
+
+    @UiThread
     public void onCreate() {
     }
 

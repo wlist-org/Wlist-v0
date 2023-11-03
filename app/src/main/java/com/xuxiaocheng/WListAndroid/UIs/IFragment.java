@@ -37,6 +37,12 @@ public abstract class IFragment<F extends ViewBinding> extends IFragmentBase<F> 
     }
 
     @Override
+    protected void iOnBuildPage(@NotNull final F page, final boolean isFirstTime) {
+        super.iOnBuildPage(page, isFirstTime);
+        this.parts().forEach(IFragmentPart::iOnBuildPage);
+    }
+
+    @Override
     public @NotNull View onCreateView(final @NotNull LayoutInflater inflater, final @Nullable ViewGroup container, final @Nullable Bundle savedInstanceState) {
         HLogManager.getInstance("UiLogger").log(HLogLevel.VERBOSE, "Creating fragment.", ParametersMap.create()
                 .add("class", this.getClass().getSimpleName()));

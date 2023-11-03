@@ -26,6 +26,9 @@ public class PageMain extends CPage<ActivityMainBinding> {
     }
 
     protected final @NotNull AtomicReference<PageMainAdapter.Types> currentType = new AtomicReference<>();
+    protected PageMainAdapter.@NotNull Types currentTypes() {
+        return this.currentType.get();
+    }
 
     @Override
     protected void iOnRestoreInstanceState(final @Nullable Bundle arguments, final @Nullable Bundle savedInstanceState) {

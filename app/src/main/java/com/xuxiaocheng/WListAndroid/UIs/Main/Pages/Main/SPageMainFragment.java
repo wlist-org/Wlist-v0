@@ -21,8 +21,12 @@ public abstract class SPageMainFragment<F extends ViewBinding> extends CFragment
 
     @SuppressWarnings("unchecked")
     @Override
-    protected @NotNull List<? extends SPageMainFragmentPart<F, ? extends SPageMainFragment<F>>> parts() {
-        return (List<? extends SPageMainFragmentPart<F, ? extends SPageMainFragment<F>>>) super.parts();
+    protected @NotNull List<? extends SPageMainFragmentPart<? extends SPageMainFragment<F>>> parts() {
+        return (List<? extends SPageMainFragmentPart<? extends SPageMainFragment<F>>>) super.parts();
+    }
+
+    protected PageMainAdapter.@NotNull Types currentFragmentTypes() {
+        return this.page().currentTypes();
     }
 
     @UiThread

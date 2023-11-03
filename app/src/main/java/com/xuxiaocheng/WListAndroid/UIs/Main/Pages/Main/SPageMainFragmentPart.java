@@ -1,22 +1,15 @@
 package com.xuxiaocheng.WListAndroid.UIs.Main.Pages.Main;
 
 import androidx.annotation.UiThread;
-import androidx.viewbinding.ViewBinding;
 import com.xuxiaocheng.WListAndroid.UIs.Main.ActivityMain;
 import com.xuxiaocheng.WListAndroid.UIs.Main.CFragmentPart;
 import com.xuxiaocheng.WListAndroid.databinding.ActivityBinding;
 import com.xuxiaocheng.WListAndroid.databinding.ActivityMainBinding;
 import org.jetbrains.annotations.NotNull;
 
-public abstract class SPageMainFragmentPart<FV extends ViewBinding, F extends SPageMainFragment<FV>> extends CFragmentPart<F> {
+public abstract class SPageMainFragmentPart<F extends SPageMainFragment<?>> extends CFragmentPart<F> {
     protected SPageMainFragmentPart(final @NotNull F fragment) {
         super(fragment);
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    protected @NotNull FV fragmentContent() {
-        return (FV) super.fragmentContent();
     }
 
     @Override
@@ -37,6 +30,10 @@ public abstract class SPageMainFragmentPart<FV extends ViewBinding, F extends SP
     @Override
     protected @NotNull ActivityBinding activityContent() {
         return (ActivityBinding) super.activityContent();
+    }
+
+    protected PageMainAdapter.@NotNull Types currentFragmentTypes() {
+        return this.page().currentTypes();
     }
 
     @UiThread
