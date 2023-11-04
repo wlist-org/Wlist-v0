@@ -100,11 +100,6 @@ public abstract class IFragmentBase<V extends ViewBinding> extends Fragment {
         super.onDetach();
     }
 
-    @UiThread
-    public boolean onBackPressed() {
-        return this.iOnBackPressed();
-    }
-
     @Override
     public @NotNull String toString() {
         return "FragmentBase{" +

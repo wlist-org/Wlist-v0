@@ -50,6 +50,7 @@ import java.util.Deque;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -74,20 +75,18 @@ public class PartList extends SFragmentFilePart {
             BundleHelper.restoreLocation(savedInstanceState, "wlist:fragment_file:part_list:current", this.currentLocation, null);
             final long position = savedInstanceState.getLong("wlist:fragment_file:part_list:position");
             this.currentLoadingUp.set(new AtomicLong(position));
-            this.currentLoadingDown.set(new AtomicLong(position));
         } else {
             this.currentLocation.set(new FileLocation(IdentifierNames.RootSelector, 0));
             this.currentLoadingUp.set(new AtomicLong(0));
-            this.currentLoadingDown.set(new AtomicLong(0));
         }
+        this.currentPosition.set(0);
     }
 
     @Override
     public void iOnSaveInstanceState(@NotNull final Bundle outState) {
         super.iOnSaveInstanceState(outState);
         BundleHelper.saveLocation(this.currentLocation, outState, "wlist:fragment_file:part_list:current", null);
-        // TODO: handle -1;
-        outState.putLong("wlist:fragment_file:part_list:position", Math.max(this.getCurrentPosition() + this.currentLoadingUp.get().get(), 0));
+        outState.putLong("wlist:fragment_file:part_list:position", this.currentPosition.get() + this.currentLoadingUp.get().get());
     }
 
     @Override
@@ -119,7 +118,7 @@ public class PartList extends SFragmentFilePart {
 
     private final @NotNull AtomicReference<FileLocation> currentLocation = new AtomicReference<>();
     private final @NotNull AtomicReference<AtomicLong> currentLoadingUp = new AtomicReference<>();
-    private final @NotNull AtomicReference<AtomicLong> currentLoadingDown = new AtomicReference<>();
+    private final @NotNull AtomicInteger currentPosition = new AtomicInteger(0);
     private final @NotNull Deque<Triad.@NotNull ImmutableTriad<@NotNull FileLocation, @NotNull VisibleFileInformation, @NotNull AtomicLong>> stacks = new ArrayDeque<>();
     protected boolean isOnRoot() {
         final FileLocation location = this.currentLocation.get();
@@ -167,14 +166,6 @@ public class PartList extends SFragmentFilePart {
         });
     }
 
-    @AnyThread
-    protected int getCurrentPosition() {
-        final RecyclerView list = this.fragmentContent().pageFileList;
-        final int position = ViewUtil.requireLinearLayoutManager(list).findFirstVisibleItemPosition();
-        if (position == RecyclerView.NO_POSITION) return -1;
-        return position - ViewUtil.requireEnhancedRecyclerAdapter(list).headersSize();
-    }
-
 
     @UiThread
     private void updatePage(final @NotNull FileLocation location, final long position, final @NotNull AtomicBoolean clickable,
@@ -188,7 +179,7 @@ public class PartList extends SFragmentFilePart {
                 return new PartListViewHolder(PartList.this.listCellView(PartList.this.activity().getLayoutInflater()), information -> {
                     if (!clickable.compareAndSet(true, false)) return;
                     if (FileInformationGetter.isDirectory(information)) {
-                        final int p = PartList.this.getCurrentPosition();
+                        final int p = PartList.this.currentPosition.get();
                         PartList.this.stacks.push(Triad.ImmutableTriad.makeImmutableTriad(location, this.getData(p), new AtomicLong(p)));
                     }
                     clicker.accept(information);
@@ -203,7 +194,6 @@ public class PartList extends SFragmentFilePart {
         final AtomicLong loadedUp = new AtomicLong(position);
         final AtomicLong loadedDown = new AtomicLong(position);
         this.currentLoadingUp.set(loadedUp);
-        this.currentLoadingDown.set(loadedDown);
         final AtomicBoolean noMoreUp = new AtomicBoolean(position <= 0);
         final AtomicBoolean noMoreDown = new AtomicBoolean(false);
         final RecyclerView.OnScrollListener listener = new RecyclerView.OnScrollListener() {
@@ -212,6 +202,11 @@ public class PartList extends SFragmentFilePart {
             public void onScrollStateChanged(final @NotNull RecyclerView recyclerView, final int newState) {
                 super.onScrollStateChanged(recyclerView, newState);
                 if (recyclerView.getAdapter() != adapter) return;
+                if (newState == AbsListView.OnScrollListener.SCROLL_STATE_IDLE) {
+                    final int position = ViewUtil.requireLinearLayoutManager(recyclerView).findFirstVisibleItemPosition();
+                    if (position != RecyclerView.NO_POSITION)
+                        PartList.this.currentPosition.set(position - adapter.headersSize());
+                }
                 // TODO: Remove the pages on the top.
                 final boolean isDown;
                 if (!recyclerView.canScrollVertically(1) && !noMoreDown.get())
@@ -400,9 +395,9 @@ public class PartList extends SFragmentFilePart {
     protected void clearCurrentPosition() {
         final FileLocation location = this.currentLocation();
         if (IdentifierNames.RootSelector.equals(FileLocationGetter.storage(location)))
-            Main.runOnUiThread(this.activity(), () -> this.onRootPage(this.getCurrentPosition()));
+            Main.runOnUiThread(this.activity(), () -> this.onRootPage(this.currentPosition.get()));
         else
-            Main.runOnUiThread(this.activity(), () -> this.onInsidePage(this.fragmentContent().pageFileName.getText(), location, this.getCurrentPosition()));
+            Main.runOnUiThread(this.activity(), () -> this.onInsidePage(this.fragmentContent().pageFileName.getText(), location, this.currentPosition.get()));
     }
 
 

@@ -42,7 +42,7 @@ public abstract class IPagedActivity extends IActivity<ActivityBinding> {
         if (this.lastPushPopTime != null && Duration.between(this.lastPushPopTime, ZonedDateTime.now()).toMillis() < this.getResources().getInteger(R.integer.anim_slide_duration))
             return true; // Lock on anim.
         final IPage<?> page = this.currentPage();
-        if (page != null && page.onBackPressed()) return true;
+        if (page != null && page.iOnBackPressed()) return true;
         return this.popNow() || super.iOnBackPressed();
     }
 

@@ -16,6 +16,7 @@ import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.UIs.Main.ActivityMain;
+import com.xuxiaocheng.WListAndroid.UIs.Main.Pages.Main.PageMainAdapter;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileUploadBinding;
 import org.jetbrains.annotations.NotNull;
@@ -42,13 +43,13 @@ class PartUpload extends SFragmentFilePart {
         if (!preferences.contains("x") || !preferences.contains("y"))
             preferences.edit().putFloat("x", percentX).putFloat("y", percentY).apply();
         Main.runOnUiThread(this.activity(), () -> {
-            final View v = this.fragmentContent().pageFileUploader;
-            final float parentX = this.fragmentContent().pageFileList.getX(), parentY = this.fragmentContent().pageFileList.getY();
-            final float width = this.fragmentContent().pageFileList.getWidth(), height = this.fragmentContent().pageFileList.getHeight();
+            final View v = this.fragmentContent().pageFileUploader, parent = this.fragmentContent().pageFileList;
+            final float parentX = parent.getX(), parentY = parent.getY();
+            final float width = parent.getWidth(), height = parent.getHeight();
             final float halfWidth = v.getWidth() / 2.0f, halfHeight = v.getHeight() / 2.0f;
             v.setX(HMathHelper.clamp(percentX * width + parentX - parentX, halfWidth, width - halfWidth) + parentX - halfWidth);
             v.setY(HMathHelper.clamp(percentY * height + parentY - parentY, halfHeight, height - halfHeight) + parentY - halfHeight);
-            this.fragmentContent().pageFileUploader.setVisibility(View.VISIBLE);
+            v.setVisibility(View.VISIBLE);
         });
     }
 
@@ -56,6 +57,13 @@ class PartUpload extends SFragmentFilePart {
     public void cOnDisconnect() {
         super.cOnDisconnect();
         Main.runOnUiThread(this.activity(), () -> this.fragmentContent().pageFileUploader.setVisibility(View.GONE));
+    }
+
+    @Override
+    protected void sOnTypeChanged(final PageMainAdapter.@NotNull Types type) {
+        super.sOnTypeChanged(type);
+        if (type == PageMainAdapter.Types.File && this.isConnected())
+            Main.runOnBackgroundThread(this.activity(), this::cOnConnect); // Fix position.
     }
 
     @Override

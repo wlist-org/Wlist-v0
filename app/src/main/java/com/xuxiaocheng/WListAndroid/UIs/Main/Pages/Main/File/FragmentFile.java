@@ -36,7 +36,7 @@ public final class FragmentFile extends SPageMainFragment<PageFileBinding> {
     @Override
     protected boolean iOnBackPressed() {
         if (this.currentFragmentTypes() != PageMainAdapter.Types.File)
-            return super.iOnBackPressed();
+            return false;
         return this.isConnected() && this.partList.popFileList();
     }
 

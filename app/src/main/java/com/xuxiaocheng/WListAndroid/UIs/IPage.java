@@ -39,6 +39,11 @@ public abstract class IPage<P extends ViewBinding> extends IFragmentBase<P> {
     }
 
     @Override
+    protected boolean iOnBackPressed() {
+        return this.existingFragments().stream().anyMatch(IFragmentBase::iOnBackPressed); // TODO
+    }
+
+    @Override
     public @NotNull String toString() {
         return "IPage{" +
                 "contentCache=" + this.contentCache.isInitialized() +
