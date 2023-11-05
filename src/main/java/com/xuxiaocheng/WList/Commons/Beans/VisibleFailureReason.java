@@ -6,8 +6,9 @@ import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
+import java.io.Serializable;
 
-public record VisibleFailureReason(@NotNull FailureKind kind, @NotNull FileLocation location, @NotNull String message) {
+public record VisibleFailureReason(@NotNull FailureKind kind, @NotNull FileLocation location, @NotNull String message) implements Serializable {
     /**
      * @see com.xuxiaocheng.WList.Server.Storage.Records.FailureReason
      */

@@ -6,8 +6,9 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
+import java.io.Serializable;
 
-public record FileLocation(@NotNull String storage, long id) {
+public record FileLocation(@NotNull String storage, long id) implements Serializable {
     public static @NotNull FileLocation parse(final @NotNull ByteBuf buffer) throws IOException {
         final String storage = ByteBufIOUtil.readUTF(buffer);
         final long id = ByteBufIOUtil.readVariableLenLong(buffer);

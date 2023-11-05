@@ -6,10 +6,11 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Unmodifiable;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public record VisibleFilesListInformation(long total, long filtered, @NotNull @Unmodifiable List<@NotNull VisibleFileInformation> informationList) {
+public record VisibleFilesListInformation(long total, long filtered, @NotNull @Unmodifiable List<@NotNull VisibleFileInformation> informationList) implements Serializable {
     /**
      * @see com.xuxiaocheng.WList.Server.Storage.Records.FilesListInformation
      */

@@ -9,12 +9,13 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 
 public record VisibleUserInformation(long id, @NotNull String username, long groupId, @NotNull String groupName,
-                                     @NotNull ZonedDateTime createTime, @NotNull ZonedDateTime updateTime) {
+                                     @NotNull ZonedDateTime createTime, @NotNull ZonedDateTime updateTime) implements Serializable {
     /**
      * @see com.xuxiaocheng.WList.Server.Databases.User.UserInformation
      */

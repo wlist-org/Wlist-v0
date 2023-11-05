@@ -11,6 +11,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
@@ -19,7 +20,7 @@ import java.util.Map;
 import java.util.Objects;
 
 public record VisibleFileInformation(long id, long parentId, @NotNull String name, boolean isDirectory, long size,
-                                     @Nullable ZonedDateTime createTime, @Nullable ZonedDateTime updateTime) {
+                                     @Nullable ZonedDateTime createTime, @Nullable ZonedDateTime updateTime) implements Serializable {
     /**
      * @see com.xuxiaocheng.WList.Server.Databases.File.FileInformation
      */
