@@ -611,6 +611,10 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
 
     @Override
     protected void upload0(final long parentId, final @NotNull String filename, final long size, final @NotNull DuplicatePolicy ignoredPolicy, final @NotNull Consumer<? super @NotNull UnionPair<UnionPair<UploadRequirements, FailureReason>, Throwable>> consumer) {
+        if (size <= 0) { // Disallow.
+            consumer.accept(UnionPair.ok(UnionPair.fail(FailureReason.byExceedMaxSize(this.getLocation(parentId), 0, 0))));
+            return;
+        }
         consumer.accept(UnionPair.ok(UnionPair.ok(new UploadRequirements(List.of(), ignore -> {
             final AtomicReference<FileInformation> information = new AtomicReference<>(null);
             final Pair.ImmutablePair<List<UploadRequirements.OrderedConsumers>, Runnable> pair = UploadRequirements.splitUploadBuffer((content, listener) -> {
