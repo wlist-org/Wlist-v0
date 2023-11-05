@@ -431,7 +431,7 @@ public final class FilesAssistant {
             Files.delete(recordFile.toPath());
     }
 
-    public static @Nullable VisibleFailureReason download(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation location, final @NotNull File file, final @NotNull Predicate<? super @NotNull DownloadConfirm> continuer, final @Nullable Consumer<? super @NotNull InstantaneousProgressState> callback) throws IOException, InterruptedException, WrongStateException {
+    public static @Nullable VisibleFailureReason download(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation location, final @NotNull File file, final @NotNull Predicate<? super @NotNull DownloadConfirm> continuer, final @Nullable BiConsumer<? super @NotNull InstantaneousProgressState, ? super @NotNull List<Pair.@NotNull ImmutablePair<@NotNull AtomicLong, @NotNull Long>>> callback) throws IOException, InterruptedException, WrongStateException {
         List<Pair.ImmutablePair<Long, Long>> downloaded = FilesAssistant.readDownloadingProgress(location, file);
         if (downloaded.isEmpty()) {
             FilesAssistant.finishDownloadingProgress(file);
@@ -466,7 +466,7 @@ public final class FilesAssistant {
                 new DefaultThreadFactory(String.format("DownloadingExecutor#%s:%d@%s", location, firstConfirm.getT().downloadingSize(), file.getAbsolutePath())));
         boolean flag = true;
         final AtomicBoolean failure = new AtomicBoolean(false);
-        final Collection<Pair.ImmutablePair<AtomicLong, Long>> progress = new ArrayList<>();
+        final List<Pair.ImmutablePair<AtomicLong, Long>> progress = new ArrayList<>();
         try {
             final CountDownLatch latch = new CountDownLatch(downloaded.size());
             final Collection<String> ids = new ArrayList<>();
@@ -551,7 +551,7 @@ public final class FilesAssistant {
                             savable.set(false);
                         }
                     if (callback != null)
-                        callback.accept(s);
+                        callback.accept(s, progress);
                 }), failure, latch, ids);
                 latch.await();
             }

@@ -1,6 +1,5 @@
 package com.xuxiaocheng.WListTest.Assistants;
 
-import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.PredicateE;
 import com.xuxiaocheng.HeadLibs.Helpers.HMessageDigestHelper;
@@ -65,7 +64,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 
 //@Disabled("Manually test")
 @Execution(ExecutionMode.SAME_THREAD)
@@ -149,17 +147,16 @@ public class FilesAssistantTest extends ProvidersWrapper {
     public @NotNull VisibleFileInformation testUpload(final @NotNull WListClientInterface client, final @NotNull File file) throws WrongStateException, IOException, InterruptedException {
         final CountDownLatch latch = new CountDownLatch(1);
         final AtomicReference<VisibleFileInformation> information = new AtomicReference<>();
-        final Consumer<Pair.ImmutablePair<String, VisibleFileInformation>> callback = p -> {
+        BroadcastAssistant.get(this.address()).FileUpload.getCallbacks().put("testUpload", p -> {
             Assertions.assertEquals("test", p.getFirst());
             information.set(p.getSecond());
             latch.countDown();
-        };
-        BroadcastAssistant.get(this.address()).FileUpload.register(callback);
+        });
         Assertions.assertNull(FilesAssistant.upload(this.address(), this.adminUsername(), file,
                 this.location(this.root()), null, c -> {HLog.DefaultLogger.log(HLogLevel.INFO, c);return true;},
                 state -> HLog.DefaultLogger.log(HLogLevel.LESS, state.stages())));
         latch.await();
-        BroadcastAssistant.get(this.address()).FileUpload.unregister(callback);
+        BroadcastAssistant.get(this.address()).FileUpload.getCallbacks().remove("testUpload");
         OperateFilesHelper.trashFileOrDirectory(client, TokenAssistant.getToken(this.address(), this.adminUsername()), this.location(information.get().id()), false);
         return information.get();
     }
@@ -217,12 +214,11 @@ public class FilesAssistantTest extends ProvidersWrapper {
         final long size = buffer.readableBytes();
         final CountDownLatch latch = new CountDownLatch(1);
         final AtomicReference<VisibleFileInformation> information = new AtomicReference<>();
-        final Consumer<Pair.ImmutablePair<String, VisibleFileInformation>> callback = p -> {
+        BroadcastAssistant.get(this.address()).FileUpload.getCallbacks().put("testUploadStream", p -> {
             Assertions.assertEquals("test", p.getFirst());
             information.set(p.getSecond());
             latch.countDown();
-        };
-        BroadcastAssistant.get(this.address()).FileUpload.register(callback);
+        });
         Assertions.assertNull(FilesAssistant.uploadStream(this.address(), this.adminUsername(), (pair, consumer) -> consumer.accept(new InputStream() {
             private final @NotNull AtomicInteger pos = new AtomicInteger(pair.getFirst().intValue());
             @Override
@@ -235,7 +231,7 @@ public class FilesAssistantTest extends ProvidersWrapper {
         }), size, filename, this.location(this.root()), c -> {HLog.DefaultLogger.log(HLogLevel.INFO, c);return true;},
                 state -> HLog.DefaultLogger.log(HLogLevel.LESS, state.stages())));
         latch.await();
-        BroadcastAssistant.get(this.address()).FileUpload.unregister(callback);
+        BroadcastAssistant.get(this.address()).FileUpload.getCallbacks().remove("testUploadStream");
         return information.get();
     }
 
@@ -267,7 +263,7 @@ public class FilesAssistantTest extends ProvidersWrapper {
         file.deleteOnExit();
         Assertions.assertNull(FilesAssistant.download(this.address(), this.adminUsername(), this.location(id),
                 file, c -> {HLog.DefaultLogger.log("", c);return true;},
-                state -> HLog.DefaultLogger.log(HLogLevel.LESS, state.stages())));
+                (state, progress) -> HLog.DefaultLogger.log(HLogLevel.LESS, state.stages(), " @---@ ", progress)));
         Assertions.assertEquals(List.of(md5), method.invoke(null, file,
                 List.of(new UploadChecksum(0, file.length(), UploadChecksum.MD5))));
     }

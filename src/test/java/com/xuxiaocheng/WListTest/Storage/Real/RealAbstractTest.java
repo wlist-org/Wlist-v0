@@ -55,7 +55,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 
 /**
  * @see com.xuxiaocheng.WListTest.Storage.AbstractProviderTest
@@ -126,16 +125,15 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
         public void create(final WListClientInterface client, final @NotNull TestInfo info) throws IOException, InterruptedException, WrongStateException {
             final CountDownLatch latch = new CountDownLatch(1);
             final AtomicReference<VisibleFileInformation> information = new AtomicReference<>();
-            final Consumer<Pair.ImmutablePair<String, VisibleFileInformation>> callback = p -> {
+            BroadcastAssistant.get(address()).FileUpload.getCallbacks().put("create", p -> {
                 Assertions.assertEquals(location(0).storage(), p.getFirst());
                 information.set(p.getSecond());
                 latch.countDown();
-            };
-            BroadcastAssistant.get(address()).FileUpload.register(callback);
+            });
             final UnionPair<VisibleFileInformation, VisibleFailureReason> p = OperateFilesHelper.createDirectory(client, token(), location(root()), "directory", DuplicatePolicy.ERROR);
             Assertions.assertTrue(p.isSuccess(), p.toString());
             latch.await();
-            BroadcastAssistant.get(address()).FileUpload.unregister(callback);
+            BroadcastAssistant.get(address()).FileUpload.getCallbacks().remove("create");
             HLog.DefaultLogger.log(HLogLevel.LESS, info.getTestMethod().map(Method::getName).orElse("unknown"), ": ", information.get());
             Assertions.assertEquals(information.get(), p.getT());
             OperateFilesHelper.trashFileOrDirectory(client, token(), location(information.get().id()), true);
@@ -163,14 +161,13 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
 
             final CountDownLatch latch = new CountDownLatch(list.informationList().size());
             final Set<Pair.ImmutablePair<FileLocation, Boolean>> set = ConcurrentHashMap.newKeySet();
-            final Consumer<Pair.ImmutablePair<FileLocation, Boolean>> callback = p -> {
+            BroadcastAssistant.get(address()).FileUpdate.getCallbacks().put("refresh", p -> {
                 set.add(p);
                 latch.countDown();
-            };
-            BroadcastAssistant.get(address()).FileUpdate.register(callback);
+            });
             Assertions.assertTrue(FilesAssistant.refresh(address(), adminUsername(), location(root()), WListServer.IOExecutors, null));
             latch.await();
-            BroadcastAssistant.get(address()).FileUpdate.unregister(callback);
+            BroadcastAssistant.get(address()).FileUpdate.getCallbacks().remove("refresh");
 
             Assertions.assertEquals(l, set);
         }
@@ -284,15 +281,14 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
         public @NotNull VisibleFileInformation testUpload(final @NotNull FileLocation parent, final @NotNull File file) throws InterruptedException, WrongStateException, IOException {
             final CountDownLatch latch = new CountDownLatch(1);
             final AtomicReference<VisibleFileInformation> information = new AtomicReference<>();
-            final Consumer<Pair.ImmutablePair<String, VisibleFileInformation>> callback = p -> {
+            BroadcastAssistant.get(address()).FileUpload.getCallbacks().put("testUpload", p -> {
                 Assertions.assertEquals(location(0).storage(), p.getFirst());
                 information.set(p.getSecond());
                 latch.countDown();
-            };
-            BroadcastAssistant.get(address()).FileUpload.register(callback);
+            });
             FilesAssistant.upload(address(), adminUsername(), file, parent, null, PredicateE.truePredicate(), null);
             latch.await();
-            BroadcastAssistant.get(address()).FileUpload.unregister(callback);
+            BroadcastAssistant.get(address()).FileUpload.getCallbacks().remove("testUpload");
             return information.get();
         }
     }
@@ -334,15 +330,14 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
 
             final CountDownLatch latch = new CountDownLatch(1);
             final AtomicReference<Pair.ImmutablePair<FileLocation, Boolean>> r = new AtomicReference<>();
-            final Consumer<Pair.ImmutablePair<FileLocation, Boolean>> callback = p -> {
+            BroadcastAssistant.get(address()).FileUpdate.getCallbacks().put("file", p -> {
                 r.set(p);
                 latch.countDown();
-            };
-            BroadcastAssistant.get(address()).FileUpdate.register(callback);
+            });
             final UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> res = OperateFilesHelper.copyDirectly(client, token(), location(information.id()), false, location(parent.id()), "temp-" + information.name(), DuplicatePolicy.ERROR);
             Assertions.assertTrue(res.isSuccess(), res.toString());
             if (res.getT().isEmpty()) {
-                BroadcastAssistant.get(address()).FileUpdate.unregister(callback);
+                BroadcastAssistant.get(address()).FileUpdate.getCallbacks().remove("file");
                 HLog.DefaultLogger.log(HLogLevel.ERROR, "Unsupported operation: ", info.getTestClass().orElseThrow().getName(), "#", info.getTestMethod().orElseThrow().getName());
                 return;
             }
@@ -378,15 +373,14 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
 
             final CountDownLatch latch = new CountDownLatch(1);
             final AtomicReference<Pair.ImmutablePair<FileLocation, Boolean>> r = new AtomicReference<>();
-            final Consumer<Pair.ImmutablePair<FileLocation, Boolean>> callback = p -> {
+            BroadcastAssistant.get(address()).FileUpdate.getCallbacks().put("file", p -> {
                 r.set(p);
                 latch.countDown();
-            };
-            BroadcastAssistant.get(address()).FileUpdate.register(callback);
+            });
             final UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> res = OperateFilesHelper.moveDirectly(client, token(), location(information.id()), false, location(parent.id()), DuplicatePolicy.ERROR);
             Assertions.assertTrue(res.isSuccess(), res.toString());
             if (res.getT().isEmpty()) {
-                BroadcastAssistant.get(address()).FileUpdate.unregister(callback);
+                BroadcastAssistant.get(address()).FileUpdate.getCallbacks().remove("file");
                 HLog.DefaultLogger.log(HLogLevel.ERROR, "Unsupported operation: ", info.getTestClass().orElseThrow().getName(), "#", info.getTestMethod().orElseThrow().getName());
                 return;
             }
@@ -418,15 +412,14 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
 
             final CountDownLatch latch = new CountDownLatch(1);
             final AtomicReference<Pair.ImmutablePair<FileLocation, Boolean>> r = new AtomicReference<>();
-            final Consumer<Pair.ImmutablePair<FileLocation, Boolean>> callback = p -> {
+            BroadcastAssistant.get(address()).FileUpdate.getCallbacks().put("file", p -> {
                 r.set(p);
                 latch.countDown();
-            };
-            BroadcastAssistant.get(address()).FileUpdate.register(callback);
+            });
             final UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> res = OperateFilesHelper.renameDirectly(client, token(), location(information.id()), false, "renamed-" + information.name(), DuplicatePolicy.ERROR);
             Assertions.assertTrue(res.isSuccess(), res.toString());
             if (res.getT().isEmpty()) {
-                BroadcastAssistant.get(address()).FileUpdate.unregister(callback);
+                BroadcastAssistant.get(address()).FileUpdate.getCallbacks().remove("file");
                 HLog.DefaultLogger.log(HLogLevel.ERROR, "Unsupported operation: ", info.getTestClass().orElseThrow().getName(), "#", info.getTestMethod().orElseThrow().getName());
                 return;
             }
@@ -446,15 +439,14 @@ public abstract class RealAbstractTest<C extends StorageConfiguration> extends P
 
             final CountDownLatch latch = new CountDownLatch(1);
             final AtomicReference<Pair.ImmutablePair<FileLocation, Boolean>> r = new AtomicReference<>();
-            final Consumer<Pair.ImmutablePair<FileLocation, Boolean>> callback = p -> {
+            BroadcastAssistant.get(address()).FileUpdate.getCallbacks().put("directory", p -> {
                 r.set(p);
                 latch.countDown();
-            };
-            BroadcastAssistant.get(address()).FileUpdate.register(callback);
+            });
             final UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> res = OperateFilesHelper.renameDirectly(client, token(), location(information.id()), true, "renamed-" + information.name(), DuplicatePolicy.ERROR);
             Assertions.assertTrue(res.isSuccess(), res.toString());
             if (res.getT().isEmpty()) {
-                BroadcastAssistant.get(address()).FileUpdate.unregister(callback);
+                BroadcastAssistant.get(address()).FileUpdate.getCallbacks().remove("directory");
                 HLog.DefaultLogger.log(HLogLevel.ERROR, "Unsupported operation: ", info.getTestClass().orElseThrow().getName(), "#", info.getTestMethod().orElseThrow().getName());
                 return;
             }
