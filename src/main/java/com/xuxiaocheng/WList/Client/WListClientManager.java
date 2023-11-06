@@ -182,8 +182,11 @@ public class WListClientManager implements Closeable {
         public void close() {
             this.manager.activeClients.remove(this);
             final GenericObjectPool<WListClientInterface> pool = this.manager.clientPool.getInstanceNullable();
-            if (pool != null) // The pool may had closed before each active client closed.
+            if (pool != null) {// The pool may have closed before each active client closed.
                 pool.returnObject(this);
+                if (!this.isActive())
+                    this.manager.close();
+            }
         }
 
         public void closeInside() {
