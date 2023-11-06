@@ -221,7 +221,7 @@ public class PartList extends SFragmentFilePart {
                 else
                     adapter.addHeader(PartList.this.listLoadingView(activity.getLayoutInflater()));
                 Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> {
-                    (isDown ? noMoreDown : noMoreUp).set(false); // prevent retry forever when server error.
+                    (isDown ? noMoreDown : noMoreUp).set(true); // prevent retry forever when server error.
                     VisibleFilesListInformation list = null;
                     final int limit;
                     final String title = MessageFormat.format(activity.getString(R.string.page_file_listing_title), PartList.this.fragmentContent().pageFileName.getText());

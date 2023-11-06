@@ -40,7 +40,7 @@ public abstract class IPage<P extends ViewBinding> extends IFragmentBase<P> {
 
     @Override
     protected boolean iOnBackPressed() {
-        return this.existingFragments().stream().anyMatch(IFragmentBase::iOnBackPressed); // TODO
+        return this.existingFragments().stream().anyMatch(IFragmentBase::iOnBackPressed);
     }
 
     @Override
