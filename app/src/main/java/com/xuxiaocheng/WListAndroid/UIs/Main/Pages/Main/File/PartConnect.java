@@ -49,10 +49,16 @@ public class PartConnect extends SFragmentFilePart {
         page.pageFileConnectionInternalServer.setOnClickListener(v -> {
             if (!clickable.compareAndSet(true, false)) return;
             page.pageFileConnectionInternalServer.setText(R.string.page_file_connect_internal_server_starting);
-            this.connectInternalServer((a, s) -> Main.runOnUiThread(a, () -> page.pageFileConnectionInternalServer.setText(s)), a -> {
-                clickable.set(true);
-                Main.runOnUiThread(a, () -> page.pageFileConnectionInternalServer.setText(R.string.page_file_connect_internal_server));
-            });
+            Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
+                final InetSocketAddress address = new InetSocketAddress("192.168.140.57", 5212);
+                WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
+                if (TokenAssistant.login(address, IdentifierNames.UserName.Admin.getIdentifier(), "0Xg9CsCU", Main.ClientExecutors));
+                this.activity().connect(address, IdentifierNames.UserName.Admin.getIdentifier(), null);
+            }));
+//            this.connectInternalServer((a, s) -> Main.runOnUiThread(a, () -> page.pageFileConnectionInternalServer.setText(s)), a -> {
+//                clickable.set(true);
+//                Main.runOnUiThread(a, () -> page.pageFileConnectionInternalServer.setText(R.string.page_file_connect_internal_server));
+//            });
         });
     }
 

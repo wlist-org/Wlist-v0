@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WListAndroid.UIs.Main.Pages.Main.File;
 
+import android.view.View;
 import androidx.annotation.UiThread;
 import androidx.appcompat.app.AlertDialog;
 import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
@@ -7,8 +8,10 @@ import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.WList.AndroidSupports.FileInformationGetter;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
+import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
+import com.xuxiaocheng.WListAndroid.Tasks.DownloadTasksManager;
 import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileOperationBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileOperationRenameBinding;
@@ -45,6 +48,7 @@ class PartOperation extends SFragmentFilePart {
         final AtomicBoolean clickable = new AtomicBoolean(true);
         operationBinding.pageFileOperationRename.setOnClickListener(u -> {
             if (!clickable.compareAndSet(true, false)) return;
+            modifier.cancel();
             final PageFileOperationRenameBinding rename = PageFileOperationRenameBinding.inflate(this.activity().getLayoutInflater());
             ViewUtil.focusEdit(rename.pageFileRenameName, FileInformationGetter.name(information));
             new AlertDialog.Builder(this.activity()).setTitle(R.string.page_file_operation_rename).setView(rename.getRoot())
@@ -56,34 +60,6 @@ class PartOperation extends SFragmentFilePart {
                         Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
                             throw new UnsupportedOperationException("WIP");
                         }, () -> clickable.set(true))); // TODO
-//        final PageFileOperationBinding operationBinding = PageFileOperationBinding.inflate(this.pageFile.activity().getLayoutInflater());
-//        final AlertDialog modifier = new AlertDialog.Builder(this.pageFile.activity())
-//                .setTitle(R.string.page_file_operation).setView(operationBinding.getRoot())
-//                .setOnCancelListener(d -> c.set(true))
-//                .setPositiveButton(R.string.cancel, (d, w) -> c.set(true)).create();
-//        operationBinding.pageFileOperationName.setText(FileInformationGetter.name(information));
-//        final long size = FileInformationGetter.size(information);
-//        final String unknown = this.pageFile.activity().getString(R.string.unknown);
-//        operationBinding.pageFileOperationSize.setText(ViewUtil.formatSizeDetail(size, unknown));
-//        operationBinding.pageFileOperationCreate.setText(ViewUtil.formatTime(FileInformationGetter.createTime(information), unknown));
-//        operationBinding.pageFileOperationUpdate.setText(ViewUtil.formatTime(FileInformationGetter.updateTime(information), unknown));
-//        final FileLocation current = new FileLocation(storage, FileInformationGetter.id(information));
-//        final AtomicBoolean clickable = new AtomicBoolean(true);
-//        operationBinding.pageFileOperationRename.setOnClickListener(u -> {
-//            if (!clickable.compareAndSet(true, false)) return;
-//            modifier.cancel();
-//            final PageFileRenameBinding renamer = PageFileRenameBinding.inflate(this.pageFile.activity().getLayoutInflater());
-//            renamer.pageFileRenameName.setText(FileInformationGetter.name(information));
-//            if (renamer.pageFileRenameName.requestFocus()) {
-//                renamer.pageFileRenameName.setSelectAllOnFocus(true);
-//                renamer.pageFileRenameName.setSelection(Objects.requireNonNull(renamer.pageFileRenameName.getText()).length());
-//            }
-//            new AlertDialog.Builder(this.pageFile.activity()).setTitle(R.string.page_file_operation_rename).setView(renamer.getRoot())
-//                    .setNegativeButton(R.string.cancel, null)
-//                    .setPositiveButton(R.string.confirm, (d, w) -> {
-//                        final String renamed = ViewUtil.getText(renamer.pageFileRenameName);
-//                        if (AndroidSupporter.isBlank(renamed) || FileInformationGetter.name(information).equals(renamed)) return;
-
 //                        final AlertDialog dialog = this.pageFile.partUpload.loadingDialog(this.pageFile.activity(), R.string.page_file_operation_rename);
 //                        Main.runOnBackgroundThread(this.pageFile.activity(), HExceptionWrapper.wrapRunnable(() -> {
 //                            HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Renaming.",
@@ -100,9 +76,9 @@ class PartOperation extends SFragmentFilePart {
             modifier.cancel();
         });
         operationBinding.pageFileOperationRenameImage.setOnClickListener(u -> operationBinding.pageFileOperationRename.performClick());
-//        operationBinding.pageFileOperationMove.setOnClickListener(u -> {
-//            if (!clickable.compareAndSet(true, false)) return;
-//            modifier.cancel();
+        operationBinding.pageFileOperationMove.setOnClickListener(u -> {
+            if (!clickable.compareAndSet(true, false)) return;
+            modifier.cancel();
 //            Main.runOnBackgroundThread(this.pageFile.activity(), HExceptionWrapper.wrapRunnable(() -> {
 //                final Pair.ImmutablePair<String, Long> pair = FileInformationGetter.isDirectory(information) ?
 //                        this.queryTargetDirectory(R.string.page_file_operation_move, storage, FileInformationGetter.id(information)) :
@@ -127,11 +103,11 @@ class PartOperation extends SFragmentFilePart {
 //                    }, () -> Main.runOnUiThread(this.pageFile.activity(), dialog::cancel)));
 //                });
 //            }));
-//        });
-//        operationBinding.pageFileOperationMoveImage.setOnClickListener(u -> operationBinding.pageFileOperationMove.performClick());
-//        operationBinding.pageFileOperationCopy.setOnClickListener(u -> {
-//            if (!clickable.compareAndSet(true, false)) return;
-//            modifier.cancel();
+        });
+        operationBinding.pageFileOperationMoveImage.setOnClickListener(u -> operationBinding.pageFileOperationMove.performClick());
+        operationBinding.pageFileOperationCopy.setOnClickListener(u -> {
+            if (!clickable.compareAndSet(true, false)) return;
+            modifier.cancel();
 //            Main.runOnBackgroundThread(this.pageFile.activity(), HExceptionWrapper.wrapRunnable(() -> {
 //                final Pair.ImmutablePair<String, Long> pair = FileInformationGetter.isDirectory(information) ?
 //                        this.queryTargetDirectory(R.string.page_file_operation_copy, storage, FileInformationGetter.id(information)) :
@@ -156,11 +132,11 @@ class PartOperation extends SFragmentFilePart {
 //                    }, () -> Main.runOnUiThread(this.pageFile.activity(), dialog::cancel)));
 //                });
 //            }));
-//        });
-//        operationBinding.pageFileOperationCopyImage.setOnClickListener(u -> operationBinding.pageFileOperationCopy.performClick());
-//        operationBinding.pageFileOperationTrash.setOnClickListener(u -> {
-//            if (!clickable.compareAndSet(true, false)) return;
-//            modifier.cancel();
+        });
+        operationBinding.pageFileOperationCopyImage.setOnClickListener(u -> operationBinding.pageFileOperationCopy.performClick());
+        operationBinding.pageFileOperationTrash.setOnClickListener(u -> {
+            if (!clickable.compareAndSet(true, false)) return;
+            modifier.cancel();
 //            new AlertDialog.Builder(this.pageFile.activity()).setTitle(R.string.page_file_operation_trash)
 //                    .setNegativeButton(R.string.cancel, null)
 //                    .setPositiveButton(R.string.confirm, (d, w) -> {
@@ -172,50 +148,24 @@ class PartOperation extends SFragmentFilePart {
 //                                Main.showToast(this.pageFile.activity(), R.string.page_file_operation_delete_success);
 //                        }, () -> Main.runOnUiThread(this.pageFile.activity(), dialog::cancel)));
 //                    }).show();
-//        });
-//        operationBinding.pageFileOperationTrashImage.setOnClickListener(u -> operationBinding.pageFileOperationTrash.performClick());
-//        if (FileInformationGetter.isDirectory(information)) {
-//            operationBinding.pageFileOperationDownload.setVisibility(View.GONE);
-//            operationBinding.pageFileOperationDownloadImage.setVisibility(View.GONE);
-//        } else {
-//            operationBinding.pageFileOperationDownload.setOnClickListener(u -> {
-//                if (!clickable.compareAndSet(true, false)) return;
-//                modifier.cancel();
-//                new AlertDialog.Builder(this.pageFile.activity()).setTitle(R.string.page_file_operation_download)
-//                        .setNegativeButton(R.string.cancel, null)
-//                        .setPositiveButton(R.string.confirm, (d, w) -> {
-//                            final AlertDialog loader = new AlertDialog.Builder(this.pageFile.activity()).setTitle(FileInformationGetter.name(information)).setCancelable(false).show();
-//                            Main.runOnBackgroundThread(this.pageFile.activity(), HExceptionWrapper.wrapRunnable(() -> {
-//                                final File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "wlist/" + FileInformationGetter.name(information));
-//                                PermissionUtil.tryGetPermission(this.pageFile.activity(), Permissions.build(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE), R.string.toast_no_read_permissions);
-//                                HFileHelper.ensureFileAccessible(file, true);
-//                                HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Downloading.",
-//                                        ParametersMap.create().add("address", this.pageFile.address()).add("information", information).add("file", file));
-////                                final VisibleFailureReason res;
-////                                try {
-////                                    this.pageFile.partList.listLoadingAnimation("Downloading", true, 0, 0); // TODO: download progress.
-////                                    res = FilesAssistant.download(this.pageFile.address(), this.pageFile.username(), new FileLocation(storage, FileInformationGetter.id(information)), file, PredicateE.truePredicate(), s -> {
-////                                        long curr = 0, total = 0;
-////                                        for (final Pair.ImmutablePair<Long, Long> pair : InstantaneousProgressStateGetter.stages(s)) {
-////                                            curr += pair.getFirst().longValue();
-////                                            total += pair.getSecond().longValue();
-////                                        }
-////                                        final long l = curr, t = total;
-////                                        this.pageFile.partList.listLoadingAnimation("Downloading", true, l, t);
-////                                    });
-////                                } finally {
-////                                    this.pageFile.partList.listLoadingAnimation("Downloading", false, 0, 0);
-////                                }
-////                                if (res != null)
-////                                    Main.runOnUiThread(this.pageFile.activity(), () -> Toast.makeText(this.pageFile.activity(), FailureReasonGetter.kind(res) + FailureReasonGetter.message(res), Toast.LENGTH_SHORT).show());
-////                                else
-////                                    Main.showToast(this.pageFile.activity(), R.string.page_file_operation_download_success);
-//                            }, () -> Main.runOnUiThread(this.pageFile.activity(), loader::cancel)));
-//                        }).show();
-//            });
-//            operationBinding.pageFileOperationDownloadImage.setOnClickListener(u -> operationBinding.pageFileOperationDownload.performClick());
-//        }
-//        modifier.show();
+        });
+        operationBinding.pageFileOperationTrashImage.setOnClickListener(u -> operationBinding.pageFileOperationTrash.performClick());
+        if (FileInformationGetter.isDirectory(information)) {
+            operationBinding.pageFileOperationDownload.setVisibility(View.GONE);
+            operationBinding.pageFileOperationDownloadImage.setVisibility(View.GONE);
+        } else {
+            operationBinding.pageFileOperationDownload.setOnClickListener(u -> {
+                if (!clickable.compareAndSet(true, false)) return;
+                modifier.cancel();
+                new AlertDialog.Builder(this.activity()).setTitle(R.string.page_file_operation_download)
+                        .setNegativeButton(R.string.cancel, null)
+                        .setPositiveButton(R.string.confirm, (d, w) -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> DownloadTasksManager.getInstance()
+                                .addWorkingTask(this.activity(), this.address(), this.username(), new DownloadTasksManager.DownloadTask(storage, information, MiscellaneousUtil.now()), true))))
+                        .show();
+            });
+            operationBinding.pageFileOperationDownloadImage.setOnClickListener(u -> operationBinding.pageFileOperationDownload.performClick());
+        }
+        modifier.show();
     }
 
 
