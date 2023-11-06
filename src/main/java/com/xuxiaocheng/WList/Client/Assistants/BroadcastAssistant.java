@@ -269,10 +269,9 @@ public final class BroadcastAssistant {
                             runner.run();
                     }
                 } catch (final IOException | IllegalStateException exception) {
-                    if (WListClientManager.instances.isInitialized(address))
-                        HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
-                    else
-                        flag = false;
+                    HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
+                    flag = false;
+                    WListClientManager.quicklyUninitialize(address);
                 } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                     HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
                 } finally {
