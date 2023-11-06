@@ -13,6 +13,7 @@ import com.xuxiaocheng.WList.Commons.Codecs.MessageServerCiphers;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
+import com.xuxiaocheng.WList.Server.Databases.User.PasswordGuard;
 import com.xuxiaocheng.WList.Server.Databases.User.UserManager;
 import com.xuxiaocheng.WList.Server.Databases.UserGroup.UserGroupManager;
 import com.xuxiaocheng.WList.Server.Operations.Helpers.IdsHelper;
@@ -67,6 +68,7 @@ public final class WList {
     private static HLog logger;
 
     private static void handleArgs(final @NotNull String @NotNull ... args) {
+        boolean resetAdminPassword = false;
         File runtimePath = new File("").getAbsoluteFile();
         for (final String arg: args) {
             if ("-Debug".equalsIgnoreCase(arg))
@@ -105,10 +107,12 @@ public final class WList {
                 }
                 HLog.LoggerCreateCore.reinitialize(n -> HLog.createInstance(n, level, false, true, HMergedStreams.getFileOutputStreamNoException(null)));
             }
+            if ("force-reset-admin-password".equalsIgnoreCase(arg))
+                resetAdminPassword = true;
             if ("/?".equals(arg) || arg.endsWith("help")) {
                 //noinspection UseOfSystemOutOrSystemErr
                 System.out.println("""
-Usage: [-Debug|-NoDebug] [-Inside|-Outside] [-NoLogOperation|-LogOperation] [-NoLogActive|-LogActive] [-NoLogNetwork|-LogNetwork] [-NoLogCipher|-LogCipher] [-Path:<path>] [-LogLevel:<level>]
+Usage: [-Debug|-NoDebug] [-Inside|-Outside] [-NoLogOperation|-LogOperation] [-NoLogActive|-LogActive] [-NoLogNetwork|-LogNetwork] [-NoLogCipher|-LogCipher] [-Path:<path>] [-LogLevel:<level>] [help|force-reset-admin-password]
 
 Debug: Set debug mode.
 Inside: Disallow logon.
@@ -136,6 +140,21 @@ LogLevel: The log level.
         }
         final File path = runtimePath;
         WList.RuntimePath.initializeIfNot(() -> path);
+        if (resetAdminPassword) {
+            try {
+                if (HeadLibs.isDebugMode() && System.getProperty("io.netty.leakDetectionLevel") == null) System.setProperty("io.netty.leakDetectionLevel", "ADVANCED");
+                final HLog logger = HLog.create("DefaultLogger");
+                WList.logger = logger;
+                WList.initializeServerDatabase();
+                final String password = PasswordGuard.generateRandomPassword();
+                UserManager.getInstance().updateUserPassword(UserManager.getInstance().getAdminId(), PasswordGuard.encryptPassword(password), null);
+                logger.log(HLogLevel.WARN, "The admin password has been reset to: " + password);
+            } catch (final IOException | SQLException exception) {
+                HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
+            }
+            //noinspection CallToSystemExit
+            System.exit(0);
+        }
     }
 
     public static void main(final @NotNull String @NotNull ... args) {
