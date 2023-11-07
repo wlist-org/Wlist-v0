@@ -45,6 +45,7 @@ public abstract class IFragmentBase<V extends ViewBinding> extends Fragment {
         final V fragment = this.iOnInflater();
         this.contentCache.reinitialize(fragment);
         this.iOnRestoreInstanceState(this.getArguments(), savedInstanceState == null ? null : savedInstanceState.getBundle("i:fragment"));
+        fragment.getRoot().setClickable(true);
         this.iOnBuildPage(fragment, savedInstanceState == null);
         return fragment.getRoot();
     }

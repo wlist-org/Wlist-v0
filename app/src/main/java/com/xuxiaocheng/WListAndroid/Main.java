@@ -6,6 +6,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
 import android.util.Log;
+import android.view.View;
 import android.widget.Toast;
 import androidx.annotation.StringRes;
 import androidx.annotation.UiThread;
@@ -30,6 +31,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class Main extends Application {
     @Override
@@ -140,5 +142,14 @@ public final class Main extends Application {
             Main.AndroidExecutors.schedule(wrappedRunnable, delay, unit).addListener(Main.exceptionListenerWithToast(activity));
         else
             Main.AndroidExecutors.schedule(wrappedRunnable, delay, unit).addListener(MiscellaneousUtil.exceptionListener());
+    }
+
+    public static View.@NotNull OnClickListener debounceClickListener(final View.@NotNull OnClickListener listener, final long delay, final @NotNull TimeUnit unit) {
+        final AtomicBoolean clicked = new AtomicBoolean(false);
+        return v -> {
+            if (!clicked.compareAndSet(false, true)) return;
+            Main.runOnBackgroundThread(null, () -> clicked.set(false), delay, unit);
+            listener.onClick(v);
+        };
     }
 }

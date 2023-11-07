@@ -23,6 +23,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
 import java.time.ZonedDateTime;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -107,7 +108,7 @@ class PartUpload extends SFragmentFilePart {
             }
             return true;
         });
-        page.pageFileUploader.setOnClickListener(u -> {
+        page.pageFileUploader.setOnClickListener(Main.debounceClickListener(u -> {
             if (this.fragment.partList().isOnRoot()) {
                 this.addStorage(this.activity());
                 return;
@@ -149,7 +150,7 @@ class PartUpload extends SFragmentFilePart {
             dialog.setCanceledOnTouchOutside(true);
             dialog.setContentView(uploader.getRoot());
             dialog.show();
-        });
+        }, 300, TimeUnit.MILLISECONDS));
     }
 
     public static final @NotNull String UploadChooserTag = "wlist:activity_rq_for_result#upload_chooser";
