@@ -76,7 +76,7 @@ class PartOptions extends SFragmentFilePart {
             popup.setOnItemClickListener((p, w, pos, i) -> {
                 if (!clickable.compareAndSet(true, false)) return;
                 popup.dismiss();
-                if (!(list.get(pos).get("pos") instanceof Integer position)) return;
+                if (!(list.get(pos).get("pos") instanceof final Integer position)) return;
                 switch (position.intValue()) {
                     case 1 -> this.sort();
                     case 2 -> this.filter();

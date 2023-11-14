@@ -64,7 +64,7 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
         PermissionUtil.readPermission(activity);
         HFileHelper.ensureDirectoryExist(manager.DownloadRecordsSaveDirectory.toPath());
         final File[] files = manager.DownloadRecordsSaveDirectory.listFiles();
-        if (files == null || files.length == 0) return;
+        if (files == null) return;
         for (final File file: files)
             try (final DataInputStream inputStream = new DataInputStream(new GZIPInputStream(new BufferedInputStream(new FileInputStream(file))))) {
                 final DownloadTask task = DownloadTasksManager.parseTask(inputStream);
@@ -89,7 +89,7 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
 
     @WorkerThread
     private @NotNull File getRecordingFile(final @NotNull DownloadTask task) {
-        return new File(this.DownloadRecordsSaveDirectory, task.storage + " - " + FileInformationGetter.id(task.information));
+        return new File(this.DownloadRecordsSaveDirectory, task.storage + " - " + FileInformationGetter.id(task.information) + ".bin");
     }
 
     @Override
@@ -177,7 +177,7 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
         @Override
         public boolean equals(final @Nullable Object o) {
             if (this == o) return true;
-            if (!(o instanceof DownloadTask that)) return false;
+            if (!(o instanceof final DownloadTask that)) return false;
             return this.storage.equals(that.storage) && FileInformationGetter.id(this.information) == FileInformationGetter.id(that.information);
         }
 

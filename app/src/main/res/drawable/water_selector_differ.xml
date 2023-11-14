@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<selector xmlns:android="http://schemas.android.com/apk/res/android">
-	<item android:color="@color/water_selector" android:state_pressed="true" />
-	<item android:color="@color/water_selector" android:state_focused="true" />
-	<item android:color="@color/background_differ" />
-</selector>
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+        android:color="@color/water_selector">
+	<item>
+		<shape>
+			<corners android:radius="1dp" />
+			<solid android:color="@color/background_differ" />
+		</shape>
+	</item>
+</ripple>

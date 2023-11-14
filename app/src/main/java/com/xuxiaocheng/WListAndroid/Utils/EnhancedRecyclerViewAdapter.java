@@ -199,7 +199,7 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
     public void onAttachedToRecyclerView(final @NotNull RecyclerView recyclerView) {
         super.onAttachedToRecyclerView(recyclerView);
         final RecyclerView.LayoutManager layoutManager = recyclerView.getLayoutManager();
-        if (layoutManager instanceof GridLayoutManager gridLayoutManager)
+        if (layoutManager instanceof final GridLayoutManager gridLayoutManager)
             gridLayoutManager.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
                 @Override
                 public int getSpanSize(final int position) {
@@ -212,7 +212,7 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
     public void onViewAttachedToWindow(final @NotNull WrappedViewHolder<?, T> holder) {
         super.onViewAttachedToWindow(holder);
         final ViewGroup.LayoutParams params = holder.itemView.getLayoutParams();
-        if (params instanceof StaggeredGridLayoutManager.LayoutParams layoutParams)
+        if (params instanceof final StaggeredGridLayoutManager.LayoutParams layoutParams)
             layoutParams.setFullSpan(this.getItemViewType(holder.getLayoutPosition()) != 0);
     }
 

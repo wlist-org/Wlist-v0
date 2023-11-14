@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WListAndroid.Utils;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.view.View;
 import androidx.annotation.AnyThread;
@@ -8,6 +9,7 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import org.jetbrains.annotations.NotNull;
 
+@SuppressLint("ViewConstructor")
 public final class WrappedView extends ConstraintLayout {
     public WrappedView(final @NotNull Context context, final boolean setParams) {
         super(context);

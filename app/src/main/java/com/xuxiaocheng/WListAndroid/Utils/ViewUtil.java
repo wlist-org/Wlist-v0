@@ -66,7 +66,7 @@ public final class ViewUtil {
 
     @UiThread
     public static void startDrawableAnimation(final @NotNull ImageView loading) {
-        if (loading.getDrawable() instanceof Animatable animatable)
+        if (loading.getDrawable() instanceof final Animatable animatable)
             animatable.start();
     }
 

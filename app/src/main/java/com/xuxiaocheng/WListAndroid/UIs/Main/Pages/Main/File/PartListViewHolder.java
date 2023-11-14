@@ -11,9 +11,7 @@ import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.Utils.EnhancedRecyclerViewAdapter;
 import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
-import java.util.Objects;
 import java.util.function.Consumer;
 
 class PartListViewHolder extends EnhancedRecyclerViewAdapter.WrappedViewHolder<ConstraintLayout, VisibleFileInformation> {
@@ -44,26 +42,7 @@ class PartListViewHolder extends EnhancedRecyclerViewAdapter.WrappedViewHolder<C
     }
 
     @Override
-    public boolean equals(final @Nullable Object o) {
-        if (this == o) return true;
-        if (!(o instanceof PartListViewHolder that)) return false;
-        return this.image.equals(that.image) && this.name.equals(that.name) && this.tips.equals(that.tips) && this.operation.equals(that.operation);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(this.image, this.name, this.tips, this.operation);
-    }
-
-    @Override
     public @NotNull String toString() {
-        return "PartListViewHolder{" +
-                "clicker=" + this.clicker +
-                ", listener=" + this.listener +
-                ", image=" + this.image +
-                ", name=" + this.name +
-                ", tips=" + this.tips +
-                ", operation=" + this.operation +
-                '}';
+        return "PartListViewHolder{}";
     }
 }
