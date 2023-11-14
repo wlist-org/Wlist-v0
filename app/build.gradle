@@ -37,6 +37,8 @@ android {
         exclude 'META-INF/io.netty.versions.properties'
         exclude 'META-INF/DEPENDENCIES'
     }
+
+    namespace 'com.xuxiaocheng.WListAndroid'
 }
 
 dependencies {
