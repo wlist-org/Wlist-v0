@@ -53,7 +53,7 @@ public final class YamlHelper {
                 .setTagConstructors(Map.of(Tag.NULL, new ConstructYamlNull())).build()).loadFromInputStream(stream);
         if (yaml == null)
             return Map.of();
-        if (!(yaml instanceof LinkedHashMap<?, ?> map))
+        if (!(yaml instanceof final LinkedHashMap<?, ?> map))
             throw new IOException("Invalid yaml root class." + ParametersMap.create().add("real", yaml.getClass().getName()).add("expected", (Supplier<String>) () -> "LinkedHashMap<?,?>"));
         return YamlHelper.normalizeMapNode(map);
     }
@@ -104,7 +104,7 @@ public final class YamlHelper {
 
     public static @Nullable String transferString(final @Nullable Object obj, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String slot) {
         if (obj == null) return null;
-        if (!(obj instanceof String str)) {
+        if (!(obj instanceof final String str)) {
             errors.add(Pair.ImmutablePair.makeImmutablePair(slot, "Require normal string." + ParametersMap.create().add("obj", obj)));
             return null;
         }
@@ -170,7 +170,7 @@ public final class YamlHelper {
 
     public static @Nullable @UnmodifiableView Map<@NotNull String, @NotNull Object> transferMapNode(final @Nullable Object obj, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String slot) {
         if (obj == null) return null;
-        if (!(obj instanceof Map<?, ?> map)) {
+        if (!(obj instanceof final Map<?, ?> map)) {
             errors.add(Pair.ImmutablePair.makeImmutablePair(slot, "Require map node." + ParametersMap.create().add("real", obj.getClass()).add("obj", obj)));
             return null;
         }
@@ -179,7 +179,7 @@ public final class YamlHelper {
 
     public static @Nullable @UnmodifiableView List<@NotNull Object> transferListNode(final @Nullable Object obj, final @NotNull Collection<? super Pair.@NotNull ImmutablePair<@NotNull String, @NotNull String>> errors, final @NotNull String slot) {
         if (obj == null) return null;
-        if (!(obj instanceof ArrayList<?> list)) {
+        if (!(obj instanceof final ArrayList<?> list)) {
             errors.add(Pair.ImmutablePair.makeImmutablePair(slot, "Require list node." + ParametersMap.create().add("real", obj.getClass()).add("obj", obj)));
             return null;
         }

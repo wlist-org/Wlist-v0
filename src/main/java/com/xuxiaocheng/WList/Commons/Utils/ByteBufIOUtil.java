@@ -441,7 +441,7 @@ public final class ByteBufIOUtil {
     public static void writeVariable4LenLong(final @NotNull ByteBuf buffer, final long l) throws IOException {
         long value = l;
         while ((value & 0xFFFFFFFF80000000L) != 0) {
-            ByteBufIOUtil.writeInt(buffer, (int) ((value & 0x7FFFFFFF) | 0x80000000));
+            ByteBufIOUtil.writeInt(buffer, (int) ((value & 0x7FFFFFFF) | 0x80000000L));
             value >>>= 23;
         }
         ByteBufIOUtil.writeInt(buffer, (int) value);

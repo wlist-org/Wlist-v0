@@ -86,7 +86,7 @@ public record UploadRequirements(@NotNull @Unmodifiable List<@NotNull UploadChec
         final int full = size / NetworkTransmission.FileTransferBufferSize - (size % NetworkTransmission.FileTransferBufferSize == 0 ? 1 : 0);
         final List<OrderedConsumers> list = new ArrayList<>(full + 1);
         final AtomicBoolean leaked = new AtomicBoolean(true);
-        final ByteBuf[] cacher = new ByteBuf[full + 1];
+        final ByteBuf[] caches = new ByteBuf[full + 1];
         final long[] sizes = new long[full + 1];
         final ProgressBar.ProgressListener[] listeners = new ProgressBar.ProgressListener[full + 1];
         int i = 0;
@@ -98,11 +98,11 @@ public record UploadRequirements(@NotNull @Unmodifiable List<@NotNull UploadChec
             list.add(new OrderedConsumers(b, e, (c, consumer, listener) -> {
                 try {
                     assert c.readableBytes() == length;
-                    cacher[k] = c;
+                    caches[k] = c;
                     sizes[k] = length;
                     listeners[k] = listener;
                     if (countDown.getAndDecrement() == 0) {
-                        final CompositeByteBuf buf = ByteBufAllocator.DEFAULT.compositeBuffer(full + 1).addComponents(true, cacher);
+                        final CompositeByteBuf buf = ByteBufAllocator.DEFAULT.compositeBuffer(full + 1).addComponents(true, caches);
                         try {
                             leaked.set(false);
                             final AtomicInteger index = new AtomicInteger(0);
@@ -133,7 +133,7 @@ public record UploadRequirements(@NotNull @Unmodifiable List<@NotNull UploadChec
         }
         return Pair.ImmutablePair.makeImmutablePair(list, () -> {
             if (leaked.compareAndSet(true, false))
-                for (final ByteBuf buffer: cacher)
+                for (final ByteBuf buffer: caches)
                     if (buffer != null)
                         buffer.release();
         });

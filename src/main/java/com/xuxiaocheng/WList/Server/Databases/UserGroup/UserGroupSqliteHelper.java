@@ -67,6 +67,7 @@ public class UserGroupSqliteHelper implements UserGroupSqlInterface {
     }
 
     @Override
+    @SuppressWarnings("ExtractMethodRecommender")
     public void createTable(final @Nullable String _connectionId) throws SQLException {
         try (final Connection connection = this.getConnection(_connectionId, null)) {
             try (final Statement statement = connection.createStatement()) {

@@ -223,7 +223,7 @@ public class WListServer {
         @Override
         public void exceptionCaught(final @NotNull ChannelHandlerContext ctx, final @NotNull Throwable cause) {
             final Channel channel = ctx.channel();
-            if (cause instanceof UnsupportedOperationException exception) {
+            if (cause instanceof final UnsupportedOperationException exception) {
                 ServerChannelHandler.write(channel, MessageProto.composeMessage(ResponseState.Unsupported, exception.getMessage()));
                 return;
             }

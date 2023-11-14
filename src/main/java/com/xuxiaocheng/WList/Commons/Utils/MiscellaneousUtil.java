@@ -56,9 +56,9 @@ public final class MiscellaneousUtil {
     public static void throwException(final @Nullable Throwable throwable) throws Exception {
         if (throwable == null)
             return;
-        if (throwable instanceof Exception exception)
+        if (throwable instanceof final Exception exception)
             throw exception;
-        if (throwable instanceof Error error)
+        if (throwable instanceof final Error error)
             throw error;
         throw new Exception(throwable);
     }

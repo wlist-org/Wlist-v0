@@ -74,7 +74,7 @@ public class WListClient implements WListClientInterface {
             final ChannelFuture future = bootstrap.connect(this.address).await();
             final Throwable throwable = future.cause();
             if (throwable != null) {
-                if (throwable instanceof IOException ioException)
+                if (throwable instanceof final IOException ioException)
                     throw ioException;
                 throw new IOException(throwable);
             }
@@ -87,7 +87,7 @@ public class WListClient implements WListClientInterface {
             throw new IOException(exception);
         }
         if (error.get() != null) {
-            if (error.get() instanceof IOException exception)
+            if (error.get() instanceof final IOException exception)
                 throw exception;
             throw new IOException(error.get());
         }
@@ -108,7 +108,7 @@ public class WListClient implements WListClientInterface {
             final ChannelFuture future = this.channel.getInstance().writeAndFlush(msg).await();
             final Throwable throwable = future.cause();
             if (throwable != null) {
-                if (throwable instanceof IOException ioException)
+                if (throwable instanceof final IOException ioException)
                     throw ioException;
                 throw new IOException(throwable);
             }

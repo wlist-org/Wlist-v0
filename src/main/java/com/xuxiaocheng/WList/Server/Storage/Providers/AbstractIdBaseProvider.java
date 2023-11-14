@@ -374,7 +374,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                                         }
                                     } catch (final NoSuchElementException exception) {
                                         if (exception.getCause() != null) {
-                                            result1 = exception.getCause() instanceof Exception e ? e : exception;
+                                            result1 = exception.getCause() instanceof final Exception e ? e : exception;
                                             return;
                                         }
                                         AbstractIdBaseProvider.logger.log(HLogLevel.MISTAKE, "No more elements when 'refreshDirectory#list0'.", ParametersMap.create().add("configuration", this.getConfiguration())
@@ -382,7 +382,7 @@ public abstract class AbstractIdBaseProvider<C extends StorageConfiguration> imp
                                     } catch (final RuntimeException exception) {
                                         if (AndroidSupporter.isAndroid) {
                                             if (exception.getCause() != null) {
-                                                result1 = exception.getCause() instanceof Exception e ? e : exception;
+                                                result1 = exception.getCause() instanceof final Exception e ? e : exception;
                                                 return;
                                             }
                                         } else throw exception;

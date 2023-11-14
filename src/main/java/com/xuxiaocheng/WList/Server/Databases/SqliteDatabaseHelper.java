@@ -253,7 +253,7 @@ public class SqliteDatabaseHelper implements SqlDatabaseInterface {
             } catch (final IllegalAccessException exception) {
                 throw new RuntimeException(exception);
             } catch (final InvocationTargetException exception) {
-                if (exception.getCause() instanceof SQLException sqlException) {
+                if (exception.getCause() instanceof final SQLException sqlException) {
                     this.allow = sqlException.getMessage();
                     throw sqlException;
                 }

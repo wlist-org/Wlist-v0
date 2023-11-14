@@ -3,7 +3,7 @@
     <output-path>$PROJECT_DIR$/out/artifacts</output-path>
     <root id="archive" name="wlist.jar">
       <element id="directory" name="META-INF">
-        <element id="file-copy" path="$PROJECT_DIR$/META-INF/MANIFEST.MF" />
+        <element id="file-copy" path="$PROJECT_DIR$/src/main/resources/META-INF/MANIFEST.MF" />
       </element>
       <element id="module-output" name="WList.main" />
       <element id="extracted-dir" path="$PROJECT_DIR$/../../AppData/JetBrains/GradleHome/caches/modules-2/files-2.1/io.netty/netty-transport-native-epoll/4.1.99.Final/49105fe39f6065dd3634d28fa755a708b237ce58/netty-transport-native-epoll-4.1.99.Final-linux-x86_64.jar" path-in-jar="/" />

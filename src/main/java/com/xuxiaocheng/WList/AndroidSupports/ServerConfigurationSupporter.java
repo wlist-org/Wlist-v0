@@ -1,6 +1,5 @@
 package com.xuxiaocheng.WList.AndroidSupports;
 
-import com.xuxiaocheng.WList.Client.ClientConfiguration;
 import com.xuxiaocheng.WList.Server.ServerConfiguration;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import org.jetbrains.annotations.NotNull;

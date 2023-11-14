@@ -160,7 +160,7 @@ public class LanzouProvider extends AbstractIdBaseProvider<LanzouConfiguration> 
 //                    }
 //                }
 //                if (flag)
-//                    throw new IllegalParametersException("Failed to login.", ParametersMap.create().add("configuration", configuration).add("page", result));
+//                    throw new IllegalParametersException("Failed to log in.", ParametersMap.create().add("configuration", configuration).add("page", result));
                 cookies = client.getCookies(Objects.requireNonNull(HttpUrl.parse("https://up.woozooo.com/")).url());
             }
             Cookie token = null, uid = null;
