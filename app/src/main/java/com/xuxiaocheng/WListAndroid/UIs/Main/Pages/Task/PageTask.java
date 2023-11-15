@@ -17,6 +17,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 public class PageTask extends CPage<PageTaskBinding> {
     @Override
@@ -135,7 +136,7 @@ public class PageTask extends CPage<PageTaskBinding> {
     @SuppressWarnings("unchecked")
     @Override
     public @NotNull List<? extends @NotNull SPageTaskFragment> existingFragments() {
-        return (List<SPageTaskFragment>) super.existingFragments();
+        return (List<SPageTaskFragment>) super.existingFragments().stream().filter(f -> f instanceof SPageTaskFragment).collect(Collectors.toList());
     }
 
     private static final class ChooserButtonGroup {

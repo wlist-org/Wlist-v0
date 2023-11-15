@@ -5,6 +5,7 @@ import com.xuxiaocheng.WListAndroid.UIs.IPage;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public abstract class CPage<P extends ViewBinding> extends IPage<P> implements CFragmentBase {
     @Override
@@ -15,7 +16,7 @@ public abstract class CPage<P extends ViewBinding> extends IPage<P> implements C
     @SuppressWarnings("unchecked")
     @Override
     public @NotNull List<? extends @NotNull CFragment<?>> existingFragments() {
-        return (List<CFragment<?>>) super.existingFragments();
+        return (List<CFragment<?>>) super.existingFragments().stream().filter(f -> f instanceof CFragment<?>).collect(Collectors.toList());
     }
 
     @Override

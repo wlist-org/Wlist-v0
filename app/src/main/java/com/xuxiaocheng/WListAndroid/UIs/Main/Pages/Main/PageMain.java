@@ -18,6 +18,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 public class PageMain extends CPage<ActivityMainBinding> {
     @Override
@@ -83,7 +84,7 @@ public class PageMain extends CPage<ActivityMainBinding> {
     @SuppressWarnings("unchecked")
     @Override
     public @NotNull List<? extends @NotNull SPageMainFragment<?>> existingFragments() {
-        return (List<SPageMainFragment<?>>) super.existingFragments();
+        return (List<SPageMainFragment<?>>) super.existingFragments().stream().filter(f -> f instanceof SPageMainFragment<?>).collect(Collectors.toList());
     }
 
     private static final class ChooserButtonGroup {

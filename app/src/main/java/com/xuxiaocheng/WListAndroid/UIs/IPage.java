@@ -12,6 +12,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public abstract class IPage<P extends ViewBinding> extends IFragmentBase<P> {
     @Override
@@ -35,7 +36,7 @@ public abstract class IPage<P extends ViewBinding> extends IFragmentBase<P> {
 
     @SuppressWarnings("unchecked")
     public @NotNull List<? extends @NotNull IFragment<?>> existingFragments() {
-        return (List<IFragment<?>>) (List<?>) this.getChildFragmentManager().getFragments();
+        return (List<IFragment<?>>) (List<?>) this.getChildFragmentManager().getFragments().stream().filter(f -> f instanceof IFragment<?>).collect(Collectors.toList());
     }
 
     @Override
