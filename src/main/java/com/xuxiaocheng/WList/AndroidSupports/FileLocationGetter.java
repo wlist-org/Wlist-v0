@@ -18,4 +18,16 @@ public final class FileLocationGetter {
     public static long id(final @NotNull FileLocation location) {
         return location.id();
     }
+
+    public static boolean equals(final @NotNull FileLocation a, final @NotNull FileLocation b) {
+        return a.equals(b);
+    }
+
+    public static int hashCode(final @NotNull FileLocation location) {
+        return location.hashCode();
+    }
+
+    public static @NotNull String toString(final @NotNull FileLocation location) {
+        return location.toString();
+    }
 }

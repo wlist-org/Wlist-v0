@@ -35,14 +35,6 @@ public record VisibleFileInformation(long id, long parentId, @NotNull String nam
         return new VisibleFileInformation(id, parentId, name, isDirectory, size, createTime, updateTime);
     }
 
-    public @NotNull String createTimeString(final @NotNull DateTimeFormatter formatter, final @Nullable String unknown) {
-        return this.createTime == null ? Objects.requireNonNullElse(unknown, "unknown") : this.createTime.format(formatter);
-    }
-
-    public @NotNull String updateTimeString(final @NotNull DateTimeFormatter formatter, final @Nullable String unknown) {
-        return this.updateTime == null ? Objects.requireNonNullElse(unknown, "unknown") : this.updateTime.format(formatter);
-    }
-
     public enum Order implements OrderPolicies.OrderPolicy {
         Id, Name, Directory, Size, CreateTime, UpdateTime,
         ;

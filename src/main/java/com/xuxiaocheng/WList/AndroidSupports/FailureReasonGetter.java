@@ -24,4 +24,16 @@ public final class FailureReasonGetter {
     public static @NotNull String message(final @NotNull VisibleFailureReason reason) {
         return reason.message();
     }
+
+    public static boolean equals(final @NotNull VisibleFailureReason a, final @NotNull VisibleFailureReason b) {
+        return a.equals(b);
+    }
+
+    public static int hashCode(final @NotNull VisibleFailureReason reason) {
+        return reason.hashCode();
+    }
+
+    public static @NotNull String toString(final @NotNull VisibleFailureReason reason) {
+        return reason.toString();
+    }
 }

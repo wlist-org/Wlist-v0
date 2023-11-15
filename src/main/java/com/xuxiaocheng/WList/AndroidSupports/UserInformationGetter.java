@@ -38,6 +38,18 @@ public final class UserInformationGetter {
         return information.updateTime();
     }
 
+    public static boolean equals(final @NotNull VisibleUserInformation a, final @NotNull VisibleUserInformation b) {
+        return a.equals(b);
+    }
+
+    public static int hashCode(final @NotNull VisibleUserInformation information) {
+        return information.hashCode();
+    }
+
+    public static @NotNull String toString(final @NotNull VisibleUserInformation information) {
+        return information.toString();
+    }
+
     @SuppressWarnings("ClassHasNoToStringMethod")
     public enum Order {
         Id(VisibleUserInformation.Order.Id),

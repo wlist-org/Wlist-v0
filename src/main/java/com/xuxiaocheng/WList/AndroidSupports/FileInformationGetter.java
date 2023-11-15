@@ -5,7 +5,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
@@ -42,16 +41,20 @@ public final class FileInformationGetter {
         return information.createTime();
     }
 
-    public static @NotNull String createTimeString(final @NotNull VisibleFileInformation information, final @NotNull DateTimeFormatter formatter, final @Nullable String unknown) {
-        return information.createTimeString(formatter, unknown);
-    }
-
     public static @Nullable ZonedDateTime updateTime(final @NotNull VisibleFileInformation information) {
         return information.updateTime();
     }
 
-    public static @NotNull String updateTimeString(final @NotNull VisibleFileInformation information, final @NotNull DateTimeFormatter formatter, final @Nullable String unknown) {
-        return information.updateTimeString(formatter, unknown);
+    public static boolean equals(final @NotNull VisibleFileInformation a, final @NotNull VisibleFileInformation b) {
+        return a.equals(b);
+    }
+
+    public static int hashCode(final @NotNull VisibleFileInformation information) {
+        return information.hashCode();
+    }
+
+    public static @NotNull String toString(final @NotNull VisibleFileInformation information) {
+        return information.toString();
     }
 
     @SuppressWarnings("ClassHasNoToStringMethod")

@@ -36,6 +36,18 @@ public final class UserGroupInformationGetter {
         return information.updateTime();
     }
 
+    public static boolean equals(final @NotNull VisibleUserGroupInformation a, final @NotNull VisibleUserGroupInformation b) {
+        return a.equals(b);
+    }
+
+    public static int hashCode(final @NotNull VisibleUserGroupInformation information) {
+        return information.hashCode();
+    }
+
+    public static @NotNull String toString(final @NotNull VisibleUserGroupInformation information) {
+        return information.toString();
+    }
+
     @SuppressWarnings("ClassHasNoToStringMethod")
     public enum Order {
         Id(VisibleUserGroupInformation.Order.Id),
