@@ -3,12 +3,27 @@ package com.xuxiaocheng.WListAndroid.UIs.Main.Pages.Main.File;
 import android.view.View;
 import androidx.annotation.AnyThread;
 import com.xuxiaocheng.WListAndroid.Main;
+import com.xuxiaocheng.WListAndroid.Tasks.DownloadTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Pages.Task.PageTask;
 import org.jetbrains.annotations.NotNull;
 
-class PartTask extends SFragmentFilePart{
+class PartTask extends SFragmentFilePart {
     protected PartTask(final @NotNull FragmentFile fragment) {
         super(fragment);
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        this.initializeManagers();
+    }
+
+    @AnyThread
+    public void initializeManagers() {
+        Main.runOnBackgroundThread(this.activity(), () -> {
+            DownloadTasksManager.initializeIfNotInitializing(this.activity());
+
+        });
     }
 
     @Override

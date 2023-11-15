@@ -4,14 +4,18 @@ import android.view.View;
 import androidx.annotation.UiThread;
 import androidx.appcompat.app.AlertDialog;
 import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
+import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.HeadLibs.Initializers.HProcessingInitializer;
 import com.xuxiaocheng.WList.AndroidSupports.FileInformationGetter;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
+import com.xuxiaocheng.WListAndroid.Tasks.AbstractTasksManager;
 import com.xuxiaocheng.WListAndroid.Tasks.DownloadTasksManager;
+import com.xuxiaocheng.WListAndroid.UIs.Main.Pages.Task.PageTaskAdapter;
 import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileOperationBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileOperationRenameBinding;
@@ -156,12 +160,23 @@ class PartOperation extends SFragmentFilePart {
         } else {
             operationBinding.pageFileOperationDownload.setOnClickListener(u -> {
                 if (!clickable.compareAndSet(true, false)) return;
-                modifier.cancel();
-                new AlertDialog.Builder(this.activity()).setTitle(R.string.page_file_operation_download)
-                        .setNegativeButton(R.string.cancel, null)
-                        .setPositiveButton(R.string.confirm, (d, w) -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> DownloadTasksManager.getInstance()
-                                .addWorkingTask(this.activity(), this.address(), this.username(), new DownloadTasksManager.DownloadTask(storage, information, MiscellaneousUtil.now()), true))))
-                        .show();
+                final UnionPair<HProcessingInitializer.LoadingState, Throwable> state = AbstractTasksManager.managers.getLoadingState(PageTaskAdapter.Types.Download);
+                if (state == HProcessingInitializer.USuccess) {
+                    modifier.cancel();
+                    new AlertDialog.Builder(this.activity()).setTitle(R.string.page_file_operation_download)
+                            .setNegativeButton(R.string.cancel, null)
+                            .setPositiveButton(R.string.confirm, (d, w) -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> DownloadTasksManager.getInstance()
+                                    .addTask(this.activity(), new DownloadTasksManager.DownloadTask(this.address(), this.username(), MiscellaneousUtil.now(), current, FileInformationGetter.name(information))))))
+                            .show();
+                } else {
+                    if (state.isSuccess())
+                        Main.showToast(this.activity(), R.string.page_task_download_manager_waiting);
+                    else {
+                        Main.showToast(this.activity(), R.string.page_task_download_manager_failure);
+                        this.fragment.partTask().initializeManagers();
+                    }
+                    clickable.set(true);
+                }
             });
             operationBinding.pageFileOperationDownloadImage.setOnClickListener(u -> operationBinding.pageFileOperationDownload.performClick());
         }
