@@ -1,6 +1,6 @@
 package com.xuxiaocheng.WListAndroid.UIs.Main;
 
-import com.xuxiaocheng.WListAndroid.UIs.Main.Pages.Main.PageMain;
+import com.xuxiaocheng.WListAndroid.UIs.Main.Main.PageMain;
 import org.jetbrains.annotations.NotNull;
 
 public class ActivityMain extends CActivity {

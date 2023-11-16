@@ -73,9 +73,9 @@
 	<string name="page_file_options_disconnect">Disconnection.</string>
 	<string name="page_file_options_close_server">Close server.</string>
 	<string name="page_task">Tasks</string>
-	<string name="page_task_working">Working…</string>
-	<string name="page_task_failure">Failed.</string>
-	<string name="page_task_success">Succeed.</string>
+	<string name="page_task_working">Working. ({0})</string>
+	<string name="page_task_failure">Failed. ({0})</string>
+	<string name="page_task_success">Succeed. ({0})</string>
 	<string name="page_task_download" translatable="false">@string/page_file_operation_download</string>
 	<string name="page_task_download_manager_waiting">Please wait while the download manager is starting.</string>
 	<string name="page_task_download_manager_failure">Something went wrong during initializing the download manager. Retry later.</string>
