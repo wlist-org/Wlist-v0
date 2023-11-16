@@ -269,7 +269,7 @@ public final class BroadcastAssistant {
                             runner.run();
                     }
                 } catch (final IOException | IllegalStateException exception) {
-                    HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
+                    HLog.getInstance("ClientLogger").log(HLogLevel.MISTAKE, "Broadcast receiver '", Thread.currentThread().getName(), "' close. ", exception.getLocalizedMessage());
                     flag = false;
                     WListClientManager.quicklyUninitialize(address);
                 } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
