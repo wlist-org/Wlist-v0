@@ -12,12 +12,6 @@ class PartTask extends SFragmentFilePart {
         super(fragment);
     }
 
-    @Override
-    public void onCreate() {
-        super.onCreate();
-        this.initializeManagers();
-    }
-
     @AnyThread
     public void initializeManagers() {
         Main.runOnBackgroundThread(this.activity(), () -> {
@@ -36,6 +30,7 @@ class PartTask extends SFragmentFilePart {
     public void cOnConnect() {
         super.cOnConnect();
         Main.runOnUiThread(this.activity(), () -> this.pageContent().activityMainTasks.setVisibility(View.VISIBLE));
+        this.initializeManagers();
     }
 
     @Override

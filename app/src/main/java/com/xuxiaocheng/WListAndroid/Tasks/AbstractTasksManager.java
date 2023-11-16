@@ -38,7 +38,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 public abstract class AbstractTasksManager<T extends AbstractTasksManager.AbstractTask, P> {
-    public final @NotNull EventExecutorGroup TaskExecutors =
+    protected final @NotNull EventExecutorGroup TaskExecutors =
             new DefaultEventExecutorGroup(3, new DefaultThreadFactory(this.getClass().getSimpleName() + "Executors"));
 
     public static final @NotNull HProcessingInitializer<PageTaskAdapter.@NotNull Types, @NotNull AbstractTasksManager<?, ?>> managers = new HProcessingInitializer<>("TaskManagers");
@@ -212,5 +212,16 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
         outputStream.writeUTF(FileLocationGetter.storage(FailureReasonGetter.location(reason)));
         outputStream.writeLong(FileLocationGetter.id(FailureReasonGetter.location(reason)));
         outputStream.writeUTF(FailureReasonGetter.message(reason));
+    }
+
+    @Override
+    public @NotNull String toString() {
+        return "AbstractTasksManager{" +
+                "workingTasks=" + this.workingTasks +
+                ", pendingTasks=" + this.pendingTasks +
+                ", successfulTasks=" + this.successfulTasks +
+                ", failedTasks=" + this.failedTasks +
+                ", updatedTasks=" + this.updatedTasks +
+                '}';
     }
 }

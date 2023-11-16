@@ -49,10 +49,8 @@ public class PartConnect extends SFragmentFilePart {
         page.pageFileConnectionInternalServer.setOnClickListener(v -> {
             if (!clickable.compareAndSet(true, false)) return;
             page.pageFileConnectionInternalServer.setText(R.string.page_file_connect_internal_server_starting);
-            this.connectInternalServer((a, s) -> Main.runOnUiThread(a, () -> page.pageFileConnectionInternalServer.setText(s)), a -> {
-                clickable.set(true);
-                Main.runOnUiThread(a, () -> page.pageFileConnectionInternalServer.setText(R.string.page_file_connect_internal_server));
-            });
+            this.connectInternalServer((a, s) -> Main.runOnUiThread(a, () -> page.pageFileConnectionInternalServer.setText(s)),
+                    a -> Main.runOnBackgroundThread(a, this::cOnDisconnect));
         });
     }
 
@@ -98,7 +96,7 @@ public class PartConnect extends SFragmentFilePart {
                             PartConnect.binderActivity.uninitialize();
                             logger.log(HLogLevel.LESS, "Internal server is stopping...");
                             Main.showToast(activity, R.string.page_file_connect_closing);
-                            Main.runOnUiThread(activity, () -> failure.accept(activity));
+                            failure.accept(activity);
                             return;
                         }
                         logger.log(HLogLevel.FINE, "Connecting to service: ", address);
@@ -119,7 +117,7 @@ public class PartConnect extends SFragmentFilePart {
                         if (e != null) {
                             logger.log(HLogLevel.FAULT, "Failed to initialize wlist clients.", e);
                             Main.showToast(activity, R.string.toast_fatal_application_initialization);
-                            Main.runOnUiThread(activity, () -> failure.accept(activity));
+                            failure.accept(activity);
                         }
                     }, true));
                 }
@@ -172,7 +170,7 @@ public class PartConnect extends SFragmentFilePart {
     }
 
     @UiThread
-    protected void tryDisconnect() {
+    protected void tryCloseServer() {
         Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
             try (final WListClientInterface client = this.client()) {
                 OperateServerHelper.closeServer(client, this.token());

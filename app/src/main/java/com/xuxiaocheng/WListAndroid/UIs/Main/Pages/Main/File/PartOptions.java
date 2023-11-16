@@ -82,7 +82,7 @@ class PartOptions extends SFragmentFilePart {
                     case 2 -> this.filter();
                     case 3 -> this.refresh();
                     case 4 -> this.activity().disconnect();
-                    case 5 -> this.fragment.partConnect().tryDisconnect();
+                    case 5 -> this.fragment.partConnect().tryCloseServer();
                 }
             });
             popup.show();

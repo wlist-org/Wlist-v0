@@ -68,6 +68,7 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
                     } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                         HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
                     }
+            manager.tryStartTask(activity);
             return manager;
         }, null);
     }
@@ -113,7 +114,7 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
         final File file = this.getSaveFile(task);
         PermissionUtil.writePermission(activity);
         HFileHelper.ensureFileAccessible(file, true);
-        HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Downloading.",
+        HLogManager.getInstance("ClientLogger").log(HLogLevel.LESS, "Downloading.",
                 ParametersMap.create().add("address", task.address).add("username", task.username).add("location", task.location).add("file", file));
         return new DownloadProgress();
     }
