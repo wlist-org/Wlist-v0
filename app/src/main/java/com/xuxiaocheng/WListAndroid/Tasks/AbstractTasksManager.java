@@ -3,6 +3,7 @@ package com.xuxiaocheng.WListAndroid.Tasks;
 import android.app.Activity;
 import android.os.Environment;
 import androidx.annotation.WorkerThread;
+import com.qw.soul.permission.PermissionTools;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HProcessingInitializer;
 import com.xuxiaocheng.WList.AndroidSupports.FailureReasonGetter;
@@ -101,6 +102,8 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
                     this.addFailedTask(activity, task, reason, true);
                 else
                     this.addSuccessfulTask(activity, task, true);
+                if (PermissionTools.isActivityAvailable(activity))
+                    this.tryStartTask(activity);
             })).addListener(Main.exceptionListenerWithToast(activity));
         }
     }
@@ -117,7 +120,7 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
     @WorkerThread
     protected void addPendingTask(final @NotNull Activity activity, final @NotNull T task, final boolean serializing) throws IOException, InterruptedException {
         final P progress = this.prepareTask(activity, task);
-        this.workingTasks.put(task, progress);
+        this.pendingTasks.put(task, progress);
         if (serializing)
             this.serializeTask(activity, task, TaskState.Pending, null);
         this.updatedTasks.add(task);

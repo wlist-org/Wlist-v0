@@ -106,7 +106,7 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
 
     @WorkerThread
     private @NotNull File getRecordingFile(final @NotNull DownloadTask task) {
-        return new File(this.DownloadRecordsSaveDirectory, FileLocationGetter.storage(task.location) + " - " + FileLocationGetter.id(task.location) + ".bin");
+        return new File(this.DownloadRecordsSaveDirectory, FileLocationGetter.storage(task.location) + " - " + FileLocationGetter.id(task.location) + ".bin.gz");
     }
 
     @Override
