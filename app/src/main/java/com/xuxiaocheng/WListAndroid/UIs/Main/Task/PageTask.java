@@ -64,6 +64,7 @@ public class PageTask extends CPage<PageTaskBinding> {
         page.pageTaskChooserMove.setOnClickListener(v -> page.pageTaskPager.setCurrentItem(PageTaskAdapter.Types.toPosition(PageTaskAdapter.Types.Move)));
         page.pageTaskChooserRename.setOnClickListener(v -> page.pageTaskPager.setCurrentItem(PageTaskAdapter.Types.toPosition(PageTaskAdapter.Types.Rename)));
         page.pageTaskPager.setAdapter(new PageTaskAdapter(this));
+        page.pageTaskPager.setOffscreenPageLimit(6); // Cache all states.
         page.pageTaskPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
             public void onPageSelected(final int position) {

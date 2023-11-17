@@ -7,6 +7,10 @@ import com.xuxiaocheng.WListAndroid.databinding.PageTaskListBinding;
 import org.jetbrains.annotations.NotNull;
 
 public class TaskDownload extends SPageTaskFragment {
+    public TaskDownload() {
+        super(PageTaskAdapter.Types.Download);
+    }
+
     @Override
     protected void iOnBuildPage(final @NotNull PageTaskListBinding page, final boolean isFirstTime) {
         super.iOnBuildPage(page, isFirstTime);

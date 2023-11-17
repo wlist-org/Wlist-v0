@@ -4,8 +4,10 @@ import android.app.Activity;
 import android.os.Environment;
 import androidx.annotation.WorkerThread;
 import com.qw.soul.permission.PermissionTools;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HProcessingInitializer;
+import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.AndroidSupports.FailureReasonGetter;
 import com.xuxiaocheng.WList.AndroidSupports.FileLocationGetter;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
@@ -13,6 +15,7 @@ import com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason;
 import com.xuxiaocheng.WList.Commons.Operations.FailureKind;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.PageTaskAdapter;
+import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.EventExecutorGroup;
@@ -27,7 +30,6 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -54,18 +56,19 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
         Failed,
     }
 
+    protected final PageTaskAdapter.@NotNull Types type;
     protected final @NotNull NavigableMap<@NotNull T, @NotNull P> workingTasks;
     protected final @NotNull NavigableMap<@NotNull T, @NotNull P> pendingTasks;
     protected final @NotNull NavigableSet<@NotNull T> successfulTasks;
     protected final @NotNull NavigableMap<@NotNull T, @NotNull VisibleFailureReason> failedTasks;
 
-    protected AbstractTasksManager(final @NotNull Comparator<T> comparator) {
+    protected AbstractTasksManager(final PageTaskAdapter.@NotNull Types type) {
         super();
-        this.workingTasks = new ConcurrentSkipListMap<>(comparator);
-        this.pendingTasks = new ConcurrentSkipListMap<>(comparator);
-        this.successfulTasks = new ConcurrentSkipListSet<>(comparator);
-        this.failedTasks = new ConcurrentSkipListMap<>(comparator);
-        this.unmodifiableWorkingTasks = Collections.unmodifiableNavigableMap(this.workingTasks);
+        this.type = type;
+        this.workingTasks = new ConcurrentSkipListMap<>(Comparator.comparing(t -> t.time));
+        this.pendingTasks = new ConcurrentSkipListMap<>(Comparator.comparing(t -> t.time));
+        this.successfulTasks = new ConcurrentSkipListSet<>(Comparator.comparing(t -> t.time));
+        this.failedTasks = new ConcurrentSkipListMap<>(Comparator.comparing(t -> t.time));
     }
 
     protected final @NotNull Set<@NotNull T> updatedTasks = ConcurrentHashMap.newKeySet();
@@ -73,9 +76,8 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
         return this.updatedTasks;
     }
 
-    private final @NotNull @UnmodifiableView NavigableMap<@NotNull T, @NotNull P> unmodifiableWorkingTasks;
-    public @NotNull @UnmodifiableView NavigableMap<@NotNull T, @NotNull P> getUnmodifiableWorkingTasks() {
-        return this.unmodifiableWorkingTasks;
+    public @NotNull @UnmodifiableView NavigableMap<@NotNull T, @NotNull P> getWorkingTasks() {
+        return this.workingTasks;
     }
     public @NotNull NavigableMap<@NotNull T, @NotNull P> getPendingTasks() {
         return this.pendingTasks;
@@ -146,6 +148,8 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
     public void addTask(final @NotNull Activity activity, final @NotNull T task) throws IOException, InterruptedException {
         this.addPendingTask(activity, task, true);
         this.tryStartTask(activity);
+        HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Adding task.",
+                ParametersMap.create().add("type", this.type).add("task", task));
     }
 
     protected abstract static class AbstractTask {

@@ -5,6 +5,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import androidx.viewpager2.widget.ViewPager2;
 import com.xuxiaocheng.WListAndroid.UIs.Main.CFragment;
+import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.AbstractTasksManager;
 import com.xuxiaocheng.WListAndroid.databinding.PageTaskListBinding;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -12,6 +13,13 @@ import org.jetbrains.annotations.Nullable;
 import java.util.concurrent.atomic.AtomicReference;
 
 public abstract class SPageTaskFragment extends CFragment<PageTaskListBinding> {
+    protected final PageTaskAdapter.@NotNull Types type;
+
+    protected SPageTaskFragment(final PageTaskAdapter.@NotNull Types type) {
+        super();
+        this.type = type;
+    }
+
     protected abstract @NotNull SPageTaskStateFragment createStateFragment(final PageTaskStateAdapter.@NotNull Types type);
 
     @Override
@@ -27,18 +35,27 @@ public abstract class SPageTaskFragment extends CFragment<PageTaskListBinding> {
     @Override
     protected void iOnRestoreInstanceState(final @Nullable Bundle arguments, final @Nullable Bundle savedInstanceState) {
         super.iOnRestoreInstanceState(arguments, savedInstanceState);
-        final int type = savedInstanceState != null ? savedInstanceState.getInt("w:page_task:" + this.getClass().getSimpleName() + ":current_state", -1) : -1;
+        final int type = savedInstanceState != null ? savedInstanceState.getInt("w:page_task:" + this.type.name() + ":current_state", -1) : -1;
         this.currentState.set(type == -1 ? this.getSuggestedChoice() : PageTaskStateAdapter.Types.fromPosition(type));
     }
 
     @Override
     protected void iOnSaveInstanceState(final @NotNull Bundle outState) {
         super.iOnSaveInstanceState(outState);
-        outState.putInt("w:page_task:" + this.getClass().getSimpleName() + ":current_type", PageTaskStateAdapter.Types.toPosition(this.currentState.get()));
+        outState.putInt("w:page_task:" + this.type.name() + ":current_type", PageTaskStateAdapter.Types.toPosition(this.currentState.get()));
     }
 
-    private PageTaskStateAdapter.@NotNull Types getSuggestedChoice() {
-        return PageTaskStateAdapter.Types.Working; // TODO
+    protected PageTaskStateAdapter.@NotNull Types getSuggestedChoice() {
+        final AbstractTasksManager<?, ?> manager = AbstractTasksManager.managers.getInstanceNullable(this.type);
+        if (manager != null) {
+            final int failure = manager.getFailedTasks().size();
+            final int working = manager.getWorkingTasks().size() + manager.getPendingTasks().size();
+            final int success = manager.getSuccessfulTasks().size();
+            if (working != 0) return PageTaskStateAdapter.Types.Working;
+            if (failure != 0) return PageTaskStateAdapter.Types.Failure;
+            if (success != 0) return PageTaskStateAdapter.Types.Success;
+        }
+        return PageTaskStateAdapter.Types.Working;
     }
 
     @Override

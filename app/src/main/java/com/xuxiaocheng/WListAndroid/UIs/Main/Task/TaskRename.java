@@ -3,6 +3,10 @@ package com.xuxiaocheng.WListAndroid.UIs.Main.Task;
 import org.jetbrains.annotations.NotNull;
 
 public class TaskRename extends SPageTaskFragment {
+    public TaskRename() {
+        super(PageTaskAdapter.Types.Rename);
+    }
+
     @Override
     protected @NotNull SPageTaskStateFragment createStateFragment(final PageTaskStateAdapter.@NotNull Types type) {
         return switch (type) {

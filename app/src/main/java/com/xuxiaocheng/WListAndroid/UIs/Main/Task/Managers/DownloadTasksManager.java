@@ -3,11 +3,9 @@ package com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers;
 import android.app.Activity;
 import androidx.annotation.WorkerThread;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.PredicateE;
 import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
-import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.AndroidSupports.FileLocationGetter;
 import com.xuxiaocheng.WList.Client.Assistants.FilesAssistant;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
@@ -16,7 +14,6 @@ import com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason;
 import com.xuxiaocheng.WList.Commons.Operations.FailureKind;
 import com.xuxiaocheng.WListAndroid.UIs.Main.CActivity;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.PageTaskAdapter;
-import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
 import com.xuxiaocheng.WListAndroid.Utils.PermissionUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -31,7 +28,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.time.ZonedDateTime;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
@@ -40,7 +36,7 @@ import java.util.zip.GZIPOutputStream;
 
 public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksManager.DownloadTask, DownloadTasksManager.DownloadProgress> {
     protected DownloadTasksManager() {
-        super(Comparator.comparing(t -> t.time));
+        super(PageTaskAdapter.Types.Download);
     }
 
     @WorkerThread
@@ -114,8 +110,6 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
         final File file = this.getSaveFile(task);
         PermissionUtil.writePermission(activity);
         HFileHelper.ensureFileAccessible(file, true);
-        HLogManager.getInstance("ClientLogger").log(HLogLevel.LESS, "Downloading.",
-                ParametersMap.create().add("address", task.address).add("username", task.username).add("location", task.location).add("file", file));
         return new DownloadProgress();
     }
 
@@ -136,11 +130,13 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
     public static class DownloadTask extends AbstractTask {
         protected final @NotNull FileLocation location;
         protected final @NotNull String filename;
+        protected final PageTaskAdapter.@NotNull Types source;
 
-        public DownloadTask(final @NotNull InetSocketAddress address, final @NotNull String username, final @NotNull ZonedDateTime time, final @NotNull FileLocation location, final @NotNull String filename) {
+        public DownloadTask(final @NotNull InetSocketAddress address, final @NotNull String username, final @NotNull ZonedDateTime time, final @NotNull FileLocation location, final @NotNull String filename, final PageTaskAdapter.@NotNull Types source) {
             super(address, username, time);
             this.location = location;
             this.filename = filename;
+            this.source = source;
         }
 
         @Override
@@ -148,12 +144,12 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
             if (this == o) return true;
             if (!(o instanceof final DownloadTask that)) return false;
             if (!super.equals(o)) return false;
-            return FileLocationGetter.equals(this.location, that.location) && this.filename.equals(that.filename);
+            return FileLocationGetter.equals(this.location, that.location) && this.filename.equals(that.filename) && this.source == that.source;
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(super.hashCode(), this.location, this.filename);
+            return Objects.hash(super.hashCode(), this.location, this.filename, this.source);
         }
 
         @Override
@@ -161,6 +157,7 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
             return "DownloadTask{" +
                     "location=" + this.location +
                     ", filename=" + this.filename +
+                    ", source=" + this.source +
                     '}';
         }
     }
@@ -194,7 +191,8 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
         final long id = inputStream.readLong();
         final FileLocation location = new FileLocation(storage, id);
         final String filename = inputStream.readUTF();
-        return new DownloadTask(address, username, time, location, filename);
+        final PageTaskAdapter.Types source = PageTaskAdapter.Types.fromPosition(inputStream.readInt());
+        return new DownloadTask(address, username, time, location, filename, source);
     }
 
     protected static void dumpTask(final @NotNull DataOutput outputStream, final @NotNull DownloadTask task) throws IOException {
@@ -204,6 +202,7 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
         outputStream.writeUTF(FileLocationGetter.storage(task.location));
         outputStream.writeLong(FileLocationGetter.id(task.location));
         outputStream.writeUTF(task.filename);
+        outputStream.writeInt(PageTaskAdapter.Types.toPosition(task.source));
     }
 
     @Override

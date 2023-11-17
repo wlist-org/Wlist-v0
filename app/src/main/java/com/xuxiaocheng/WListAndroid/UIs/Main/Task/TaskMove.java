@@ -3,6 +3,10 @@ package com.xuxiaocheng.WListAndroid.UIs.Main.Task;
 import org.jetbrains.annotations.NotNull;
 
 public class TaskMove extends SPageTaskFragment {
+    public TaskMove() {
+        super(PageTaskAdapter.Types.Move);
+    }
+
     @Override
     protected @NotNull SPageTaskStateFragment createStateFragment(final PageTaskStateAdapter.@NotNull Types type) {
         return switch (type) {

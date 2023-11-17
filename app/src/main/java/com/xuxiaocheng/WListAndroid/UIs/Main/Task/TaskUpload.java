@@ -3,6 +3,10 @@ package com.xuxiaocheng.WListAndroid.UIs.Main.Task;
 import org.jetbrains.annotations.NotNull;
 
 public class TaskUpload extends SPageTaskFragment {
+    public TaskUpload() {
+        super(PageTaskAdapter.Types.Upload);
+    }
+
     @Override
     protected @NotNull SPageTaskStateFragment createStateFragment(final PageTaskStateAdapter.@NotNull Types type) {
         return switch (type) {
