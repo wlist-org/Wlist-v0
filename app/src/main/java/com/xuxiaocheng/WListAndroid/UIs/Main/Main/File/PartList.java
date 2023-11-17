@@ -149,20 +149,30 @@ public class PartList extends SFragmentFilePart {
     private final @NotNull HInitializer<AlertDialog> loadingBarDialog = new HInitializer<>("LoadingBarDialog");
     @WorkerThread
     protected void listLoadingAnimation(final @NotNull CharSequence title, final boolean show, final long current, final long total) {
-        this.loadingBarBinding.initializeIfNot(() -> PageFileLoadingBinding.inflate(this.activity().getLayoutInflater()));
+        this.loadingBarBinding.initializeIfNot(() -> {
+            final PageFileLoadingBinding loading = PageFileLoadingBinding.inflate(this.activity().getLayoutInflater());
+            loading.pageFileLoadingProgress.setMin(0);
+            loading.pageFileLoadingProgress.setMax(1000);
+            loading.pageFileLoadingProgress.setIndeterminate(false);
+            return loading;
+        });
         final float percent = total <= 0 ? show ? 0 : 1 : ((float) current) / total;
         final String textPercent = MessageFormat.format(this.activity().getString(R.string.page_file_loading_percent), percent);
         final String textMessage = MessageFormat.format(this.activity().getString(R.string.page_file_loading_text), current, total);
         Main.runOnUiThread(this.activity(), () -> {
-            this.loadingBarDialog.initializeIfNot(() -> new AlertDialog.Builder(this.activity()).setView(this.loadingBarBinding.getInstance().getRoot())
-                    .setTitle(title).setCancelable(false).setPositiveButton(R.string.cancel, null).show());
+            this.loadingBarDialog.initializeIfNot(() -> new AlertDialog.Builder(this.activity())
+                    .setView(this.loadingBarBinding.getInstance().getRoot()).setTitle(title).setCancelable(false).show());
             final PageFileLoadingBinding loading = this.loadingBarBinding.getInstance();
-            loading.pageFileLoadingGuideline.setGuidelinePercent(percent);
+            //noinspection NumericCastThatLosesPrecision
+            loading.pageFileLoadingProgress.setProgress((int) (percent * 1000), true);
             loading.pageFileLoadingPercent.setText(textPercent);
             loading.pageFileLoadingText.setText(textMessage);
             final AlertDialog dialog = this.loadingBarDialog.getInstance();
             dialog.setTitle(title);
-            if (show) dialog.show();else dialog.cancel();
+            if (show)
+                dialog.show();
+            else
+                dialog.cancel();
         });
     }
 

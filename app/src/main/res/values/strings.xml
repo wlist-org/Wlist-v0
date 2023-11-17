@@ -55,7 +55,7 @@
 	<string name="page_file_upload_directory_hint">Directory Name.</string>
 	<string name="page_file_upload_success_directory">Created directory.</string>
 	<string name="page_file_upload_success_file">Uploaded file.</string>
-	<string name="page_file_listing_title">Building index: {0}</string>
+	<string name="page_file_listing_title">Building index: \n{0}</string>
 	<string name="page_file_options_refresh">Refresh and sync.</string>
 	<string name="page_file_options_refresh_warning">Refresh may cause a long time!</string>
 	<string name="page_file_options_refresh_title">Refreshing: {0}</string>

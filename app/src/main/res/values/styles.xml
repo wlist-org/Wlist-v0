@@ -8,5 +8,10 @@
 	<style name="BottomSheetDialog.Style" parent="Widget.Design.BottomSheet.Modal">
 		<item name="android:background">@android:color/transparent</item>
 	</style>
+	
+	
+	<style name="ProgressBar.Horizontal" parent="Widget.AppCompat.ProgressBar.Horizontal">
+<!--		TODO-->
+	</style>
 
 </resources>
