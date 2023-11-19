@@ -1,10 +1,8 @@
 package com.xuxiaocheng.WListAndroid.Utils;
 
 import android.content.Context;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import androidx.annotation.LayoutRes;
 import androidx.annotation.UiThread;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -21,11 +19,6 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
     protected final @NotNull List<View> headers = new ArrayList<>();
     protected final @NotNull List<View> tailors = new ArrayList<>();
     protected final @NotNull List<T> data = new ArrayList<>();
-
-    @SuppressWarnings("unchecked")
-    public static @NotNull <V extends View> V buildView(final @NotNull LayoutInflater inflater, @LayoutRes final int cell, final @NotNull RecyclerView parent) {
-        return (V) inflater.inflate(cell, parent, false);
-    }
 
     public abstract static class WrappedViewHolder<V extends View, T> extends RecyclerView.ViewHolder {
         protected WrappedViewHolder(final @NotNull V itemView) {

@@ -5,12 +5,10 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AbsListView;
-import android.widget.ImageView;
 import androidx.annotation.AnyThread;
 import androidx.annotation.UiThread;
 import androidx.annotation.WorkerThread;
 import androidx.appcompat.app.AlertDialog;
-import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
@@ -38,7 +36,10 @@ import com.xuxiaocheng.WListAndroid.UIs.Main.ActivityMain;
 import com.xuxiaocheng.WListAndroid.Utils.EnhancedRecyclerViewAdapter;
 import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageFileCellBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileLoadingBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageFileTailorLoadingBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageFileTailorNoMoreBinding;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -130,19 +131,18 @@ public class PartList extends SFragmentFilePart {
 
 
     @UiThread
-    private @NotNull View listLoadingView(final @NotNull LayoutInflater inflater) {
-        final ConstraintLayout loading = EnhancedRecyclerViewAdapter.buildView(inflater, R.layout.page_file_tailor_loading, this.fragmentContent().pageFileList);
-        final ImageView image = (ImageView) loading.getViewById(R.id.page_file_tailor_loading_image);
-        ViewUtil.startDrawableAnimation(image);
+    private @NotNull PageFileTailorLoadingBinding listLoadingView(final @NotNull LayoutInflater inflater) {
+        final PageFileTailorLoadingBinding loading = PageFileTailorLoadingBinding.inflate(inflater, this.fragmentContent().pageFileList, false);
+        ViewUtil.startDrawableAnimation(loading.pageFileTailorLoadingImage);
         return loading;
     }
     @UiThread
-    private @NotNull View listNoMoreView(final @NotNull LayoutInflater inflater) {
-        return EnhancedRecyclerViewAdapter.buildView(inflater, R.layout.page_file_tailor_no_more, this.fragmentContent().pageFileList);
+    private @NotNull PageFileTailorNoMoreBinding listNoMoreView(final @NotNull LayoutInflater inflater) {
+        return PageFileTailorNoMoreBinding.inflate(inflater, this.fragmentContent().pageFileList, false);
     }
     @UiThread
-    private @NotNull ConstraintLayout listCellView(final @NotNull LayoutInflater inflater) {
-        return EnhancedRecyclerViewAdapter.buildView(inflater, R.layout.page_file_cell, this.fragmentContent().pageFileList);
+    private @NotNull PageFileCellBinding listCellView(final @NotNull LayoutInflater inflater) {
+        return PageFileCellBinding.inflate(inflater, this.fragmentContent().pageFileList, false);
     }
 
     private final @NotNull HInitializer<PageFileLoadingBinding> loadingBarBinding = new HInitializer<>("LoadingBarBinding");
@@ -227,9 +227,9 @@ public class PartList extends SFragmentFilePart {
                 if (!onLoading.compareAndSet(false, true)) return;
                 final ActivityMain activity = PartList.this.activity();
                 if (isDown)
-                    adapter.addTailor(PartList.this.listLoadingView(activity.getLayoutInflater()));
+                    adapter.addTailor(PartList.this.listLoadingView(activity.getLayoutInflater()).getRoot());
                 else
-                    adapter.addHeader(PartList.this.listLoadingView(activity.getLayoutInflater()));
+                    adapter.addHeader(PartList.this.listLoadingView(activity.getLayoutInflater()).getRoot());
                 Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> {
                     (isDown ? noMoreDown : noMoreUp).set(true); // prevent retry forever when server error.
                     VisibleFilesListInformation list = null;
@@ -281,7 +281,7 @@ public class PartList extends SFragmentFilePart {
                     Main.runOnUiThread(activity, () -> {
                         if (isDown) {
                             if (noMoreDown.get())
-                                adapter.setTailor(0, PartList.this.listNoMoreView(activity.getLayoutInflater()));
+                                adapter.setTailor(0, PartList.this.listNoMoreView(activity.getLayoutInflater()).getRoot());
                             else
                                 adapter.removeTailor(0);
                         } else
