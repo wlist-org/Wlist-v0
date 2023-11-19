@@ -1,10 +1,15 @@
 package com.xuxiaocheng.WListAndroid.UIs.Main.Task;
 
-import androidx.constraintlayout.widget.ConstraintLayout;
+import android.content.Context;
+import com.xuxiaocheng.WListAndroid.R;
+import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.AbstractTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.DownloadTasksManager;
-import com.xuxiaocheng.WListAndroid.Utils.EnhancedRecyclerViewAdapter;
-import com.xuxiaocheng.WListAndroid.databinding.PageTaskListBinding;
+import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
+import com.xuxiaocheng.WListAndroid.databinding.PageTaskListDownloadSuccessCellBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageTaskListDownloadWorkingCellBinding;
 import org.jetbrains.annotations.NotNull;
+
+import java.text.MessageFormat;
 
 public class TaskDownload extends SPageTaskFragment {
     public TaskDownload() {
@@ -12,30 +17,7 @@ public class TaskDownload extends SPageTaskFragment {
     }
 
     @Override
-    protected void iOnBuildPage(final @NotNull PageTaskListBinding page, final boolean isFirstTime) {
-        super.iOnBuildPage(page, isFirstTime);
-//        final EnhancedRecyclerViewAdapter<DownloadTasksManager.DownloadTask, DownloadWorkingViewHolder> adapter = new EnhancedRecyclerViewAdapter<>() {
-//            @Override
-//            protected @NotNull DownloadWorkingViewHolder createDataViewHolder(final @NotNull ViewGroup parent, final int realPosition) {
-//                return new DownloadWorkingViewHolder(EnhancedRecyclerViewAdapter.buildView(TaskDownload.this.getLayoutInflater(), R.layout.page_file_cell, page.pageTaskListContent));
-//            }
-//        };
-//        page.pageTaskListContent.setAdapter(adapter);
-    }
-
-    protected static final class DownloadWorkingViewHolder extends EnhancedRecyclerViewAdapter.WrappedViewHolder<ConstraintLayout, DownloadTasksManager.DownloadTask> {
-        private DownloadWorkingViewHolder(final @NotNull ConstraintLayout itemView) {
-            super(itemView);
-        }
-
-        @Override
-        public void onBind(final DownloadTasksManager.@NotNull DownloadTask data) {
-
-        }
-    }
-
-    @Override
-    protected @NotNull SPageTaskStateFragment createStateFragment(final PageTaskStateAdapter.@NotNull Types type) {
+    protected @NotNull SPageTaskStateFragment<?, DownloadTasksManager.DownloadTask> createStateFragment(final PageTaskStateAdapter.@NotNull Types type) {
         return switch (type) {
             case Failure -> new DownloadFailureTaskStateFragment();
             case Working -> new DownloadWorkingTaskStateFragment();
@@ -43,12 +25,51 @@ public class TaskDownload extends SPageTaskFragment {
         };
     }
 
-    public static class DownloadFailureTaskStateFragment extends FailureTaskStateFragment {
+    public static class DownloadFailureTaskStateFragment extends FailureTaskStateFragment<PageTaskListDownloadWorkingCellBinding, DownloadTasksManager.DownloadTask> {
+        public DownloadFailureTaskStateFragment() {
+            super(PageTaskListDownloadWorkingCellBinding::inflate);
+        }
+
+        @Override
+        protected @NotNull AbstractTasksManager<DownloadTasksManager.DownloadTask, ?> getManager() {
+            return DownloadTasksManager.getInstance();
+        }
+
+        @Override
+        protected void onBind(final @NotNull PageTaskListDownloadWorkingCellBinding cell, final DownloadTasksManager.@NotNull DownloadTask data) {
+            // TODO
+        }
     }
 
-    public static class DownloadWorkingTaskStateFragment extends WorkingTaskStateFragment {
+    public static class DownloadWorkingTaskStateFragment extends WorkingTaskStateFragment<PageTaskListDownloadWorkingCellBinding, DownloadTasksManager.DownloadTask> {
+        public DownloadWorkingTaskStateFragment() {
+            super(PageTaskListDownloadWorkingCellBinding::inflate);
+        }
+
+        @Override
+        protected void onBind(final @NotNull PageTaskListDownloadWorkingCellBinding cell, final DownloadTasksManager.@NotNull DownloadTask data) {
+            ViewUtil.setFileImage(cell.pageTaskListDownloadWorkingCellImage, false, data.getFilename());
+            cell.pageTaskListDownloadWorkingCellName.setText(data.getFilename());
+        }
     }
 
-    public static class DownloadSuccessTaskStateFragment extends SuccessTaskStateFragment {
+    public static class DownloadSuccessTaskStateFragment extends SuccessTaskStateFragment<PageTaskListDownloadSuccessCellBinding, DownloadTasksManager.DownloadTask> {
+        public DownloadSuccessTaskStateFragment() {
+            super(PageTaskListDownloadSuccessCellBinding::inflate);
+        }
+
+        @Override
+        protected @NotNull AbstractTasksManager<DownloadTasksManager.DownloadTask, ?> getManager() {
+            return DownloadTasksManager.getInstance();
+        }
+
+        @Override
+        protected void onBind(final @NotNull PageTaskListDownloadSuccessCellBinding cell, final DownloadTasksManager.@NotNull DownloadTask data) {
+            ViewUtil.setFileImage(cell.pageTaskListDownloadSuccessCellImage, false, data.getFilename());
+            cell.pageTaskListDownloadSuccessCellName.setText(data.getFilename());
+            final Context context = cell.getRoot().getContext();
+            cell.pageTaskListDownloadSuccessCellSize.setText(ViewUtil.formatSize(data.getSavePath().length(), context.getString(R.string.unknown)));
+            cell.pageTaskListDownloadSuccessCellPath.setText(MessageFormat.format(context.getString(R.string.page_task_download_path), data.getSavePath().getAbsolutePath()));
+        }
     }
 }

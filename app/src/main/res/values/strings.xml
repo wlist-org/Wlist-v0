@@ -78,13 +78,17 @@
 	<string name="page_task_failure">Failed. ({0})</string>
 	<string name="page_task_success">Succeed. ({0})</string>
 	<string name="page_task_download" translatable="false">@string/page_file_operation_download</string>
-	<string name="page_task_download_manager_waiting">Please wait while the download manager is starting.</string>
-	<string name="page_task_download_manager_failure">Something went wrong during initializing the download manager. Retry later.</string>
 	<string name="page_task_upload" translatable="false">@string/page_file_upload</string>
 	<string name="page_task_trash" translatable="false">@string/page_file_operation_trash</string>
 	<string name="page_task_copy" translatable="false">@string/page_file_operation_copy</string>
 	<string name="page_task_move" translatable="false">@string/page_file_operation_move</string>
 	<string name="page_task_rename" translatable="false">@string/page_file_operation_rename</string>
+	<string name="page_task_process" translatable="false">@string/page_file_loading_percent</string>
+	<string name="page_task_size" translatable="false">@string/page_file_loading_text</string>
+	<string name="page_task_time">ETA: {0}</string>
+	<string name="page_task_download_path">Saved: {0}</string>
+	<string name="page_task_download_manager_waiting">Please wait while the download manager is starting.</string>
+	<string name="page_task_download_manager_failure">Something went wrong during initializing the download manager. Retry later.</string>
 	<string name="page_file_provider_lanzou">Lanzou</string>
 	<string name="page_file_provider_name">Storage name: </string>
 	<string name="page_file_provider_passport">Storage passport: </string>

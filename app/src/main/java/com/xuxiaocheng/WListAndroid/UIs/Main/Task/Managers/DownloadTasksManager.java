@@ -3,9 +3,11 @@ package com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers;
 import android.app.Activity;
 import androidx.annotation.WorkerThread;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.PredicateE;
 import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
+import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.AndroidSupports.FileLocationGetter;
 import com.xuxiaocheng.WList.Client.Assistants.FilesAssistant;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
@@ -14,6 +16,7 @@ import com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason;
 import com.xuxiaocheng.WList.Commons.Operations.FailureKind;
 import com.xuxiaocheng.WListAndroid.UIs.Main.CActivity;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.PageTaskAdapter;
+import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
 import com.xuxiaocheng.WListAndroid.Utils.PermissionUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -27,6 +30,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.file.Files;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -48,25 +52,45 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
     public static void initializeIfNotInitializing(final @NotNull CActivity activity) {
         AbstractTasksManager.managers.initializeIfNotInitializing(PageTaskAdapter.Types.Download, () -> {
             final DownloadTasksManager manager = new DownloadTasksManager();
-            PermissionUtil.readPermission(activity);
-            HFileHelper.ensureDirectoryExist(manager.DownloadRecordsSaveDirectory.toPath());
-            final File[] files = manager.DownloadRecordsSaveDirectory.listFiles();
-            if (files != null)
-                for (final File file: files)
-                    try (final DataInputStream inputStream = new DataInputStream(new GZIPInputStream(new BufferedInputStream(new FileInputStream(file))))) {
-                        final DownloadTask task = DownloadTasksManager.parseTask(inputStream);
-                        if (inputStream.readBoolean())
-                            manager.addPendingTask(activity, task, false);
-                        else if (inputStream.readBoolean())
-                            manager.addSuccessfulTask(activity, task, false);
-                        else
-                            manager.addFailedTask(activity, task, AbstractTasksManager.parseReason(inputStream), false);
-                    } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
-                        HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
-                    }
+            manager.initialize(activity);
             manager.tryStartTask(activity);
             return manager;
         }, null);
+    }
+
+    private static final @NotNull File DownloadRecordsSaveDirectory = new File(AbstractTasksManager.BaseRecordsSaveDirectory, "Downloads");
+
+    @Override
+    protected void initialize(final @NotNull CActivity activity) throws IOException, InterruptedException {
+        PermissionUtil.readPermission(activity);
+        HFileHelper.ensureDirectoryExist(DownloadTasksManager.DownloadRecordsSaveDirectory.toPath());
+        final File[] files = DownloadTasksManager.DownloadRecordsSaveDirectory.listFiles(f -> f.isFile() && f.canRead());
+        if (files != null)
+            for (final File file: files)
+                try {
+                    try (final DataInputStream inputStream = new DataInputStream(new GZIPInputStream(new BufferedInputStream(new FileInputStream(file))))) {
+                        final DownloadTask task = DownloadTasksManager.parseTask(inputStream);
+                        final boolean warn = !this.getRecordingFile(task).getCanonicalFile().equals(file.getCanonicalFile());
+                        if (warn) {
+                            HLogManager.getInstance("TasksManager").log(HLogLevel.WARN, "Incorrect task recording path.", ParametersMap.create()
+                                    .add("file", file).add("task", task));
+                            Files.deleteIfExists(file.toPath());
+                        }
+                        if (inputStream.readBoolean())
+                            this.addPendingTask(activity, task, warn);
+                        else if (inputStream.readBoolean())
+                            this.addSuccessfulTask(activity, task, warn);
+                        else
+                            this.addFailedTask(activity, task, AbstractTasksManager.parseReason(inputStream), warn);
+                    } catch (@SuppressWarnings("OverlyBroadCatchBlock") final IOException exception) {
+                        HLogManager.getInstance("TasksManager").log(HLogLevel.WARN, "Failed to parse task.", ParametersMap.create()
+                                .add("file", file).add("exception", exception.getLocalizedMessage()));
+                        Files.deleteIfExists(file.toPath());
+                    }
+                } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                    HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
+                }
+        this.updatedTasks.clear();
     }
 
     @Override
@@ -92,22 +116,27 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
         });
     }
 
-    private final @NotNull File DownloadRecordsSaveDirectory = new File(this.BaseRecordsSaveDirectory, "Downloads");
-
-    @WorkerThread
-    private @NotNull File getSaveFile(final @NotNull DownloadTask task) {
-        // TODO safe filename.
-        return new File(this.BaseSaveDirectory, FileLocationGetter.storage(task.location) + File.separator + FileLocationGetter.id(task.location) + " - " + task.filename);
+    @Override
+    protected void removeNotWorkingTask(final @NotNull Activity activity, final @NotNull DownloadTask task) throws IOException, InterruptedException {
+        PermissionUtil.writePermission(activity);
+        Files.deleteIfExists(this.getRecordingFile(task).toPath());
     }
 
     @WorkerThread
-    private @NotNull File getRecordingFile(final @NotNull DownloadTask task) {
-        return new File(this.DownloadRecordsSaveDirectory, FileLocationGetter.storage(task.location) + " - " + FileLocationGetter.id(task.location) + ".bin.gz");
+    protected static @NotNull File getSaveFile(final @NotNull DownloadTask task) {
+        final File storage = new File(AbstractTasksManager.BaseSaveDirectory, FileLocationGetter.storage(task.location));
+        // TODO safe filename.
+        return new File(storage, FileLocationGetter.id(task.location) + " - " + task.filename);
+    }
+
+    @Override
+    public @NotNull File getRecordingFile(final @NotNull DownloadTask task) {
+        return new File(DownloadTasksManager.DownloadRecordsSaveDirectory, FileLocationGetter.storage(task.location) + " - " + FileLocationGetter.id(task.location) + ".bin.gz");
     }
 
     @Override
     protected @NotNull DownloadProgress prepareTask(final @NotNull Activity activity, final @NotNull DownloadTask task) throws IOException, InterruptedException {
-        final File file = this.getSaveFile(task);
+        final File file = DownloadTasksManager.getSaveFile(task);
         PermissionUtil.writePermission(activity);
         HFileHelper.ensureFileAccessible(file, true);
         return new DownloadProgress();
@@ -115,7 +144,7 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
 
     @Override
     protected @Nullable VisibleFailureReason runTask(final @NotNull Activity activity, final @NotNull DownloadTask task, final @NotNull DownloadProgress progress) {
-        final File file = this.getSaveFile(task);
+        final File file = DownloadTasksManager.getSaveFile(task);
         try {
             return FilesAssistant.download(task.address, task.username, task.location, file, PredicateE.truePredicate(), (s, p) -> {
                 progress.state = s;
@@ -131,12 +160,31 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
         protected final @NotNull FileLocation location;
         protected final @NotNull String filename;
         protected final PageTaskAdapter.@NotNull Types source;
+        protected final @NotNull File savePath;
 
+        @WorkerThread
         public DownloadTask(final @NotNull InetSocketAddress address, final @NotNull String username, final @NotNull ZonedDateTime time, final @NotNull FileLocation location, final @NotNull String filename, final PageTaskAdapter.@NotNull Types source) {
             super(address, username, time);
             this.location = location;
             this.filename = filename;
             this.source = source;
+            this.savePath = DownloadTasksManager.getSaveFile(this);
+        }
+
+        public @NotNull FileLocation getLocation() {
+            return this.location;
+        }
+
+        public @NotNull String getFilename() {
+            return this.filename;
+        }
+
+        public PageTaskAdapter.@NotNull Types getSource() {
+            return this.source;
+        }
+
+        public @NotNull File getSavePath() {
+            return this.savePath;
         }
 
         @Override
@@ -163,8 +211,8 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
     }
 
     public static class DownloadProgress {
-        protected InstantaneousProgressState state;
-        protected List<Pair.@NotNull ImmutablePair<@NotNull AtomicLong, @NotNull Long>> progress;
+        protected InstantaneousProgressState state = null;
+        protected List<Pair.@NotNull ImmutablePair<@NotNull AtomicLong, @NotNull Long>> progress = null;
 
         public @Nullable InstantaneousProgressState getState() {
             return this.state;
@@ -183,6 +231,7 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
         }
     }
 
+    @WorkerThread
     protected static @NotNull DownloadTask parseTask(final @NotNull DataInput inputStream) throws IOException {
         final InetSocketAddress address = AbstractTasksManager.parseAddress(inputStream);
         final String username = inputStream.readUTF();
@@ -195,6 +244,7 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
         return new DownloadTask(address, username, time, location, filename, source);
     }
 
+    @WorkerThread
     protected static void dumpTask(final @NotNull DataOutput outputStream, final @NotNull DownloadTask task) throws IOException {
         AbstractTasksManager.dumpAddress(outputStream, task.address);
         outputStream.writeUTF(task.username);

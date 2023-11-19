@@ -3,13 +3,22 @@ package com.xuxiaocheng.WListAndroid.UIs.Main.Task;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
+import androidx.annotation.WorkerThread;
+import androidx.viewbinding.ViewBinding;
 import androidx.viewpager2.widget.ViewPager2;
+import com.xuxiaocheng.WListAndroid.Main;
+import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.UIs.Main.CFragment;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.AbstractTasksManager;
+import com.xuxiaocheng.WListAndroid.Utils.EnhancedRecyclerViewAdapter;
 import com.xuxiaocheng.WListAndroid.databinding.PageTaskListBinding;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 public abstract class SPageTaskFragment extends CFragment<PageTaskListBinding> {
@@ -67,6 +76,9 @@ public abstract class SPageTaskFragment extends CFragment<PageTaskListBinding> {
         page.pageTaskListStatesFailure.setOnClickListener(v -> page.pageTaskListContent.setCurrentItem(PageTaskStateAdapter.Types.toPosition(PageTaskStateAdapter.Types.Failure)));
         page.pageTaskListStatesWorking.setOnClickListener(v -> page.pageTaskListContent.setCurrentItem(PageTaskStateAdapter.Types.toPosition(PageTaskStateAdapter.Types.Working)));
         page.pageTaskListStatesSuccess.setOnClickListener(v -> page.pageTaskListContent.setCurrentItem(PageTaskStateAdapter.Types.toPosition(PageTaskStateAdapter.Types.Success)));
+        page.pageTaskListStatesFailure.setText(MessageFormat.format(page.getRoot().getContext().getString(R.string.page_task_failure), 0));
+        page.pageTaskListStatesWorking.setText(MessageFormat.format(page.getRoot().getContext().getString(R.string.page_task_working), 0));
+        page.pageTaskListStatesSuccess.setText(MessageFormat.format(page.getRoot().getContext().getString(R.string.page_task_success), 0));
         page.pageTaskListContent.setAdapter(new PageTaskStateAdapter(this));
         page.pageTaskListContent.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
@@ -116,13 +128,84 @@ public abstract class SPageTaskFragment extends CFragment<PageTaskListBinding> {
         this.content().pageTaskListContent.setCurrentItem(PageTaskStateAdapter.Types.toPosition(this.currentState.get()), false);
     }
 
-    protected abstract static class FailureTaskStateFragment extends SPageTaskStateFragment {
+    protected abstract static class FailureTaskStateFragment<V extends ViewBinding, T extends AbstractTasksManager.AbstractTask> extends SPageTaskStateFragment<V, T> {
+        protected FailureTaskStateFragment(final @NotNull Inflater<@NotNull V> inflater) {
+            super(inflater);
+        }
+
+        @WorkerThread
+        protected abstract @NotNull AbstractTasksManager<T, ?> getManager();
+
+        @Override
+        protected void sOnUpdate(final @NotNull EnhancedRecyclerViewAdapter<? super T, ?> adapter, final boolean isFirstTime) {
+            final AbstractTasksManager<T, ?> manager = this.getManager();
+            List<T> updated = null;
+            for (final Iterator<T> iterator = manager.getUpdatedTasks().iterator(); iterator.hasNext(); ) {
+                final T task = iterator.next();
+                if (manager.getFailedTasks().containsKey(task)) {
+                    iterator.remove();
+                    if (updated == null)
+                        updated = new ArrayList<>();
+                    updated.add(task);
+                }
+            }
+            if (updated != null) {
+                final List<T> finalUpdated = updated;
+                Main.runOnUiThread(this.activity(), () -> {
+                    adapter.addDataRange(finalUpdated);
+                    this.fragment().content().pageTaskListStatesFailure.setText(MessageFormat.format(this.requireContext().getString(R.string.page_task_failure), adapter.dataSize()));
+                });
+            }
+        }
     }
 
-    protected abstract static class WorkingTaskStateFragment extends SPageTaskStateFragment {
+    protected abstract static class WorkingTaskStateFragment<V extends ViewBinding, T extends AbstractTasksManager.AbstractTask> extends SPageTaskStateFragment<V, T> {
+        protected WorkingTaskStateFragment(final @NotNull Inflater<@NotNull V> inflater) {
+            super(inflater);
+        }
+
+        @Override
+        protected void sOnUpdate(final @NotNull EnhancedRecyclerViewAdapter<? super T, ?> adapter, final boolean isFirstTime) {
+
+        }
     }
 
-    protected abstract static class SuccessTaskStateFragment extends SPageTaskStateFragment {
+    protected abstract static class SuccessTaskStateFragment<V extends ViewBinding, T extends AbstractTasksManager.AbstractTask> extends SPageTaskStateFragment<V, T> {
+        protected SuccessTaskStateFragment(final @NotNull Inflater<@NotNull V> inflater) {
+            super(inflater);
+        }
+
+        @WorkerThread
+        protected abstract @NotNull AbstractTasksManager<T, ?> getManager();
+
+        @Override
+        protected void sOnUpdate(final @NotNull EnhancedRecyclerViewAdapter<? super T, ?> adapter, final boolean isFirstTime) throws InterruptedException {
+            final AbstractTasksManager<T, ?> manager = this.getManager();
+            if (isFirstTime) {
+                Main.runOnUiThread(this.activity(), () -> {
+                    adapter.addDataRange(manager.getSuccessfulTasks());
+                    this.fragment().content().pageTaskListStatesSuccess.setText(MessageFormat.format(this.requireContext().getString(R.string.page_task_success), adapter.dataSize()));
+                });
+                return;
+            }
+            List<T> updated = null;
+            for (final Iterator<T> iterator = manager.getUpdatedTasks().iterator(); iterator.hasNext(); ) {
+                final T task = iterator.next();
+                if (manager.getSuccessfulTasks().contains(task)) {
+                    iterator.remove();
+                    if (updated == null)
+                        updated = new ArrayList<>();
+                    updated.add(task);
+                }
+            }
+            if (updated != null) {
+                final List<T> finalUpdated = updated;
+                Main.runOnUiThread(this.activity(), () -> {
+                    adapter.addDataRange(finalUpdated);
+                    this.fragment().content().pageTaskListStatesSuccess.setText(MessageFormat.format(this.requireContext().getString(R.string.page_task_success), adapter.dataSize()));
+                });
+            }
+        }
     }
 
     @Override

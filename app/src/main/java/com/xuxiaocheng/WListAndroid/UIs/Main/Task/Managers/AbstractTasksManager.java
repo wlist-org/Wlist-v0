@@ -14,11 +14,13 @@ import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason;
 import com.xuxiaocheng.WList.Commons.Operations.FailureKind;
 import com.xuxiaocheng.WListAndroid.Main;
+import com.xuxiaocheng.WListAndroid.UIs.Main.CActivity;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.PageTaskAdapter;
 import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.EventExecutorGroup;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.UnmodifiableView;
@@ -46,8 +48,9 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
 
     public static final @NotNull HProcessingInitializer<PageTaskAdapter.@NotNull Types, @NotNull AbstractTasksManager<?, ?>> managers = new HProcessingInitializer<>("TaskManagers");
 
-    protected final @NotNull File BaseSaveDirectory = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "wlist");
-    protected final @NotNull File BaseRecordsSaveDirectory = new File(this.BaseSaveDirectory, ".records");
+    /** @noinspection NonFinalStaticVariableUsedInClassInitialization*/
+    protected static final @NotNull File BaseSaveDirectory = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "wlist");
+    protected static final @NotNull File BaseRecordsSaveDirectory = new File(AbstractTasksManager.BaseSaveDirectory, ".records");
 
     public enum TaskState {
         Working,
@@ -72,8 +75,12 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
     }
 
     protected final @NotNull Set<@NotNull T> updatedTasks = ConcurrentHashMap.newKeySet();
+    protected final @NotNull Set<@NotNull T> deletedTasks = ConcurrentHashMap.newKeySet();
     public @NotNull Set<@NotNull T> getUpdatedTasks() {
         return this.updatedTasks;
+    }
+    public @NotNull Set<@NotNull T> getDeletedTasks() {
+        return this.deletedTasks;
     }
 
     public @NotNull @UnmodifiableView NavigableMap<@NotNull T, @NotNull P> getWorkingTasks() {
@@ -88,6 +95,25 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
     public @NotNull NavigableMap<@NotNull T, @NotNull VisibleFailureReason> getFailedTasks() {
         return this.failedTasks;
     }
+
+    @WorkerThread
+    @Contract(pure = true)
+    public abstract @NotNull File getRecordingFile(final @NotNull DownloadTasksManager.DownloadTask task);
+
+    @WorkerThread
+    protected abstract void initialize(final @NotNull CActivity activity) throws Exception;
+
+    @WorkerThread
+    protected abstract @NotNull P prepareTask(final @NotNull Activity activity, final @NotNull T task) throws IOException, InterruptedException;
+
+    @WorkerThread
+    protected abstract void serializeTask(final @NotNull Activity activity, final @NotNull T task, final @NotNull TaskState state, final @Nullable VisibleFailureReason failureReason) throws IOException, InterruptedException;
+
+    @WorkerThread
+    protected abstract void removeNotWorkingTask(final @NotNull Activity activity, final @NotNull T task) throws IOException, InterruptedException;
+
+    @WorkerThread
+    protected abstract @Nullable VisibleFailureReason runTask(final @NotNull Activity activity, final @NotNull T task, final @NotNull P progress) throws Exception;
 
     public synchronized void tryStartTask(final @NotNull Activity activity) {
         while (this.workingTasks.size() < 3) {
@@ -109,15 +135,6 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
             })).addListener(Main.exceptionListenerWithToast(activity));
         }
     }
-
-    @WorkerThread
-    protected abstract @NotNull P prepareTask(final @NotNull Activity activity, final @NotNull T task) throws IOException, InterruptedException;
-
-    @WorkerThread
-    protected abstract void serializeTask(final @NotNull Activity activity, final @NotNull T task, final @NotNull TaskState state, final @Nullable VisibleFailureReason failureReason) throws IOException, InterruptedException;
-
-    @WorkerThread
-    protected abstract @Nullable VisibleFailureReason runTask(final @NotNull Activity activity, final @NotNull T task, final @NotNull P progress) throws Exception;
 
     @WorkerThread
     protected void addPendingTask(final @NotNull Activity activity, final @NotNull T task, final boolean serializing) throws IOException, InterruptedException {
@@ -147,12 +164,36 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
     @WorkerThread
     public void addTask(final @NotNull Activity activity, final @NotNull T task) throws IOException, InterruptedException {
         this.addPendingTask(activity, task, true);
-        this.tryStartTask(activity);
-        HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Adding task.",
+        HLogManager.getInstance("TasksManager").log(HLogLevel.INFO, "Adding task.",
                 ParametersMap.create().add("type", this.type).add("task", task));
+        this.tryStartTask(activity);
     }
 
-    protected abstract static class AbstractTask {
+    @WorkerThread
+    public void removeSuccessfulTask(final @NotNull Activity activity, final @NotNull T task) throws IOException, InterruptedException {
+        if (this.successfulTasks.remove(task)) {
+            this.deletedTasks.add(task);
+            this.removeNotWorkingTask(activity, task);
+        }
+    }
+
+    @WorkerThread
+    public void removeFailedTask(final @NotNull Activity activity, final @NotNull T task) throws IOException, InterruptedException {
+        if (this.failedTasks.remove(task) != null) {
+            this.deletedTasks.add(task);
+            this.removeNotWorkingTask(activity, task);
+        }
+    }
+
+    @WorkerThread
+    public void removePendingTask(final @NotNull Activity activity, final @NotNull T task) throws IOException, InterruptedException {
+        if (this.pendingTasks.remove(task) != null) {
+            this.deletedTasks.add(task);
+            this.removeNotWorkingTask(activity, task);
+        }
+    }
+
+    public abstract static class AbstractTask {
         protected final @NotNull InetSocketAddress address;
         protected final @NotNull String username;
         protected final @NotNull ZonedDateTime time;
@@ -162,6 +203,18 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
             this.address = address;
             this.username = username;
             this.time = time;
+        }
+
+        public @NotNull InetSocketAddress getAddress() {
+            return this.address;
+        }
+
+        public @NotNull String getUsername() {
+            return this.username;
+        }
+
+        public @NotNull ZonedDateTime getTime() {
+            return this.time;
         }
 
         @Override
