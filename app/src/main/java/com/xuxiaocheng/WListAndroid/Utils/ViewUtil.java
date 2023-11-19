@@ -7,6 +7,7 @@ import android.widget.TextView;
 import androidx.annotation.UiThread;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.xuxiaocheng.WList.Server.Storage.Helpers.ProviderUtil;
 import com.xuxiaocheng.WListAndroid.R;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -75,16 +76,16 @@ public final class ViewUtil {
             image.setImageResource(R.mipmap.page_file_image_directory);
             return;
         }
-        final int index = name.lastIndexOf('.');
+        final String suffix = Objects.requireNonNullElse(ProviderUtil.getFileSuffix(name), "").toLowerCase(Locale.ROOT);
         // TODO: cached Drawable.
-        image.setImageResource(switch (index < 0 ? "" : name.substring(index + 1).toLowerCase(Locale.ROOT)) {
+        image.setImageResource(switch (suffix.isEmpty() ? "" : suffix.substring(1)) {
             case "bat", "cmd", "sh", "run" -> R.mipmap.page_file_image_bat;
-            case "doc", "docx" -> R.mipmap.page_file_image_docx;
-            case "exe", "bin" -> R.mipmap.page_file_image_exe;
+            case "exe", "bin", "com" -> R.mipmap.page_file_image_exe;
             case "jpg", "jpeg", "png", "bmp", "psd", "tga" -> R.mipmap.page_file_image_jpg;
             case "mp3", "flac", "wav", "wma", "aac", "ape" -> R.mipmap.page_file_image_mp3;
-            case "ppt", "pptx" -> R.mipmap.page_file_image_pptx;
             case "txt", "log" -> R.mipmap.page_file_image_txt;
+            case "doc", "docx" -> R.mipmap.page_file_image_docx;
+            case "ppt", "pptx" -> R.mipmap.page_file_image_pptx;
             case "xls", "xlsx" -> R.mipmap.page_file_image_xlsx;
             case "zip", "7z", "rar", "gz", "tar" -> R.mipmap.page_file_image_zip;
             default -> R.mipmap.page_file_image_file;

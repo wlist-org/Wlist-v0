@@ -53,7 +53,7 @@
 	<string name="page_file_upload_directory_hint">请输入文件夹名称</string>
 	<string name="page_file_upload_success_directory">创建文件夹成功</string>
 	<string name="page_file_upload_success_file">上传文件成功</string>
-	<string name="page_file_listing_title">首次进入，正在建立索引: \n{0}</string>
+	<string name="page_file_listing_title">首次进入，正在建立索引:\n\t{0}</string>
 	<string name="page_file_options_refresh">重新与网盘同步</string>
 	<string name="page_file_options_refresh_warning">注意：重新与网盘同步可能需要较长时间</string>
 	<string name="page_file_options_refresh_title">正在与网盘同步：{0}</string>
