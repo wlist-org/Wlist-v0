@@ -1,6 +1,7 @@
 package com.xuxiaocheng.WListAndroid.UIs.Main.Task;
 
 import android.content.Context;
+import android.graphics.Paint;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -19,6 +20,7 @@ import com.xuxiaocheng.WListAndroid.databinding.PageTaskListDownloadWorkingCellB
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
 import java.text.MessageFormat;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -179,8 +181,21 @@ public class TaskDownload extends SPageTaskFragment {
             ViewUtil.setFileImage(cell.pageTaskListDownloadSuccessCellImage, false, task.getFilename());
             cell.pageTaskListDownloadSuccessCellName.setText(task.getFilename());
             final Context context = cell.getRoot().getContext();
-            cell.pageTaskListDownloadSuccessCellSize.setText(ViewUtil.formatSize(task.getSavePath().length(), context.getString(R.string.unknown)));
-            cell.pageTaskListDownloadSuccessCellPath.setText(MessageFormat.format(context.getString(R.string.page_task_download_success_path), task.getSavePath().getAbsolutePath()));
-        }
+            final File saved = task.getSavePath();
+            cell.pageTaskListDownloadSuccessCellPath.setText(MessageFormat.format(context.getString(R.string.page_task_download_success_path), saved.getAbsolutePath()));
+            if (saved.isFile()) {
+                cell.pageTaskListDownloadSuccessCellSize.setText(ViewUtil.formatSize(saved.length(), context.getString(R.string.unknown)));
+                cell.pageTaskListDownloadSuccessCellPath.getPaint().reset();
+                cell.pageTaskListDownloadSuccessCellName.getPaint().reset();
+                cell.pageTaskListDownloadSuccessCellName.setTextColor(context.getColor(R.color.text_normal));
+                cell.pageTaskListDownloadSuccessCellImage.setImageAlpha(255);
+            } else {
+                cell.pageTaskListDownloadSuccessCellSize.setText(R.string.page_task_download_success_deleted);
+                cell.pageTaskListDownloadSuccessCellPath.getPaint().setFlags(Paint.ANTI_ALIAS_FLAG | Paint.STRIKE_THRU_TEXT_FLAG);
+                cell.pageTaskListDownloadSuccessCellName.getPaint().setFlags(Paint.ANTI_ALIAS_FLAG | Paint.STRIKE_THRU_TEXT_FLAG);
+                cell.pageTaskListDownloadSuccessCellName.setTextColor(context.getColor(R.color.text_hint));
+                cell.pageTaskListDownloadSuccessCellImage.setImageAlpha(128);
+            }
+         }
     }
 }
