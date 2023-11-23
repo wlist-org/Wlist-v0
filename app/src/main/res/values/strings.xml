@@ -60,6 +60,7 @@
 	<string name="page_file_options_refresh">Refresh and sync.</string>
 	<string name="page_file_options_refresh_warning">Refresh may cause a long time!</string>
 	<string name="page_file_options_refresh_title">Refreshing: {0}</string>
+	<string name="page_file_options_refresh_success">Refreshed successfully.</string>
 	<string name="page_file_options_sorter">Sort.</string>
 	<string name="page_file_options_sorter_name">Sort by name.</string>
 	<string name="page_file_options_sorter_size">Sort by size.</string>

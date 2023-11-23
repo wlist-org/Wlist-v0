@@ -118,6 +118,7 @@ class PartOptions extends SFragmentFilePart {
                                 max.set(pair.getSecond().longValue()); // TODO: save state.
                                 this.fragment.partList().listLoadingAnimation(finalTitle, true, pair.getFirst().longValue(), pair.getSecond().longValue());
                             });
+                            Main.showToast(this.activity(), R.string.page_file_options_refresh_success);
                         } finally {
                             this.fragment.partList().listLoadingAnimation(title, false, max.get(), max.get());
                         }
