@@ -3,7 +3,13 @@ package com.xuxiaocheng.WListAndroid.UIs.Main.Main.File;
 import android.view.View;
 import androidx.annotation.AnyThread;
 import com.xuxiaocheng.WListAndroid.Main;
+import com.xuxiaocheng.WListAndroid.UIs.Main.CActivity;
+import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.CopyTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.DownloadTasksManager;
+import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.MoveTasksManager;
+import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.RenameTasksManager;
+import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.TrashTasksManager;
+import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.UploadTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.PageTask;
 import org.jetbrains.annotations.NotNull;
 
@@ -14,10 +20,13 @@ class PartTask extends SFragmentFilePart {
 
     @AnyThread
     public void initializeManagers() {
-        Main.runOnBackgroundThread(this.activity(), () -> {
-            DownloadTasksManager.initializeIfNotSuccess(this.activity());
-
-        });
+        final CActivity activity = this.activity();
+        Main.runOnBackgroundThread(activity, () -> DownloadTasksManager.initializeIfNotSuccess(activity));
+        Main.runOnBackgroundThread(activity, () -> UploadTasksManager.initializeIfNotSuccess(activity));
+        Main.runOnBackgroundThread(activity, () -> TrashTasksManager.initializeIfNotSuccess(activity));
+        Main.runOnBackgroundThread(activity, () -> CopyTasksManager.initializeIfNotSuccess(activity));
+        Main.runOnBackgroundThread(activity, () -> MoveTasksManager.initializeIfNotSuccess(activity));
+        Main.runOnBackgroundThread(activity, () -> RenameTasksManager.initializeIfNotSuccess(activity));
     }
 
     @Override
