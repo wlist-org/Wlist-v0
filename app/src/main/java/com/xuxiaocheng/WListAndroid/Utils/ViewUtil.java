@@ -1,5 +1,7 @@
 package com.xuxiaocheng.WListAndroid.Utils;
 
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
 import android.graphics.drawable.Animatable;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -69,6 +71,12 @@ public final class ViewUtil {
     public static void startDrawableAnimation(final @NotNull ImageView loading) {
         if (loading.getDrawable() instanceof final Animatable animatable)
             animatable.start();
+    }
+
+    public static final @NotNull ColorMatrixColorFilter GrayColorFilter; static {
+        final ColorMatrix matrix = new ColorMatrix();
+        matrix.setSaturation(0);
+        GrayColorFilter = new ColorMatrixColorFilter(matrix);
     }
 
     public static void setFileImage(final @NotNull ImageView image, final boolean isDirectory, final @NotNull String name) {

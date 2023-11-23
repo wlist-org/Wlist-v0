@@ -192,13 +192,13 @@ public class TaskDownload extends SPageTaskFragment {
                 cell.pageTaskListDownloadSuccessCellPath.getPaint().reset();
                 cell.pageTaskListDownloadSuccessCellName.getPaint().reset();
                 cell.pageTaskListDownloadSuccessCellName.setTextColor(context.getColor(R.color.text_normal));
-                cell.pageTaskListDownloadSuccessCellImage.setImageAlpha(255);
+                cell.pageTaskListDownloadSuccessCellImage.setColorFilter(null);
             } else {
                 cell.pageTaskListDownloadSuccessCellSize.setText(R.string.page_task_download_success_deleted);
                 cell.pageTaskListDownloadSuccessCellPath.getPaint().setFlags(Paint.ANTI_ALIAS_FLAG | Paint.STRIKE_THRU_TEXT_FLAG);
                 cell.pageTaskListDownloadSuccessCellName.getPaint().setFlags(Paint.ANTI_ALIAS_FLAG | Paint.STRIKE_THRU_TEXT_FLAG);
                 cell.pageTaskListDownloadSuccessCellName.setTextColor(context.getColor(R.color.text_hint));
-                cell.pageTaskListDownloadSuccessCellImage.setImageAlpha(128);
+                cell.pageTaskListDownloadSuccessCellImage.setColorFilter(ViewUtil.GrayColorFilter);
             }
          }
     }
