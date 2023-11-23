@@ -15,7 +15,7 @@ class PartTask extends SFragmentFilePart {
     @AnyThread
     public void initializeManagers() {
         Main.runOnBackgroundThread(this.activity(), () -> {
-            DownloadTasksManager.initializeIfNotInitializing(this.activity());
+            DownloadTasksManager.initializeIfNotSuccess(this.activity());
 
         });
     }

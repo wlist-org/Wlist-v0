@@ -94,7 +94,7 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
     @UiThread
     public void removeData(final int index) {
         this.data.remove(index);
-        this.notifyItemRemoved(this.headers.size() + this.data.size() - 1);
+        this.notifyItemRemoved(this.headers.size() + index);
     }
 
     @UiThread

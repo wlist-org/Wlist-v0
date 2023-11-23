@@ -1,7 +1,103 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                                                   xmlns:app="http://schemas.android.com/apk/res-auto"
                                                    android:layout_width="match_parent"
                                                    android:layout_height="50dp">
 
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/page_task_list_download_working_cell_guideline_name"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		app:layout_constraintGuide_begin="50dp" />
+
+	<androidx.appcompat.widget.AppCompatImageView
+		android:id="@+id/page_task_list_download_working_cell_image"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:layout_marginStart="10dp"
+		android:layout_marginEnd="10dp"
+		android:scaleType="centerInside"
+		android:src="@mipmap/page_file_image_directory"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toLeftOf="@id/page_task_list_download_working_cell_guideline_name"
+		app:layout_constraintTop_toTopOf="parent" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_task_list_download_working_cell_name"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:layout_marginTop="5dp"
+		android:autoSizeTextType="uniform"
+		android:ellipsize="end"
+		android:gravity="center_vertical|start"
+		android:maxLines="1"
+		android:text="@string/app_name"
+		android:textColor="@color/text_normal"
+		app:layout_constraintBottom_toTopOf="@id/page_task_list_download_working_cell_progress"
+		app:layout_constraintLeft_toRightOf="@id/page_task_list_download_working_cell_guideline_name"
+		app:layout_constraintRight_toLeftOf="@id/page_task_list_download_working_cell_speed"
+		app:layout_constraintTop_toTopOf="parent" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_task_list_download_working_cell_speed"
+		android:layout_width="wrap_content"
+		android:layout_height="0dp"
+		android:layout_marginTop="5dp"
+		android:autoSizeTextType="uniform"
+		android:ellipsize="end"
+		android:gravity="center_vertical|end"
+		android:maxLines="1"
+		android:text="@string/page_task_process"
+		android:textColor="@color/text_normal"
+		app:layout_constraintBottom_toTopOf="@id/page_task_list_download_working_cell_progress"
+		app:layout_constraintLeft_toRightOf="@id/page_task_list_download_working_cell_name"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toTopOf="parent" />
+
+	<ProgressBar
+		android:id="@+id/page_task_list_download_working_cell_progress"
+		style="@style/ProgressBar.Horizontal"
+		android:layout_width="0dp"
+		android:layout_height="5dp"
+		android:layout_marginTop="2dp"
+		android:layout_marginBottom="2dp"
+		app:layout_constraintBottom_toTopOf="@id/page_task_list_download_working_cell_size"
+		app:layout_constraintLeft_toRightOf="@id/page_task_list_download_working_cell_guideline_name"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/page_task_list_download_working_cell_name" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_task_list_download_working_cell_size"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:layout_marginBottom="5dp"
+		android:autoSizeTextType="uniform"
+		android:ellipsize="end"
+		android:gravity="center_vertical|start"
+		android:maxLines="1"
+		android:text="@string/page_task_size"
+		android:textColor="@color/text_normal"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toRightOf="@id/page_task_list_download_working_cell_guideline_name"
+		app:layout_constraintRight_toLeftOf="@id/page_task_list_download_working_cell_time"
+		app:layout_constraintTop_toBottomOf="@id/page_task_list_download_working_cell_progress" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_task_list_download_working_cell_time"
+		android:layout_width="wrap_content"
+		android:layout_height="0dp"
+		android:layout_marginBottom="5dp"
+		android:autoSizeTextType="uniform"
+		android:ellipsize="end"
+		android:gravity="center_vertical|end"
+		android:maxLines="1"
+		android:text="@string/page_task_time"
+		android:textColor="@color/text_normal"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toRightOf="@id/page_task_list_download_working_cell_size"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/page_task_list_download_working_cell_progress" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

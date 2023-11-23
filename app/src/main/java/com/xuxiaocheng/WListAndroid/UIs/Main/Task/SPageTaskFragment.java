@@ -16,9 +16,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.AbstractMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 public abstract class SPageTaskFragment extends CFragment<PageTaskListBinding> {
@@ -29,7 +28,7 @@ public abstract class SPageTaskFragment extends CFragment<PageTaskListBinding> {
         this.type = type;
     }
 
-    protected abstract @NotNull SPageTaskStateFragment createStateFragment(final PageTaskStateAdapter.@NotNull Types type);
+    protected abstract @NotNull SPageTaskStateFragment<?, ?, ?> createStateFragment(final PageTaskStateAdapter.@NotNull Types type);
 
     @Override
     protected @NotNull PageTaskListBinding iOnInflater() {
@@ -55,11 +54,11 @@ public abstract class SPageTaskFragment extends CFragment<PageTaskListBinding> {
     }
 
     protected PageTaskStateAdapter.@NotNull Types getSuggestedChoice() {
-        final AbstractTasksManager<?, ?> manager = AbstractTasksManager.managers.getInstanceNullable(this.type);
+        final AbstractTasksManager<?, ?, ?, ?> manager = AbstractTasksManager.managers.getInstanceNullable(this.type);
         if (manager != null) {
-            final int failure = manager.getFailedTasks().size();
+            final int failure = manager.getFailureTasks().size();
             final int working = manager.getWorkingTasks().size() + manager.getPendingTasks().size();
-            final int success = manager.getSuccessfulTasks().size();
+            final int success = manager.getSuccessTasks().size();
             if (working != 0) return PageTaskStateAdapter.Types.Working;
             if (failure != 0) return PageTaskStateAdapter.Types.Failure;
             if (success != 0) return PageTaskStateAdapter.Types.Success;
@@ -80,6 +79,7 @@ public abstract class SPageTaskFragment extends CFragment<PageTaskListBinding> {
         page.pageTaskListStatesWorking.setText(MessageFormat.format(page.getRoot().getContext().getString(R.string.page_task_working), 0));
         page.pageTaskListStatesSuccess.setText(MessageFormat.format(page.getRoot().getContext().getString(R.string.page_task_success), 0));
         page.pageTaskListContent.setAdapter(new PageTaskStateAdapter(this));
+        page.pageTaskListContent.setOffscreenPageLimit(3);
         page.pageTaskListContent.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
             public void onPageSelected(final int position) {
@@ -128,83 +128,98 @@ public abstract class SPageTaskFragment extends CFragment<PageTaskListBinding> {
         this.content().pageTaskListContent.setCurrentItem(PageTaskStateAdapter.Types.toPosition(this.currentState.get()), false);
     }
 
-    protected abstract static class FailureTaskStateFragment<V extends ViewBinding, T extends AbstractTasksManager.AbstractTask> extends SPageTaskStateFragment<V, T> {
+    protected abstract static class FailureTaskStateFragment<V extends ViewBinding, T extends AbstractTasksManager.AbstractTask, E> extends SPageTaskStateFragment<V, T, E> {
         protected FailureTaskStateFragment(final @NotNull Inflater<@NotNull V> inflater) {
             super(inflater);
         }
 
         @WorkerThread
-        protected abstract @NotNull AbstractTasksManager<T, ?> getManager();
+        protected abstract @NotNull AbstractTasksManager<T, ?, ?, E> getManager();
 
         @Override
-        protected void sOnUpdate(final @NotNull EnhancedRecyclerViewAdapter<? super T, ?> adapter, final boolean isFirstTime) {
-            final AbstractTasksManager<T, ?> manager = this.getManager();
-            List<T> updated = null;
-            for (final Iterator<T> iterator = manager.getUpdatedTasks().iterator(); iterator.hasNext(); ) {
-                final T task = iterator.next();
-                if (manager.getFailedTasks().containsKey(task)) {
-                    iterator.remove();
-                    if (updated == null)
-                        updated = new ArrayList<>();
-                    updated.add(task);
-                }
-            }
-            if (updated != null) {
-                final List<T> finalUpdated = updated;
-                Main.runOnUiThread(this.activity(), () -> {
-                    adapter.addDataRange(finalUpdated);
-                    this.fragment().content().pageTaskListStatesFailure.setText(MessageFormat.format(this.requireContext().getString(R.string.page_task_failure), adapter.dataSize()));
-                });
-            }
+        protected void sOnBuildPage(final @NotNull EnhancedRecyclerViewAdapter<Map.Entry<T, E>, SPageTaskStateFragment<V, T, E>.SPageTaskStateFragmentVewHolder> adapter) {
+            final AbstractTasksManager<T, ?, ?, E> manager = this.getManager();
+            Main.runOnUiThread(this.activity(), () -> {
+                adapter.addDataRange(manager.getFailureTasks().entrySet());
+                this.fragment().content().pageTaskListStatesFailure.setText(MessageFormat.format(this.requireContext().getString(R.string.page_task_failure), adapter.dataSize()));
+            });
+            manager.getFailureTasksCallbacks().registerNamedForce(this.callbackName, new AdapterUpdateCallback<>(this::activity, adapter, this.fragment().content().pageTaskListStatesFailure, R.string.page_task_failure));
+        }
+
+        @Override
+        public void onDestroy() {
+            super.onDestroy();
+            Main.runOnBackgroundThread(this.activity(), () -> this.getManager().getFailureTasksCallbacks().unregisterNamed(this.callbackName));
         }
     }
 
-    protected abstract static class WorkingTaskStateFragment<V extends ViewBinding, T extends AbstractTasksManager.AbstractTask> extends SPageTaskStateFragment<V, T> {
+    protected abstract static class WorkingTaskStateFragment<V extends ViewBinding, T extends AbstractTasksManager.AbstractTask, E> extends SPageTaskStateFragment<V, T, E> {
         protected WorkingTaskStateFragment(final @NotNull Inflater<@NotNull V> inflater) {
             super(inflater);
         }
 
-        @Override
-        protected void sOnUpdate(final @NotNull EnhancedRecyclerViewAdapter<? super T, ?> adapter, final boolean isFirstTime) {
+        @WorkerThread
+        protected abstract @NotNull AbstractTasksManager<T, E, ?, ?> getManager();
 
+        @Override
+        protected void sOnBuildPage(final @NotNull EnhancedRecyclerViewAdapter<Map.Entry<T, E>, SPageTaskStateFragment<V, T, E>.SPageTaskStateFragmentVewHolder> adapter) {
+            final AbstractTasksManager<T, E, ?, ?> manager = this.getManager();
+            Main.runOnUiThread(this.activity(), () -> {
+                adapter.addDataRange(manager.getWorkingTasks().entrySet());
+                adapter.addDataRange(manager.getPendingTasks().entrySet());
+                this.fragment().content().pageTaskListStatesWorking.setText(MessageFormat.format(this.requireContext().getString(R.string.page_task_working), adapter.dataSize()));
+            });
+            manager.getWorkingTasksCallbacks().registerNamedForce(this.callbackName, new AdapterUpdateCallback<>(this::activity, adapter, this.fragment().content().pageTaskListStatesWorking, R.string.page_task_working) {
+                @Override
+                public void onAdded(final @NotNull T task, final @NotNull E extra) {
+                    Main.runOnUiThread(this.activitySupplier.get(), () -> {
+                        int size = 0;
+                        for (final Map.Entry<T, E> t: this.adapter.getData())
+                            if (manager.getWorkingTasks().containsKey(t.getKey()))
+                                ++size;
+                            else
+                                break;
+                        this.adapter.addData(size, new AbstractMap.SimpleImmutableEntry<>(task, extra));
+                        this.textView.setText(MessageFormat.format(this.textView.getContext().getString(this.textId), this.adapter.dataSize()));
+                    });
+                }
+            });
+            manager.getPendingTasksCallbacks().registerNamedForce(this.callbackName, new AdapterUpdateCallback<>(this::activity, adapter, this.fragment().content().pageTaskListStatesWorking, R.string.page_task_working));
+        }
+
+        @Override
+        public void onDestroy() {
+            super.onDestroy();
+            Main.runOnBackgroundThread(this.activity(), () -> {
+                final AbstractTasksManager<T, E, ?, ?> manager = this.getManager();
+                manager.getWorkingTasksCallbacks().unregisterNamed(this.callbackName);
+                manager.getPendingTasksCallbacks().unregisterNamed(this.callbackName);
+            });
         }
     }
 
-    protected abstract static class SuccessTaskStateFragment<V extends ViewBinding, T extends AbstractTasksManager.AbstractTask> extends SPageTaskStateFragment<V, T> {
+    protected abstract static class SuccessTaskStateFragment<V extends ViewBinding, T extends AbstractTasksManager.AbstractTask, E> extends SPageTaskStateFragment<V, T, E> {
         protected SuccessTaskStateFragment(final @NotNull Inflater<@NotNull V> inflater) {
             super(inflater);
         }
 
         @WorkerThread
-        protected abstract @NotNull AbstractTasksManager<T, ?> getManager();
+        protected abstract @NotNull AbstractTasksManager<T, ?, E, ?> getManager();
 
         @Override
-        protected void sOnUpdate(final @NotNull EnhancedRecyclerViewAdapter<? super T, ?> adapter, final boolean isFirstTime) throws InterruptedException {
-            final AbstractTasksManager<T, ?> manager = this.getManager();
-            if (isFirstTime) {
-                Main.runOnUiThread(this.activity(), () -> {
-                    adapter.addDataRange(manager.getSuccessfulTasks());
-                    this.fragment().content().pageTaskListStatesSuccess.setText(MessageFormat.format(this.requireContext().getString(R.string.page_task_success), adapter.dataSize()));
-                });
-                return;
-            }
-            List<T> updated = null;
-            for (final Iterator<T> iterator = manager.getUpdatedTasks().iterator(); iterator.hasNext(); ) {
-                final T task = iterator.next();
-                if (manager.getSuccessfulTasks().contains(task)) {
-                    iterator.remove();
-                    if (updated == null)
-                        updated = new ArrayList<>();
-                    updated.add(task);
-                }
-            }
-            if (updated != null) {
-                final List<T> finalUpdated = updated;
-                Main.runOnUiThread(this.activity(), () -> {
-                    adapter.addDataRange(finalUpdated);
-                    this.fragment().content().pageTaskListStatesSuccess.setText(MessageFormat.format(this.requireContext().getString(R.string.page_task_success), adapter.dataSize()));
-                });
-            }
+        protected void sOnBuildPage(final @NotNull EnhancedRecyclerViewAdapter<Map.Entry<T, E>, SPageTaskStateFragment<V, T, E>.SPageTaskStateFragmentVewHolder> adapter) {
+            final AbstractTasksManager<T, ?, E, ?> manager = this.getManager();
+            Main.runOnUiThread(this.activity(), () -> {
+                adapter.addDataRange(manager.getSuccessTasks().entrySet());
+                this.fragment().content().pageTaskListStatesSuccess.setText(MessageFormat.format(this.requireContext().getString(R.string.page_task_success), adapter.dataSize()));
+            });
+            manager.getSuccessTasksCallbacks().registerNamedForce(this.callbackName, new AdapterUpdateCallback<>(this::activity, adapter, this.fragment().content().pageTaskListStatesSuccess, R.string.page_task_success));
+        }
+
+        @Override
+        public void onDestroy() {
+            super.onDestroy();
+            Main.runOnBackgroundThread(this.activity(), () -> this.getManager().getSuccessTasksCallbacks().unregisterNamed(this.callbackName));
         }
     }
 

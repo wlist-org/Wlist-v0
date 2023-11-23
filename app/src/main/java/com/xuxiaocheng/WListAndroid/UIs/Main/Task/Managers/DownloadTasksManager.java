@@ -2,12 +2,14 @@ package com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers;
 
 import android.app.Activity;
 import androidx.annotation.WorkerThread;
+import com.xuxiaocheng.HeadLibs.Callbacks.HCallbacks;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
-import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.Functions.BiConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.PredicateE;
+import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
-import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
-import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.AndroidSupports.FailureReasonGetter;
 import com.xuxiaocheng.WList.AndroidSupports.FileLocationGetter;
 import com.xuxiaocheng.WList.Client.Assistants.FilesAssistant;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
@@ -16,32 +18,26 @@ import com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason;
 import com.xuxiaocheng.WList.Commons.Operations.FailureKind;
 import com.xuxiaocheng.WListAndroid.UIs.Main.CActivity;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.PageTaskAdapter;
-import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
 import com.xuxiaocheng.WListAndroid.Utils.PermissionUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.BufferedInputStream;
 import java.io.DataInput;
-import java.io.DataInputStream;
 import java.io.DataOutput;
-import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.file.Files;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
 
-public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksManager.DownloadTask, DownloadTasksManager.DownloadProgress> {
+public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksManager.DownloadTask, DownloadTasksManager.DownloadWorking, DownloadTasksManager.DownloadSuccess, DownloadTasksManager.DownloadFailure> {
     protected DownloadTasksManager() {
         super(PageTaskAdapter.Types.Download);
     }
+
+    protected static final @NotNull File DownloadRecordsSaveDirectory = new File(AbstractTasksManager.BaseRecordsSaveDirectory, "Downloads");
 
     @WorkerThread
     public static @NotNull DownloadTasksManager getInstance() {
@@ -49,77 +45,12 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
     }
 
     @WorkerThread
-    public static void initializeIfNotInitializing(final @NotNull CActivity activity) {
-        AbstractTasksManager.managers.initializeIfNotInitializing(PageTaskAdapter.Types.Download, () -> {
+    public static void initializeIfNotSuccess(final @NotNull CActivity activity) {
+        AbstractTasksManager.managers.reinitializeIfNotSuccess(PageTaskAdapter.Types.Download, () -> {
             final DownloadTasksManager manager = new DownloadTasksManager();
-            manager.initialize(activity);
-            manager.tryStartTask(activity);
+            manager.initialize(activity, DownloadTasksManager.DownloadRecordsSaveDirectory);
             return manager;
         }, null);
-    }
-
-    private static final @NotNull File DownloadRecordsSaveDirectory = new File(AbstractTasksManager.BaseRecordsSaveDirectory, "Downloads");
-
-    @Override
-    protected void initialize(final @NotNull CActivity activity) throws IOException, InterruptedException {
-        PermissionUtil.readPermission(activity);
-        HFileHelper.ensureDirectoryExist(DownloadTasksManager.DownloadRecordsSaveDirectory.toPath());
-        final File[] files = DownloadTasksManager.DownloadRecordsSaveDirectory.listFiles(f -> f.isFile() && f.canRead());
-        if (files != null)
-            for (final File file: files)
-                try {
-                    try (final DataInputStream inputStream = new DataInputStream(new GZIPInputStream(new BufferedInputStream(new FileInputStream(file))))) {
-                        final DownloadTask task = DownloadTasksManager.parseTask(inputStream);
-                        final boolean warn = !this.getRecordingFile(task).getCanonicalFile().equals(file.getCanonicalFile());
-                        if (warn) {
-                            HLogManager.getInstance("TasksManager").log(HLogLevel.WARN, "Incorrect task recording path.", ParametersMap.create()
-                                    .add("file", file).add("task", task));
-                            Files.deleteIfExists(file.toPath());
-                        }
-                        if (inputStream.readBoolean())
-                            this.addPendingTask(activity, task, warn);
-                        else if (inputStream.readBoolean())
-                            this.addSuccessfulTask(activity, task, warn);
-                        else
-                            this.addFailedTask(activity, task, AbstractTasksManager.parseReason(inputStream), warn);
-                    } catch (@SuppressWarnings("OverlyBroadCatchBlock") final IOException exception) {
-                        HLogManager.getInstance("TasksManager").log(HLogLevel.WARN, "Failed to parse task.", ParametersMap.create()
-                                .add("file", file).add("exception", exception.getLocalizedMessage()));
-                        Files.deleteIfExists(file.toPath());
-                    }
-                } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
-                    HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
-                }
-        this.updatedTasks.clear();
-    }
-
-    @Override
-    protected void serializeTask(final @NotNull Activity activity, final @NotNull DownloadTask task, final @NotNull TaskState state, final @Nullable VisibleFailureReason failureReason) throws IOException, InterruptedException {
-        PermissionUtil.writePermission(activity);
-        HFileHelper.writeFileAtomically(this.getRecordingFile(task), s -> {
-            try (final DataOutputStream outputStream = new DataOutputStream(new GZIPOutputStream(s))) {
-                DownloadTasksManager.dumpTask(outputStream, task);
-                // No Working.
-                switch (state) {
-                    case Pending -> outputStream.writeBoolean(true);
-                    case Successful, Failed -> outputStream.writeBoolean(false);
-                }
-                switch (state) {
-                    case Successful -> outputStream.writeBoolean(true);
-                    case Failed -> outputStream.writeBoolean(false);
-                }
-                if (state == TaskState.Failed) {
-                    assert failureReason != null;
-                    AbstractTasksManager.dumpReason(outputStream, failureReason);
-                }
-            }
-        });
-    }
-
-    @Override
-    protected void removeNotWorkingTask(final @NotNull Activity activity, final @NotNull DownloadTask task) throws IOException, InterruptedException {
-        PermissionUtil.writePermission(activity);
-        Files.deleteIfExists(this.getRecordingFile(task).toPath());
     }
 
     @WorkerThread
@@ -135,26 +66,29 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
     }
 
     @Override
-    protected @NotNull DownloadProgress prepareTask(final @NotNull Activity activity, final @NotNull DownloadTask task) throws IOException, InterruptedException {
+    protected @NotNull DownloadTasksManager.DownloadWorking prepareTask(final @NotNull Activity activity, final @NotNull DownloadTask task) throws IOException, InterruptedException {
         final File file = DownloadTasksManager.getSaveFile(task);
         PermissionUtil.writePermission(activity);
         HFileHelper.ensureFileAccessible(file, true);
-        return new DownloadProgress();
+        return new DownloadWorking();
     }
 
     @Override
-    protected @Nullable VisibleFailureReason runTask(final @NotNull Activity activity, final @NotNull DownloadTask task, final @NotNull DownloadProgress progress) {
+    protected @NotNull UnionPair<DownloadSuccess, DownloadFailure> runTask(final @NotNull Activity activity, final @NotNull DownloadTask task, final @NotNull DownloadWorking progress) {
         final File file = DownloadTasksManager.getSaveFile(task);
         try {
-            return FilesAssistant.download(task.address, task.username, task.location, file, PredicateE.truePredicate(), (s, p) -> {
+            final VisibleFailureReason reason = FilesAssistant.download(task.address, task.username, task.location, file, PredicateE.truePredicate(), (s, p) -> {
                 progress.state = s;
                 progress.progress = p;
-                this.updatedTasks.add(task);
+                progress.updateCallbacks.callback(RunnableE::run);
             });
+            return reason == null ? UnionPair.ok(new DownloadSuccess()) : UnionPair.fail(new DownloadFailure(reason));
         } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable throwable) {
-            return new VisibleFailureReason(FailureKind.Others, task.location, Objects.requireNonNullElse(throwable.getLocalizedMessage(), ""));
+            final VisibleFailureReason reason = new VisibleFailureReason(FailureKind.Others, task.location, Objects.requireNonNullElse(throwable.getLocalizedMessage(), ""));
+            return UnionPair.fail(new DownloadFailure(reason));
         }
     }
+
 
     public static class DownloadTask extends AbstractTask {
         protected final @NotNull FileLocation location;
@@ -210,29 +144,8 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
         }
     }
 
-    public static class DownloadProgress {
-        protected InstantaneousProgressState state = null;
-        protected List<Pair.@NotNull ImmutablePair<@NotNull AtomicLong, @NotNull Long>> progress = null;
-
-        public @Nullable InstantaneousProgressState getState() {
-            return this.state;
-        }
-
-        public @Nullable List<Pair.ImmutablePair<AtomicLong, Long>> getProgress() {
-            return this.progress;
-        }
-
-        @Override
-        public @NotNull String toString() {
-            return "DownloadProgress{" +
-                    "state=" + this.state +
-                    ", progress=" + this.progress +
-                    '}';
-        }
-    }
-
-    @WorkerThread
-    protected static @NotNull DownloadTask parseTask(final @NotNull DataInput inputStream) throws IOException {
+    @Override
+    protected @NotNull DownloadTask parseTask(final @NotNull DataInput inputStream) throws IOException {
         final InetSocketAddress address = AbstractTasksManager.parseAddress(inputStream);
         final String username = inputStream.readUTF();
         final ZonedDateTime time = AbstractTasksManager.parseTime(inputStream);
@@ -244,8 +157,8 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
         return new DownloadTask(address, username, time, location, filename, source);
     }
 
-    @WorkerThread
-    protected static void dumpTask(final @NotNull DataOutput outputStream, final @NotNull DownloadTask task) throws IOException {
+    @Override
+    protected void dumpTask(final @NotNull DataOutput outputStream, final @NotNull DownloadTask task) throws IOException {
         AbstractTasksManager.dumpAddress(outputStream, task.address);
         outputStream.writeUTF(task.username);
         AbstractTasksManager.dumpTime(outputStream, task.time);
@@ -253,6 +166,96 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
         outputStream.writeLong(FileLocationGetter.id(task.location));
         outputStream.writeUTF(task.filename);
         outputStream.writeInt(PageTaskAdapter.Types.toPosition(task.source));
+    }
+
+    public static class DownloadWorking {
+        protected InstantaneousProgressState state = null;
+        protected List<Pair.@NotNull ImmutablePair<@NotNull AtomicLong, @NotNull Long>> progress = null;
+        protected final @NotNull HCallbacks<RunnableE> updateCallbacks = new HCallbacks<>();
+
+        public @Nullable InstantaneousProgressState getState() {
+            return this.state;
+        }
+
+        public @Nullable List<Pair.ImmutablePair<AtomicLong, Long>> getProgress() {
+            return this.progress;
+        }
+
+        public @NotNull HCallbacks<RunnableE> getUpdateCallbacks() {
+            return this.updateCallbacks;
+        }
+
+        @Override
+        public @NotNull String toString() {
+            return "DownloadWorking{" +
+                    "state=" + this.state +
+                    ", progress=" + this.progress +
+                    '}';
+        }
+    }
+
+    @Override
+    protected @NotNull DownloadWorking parseExtraWorking(final @NotNull DataInput inputStream) {
+        return new DownloadWorking();
+    }
+
+    @Override
+    protected void dumpExtraWorking(final @NotNull DataOutput outputStream, final @NotNull DownloadWorking extra) {
+    }
+
+    public static class DownloadSuccess {
+    }
+
+    @Override
+    protected @NotNull DownloadSuccess parseExtraSuccess(final @NotNull DataInput inputStream) {
+        return new DownloadSuccess();
+    }
+
+    @Override
+    protected void dumpExtraSuccess(final @NotNull DataOutput outputStream, final @NotNull DownloadSuccess extra) {
+    }
+
+    public static class DownloadFailure {
+        protected final @NotNull VisibleFailureReason reason;
+
+        protected DownloadFailure(final @NotNull VisibleFailureReason reason) {
+            super();
+            this.reason = reason;
+        }
+
+        public @NotNull VisibleFailureReason getReason() {
+            return this.reason;
+        }
+
+        @Override
+        public boolean equals(final @Nullable Object o) {
+            if (this == o) return true;
+            if (!(o instanceof final DownloadFailure that)) return false;
+            return Objects.equals(this.reason, that.reason);
+        }
+
+        @Override
+        public int hashCode() {
+            return FailureReasonGetter.hashCode(this.reason);
+        }
+
+        @Override
+        public @NotNull String toString() {
+            return "DownloadFailure{" +
+                    "reason=" + this.reason +
+                    '}';
+        }
+    }
+
+    @Override
+    protected @NotNull DownloadFailure parseExtraFailure(final @NotNull DataInput inputStream) throws IOException {
+        final VisibleFailureReason reason = AbstractTasksManager.parseReason(inputStream);
+        return new DownloadFailure(reason);
+    }
+
+    @Override
+    protected void dumpExtraFailure(final @NotNull DataOutput outputStream, final @NotNull DownloadFailure extra) throws IOException {
+        AbstractTasksManager.dumpReason(outputStream, extra.reason);
     }
 
     @Override

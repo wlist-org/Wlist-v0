@@ -4,8 +4,12 @@ import android.app.Activity;
 import android.os.Environment;
 import androidx.annotation.WorkerThread;
 import com.qw.soul.permission.PermissionTools;
+import com.xuxiaocheng.HeadLibs.Callbacks.HCallbacks;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
+import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HProcessingInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.AndroidSupports.FailureReasonGetter;
@@ -17,36 +21,39 @@ import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.UIs.Main.CActivity;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.PageTaskAdapter;
 import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
+import com.xuxiaocheng.WListAndroid.Utils.PermissionUtil;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.EventExecutorGroup;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.annotations.UnmodifiableView;
 
+import java.io.BufferedInputStream;
 import java.io.DataInput;
+import java.io.DataInputStream;
 import java.io.DataOutput;
+import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.file.Files;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.NavigableMap;
-import java.util.NavigableSet;
 import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
-public abstract class AbstractTasksManager<T extends AbstractTasksManager.AbstractTask, P> {
+public abstract class AbstractTasksManager<T extends AbstractTasksManager.AbstractTask, EW, ES, EF> {
     protected final @NotNull EventExecutorGroup TaskExecutors =
             new DefaultEventExecutorGroup(3, new DefaultThreadFactory(this.getClass().getSimpleName() + "Executors"));
 
-    public static final @NotNull HProcessingInitializer<PageTaskAdapter.@NotNull Types, @NotNull AbstractTasksManager<?, ?>> managers = new HProcessingInitializer<>("TaskManagers");
+    public static final @NotNull HProcessingInitializer<PageTaskAdapter.@NotNull Types, @NotNull AbstractTasksManager<?, ?, ?, ?>> managers = new HProcessingInitializer<>("TaskManagers");
 
     /** @noinspection NonFinalStaticVariableUsedInClassInitialization*/
     protected static final @NotNull File BaseSaveDirectory = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "wlist");
@@ -55,81 +62,159 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
     public enum TaskState {
         Working,
         Pending,
-        Successful,
-        Failed,
+        Success,
+        Failure,
+    }
+
+    public interface UpdateCallback<T, E> {
+        @WorkerThread
+        void onAdded(final @NotNull T task, final @NotNull E extra) throws Exception;
+        @WorkerThread
+        void onRemoved(final @NotNull T task, final @NotNull E extra) throws Exception;
     }
 
     protected final PageTaskAdapter.@NotNull Types type;
-    protected final @NotNull NavigableMap<@NotNull T, @NotNull P> workingTasks;
-    protected final @NotNull NavigableMap<@NotNull T, @NotNull P> pendingTasks;
-    protected final @NotNull NavigableSet<@NotNull T> successfulTasks;
-    protected final @NotNull NavigableMap<@NotNull T, @NotNull VisibleFailureReason> failedTasks;
+    protected final @NotNull NavigableMap<@NotNull T, @NotNull EW> workingTasks;
+    protected final @NotNull NavigableMap<@NotNull T, @NotNull EW> pendingTasks;
+    protected final @NotNull NavigableMap<@NotNull T, @NotNull ES> successTasks;
+    protected final @NotNull NavigableMap<@NotNull T, @NotNull EF> failureTasks;
+    protected final @NotNull HCallbacks<UpdateCallback<T, EW>> workingTasksCallbacks = new HCallbacks<>();
+    protected final @NotNull HCallbacks<UpdateCallback<T, EW>> pendingTasksCallbacks = new HCallbacks<>();
+    protected final @NotNull HCallbacks<UpdateCallback<T, ES>> successTasksCallbacks = new HCallbacks<>();
+    protected final @NotNull HCallbacks<UpdateCallback<T, EF>> failureTasksCallbacks = new HCallbacks<>();
 
     protected AbstractTasksManager(final PageTaskAdapter.@NotNull Types type) {
         super();
         this.type = type;
         this.workingTasks = new ConcurrentSkipListMap<>(Comparator.comparing(t -> t.time));
         this.pendingTasks = new ConcurrentSkipListMap<>(Comparator.comparing(t -> t.time));
-        this.successfulTasks = new ConcurrentSkipListSet<>(Comparator.comparing(t -> t.time));
-        this.failedTasks = new ConcurrentSkipListMap<>(Comparator.comparing(t -> t.time));
+        this.successTasks = new ConcurrentSkipListMap<>(Comparator.comparing(t -> t.time));
+        this.failureTasks = new ConcurrentSkipListMap<>(Comparator.comparing(t -> t.time));
     }
 
-    protected final @NotNull Set<@NotNull T> updatedTasks = ConcurrentHashMap.newKeySet();
-    protected final @NotNull Set<@NotNull T> deletedTasks = ConcurrentHashMap.newKeySet();
-    public @NotNull Set<@NotNull T> getUpdatedTasks() {
-        return this.updatedTasks;
+    public PageTaskAdapter.@NotNull Types getType() {
+        return this.type;
     }
-    public @NotNull Set<@NotNull T> getDeletedTasks() {
-        return this.deletedTasks;
-    }
-
-    public @NotNull @UnmodifiableView NavigableMap<@NotNull T, @NotNull P> getWorkingTasks() {
+    public @NotNull NavigableMap<@NotNull T, @NotNull EW> getWorkingTasks() {
         return this.workingTasks;
     }
-    public @NotNull NavigableMap<@NotNull T, @NotNull P> getPendingTasks() {
+    public @NotNull NavigableMap<@NotNull T, @NotNull EW> getPendingTasks() {
         return this.pendingTasks;
     }
-    public @NotNull NavigableSet<@NotNull T> getSuccessfulTasks() {
-        return this.successfulTasks;
+    public @NotNull NavigableMap<@NotNull T, @NotNull ES> getSuccessTasks() {
+        return this.successTasks;
     }
-    public @NotNull NavigableMap<@NotNull T, @NotNull VisibleFailureReason> getFailedTasks() {
-        return this.failedTasks;
+    public @NotNull NavigableMap<@NotNull T, @NotNull EF> getFailureTasks() {
+        return this.failureTasks;
+    }
+    public @NotNull HCallbacks<UpdateCallback<T, EW>> getWorkingTasksCallbacks() {
+        return this.workingTasksCallbacks;
+    }
+    public @NotNull HCallbacks<UpdateCallback<T, EW>> getPendingTasksCallbacks() {
+        return this.pendingTasksCallbacks;
+    }
+    public @NotNull HCallbacks<UpdateCallback<T, ES>> getSuccessTasksCallbacks() {
+        return this.successTasksCallbacks;
+    }
+    public @NotNull HCallbacks<UpdateCallback<T, EF>> getFailureTasksCallbacks() {
+        return this.failureTasksCallbacks;
     }
 
     @WorkerThread
     @Contract(pure = true)
-    public abstract @NotNull File getRecordingFile(final @NotNull DownloadTasksManager.DownloadTask task);
+    public abstract @NotNull File getRecordingFile(final @NotNull T task);
 
     @WorkerThread
-    protected abstract void initialize(final @NotNull CActivity activity) throws Exception;
+    protected void initialize(final @NotNull CActivity activity, final @NotNull File baseRecordsSaveDirectory) throws IOException, InterruptedException {
+        PermissionUtil.readPermission(activity);
+        HFileHelper.ensureDirectoryExist(baseRecordsSaveDirectory.toPath());
+        final File[] files = baseRecordsSaveDirectory.listFiles(f -> f.isFile() && f.canRead());
+        if (files != null)
+            for (final File file: files)
+                try {
+                    try (final DataInputStream inputStream = new DataInputStream(new GZIPInputStream(new BufferedInputStream(new FileInputStream(file))))) {
+                        final T task = this.parseTask(inputStream);
+                        final boolean warn = !this.getRecordingFile(task).getCanonicalFile().equals(file.getCanonicalFile());
+                        if (warn) {
+                            HLogManager.getInstance("TasksManager").log(HLogLevel.WARN, "Incorrect task recording path.", ParametersMap.create()
+                                    .add("file", file).add("task", task));
+                            Files.deleteIfExists(file.toPath());
+                        }
+                        final TaskState _state = this.parseState(inputStream);
+                        final TaskState state = _state == TaskState.Working ? TaskState.Pending : _state;
+                        switch (state) {
+                            case Pending -> {
+                                final EW extra = this.parseExtraWorking(inputStream);
+                                this.pendingTasks.put(task, extra);
+                                if (warn)
+                                    this.dumpWorkingTask(activity, task, extra);
+                            }
+                            case Success -> {
+                                final ES extra = this.parseExtraSuccess(inputStream);
+                                this.successTasks.put(task, extra);
+                                if (warn)
+                                    this.dumpSuccessTask(activity, task, extra);
+                            }
+                            case Failure -> {
+                                final EF extra = this.parseExtraFailure(inputStream);
+                                this.failureTasks.put(task, extra);
+                                if (warn)
+                                    this.dumpFailureTask(activity, task, extra);
+                            }
+                        }
+                    } catch (@SuppressWarnings("OverlyBroadCatchBlock") final IOException exception) {
+                        HLogManager.getInstance("TasksManager").log(HLogLevel.WARN, "Failed to parse task.", ParametersMap.create()
+                                .add("type", this.type).add("file", file).add("exception", exception.getLocalizedMessage()));
+                        Files.deleteIfExists(file.toPath());
+                    }
+                } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
+                    HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
+                }
+        this.tryStartTask(activity);
+    }
 
     @WorkerThread
-    protected abstract @NotNull P prepareTask(final @NotNull Activity activity, final @NotNull T task) throws IOException, InterruptedException;
+    protected abstract @NotNull EW prepareTask(final @NotNull Activity activity, final @NotNull T task) throws IOException, InterruptedException;
 
     @WorkerThread
-    protected abstract void serializeTask(final @NotNull Activity activity, final @NotNull T task, final @NotNull TaskState state, final @Nullable VisibleFailureReason failureReason) throws IOException, InterruptedException;
+    protected abstract @NotNull UnionPair<ES, EF> runTask(final @NotNull Activity activity, final @NotNull T task, final @NotNull EW progress) throws Exception;
 
     @WorkerThread
-    protected abstract void removeNotWorkingTask(final @NotNull Activity activity, final @NotNull T task) throws IOException, InterruptedException;
+    public void addTask(final @NotNull Activity activity, final @NotNull T task) throws IOException, InterruptedException {
+        final EW pending = this.prepareTask(activity, task);
+        this.pendingTasks.put(task, pending);
+        this.pendingTasksCallbacks.callback(c -> c.onAdded(task, pending));
+        this.dumpWorkingTask(activity, task, pending);
+        HLogManager.getInstance("TasksManager").log(HLogLevel.INFO, "Adding task.",
+                ParametersMap.create().add("type", this.type).add("task", task));
+        this.tryStartTask(activity);
+    }
 
     @WorkerThread
-    protected abstract @Nullable VisibleFailureReason runTask(final @NotNull Activity activity, final @NotNull T task, final @NotNull P progress) throws Exception;
-
-    public synchronized void tryStartTask(final @NotNull Activity activity) {
+    protected synchronized void tryStartTask(final @NotNull Activity activity) {
         while (this.workingTasks.size() < 3) {
-            final Map.Entry<T, P> entry = this.pendingTasks.pollFirstEntry();
+            final Map.Entry<T, EW> entry = this.pendingTasks.pollFirstEntry();
             if (entry == null) break;
             final T task = entry.getKey();
-            final P progress = entry.getValue();
-            this.workingTasks.put(task, progress);
-            this.updatedTasks.add(task);
+            final EW working = entry.getValue();
+            this.pendingTasksCallbacks.callback(c -> c.onRemoved(task, working));
+            this.workingTasks.put(task, working);
+            this.workingTasksCallbacks.callback(c -> c.onAdded(task, working));
             this.TaskExecutors.submit(HExceptionWrapper.wrapRunnable(() -> {
-                final VisibleFailureReason reason = this.runTask(activity, task, progress);
-                this.workingTasks.remove(task, progress);
-                if (reason != null)
-                    this.addFailedTask(activity, task, reason, true);
-                else
-                    this.addSuccessfulTask(activity, task, true);
+                final UnionPair<ES, EF> result = this.runTask(activity, task, working);
+                this.workingTasks.remove(task, working);
+                this.workingTasksCallbacks.callback(c -> c.onRemoved(task, working));
+                if (result.isSuccess()) {
+                    final ES extra = result.getT();
+                    this.successTasks.put(task, extra);
+                    this.successTasksCallbacks.callback(c -> c.onAdded(task, extra));
+                    this.dumpSuccessTask(activity, task, extra);
+                } else {
+                    final EF extra = result.getE();
+                    this.failureTasks.put(task, extra);
+                    this.failureTasksCallbacks.callback(c -> c.onAdded(task, extra));
+                    this.dumpFailureTask(activity, task, extra);
+                }
                 if (PermissionTools.isActivityAvailable(activity))
                     this.tryStartTask(activity);
             })).addListener(Main.exceptionListenerWithToast(activity));
@@ -137,61 +222,120 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
     }
 
     @WorkerThread
-    protected void addPendingTask(final @NotNull Activity activity, final @NotNull T task, final boolean serializing) throws IOException, InterruptedException {
-        final P progress = this.prepareTask(activity, task);
-        this.pendingTasks.put(task, progress);
-        if (serializing)
-            this.serializeTask(activity, task, TaskState.Pending, null);
-        this.updatedTasks.add(task);
+    protected void deleteTaskRecord(final @NotNull Activity activity, final @NotNull T task) throws IOException, InterruptedException {
+        PermissionUtil.writePermission(activity);
+        Files.deleteIfExists(this.getRecordingFile(task).toPath());
     }
 
     @WorkerThread
-    protected void addSuccessfulTask(final @NotNull Activity activity, final @NotNull T task, final boolean serializing) throws IOException, InterruptedException {
-        this.successfulTasks.add(task);
-        if (serializing)
-            this.serializeTask(activity, task, TaskState.Successful, null);
-        this.updatedTasks.add(task);
-    }
-
-    @WorkerThread
-    protected void addFailedTask(final @NotNull Activity activity, final @NotNull T task, final @NotNull VisibleFailureReason reason, final boolean serializing) throws IOException, InterruptedException {
-        this.failedTasks.put(task, reason);
-        if (serializing)
-            this.serializeTask(activity, task, TaskState.Failed, reason);
-        this.updatedTasks.add(task);
-    }
-
-    @WorkerThread
-    public void addTask(final @NotNull Activity activity, final @NotNull T task) throws IOException, InterruptedException {
-        this.addPendingTask(activity, task, true);
-        HLogManager.getInstance("TasksManager").log(HLogLevel.INFO, "Adding task.",
-                ParametersMap.create().add("type", this.type).add("task", task));
-        this.tryStartTask(activity);
+    public void removePendingTask(final @NotNull Activity activity, final @NotNull T task) throws IOException, InterruptedException {
+        final EW pending = this.pendingTasks.remove(task);
+        if (pending != null) {
+            this.pendingTasksCallbacks.callback(c -> c.onRemoved(task, pending));
+            this.deleteTaskRecord(activity, task);
+        }
     }
 
     @WorkerThread
     public void removeSuccessfulTask(final @NotNull Activity activity, final @NotNull T task) throws IOException, InterruptedException {
-        if (this.successfulTasks.remove(task)) {
-            this.deletedTasks.add(task);
-            this.removeNotWorkingTask(activity, task);
+        final ES success = this.successTasks.remove(task);
+        if (success != null) {
+            this.successTasksCallbacks.callback(c -> c.onRemoved(task, success));
+            this.deleteTaskRecord(activity, task);
         }
     }
 
     @WorkerThread
     public void removeFailedTask(final @NotNull Activity activity, final @NotNull T task) throws IOException, InterruptedException {
-        if (this.failedTasks.remove(task) != null) {
-            this.deletedTasks.add(task);
-            this.removeNotWorkingTask(activity, task);
+        final EF failure = this.failureTasks.remove(task);
+        if (failure != null) {
+            this.failureTasksCallbacks.callback(c -> c.onRemoved(task, failure));
+            this.deleteTaskRecord(activity, task);
+        }
+    }
+
+
+    @WorkerThread
+    protected abstract @NotNull T parseTask(final @NotNull DataInput inputStream) throws IOException;
+
+    @WorkerThread
+    protected @NotNull TaskState parseState(final @NotNull DataInput inputStream) throws IOException {
+        if (inputStream.readBoolean())
+            return TaskState.Pending;
+        if (inputStream.readBoolean())
+            return TaskState.Success;
+        return TaskState.Failure;
+    }
+
+    @WorkerThread
+    protected abstract @NotNull EW parseExtraWorking(final @NotNull DataInput inputStream) throws IOException;
+
+    @WorkerThread
+    protected abstract @NotNull ES parseExtraSuccess(final @NotNull DataInput inputStream) throws IOException;
+
+    @WorkerThread
+    protected abstract @NotNull EF parseExtraFailure(final @NotNull DataInput inputStream) throws IOException;
+
+    @WorkerThread
+    protected abstract void dumpTask(final @NotNull DataOutput outputStream, final @NotNull T task) throws IOException;
+
+    @WorkerThread
+    protected void dumpState(final @NotNull DataOutput outputStream, final @NotNull TaskState state) throws IOException {
+        switch (state) {
+            case Pending, Working -> outputStream.writeBoolean(true);
+            case Success, Failure -> outputStream.writeBoolean(false);
+        }
+        switch (state) {
+            case Success -> outputStream.writeBoolean(true);
+            case Failure -> outputStream.writeBoolean(false);
         }
     }
 
     @WorkerThread
-    public void removePendingTask(final @NotNull Activity activity, final @NotNull T task) throws IOException, InterruptedException {
-        if (this.pendingTasks.remove(task) != null) {
-            this.deletedTasks.add(task);
-            this.removeNotWorkingTask(activity, task);
-        }
+    protected abstract void dumpExtraWorking(final @NotNull DataOutput outputStream, final @NotNull EW extra) throws IOException;
+
+    @WorkerThread
+    protected abstract void dumpExtraSuccess(final @NotNull DataOutput outputStream, final @NotNull ES extra) throws IOException;
+
+    @WorkerThread
+    protected abstract void dumpExtraFailure(final @NotNull DataOutput outputStream, final @NotNull EF extra) throws IOException;
+
+    @WorkerThread
+    protected void dumpWorkingTask(final @NotNull Activity activity, final @NotNull T task, final @NotNull EW extra) throws IOException, InterruptedException {
+        PermissionUtil.writePermission(activity);
+        HFileHelper.writeFileAtomically(this.getRecordingFile(task), s -> {
+            try (final DataOutputStream outputStream = new DataOutputStream(new GZIPOutputStream(s))) {
+                this.dumpTask(outputStream, task);
+                this.dumpState(outputStream, TaskState.Pending);
+                this.dumpExtraWorking(outputStream, extra);
+            }
+        });
     }
+
+    @WorkerThread
+    protected void dumpSuccessTask(final @NotNull Activity activity, final @NotNull T task, final @NotNull ES extra) throws IOException, InterruptedException {
+        PermissionUtil.writePermission(activity);
+        HFileHelper.writeFileAtomically(this.getRecordingFile(task), s -> {
+            try (final DataOutputStream outputStream = new DataOutputStream(new GZIPOutputStream(s))) {
+                this.dumpTask(outputStream, task);
+                this.dumpState(outputStream, TaskState.Success);
+                this.dumpExtraSuccess(outputStream, extra);
+            }
+        });
+    }
+
+    @WorkerThread
+    protected void dumpFailureTask(final @NotNull Activity activity, final @NotNull T task, final @NotNull EF extra) throws IOException, InterruptedException {
+        PermissionUtil.writePermission(activity);
+        HFileHelper.writeFileAtomically(this.getRecordingFile(task), s -> {
+            try (final DataOutputStream outputStream = new DataOutputStream(new GZIPOutputStream(s))) {
+                this.dumpTask(outputStream, task);
+                this.dumpState(outputStream, TaskState.Failure);
+                this.dumpExtraFailure(outputStream, extra);
+            }
+        });
+    }
+
 
     public abstract static class AbstractTask {
         protected final @NotNull InetSocketAddress address;
@@ -279,9 +423,8 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
         return "AbstractTasksManager{" +
                 "workingTasks=" + this.workingTasks +
                 ", pendingTasks=" + this.pendingTasks +
-                ", successfulTasks=" + this.successfulTasks +
-                ", failedTasks=" + this.failedTasks +
-                ", updatedTasks=" + this.updatedTasks +
+                ", successTasks=" + this.successTasks +
+                ", failureTasks=" + this.failureTasks +
                 '}';
     }
 }
