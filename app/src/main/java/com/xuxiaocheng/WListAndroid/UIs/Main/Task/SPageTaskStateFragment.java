@@ -66,6 +66,12 @@ public abstract class SPageTaskStateFragment<V extends ViewBinding, T extends Ab
                 //noinspection ReturnOfInnerClass
                 return new SPageTaskStateFragmentVewHolder(SPageTaskStateFragment.this.inflater.inflate(SPageTaskStateFragment.this.getLayoutInflater(), parent, false));
             }
+
+            @Override
+            protected void recycleDataViewHolder(final @NotNull SPageTaskStateFragmentVewHolder holder) {
+                super.recycleDataViewHolder(holder);
+                SPageTaskStateFragment.this.onUnbind(holder.cell);
+            }
         };
         page.pageTaskListContentList.setLayoutManager(new LinearLayoutManager(this.activity()));
         page.pageTaskListContentList.setHasFixedSize(true);
@@ -78,6 +84,10 @@ public abstract class SPageTaskStateFragment<V extends ViewBinding, T extends Ab
 
     @UiThread
     protected abstract void onBind(final @NotNull V cell, final @NotNull T task, final @NotNull E data);
+
+    @UiThread
+    protected void onUnbind(final @NotNull V cell) {
+    }
 
     public static class AdapterUpdateCallback<V extends ViewBinding, T extends AbstractTasksManager.AbstractTask, E> implements AbstractTasksManager.UpdateCallback<T, E> {
         protected final @NotNull Supplier<@NotNull Activity> activitySupplier;

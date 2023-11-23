@@ -1,6 +1,15 @@
 package com.xuxiaocheng.WListAndroid.UIs.Main.Task;
 
 import android.content.Context;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import androidx.annotation.UiThread;
+import androidx.viewbinding.ViewBinding;
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.WList.AndroidSupports.InstantaneousProgressStateGetter;
+import com.xuxiaocheng.WList.Commons.Beans.InstantaneousProgressState;
+import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.AbstractTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.DownloadTasksManager;
@@ -8,8 +17,13 @@ import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import com.xuxiaocheng.WListAndroid.databinding.PageTaskListDownloadSuccessCellBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageTaskListDownloadWorkingCellBinding;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.text.MessageFormat;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class TaskDownload extends SPageTaskFragment {
     public TaskDownload() {
@@ -41,9 +55,34 @@ public class TaskDownload extends SPageTaskFragment {
         }
     }
 
-    public static class DownloadWorkingTaskStateFragment extends WorkingTaskStateFragment<PageTaskListDownloadWorkingCellBinding, DownloadTasksManager.DownloadTask, DownloadTasksManager.DownloadWorking> {
+    public static class DownloadWorkingTaskStateFragment extends WorkingTaskStateFragment<DownloadWorkingTaskStateFragment.WrappedPageTaskListDownloadWorkingCellBinding, DownloadTasksManager.DownloadTask, DownloadTasksManager.DownloadWorking> {
+        protected static final class WrappedPageTaskListDownloadWorkingCellBinding implements ViewBinding {
+            private final @NotNull PageTaskListDownloadWorkingCellBinding cell;
+            private DownloadTasksManager.@Nullable DownloadWorking working;
+            private long lastW = 0;
+            private @Nullable LocalDateTime lastT = null;
+
+            private WrappedPageTaskListDownloadWorkingCellBinding(final @NotNull LayoutInflater inflater, final @Nullable ViewGroup group, final boolean attachRoot) {
+                super();
+                this.cell = PageTaskListDownloadWorkingCellBinding.inflate(inflater, group, attachRoot);
+            }
+
+            @Override
+            public @NotNull View getRoot() {
+                return this.cell.getRoot();
+            }
+
+            @Override
+            public @NotNull String toString() {
+                return "WrappedPageTaskListDownloadWorkingCellBinding{" +
+                        "cell=" + this.cell +
+                        ", working=" + this.working +
+                        '}';
+            }
+        }
+
         public DownloadWorkingTaskStateFragment() {
-            super(PageTaskListDownloadWorkingCellBinding::inflate);
+            super(WrappedPageTaskListDownloadWorkingCellBinding::new);
         }
 
         @Override
@@ -52,9 +91,76 @@ public class TaskDownload extends SPageTaskFragment {
         }
 
         @Override
-        protected void onBind(final @NotNull PageTaskListDownloadWorkingCellBinding cell, final DownloadTasksManager.@NotNull DownloadTask task, final DownloadTasksManager.@NotNull DownloadWorking data) {
-            ViewUtil.setFileImage(cell.pageTaskListDownloadWorkingCellImage, false, task.getFilename());
-            cell.pageTaskListDownloadWorkingCellName.setText(task.getFilename());
+        protected void onBind(final @NotNull WrappedPageTaskListDownloadWorkingCellBinding cell, final DownloadTasksManager.@NotNull DownloadTask task, final DownloadTasksManager.@NotNull DownloadWorking data) {
+            ViewUtil.setFileImage(cell.cell.pageTaskListDownloadWorkingCellImage, false, task.getFilename());
+            cell.cell.pageTaskListDownloadWorkingCellName.setText(task.getFilename());
+            cell.working = data;
+            cell.cell.pageTaskListDownloadWorkingCellProgress.setMin(0);
+            cell.cell.pageTaskListDownloadWorkingCellProgress.setMax(1000);
+            this.resetProgress(cell, false);
+            data.getUpdateCallbacks().registerNamedForce("DownloadWorkingTaskStateFragment", () -> Main.runOnUiThread(this.activity(), () ->
+                    this.resetProgress(cell, true)));
+        }
+
+        protected float calculateProgress(final @NotNull Iterable<? extends Pair.@NotNull ImmutablePair<@NotNull AtomicLong, @NotNull Long>> progress) {
+            long current = 0, total = 0;
+            for (final Pair.ImmutablePair<AtomicLong, Long> pair: progress) {
+                current += pair.getFirst().longValue();
+                total += pair.getSecond().longValue();
+            }
+            return 1.0f * current / total;
+        }
+
+        @UiThread
+        protected void resetProgress(final @NotNull WrappedPageTaskListDownloadWorkingCellBinding cell, final boolean animate) {
+            assert cell.working != null;
+            final List<Pair.ImmutablePair<AtomicLong, Long>> progress = cell.working.getProgress();
+            final InstantaneousProgressState state = cell.working.getState();
+            final Context context = cell.getRoot().getContext();
+            if (progress == null || state == null) {
+                cell.cell.pageTaskListDownloadWorkingCellProcessText.setText(MessageFormat.format(context.getString(R.string.page_task_process), 0));
+                cell.cell.pageTaskListDownloadWorkingCellProgress.setIndeterminate(true);
+                cell.cell.pageTaskListDownloadWorkingCellSize.setText(R.string.page_task_download_working_preparing);
+                cell.cell.pageTaskListDownloadWorkingCellTime.setText(MessageFormat.format(context.getString(R.string.page_task_time), context.getString(R.string.unknown)));
+                return;
+            }
+            final Pair.ImmutablePair<Long, Long> m = InstantaneousProgressStateGetter.merge(state);
+            if (m.getFirst().longValue() == m.getSecond().longValue()) {
+                cell.cell.pageTaskListDownloadWorkingCellProcessText.setText(MessageFormat.format(context.getString(R.string.page_task_process), 1));
+                cell.cell.pageTaskListDownloadWorkingCellProgress.setIndeterminate(true);
+                cell.cell.pageTaskListDownloadWorkingCellSize.setText(R.string.page_task_download_working_finishing);
+                cell.cell.pageTaskListDownloadWorkingCellTime.setText(MessageFormat.format(context.getString(R.string.page_task_time), "0s"));
+                return;
+            }
+            float readPercent = this.calculateProgress(progress);
+            final float writePercent = 1.0f * m.getFirst().longValue() / m.getSecond().longValue();
+            if (readPercent < writePercent) readPercent = writePercent;
+            cell.cell.pageTaskListDownloadWorkingCellProcessText.setText(MessageFormat.format(context.getString(R.string.page_task_process), writePercent));
+            cell.cell.pageTaskListDownloadWorkingCellProgress.setIndeterminate(false);
+            //noinspection NumericCastThatLosesPrecision
+            cell.cell.pageTaskListDownloadWorkingCellProgress.setProgress((int) (writePercent * 1000), animate);
+            //noinspection NumericCastThatLosesPrecision
+            cell.cell.pageTaskListDownloadWorkingCellProgress.setSecondaryProgress((int) (readPercent * 1000));
+            final String unknown = context.getString(R.string.unknown);
+            final LocalDateTime now = LocalDateTime.now();
+            final long interval = cell.lastT == null ? 1000 : Duration.between(cell.lastT, now).toMillis();
+            //noinspection NumericCastThatLosesPrecision
+            cell.cell.pageTaskListDownloadWorkingCellSize.setText(MessageFormat.format(context.getString(R.string.page_task_size_speed),
+                    ViewUtil.formatSize(m.getFirst().longValue(), unknown),
+                    ViewUtil.formatSize(m.getSecond().longValue(), unknown),
+                    ViewUtil.formatSize((long) (1.0f * (m.getFirst().longValue() - cell.lastW) / (interval == 0 ? 1000 : interval)) * 1000, unknown)));
+            cell.lastW = m.getFirst().longValue();
+            cell.lastT = now;
+        }
+
+        @Override
+        protected void onUnbind(final @NotNull WrappedPageTaskListDownloadWorkingCellBinding cell) {
+            super.onUnbind(cell);
+            if (cell.working != null)
+                cell.working.getUpdateCallbacks().unregisterNamed("DownloadWorkingTaskStateFragment");
+            cell.working = null;
+            cell.lastW = 0;
+            cell.lastT = null;
         }
     }
 
@@ -74,7 +180,7 @@ public class TaskDownload extends SPageTaskFragment {
             cell.pageTaskListDownloadSuccessCellName.setText(task.getFilename());
             final Context context = cell.getRoot().getContext();
             cell.pageTaskListDownloadSuccessCellSize.setText(ViewUtil.formatSize(task.getSavePath().length(), context.getString(R.string.unknown)));
-            cell.pageTaskListDownloadSuccessCellPath.setText(MessageFormat.format(context.getString(R.string.page_task_download_path), task.getSavePath().getAbsolutePath()));
+            cell.pageTaskListDownloadSuccessCellPath.setText(MessageFormat.format(context.getString(R.string.page_task_download_success_path), task.getSavePath().getAbsolutePath()));
         }
     }
 }

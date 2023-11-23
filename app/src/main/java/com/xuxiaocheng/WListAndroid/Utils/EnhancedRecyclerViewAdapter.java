@@ -61,6 +61,17 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
             holder.onBind(this.data.get(viewType));
     }
 
+    protected void recycleDataViewHolder(final @NotNull VH holder) {
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public void onViewRecycled(final @NotNull WrappedViewHolder<?, T> holder) {
+        super.onViewRecycled(holder);
+        if (!(holder instanceof HeaderAndTailorViewHolder<?>))
+            this.recycleDataViewHolder((VH) holder);
+    }
+
     @Override
     public int getItemCount() {
         return this.headers.size() + this.data.size() + this.tailors.size();

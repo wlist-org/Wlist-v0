@@ -37,11 +37,11 @@
 		android:textColor="@color/text_normal"
 		app:layout_constraintBottom_toTopOf="@id/page_task_list_download_working_cell_progress"
 		app:layout_constraintLeft_toRightOf="@id/page_task_list_download_working_cell_guideline_name"
-		app:layout_constraintRight_toLeftOf="@id/page_task_list_download_working_cell_speed"
+		app:layout_constraintRight_toLeftOf="@id/page_task_list_download_working_cell_process_text"
 		app:layout_constraintTop_toTopOf="parent" />
 
 	<androidx.appcompat.widget.AppCompatTextView
-		android:id="@+id/page_task_list_download_working_cell_speed"
+		android:id="@+id/page_task_list_download_working_cell_process_text"
 		android:layout_width="wrap_content"
 		android:layout_height="0dp"
 		android:layout_marginTop="5dp"
@@ -77,7 +77,7 @@
 		android:ellipsize="end"
 		android:gravity="center_vertical|start"
 		android:maxLines="1"
-		android:text="@string/page_task_size"
+		android:text="@string/page_task_size_speed"
 		android:textColor="@color/text_normal"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toRightOf="@id/page_task_list_download_working_cell_guideline_name"
