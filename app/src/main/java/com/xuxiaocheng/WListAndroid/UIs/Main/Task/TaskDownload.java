@@ -8,6 +8,7 @@ import android.view.ViewGroup;
 import androidx.annotation.UiThread;
 import androidx.viewbinding.ViewBinding;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.WList.AndroidSupports.FailureReasonGetter;
 import com.xuxiaocheng.WList.AndroidSupports.InstantaneousProgressStateGetter;
 import com.xuxiaocheng.WList.Commons.Beans.InstantaneousProgressState;
 import com.xuxiaocheng.WListAndroid.Main;
@@ -15,6 +16,7 @@ import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.AbstractTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.DownloadTasksManager;
 import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
+import com.xuxiaocheng.WListAndroid.databinding.PageTaskListDownloadFailureCellBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageTaskListDownloadSuccessCellBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageTaskListDownloadWorkingCellBinding;
 import org.jetbrains.annotations.NotNull;
@@ -41,9 +43,9 @@ public class TaskDownload extends SPageTaskFragment {
         };
     }
 
-    public static class DownloadFailureTaskStateFragment extends FailureTaskStateFragment<PageTaskListDownloadWorkingCellBinding, DownloadTasksManager.DownloadTask, DownloadTasksManager.DownloadFailure> {
+    public static class DownloadFailureTaskStateFragment extends FailureTaskStateFragment<PageTaskListDownloadFailureCellBinding, DownloadTasksManager.DownloadTask, DownloadTasksManager.DownloadFailure> {
         public DownloadFailureTaskStateFragment() {
-            super(PageTaskListDownloadWorkingCellBinding::inflate);
+            super(PageTaskListDownloadFailureCellBinding::inflate);
         }
 
         @Override
@@ -52,8 +54,10 @@ public class TaskDownload extends SPageTaskFragment {
         }
 
         @Override
-        protected void onBind(final @NotNull PageTaskListDownloadWorkingCellBinding cell, final DownloadTasksManager.@NotNull DownloadTask task, final DownloadTasksManager.@NotNull DownloadFailure data) {
-
+        protected void onBind(final @NotNull PageTaskListDownloadFailureCellBinding cell, final DownloadTasksManager.@NotNull DownloadTask task, final DownloadTasksManager.@NotNull DownloadFailure data) {
+            ViewUtil.setFileImage(cell.pageTaskListDownloadFailureCellImage, false, task.getFilename());
+            cell.pageTaskListDownloadFailureCellName.setText(task.getFilename());
+            cell.pageTaskListDownloadFailureCellReason.setText(FailureReasonGetter.toString(data.getReason()));
         }
     }
 
