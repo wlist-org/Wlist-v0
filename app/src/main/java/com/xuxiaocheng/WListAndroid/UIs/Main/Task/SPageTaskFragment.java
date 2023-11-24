@@ -22,6 +22,10 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public abstract class SPageTaskFragment extends CFragment<PageTaskListBinding> {
     protected final PageTaskAdapter.@NotNull Types type;
+    protected final @NotNull AtomicReference<PageTaskStateAdapter.Types> currentState;
+    protected PageTaskStateAdapter.@NotNull Types currentState() {
+        return this.currentState.get();
+    }
 
     protected SPageTaskFragment(final PageTaskAdapter.@NotNull Types type, final @NotNull AtomicReference<PageTaskStateAdapter.Types> currentState) {
         super();
@@ -35,12 +39,6 @@ public abstract class SPageTaskFragment extends CFragment<PageTaskListBinding> {
     protected @NotNull PageTaskListBinding iOnInflater() {
         return PageTaskListBinding.inflate(this.getLayoutInflater());
     }
-
-    protected final @NotNull AtomicReference<PageTaskStateAdapter.Types> currentState;
-    protected PageTaskStateAdapter.@NotNull Types currentState() {
-        return this.currentState.get();
-    }
-
     @Override
     protected void iOnRestoreInstanceState(final @Nullable Bundle arguments, final @Nullable Bundle savedInstanceState) {
         super.iOnRestoreInstanceState(arguments, savedInstanceState);

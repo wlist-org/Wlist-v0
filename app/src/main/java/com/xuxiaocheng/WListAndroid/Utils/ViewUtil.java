@@ -14,6 +14,7 @@ import com.xuxiaocheng.WListAndroid.R;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -65,6 +66,11 @@ public final class ViewUtil {
     public static @NotNull String formatTime(final @Nullable ZonedDateTime time, final @NotNull String unknown) {
         if (time == null) return unknown;
         return time.toOffsetDateTime().atZoneSameInstant(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.getDefault()));
+    }
+
+    public static @NotNull String formatDuration(final @Nullable Duration duration, final @NotNull String unknown) {
+        if (duration == null || duration.isNegative()) return unknown;
+        return duration.toString().substring(2).toLowerCase(Locale.getDefault());
     }
 
     @UiThread

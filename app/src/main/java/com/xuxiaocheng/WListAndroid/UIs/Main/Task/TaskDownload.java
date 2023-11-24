@@ -29,6 +29,7 @@ import java.nio.file.Files;
 import java.text.MessageFormat;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -126,17 +127,17 @@ public class TaskDownload extends SPageTaskFragment {
         @UiThread
         protected void resetProgress(final @NotNull WrappedPageTaskListDownloadWorkingCellBinding cell, final boolean animate) {
             assert cell.working != null;
-            final List<Pair.ImmutablePair<AtomicLong, Long>> progress = cell.working.getProgress();
-            final InstantaneousProgressState state = cell.working.getState();
+            final InstantaneousProgressState readProgress = cell.working.getState();
+            final List<Pair.ImmutablePair<AtomicLong, Long>> writeProgress = cell.working.getProgress();
             final Context context = cell.getRoot().getContext();
-            if (progress == null || state == null) {
+            if (readProgress == null || writeProgress == null) {
                 cell.cell.pageTaskListDownloadWorkingCellProcessText.setText(MessageFormat.format(context.getString(R.string.page_task_process), 0));
                 cell.cell.pageTaskListDownloadWorkingCellProgress.setIndeterminate(true);
                 cell.cell.pageTaskListDownloadWorkingCellSize.setText(R.string.page_task_download_working_preparing);
                 cell.cell.pageTaskListDownloadWorkingCellTime.setText(MessageFormat.format(context.getString(R.string.page_task_time), context.getString(R.string.unknown)));
                 return;
             }
-            final Pair.ImmutablePair<Long, Long> m = InstantaneousProgressStateGetter.merge(state);
+            final Pair.ImmutablePair<Long, Long> m = InstantaneousProgressStateGetter.merge(readProgress);
             if (m.getFirst().longValue() == m.getSecond().longValue()) {
                 cell.cell.pageTaskListDownloadWorkingCellProcessText.setText(MessageFormat.format(context.getString(R.string.page_task_process), 1));
                 cell.cell.pageTaskListDownloadWorkingCellProgress.setIndeterminate(true);
@@ -144,7 +145,7 @@ public class TaskDownload extends SPageTaskFragment {
                 cell.cell.pageTaskListDownloadWorkingCellTime.setText(MessageFormat.format(context.getString(R.string.page_task_time), "0s"));
                 return;
             }
-            float readPercent = this.calculateProgress(progress);
+            float readPercent = this.calculateProgress(writeProgress);
             final float writePercent = 1.0f * m.getFirst().longValue() / m.getSecond().longValue();
             if (readPercent < writePercent) readPercent = writePercent;
             cell.cell.pageTaskListDownloadWorkingCellProcessText.setText(MessageFormat.format(context.getString(R.string.page_task_process), writePercent));
@@ -156,11 +157,16 @@ public class TaskDownload extends SPageTaskFragment {
             final String unknown = context.getString(R.string.unknown);
             final LocalDateTime now = LocalDateTime.now();
             final long interval = cell.lastT == null ? 1000 : Duration.between(cell.lastT, now).toMillis();
+            final float speed = 1.0f * (m.getFirst().longValue() - cell.lastW) / (interval == 0 ? 1000 : interval);
             //noinspection NumericCastThatLosesPrecision
             cell.cell.pageTaskListDownloadWorkingCellSize.setText(MessageFormat.format(context.getString(R.string.page_task_size_speed),
                     ViewUtil.formatSize(m.getFirst().longValue(), unknown),
                     ViewUtil.formatSize(m.getSecond().longValue(), unknown),
-                    ViewUtil.formatSize((long) (1.0f * (m.getFirst().longValue() - cell.lastW) / (interval == 0 ? 1000 : interval)) * 1000, unknown)));
+                    ViewUtil.formatSize((long) (speed * 1000), unknown)));
+            final float time = speed == 0 ? -1 : (m.getSecond().longValue() - m.getFirst().longValue()) / speed;
+            //noinspection NumericCastThatLosesPrecision
+            cell.cell.pageTaskListDownloadWorkingCellTime.setText(MessageFormat.format(context.getString(R.string.page_task_time),
+                    ViewUtil.formatDuration(Duration.of((long) time, ChronoUnit.MILLIS), unknown)));
             cell.lastW = m.getFirst().longValue();
             cell.lastT = now;
         }
