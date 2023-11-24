@@ -76,6 +76,7 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
     protected @NotNull UnionPair<DownloadSuccess, DownloadFailure> runTask(final @NotNull Activity activity, final @NotNull DownloadTask task, final @NotNull DownloadWorking progress) {
         final File file = DownloadTasksManager.getSaveFile(task);
         try {
+            progress.started = true;
             final VisibleFailureReason reason = FilesAssistant.download(task.address, task.username, task.location, file, PredicateE.truePredicate(), (s, p) -> {
                 progress.state = s;
                 progress.progress = p;
@@ -168,9 +169,14 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
     }
 
     public static class DownloadWorking {
+        protected boolean started = false;
         protected InstantaneousProgressState state = null;
         protected List<Pair.@NotNull ImmutablePair<@NotNull AtomicLong, @NotNull Long>> progress = null;
         protected final @NotNull HCallbacks<RunnableE> updateCallbacks = new HCallbacks<>();
+
+        public boolean isStarted() {
+            return this.started;
+        }
 
         public @Nullable InstantaneousProgressState getState() {
             return this.state;
@@ -187,7 +193,8 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
         @Override
         public @NotNull String toString() {
             return "DownloadWorking{" +
-                    "state=" + this.state +
+                    "started=" + this.started +
+                    ", state=" + this.state +
                     ", progress=" + this.progress +
                     '}';
         }

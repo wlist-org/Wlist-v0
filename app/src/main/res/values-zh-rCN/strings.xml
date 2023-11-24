@@ -76,6 +76,7 @@
 	<string name="page_task_failure">失败 ({0})</string>
 	<string name="page_task_success">已完成 ({0})</string>
 	<string name="page_task_time">剩余时间: {0}</string>
+	<string name="page_task_waiting">正在排队……</string>
 	<string name="page_task_download_manager_waiting">请等待下载管理器启动完成后重试</string>
 	<string name="page_task_download_manager_failure">下载管理器初始化失败，正在重试</string>
 	<string name="page_task_download_working_preparing">下载即将开始……</string>

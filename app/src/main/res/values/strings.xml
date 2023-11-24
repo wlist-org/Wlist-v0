@@ -87,6 +87,7 @@
 	<string name="page_task_process" translatable="false">@string/page_file_loading_percent</string>
 	<string name="page_task_size_speed" translatable="false">{0} / {1} ({2}/s)</string>
 	<string name="page_task_time">ETA: {0}</string>
+	<string name="page_task_waiting">Blocking.</string>
 	<string name="page_task_download_manager_waiting">Please wait while the download manager is starting.</string>
 	<string name="page_task_download_manager_failure">Something went wrong during initializing the download manager. Retry later.</string>
 	<string name="page_task_download_working_preparing">Download is about to begin.</string>

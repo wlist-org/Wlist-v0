@@ -110,7 +110,17 @@ public class TaskDownload extends SPageTaskFragment {
             cell.working = data;
             cell.cell.pageTaskListDownloadWorkingCellProgress.setMin(0);
             cell.cell.pageTaskListDownloadWorkingCellProgress.setMax(1000);
-            this.resetProgress(cell, false);
+            if (data.isStarted())
+                this.resetProgress(cell, false);
+            else {
+                final Context context = cell.getRoot().getContext();
+                cell.cell.pageTaskListDownloadWorkingCellProcessText.setText(MessageFormat.format(context.getString(R.string.page_task_process), 0));
+                cell.cell.pageTaskListDownloadWorkingCellProgress.setIndeterminate(false);
+                cell.cell.pageTaskListDownloadWorkingCellProgress.setProgress(0, false);
+                cell.cell.pageTaskListDownloadWorkingCellProgress.setSecondaryProgress(0);
+                cell.cell.pageTaskListDownloadWorkingCellSize.setText(R.string.page_task_waiting);
+                cell.cell.pageTaskListDownloadWorkingCellTime.setText(MessageFormat.format(context.getString(R.string.page_task_time), context.getString(R.string.unknown)));
+            }
             data.getUpdateCallbacks().registerNamedForce("DownloadWorkingTaskStateFragment", () -> Main.runOnUiThread(this.activity(), () ->
                     this.resetProgress(cell, true)));
         }
