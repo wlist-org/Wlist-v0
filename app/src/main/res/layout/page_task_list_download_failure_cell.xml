@@ -64,6 +64,7 @@
 		android:ellipsize="end"
 		android:gravity="center_vertical|start"
 		android:maxLines="1"
+		android:text="@string/page_task_failure_reason"
 		android:textColor="@color/text_hint"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintLeft_toRightOf="@id/page_task_list_download_failure_cell_guideline_name"

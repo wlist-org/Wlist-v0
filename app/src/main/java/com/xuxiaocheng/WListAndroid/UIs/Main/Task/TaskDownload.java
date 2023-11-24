@@ -64,7 +64,8 @@ public class TaskDownload extends SPageTaskFragment {
         protected void onBind(final @NotNull PageTaskListDownloadFailureCellBinding cell, final DownloadTasksManager.@NotNull DownloadTask task, final DownloadTasksManager.@NotNull DownloadFailure data) {
             ViewUtil.setFileImage(cell.pageTaskListDownloadFailureCellImage, false, task.getFilename());
             cell.pageTaskListDownloadFailureCellName.setText(task.getFilename());
-            cell.pageTaskListDownloadFailureCellReason.setText(FailureReasonGetter.toString(data.getReason()));
+            cell.pageTaskListDownloadFailureCellReason.setText(MessageFormat.format(cell.getRoot().getContext().getString(R.string.page_task_failure_reason),
+                    FailureReasonGetter.kind(data.getReason()).description(), FailureReasonGetter.message(data.getReason())));
         }
     }
 
