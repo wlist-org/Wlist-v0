@@ -52,5 +52,6 @@
 	<color name="page_file_operation_download">@color/page_file_operation</color>
 	<color name="page_task_chooser">@color/background_normal</color>
 	<color name="page_task_chooser_hint">@color/background_differ</color>
+	<color name="page_task_more">@color/gray</color>
 
 </resources>

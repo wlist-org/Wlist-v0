@@ -65,6 +65,7 @@ public class PageTask extends CPage<PageTaskBinding> {
         page.pageTaskChooserRename.setOnClickListener(v -> page.pageTaskPager.setCurrentItem(PageTaskAdapter.Types.toPosition(PageTaskAdapter.Types.Rename)));
         page.pageTaskPager.setAdapter(new PageTaskAdapter(this));
         page.pageTaskPager.setOffscreenPageLimit(6); // Cache all states.
+        page.pageTaskPager.setUserInputEnabled(false);
         page.pageTaskPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
             public void onPageSelected(final int position) {
@@ -125,6 +126,14 @@ public class PageTask extends CPage<PageTaskBinding> {
                     }
                 }
             }
+        });
+        page.pageTaskChooserMore.setOnClickListener(v -> {
+            page.pageTaskChooserMore.setVisibility(View.GONE);
+            page.pageTaskChooserTrash.setVisibility(View.VISIBLE);
+            page.pageTaskChooserCopy.setVisibility(View.VISIBLE);
+            page.pageTaskChooserMove.setVisibility(View.VISIBLE);
+            page.pageTaskChooserRename.setVisibility(View.VISIBLE);
+            page.pageTaskPager.setCurrentItem(PageTaskAdapter.Types.toPosition(PageTaskAdapter.Types.Trash));
         });
     }
 
