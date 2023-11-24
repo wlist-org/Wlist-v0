@@ -366,9 +366,9 @@ public final class FilesAssistant {
 
 
     @Contract(pure = true)
-    private static @NotNull File getDownloadRecordFile(final @NotNull File file) {
+    public static @NotNull File getDownloadRecordFile(final @NotNull File file) {
         //noinspection SpellCheckingInspection
-        return new File(file.getParentFile(), file.getName() + ".downloadrecord");
+        return new File(file.getParentFile(), file.getName() + ".wdrd");
     }
 
     private static final @NotNull List<Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull Long>> FullDownloadingProgress = List.of(Pair.ImmutablePair.makeImmutablePair(0L, Long.MAX_VALUE));
