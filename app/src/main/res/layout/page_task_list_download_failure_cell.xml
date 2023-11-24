@@ -37,21 +37,34 @@
 		android:textColor="@color/text_normal"
 		app:layout_constraintBottom_toTopOf="@id/page_task_list_download_failure_cell_reason"
 		app:layout_constraintLeft_toRightOf="@id/page_task_list_download_failure_cell_guideline_name"
-		app:layout_constraintRight_toLeftOf="@id/page_task_list_download_failure_cell_size"
+		app:layout_constraintRight_toLeftOf="@id/page_task_list_download_failure_cell_retry"
 		app:layout_constraintTop_toTopOf="parent" />
 
-	<androidx.appcompat.widget.AppCompatTextView
-		android:id="@+id/page_task_list_download_failure_cell_size"
+	<androidx.appcompat.widget.AppCompatImageView
+		android:id="@+id/page_task_list_download_failure_cell_retry"
 		android:layout_width="wrap_content"
 		android:layout_height="0dp"
 		android:layout_marginTop="5dp"
-		android:autoSizeTextType="uniform"
-		android:ellipsize="end"
-		android:gravity="center_vertical|end"
-		android:maxLines="1"
-		android:textColor="@color/text_normal"
+		android:adjustViewBounds="true"
+		android:paddingStart="5dp"
+		android:paddingEnd="5dp"
+		android:src="@drawable/page_file_options_refresh"
 		app:layout_constraintBottom_toTopOf="@id/page_task_list_download_failure_cell_reason"
 		app:layout_constraintLeft_toRightOf="@id/page_task_list_download_failure_cell_name"
+		app:layout_constraintRight_toLeftOf="@id/page_task_list_download_failure_cell_remove"
+		app:layout_constraintTop_toTopOf="parent" />
+
+	<androidx.appcompat.widget.AppCompatImageView
+		android:id="@+id/page_task_list_download_failure_cell_remove"
+		android:layout_width="wrap_content"
+		android:layout_height="0dp"
+		android:layout_marginTop="5dp"
+		android:adjustViewBounds="true"
+		android:paddingStart="5dp"
+		android:paddingEnd="5dp"
+		android:src="@drawable/backer"
+		app:layout_constraintBottom_toTopOf="@id/page_task_list_download_failure_cell_reason"
+		app:layout_constraintLeft_toRightOf="@id/page_task_list_download_failure_cell_retry"
 		app:layout_constraintRight_toRightOf="parent"
 		app:layout_constraintTop_toTopOf="parent" />
 

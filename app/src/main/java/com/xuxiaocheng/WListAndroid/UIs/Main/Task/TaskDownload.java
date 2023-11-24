@@ -12,6 +12,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.WList.AndroidSupports.FailureReasonGetter;
 import com.xuxiaocheng.WList.AndroidSupports.InstantaneousProgressStateGetter;
+import com.xuxiaocheng.WList.Client.Assistants.FilesAssistant;
 import com.xuxiaocheng.WList.Commons.Beans.InstantaneousProgressState;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
@@ -66,6 +67,18 @@ public class TaskDownload extends SPageTaskFragment {
             cell.pageTaskListDownloadFailureCellName.setText(task.getFilename());
             cell.pageTaskListDownloadFailureCellReason.setText(MessageFormat.format(cell.getRoot().getContext().getString(R.string.page_task_failure_reason),
                     FailureReasonGetter.kind(data.getReason()).description(), FailureReasonGetter.message(data.getReason())));
+            cell.pageTaskListDownloadFailureCellRemove.setOnClickListener(v -> new AlertDialog.Builder(this.activity())
+                    .setTitle(R.string.page_task_remove)
+                    .setNeutralButton(R.string.cancel, null)
+                    .setPositiveButton(R.string.confirm, (d, w) -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
+                        DownloadTasksManager.getInstance().removeFailedTask(this.activity(), task);
+                        Files.deleteIfExists(task.getSavePath().toPath());
+                        Files.deleteIfExists(FilesAssistant.getDownloadRecordFile(task.getSavePath()).toPath());
+                    }))));
+            cell.pageTaskListDownloadFailureCellRetry.setOnClickListener(v -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
+                DownloadTasksManager.getInstance().removeFailedTask(this.activity(), task);
+                DownloadTasksManager.getInstance().addTask(this.activity(), task);
+            })));
         }
     }
 
