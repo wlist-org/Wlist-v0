@@ -6,8 +6,10 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.UiThread;
+import androidx.appcompat.app.AlertDialog;
 import androidx.viewbinding.ViewBinding;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.WList.AndroidSupports.FailureReasonGetter;
 import com.xuxiaocheng.WList.AndroidSupports.InstantaneousProgressStateGetter;
 import com.xuxiaocheng.WList.Commons.Beans.InstantaneousProgressState;
@@ -23,6 +25,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.text.MessageFormat;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -193,12 +196,23 @@ public class TaskDownload extends SPageTaskFragment {
                 cell.pageTaskListDownloadSuccessCellName.getPaint().reset();
                 cell.pageTaskListDownloadSuccessCellName.setTextColor(context.getColor(R.color.text_normal));
                 cell.pageTaskListDownloadSuccessCellImage.setColorFilter(null);
+                cell.pageTaskListDownloadSuccessCellRemove.setOnClickListener(v -> new AlertDialog.Builder(this.activity())
+                        .setTitle(R.string.page_task_remove)
+                        .setNeutralButton(R.string.cancel, null)
+                        .setNegativeButton(R.string.confirm, (d, w) -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() ->
+                                DownloadTasksManager.getInstance().removeSuccessfulTask(this.activity(), task))))
+                        .setPositiveButton(R.string.page_task_remove_file, (d, w) -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
+                            DownloadTasksManager.getInstance().removeSuccessfulTask(this.activity(), task);
+                            Files.deleteIfExists(saved.toPath());
+                        }))).show());
             } else {
                 cell.pageTaskListDownloadSuccessCellSize.setText(R.string.page_task_download_success_deleted);
                 cell.pageTaskListDownloadSuccessCellPath.getPaint().setFlags(Paint.ANTI_ALIAS_FLAG | Paint.STRIKE_THRU_TEXT_FLAG);
                 cell.pageTaskListDownloadSuccessCellName.getPaint().setFlags(Paint.ANTI_ALIAS_FLAG | Paint.STRIKE_THRU_TEXT_FLAG);
                 cell.pageTaskListDownloadSuccessCellName.setTextColor(context.getColor(R.color.text_hint));
                 cell.pageTaskListDownloadSuccessCellImage.setColorFilter(ViewUtil.GrayColorFilter);
+                cell.pageTaskListDownloadSuccessCellRemove.setOnClickListener(v -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() ->
+                        DownloadTasksManager.getInstance().removeSuccessfulTask(this.activity(), task))));
             }
          }
     }

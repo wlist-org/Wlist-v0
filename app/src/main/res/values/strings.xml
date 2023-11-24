@@ -93,6 +93,8 @@
 	<string name="page_task_download_working_finishing">Please waiting…</string>
 	<string name="page_task_download_success_path">Saved: {0}</string>
 	<string name="page_task_download_success_deleted">Deleted</string>
+	<string name="page_task_remove">Remove the task.</string>
+	<string name="page_task_remove_file">Confirm and delete file.</string>
 	<string name="page_file_provider_lanzou">Lanzou</string>
 	<string name="page_file_provider_name">Storage name: </string>
 	<string name="page_file_provider_passport">Storage passport: </string>
