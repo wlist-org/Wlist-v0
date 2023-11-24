@@ -23,9 +23,10 @@ import java.util.concurrent.atomic.AtomicReference;
 public abstract class SPageTaskFragment extends CFragment<PageTaskListBinding> {
     protected final PageTaskAdapter.@NotNull Types type;
 
-    protected SPageTaskFragment(final PageTaskAdapter.@NotNull Types type) {
+    protected SPageTaskFragment(final PageTaskAdapter.@NotNull Types type, final @NotNull AtomicReference<PageTaskStateAdapter.Types> currentState) {
         super();
         this.type = type;
+        this.currentState = currentState;
     }
 
     protected abstract @NotNull SPageTaskStateFragment<?, ?, ?> createStateFragment(final PageTaskStateAdapter.@NotNull Types type);
@@ -35,7 +36,7 @@ public abstract class SPageTaskFragment extends CFragment<PageTaskListBinding> {
         return PageTaskListBinding.inflate(this.getLayoutInflater());
     }
 
-    protected final @NotNull AtomicReference<PageTaskStateAdapter.Types> currentState = new AtomicReference<>();
+    protected final @NotNull AtomicReference<PageTaskStateAdapter.Types> currentState;
     protected PageTaskStateAdapter.@NotNull Types currentState() {
         return this.currentState.get();
     }
@@ -43,8 +44,10 @@ public abstract class SPageTaskFragment extends CFragment<PageTaskListBinding> {
     @Override
     protected void iOnRestoreInstanceState(final @Nullable Bundle arguments, final @Nullable Bundle savedInstanceState) {
         super.iOnRestoreInstanceState(arguments, savedInstanceState);
-        final int type = savedInstanceState != null ? savedInstanceState.getInt("w:page_task:" + this.type.name() + ":current_state", -1) : -1;
-        this.currentState.set(type == -1 ? this.getSuggestedChoice() : PageTaskStateAdapter.Types.fromPosition(type));
+        if (this.currentState.get() == null) {
+            final int type = savedInstanceState != null ? savedInstanceState.getInt("w:page_task:" + this.type.name() + ":current_state", -1) : -1;
+            this.currentState.set(type == -1 ? this.getSuggestedChoice() : PageTaskStateAdapter.Types.fromPosition(type));
+        }
     }
 
     @Override

@@ -7,9 +7,13 @@ import com.xuxiaocheng.WListAndroid.databinding.PageTaskListUploadSuccessCellBin
 import com.xuxiaocheng.WListAndroid.databinding.PageTaskListUploadWorkingCellBinding;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 public class TaskUpload extends SPageTaskFragment {
+    protected static final @NotNull AtomicReference<PageTaskStateAdapter.Types> CurrentState = new AtomicReference<>();
+
     public TaskUpload() {
-        super(PageTaskAdapter.Types.Upload);
+        super(PageTaskAdapter.Types.Upload, TaskUpload.CurrentState);
     }
 
     @Override

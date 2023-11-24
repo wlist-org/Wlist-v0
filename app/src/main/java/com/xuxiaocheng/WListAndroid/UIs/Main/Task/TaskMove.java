@@ -7,9 +7,13 @@ import com.xuxiaocheng.WListAndroid.databinding.PageTaskListMoveSuccessCellBindi
 import com.xuxiaocheng.WListAndroid.databinding.PageTaskListMoveWorkingCellBinding;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 public class TaskMove extends SPageTaskFragment {
+    protected static final @NotNull AtomicReference<PageTaskStateAdapter.Types> CurrentState = new AtomicReference<>();
+
     public TaskMove() {
-        super(PageTaskAdapter.Types.Move);
+        super(PageTaskAdapter.Types.Move, TaskMove.CurrentState);
     }
 
     @Override

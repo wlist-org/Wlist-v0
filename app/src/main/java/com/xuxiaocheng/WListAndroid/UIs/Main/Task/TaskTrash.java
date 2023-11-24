@@ -7,9 +7,13 @@ import com.xuxiaocheng.WListAndroid.databinding.PageTaskListTrashSuccessCellBind
 import com.xuxiaocheng.WListAndroid.databinding.PageTaskListTrashWorkingCellBinding;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 public class TaskTrash extends SPageTaskFragment {
+    protected static final @NotNull AtomicReference<PageTaskStateAdapter.Types> CurrentState = new AtomicReference<>();
+
     public TaskTrash() {
-        super(PageTaskAdapter.Types.Trash);
+        super(PageTaskAdapter.Types.Trash, TaskTrash.CurrentState);
     }
 
     @Override

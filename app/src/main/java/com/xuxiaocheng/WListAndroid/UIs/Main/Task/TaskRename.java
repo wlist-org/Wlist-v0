@@ -7,9 +7,13 @@ import com.xuxiaocheng.WListAndroid.databinding.PageTaskListRenameSuccessCellBin
 import com.xuxiaocheng.WListAndroid.databinding.PageTaskListRenameWorkingCellBinding;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 public class TaskRename extends SPageTaskFragment {
+    protected static final @NotNull AtomicReference<PageTaskStateAdapter.Types> CurrentState = new AtomicReference<>();
+
     public TaskRename() {
-        super(PageTaskAdapter.Types.Rename);
+        super(PageTaskAdapter.Types.Rename, TaskRename.CurrentState);
     }
 
     @Override

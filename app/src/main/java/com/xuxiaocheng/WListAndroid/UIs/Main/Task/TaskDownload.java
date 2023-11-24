@@ -31,10 +31,13 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class TaskDownload extends SPageTaskFragment {
+    protected static final @NotNull AtomicReference<PageTaskStateAdapter.Types> CurrentState = new AtomicReference<>();
+
     public TaskDownload() {
-        super(PageTaskAdapter.Types.Download);
+        super(PageTaskAdapter.Types.Download, TaskDownload.CurrentState);
     }
 
     @Override

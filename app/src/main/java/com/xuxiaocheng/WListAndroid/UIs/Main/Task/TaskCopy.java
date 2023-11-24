@@ -7,9 +7,13 @@ import com.xuxiaocheng.WListAndroid.databinding.PageTaskListCopySuccessCellBindi
 import com.xuxiaocheng.WListAndroid.databinding.PageTaskListCopyWorkingCellBinding;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 public class TaskCopy extends SPageTaskFragment {
+    protected static final @NotNull AtomicReference<PageTaskStateAdapter.Types> CurrentState = new AtomicReference<>();
+
     public TaskCopy() {
-        super(PageTaskAdapter.Types.Copy);
+        super(PageTaskAdapter.Types.Copy, TaskCopy.CurrentState);
     }
 
     @Override
