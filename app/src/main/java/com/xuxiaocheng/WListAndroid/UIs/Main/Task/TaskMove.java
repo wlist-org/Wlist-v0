@@ -1,10 +1,10 @@
 package com.xuxiaocheng.WListAndroid.UIs.Main.Task;
 
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.AbstractTasksManager;
-import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.DownloadTasksManager;
-import com.xuxiaocheng.WListAndroid.databinding.PageTaskListDownloadFailureCellBinding;
-import com.xuxiaocheng.WListAndroid.databinding.PageTaskListDownloadSuccessCellBinding;
-import com.xuxiaocheng.WListAndroid.databinding.PageTaskListDownloadWorkingCellBinding;
+import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.MoveTasksManager;
+import com.xuxiaocheng.WListAndroid.databinding.PageTaskListMoveFailureCellBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageTaskListMoveSuccessCellBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageTaskListMoveWorkingCellBinding;
 import org.jetbrains.annotations.NotNull;
 
 public class TaskMove extends SPageTaskFragment {
@@ -13,7 +13,7 @@ public class TaskMove extends SPageTaskFragment {
     }
 
     @Override
-    protected @NotNull SPageTaskStateFragment<?, DownloadTasksManager.DownloadTask, ?> createStateFragment(final PageTaskStateAdapter.@NotNull Types type) {
+    protected @NotNull SPageTaskStateFragment<?, MoveTasksManager.MoveTask, ?> createStateFragment(final PageTaskStateAdapter.@NotNull Types type) {
         return switch (type) {
             case Failure -> new MoveFailureTaskStateFragment();
             case Working -> new MoveWorkingTaskStateFragment();
@@ -21,48 +21,48 @@ public class TaskMove extends SPageTaskFragment {
         };
     }
 
-    public static class MoveFailureTaskStateFragment extends FailureTaskStateFragment<PageTaskListDownloadFailureCellBinding, DownloadTasksManager.DownloadTask, DownloadTasksManager.DownloadFailure> {
+    public static class MoveFailureTaskStateFragment extends FailureTaskStateFragment<PageTaskListMoveFailureCellBinding, MoveTasksManager.MoveTask, MoveTasksManager.MoveFailure> {
         public MoveFailureTaskStateFragment() {
-            super(PageTaskListDownloadFailureCellBinding::inflate);
+            super(PageTaskListMoveFailureCellBinding::inflate);
         }
 
         @Override
-        protected @NotNull AbstractTasksManager<DownloadTasksManager.DownloadTask, ?, ?, DownloadTasksManager.DownloadFailure> getManager() {
-            return DownloadTasksManager.getInstance();
+        protected @NotNull AbstractTasksManager<MoveTasksManager.MoveTask, ?, ?, MoveTasksManager.MoveFailure> getManager() {
+            return MoveTasksManager.getInstance();
         }
 
         @Override
-        protected void onBind(final @NotNull PageTaskListDownloadFailureCellBinding cell, final DownloadTasksManager.@NotNull DownloadTask task, final DownloadTasksManager.@NotNull DownloadFailure data) {
+        protected void onBind(final @NotNull PageTaskListMoveFailureCellBinding cell, final MoveTasksManager.@NotNull MoveTask task, final MoveTasksManager.@NotNull MoveFailure data) {
         }
     }
 
-    public static class MoveWorkingTaskStateFragment extends WorkingTaskStateFragment<PageTaskListDownloadWorkingCellBinding, DownloadTasksManager.DownloadTask, DownloadTasksManager.DownloadWorking> {
+    public static class MoveWorkingTaskStateFragment extends WorkingTaskStateFragment<PageTaskListMoveWorkingCellBinding, MoveTasksManager.MoveTask, MoveTasksManager.MoveWorking> {
         public MoveWorkingTaskStateFragment() {
-            super(PageTaskListDownloadWorkingCellBinding::inflate);
+            super(PageTaskListMoveWorkingCellBinding::inflate);
         }
 
         @Override
-        protected @NotNull AbstractTasksManager<DownloadTasksManager.DownloadTask, DownloadTasksManager.DownloadWorking, ?, ?> getManager() {
-            return DownloadTasksManager.getInstance();
+        protected @NotNull AbstractTasksManager<MoveTasksManager.MoveTask, MoveTasksManager.MoveWorking, ?, ?> getManager() {
+            return MoveTasksManager.getInstance();
         }
 
         @Override
-        protected void onBind(final @NotNull PageTaskListDownloadWorkingCellBinding cell, final DownloadTasksManager.@NotNull DownloadTask task, final DownloadTasksManager.@NotNull DownloadWorking data) {
+        protected void onBind(final @NotNull PageTaskListMoveWorkingCellBinding cell, final MoveTasksManager.@NotNull MoveTask task, final MoveTasksManager.@NotNull MoveWorking data) {
         }
     }
 
-    public static class MoveSuccessTaskStateFragment extends SuccessTaskStateFragment<PageTaskListDownloadSuccessCellBinding, DownloadTasksManager.DownloadTask, DownloadTasksManager.DownloadSuccess> {
+    public static class MoveSuccessTaskStateFragment extends SuccessTaskStateFragment<PageTaskListMoveSuccessCellBinding, MoveTasksManager.MoveTask, MoveTasksManager.MoveSuccess> {
         public MoveSuccessTaskStateFragment() {
-            super(PageTaskListDownloadSuccessCellBinding::inflate);
+            super(PageTaskListMoveSuccessCellBinding::inflate);
         }
 
         @Override
-        protected @NotNull AbstractTasksManager<DownloadTasksManager.DownloadTask, ?, DownloadTasksManager.DownloadSuccess, ?> getManager() {
-            return DownloadTasksManager.getInstance();
+        protected @NotNull AbstractTasksManager<MoveTasksManager.MoveTask, ?, MoveTasksManager.MoveSuccess, ?> getManager() {
+            return MoveTasksManager.getInstance();
         }
 
         @Override
-        protected void onBind(final @NotNull PageTaskListDownloadSuccessCellBinding cell, final DownloadTasksManager.@NotNull DownloadTask task, final DownloadTasksManager.@NotNull DownloadSuccess data) {
+        protected void onBind(final @NotNull PageTaskListMoveSuccessCellBinding cell, final MoveTasksManager.@NotNull MoveTask task, final MoveTasksManager.@NotNull MoveSuccess data) {
         }
     }
 }

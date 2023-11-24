@@ -1,10 +1,10 @@
 package com.xuxiaocheng.WListAndroid.UIs.Main.Task;
 
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.AbstractTasksManager;
-import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.DownloadTasksManager;
-import com.xuxiaocheng.WListAndroid.databinding.PageTaskListDownloadFailureCellBinding;
-import com.xuxiaocheng.WListAndroid.databinding.PageTaskListDownloadSuccessCellBinding;
-import com.xuxiaocheng.WListAndroid.databinding.PageTaskListDownloadWorkingCellBinding;
+import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.TrashTasksManager;
+import com.xuxiaocheng.WListAndroid.databinding.PageTaskListTrashFailureCellBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageTaskListTrashSuccessCellBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageTaskListTrashWorkingCellBinding;
 import org.jetbrains.annotations.NotNull;
 
 public class TaskTrash extends SPageTaskFragment {
@@ -13,7 +13,7 @@ public class TaskTrash extends SPageTaskFragment {
     }
 
     @Override
-    protected @NotNull SPageTaskStateFragment<?, DownloadTasksManager.DownloadTask, ?> createStateFragment(final PageTaskStateAdapter.@NotNull Types type) {
+    protected @NotNull SPageTaskStateFragment<?, TrashTasksManager.TrashTask, ?> createStateFragment(final PageTaskStateAdapter.@NotNull Types type) {
         return switch (type) {
             case Failure -> new TrashFailureTaskStateFragment();
             case Working -> new TrashWorkingTaskStateFragment();
@@ -21,48 +21,48 @@ public class TaskTrash extends SPageTaskFragment {
         };
     }
 
-    public static class TrashFailureTaskStateFragment extends FailureTaskStateFragment<PageTaskListDownloadFailureCellBinding, DownloadTasksManager.DownloadTask, DownloadTasksManager.DownloadFailure> {
+    public static class TrashFailureTaskStateFragment extends FailureTaskStateFragment<PageTaskListTrashFailureCellBinding, TrashTasksManager.TrashTask, TrashTasksManager.TrashFailure> {
         public TrashFailureTaskStateFragment() {
-            super(PageTaskListDownloadFailureCellBinding::inflate);
+            super(PageTaskListTrashFailureCellBinding::inflate);
         }
 
         @Override
-        protected @NotNull AbstractTasksManager<DownloadTasksManager.DownloadTask, ?, ?, DownloadTasksManager.DownloadFailure> getManager() {
-            return DownloadTasksManager.getInstance();
+        protected @NotNull AbstractTasksManager<TrashTasksManager.TrashTask, ?, ?, TrashTasksManager.TrashFailure> getManager() {
+            return TrashTasksManager.getInstance();
         }
 
         @Override
-        protected void onBind(final @NotNull PageTaskListDownloadFailureCellBinding cell, final DownloadTasksManager.@NotNull DownloadTask task, final DownloadTasksManager.@NotNull DownloadFailure data) {
+        protected void onBind(final @NotNull PageTaskListTrashFailureCellBinding cell, final TrashTasksManager.@NotNull TrashTask task, final TrashTasksManager.@NotNull TrashFailure data) {
         }
     }
 
-    public static class TrashWorkingTaskStateFragment extends WorkingTaskStateFragment<PageTaskListDownloadWorkingCellBinding, DownloadTasksManager.DownloadTask, DownloadTasksManager.DownloadWorking> {
+    public static class TrashWorkingTaskStateFragment extends WorkingTaskStateFragment<PageTaskListTrashWorkingCellBinding, TrashTasksManager.TrashTask, TrashTasksManager.TrashWorking> {
         public TrashWorkingTaskStateFragment() {
-            super(PageTaskListDownloadWorkingCellBinding::inflate);
+            super(PageTaskListTrashWorkingCellBinding::inflate);
         }
 
         @Override
-        protected @NotNull AbstractTasksManager<DownloadTasksManager.DownloadTask, DownloadTasksManager.DownloadWorking, ?, ?> getManager() {
-            return DownloadTasksManager.getInstance();
+        protected @NotNull AbstractTasksManager<TrashTasksManager.TrashTask, TrashTasksManager.TrashWorking, ?, ?> getManager() {
+            return TrashTasksManager.getInstance();
         }
 
         @Override
-        protected void onBind(final @NotNull PageTaskListDownloadWorkingCellBinding cell, final DownloadTasksManager.@NotNull DownloadTask task, final DownloadTasksManager.@NotNull DownloadWorking data) {
+        protected void onBind(final @NotNull PageTaskListTrashWorkingCellBinding cell, final TrashTasksManager.@NotNull TrashTask task, final TrashTasksManager.@NotNull TrashWorking data) {
         }
     }
 
-    public static class TrashSuccessTaskStateFragment extends SuccessTaskStateFragment<PageTaskListDownloadSuccessCellBinding, DownloadTasksManager.DownloadTask, DownloadTasksManager.DownloadSuccess> {
+    public static class TrashSuccessTaskStateFragment extends SuccessTaskStateFragment<PageTaskListTrashSuccessCellBinding, TrashTasksManager.TrashTask, TrashTasksManager.TrashSuccess> {
         public TrashSuccessTaskStateFragment() {
-            super(PageTaskListDownloadSuccessCellBinding::inflate);
+            super(PageTaskListTrashSuccessCellBinding::inflate);
         }
 
         @Override
-        protected @NotNull AbstractTasksManager<DownloadTasksManager.DownloadTask, ?, DownloadTasksManager.DownloadSuccess, ?> getManager() {
-            return DownloadTasksManager.getInstance();
+        protected @NotNull AbstractTasksManager<TrashTasksManager.TrashTask, ?, TrashTasksManager.TrashSuccess, ?> getManager() {
+            return TrashTasksManager.getInstance();
         }
 
         @Override
-        protected void onBind(final @NotNull PageTaskListDownloadSuccessCellBinding cell, final DownloadTasksManager.@NotNull DownloadTask task, final DownloadTasksManager.@NotNull DownloadSuccess data) {
+        protected void onBind(final @NotNull PageTaskListTrashSuccessCellBinding cell, final TrashTasksManager.@NotNull TrashTask task, final TrashTasksManager.@NotNull TrashSuccess data) {
         }
     }
 }

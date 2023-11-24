@@ -30,7 +30,7 @@ public class PageTaskStateAdapter extends FragmentStateAdapter {
         }
     }
 
-    protected @NotNull SPageTaskFragment fragment;
+    protected final @NotNull SPageTaskFragment fragment;
 
     PageTaskStateAdapter(final @NotNull SPageTaskFragment fragment) {
         super(fragment);
