@@ -3,6 +3,7 @@ plugins {
 }
 
 android {
+    namespace 'com.xuxiaocheng.WListAndroid'
     compileSdk 32
 
     defaultConfig {
@@ -37,8 +38,6 @@ android {
         exclude 'META-INF/io.netty.versions.properties'
         exclude 'META-INF/DEPENDENCIES'
     }
-
-    namespace 'com.xuxiaocheng.WListAndroid'
 }
 
 dependencies {
