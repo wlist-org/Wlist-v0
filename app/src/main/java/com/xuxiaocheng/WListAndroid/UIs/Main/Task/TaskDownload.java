@@ -71,12 +71,12 @@ public class TaskDownload extends SPageTaskFragment {
                     .setTitle(R.string.page_task_remove)
                     .setNeutralButton(R.string.cancel, null)
                     .setPositiveButton(R.string.confirm, (d, w) -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
-                        DownloadTasksManager.getInstance().removeFailedTask(this.activity(), task);
+                        DownloadTasksManager.getInstance().removeFailureTask(this.activity(), task);
                         Files.deleteIfExists(task.getSavePath().toPath());
                         Files.deleteIfExists(FilesAssistant.getDownloadRecordFile(task.getSavePath()).toPath());
                     }))));
             cell.pageTaskListDownloadFailureCellRetry.setOnClickListener(v -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
-                DownloadTasksManager.getInstance().removeFailedTask(this.activity(), task);
+                DownloadTasksManager.getInstance().removeFailureTask(this.activity(), task);
                 DownloadTasksManager.getInstance().addTask(this.activity(), task);
             })));
         }
@@ -233,9 +233,9 @@ public class TaskDownload extends SPageTaskFragment {
                         .setTitle(R.string.page_task_remove)
                         .setNeutralButton(R.string.cancel, null)
                         .setNegativeButton(R.string.confirm, (d, w) -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() ->
-                                DownloadTasksManager.getInstance().removeSuccessfulTask(this.activity(), task))))
+                                DownloadTasksManager.getInstance().removeSuccessTask(this.activity(), task))))
                         .setPositiveButton(R.string.page_task_remove_file, (d, w) -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
-                            DownloadTasksManager.getInstance().removeSuccessfulTask(this.activity(), task);
+                            DownloadTasksManager.getInstance().removeSuccessTask(this.activity(), task);
                             Files.deleteIfExists(saved.toPath());
                         }))).show());
             } else {
@@ -245,7 +245,7 @@ public class TaskDownload extends SPageTaskFragment {
                 cell.pageTaskListDownloadSuccessCellName.setTextColor(context.getColor(R.color.text_hint));
                 cell.pageTaskListDownloadSuccessCellImage.setColorFilter(ViewUtil.GrayColorFilter);
                 cell.pageTaskListDownloadSuccessCellRemove.setOnClickListener(v -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() ->
-                        DownloadTasksManager.getInstance().removeSuccessfulTask(this.activity(), task))));
+                        DownloadTasksManager.getInstance().removeSuccessTask(this.activity(), task))));
             }
          }
     }

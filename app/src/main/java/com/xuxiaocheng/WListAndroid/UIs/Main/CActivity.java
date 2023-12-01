@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.os.IBinder;
 import androidx.annotation.AnyThread;
 import androidx.annotation.WorkerThread;
+import com.hjq.toast.Toaster;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
@@ -89,7 +90,7 @@ public abstract class CActivity extends IPagedActivity {
         super.onResume();
         if (this.isConnected())
             if (WListClientManager.instances.isNotInitialized(this.address.getInstance())) {
-                Main.showToast(this, R.string.activity_main_server_closed);
+                Toaster.show(R.string.activity_main_server_closed);
                 Main.runOnBackgroundThread(this, this::disconnect);
             } else this.addWListCloseListener(this.address.getInstance());
     }
@@ -105,7 +106,7 @@ public abstract class CActivity extends IPagedActivity {
     private void addWListCloseListener(final @NotNull InetSocketAddress address) {
         WListClientManager.addListener(address, i -> {
             if (!i.booleanValue()) {
-                Main.showToast(this, R.string.activity_main_server_closed);
+                Toaster.show(R.string.activity_main_server_closed);
                 this.disconnect();
                 WListClientManager.removeAllListeners(address);
             }

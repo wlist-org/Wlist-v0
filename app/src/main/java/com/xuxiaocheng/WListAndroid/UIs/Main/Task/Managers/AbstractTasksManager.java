@@ -3,7 +3,6 @@ package com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers;
 import android.app.Activity;
 import android.os.Environment;
 import androidx.annotation.WorkerThread;
-import com.qw.soul.permission.PermissionTools;
 import com.xuxiaocheng.HeadLibs.Callbacks.HCallbacks;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
@@ -22,6 +21,7 @@ import com.xuxiaocheng.WListAndroid.UIs.Main.CActivity;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.PageTaskAdapter;
 import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
 import com.xuxiaocheng.WListAndroid.Utils.PermissionUtil;
+import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.EventExecutorGroup;
@@ -215,7 +215,7 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
                     this.failureTasksCallbacks.callback(c -> c.onAdded(task, extra));
                     this.dumpFailureTask(activity, task, extra);
                 }
-                if (PermissionTools.isActivityAvailable(activity))
+                if (ViewUtil.isActivityAvailable(activity))
                     this.tryStartTask(activity);
             })).addListener(Main.exceptionListenerWithToast(activity));
         }

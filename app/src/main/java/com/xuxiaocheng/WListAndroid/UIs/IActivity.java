@@ -4,10 +4,10 @@ import android.os.Bundle;
 import androidx.annotation.UiThread;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.viewbinding.ViewBinding;
+import com.hjq.toast.Toaster;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
 import org.jetbrains.annotations.NotNull;
@@ -105,7 +105,7 @@ public abstract class IActivity<C extends ViewBinding> extends AppCompatActivity
             this.lastBackPressedTime = null;
             return;
         }
-        Main.showToast(this, R.string.toast_press_again_to_exit);
+        Toaster.show(R.string.toast_press_again_to_exit);
         this.lastBackPressedTime = now;
     }
 

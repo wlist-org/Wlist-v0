@@ -7,6 +7,7 @@ import android.widget.SimpleAdapter;
 import androidx.annotation.UiThread;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.ListPopupWindow;
+import com.hjq.toast.Toaster;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.WList.AndroidSupports.ClientConfigurationSupporter;
@@ -118,7 +119,7 @@ class PartOptions extends SFragmentFilePart {
                                 max.set(pair.getSecond().longValue()); // TODO: save state.
                                 this.fragment.partList().listLoadingAnimation(finalTitle, true, pair.getFirst().longValue(), pair.getSecond().longValue());
                             });
-                            Main.showToast(this.activity(), R.string.page_file_options_refresh_success);
+                            Toaster.show(R.string.page_file_options_refresh_success);
                         } finally {
                             this.fragment.partList().listLoadingAnimation(title, false, max.get(), max.get());
                         }
@@ -158,7 +159,7 @@ class PartOptions extends SFragmentFilePart {
                     final FileInformationGetter.Order policy = orderPolicy.get();
                     final OrderDirection direction = orderDirection.get();
                     if (policy == null || direction == null) {
-                        Main.showToast(this.activity(), R.string.page_file_options_sorter_not_chose);
+                        Toaster.show(R.string.page_file_options_sorter_not_chose);
                         Main.runOnUiThread(this.activity(), this::sort);
                         return;
                     }

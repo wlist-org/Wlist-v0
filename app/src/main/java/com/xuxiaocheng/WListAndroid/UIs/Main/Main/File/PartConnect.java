@@ -9,6 +9,7 @@ import android.view.View;
 import android.widget.Toast;
 import androidx.annotation.AnyThread;
 import androidx.annotation.UiThread;
+import com.hjq.toast.Toaster;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
@@ -95,7 +96,7 @@ public class PartConnect extends SFragmentFilePart {
                             PartConnect.binderConnection.uninitialize();
                             PartConnect.binderActivity.uninitialize();
                             logger.log(HLogLevel.LESS, "Internal server is stopping...");
-                            Main.showToast(activity, R.string.page_file_connect_closing);
+                            Toaster.show(R.string.page_file_connect_closing);
                             failure.accept(activity);
                             return;
                         }
@@ -116,7 +117,7 @@ public class PartConnect extends SFragmentFilePart {
                     }, e -> {
                         if (e != null) {
                             logger.log(HLogLevel.FAULT, "Failed to initialize wlist clients.", e);
-                            Main.showToast(activity, R.string.toast_fatal_application_initialization);
+                            Toaster.show(R.string.toast_fatal_application_initialization);
                             failure.accept(activity);
                         }
                     }, true));
@@ -127,7 +128,7 @@ public class PartConnect extends SFragmentFilePart {
                     final HLog logger = HLogManager.getInstance("DefaultLogger");
                     logger.log(HLogLevel.FAULT, "Disconnecting to service.");
                     activity.disconnect();
-                    Main.showToast(activity, R.string.page_file_connect_internal_server_disconnected);
+                    Toaster.show(R.string.page_file_connect_internal_server_disconnected);
                     failure.accept(activity);
                 }
             };

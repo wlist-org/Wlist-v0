@@ -8,9 +8,10 @@ import android.os.Process;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
-import androidx.annotation.StringRes;
 import androidx.annotation.UiThread;
 import androidx.annotation.WorkerThread;
+import com.hjq.toast.ToastStrategy;
+import com.hjq.toast.Toaster;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.HeadLibs;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
@@ -57,6 +58,7 @@ public final class Main extends Application {
         ServerHandler.LogActive.set(false);
         ServerHandler.LogOperation.set(false);
         Log.i("HLog-WList", "Hello WList (Android v0.1.1)!" + ParametersMap.create().add("pid", Process.myPid()));
+        Toaster.init(this, new ToastStrategy(ToastStrategy.SHOW_STRATEGY_TYPE_QUEUE));
     }
 
     public static final @NotNull EventExecutorGroup ClientExecutors =
@@ -67,15 +69,11 @@ public final class Main extends Application {
 
     private static final @NotNull Handler mainHandler = new Handler(Looper.getMainLooper());
 
-    public static void showToast(final @NotNull Activity activity, @StringRes final int message) {
-        activity.runOnUiThread(() -> Toast.makeText(activity.getApplicationContext(), message, Toast.LENGTH_SHORT).show());
-    }
-
     public static @NotNull FutureListener<? super Object> exceptionListenerWithToast(final @NotNull Activity activity) {
         return f -> {
             final Throwable cause = f.cause();
             if (cause == null) return;
-            activity.runOnUiThread(() -> Toast.makeText(activity.getApplicationContext(), cause.getLocalizedMessage(), Toast.LENGTH_SHORT).show());
+            Toaster.showShort(cause.getLocalizedMessage());
             HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), cause);
         };
     }

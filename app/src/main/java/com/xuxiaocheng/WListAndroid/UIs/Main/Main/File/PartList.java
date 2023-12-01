@@ -11,6 +11,7 @@ import androidx.annotation.WorkerThread;
 import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.hjq.toast.Toaster;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
@@ -255,7 +256,7 @@ public class PartList extends SFragmentFilePart {
                         }
                     }
                     if (list == null) {
-                        Main.showToast(activity, R.string.page_file_unavailable_directory);
+                        Toaster.show(R.string.page_file_unavailable_directory);
                         Main.runOnUiThread(activity, PartList.this::popFileList);
                         return;
                     }

@@ -3,6 +3,7 @@ package com.xuxiaocheng.WListAndroid.UIs.Main.Main.File;
 import android.view.View;
 import androidx.annotation.UiThread;
 import androidx.appcompat.app.AlertDialog;
+import com.hjq.toast.Toaster;
 import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
@@ -171,9 +172,9 @@ class PartOperation extends SFragmentFilePart {
                             .show();
                 } else {
                     if (state.isSuccess())
-                        Main.showToast(this.activity(), R.string.page_task_download_manager_waiting);
+                        Toaster.show(R.string.page_task_download_manager_waiting);
                     else {
-                        Main.showToast(this.activity(), R.string.page_task_download_manager_failure);
+                        Toaster.show(R.string.page_task_download_manager_failure);
                         this.fragment.partTask().initializeManagers();
                     }
                     clickable.set(true);

@@ -1,5 +1,6 @@
 package com.xuxiaocheng.WListAndroid.Utils;
 
+import android.app.Activity;
 import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
 import android.graphics.drawable.Animatable;
@@ -38,6 +39,10 @@ public final class ViewUtil {
 
     public static @NotNull String getText(final @NotNull TextView textView) {
         return Objects.requireNonNullElse(textView.getText(), "").toString();
+    }
+
+    public static boolean isActivityAvailable(final @Nullable Activity activity) {
+        return activity != null && !activity.isFinishing() && !activity.isDestroyed();
     }
 
     public static @NotNull LinearLayoutManager requireLinearLayoutManager(final @NotNull RecyclerView recyclerView) {
