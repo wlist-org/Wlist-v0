@@ -14,6 +14,7 @@ import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMessageDigestHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMultiRunHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
+import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.Rust.NetworkTransmission;
@@ -51,7 +52,6 @@ import org.jetbrains.annotations.Unmodifiable;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -93,6 +93,7 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -210,10 +211,9 @@ public final class FilesAssistant {
         return List.of(checksums);
     }
 
-    private static @NotNull @Unmodifiable List<@NotNull String> calculateChecksums(final @NotNull File file, final @NotNull Collection<@NotNull UploadChecksum> requirements) {
+    private static @NotNull @Unmodifiable List<@NotNull String> calculateChecksums(final @NotNull FileChannel channel, final @NotNull Collection<@NotNull UploadChecksum> requirements) {
         return FilesAssistant.calculateChecksumsCore(requirements, HExceptionWrapper.wrapConsumer(runner -> {
-            try (final RandomAccessFile access = new RandomAccessFile(file, "r");
-                 final FileChannel channel = access.getChannel()) {
+            try (channel) {
                 final AtomicLong position = new AtomicLong();
                 runner.accept(HExceptionWrapper.wrapConsumer(pos -> {
                     channel.position(pos.longValue());
@@ -287,7 +287,7 @@ public final class FilesAssistant {
                             final long l = pair.getSecond().longValue() - pair.getFirst().longValue();
                             reader.accept(Pair.ImmutablePair.makeImmutablePair(pair.getFirst().longValue(), l), HExceptionWrapper.wrapConsumer(consumer -> {
                                 long length = l;
-                                while (length > 0) {
+                                while (length > 0) { // TODO: MappedByteBuffer
                                     final int read = consumer.apply(Math.toIntExact(Math.min(length, NetworkTransmission.FileTransferBufferSize)), buf.clear()).intValue();
                                     if (read < 0 || !OperateFilesHelper.uploadFile(c, TokenAssistant.getToken(address, username), confirm.getT().id(), index, buf.retain()))
                                         failure.set(true);
@@ -323,22 +323,32 @@ public final class FilesAssistant {
         return finishSuccess.get() != null ? UnionPair.ok(finishSuccess.get()) : UnionPair.fail(new VisibleFailureReason(FailureKind.Others, parent, "Finishing upload file."));
     }
 
-    public static @Nullable UnionPair<VisibleFileInformation, VisibleFailureReason> upload(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull File file, final @NotNull FileLocation parent, final @Nullable String filename, final @NotNull Predicate<? super @NotNull UploadConfirm> continuer, final @Nullable Consumer<? super @NotNull InstantaneousProgressState> callback) throws IOException, InterruptedException, WrongStateException {
-        if (!file.isFile() || !file.canRead())
-            throw new FileNotFoundException("Not a upload-able file." + ParametersMap.create().add("file", file));
+    public static @Nullable UnionPair<VisibleFileInformation, VisibleFailureReason> upload(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull File file, final @NotNull FileLocation parent, final @NotNull Predicate<? super @NotNull UploadConfirm> continuer, final @Nullable Consumer<? super @NotNull InstantaneousProgressState> callback) throws IOException, InterruptedException, WrongStateException {
         try {
-            return FilesAssistant.uploadCore(address, username, parent, Objects.requireNonNullElseGet(filename, file::getName), file.length(), continuer, callback, requirements -> FilesAssistant.calculateChecksums(file, requirements), HExceptionWrapper.wrapConsumer(runner -> {
+            return FilesAssistant.upload(address, username, HExceptionWrapper.wrapConsumer(access -> {
                 try (final RandomAccessFile accessFile = new RandomAccessFile(file, "r");
-                     final FileChannel fileChannel = accessFile.getChannel()) { // Only lock.
-                    runner.accept(HExceptionWrapper.wrapBiConsumer((pair, consumer) -> {
-                        try(final RandomAccessFile access = new RandomAccessFile(file, "r");
-                            final FileChannel channel = access.getChannel().position(pair.getFirst().longValue());
-                            final FileLock ignoredLock = fileChannel.lock(pair.getFirst().longValue(), pair.getSecond().longValue(), true)) {
-                            consumer.accept(HExceptionWrapper.wrapBiFunction((size, buffer) -> buffer.writeBytes(channel, size.intValue())));
-                        }
-                    }));
+                     final FileChannel channel = accessFile.getChannel()) {
+                    access.accept(channel);
                 }
-            }));
+            }), parent, file.getName(), file.length(), continuer, callback);
+        } catch (final RuntimeException exception) {
+            throw HExceptionWrapper.unwrapException(exception, IOException.class);
+        }
+    }
+
+    public static @Nullable UnionPair<VisibleFileInformation, VisibleFailureReason> upload(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull Consumer<@NotNull Consumer<@NotNull FileChannel>> access, final @NotNull FileLocation parent, final @NotNull String filename, final long filesize, final @NotNull Predicate<? super @NotNull UploadConfirm> continuer, final @Nullable Consumer<? super @NotNull InstantaneousProgressState> callback) throws IOException, InterruptedException, WrongStateException {
+        try {
+            return FilesAssistant.uploadCore(address, username, parent, filename, filesize, continuer, callback, requirements -> {
+                final AtomicReference<List<String>> checksums = new AtomicReference<>();
+                access.accept(channel -> checksums.set(FilesAssistant.calculateChecksums(channel, requirements)));
+                return checksums.get();
+            }, HExceptionWrapper.wrapConsumer(runner -> access.accept(fileChannel/*Only lock.*/ ->
+                    runner.accept(HExceptionWrapper.wrapBiConsumer((pair, consumer) -> access.accept(HExceptionWrapper.wrapConsumer(channel -> {
+                            channel.position(pair.getFirst().longValue());
+                            try(final FileLock ignoredLock = fileChannel.lock(pair.getFirst().longValue(), pair.getSecond().longValue(), true)) {
+                                consumer.accept(HExceptionWrapper.wrapBiFunction((size, buffer) -> buffer.writeBytes(channel, size.intValue())));
+                            }
+            })))))));
         } catch (final RuntimeException exception) {
             throw HExceptionWrapper.unwrapException(exception, IOException.class);
         }
@@ -364,11 +374,14 @@ public final class FilesAssistant {
         }
     }
 
+    public static final @NotNull HInitializer<UnaryOperator<@NotNull File>> DownloadRecordFileTransfer = new HInitializer<>("DownloadRecordFileTransfer", file -> {
+        //noinspection SpellCheckingInspection
+        return new File(file.getParentFile(), file.getName() + ".wdrd");
+    }); // TODO optimized record content.
 
     @Contract(pure = true)
     public static @NotNull File getDownloadRecordFile(final @NotNull File file) {
-        //noinspection SpellCheckingInspection
-        return new File(file.getParentFile(), file.getName() + ".wdrd");
+        return FilesAssistant.DownloadRecordFileTransfer.getInstance().apply(file);
     }
 
     private static final @NotNull List<Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull Long>> FullDownloadingProgress = List.of(Pair.ImmutablePair.makeImmutablePair(0L, Long.MAX_VALUE));
@@ -883,7 +896,14 @@ public final class FilesAssistant {
             try {
                 final VisibleFailureReason download = FilesAssistant.download(address, username, location, temp, PredicateE.truePredicate(), null);
                 if (download != null) return UnionPair.fail(download);
-                res = FilesAssistant.upload(address, username, temp, parent, name, PredicateE.truePredicate(), null);
+                res = FilesAssistant.upload(address, username, HExceptionWrapper.wrapConsumer(access -> {
+                    try (final RandomAccessFile accessFile = new RandomAccessFile(temp, "r");
+                         final FileChannel channel = accessFile.getChannel()) {
+                        access.accept(channel);
+                    }
+                }), parent, name, temp.length(), PredicateE.truePredicate(), null);
+            } catch (final RuntimeException exception) {
+                throw HExceptionWrapper.unwrapException(exception, IOException.class);
             } finally {
                 Files.deleteIfExists(temp.toPath());
             }

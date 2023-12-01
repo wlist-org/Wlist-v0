@@ -21,7 +21,6 @@ import com.xuxiaocheng.WList.Commons.Beans.VisibleFilesListInformation;
 import com.xuxiaocheng.WList.Commons.Options.FilterPolicy;
 import com.xuxiaocheng.WList.Commons.Options.OrderDirection;
 import com.xuxiaocheng.WList.Commons.Utils.ByteBufIOUtil;
-import com.xuxiaocheng.WList.Server.Databases.File.FileSqlInterface;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WList.Server.Storage.StorageManager;
 import com.xuxiaocheng.WList.Server.WListServer;
@@ -87,14 +86,14 @@ public class FilesAssistantTest extends ProvidersWrapper {
     @Test
 //    @Disabled
     public void _del() throws IOException, InterruptedException, WrongStateException {
-        final long doubleId = 17737902;
-        Assertions.assertTrue(FilesAssistant.trash(this.address(), this.adminUsername(), this.location(FileSqlInterface.getRealId(doubleId)), FileSqlInterface.isDirectory(doubleId), PredicateE.truePredicate()));
+//        final long doubleId = ;
+        Assertions.assertTrue(FilesAssistant.trash(this.address(), this.adminUsername(), this.location(/*FileSqlInterface.getRealId(doubleId)*/150354330), false, PredicateE.truePredicate()));
     }
 
     @Test
     @SuppressWarnings("unchecked")
     public void calculate() throws NoSuchMethodException, IOException, InvocationTargetException, IllegalAccessException {
-        final Method method = FilesAssistant.class.getDeclaredMethod("calculateChecksums", File.class, Collection.class);
+        final Method method = FilesAssistant.class.getDeclaredMethod("calculateChecksums", FileChannel.class, Collection.class);
         method.setAccessible(true);
         final File file = Files.createTempFile("calculate_checksums", ".txt").toFile();
         file.deleteOnExit();
@@ -107,7 +106,11 @@ public class FilesAssistantTest extends ProvidersWrapper {
                 new UploadChecksum(0, 6, UploadChecksum.MD5),
                 new UploadChecksum(8, 9, UploadChecksum.MD5)
         );
-        final List<String> result = (List<String>) method.invoke(null, file, requirements);
+        final List<String> result;
+        try (final RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r");
+             final FileChannel channel = randomAccessFile.getChannel()) {
+            result = (List<String>) method.invoke(null, channel, requirements);
+        }
         Assertions.assertEquals(HMessageDigestHelper.MD5.get("123"), result.get(0));
         Assertions.assertEquals(HMessageDigestHelper.MD5.get("456"), result.get(1));
         Assertions.assertEquals(HMessageDigestHelper.MD5.get("123456"), result.get(2));
@@ -152,9 +155,9 @@ public class FilesAssistantTest extends ProvidersWrapper {
             information.set(p.getSecond());
             latch.countDown();
         });
-        Assertions.assertNull(FilesAssistant.upload(this.address(), this.adminUsername(), file,
-                this.location(this.root()), null, c -> {HLog.DefaultLogger.log(HLogLevel.INFO, c);return true;},
-                state -> HLog.DefaultLogger.log(HLogLevel.LESS, state.stages())));
+        Assertions.assertTrue(Objects.requireNonNull(FilesAssistant.upload(this.address(), this.adminUsername(), file,
+                this.location(this.root()), c -> {HLog.DefaultLogger.log(HLogLevel.INFO, c);return true;},
+                state -> HLog.DefaultLogger.log(HLogLevel.LESS, state.stages()))).isSuccess());
         latch.await();
         BroadcastAssistant.get(this.address()).FileUpload.getCallbacks().remove("testUpload");
         OperateFilesHelper.trashFileOrDirectory(client, TokenAssistant.getToken(this.address(), this.adminUsername()), this.location(information.get().id()), false);
@@ -226,7 +229,7 @@ public class FilesAssistantTest extends ProvidersWrapper {
                 final int i = this.pos.getAndIncrement();
                 if (i >= pair.getSecond().intValue())
                     return -1;
-                return buffer.getByte(i);
+                return buffer.getByte(i) & 0xFF;
             }
         }), size, filename, this.location(this.root()), c -> {HLog.DefaultLogger.log(HLogLevel.INFO, c);return true;},
                 state -> HLog.DefaultLogger.log(HLogLevel.LESS, state.stages())));
@@ -256,7 +259,7 @@ public class FilesAssistantTest extends ProvidersWrapper {
     }
 
     public void testDownload(final long id, final @NotNull String md5) throws IOException, NoSuchMethodException, InvocationTargetException, IllegalAccessException, WrongStateException, InterruptedException {
-        final Method method = FilesAssistant.class.getDeclaredMethod("calculateChecksums", File.class, Collection.class);
+        final Method method = FilesAssistant.class.getDeclaredMethod("calculateChecksums", FileChannel.class, Collection.class);
         method.setAccessible(true);
 
         final File file = Files.createTempFile("test-upload", ".bin").toFile();
@@ -264,8 +267,11 @@ public class FilesAssistantTest extends ProvidersWrapper {
         Assertions.assertNull(FilesAssistant.download(this.address(), this.adminUsername(), this.location(id),
                 file, c -> {HLog.DefaultLogger.log("", c);return true;},
                 (state, progress) -> HLog.DefaultLogger.log(HLogLevel.LESS, state.stages(), " @---@ ", progress)));
-        Assertions.assertEquals(List.of(md5), method.invoke(null, file,
-                List.of(new UploadChecksum(0, file.length(), UploadChecksum.MD5))));
+        try (final RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r");
+             final FileChannel channel = randomAccessFile.getChannel()) {
+            Assertions.assertEquals(List.of(md5), method.invoke(null, channel,
+                    List.of(new UploadChecksum(0, file.length(), UploadChecksum.MD5))));
+        }
     }
 
     @Test
