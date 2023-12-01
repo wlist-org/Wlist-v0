@@ -1,16 +1,22 @@
 package com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers;
 
 import android.app.Activity;
+import android.net.Uri;
+import android.os.ParcelFileDescriptor;
 import androidx.annotation.WorkerThread;
 import com.xuxiaocheng.HeadLibs.Callbacks.HCallbacks;
-import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.HeadLibs.Functions.PredicateE;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.WList.AndroidSupports.FailureReasonGetter;
 import com.xuxiaocheng.WList.AndroidSupports.FileLocationGetter;
+import com.xuxiaocheng.WList.Client.Assistants.FilesAssistant;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.InstantaneousProgressState;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
+import com.xuxiaocheng.WList.Commons.Operations.FailureKind;
 import com.xuxiaocheng.WListAndroid.UIs.Main.CActivity;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.PageTaskAdapter;
 import com.xuxiaocheng.WListAndroid.Utils.PermissionUtil;
@@ -20,12 +26,12 @@ import org.jetbrains.annotations.Nullable;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.channels.FileChannel;
 import java.time.ZonedDateTime;
-import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class UploadTasksManager extends AbstractTasksManager<UploadTasksManager.UploadTask, UploadTasksManager.UploadWorking, UploadTasksManager.UploadSuccess, UploadTasksManager.UploadFailure> {
     protected UploadTasksManager() {
@@ -50,7 +56,7 @@ public class UploadTasksManager extends AbstractTasksManager<UploadTasksManager.
 
     @Override
     public @NotNull File getRecordingFile(final @NotNull UploadTask task) {
-        return new File(UploadTasksManager.UploadRecordsSaveDirectory, FileLocationGetter.storage(task.location) + " - " + FileLocationGetter.id(task.location) + ".bin.gz");
+        return new File(UploadTasksManager.UploadRecordsSaveDirectory, FileLocationGetter.storage(task.parent) + " - " + FileLocationGetter.id(task.parent) + ".bin.gz");
     }
 
     @Override
@@ -60,100 +66,123 @@ public class UploadTasksManager extends AbstractTasksManager<UploadTasksManager.
     }
 
     @Override
-    protected @NotNull UnionPair<UploadSuccess, UploadFailure> runTask(final @NotNull Activity activity, final @NotNull UploadTask task, final @NotNull UploadTasksManager.UploadWorking progress) {
-        return UnionPair.ok(new UploadSuccess());
+    protected @NotNull UnionPair<UploadSuccess, UploadFailure> runTask(final @NotNull Activity activity, final @NotNull UploadTask task, final @NotNull UploadWorking progress) {
+        try {
+            final UnionPair<VisibleFileInformation, VisibleFailureReason> reason = FilesAssistant.upload(task.address, task.username, HExceptionWrapper.wrapConsumer(access -> {
+                try (final ParcelFileDescriptor parcelFileDescriptor = activity.getContentResolver().openFileDescriptor(task.uri, "r");
+                     final FileInputStream fileInputStream = new FileInputStream(parcelFileDescriptor.getFileDescriptor());
+                     final FileChannel channel = fileInputStream.getChannel()) {
+                    access.accept(channel);
+                }
+            }), task.parent, task.filename, task.filesize, PredicateE.truePredicate(), s -> {
+                progress.state = s;
+                progress.updateCallbacks.callback(RunnableE::run);
+            });
+            assert reason != null;
+            return reason.isSuccess() ? UnionPair.ok(new UploadSuccess()) : UnionPair.fail(new UploadFailure(reason.getE()));
+        } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable throwable) {
+            final VisibleFailureReason reason = new VisibleFailureReason(FailureKind.Others, task.parent, Objects.requireNonNullElse(throwable.getLocalizedMessage(), ""));
+            return UnionPair.fail(new UploadFailure(reason));
+        }
     }
 
 
     public static class UploadTask extends AbstractTask {
-        protected final @NotNull FileLocation location;
+        protected final @NotNull FileLocation parent;
         protected final @NotNull String filename;
+        protected final long filesize;
         protected final PageTaskAdapter.@NotNull Types source;
-//        protected final @NotNull File sourcePath;
+        protected final @NotNull Uri uri;
 
         @WorkerThread
-        public UploadTask(final @NotNull InetSocketAddress address, final @NotNull String username, final @NotNull ZonedDateTime time, final @NotNull FileLocation location, final @NotNull String filename, final PageTaskAdapter.@NotNull Types source) {
+        public UploadTask(final @NotNull InetSocketAddress address, final @NotNull String username, final @NotNull ZonedDateTime time, final @NotNull FileLocation parent, final @NotNull String filename, final long filesize, final PageTaskAdapter.@NotNull Types source, final @NotNull Uri uri) {
             super(address, username, time);
-            this.location = location;
+            this.parent = parent;
             this.filename = filename;
+            this.filesize = filesize;
             this.source = source;
-//            this.sourcePath = UploadTasksManager.getSaveFile(this);
+            this.uri = uri;
         }
 
-        public @NotNull FileLocation getLocation() {
-            return this.location;
+        public @NotNull FileLocation getParent() {
+            return this.parent;
         }
 
         public @NotNull String getFilename() {
             return this.filename;
         }
 
+        public long getFilesize() {
+            return this.filesize;
+        }
+
         public PageTaskAdapter.@NotNull Types getSource() {
             return this.source;
         }
 
-//        public @NotNull File getSourcePath() {
-//            return this.sourcePath;
-//        }
+        public @NotNull Uri getUri() {
+            return this.uri;
+        }
 
         @Override
         public boolean equals(final @Nullable Object o) {
             if (this == o) return true;
             if (!(o instanceof final UploadTask that)) return false;
             if (!super.equals(o)) return false;
-            return FileLocationGetter.equals(this.location, that.location) && this.filename.equals(that.filename) && this.source == that.source;
+            return this.filesize == that.filesize && FileLocationGetter.equals(this.parent, that.parent) && Objects.equals(this.filename, that.filename) && this.source == that.source && Objects.equals(this.uri, that.uri);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(super.hashCode(), this.location, this.filename, this.source);
+            return Objects.hash(super.hashCode(), this.parent, this.filename, this.filesize, this.source, this.uri);
         }
 
         @Override
         public @NotNull String toString() {
             return "UploadTask{" +
-                    "location=" + this.location +
-                    ", filename=" + this.filename +
+                    "location=" + this.parent +
+                    ", filename='" + this.filename + '\'' +
+                    ", filesize=" + this.filesize +
                     ", source=" + this.source +
+                    ", uri=" + this.uri +
                     '}';
         }
     }
 
     @Override
-    protected @NotNull UploadTasksManager.UploadTask parseTask(final @NotNull DataInput inputStream) throws IOException {
+    protected @NotNull UploadTask parseTask(final @NotNull DataInput inputStream) throws IOException {
         final InetSocketAddress address = AbstractTasksManager.parseAddress(inputStream);
         final String username = inputStream.readUTF();
         final ZonedDateTime time = AbstractTasksManager.parseTime(inputStream);
         final String storage = inputStream.readUTF();
         final long id = inputStream.readLong();
-        final FileLocation location = new FileLocation(storage, id);
+        final FileLocation parent = new FileLocation(storage, id);
         final String filename = inputStream.readUTF();
+        final long filesize = inputStream.readLong();
         final PageTaskAdapter.Types source = PageTaskAdapter.Types.fromPosition(inputStream.readInt());
-        return new UploadTask(address, username, time, location, filename, source);
+        final Uri uri = Uri.parse(inputStream.readUTF());
+        return new UploadTask(address, username, time, parent, filename, filesize, source, uri);
     }
 
     @Override
-    protected void dumpTask(final @NotNull DataOutput outputStream, final @NotNull UploadTasksManager.UploadTask task) throws IOException {
+    protected void dumpTask(final @NotNull DataOutput outputStream, final @NotNull UploadTask task) throws IOException {
         AbstractTasksManager.dumpAddress(outputStream, task.address);
         outputStream.writeUTF(task.username);
         AbstractTasksManager.dumpTime(outputStream, task.time);
-        outputStream.writeUTF(FileLocationGetter.storage(task.location));
-        outputStream.writeLong(FileLocationGetter.id(task.location));
+        outputStream.writeUTF(FileLocationGetter.storage(task.parent));
+        outputStream.writeLong(FileLocationGetter.id(task.parent));
         outputStream.writeUTF(task.filename);
+        outputStream.writeLong(task.filesize);
         outputStream.writeInt(PageTaskAdapter.Types.toPosition(task.source));
+        outputStream.writeUTF(task.uri.toString());
     }
 
     public static class UploadWorking {
         protected InstantaneousProgressState state = null;
-        protected List<Pair.@NotNull ImmutablePair<@NotNull AtomicLong, @NotNull Long>> progress = null;
         protected final @NotNull HCallbacks<RunnableE> updateCallbacks = new HCallbacks<>();
 
         public @Nullable InstantaneousProgressState getState() {
             return this.state;
-        }
-
-        public @Nullable List<Pair.ImmutablePair<AtomicLong, Long>> getProgress() {
-            return this.progress;
         }
 
         public @NotNull HCallbacks<RunnableE> getUpdateCallbacks() {
@@ -164,30 +193,29 @@ public class UploadTasksManager extends AbstractTasksManager<UploadTasksManager.
         public @NotNull String toString() {
             return "UploadWorking{" +
                     "state=" + this.state +
-                    ", progress=" + this.progress +
                     '}';
         }
     }
 
     @Override
-    protected @NotNull UploadTasksManager.UploadWorking parseExtraWorking(final @NotNull DataInput inputStream) {
+    protected @NotNull UploadWorking parseExtraWorking(final @NotNull DataInput inputStream) {
         return new UploadWorking();
     }
 
     @Override
-    protected void dumpExtraWorking(final @NotNull DataOutput outputStream, final @NotNull UploadTasksManager.UploadWorking extra) {
+    protected void dumpExtraWorking(final @NotNull DataOutput outputStream, final @NotNull UploadWorking extra) {
     }
 
     public static class UploadSuccess {
     }
 
     @Override
-    protected @NotNull UploadTasksManager.UploadSuccess parseExtraSuccess(final @NotNull DataInput inputStream) {
+    protected @NotNull UploadSuccess parseExtraSuccess(final @NotNull DataInput inputStream) {
         return new UploadSuccess();
     }
 
     @Override
-    protected void dumpExtraSuccess(final @NotNull DataOutput outputStream, final @NotNull UploadTasksManager.UploadSuccess extra) {
+    protected void dumpExtraSuccess(final @NotNull DataOutput outputStream, final @NotNull UploadSuccess extra) {
     }
 
     public static class UploadFailure {
@@ -223,13 +251,13 @@ public class UploadTasksManager extends AbstractTasksManager<UploadTasksManager.
     }
 
     @Override
-    protected @NotNull UploadTasksManager.UploadFailure parseExtraFailure(final @NotNull DataInput inputStream) throws IOException {
+    protected @NotNull UploadFailure parseExtraFailure(final @NotNull DataInput inputStream) throws IOException {
         final VisibleFailureReason reason = AbstractTasksManager.parseReason(inputStream);
         return new UploadFailure(reason);
     }
 
     @Override
-    protected void dumpExtraFailure(final @NotNull DataOutput outputStream, final @NotNull UploadTasksManager.UploadFailure extra) throws IOException {
+    protected void dumpExtraFailure(final @NotNull DataOutput outputStream, final @NotNull UploadFailure extra) throws IOException {
         AbstractTasksManager.dumpReason(outputStream, extra.reason);
     }
 

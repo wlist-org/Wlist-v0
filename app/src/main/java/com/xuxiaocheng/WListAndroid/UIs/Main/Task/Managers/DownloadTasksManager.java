@@ -210,7 +210,7 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
     }
 
     public static class DownloadSuccess {
-    }
+    } // TODO: is deleted?
 
     @Override
     protected @NotNull DownloadSuccess parseExtraSuccess(final @NotNull DataInput inputStream) {

@@ -56,6 +56,7 @@
 	<string name="page_file_upload_directory_hint">Directory Name.</string>
 	<string name="page_file_upload_success_directory">Created directory.</string>
 	<string name="page_file_upload_success_file">Uploaded file.</string>
+	<string name="page_file_upload_no_filename">Failed to get filename. {0}</string>
 	<string name="page_file_listing_title">Building index:\n\t{0}</string>
 	<string name="page_file_options_refresh">Refresh and sync.</string>
 	<string name="page_file_options_refresh_warning">Refresh may cause a long time!</string>
@@ -84,6 +85,8 @@
 	<string name="page_task_copy" translatable="false">@string/page_file_operation_copy</string>
 	<string name="page_task_move" translatable="false">@string/page_file_operation_move</string>
 	<string name="page_task_rename" translatable="false">@string/page_file_operation_rename</string>
+	<string name="page_task_remove_all">Remove all.</string>
+	<string name="page_task_retry_all">Retry all.</string>
 	<string name="page_task_process" translatable="false">@string/page_file_loading_percent</string>
 	<string name="page_task_size_speed" translatable="false">{0} / {1} ({2}/s)</string>
 	<string name="page_task_time">ETA: {0}</string>

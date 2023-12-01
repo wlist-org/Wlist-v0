@@ -1,13 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                                                   xmlns:app="http://schemas.android.com/apk/res-auto"
                                                    android:layout_width="match_parent"
                                                    android:layout_height="match_parent">
 
+<!--	<androidx.appcompat.widget.AppCompatTextView-->
+<!--		android:id="@+id/page_task_list_content_remove_all"-->
+<!--		android:layout_width="wrap_content"-->
+<!--		android:layout_height="wrap_content"-->
+<!--		android:paddingStart="10dp"-->
+<!--		android:paddingEnd="10dp"-->
+<!--		android:text="@string/page_task_remove_all"-->
+<!--		android:textColor="@color/text_normal"-->
+<!--		android:textSize="15sp"-->
+<!--		app:layout_constraintBottom_toTopOf="@id/page_task_list_content_list"-->
+<!--		app:layout_constraintRight_toRightOf="parent"-->
+<!--		app:layout_constraintTop_toTopOf="parent" />-->
+
+<!--	<androidx.appcompat.widget.AppCompatTextView-->
+<!--		android:id="@+id/page_task_list_content_retry_all"-->
+<!--		android:layout_width="wrap_content"-->
+<!--		android:layout_height="wrap_content"-->
+<!--		android:paddingStart="10dp"-->
+<!--		android:paddingEnd="10dp"-->
+<!--		android:text="@string/page_task_retry_all"-->
+<!--		android:textColor="@color/text_normal"-->
+<!--		android:textSize="15sp"-->
+<!--		app:layout_constraintBottom_toTopOf="@id/page_task_list_content_list"-->
+<!--		app:layout_constraintRight_toLeftOf="@id/page_task_list_content_remove_all"-->
+<!--		app:layout_constraintTop_toTopOf="parent" />-->
+
 	<androidx.recyclerview.widget.RecyclerView
 		android:id="@+id/page_task_list_content_list"
-		android:layout_width="match_parent"
-		android:layout_height="match_parent"
-		android:layout_marginLeft="10dp"
-		android:layout_marginRight="10dp" />
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:layout_marginTop="10dp"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

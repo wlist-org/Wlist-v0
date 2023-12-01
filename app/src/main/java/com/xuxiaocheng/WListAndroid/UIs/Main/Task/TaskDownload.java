@@ -216,6 +216,21 @@ public class TaskDownload extends SPageTaskFragment {
             return DownloadTasksManager.getInstance();
         }
 
+//        @Override
+//        protected void removeAll() {
+//            new AlertDialog.Builder(this.activity())
+//                    .setTitle(R.string.page_task_remove_all)
+//                    .setNeutralButton(R.string.cancel, null)
+//                    .setNegativeButton(R.string.confirm, (d, w) -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() ->
+//                            DownloadTasksManager.getInstance().removeSuccessTask(this.activity(), task))))
+//                    .setPositiveButton(R.string.page_task_remove_file, (d, w) -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
+//                        DownloadTasksManager.getInstance().removeSuccessTask(this.activity(), task);
+//                        Files.deleteIfExists(saved.toPath());
+//                    }))).show();
+//            ViewUtil.requireEnhancedRecyclerAdapter(this.content().pageTaskListContentList).clearData(); // Quick Response.
+//            Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> this.getManager().removeAllSuccessTask(this.activity())));
+//        }
+
         @Override
         protected void onBind(final @NotNull PageTaskListDownloadSuccessCellBinding cell, final DownloadTasksManager.@NotNull DownloadTask task, final DownloadTasksManager.@NotNull DownloadSuccess data) {
             ViewUtil.setFileImage(cell.pageTaskListDownloadSuccessCellImage, false, task.getFilename());

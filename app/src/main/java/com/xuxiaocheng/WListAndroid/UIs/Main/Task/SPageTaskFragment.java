@@ -207,6 +207,16 @@ public abstract class SPageTaskFragment extends CFragment<PageTaskListBinding> {
         @WorkerThread
         protected abstract @NotNull AbstractTasksManager<T, ?, E, ?> getManager();
 
+//        @UiThread
+//        protected abstract void removeAll();
+//
+//        @Override
+//        protected void iOnBuildPage(final @NotNull PageTaskListContentBinding page, final boolean isFirstTime) {
+//            super.iOnBuildPage(page, isFirstTime);
+//            page.pageTaskListContentRetryAll.setVisibility(View.GONE);
+//            page.pageTaskListContentRemoveAll.setOnClickListener(v -> this.removeAll());
+//        }
+
         @Override
         protected void sOnBuildPage(final @NotNull EnhancedRecyclerViewAdapter<Map.Entry<T, E>, SPageTaskStateFragment<V, T, E>.SPageTaskStateFragmentVewHolder> adapter) {
             final AbstractTasksManager<T, ?, E, ?> manager = this.getManager();

@@ -1,28 +1,55 @@
 package com.xuxiaocheng.WListAndroid.UIs.Main.Main.File;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
+import android.content.ClipData;
+import android.content.ContentResolver;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.net.Uri;
+import android.provider.OpenableColumns;
 import android.view.MotionEvent;
 import android.view.View;
 import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.activity.result.contract.ActivityResultContract;
 import androidx.annotation.UiThread;
+import androidx.appcompat.app.AlertDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.hjq.toast.Toaster;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMathHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
+import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper;
+import com.xuxiaocheng.WList.Client.WListClientInterface;
+import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
+import com.xuxiaocheng.WList.Commons.Options.DuplicatePolicy;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.UIs.Main.ActivityMain;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Main.PageMainAdapter;
+import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.UploadTasksManager;
+import com.xuxiaocheng.WListAndroid.UIs.Main.Task.PageTaskAdapter;
+import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
+import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageFileDirectoryBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileUploadBinding;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
 
 import java.time.Duration;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -32,8 +59,6 @@ class PartUpload extends SFragmentFilePart {
     protected PartUpload(final @NotNull FragmentFile fragment) {
         super(fragment);
     }
-
-    private final @NotNull HInitializer<ActivityResultLauncher<String>> chooserLauncher = new HInitializer<>("PageFileChooserLauncher");
 
     @Override
     public void cOnConnect() {
@@ -153,15 +178,35 @@ class PartUpload extends SFragmentFilePart {
         }, 300, TimeUnit.MILLISECONDS));
     }
 
+    private final @NotNull HInitializer<ActivityResultLauncher<String>> chooserLauncher = new HInitializer<>("PageFileChooserLauncher");
     public static final @NotNull String UploadChooserTag = "wlist:activity_rq_for_result#upload_chooser";
 
     @Override
     public void onAttach() {
         super.onAttach();
-        this.chooserLauncher.reinitialize(this.activity().getActivityResultRegistry().register(PartUpload.UploadChooserTag, new ActivityResultContracts.GetContent(), uri -> {
-            if (uri != null)
-                this.uploadFile(uri);
-        }));
+        this.chooserLauncher.reinitialize(this.activity().getActivityResultRegistry().register(PartUpload.UploadChooserTag, new ActivityResultContract<String, List<Uri>>() {
+            @Override
+            public @NotNull Intent createIntent(final @NotNull Context context, final @NotNull String input) {
+                return new Intent(Intent.ACTION_GET_CONTENT)
+                        .addCategory(Intent.CATEGORY_OPENABLE)
+                        .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                        .setType(input);
+            }
+
+            @Override
+            public @NotNull @Unmodifiable List<@NotNull Uri> parseResult(final int resultCode, final @Nullable Intent intent) {
+                if (intent == null || resultCode != Activity.RESULT_OK) return List.of();
+                if (intent.getData() != null)
+                    return Collections.singletonList(intent.getData());
+                final ClipData clipData = intent.getClipData();
+                if (clipData == null)
+                    return List.of();
+                final List<Uri> uris = new ArrayList<>(clipData.getItemCount());
+                for (int i = 0; i < clipData.getItemCount(); ++i)
+                    uris.add(clipData.getItemAt(i).getUri());
+                return Collections.unmodifiableList(uris);
+            }
+        }, this::uploadFile));
     }
 
     @Override
@@ -172,48 +217,37 @@ class PartUpload extends SFragmentFilePart {
             chooser.unregister();
     }
 
-    //    private @NotNull FileLocation currentLocation() {
-//        return this.pageFile.partList.currentLocation();
-//    }
-//
-//    private @NotNull ImageView loadingView(final @NotNull ActivityMain activity) {
-//        final ImageView loading = new ImageView(activity);
-//        loading.setImageResource(R.drawable.loading);
-//        ViewUtil.startDrawableAnimation(loading);
-//        return loading;
-//    }
-//
-//    @UiThread
-//    protected @NotNull AlertDialog loadingDialog(final @NotNull ActivityMain activity, @StringRes final int title) {
-//        return new AlertDialog.Builder(activity).setTitle(title).setView(this.loadingView(activity)).setCancelable(false).show();
-//    }
+
+    private @NotNull FileLocation currentLocation() {
+        return this.fragment.partList().currentLocation();
+    }
 
     @UiThread
     protected void createDirectory(final @NotNull ActivityMain activity) {
-//        final FileLocation location = this.currentLocation();
-//        final PageFileDirectoryBinding editor = PageFileDirectoryBinding.inflate(activity.getLayoutInflater());
-//        editor.pageFileDirectoryName.setText(R.string.page_file_upload_directory_name);
-//        editor.pageFileDirectoryName.setHint(R.string.page_file_upload_directory_hint);
-//        if (editor.pageFileDirectoryName.requestFocus()) {
-//            editor.pageFileDirectoryName.setSelectAllOnFocus(true);
-//            editor.pageFileDirectoryName.setSelection(Objects.requireNonNull(editor.pageFileDirectoryName.getText()).length());
-//        }
-//        new AlertDialog.Builder(activity).setTitle(R.string.page_file_create_directory)
-//                .setIcon(R.mipmap.page_file_upload_directory).setView(editor.getRoot())
-//                .setNegativeButton(R.string.cancel, null)
-//                .setPositiveButton(R.string.confirm, (d, w) -> {
-//                    final String name = ViewUtil.getText(editor.pageFileDirectoryName);
-//                    final AlertDialog loading = new AlertDialog.Builder(activity)
-//                            .setTitle(R.string.page_file_create_directory).setView(this.loadingView(activity)).setCancelable(false).show();
-//                    Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> {
-//                        HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Creating directory.",
-//                                ParametersMap.create().add("location", location).add("name", name));
-//                        try (final WListClientInterface client = this.pageFile.client()) {
-//                            OperateFilesHelper.createDirectory(client, this.pageFile.token(), location, name, DuplicatePolicy.ERROR);
-//                        }
-//                        Main.showToast(activity, R.string.page_file_upload_success_directory);
-//                    }, () -> Main.runOnUiThread(activity, loading::cancel)));
-//                }).show();
+        final FileLocation location = this.currentLocation();
+        final PageFileDirectoryBinding editor = PageFileDirectoryBinding.inflate(activity.getLayoutInflater());
+        editor.pageFileDirectoryName.setText(R.string.page_file_upload_directory_name);
+        editor.pageFileDirectoryName.setHint(R.string.page_file_upload_directory_hint);
+        if (editor.pageFileDirectoryName.requestFocus()) {
+            editor.pageFileDirectoryName.setSelectAllOnFocus(true);
+            editor.pageFileDirectoryName.setSelection(Objects.requireNonNull(editor.pageFileDirectoryName.getText()).length());
+        }
+        new AlertDialog.Builder(activity).setTitle(R.string.page_file_create_directory)
+                .setIcon(R.mipmap.page_file_upload_directory).setView(editor.getRoot())
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.confirm, (d, w) -> {
+                    final String name = ViewUtil.getText(editor.pageFileDirectoryName);
+                    final AlertDialog loading = activity.createLoadingDialog(R.string.page_file_create_directory);
+                    loading.show();
+                    Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> {
+                        HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Creating directory.",
+                                ParametersMap.create().add("location", location).add("name", name));
+                        try (final WListClientInterface client = this.client()) {
+                            OperateFilesHelper.createDirectory(client, this.token(), location, name, DuplicatePolicy.ERROR);
+                        }
+                        Toaster.show(R.string.page_file_upload_success_directory);
+                    }, () -> Main.runOnUiThread(activity, loading::cancel)));
+                }).show();
     }
 
     @UiThread
@@ -242,48 +276,29 @@ class PartUpload extends SFragmentFilePart {
     }
 
     @UiThread
-    protected void uploadFile(final @NotNull Uri uri) {
-//        Main.runOnBackgroundThread(this.pageFile.activity(), HExceptionWrapper.wrapRunnable(() -> {
-//            final FileLocation location = this.currentLocation();
-//            // TODO: serialize uploading task.
-//            // uri.toString()  -->  Uri.parse(...)
-//            final String filename;
-//            final long size;
-//            try (final Cursor cursor = this.pageFile.activity().getContentResolver().query(uri, new String[] {OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE}, null, null, null)) {
-//                if (cursor == null || !cursor.moveToFirst()) return;
-//                filename = cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME));
-//                size = cursor.getLong(cursor.getColumnIndexOrThrow(OpenableColumns.SIZE));
-//            }
-//            HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Uploading files.",
-//                    ParametersMap.create().add("location", location).add("filename", filename).add("size", size).add("uri", uri));
-//            this.pageFile.partList.listLoadingAnimation("Uploading", true, 0, 0);
-//            Main.runOnUiThread(this.pageFile.activity(), () -> {
-//                final AlertDialog loader = new AlertDialog.Builder(this.pageFile.activity()).setTitle(filename).setCancelable(false).show();
-//                Main.runOnUiThread(this.pageFile.activity(), HExceptionWrapper.wrapRunnable(() -> {
-//                    final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.uploadStream(this.pageFile.address(), this.pageFile.username(), HExceptionWrapper.wrapBiConsumer((pair, consumer) -> {
-//                        try (final InputStream stream = new BufferedInputStream(this.pageFile.activity().getContentResolver().openInputStream(uri))) {
-//                            AndroidSupporter.skipNBytes(stream, pair.getFirst().longValue());
-//                            consumer.accept(stream);
-//                        }
-//                    }), size, filename, location, PredicateE.truePredicate(), s -> { // TODO upload progress.
-//                        long current = 0, total = 0;
-//                        for (final Pair.ImmutablePair<Long, Long> pair: InstantaneousProgressStateGetter.stages(s)) {
-//                            current += pair.getFirst().longValue();
-//                            total += pair.getSecond().longValue();
-//                        }
-//                        final long c = current, t = total;
-//                        this.pageFile.partList.listLoadingAnimation("Uploading", true, c, t);
-//                    });
-//                    assert res != null;
-//                    if (res.isFailure()) // TODO
-//                        Main.runOnUiThread(this.pageFile.activity(), () -> Toast.makeText(this.pageFile.activity(), FailureReasonGetter.message(res.getE()), Toast.LENGTH_SHORT).show());
-//                    else
-//                        Main.showToast(this.pageFile.activity(), R.string.page_file_upload_success_file);
-//                }, () -> {
-//                    this.pageFile.partList.listLoadingAnimation("Uploading", false, 0, 0);
-//                    Main.runOnUiThread(this.pageFile.activity(), loader::cancel);
-//                }));
-//            });
-//        }));
+    protected void uploadFile(final @NotNull @Unmodifiable Collection<? extends @NotNull Uri> uris) {
+        if (uris.isEmpty()) return;
+        final FileLocation parent = this.currentLocation();
+        final ZonedDateTime now = ZonedDateTime.now();
+        final AtomicInteger count = new AtomicInteger(0);
+        final ContentResolver resolver = this.activity().getContentResolver();
+        uris.forEach(uri -> {
+            final ZonedDateTime current = now.plusNanos(count.getAndIncrement());
+            Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
+                final String filename;
+                final long filesize;
+                try (final Cursor cursor = resolver.query(uri, new String[] {OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE}, null, null, null)) {
+                    if (cursor == null || !cursor.moveToFirst()) return;
+                    final String name = cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME));
+                    final long size = cursor.getLong(cursor.getColumnIndexOrThrow(OpenableColumns.SIZE));
+                    filename = name == null ? "unknown" : name;
+                    filesize = size < 0 ? 0 : size;
+                }
+                HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Uploading file.",
+                        ParametersMap.create().add("parent", parent).add("filename", filename).add("filesize", filesize).add("uri", uri));
+                UploadTasksManager.getInstance().addTask(this.activity(), new UploadTasksManager.UploadTask(this.address(), this.username(), current,
+                        parent, filename, filesize, PageTaskAdapter.Types.Upload, uri));
+            }));
+        });
     }
 }

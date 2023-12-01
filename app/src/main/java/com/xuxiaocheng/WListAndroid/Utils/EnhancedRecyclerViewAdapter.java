@@ -116,6 +116,13 @@ public abstract class EnhancedRecyclerViewAdapter<T, VH extends EnhancedRecycler
     }
 
     @UiThread
+    public void clearData() {
+        final int count = this.data.size();
+        this.data.clear();
+        this.notifyItemRangeRemoved(0, count);
+    }
+
+    @UiThread
     public void changeData(final int index, final @NotNull T data) {
         this.data.set(index, data);
         this.notifyItemChanged(this.headers.size() + index);

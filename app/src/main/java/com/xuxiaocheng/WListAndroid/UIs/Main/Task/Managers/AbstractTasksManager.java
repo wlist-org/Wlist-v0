@@ -8,6 +8,7 @@ import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
+import com.xuxiaocheng.HeadLibs.Helpers.HMultiRunHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HProcessingInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
@@ -237,7 +238,7 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
     }
 
     @WorkerThread
-    public void removeSuccessfulTask(final @NotNull Activity activity, final @NotNull T task) throws IOException, InterruptedException {
+    public void removeSuccessTask(final @NotNull Activity activity, final @NotNull T task) throws IOException, InterruptedException {
         final ES success = this.successTasks.remove(task);
         if (success != null) {
             this.successTasksCallbacks.callback(c -> c.onRemoved(task, success));
@@ -246,12 +247,38 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
     }
 
     @WorkerThread
-    public void removeFailedTask(final @NotNull Activity activity, final @NotNull T task) throws IOException, InterruptedException {
+    public void removeAllSuccessTask(final @NotNull Activity activity) throws IOException, InterruptedException {
+        try {
+            HMultiRunHelper.runConsumers(this.TaskExecutors, this.successTasks.entrySet(), HExceptionWrapper.wrapConsumer(e -> {
+                this.successTasksCallbacks.callback(c -> c.onRemoved(e.getKey(), e.getValue()));
+                this.deleteTaskRecord(activity, e.getKey());
+            }));
+        } catch (final RuntimeException exception) {
+            throw HExceptionWrapper.unwrapException(exception, IOException.class, InterruptedException.class);
+        }
+        this.successTasks.clear();
+    }
+
+    @WorkerThread
+    public void removeFailureTask(final @NotNull Activity activity, final @NotNull T task) throws IOException, InterruptedException {
         final EF failure = this.failureTasks.remove(task);
         if (failure != null) {
             this.failureTasksCallbacks.callback(c -> c.onRemoved(task, failure));
             this.deleteTaskRecord(activity, task);
         }
+    }
+
+    @WorkerThread
+    public void removeAllFailureTask(final @NotNull Activity activity) throws IOException, InterruptedException {
+        try {
+            HMultiRunHelper.runConsumers(this.TaskExecutors, this.failureTasks.entrySet(), HExceptionWrapper.wrapConsumer(e -> {
+                this.failureTasksCallbacks.callback(c -> c.onRemoved(e.getKey(), e.getValue()));
+                this.deleteTaskRecord(activity, e.getKey());
+            }));
+        } catch (final RuntimeException exception) {
+            throw HExceptionWrapper.unwrapException(exception, IOException.class, InterruptedException.class);
+        }
+        this.failureTasks.clear();
     }
 
 
@@ -395,11 +422,13 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
     }
 
     protected static @NotNull ZonedDateTime parseTime(final @NotNull DataInput inputStream) throws IOException {
-        return ZonedDateTime.parse(inputStream.readUTF(), DateTimeFormatter.ISO_DATE_TIME);
+        return ZonedDateTime.parse(inputStream.readUTF(), DateTimeFormatter.ISO_DATE_TIME)
+                .plusNanos(inputStream.readInt());
     }
 
     protected static void dumpTime(final @NotNull DataOutput outputStream, final @NotNull ZonedDateTime time) throws IOException {
         outputStream.writeUTF(time.format(DateTimeFormatter.ISO_DATE_TIME));
+        outputStream.writeInt(time.getNano());
     }
 
     protected static @NotNull VisibleFailureReason parseReason(final @NotNull DataInput inputStream) throws IOException {
