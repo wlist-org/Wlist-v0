@@ -52,27 +52,23 @@ public class CopyTasksManager extends AbstractTasksManager<CopyTasksManager.Copy
     }
 
     public static class CopyTask extends AbstractTasksManager.AbstractTask {
-        protected CopyTask(final @NotNull InetSocketAddress address, final @NotNull String username, final @NotNull ZonedDateTime time) {
-            super(address, username, time);
+        protected CopyTask(final @NotNull AbstractTask task) {
+            super(task);
         }
     }
 
     @Override
     protected @NotNull CopyTask parseTask(final @NotNull DataInput inputStream) throws IOException {
-        final InetSocketAddress address = AbstractTasksManager.parseAddress(inputStream);
-        final String username = inputStream.readUTF();
-        final ZonedDateTime time = AbstractTasksManager.parseTime(inputStream);
-        return new CopyTask(address, username, time);
+        final AbstractTask abstractTask = AbstractTasksManager.parseAbstractTask(inputStream);
+        return new CopyTask(abstractTask);
     }
 
     @Override
     protected void dumpTask(final @NotNull DataOutput outputStream, final @NotNull CopyTask task) throws IOException {
-        AbstractTasksManager.dumpAddress(outputStream, task.address);
-        outputStream.writeUTF(task.username);
-        AbstractTasksManager.dumpTime(outputStream, task.time);
+        AbstractTasksManager.dumpAbstractTask(outputStream, task);
     }
 
-    public static class CopyWorking {
+    public static class CopyWorking extends AbstractExtraWorking {
     }
 
     @Override
@@ -84,7 +80,7 @@ public class CopyTasksManager extends AbstractTasksManager<CopyTasksManager.Copy
     protected void dumpExtraWorking(final @NotNull DataOutput outputStream, final @NotNull CopyWorking extra) {
     }
 
-    public static class CopySuccess {
+    public static class CopySuccess extends AbstractExtraSuccess {
     }
 
     @Override
@@ -96,7 +92,7 @@ public class CopyTasksManager extends AbstractTasksManager<CopyTasksManager.Copy
     protected void dumpExtraSuccess(final @NotNull DataOutput outputStream, final @NotNull CopySuccess extra) {
     }
 
-    public static class CopyFailure {
+    public static class CopyFailure extends AbstractExtraFailure {
     }
 
     @Override

@@ -52,27 +52,23 @@ public class TrashTasksManager extends AbstractTasksManager<TrashTasksManager.Tr
     }
 
     public static class TrashTask extends AbstractTasksManager.AbstractTask {
-        protected TrashTask(final @NotNull InetSocketAddress address, final @NotNull String username, final @NotNull ZonedDateTime time) {
-            super(address, username, time);
+        protected TrashTask(final @NotNull AbstractTask task) {
+            super(task);
         }
     }
 
     @Override
     protected @NotNull TrashTask parseTask(final @NotNull DataInput inputStream) throws IOException {
-        final InetSocketAddress address = AbstractTasksManager.parseAddress(inputStream);
-        final String username = inputStream.readUTF();
-        final ZonedDateTime time = AbstractTasksManager.parseTime(inputStream);
-        return new TrashTask(address, username, time);
+        final AbstractTask abstractTask = AbstractTasksManager.parseAbstractTask(inputStream);
+        return new TrashTask(abstractTask);
     }
 
     @Override
     protected void dumpTask(final @NotNull DataOutput outputStream, final @NotNull TrashTask task) throws IOException {
-        AbstractTasksManager.dumpAddress(outputStream, task.address);
-        outputStream.writeUTF(task.username);
-        AbstractTasksManager.dumpTime(outputStream, task.time);
+        AbstractTasksManager.dumpAbstractTask(outputStream, task);
     }
 
-    public static class TrashWorking {
+    public static class TrashWorking extends AbstractExtraWorking {
     }
 
     @Override
@@ -84,7 +80,7 @@ public class TrashTasksManager extends AbstractTasksManager<TrashTasksManager.Tr
     protected void dumpExtraWorking(final @NotNull DataOutput outputStream, final @NotNull TrashWorking extra) {
     }
 
-    public static class TrashSuccess {
+    public static class TrashSuccess extends AbstractExtraSuccess {
     }
 
     @Override
@@ -96,7 +92,7 @@ public class TrashTasksManager extends AbstractTasksManager<TrashTasksManager.Tr
     protected void dumpExtraSuccess(final @NotNull DataOutput outputStream, final @NotNull TrashSuccess extra) {
     }
 
-    public static class TrashFailure {
+    public static class TrashFailure extends AbstractExtraFailure {
     }
 
     @Override

@@ -2,7 +2,6 @@ package com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers;
 
 import android.app.Activity;
 import androidx.annotation.WorkerThread;
-import com.xuxiaocheng.HeadLibs.Callbacks.HCallbacks;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.PredicateE;
@@ -25,8 +24,6 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.File;
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
@@ -92,29 +89,17 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
 
     public static class DownloadTask extends AbstractTask {
         protected final @NotNull FileLocation location;
-        protected final @NotNull String filename;
-        protected final PageTaskAdapter.@NotNull Types source;
         protected final @NotNull File savePath;
 
         @WorkerThread
-        public DownloadTask(final @NotNull InetSocketAddress address, final @NotNull String username, final @NotNull ZonedDateTime time, final @NotNull FileLocation location, final @NotNull String filename, final PageTaskAdapter.@NotNull Types source) {
-            super(address, username, time);
+        public DownloadTask(final @NotNull AbstractTask task, final @NotNull FileLocation location) {
+            super(task);
             this.location = location;
-            this.filename = filename;
-            this.source = source;
             this.savePath = DownloadTasksManager.getSaveFile(this);
         }
 
         public @NotNull FileLocation getLocation() {
             return this.location;
-        }
-
-        public @NotNull String getFilename() {
-            return this.filename;
-        }
-
-        public PageTaskAdapter.@NotNull Types getSource() {
-            return this.source;
         }
 
         public @NotNull File getSavePath() {
@@ -126,76 +111,51 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
             if (this == o) return true;
             if (!(o instanceof final DownloadTask that)) return false;
             if (!super.equals(o)) return false;
-            return FileLocationGetter.equals(this.location, that.location) && this.filename.equals(that.filename) && this.source == that.source;
+            return FileLocationGetter.equals(this.location, that.location);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(super.hashCode(), this.location, this.filename, this.source);
+            return Objects.hash(super.hashCode(), this.location);
         }
 
         @Override
         public @NotNull String toString() {
             return "DownloadTask{" +
                     "location=" + this.location +
-                    ", filename=" + this.filename +
-                    ", source=" + this.source +
+                    ", super=" + super.toString() +
                     '}';
         }
     }
 
     @Override
     protected @NotNull DownloadTask parseTask(final @NotNull DataInput inputStream) throws IOException {
-        final InetSocketAddress address = AbstractTasksManager.parseAddress(inputStream);
-        final String username = inputStream.readUTF();
-        final ZonedDateTime time = AbstractTasksManager.parseTime(inputStream);
+        final AbstractTask abstractTask = AbstractTasksManager.parseAbstractTask(inputStream);
         final String storage = inputStream.readUTF();
         final long id = inputStream.readLong();
         final FileLocation location = new FileLocation(storage, id);
-        final String filename = inputStream.readUTF();
-        final PageTaskAdapter.Types source = PageTaskAdapter.Types.fromPosition(inputStream.readInt());
-        return new DownloadTask(address, username, time, location, filename, source);
+        return new DownloadTask(abstractTask, location);
     }
 
     @Override
     protected void dumpTask(final @NotNull DataOutput outputStream, final @NotNull DownloadTask task) throws IOException {
-        AbstractTasksManager.dumpAddress(outputStream, task.address);
-        outputStream.writeUTF(task.username);
-        AbstractTasksManager.dumpTime(outputStream, task.time);
+        AbstractTasksManager.dumpAbstractTask(outputStream, task);
         outputStream.writeUTF(FileLocationGetter.storage(task.location));
         outputStream.writeLong(FileLocationGetter.id(task.location));
-        outputStream.writeUTF(task.filename);
-        outputStream.writeInt(PageTaskAdapter.Types.toPosition(task.source));
     }
 
-    public static class DownloadWorking {
-        protected boolean started = false;
-        protected InstantaneousProgressState state = null;
+    public static class DownloadWorking extends AbstractSimpleExtraWorking {
         protected List<Pair.@NotNull ImmutablePair<@NotNull AtomicLong, @NotNull Long>> progress = null;
-        protected final @NotNull HCallbacks<RunnableE> updateCallbacks = new HCallbacks<>();
-
-        public boolean isStarted() {
-            return this.started;
-        }
-
-        public @Nullable InstantaneousProgressState getState() {
-            return this.state;
-        }
 
         public @Nullable List<Pair.ImmutablePair<AtomicLong, Long>> getProgress() {
             return this.progress;
         }
 
-        public @NotNull HCallbacks<RunnableE> getUpdateCallbacks() {
-            return this.updateCallbacks;
-        }
-
         @Override
         public @NotNull String toString() {
             return "DownloadWorking{" +
-                    "started=" + this.started +
-                    ", state=" + this.state +
-                    ", progress=" + this.progress +
+                    "progress=" + this.progress +
+                    ", super=" + super.toString() +
                     '}';
         }
     }
@@ -209,7 +169,7 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
     protected void dumpExtraWorking(final @NotNull DataOutput outputStream, final @NotNull DownloadWorking extra) {
     }
 
-    public static class DownloadSuccess {
+    public static class DownloadSuccess extends AbstractExtraSuccess {
     } // TODO: is deleted?
 
     @Override
@@ -221,7 +181,7 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
     protected void dumpExtraSuccess(final @NotNull DataOutput outputStream, final @NotNull DownloadSuccess extra) {
     }
 
-    public static class DownloadFailure {
+    public static class DownloadFailure extends AbstractExtraFailure {
         protected final @NotNull VisibleFailureReason reason;
 
         protected DownloadFailure(final @NotNull VisibleFailureReason reason) {

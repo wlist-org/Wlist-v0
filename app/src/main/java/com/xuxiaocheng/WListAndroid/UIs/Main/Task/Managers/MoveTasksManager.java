@@ -52,27 +52,23 @@ public class MoveTasksManager extends AbstractTasksManager<MoveTasksManager.Move
     }
 
     public static class MoveTask extends AbstractTasksManager.AbstractTask {
-        protected MoveTask(final @NotNull InetSocketAddress address, final @NotNull String username, final @NotNull ZonedDateTime time) {
-            super(address, username, time);
+        protected MoveTask(final @NotNull AbstractTask task) {
+            super(task);
         }
     }
 
     @Override
     protected @NotNull MoveTask parseTask(final @NotNull DataInput inputStream) throws IOException {
-        final InetSocketAddress address = AbstractTasksManager.parseAddress(inputStream);
-        final String username = inputStream.readUTF();
-        final ZonedDateTime time = AbstractTasksManager.parseTime(inputStream);
-        return new MoveTask(address, username, time);
+        final AbstractTask abstractTask = AbstractTasksManager.parseAbstractTask(inputStream);
+        return new MoveTask(abstractTask);
     }
 
     @Override
     protected void dumpTask(final @NotNull DataOutput outputStream, final @NotNull MoveTask task) throws IOException {
-        AbstractTasksManager.dumpAddress(outputStream, task.address);
-        outputStream.writeUTF(task.username);
-        AbstractTasksManager.dumpTime(outputStream, task.time);
+        AbstractTasksManager.dumpAbstractTask(outputStream, task);
     }
 
-    public static class MoveWorking {
+    public static class MoveWorking extends AbstractExtraWorking {
     }
 
     @Override
@@ -84,7 +80,7 @@ public class MoveTasksManager extends AbstractTasksManager<MoveTasksManager.Move
     protected void dumpExtraWorking(final @NotNull DataOutput outputStream, final @NotNull MoveWorking extra) {
     }
 
-    public static class MoveSuccess {
+    public static class MoveSuccess extends AbstractExtraSuccess {
     }
 
     @Override
@@ -96,7 +92,7 @@ public class MoveTasksManager extends AbstractTasksManager<MoveTasksManager.Move
     protected void dumpExtraSuccess(final @NotNull DataOutput outputStream, final @NotNull MoveSuccess extra) {
     }
 
-    public static class MoveFailure {
+    public static class MoveFailure extends AbstractExtraFailure {
     }
 
     @Override

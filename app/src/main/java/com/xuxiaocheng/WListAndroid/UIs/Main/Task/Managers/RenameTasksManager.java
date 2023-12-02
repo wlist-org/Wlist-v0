@@ -52,27 +52,23 @@ public class RenameTasksManager extends AbstractTasksManager<RenameTasksManager.
     }
 
     public static class RenameTask extends AbstractTask {
-        protected RenameTask(final @NotNull InetSocketAddress address, final @NotNull String username, final @NotNull ZonedDateTime time) {
-            super(address, username, time);
+        protected RenameTask(final @NotNull AbstractTask task) {
+            super(task);
         }
     }
 
     @Override
     protected @NotNull RenameTask parseTask(final @NotNull DataInput inputStream) throws IOException {
-        final InetSocketAddress address = AbstractTasksManager.parseAddress(inputStream);
-        final String username = inputStream.readUTF();
-        final ZonedDateTime time = AbstractTasksManager.parseTime(inputStream);
-        return new RenameTask(address, username, time);
+        final AbstractTask abstractTask = AbstractTasksManager.parseAbstractTask(inputStream);
+        return new RenameTask(abstractTask);
     }
 
     @Override
     protected void dumpTask(final @NotNull DataOutput outputStream, final @NotNull RenameTask task) throws IOException {
-        AbstractTasksManager.dumpAddress(outputStream, task.address);
-        outputStream.writeUTF(task.username);
-        AbstractTasksManager.dumpTime(outputStream, task.time);
+        AbstractTasksManager.dumpAbstractTask(outputStream, task);
     }
 
-    public static class RenameWorking {
+    public static class RenameWorking extends AbstractExtraWorking {
     }
 
     @Override
@@ -84,7 +80,7 @@ public class RenameTasksManager extends AbstractTasksManager<RenameTasksManager.
     protected void dumpExtraWorking(final @NotNull DataOutput outputStream, final @NotNull RenameWorking extra) {
     }
 
-    public static class RenameSuccess {
+    public static class RenameSuccess extends AbstractExtraSuccess {
     }
 
     @Override
@@ -96,7 +92,7 @@ public class RenameTasksManager extends AbstractTasksManager<RenameTasksManager.
     protected void dumpExtraSuccess(final @NotNull DataOutput outputStream, final @NotNull RenameSuccess extra) {
     }
 
-    public static class RenameFailure {
+    public static class RenameFailure extends AbstractExtraFailure {
     }
 
     @Override

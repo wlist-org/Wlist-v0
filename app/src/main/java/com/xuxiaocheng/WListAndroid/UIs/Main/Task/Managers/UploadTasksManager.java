@@ -28,9 +28,7 @@ import java.io.DataOutput;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.channels.FileChannel;
-import java.time.ZonedDateTime;
 import java.util.Objects;
 
 public class UploadTasksManager extends AbstractTasksManager<UploadTasksManager.UploadTask, UploadTasksManager.UploadWorking, UploadTasksManager.UploadSuccess, UploadTasksManager.UploadFailure> {
@@ -89,18 +87,14 @@ public class UploadTasksManager extends AbstractTasksManager<UploadTasksManager.
 
     public static class UploadTask extends AbstractTask {
         protected final @NotNull FileLocation parent;
-        protected final @NotNull String filename;
         protected final long filesize;
-        protected final PageTaskAdapter.@NotNull Types source;
         protected final @NotNull Uri uri;
 
         @WorkerThread
-        public UploadTask(final @NotNull InetSocketAddress address, final @NotNull String username, final @NotNull ZonedDateTime time, final @NotNull FileLocation parent, final @NotNull String filename, final long filesize, final PageTaskAdapter.@NotNull Types source, final @NotNull Uri uri) {
-            super(address, username, time);
+        public UploadTask(final @NotNull AbstractTask task, final @NotNull FileLocation parent, final long filesize, final @NotNull Uri uri) {
+            super(task);
             this.parent = parent;
-            this.filename = filename;
             this.filesize = filesize;
-            this.source = source;
             this.uri = uri;
         }
 
@@ -108,16 +102,8 @@ public class UploadTasksManager extends AbstractTasksManager<UploadTasksManager.
             return this.parent;
         }
 
-        public @NotNull String getFilename() {
-            return this.filename;
-        }
-
         public long getFilesize() {
             return this.filesize;
-        }
-
-        public PageTaskAdapter.@NotNull Types getSource() {
-            return this.source;
         }
 
         public @NotNull Uri getUri() {
@@ -129,72 +115,46 @@ public class UploadTasksManager extends AbstractTasksManager<UploadTasksManager.
             if (this == o) return true;
             if (!(o instanceof final UploadTask that)) return false;
             if (!super.equals(o)) return false;
-            return this.filesize == that.filesize && FileLocationGetter.equals(this.parent, that.parent) && Objects.equals(this.filename, that.filename) && this.source == that.source && Objects.equals(this.uri, that.uri);
+            return FileLocationGetter.equals(this.parent, that.parent) && this.filesize == that.filesize && Objects.equals(this.uri, that.uri);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(super.hashCode(), this.parent, this.filename, this.filesize, this.source, this.uri);
+            return Objects.hash(super.hashCode(), this.parent, this.filesize, this.uri);
         }
 
         @Override
         public @NotNull String toString() {
             return "UploadTask{" +
                     "location=" + this.parent +
-                    ", filename='" + this.filename + '\'' +
                     ", filesize=" + this.filesize +
-                    ", source=" + this.source +
                     ", uri=" + this.uri +
+                    ", super=" + super.toString() +
                     '}';
         }
     }
 
     @Override
     protected @NotNull UploadTask parseTask(final @NotNull DataInput inputStream) throws IOException {
-        final InetSocketAddress address = AbstractTasksManager.parseAddress(inputStream);
-        final String username = inputStream.readUTF();
-        final ZonedDateTime time = AbstractTasksManager.parseTime(inputStream);
+        final AbstractTask abstractTask = AbstractTasksManager.parseAbstractTask(inputStream);
         final String storage = inputStream.readUTF();
         final long id = inputStream.readLong();
         final FileLocation parent = new FileLocation(storage, id);
-        final String filename = inputStream.readUTF();
         final long filesize = inputStream.readLong();
-        final PageTaskAdapter.Types source = PageTaskAdapter.Types.fromPosition(inputStream.readInt());
         final Uri uri = Uri.parse(inputStream.readUTF());
-        return new UploadTask(address, username, time, parent, filename, filesize, source, uri);
+        return new UploadTask(abstractTask, parent, filesize, uri);
     }
 
     @Override
     protected void dumpTask(final @NotNull DataOutput outputStream, final @NotNull UploadTask task) throws IOException {
-        AbstractTasksManager.dumpAddress(outputStream, task.address);
-        outputStream.writeUTF(task.username);
-        AbstractTasksManager.dumpTime(outputStream, task.time);
+        AbstractTasksManager.dumpAbstractTask(outputStream, task);
         outputStream.writeUTF(FileLocationGetter.storage(task.parent));
         outputStream.writeLong(FileLocationGetter.id(task.parent));
-        outputStream.writeUTF(task.filename);
         outputStream.writeLong(task.filesize);
-        outputStream.writeInt(PageTaskAdapter.Types.toPosition(task.source));
         outputStream.writeUTF(task.uri.toString());
     }
 
-    public static class UploadWorking {
-        protected InstantaneousProgressState state = null;
-        protected final @NotNull HCallbacks<RunnableE> updateCallbacks = new HCallbacks<>();
-
-        public @Nullable InstantaneousProgressState getState() {
-            return this.state;
-        }
-
-        public @NotNull HCallbacks<RunnableE> getUpdateCallbacks() {
-            return this.updateCallbacks;
-        }
-
-        @Override
-        public @NotNull String toString() {
-            return "UploadWorking{" +
-                    "state=" + this.state +
-                    '}';
-        }
+    public static class UploadWorking extends AbstractSimpleExtraWorking {
     }
 
     @Override
@@ -206,7 +166,7 @@ public class UploadTasksManager extends AbstractTasksManager<UploadTasksManager.
     protected void dumpExtraWorking(final @NotNull DataOutput outputStream, final @NotNull UploadWorking extra) {
     }
 
-    public static class UploadSuccess {
+    public static class UploadSuccess extends AbstractExtraSuccess {
     }
 
     @Override
@@ -218,7 +178,7 @@ public class UploadTasksManager extends AbstractTasksManager<UploadTasksManager.
     protected void dumpExtraSuccess(final @NotNull DataOutput outputStream, final @NotNull UploadSuccess extra) {
     }
 
-    public static class UploadFailure {
+    public static class UploadFailure extends AbstractExtraFailure {
         protected final @NotNull VisibleFailureReason reason;
 
         protected UploadFailure(final @NotNull VisibleFailureReason reason) {

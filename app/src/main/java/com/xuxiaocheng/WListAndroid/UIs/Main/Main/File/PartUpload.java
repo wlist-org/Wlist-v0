@@ -32,6 +32,7 @@ import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.UIs.Main.ActivityMain;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Main.PageMainAdapter;
+import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.AbstractTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.UploadTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.PageTaskAdapter;
 import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
@@ -296,8 +297,8 @@ class PartUpload extends SFragmentFilePart {
                 }
                 HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Uploading file.",
                         ParametersMap.create().add("parent", parent).add("filename", filename).add("filesize", filesize).add("uri", uri));
-                UploadTasksManager.getInstance().addTask(this.activity(), new UploadTasksManager.UploadTask(this.address(), this.username(), current,
-                        parent, filename, filesize, PageTaskAdapter.Types.Upload, uri));
+                UploadTasksManager.getInstance().addTask(this.activity(), new UploadTasksManager.UploadTask(new AbstractTasksManager.AbstractTask(
+                        this.address(), this.username(), current, filename, PageTaskAdapter.Types.Upload), parent, filesize, uri));
             }));
         });
     }

@@ -1,21 +1,32 @@
 package com.xuxiaocheng.WListAndroid.UIs.Main.Task;
 
+import android.content.Context;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import androidx.annotation.UiThread;
 import androidx.annotation.WorkerThread;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewpager2.widget.ViewPager2;
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.WList.AndroidSupports.InstantaneousProgressStateGetter;
+import com.xuxiaocheng.WList.Commons.Beans.InstantaneousProgressState;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.UIs.Main.CFragment;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.AbstractTasksManager;
 import com.xuxiaocheng.WListAndroid.Utils.EnhancedRecyclerViewAdapter;
+import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import com.xuxiaocheng.WListAndroid.databinding.PageTaskListBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageTaskListSimpleWorkingCellBinding;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.text.MessageFormat;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.AbstractMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -129,7 +140,7 @@ public abstract class SPageTaskFragment extends CFragment<PageTaskListBinding> {
         this.content().pageTaskListContent.setCurrentItem(PageTaskStateAdapter.Types.toPosition(this.currentState.get()), false);
     }
 
-    protected abstract static class FailureTaskStateFragment<V extends ViewBinding, T extends AbstractTasksManager.AbstractTask, E> extends SPageTaskStateFragment<V, T, E> {
+    protected abstract static class FailureTaskStateFragment<V extends ViewBinding, T extends AbstractTasksManager.AbstractTask, E extends AbstractTasksManager.AbstractExtraFailure> extends SPageTaskStateFragment<V, T, E> {
         protected FailureTaskStateFragment(final @NotNull Inflater<@NotNull V> inflater) {
             super(inflater);
         }
@@ -154,7 +165,7 @@ public abstract class SPageTaskFragment extends CFragment<PageTaskListBinding> {
         }
     }
 
-    protected abstract static class WorkingTaskStateFragment<V extends ViewBinding, T extends AbstractTasksManager.AbstractTask, E> extends SPageTaskStateFragment<V, T, E> {
+    protected abstract static class WorkingTaskStateFragment<V extends ViewBinding, T extends AbstractTasksManager.AbstractTask, E extends AbstractTasksManager.AbstractExtraWorking> extends SPageTaskStateFragment<V, T, E> {
         protected WorkingTaskStateFragment(final @NotNull Inflater<@NotNull V> inflater) {
             super(inflater);
         }
@@ -199,7 +210,7 @@ public abstract class SPageTaskFragment extends CFragment<PageTaskListBinding> {
         }
     }
 
-    protected abstract static class SuccessTaskStateFragment<V extends ViewBinding, T extends AbstractTasksManager.AbstractTask, E> extends SPageTaskStateFragment<V, T, E> {
+    protected abstract static class SuccessTaskStateFragment<V extends ViewBinding, T extends AbstractTasksManager.AbstractTask, E extends AbstractTasksManager.AbstractExtraSuccess> extends SPageTaskStateFragment<V, T, E> {
         protected SuccessTaskStateFragment(final @NotNull Inflater<@NotNull V> inflater) {
             super(inflater);
         }
@@ -231,6 +242,130 @@ public abstract class SPageTaskFragment extends CFragment<PageTaskListBinding> {
         public void onDestroy() {
             super.onDestroy();
             Main.runOnBackgroundThread(this.activity(), () -> this.getManager().getSuccessTasksCallbacks().unregisterNamed(this.callbackName));
+        }
+    }
+
+    protected abstract static class SimpleWorkingTaskStateFragment<V extends SimpleWorkingTaskStateFragment.WrappedPageTaskListSimpleWorkingCellBinding<E>, T extends AbstractTasksManager.AbstractTask, E extends AbstractTasksManager.AbstractSimpleExtraWorking> extends WorkingTaskStateFragment<V, T, E> {
+        protected static class WrappedPageTaskListSimpleWorkingCellBinding<E> implements ViewBinding {
+            protected final @NotNull PageTaskListSimpleWorkingCellBinding cell;
+            protected @Nullable E working;
+            protected long lastW = 0;
+            protected @Nullable LocalDateTime lastT = null;
+
+            protected WrappedPageTaskListSimpleWorkingCellBinding(final @NotNull LayoutInflater inflater, final @Nullable ViewGroup group, final boolean attachRoot) {
+                super();
+                this.cell = PageTaskListSimpleWorkingCellBinding.inflate(inflater, group, attachRoot);
+            }
+
+            @Override
+            public @NotNull View getRoot() {
+                return this.cell.getRoot();
+            }
+
+            @Override
+            public @NotNull String toString() {
+                return "WrappedPageTaskListSimpleWorkingCellBinding{" +
+                        "cell=" + this.cell +
+                        ", working=" + this.working +
+                        '}';
+            }
+        }
+
+        protected SimpleWorkingTaskStateFragment(final @NotNull Inflater<@NotNull V> inflater) {
+            super(inflater);
+        }
+
+        @Override
+        protected void onBind(final @NotNull V cell, final @NotNull T task, final @NotNull E data) {
+            ViewUtil.setFileImage(cell.cell.pageTaskListSimpleWorkingCellImage, false, task.getFilename());
+            cell.cell.pageTaskListSimpleWorkingCellName.setText(task.getFilename());
+            cell.working = data;
+            cell.cell.pageTaskListSimpleWorkingCellProgress.setMin(0);
+            cell.cell.pageTaskListSimpleWorkingCellProgress.setMax(1000);
+            if (data.isStarted())
+                this.resetProgress(cell, false);
+            else
+                this.onPending(cell, false);
+            data.getUpdateCallbacks().registerNamedForce(this.getClass().getName(), () -> Main.runOnUiThread(this.activity(), () ->
+                    this.resetProgress(cell, true)));
+        }
+
+        @UiThread
+        protected void onPending(final @NotNull V cell, final boolean animate) {
+            final Context context = cell.getRoot().getContext();
+            cell.cell.pageTaskListSimpleWorkingCellProcessText.setText(MessageFormat.format(context.getString(R.string.page_task_process), 0));
+            cell.cell.pageTaskListSimpleWorkingCellProgress.setIndeterminate(false);
+            cell.cell.pageTaskListSimpleWorkingCellProgress.setProgress(0, false);
+            cell.cell.pageTaskListSimpleWorkingCellProgress.setSecondaryProgress(0);
+            cell.cell.pageTaskListSimpleWorkingCellSize.setText(R.string.page_task_waiting);
+            cell.cell.pageTaskListSimpleWorkingCellTime.setText(MessageFormat.format(context.getString(R.string.page_task_time), context.getString(R.string.unknown)));
+        }
+
+        @UiThread
+        protected void onPreparing(final @NotNull V cell, final boolean animate) {
+            final Context context = cell.getRoot().getContext();
+            cell.cell.pageTaskListSimpleWorkingCellProcessText.setText(MessageFormat.format(context.getString(R.string.page_task_process), 0));
+            cell.cell.pageTaskListSimpleWorkingCellProgress.setIndeterminate(true);
+            cell.cell.pageTaskListSimpleWorkingCellTime.setText(MessageFormat.format(context.getString(R.string.page_task_time), context.getString(R.string.unknown)));
+        }
+
+        @UiThread
+        protected void onFinishing(final @NotNull V cell, final boolean animate) {
+            final Context context = cell.getRoot().getContext();
+            cell.cell.pageTaskListSimpleWorkingCellProcessText.setText(MessageFormat.format(context.getString(R.string.page_task_process), 1));
+            cell.cell.pageTaskListSimpleWorkingCellProgress.setIndeterminate(true);
+            cell.cell.pageTaskListSimpleWorkingCellTime.setText(MessageFormat.format(context.getString(R.string.page_task_time), "0s"));
+        }
+
+        @UiThread
+        protected void onWorking(final @NotNull V cell, final boolean animate, final Pair.@NotNull ImmutablePair<@NotNull Long, @NotNull Long> m) {
+            final Context context = cell.getRoot().getContext();
+            final float percent = 1.0f * m.getFirst().longValue() / m.getSecond().longValue();
+            cell.cell.pageTaskListSimpleWorkingCellProcessText.setText(MessageFormat.format(context.getString(R.string.page_task_process), percent));
+            cell.cell.pageTaskListSimpleWorkingCellProgress.setIndeterminate(false);
+            //noinspection NumericCastThatLosesPrecision
+            cell.cell.pageTaskListSimpleWorkingCellProgress.setProgress((int) (percent * 1000), animate);
+            final String unknown = context.getString(R.string.unknown);
+            final LocalDateTime now = LocalDateTime.now();
+            final long interval = cell.lastT == null ? 1000 : Duration.between(cell.lastT, now).toMillis();
+            final float speed = 1.0f * (m.getFirst().longValue() - cell.lastW) / (interval == 0 ? 1000 : interval);
+            //noinspection NumericCastThatLosesPrecision
+            cell.cell.pageTaskListSimpleWorkingCellSize.setText(MessageFormat.format(context.getString(R.string.page_task_size_speed),
+                    ViewUtil.formatSize(m.getFirst().longValue(), unknown),
+                    ViewUtil.formatSize(m.getSecond().longValue(), unknown),
+                    ViewUtil.formatSize((long) (speed * 1000), unknown)));
+            final float time = speed == 0 ? -1 : (m.getSecond().longValue() - m.getFirst().longValue()) / speed;
+            //noinspection NumericCastThatLosesPrecision
+            cell.cell.pageTaskListSimpleWorkingCellTime.setText(MessageFormat.format(context.getString(R.string.page_task_time),
+                    ViewUtil.formatDuration(Duration.of((long) time, ChronoUnit.MILLIS), unknown)));
+            cell.lastW = m.getFirst().longValue();
+            cell.lastT = now;
+        }
+
+        @UiThread
+        protected void resetProgress(final @NotNull V cell, final boolean animate) {
+            assert cell.working != null;
+            final InstantaneousProgressState readProgress = cell.working.getState();
+            if (readProgress == null) {
+                this.onPreparing(cell, animate);
+                return;
+            }
+            final Pair.ImmutablePair<Long, Long> m = InstantaneousProgressStateGetter.merge(readProgress);
+            if (m.getFirst().longValue() == m.getSecond().longValue()) {
+                this.onFinishing(cell, animate);
+                return;
+            }
+            this.onWorking(cell, animate, m);
+        }
+
+        @Override
+        protected void onUnbind(final @NotNull V cell) {
+            super.onUnbind(cell);
+            if (cell.working != null)
+                cell.working.getUpdateCallbacks().unregisterNamed(this.getClass().getName());
+            cell.working = null;
+            cell.lastW = 0;
+            cell.lastT = null;
         }
     }
 

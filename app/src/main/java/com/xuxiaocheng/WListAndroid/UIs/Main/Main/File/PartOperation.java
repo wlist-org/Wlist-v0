@@ -167,8 +167,9 @@ class PartOperation extends SFragmentFilePart {
                     new AlertDialog.Builder(this.activity()).setTitle(R.string.page_file_operation_download)
                             .setNegativeButton(R.string.cancel, null)
                             .setPositiveButton(R.string.confirm, (d, w) -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> DownloadTasksManager.getInstance()
-                                    .addTask(this.activity(), new DownloadTasksManager.DownloadTask(this.address(), this.username(), MiscellaneousUtil.now(),
-                                            current, FileInformationGetter.name(information), PageTaskAdapter.Types.Download)))))
+                                    .addTask(this.activity(), new DownloadTasksManager.DownloadTask(new AbstractTasksManager.AbstractTask(
+                                            this.address(), this.username(), MiscellaneousUtil.now(), FileInformationGetter.name(information),
+                                            PageTaskAdapter.Types.Download), current)))))
                             .show();
                 } else {
                     if (state.isSuccess())

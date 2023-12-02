@@ -7,6 +7,7 @@ import com.xuxiaocheng.HeadLibs.Callbacks.HCallbacks;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMultiRunHelper;
 import com.xuxiaocheng.HeadLibs.Helpers.HUncaughtExceptionHelper;
@@ -15,6 +16,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.AndroidSupports.FailureReasonGetter;
 import com.xuxiaocheng.WList.AndroidSupports.FileLocationGetter;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
+import com.xuxiaocheng.WList.Commons.Beans.InstantaneousProgressState;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason;
 import com.xuxiaocheng.WList.Commons.Operations.FailureKind;
 import com.xuxiaocheng.WListAndroid.Main;
@@ -50,7 +52,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-public abstract class AbstractTasksManager<T extends AbstractTasksManager.AbstractTask, EW, ES, EF> {
+public abstract class AbstractTasksManager<T extends AbstractTasksManager.AbstractTask, EW extends AbstractTasksManager.AbstractExtraWorking, ES extends AbstractTasksManager.AbstractExtraSuccess, EF extends AbstractTasksManager.AbstractExtraFailure> {
     protected final @NotNull EventExecutorGroup TaskExecutors =
             new DefaultEventExecutorGroup(3, new DefaultThreadFactory(this.getClass().getSimpleName() + "Executors"));
 
@@ -212,6 +214,8 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
                     this.dumpSuccessTask(activity, task, extra);
                 } else {
                     final EF extra = result.getE();
+                    HLogManager.getInstance("TasksManager").log(HLogLevel.WARN, "Task failed.", ParametersMap.create()
+                            .add("task", task).add("extra", extra));
                     this.failureTasks.put(task, extra);
                     this.failureTasksCallbacks.callback(c -> c.onAdded(task, extra));
                     this.dumpFailureTask(activity, task, extra);
@@ -364,16 +368,29 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
     }
 
 
-    public abstract static class AbstractTask {
+    public static class AbstractTask {
         protected final @NotNull InetSocketAddress address;
         protected final @NotNull String username;
         protected final @NotNull ZonedDateTime time;
+        protected final @NotNull String filename;
+        protected final PageTaskAdapter.@NotNull Types source;
 
-        protected AbstractTask(final @NotNull InetSocketAddress address, final @NotNull String username, final @NotNull ZonedDateTime time) {
+        public AbstractTask(final @NotNull InetSocketAddress address, final @NotNull String username, final @NotNull ZonedDateTime time, final @NotNull String filename, final PageTaskAdapter.@NotNull Types source) {
             super();
             this.address = address;
             this.username = username;
             this.time = time;
+            this.filename = filename;
+            this.source = source;
+        }
+
+        protected AbstractTask(final @NotNull AbstractTask task) {
+            super();
+            this.address = task.address;
+            this.username = task.username;
+            this.time = task.time;
+            this.filename = task.filename;
+            this.source = task.source;
         }
 
         public @NotNull InetSocketAddress getAddress() {
@@ -388,16 +405,24 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
             return this.time;
         }
 
+        public @NotNull String getFilename() {
+            return this.filename;
+        }
+
+        public PageTaskAdapter.@NotNull Types getSource() {
+            return this.source;
+        }
+
         @Override
         public boolean equals(final @Nullable Object o) {
             if (this == o) return true;
             if (!(o instanceof final AbstractTasksManager.AbstractTask that)) return false;
-            return this.address.equals(that.address) && this.username.equals(that.username) && this.time.equals(that.time);
+            return this.address.equals(that.address) && this.username.equals(that.username) && this.time.equals(that.time) && this.filename.equals(that.filename) && this.source == that.source;
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(this.address, this.username, this.time);
+            return Objects.hash(this.address, this.username, this.time, this.filename, this.source);
         }
 
         @Override
@@ -406,29 +431,62 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
                     "address=" + this.address +
                     ", username='" + this.username + '\'' +
                     ", time=" + this.time +
+                    ", filename=" + this.filename +
+                    ", source=" + this.source +
                     '}';
         }
     }
 
-    protected static @NotNull InetSocketAddress parseAddress(final @NotNull DataInput inputStream) throws IOException {
+    protected static @NotNull AbstractTask parseAbstractTask(final @NotNull DataInput inputStream) throws IOException {
         final String host = inputStream.readUTF();
         final int port = inputStream.readInt();
-        return new InetSocketAddress(host, port);
+        final InetSocketAddress address = new InetSocketAddress(host, port);
+        final String username = inputStream.readUTF();
+        final ZonedDateTime time = ZonedDateTime.parse(inputStream.readUTF(), DateTimeFormatter.ISO_DATE_TIME).plusNanos(inputStream.readInt());
+        final String filename = inputStream.readUTF();
+        final PageTaskAdapter.Types source = PageTaskAdapter.Types.fromPosition(inputStream.readInt());
+        return new AbstractTask(address, username, time, filename, source);
     }
 
-    protected static void dumpAddress(final @NotNull DataOutput outputStream, final @NotNull InetSocketAddress address) throws IOException {
-        outputStream.writeUTF(address.getHostName());
-        outputStream.writeInt(address.getPort());
+    protected static void dumpAbstractTask(final @NotNull DataOutput outputStream, final @NotNull AbstractTask task) throws IOException {
+        outputStream.writeUTF(task.address.getHostName());
+        outputStream.writeInt(task.address.getPort());
+        outputStream.writeUTF(task.username);
+        outputStream.writeUTF(task.time.format(DateTimeFormatter.ISO_DATE_TIME));
+        outputStream.writeInt(task.time.getNano());
+        outputStream.writeUTF(task.filename);
+        outputStream.writeInt(PageTaskAdapter.Types.toPosition(task.source));
     }
 
-    protected static @NotNull ZonedDateTime parseTime(final @NotNull DataInput inputStream) throws IOException {
-        return ZonedDateTime.parse(inputStream.readUTF(), DateTimeFormatter.ISO_DATE_TIME)
-                .plusNanos(inputStream.readInt());
+    public abstract static class AbstractExtraFailure {
     }
 
-    protected static void dumpTime(final @NotNull DataOutput outputStream, final @NotNull ZonedDateTime time) throws IOException {
-        outputStream.writeUTF(time.format(DateTimeFormatter.ISO_DATE_TIME));
-        outputStream.writeInt(time.getNano());
+    public abstract static class AbstractExtraWorking {
+        protected /*transient*/ boolean started = false;
+        protected final /*transient*/ @NotNull HCallbacks<RunnableE> updateCallbacks = new HCallbacks<>();
+
+        public void setStarted(final boolean started) {
+            this.started = started;
+        }
+
+        public boolean isStarted() {
+            return this.started;
+        }
+
+        public @NotNull HCallbacks<RunnableE> getUpdateCallbacks() {
+            return this.updateCallbacks;
+        }
+
+        @Override
+        public @NotNull String toString() {
+            return "AbstractExtraWorking{" +
+                    "started=" + this.started +
+                    ", updateCallbacks=" + this.updateCallbacks +
+                    '}';
+        }
+    }
+
+    public abstract static class AbstractExtraSuccess {
     }
 
     protected static @NotNull VisibleFailureReason parseReason(final @NotNull DataInput inputStream) throws IOException {
@@ -445,6 +503,27 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
         outputStream.writeUTF(FileLocationGetter.storage(FailureReasonGetter.location(reason)));
         outputStream.writeLong(FileLocationGetter.id(FailureReasonGetter.location(reason)));
         outputStream.writeUTF(FailureReasonGetter.message(reason));
+    }
+
+
+    public abstract static class AbstractSimpleExtraWorking extends AbstractExtraWorking {
+        protected @Nullable InstantaneousProgressState state = null;
+
+        public void setState(final @Nullable InstantaneousProgressState state) {
+            this.state = state;
+        }
+
+        public @Nullable InstantaneousProgressState getState() {
+            return this.state;
+        }
+
+        @Override
+        public @NotNull String toString() {
+            return "AbstractSimpleExtraWorking{" +
+                    "state=" + this.state +
+                    ", state=" + super.toString() +
+                    '}';
+        }
     }
 
     @Override
