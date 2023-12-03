@@ -1,15 +1,19 @@
 package com.xuxiaocheng.WListAndroid.UIs.Main.Task;
 
 import android.content.Context;
+import android.graphics.Paint;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.UiThread;
 import androidx.annotation.WorkerThread;
+import androidx.appcompat.app.AlertDialog;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewpager2.widget.ViewPager2;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.WList.AndroidSupports.FailureReasonGetter;
 import com.xuxiaocheng.WList.AndroidSupports.InstantaneousProgressStateGetter;
 import com.xuxiaocheng.WList.Commons.Beans.InstantaneousProgressState;
 import com.xuxiaocheng.WListAndroid.Main;
@@ -19,6 +23,8 @@ import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.AbstractTasksManager;
 import com.xuxiaocheng.WListAndroid.Utils.EnhancedRecyclerViewAdapter;
 import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import com.xuxiaocheng.WListAndroid.databinding.PageTaskListBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageTaskListSimpleFailureCellBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageTaskListSimpleSuccessCellBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageTaskListSimpleWorkingCellBinding;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -245,6 +251,36 @@ public abstract class SPageTaskFragment extends CFragment<PageTaskListBinding> {
         }
     }
 
+
+    protected abstract static class SimpleFailureTaskStateFragment<T extends AbstractTasksManager.AbstractTask, E extends AbstractTasksManager.AbstractSimpleExtraFailure> extends FailureTaskStateFragment<PageTaskListSimpleFailureCellBinding, T, E> {
+        protected SimpleFailureTaskStateFragment() {
+            super(PageTaskListSimpleFailureCellBinding::inflate);
+        }
+
+        @Override
+        protected void onBind(final @NotNull PageTaskListSimpleFailureCellBinding cell, final @NotNull T task, final @NotNull E data) {
+            ViewUtil.setFileImage(cell.pageTaskListSimpleFailureCellImage, false, task.getFilename());
+            cell.pageTaskListSimpleFailureCellName.setText(task.getFilename());
+            cell.pageTaskListSimpleFailureCellReason.setText(MessageFormat.format(cell.getRoot().getContext().getString(R.string.page_task_failure_reason),
+                    FailureReasonGetter.kind(data.getReason()).description(), FailureReasonGetter.message(data.getReason())));
+            cell.pageTaskListSimpleFailureCellRemove.setOnClickListener(v -> new AlertDialog.Builder(this.activity())
+                    .setTitle(R.string.page_task_remove)
+                    .setNeutralButton(R.string.cancel, null)
+                    .setPositiveButton(R.string.confirm, (d, w) -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
+                        this.getManager().removeFailureTask(this.activity(), task);
+                        this.removeTask(task);
+                    }))).show());
+            cell.pageTaskListSimpleFailureCellRetry.setOnClickListener(v -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
+                this.getManager().removeFailureTask(this.activity(), task);
+                this.getManager().addTask(this.activity(), task);
+            })));
+        }
+
+        @WorkerThread
+        protected void removeTask(final @NotNull T task) throws Exception {
+        }
+    }
+
     protected abstract static class SimpleWorkingTaskStateFragment<V extends SimpleWorkingTaskStateFragment.WrappedPageTaskListSimpleWorkingCellBinding<E>, T extends AbstractTasksManager.AbstractTask, E extends AbstractTasksManager.AbstractSimpleExtraWorking> extends WorkingTaskStateFragment<V, T, E> {
         protected static class WrappedPageTaskListSimpleWorkingCellBinding<E> implements ViewBinding {
             protected final @NotNull PageTaskListSimpleWorkingCellBinding cell;
@@ -366,6 +402,51 @@ public abstract class SPageTaskFragment extends CFragment<PageTaskListBinding> {
             cell.working = null;
             cell.lastW = 0;
             cell.lastT = null;
+        }
+    }
+
+    protected abstract static class SimpleSuccessTaskStateFragment<T extends AbstractTasksManager.AbstractTask, E extends AbstractTasksManager.AbstractSimpleExtraSuccess> extends SuccessTaskStateFragment<PageTaskListSimpleSuccessCellBinding, T, E> {
+        protected SimpleSuccessTaskStateFragment() {
+            super(PageTaskListSimpleSuccessCellBinding::inflate);
+        }
+
+        @UiThread
+        protected boolean isNormal(final @NotNull T task, final @NotNull E data) {
+            return true;
+        }
+
+        @Override
+        protected void onBind(final @NotNull PageTaskListSimpleSuccessCellBinding cell, final @NotNull T task, final @NotNull E data) {
+            ViewUtil.setFileImage(cell.pageTaskListSimpleSuccessCellImage, false, task.getFilename());
+            cell.pageTaskListSimpleSuccessCellName.setText(task.getFilename());
+            if (this.isNormal(task, data))
+                this.onNormal(cell, task, data);
+            else
+                this.onDeleted(cell, task, data);
+        }
+
+        @UiThread
+        protected void onNormal(final @NotNull PageTaskListSimpleSuccessCellBinding cell, final @NotNull T task, final @NotNull E data) {
+            cell.pageTaskListSimpleSuccessCellHint.getPaint().reset();
+            cell.pageTaskListSimpleSuccessCellName.getPaint().reset();
+            cell.pageTaskListSimpleSuccessCellName.setTextColor(cell.getRoot().getContext().getColor(R.color.text_normal));
+            cell.pageTaskListSimpleSuccessCellImage.setColorFilter(null);
+            cell.pageTaskListSimpleSuccessCellRemove.setOnClickListener(v -> new AlertDialog.Builder(this.activity())
+                    .setTitle(R.string.page_task_remove)
+                    .setNeutralButton(R.string.cancel, null)
+                    .setPositiveButton(R.string.confirm, (d, w) -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() ->
+                            this.getManager().removeSuccessTask(this.activity(), task))))
+                    .show());
+        }
+
+        @UiThread
+        protected void onDeleted(final @NotNull PageTaskListSimpleSuccessCellBinding cell, final @NotNull T task, final @NotNull E data) {
+            cell.pageTaskListSimpleSuccessCellHint.getPaint().setFlags(Paint.ANTI_ALIAS_FLAG | Paint.STRIKE_THRU_TEXT_FLAG);
+            cell.pageTaskListSimpleSuccessCellName.getPaint().setFlags(Paint.ANTI_ALIAS_FLAG | Paint.STRIKE_THRU_TEXT_FLAG);
+            cell.pageTaskListSimpleSuccessCellName.setTextColor(cell.getRoot().getContext().getColor(R.color.text_hint));
+            cell.pageTaskListSimpleSuccessCellImage.setColorFilter(ViewUtil.GrayColorFilter);
+            cell.pageTaskListSimpleSuccessCellRemove.setOnClickListener(v -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() ->
+                    this.getManager().removeSuccessTask(this.activity(), task))));
         }
     }
 

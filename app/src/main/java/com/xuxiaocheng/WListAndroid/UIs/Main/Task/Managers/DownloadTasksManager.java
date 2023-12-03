@@ -7,11 +7,9 @@ import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.PredicateE;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
-import com.xuxiaocheng.WList.AndroidSupports.FailureReasonGetter;
 import com.xuxiaocheng.WList.AndroidSupports.FileLocationGetter;
 import com.xuxiaocheng.WList.Client.Assistants.FilesAssistant;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
-import com.xuxiaocheng.WList.Commons.Beans.InstantaneousProgressState;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason;
 import com.xuxiaocheng.WList.Commons.Operations.FailureKind;
 import com.xuxiaocheng.WListAndroid.UIs.Main.CActivity;
@@ -169,7 +167,7 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
     protected void dumpExtraWorking(final @NotNull DataOutput outputStream, final @NotNull DownloadWorking extra) {
     }
 
-    public static class DownloadSuccess extends AbstractExtraSuccess {
+    public static class DownloadSuccess extends AbstractSimpleExtraSuccess {
     } // TODO: is deleted?
 
     @Override
@@ -181,35 +179,9 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
     protected void dumpExtraSuccess(final @NotNull DataOutput outputStream, final @NotNull DownloadSuccess extra) {
     }
 
-    public static class DownloadFailure extends AbstractExtraFailure {
-        protected final @NotNull VisibleFailureReason reason;
-
+    public static class DownloadFailure extends AbstractSimpleExtraFailure {
         protected DownloadFailure(final @NotNull VisibleFailureReason reason) {
-            super();
-            this.reason = reason;
-        }
-
-        public @NotNull VisibleFailureReason getReason() {
-            return this.reason;
-        }
-
-        @Override
-        public boolean equals(final @Nullable Object o) {
-            if (this == o) return true;
-            if (!(o instanceof final DownloadFailure that)) return false;
-            return Objects.equals(this.reason, that.reason);
-        }
-
-        @Override
-        public int hashCode() {
-            return FailureReasonGetter.hashCode(this.reason);
-        }
-
-        @Override
-        public @NotNull String toString() {
-            return "DownloadFailure{" +
-                    "reason=" + this.reason +
-                    '}';
+            super(reason);
         }
     }
 

@@ -166,7 +166,7 @@ public class UploadTasksManager extends AbstractTasksManager<UploadTasksManager.
     protected void dumpExtraWorking(final @NotNull DataOutput outputStream, final @NotNull UploadWorking extra) {
     }
 
-    public static class UploadSuccess extends AbstractExtraSuccess {
+    public static class UploadSuccess extends AbstractSimpleExtraSuccess {
     }
 
     @Override
@@ -178,35 +178,9 @@ public class UploadTasksManager extends AbstractTasksManager<UploadTasksManager.
     protected void dumpExtraSuccess(final @NotNull DataOutput outputStream, final @NotNull UploadSuccess extra) {
     }
 
-    public static class UploadFailure extends AbstractExtraFailure {
-        protected final @NotNull VisibleFailureReason reason;
-
+    public static class UploadFailure extends AbstractSimpleExtraFailure {
         protected UploadFailure(final @NotNull VisibleFailureReason reason) {
-            super();
-            this.reason = reason;
-        }
-
-        public @NotNull VisibleFailureReason getReason() {
-            return this.reason;
-        }
-
-        @Override
-        public boolean equals(final @Nullable Object o) {
-            if (this == o) return true;
-            if (!(o instanceof final UploadFailure that)) return false;
-            return Objects.equals(this.reason, that.reason);
-        }
-
-        @Override
-        public int hashCode() {
-            return FailureReasonGetter.hashCode(this.reason);
-        }
-
-        @Override
-        public @NotNull String toString() {
-            return "UploadFailure{" +
-                    "reason=" + this.reason +
-                    '}';
+            super(reason);
         }
     }
 

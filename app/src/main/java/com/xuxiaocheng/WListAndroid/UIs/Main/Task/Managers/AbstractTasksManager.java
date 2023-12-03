@@ -489,22 +489,6 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
     public abstract static class AbstractExtraSuccess {
     }
 
-    protected static @NotNull VisibleFailureReason parseReason(final @NotNull DataInput inputStream) throws IOException {
-        final FailureKind kind = FailureKind.of(inputStream.readUTF());
-        final String storage = inputStream.readUTF();
-        final long id = inputStream.readLong();
-        final FileLocation location = new FileLocation(storage, id);
-        final String message = inputStream.readUTF();
-        return new VisibleFailureReason(kind, location, message);
-    }
-
-    protected static void dumpReason(final @NotNull DataOutput outputStream, final @NotNull VisibleFailureReason reason) throws IOException {
-        outputStream.writeUTF(FailureReasonGetter.kind(reason).name());
-        outputStream.writeUTF(FileLocationGetter.storage(FailureReasonGetter.location(reason)));
-        outputStream.writeLong(FileLocationGetter.id(FailureReasonGetter.location(reason)));
-        outputStream.writeUTF(FailureReasonGetter.message(reason));
-    }
-
 
     public abstract static class AbstractSimpleExtraWorking extends AbstractExtraWorking {
         protected @Nullable InstantaneousProgressState state = null;
@@ -525,6 +509,59 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
                     '}';
         }
     }
+
+    public abstract static class AbstractSimpleExtraSuccess extends AbstractExtraSuccess {
+
+    }
+
+    public abstract static class AbstractSimpleExtraFailure extends AbstractExtraFailure {
+        protected final @NotNull VisibleFailureReason reason;
+
+        protected AbstractSimpleExtraFailure(final @NotNull VisibleFailureReason reason) {
+            super();
+            this.reason = reason;
+        }
+
+        public @NotNull VisibleFailureReason getReason() {
+            return this.reason;
+        }
+
+        @Override
+        public boolean equals(final @Nullable Object o) {
+            if (this == o) return true;
+            if (!(o instanceof final AbstractSimpleExtraFailure that)) return false;
+            return Objects.equals(this.reason, that.reason);
+        }
+
+        @Override
+        public int hashCode() {
+            return FailureReasonGetter.hashCode(this.reason);
+        }
+
+        @Override
+        public @NotNull String toString() {
+            return "AbstractSimpleExtraFailure{" +
+                    "reason=" + this.reason +
+                    '}';
+        }
+    }
+
+    protected static @NotNull VisibleFailureReason parseReason(final @NotNull DataInput inputStream) throws IOException {
+        final FailureKind kind = FailureKind.of(inputStream.readUTF());
+        final String storage = inputStream.readUTF();
+        final long id = inputStream.readLong();
+        final FileLocation location = new FileLocation(storage, id);
+        final String message = inputStream.readUTF();
+        return new VisibleFailureReason(kind, location, message);
+    }
+
+    protected static void dumpReason(final @NotNull DataOutput outputStream, final @NotNull VisibleFailureReason reason) throws IOException {
+        outputStream.writeUTF(FailureReasonGetter.kind(reason).name());
+        outputStream.writeUTF(FileLocationGetter.storage(FailureReasonGetter.location(reason)));
+        outputStream.writeLong(FileLocationGetter.id(FailureReasonGetter.location(reason)));
+        outputStream.writeUTF(FailureReasonGetter.message(reason));
+    }
+
 
     @Override
     public @NotNull String toString() {

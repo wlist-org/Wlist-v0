@@ -3,8 +3,8 @@ package com.xuxiaocheng.WListAndroid.UIs.Main.Task;
 import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.AbstractTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.UploadTasksManager;
+import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import com.xuxiaocheng.WListAndroid.databinding.PageTaskListSimpleSuccessCellBinding;
-import com.xuxiaocheng.WListAndroid.databinding.PageTaskListUploadFailureCellBinding;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.atomic.AtomicReference;
@@ -25,18 +25,10 @@ public class TaskUpload extends SPageTaskFragment {
         };
     }
 
-    public static class UploadFailureTaskStateFragment extends FailureTaskStateFragment<PageTaskListUploadFailureCellBinding, UploadTasksManager.UploadTask, UploadTasksManager.UploadFailure> {
-        public UploadFailureTaskStateFragment() {
-            super(PageTaskListUploadFailureCellBinding::inflate);
-        }
-
+    public static class UploadFailureTaskStateFragment extends SimpleFailureTaskStateFragment<UploadTasksManager.UploadTask, UploadTasksManager.UploadFailure> {
         @Override
         protected @NotNull AbstractTasksManager<UploadTasksManager.UploadTask, ?, ?, UploadTasksManager.UploadFailure> getManager() {
             return UploadTasksManager.getInstance();
-        }
-
-        @Override
-        protected void onBind(final @NotNull PageTaskListUploadFailureCellBinding cell, final UploadTasksManager.@NotNull UploadTask task, final UploadTasksManager.@NotNull UploadFailure data) {
         }
     }
 
@@ -63,11 +55,7 @@ public class TaskUpload extends SPageTaskFragment {
         }
     }
 
-    public static class UploadSuccessTaskStateFragment extends SuccessTaskStateFragment<PageTaskListSimpleSuccessCellBinding, UploadTasksManager.UploadTask, UploadTasksManager.UploadSuccess> {
-        public UploadSuccessTaskStateFragment() {
-            super(PageTaskListSimpleSuccessCellBinding::inflate);
-        }
-
+    public static class UploadSuccessTaskStateFragment extends SimpleSuccessTaskStateFragment<UploadTasksManager.UploadTask, UploadTasksManager.UploadSuccess> {
         @Override
         protected @NotNull AbstractTasksManager<UploadTasksManager.UploadTask, ?, UploadTasksManager.UploadSuccess, ?> getManager() {
             return UploadTasksManager.getInstance();
@@ -75,6 +63,9 @@ public class TaskUpload extends SPageTaskFragment {
 
         @Override
         protected void onBind(final @NotNull PageTaskListSimpleSuccessCellBinding cell, final UploadTasksManager.@NotNull UploadTask task, final UploadTasksManager.@NotNull UploadSuccess data) {
+            super.onBind(cell, task, data);
+            cell.pageTaskListSimpleSuccessCellSize.setText(ViewUtil.formatSize(task.getFilesize(), cell.getRoot().getContext().getString(R.string.unknown)));
+//            cell.pageTaskListSimpleSuccessCellHint.setText();
         }
     }
 }
