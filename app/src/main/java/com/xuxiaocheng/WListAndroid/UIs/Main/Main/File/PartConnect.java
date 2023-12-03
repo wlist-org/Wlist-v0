@@ -1,16 +1,21 @@
 package com.xuxiaocheng.WListAndroid.UIs.Main.Main.File;
 
+import android.app.Dialog;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.os.IBinder;
 import android.view.View;
 import android.widget.Toast;
 import androidx.annotation.AnyThread;
 import androidx.annotation.UiThread;
+import androidx.annotation.WorkerThread;
+import androidx.appcompat.app.AlertDialog;
 import com.hjq.toast.Toaster;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.HeadLibs.Functions.ConsumerE;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
@@ -27,7 +32,9 @@ import com.xuxiaocheng.WListAndroid.Services.InternalServer.InternalServerBinder
 import com.xuxiaocheng.WListAndroid.Services.InternalServer.InternalServerService;
 import com.xuxiaocheng.WListAndroid.UIs.Main.ActivityMain;
 import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
+import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
+import com.xuxiaocheng.WListAndroid.databinding.PageFileConnectExternalServerBinding;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.InetSocketAddress;
@@ -51,14 +58,66 @@ public class PartConnect extends SFragmentFilePart {
             if (!clickable.compareAndSet(true, false)) return;
             page.pageFileConnectionInternalServer.setText(R.string.page_file_connect_internal_server_starting);
             this.connectInternalServer((a, s) -> Main.runOnUiThread(a, () -> page.pageFileConnectionInternalServer.setText(s)),
-                    a -> Main.runOnBackgroundThread(a, this::cOnDisconnect));
+                    a -> Main.runOnBackgroundThread(a, this::cOnDisconnect), ConsumerE.emptyConsumer());
+        });
+        page.pageFileConnectionExternalServer.setVisibility(View.VISIBLE);
+        page.pageFileConnectionExternalServer.setText(R.string.page_file_connect_external_server);
+        page.pageFileConnectionExternalServer.setOnClickListener(v -> {
+            if (!clickable.compareAndSet(true, false)) return;
+            final PageFileConnectExternalServerBinding binding = PageFileConnectExternalServerBinding.inflate(this.activity().getLayoutInflater());
+            final SharedPreferences preferences = this.activity().getSharedPreferences("external_server", Context.MODE_PRIVATE);
+            binding.pageFileConnectExternalServerHost.setText(preferences.getString("host", ""));
+            binding.pageFileConnectExternalServerPort.setText(preferences.getString("port", ""));
+            binding.pageFileConnectExternalServerUsername.setText(preferences.getString("username", "admin"));
+            binding.pageFileConnectExternalServerPassword.setText(preferences.getString("password", ""));
+            new AlertDialog.Builder(this.activity())
+                    .setTitle(R.string.page_file_connect_external_server)
+                    .setView(binding.getRoot())
+                    .setOnCancelListener(d -> clickable.set(true))
+                    .setNegativeButton(R.string.cancel, (d, w) -> clickable.set(true))
+                    .setPositiveButton(R.string.confirm, (d, w) -> {
+                        final String host = ViewUtil.getText(binding.pageFileConnectExternalServerHost);
+                        final String sPort = ViewUtil.getText(binding.pageFileConnectExternalServerPort);
+                        final String username = ViewUtil.getText(binding.pageFileConnectExternalServerUsername);
+                        final String password = ViewUtil.getText(binding.pageFileConnectExternalServerPassword);
+                        final int port;
+                        try {
+                            port = Integer.parseInt(sPort);
+                            if (port < 1 || port > 65535)
+                                throw new NumberFormatException();
+                        } catch (final NumberFormatException exception) {
+                            Toaster.show(R.string.page_file_connect_external_server_invalid_address);
+                            Main.runOnNextUiThread(this.activity(), () -> ((Dialog) d).show());
+                            return;
+                        }
+                        Main.runOnBackgroundThread(this.activity(), () -> {
+                            final InetSocketAddress address = new InetSocketAddress(host, port);
+                            if (address.isUnresolved()) {
+                                Toaster.show(R.string.page_file_connect_external_server_invalid_address);
+                                Main.runOnUiThread(this.activity(), () -> ((Dialog) d).show());
+                                return;
+                            }
+                            Main.runOnUiThread(this.activity(), () -> this.connectExternalServer(address, username, password, (a, s) ->
+                                    Main.runOnUiThread(a, () -> page.pageFileConnectionExternalServer.setText(s)), a ->
+                                    Main.runOnBackgroundThread(a, this::cOnDisconnect), a -> {
+                                        Toaster.show(R.string.page_file_connect_external_server_invalid_address);
+                                        Main.runOnUiThread(a, () -> ((Dialog) d).show());
+                                    }, a -> preferences.edit()
+                                            .putString("host", host).putString("port", sPort)
+                                            .putString("username", username).putString("password", password)
+                                            .apply()));
+                        });
+                    }).show();
         });
     }
 
     @Override
     public void cOnConnect() {
         super.cOnConnect();
-        Main.runOnUiThread(this.activity(), () -> this.fragmentContent().pageFileConnectionInternalServer.setVisibility(View.GONE));
+        Main.runOnUiThread(this.activity(), () -> {
+            this.fragmentContent().pageFileConnectionInternalServer.setVisibility(View.GONE);
+            this.fragmentContent().pageFileConnectionExternalServer.setVisibility(View.GONE);
+        });
     }
 
     @Override
@@ -75,7 +134,7 @@ public class PartConnect extends SFragmentFilePart {
     private static final @NotNull HInitializer<ServiceConnection> binderConnection = new HInitializer<>("BinderConnection");
 
     @UiThread
-    private void connectInternalServer(@AnyThread final @NotNull BiConsumer<? super @NotNull ActivityMain, ? super @NotNull String> text, @AnyThread final @NotNull Consumer<? super @NotNull ActivityMain> failure) {
+    private void connectInternalServer(@AnyThread final @NotNull BiConsumer<? super @NotNull ActivityMain, ? super @NotNull String> text, @AnyThread final @NotNull Consumer<? super @NotNull ActivityMain> failure, @WorkerThread final @NotNull Consumer<? super @NotNull ActivityMain> success) {
         final ActivityMain activity = this.activity();
         try {
             final Intent serverIntent = new Intent(activity, InternalServerService.class);
@@ -114,6 +173,7 @@ public class PartConnect extends SFragmentFilePart {
                             return;
                         }
                         activity.connect(address, IdentifierNames.UserName.Admin.getIdentifier(), iService);
+                        success.accept(activity);
                     }, e -> {
                         if (e != null) {
                             logger.log(HLogLevel.FAULT, "Failed to initialize wlist clients.", e);
@@ -151,19 +211,25 @@ public class PartConnect extends SFragmentFilePart {
     }
 
     @UiThread
-    private void connectExternalServer(@UiThread final @NotNull BiConsumer<@NotNull ActivityMain, @NotNull String> text, @UiThread final @NotNull Consumer<@NotNull ActivityMain> failure, final @NotNull InetSocketAddress address) {
-//        activity.activityLoginIcon.setOnClickListener(v -> { // TODO
-//            if (!clickable.compareAndSet(true, false)) return;
-//            Main.runOnBackgroundThread(this, HExceptionWrapper.wrapRunnable(() -> {
-//                final InetSocketAddress address = new InetSocketAddress("192.168.1.9", 5212);
-////                final InetSocketAddress address = new InetSocketAddress(ViewUtil.getText(activity.activityLoginPassport), Integer.parseInt(ViewUtil.getText(activity.activityLoginPassword)));
-//                WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
-//                if (!TokenAssistant.login(address, "admin", "Eb7aFkA2", Main.ClientExecutors))
-//                    return;
-//                ActivityMain.start(this, address, "admin", false);
-//            }, () -> clickable.set(true)));
-//        });
-        Main.runOnBackgroundThread(this.activity(), () -> {throw new UnsupportedOperationException("WIP");});
+    private void connectExternalServer(final @NotNull InetSocketAddress address, final @NotNull String username, final @NotNull String password, @UiThread final @NotNull BiConsumer<? super @NotNull ActivityMain, ? super @NotNull String> text, @UiThread final @NotNull Consumer<? super @NotNull ActivityMain> failure, @WorkerThread final @NotNull Consumer<? super @NotNull ActivityMain> invalid, @WorkerThread final @NotNull Consumer<? super @NotNull ActivityMain> success) {
+        final ActivityMain activity = this.activity();
+        text.accept(activity, activity.getString(R.string.page_file_connect_connecting));
+        Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> {
+            WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
+            text.accept(activity, activity.getString(R.string.page_file_connect_logging_in));
+            if (!TokenAssistant.login(address, username, password, Main.ClientExecutors)) {
+                invalid.accept(activity);
+                return;
+            }
+            activity.connect(address, username, null);
+            success.accept(activity);
+        }, e -> {
+            if (e != null) {
+                HLogManager.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Failed to connect wlist clients.", e);
+                Toaster.show(R.string.toast_fatal_application_initialization);
+                failure.accept(activity);
+            }
+        }, true));
     }
 
     @UiThread

@@ -18,6 +18,12 @@
 	<string name="activity_main_chooser_user">我的</string>
 	<string name="page_file_connect_internal_server">使用内置服务端</string>
 	<string name="page_file_connect_internal_server_starting">正在启动内置服务端……</string>
+	<string name="page_file_connect_external_server">连接外部服务端</string>
+	<string name="page_file_connect_external_server_host">地址：</string>
+	<string name="page_file_connect_external_server_port">端口：</string>
+	<string name="page_file_connect_external_server_username">账号：</string>
+	<string name="page_file_connect_external_server_password">密码：</string>
+	<string name="page_file_connect_external_server_invalid_address">非法地址或端口</string>
 	<string name="page_file_connect_connecting">正在连接至服务端……</string>
 	<string name="page_file_connect_logging_in">已连接至服务端，登录中……</string>
 	<string name="page_file_connect_internal_server_disconnected">登录失败，请重试</string>
