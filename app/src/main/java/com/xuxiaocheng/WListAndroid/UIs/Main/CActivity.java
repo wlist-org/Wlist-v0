@@ -81,8 +81,12 @@ public abstract class CActivity extends IPagedActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        if (this.isConnected() != this.realConnected.get() && this.isConnected())
+        if (this.isConnected() && !WListClientManager.instances.isNotInitialized(this.address.getInstance())
+                && this.isConnected() != this.realConnected.get()) {
+            HLogManager.getInstance("DefaultLogger").log(HLogLevel.MISTAKE, "Reconnect to server.", ParametersMap.create()
+                    .add("address", this.address).add("username", this.username));
             Main.runOnBackgroundThread(this, HExceptionWrapper.wrapRunnable(() -> this.connect(this.address.getInstance(), this.username.getInstance(), this.binder.getInstanceNullable())));
+        }
     }
 
     @Override

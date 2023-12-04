@@ -114,6 +114,7 @@ public class PartList extends SFragmentFilePart {
             page.pageFileList.setVisibility(View.GONE);
             page.pageFileCounter.setVisibility(View.GONE);
             page.pageFileCounterText.setVisibility(View.GONE);
+            page.pageFileList.setAdapter(null);
         });
     }
 
