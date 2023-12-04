@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.os.IBinder;
+import android.text.InputType;
 import android.view.View;
 import android.widget.Toast;
 import androidx.annotation.AnyThread;
@@ -70,6 +71,13 @@ public class PartConnect extends SFragmentFilePart {
             binding.pageFileConnectExternalServerPort.setText(preferences.getString("port", ""));
             binding.pageFileConnectExternalServerUsername.setText(preferences.getString("username", "admin"));
             binding.pageFileConnectExternalServerPassword.setText(preferences.getString("password", ""));
+            final AtomicBoolean visible = new AtomicBoolean(true);
+            binding.pageFileConnectExternalServerPasswordVisible.setOnClickListener(p -> {
+                visible.set(!visible.get());
+                binding.pageFileConnectExternalServerPassword.setInputType(InputType.TYPE_CLASS_TEXT |
+                        (visible.get() ? InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD : InputType.TYPE_TEXT_VARIATION_PASSWORD));
+            });
+            binding.pageFileConnectExternalServerPasswordVisible.callOnClick();
             new AlertDialog.Builder(this.activity())
                     .setTitle(R.string.page_file_connect_external_server)
                     .setView(binding.getRoot())
@@ -99,10 +107,9 @@ public class PartConnect extends SFragmentFilePart {
                             }
                             Main.runOnUiThread(this.activity(), () -> this.connectExternalServer(address, username, password, (a, s) ->
                                     Main.runOnUiThread(a, () -> page.pageFileConnectionExternalServer.setText(s)), a ->
-                                    Main.runOnBackgroundThread(a, this::cOnDisconnect), a -> {
-                                        Toaster.show(R.string.page_file_connect_external_server_invalid_address);
-                                        Main.runOnUiThread(a, () -> ((Dialog) d).show());
-                                    }, a -> preferences.edit()
+                                    Main.runOnBackgroundThread(a, this::cOnDisconnect), a ->
+                                    Main.runOnUiThread(a, () -> ((Dialog) d).show()), a ->
+                                    preferences.edit()
                                             .putString("host", host).putString("port", sPort)
                                             .putString("username", username).putString("password", password)
                                             .apply()));
@@ -216,8 +223,10 @@ public class PartConnect extends SFragmentFilePart {
         text.accept(activity, activity.getString(R.string.page_file_connect_connecting));
         Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> {
             WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
+            WListClientManager.quicklyGetClient(address).close();
             text.accept(activity, activity.getString(R.string.page_file_connect_logging_in));
             if (!TokenAssistant.login(address, username, password, Main.ClientExecutors)) {
+                Toaster.show(R.string.page_file_connect_invalid_password);
                 invalid.accept(activity);
                 return;
             }
