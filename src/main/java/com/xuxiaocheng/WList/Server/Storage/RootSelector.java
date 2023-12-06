@@ -87,8 +87,8 @@ public final class RootSelector {
                 final Collection<StorageConfiguration> all = new ConcurrentSkipListSet<>(comparator);
                 all.addAll(StorageManager.getAllConfigurations());
                 final List<FileInformation> list = AndroidSupporter.streamToList(all.stream().skip(position).limit(limit)
-                        .map(configuration -> new FileInformation(configuration.getRootDirectoryId(), 0, configuration.getName(), true,
-                                configuration.getSpaceUsed(), configuration.getCreateTime(), configuration.getUpdateTime(), null)));
+                        .map(configuration -> new FileInformation(configuration.getRootDirectoryId(), configuration.getRootDirectoryId(), configuration.getName(),
+                                true, configuration.getSpaceUsed(), configuration.getCreateTime(), configuration.getUpdateTime(), null)));
                 consumer.accept(UnionPair.ok(Optional.of(UnionPair.ok(new FilesListInformation(StorageManager.getProvidersCount(), StorageManager.getProvidersCount(), list)))));
                 return;
             }
