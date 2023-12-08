@@ -337,6 +337,7 @@ public class PartList extends SFragmentFilePart {
     private void backToRootPage() {
         final Triad.ImmutableTriad<FileLocation, VisibleFileInformation, AtomicLong> r = this.stacks.pollLast();
         final long position = r == null || !IdentifierNames.RootSelector.equals(FileLocationGetter.storage(r.getA())) ? 0 : r.getC().get();
+        this.stacks.clear();
         Main.runOnUiThread(this.fragment.getActivity(), () -> this.onRootPage(position));
     }
 
@@ -429,8 +430,9 @@ public class PartList extends SFragmentFilePart {
                 information = OperateFilesHelper.getFileOrDirectory(client, this.token(), new FileLocation(p.getFirst(), p.getSecond().longValue()), true);
             }
             if (information == null) return;
-            final EnhancedRecyclerViewAdapter<VisibleFileInformation, PartListViewHolder> adapter = (EnhancedRecyclerViewAdapter<VisibleFileInformation, PartListViewHolder>) Objects.requireNonNull(this.fragmentContent().pageFileList.getAdapter());
             if (this.isOnRoot()) {
+                final EnhancedRecyclerViewAdapter<VisibleFileInformation, PartListViewHolder> adapter = (EnhancedRecyclerViewAdapter<VisibleFileInformation, PartListViewHolder>) ViewUtil.getEnhancedRecyclerAdapter(this.fragmentContent().pageFileList);
+                if (adapter == null) return;
                 final VisibleFileInformation[] list = FileInformationGetter.asArray(adapter.getData());
                 if (list.length == 0)
                     adapter.addData(information);
@@ -445,20 +447,67 @@ public class PartList extends SFragmentFilePart {
                     last.getC().getAndIncrement();
             }
         }));
-//         TODO auto insert.
-//        set.ProviderUninitialized.register(s -> onRoot.run());
-//        final Consumer<Pair.ImmutablePair<FileLocation, Boolean>> update = s -> {
-//            final FileLocation location = this.currentLocation.get();
-//            if (FileLocationGetter.storage(location).equals(FileLocationGetter.storage(s.getFirst()))
-//                    && this.currentDoubleIds.contains(FileSqlInterface.getDoubleId(FileLocationGetter.id(s.getFirst()), s.getSecond().booleanValue())))
-//                this.partList.onInsidePage(this.pageCache.getInstance().pageFileName.getText(), this.currentLocation.get(), this.partList.getCurrentPosition(this));
-//        };
-//        set.FileTrash.register(s -> Main.runOnUiThread(this.activity, () -> update.accept(s)));
-//        set.FileUpdate.register(s -> Main.runOnUiThread(this.activity, () -> update.accept(s)));
-//        set.FileUpload.register(s -> Main.runOnUiThread(this.activity, () -> {
-//            final FileLocation location = this.currentLocation.get();
-//            if (FileLocationGetter.storage(location).equals(s.getFirst()) && FileLocationGetter.id(location) == FileInformationGetter.parentId(s.getSecond()))
-//                this.partList.onInsidePage(this.pageCache.getInstance().pageFileName.getText(), location, this.partList.getCurrentPosition(this));
-//        }));
+        set.ProviderUninitialized.getCallbacks().put("list", name -> {
+            if (this.isOnRoot()) {
+                final EnhancedRecyclerViewAdapter<VisibleFileInformation, PartListViewHolder> adapter = (EnhancedRecyclerViewAdapter<VisibleFileInformation, PartListViewHolder>) ViewUtil.getEnhancedRecyclerAdapter(this.fragmentContent().pageFileList);
+                if (adapter == null) return;
+                final AtomicInteger index = new AtomicInteger(0);
+                for (final VisibleFileInformation c: adapter.getData()) {
+                    if (name.equals(FileInformationGetter.name(c))) {
+                        adapter.removeData(index.get());
+                        break;
+                    }
+                    index.getAndIncrement();
+                }
+            } else if (name.equals(FileLocationGetter.storage(this.currentLocation.get())))
+                this.backToRootPage();
+        });
+        set.FileUpdate.getCallbacks().put("list", HExceptionWrapper.wrapConsumer(p -> {
+            if (this.isOnRoot() || !FileLocationGetter.storage(this.currentLocation()).equals(FileLocationGetter.storage(p.getFirst()))) return;
+            final VisibleFileInformation information;
+            try (final WListClientInterface client = this.client()) {
+                information = OperateFilesHelper.getFileOrDirectory(client, this.token(), p.getFirst(), p.getSecond().booleanValue());
+            }
+            if (information == null) return;
+            final EnhancedRecyclerViewAdapter<VisibleFileInformation, PartListViewHolder> adapter = (EnhancedRecyclerViewAdapter<VisibleFileInformation, PartListViewHolder>) ViewUtil.getEnhancedRecyclerAdapter(this.fragmentContent().pageFileList);
+            if (adapter == null) return;
+            final AtomicInteger index = new AtomicInteger(0);
+            for (final VisibleFileInformation c: adapter.getData()) {
+                if (FileInformationGetter.id(information) == FileInformationGetter.id(c)) {
+                    adapter.changeData(index.get(), information);
+                    break;
+                }
+                index.getAndIncrement();
+            }
+        }));
+        set.FileTrash.getCallbacks().put("list", p -> {
+            if (this.isOnRoot() || !FileLocationGetter.storage(this.currentLocation()).equals(FileLocationGetter.storage(p.getFirst()))) return;
+            final EnhancedRecyclerViewAdapter<VisibleFileInformation, PartListViewHolder> adapter = (EnhancedRecyclerViewAdapter<VisibleFileInformation, PartListViewHolder>) ViewUtil.getEnhancedRecyclerAdapter(this.fragmentContent().pageFileList);
+            if (adapter == null) return;
+            final AtomicInteger index = new AtomicInteger(0);
+            for (final VisibleFileInformation c: adapter.getData()) {
+                if (FileInformationGetter.id(c) == FileLocationGetter.id(p.getFirst()) && FileInformationGetter.isDirectory(c) == p.getSecond().booleanValue()) {
+                    adapter.removeData(index.get());
+                    break;
+                }
+                index.getAndIncrement();
+            }
+            // TODO: move position
+        });
+        set.FileUpload.getCallbacks().put("list", p -> {
+            if (this.isOnRoot() || !FileLocationGetter.storage(this.currentLocation()).equals(p.getFirst())
+                    || FileInformationGetter.parentId(p.getSecond()) != FileLocationGetter.id(this.currentLocation())) return;
+            final EnhancedRecyclerViewAdapter<VisibleFileInformation, PartListViewHolder> adapter = (EnhancedRecyclerViewAdapter<VisibleFileInformation, PartListViewHolder>) ViewUtil.getEnhancedRecyclerAdapter(this.fragmentContent().pageFileList);
+            if (adapter == null) return;
+            final VisibleFileInformation[] list = FileInformationGetter.asArray(adapter.getData());
+            if (list.length == 0)
+                adapter.addData(p.getSecond());
+            else {
+                final int index = FileInformationGetter.binarySearch(list, p.getSecond(), this::compareInformation);
+                if (index >= 0 && Objects.equals(list[index], p.getSecond())) return;
+                adapter.addData(index >= 0 ? index : -index - 1, p.getSecond());
+            }
+            // TODO: move position
+        });
     }
 }

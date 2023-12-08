@@ -49,6 +49,10 @@ public final class ViewUtil {
         return (LinearLayoutManager) Objects.requireNonNull(recyclerView.getLayoutManager());
     }
 
+    public static @Nullable EnhancedRecyclerViewAdapter<?, ?> getEnhancedRecyclerAdapter(final @NotNull RecyclerView recyclerView) {
+        return (EnhancedRecyclerViewAdapter<?, ?>) recyclerView.getAdapter();
+    }
+
     public static @NotNull EnhancedRecyclerViewAdapter<?, ?> requireEnhancedRecyclerAdapter(final @NotNull RecyclerView recyclerView) {
         return (EnhancedRecyclerViewAdapter<?, ?>) Objects.requireNonNull(recyclerView.getAdapter());
     }
