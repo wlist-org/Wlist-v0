@@ -58,7 +58,7 @@ public record VisibleFileInformation(long id, long parentId, @NotNull String nam
             final Comparator<VisibleFileInformation> select = switch (order.getKey()) {
                 case Id -> Comparator.comparing(VisibleFileInformation::id);
                 case Name -> Comparator.comparing(VisibleFileInformation::name);
-                case Directory -> Comparator.comparing(VisibleFileInformation::isDirectory).reversed();
+                case Directory -> Comparator.comparing(VisibleFileInformation::isDirectory);
                 case Size -> Comparator.comparing(VisibleFileInformation::size, Long::compareUnsigned);
                 case CreateTime -> Comparator.comparing(VisibleFileInformation::createTime, Comparator.nullsFirst(ZonedDateTime::compareTo));
                 case UpdateTime -> Comparator.comparing(VisibleFileInformation::updateTime, Comparator.nullsFirst(ZonedDateTime::compareTo));
