@@ -10,7 +10,6 @@ import com.xuxiaocheng.WList.Client.Assistants.BroadcastAssistant;
 import com.xuxiaocheng.WList.Client.Assistants.TokenAssistant;
 import com.xuxiaocheng.WList.Client.ClientConfiguration;
 import com.xuxiaocheng.WList.Client.WListClientManager;
-import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseManager;
@@ -26,20 +25,15 @@ import com.xuxiaocheng.WList.Server.WListServer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.nio.charset.StandardCharsets;
-import java.time.ZonedDateTime;
-import java.util.Comparator;
 import java.util.concurrent.TimeUnit;
 
 @Execution(ExecutionMode.SAME_THREAD)
@@ -50,35 +44,7 @@ public class TempTest {
     private static final @NotNull ConsumerE<SocketAddress> start = address -> {
     };
     private static final @NotNull FunctionE<SocketAddress, @Nullable Object> _main = address -> {
-        ClientConfiguration.set(ClientConfiguration.parse(new ByteArrayInputStream("""
-file_orders:
-  Directory: DESCEND
-  Name: ASCEND
-  CreateTime: ASCEND
-  Id: ASCEND
-""".getBytes(StandardCharsets.UTF_8))));
-        final Comparator<VisibleFileInformation> comparator = VisibleFileInformation.buildComparator();
-        final ZonedDateTime time = ZonedDateTime.now();
-        Assertions.assertTrue(comparator.compare(
-                new VisibleFileInformation(1, 0, "a", true, 0, null, null),
-                new VisibleFileInformation(1, 0, "a", false, 0, null, null)
-        ) < 0);
-        Assertions.assertTrue(comparator.compare(
-                new VisibleFileInformation(1, 0, "a", true, 0, null, null),
-                new VisibleFileInformation(1, 0, "b", true, 0, null, null)
-        ) < 0);
-        Assertions.assertTrue(comparator.compare(
-                new VisibleFileInformation(1, 0, "b", true, 0, null, null),
-                new VisibleFileInformation(1, 0, "a", false, 0, null, null)
-        ) < 0);
-        Assertions.assertTrue(comparator.compare(
-                new VisibleFileInformation(1, 0, "a", false, 0, null, null),
-                new VisibleFileInformation(1, 0, "a", false, 0, time, null)
-        ) < 0);
-        Assertions.assertTrue(comparator.compare(
-                new VisibleFileInformation(1, 0, "a", false, 0, time, null),
-                new VisibleFileInformation(1, 0, "a", false, 0, time.plusNanos(1), null)
-        ) < 0);
+
         return null;
     };
 

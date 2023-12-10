@@ -87,7 +87,7 @@ public class FilesAssistantTest extends ProvidersWrapper {
 //    @Disabled
     public void _del() throws IOException, InterruptedException, WrongStateException {
 //        final long doubleId = ;
-        Assertions.assertTrue(FilesAssistant.trash(this.address(), this.adminUsername(), this.location(/*FileSqlInterface.getRealId(doubleId)*/150354330), false, PredicateE.truePredicate()));
+        Assertions.assertTrue(FilesAssistant.trash(this.address(), this.adminUsername(), this.location(/*FileSqlInterface.getRealId(doubleId)*/150354330), false, PredicateE.truePredicate(), null));
     }
 
     @Test
@@ -319,7 +319,7 @@ public class FilesAssistantTest extends ProvidersWrapper {
         Assertions.assertEquals(List.of("Login.", "Update: 0 d", "Login.", "List: 0"), provider.checkOperations());
 
         final AtomicBoolean flag = new AtomicBoolean(false);
-        Assertions.assertTrue(FilesAssistant.trash(this.address(), this.adminUsername(), this.abstractLocation(1), true, p -> {Assertions.assertTrue(flag.compareAndSet(false, true));return true;}));
+        Assertions.assertTrue(FilesAssistant.trash(this.address(), this.adminUsername(), this.abstractLocation(1), true, p -> {Assertions.assertTrue(flag.compareAndSet(false, true));return true;}, null));
         Assertions.assertTrue(flag.get());
         Assertions.assertEquals(Set.of("Login.", "Update: 1 d", "Update: 2 d", "List: 1", "List: 2", "Trash: 5 f", "Trash: 2 d", "Trash: 4 f", "Trash: 3 f", "Trash: 1 d"), new HashSet<>(provider.checkOperations()));
     }
@@ -334,7 +334,7 @@ public class FilesAssistantTest extends ProvidersWrapper {
         final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.copy(this.address(), this.adminUsername(), this.location(list.informationList().get(0).id()), true, this.location(this.root()), "copied", WListServer.IOExecutors, p -> {HLog.DefaultLogger.log(HLogLevel.INFO, p);return true;});
         Assertions.assertTrue(res != null && res.isSuccess());
 
-        Assertions.assertTrue(FilesAssistant.trash(this.address(), this.adminUsername(), this.location(res.getT().id()), true, PredicateE.truePredicate()));
+        Assertions.assertTrue(FilesAssistant.trash(this.address(), this.adminUsername(), this.location(res.getT().id()), true, PredicateE.truePredicate(), null));
     }
 
     @Test

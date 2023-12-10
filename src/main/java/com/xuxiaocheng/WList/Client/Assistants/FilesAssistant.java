@@ -806,21 +806,24 @@ public final class FilesAssistant {
     }
 
 
-    private static boolean trash0(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation location, final boolean isDirectory, final AtomicBoolean interruptFlag, final @NotNull Executor executor) throws IOException, InterruptedException, WrongStateException {
+    private static boolean trash0(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation location, final boolean isDirectory, final AtomicBoolean interruptFlag, final @NotNull Executor executor, final @NotNull AtomicLong done, final @NotNull AtomicLong total) throws IOException, InterruptedException, WrongStateException {
         if (interruptFlag.get()) return true;
+        total.getAndIncrement();
         final Boolean success;
         if (!isDirectory) {
             try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
                 success = OperateFilesHelper.trashFileOrDirectory(client, TokenAssistant.getToken(address, username), location, false);
             }
+            done.getAndIncrement();
             return success == null || success.booleanValue();
         }
         while (true) {
             final VisibleFilesListInformation list = FilesAssistant.list(address, username, location, FilterPolicy.Both, VisibleFileInformation.emptyOrder(), 0, ClientConfiguration.get().limitPerPage(), null, PredicateE.truePredicate(), null);
             if (list == null) return true;
             try {
+                total.getAndAdd(list.informationList().size());
                 HMultiRunHelper.runConsumers(executor, list.informationList(), HExceptionWrapper.wrapConsumer(information -> {
-                    if (!FilesAssistant.trash0(address, username, new FileLocation(location.storage(), information.id()), information.isDirectory(), interruptFlag, executor))
+                    if (!FilesAssistant.trash0(address, username, new FileLocation(location.storage(), information.id()), information.isDirectory(), interruptFlag, executor, done, total))
                         interruptFlag.set(true);
                 }));
             } catch (final RuntimeException exception) {
@@ -835,13 +838,14 @@ public final class FilesAssistant {
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
             s = OperateFilesHelper.trashFileOrDirectory(client, TokenAssistant.getToken(address, username), location, true);
         }
+        done.getAndIncrement();
         return s == null || s.booleanValue();
     }
 
     /**
      * @param trashRecursivelyCallback When trash is too complex, it will be called. Then the operation won't be atomic.
      */
-    public static boolean trash(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation location, final boolean isDirectory, final @NotNull Predicate<@Nullable Void> trashRecursivelyCallback) throws IOException, InterruptedException, WrongStateException {
+    public static boolean trash(final @NotNull SocketAddress address, final @NotNull String username, final @NotNull FileLocation location, final boolean isDirectory, final @NotNull Predicate<@Nullable Void> trashRecursivelyCallback, final @Nullable BiConsumer<@NotNull AtomicLong, @NotNull AtomicLong> callback) throws IOException, InterruptedException, WrongStateException {
         final Boolean success;
         try (final WListClientInterface client = WListClientManager.quicklyGetClient(address)) {
             success = OperateFilesHelper.trashFileOrDirectory(client, TokenAssistant.getToken(address, username), location, isDirectory);
@@ -852,9 +856,14 @@ public final class FilesAssistant {
         final EventExecutorGroup executors = new DefaultEventExecutorGroup(ClientConfiguration.get().threadCount() > 0 ?
                 ClientConfiguration.get().threadCount() : Runtime.getRuntime().availableProcessors(),
                 new DefaultThreadFactory(String.format("TrashingExecutor#%s", location)));
+        final AtomicLong done = new AtomicLong(0), total = new AtomicLong(0);
+        final ScheduledFuture<?> callbackFuture = callback == null ? null : executors.scheduleWithFixedDelay(() -> callback.accept(done, total),
+                ClientConfiguration.get().progressStartDelay(), ClientConfiguration.get().progressInterval(), TimeUnit.MILLISECONDS);
         try {
-            return FilesAssistant.trash0(address, username, location, true, new AtomicBoolean(false), executors);
+            return FilesAssistant.trash0(address, username, location, true, new AtomicBoolean(false), executors, done, total);
         } finally {
+            if (callbackFuture != null)
+                callbackFuture.cancel(true);
             executors.shutdownGracefully().sync();
         }
     }
@@ -984,7 +993,7 @@ public final class FilesAssistant {
                 }
                 if (list.total() == list.informationList().size()) break;
             }
-            if (FilesAssistant.trash(address, username, location, true, PredicateE.truePredicate())) return directory; // TODO: move file after refresh.
+            if (FilesAssistant.trash(address, username, location, true, PredicateE.truePredicate(), null)) return directory; // TODO: move file after refresh.
             return UnionPair.fail(new VisibleFailureReason(FailureKind.Others, location, "Trashing."));
         }
         if (directly.get() == null || directly.get().booleanValue()) {
@@ -1003,7 +1012,7 @@ public final class FilesAssistant {
             if (source == null) return UnionPair.fail(new VisibleFailureReason(FailureKind.NoSuchFile, location, "No such file."));
         }
         final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.copyFileDownloadAndUpload(address, username, location, parent, source.name(), Objects.requireNonNullElseGet(downloaderExecutor, ForkJoinPool::commonPool));
-        if (res.isFailure() || FilesAssistant.trash(address, username, location, false, PredicateE.truePredicate())) return res;
+        if (res.isFailure() || FilesAssistant.trash(address, username, location, false, PredicateE.truePredicate(), null)) return res;
         return UnionPair.fail(new VisibleFailureReason(FailureKind.Others, location, "Trashing."));
     }
 
@@ -1036,7 +1045,7 @@ public final class FilesAssistant {
         final FileLocation parent = new FileLocation(location.storage(), source.parentId());
         if (!isDirectory) {
             final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.copyFileDownloadAndUpload(address, username, location, parent, name, Objects.requireNonNullElseGet(downloaderExecutor, ForkJoinPool::commonPool));
-            if (res.isFailure() || FilesAssistant.trash(address, username, location, false, PredicateE.truePredicate())) return res;
+            if (res.isFailure() || FilesAssistant.trash(address, username, location, false, PredicateE.truePredicate(), null)) return res;
             return UnionPair.fail(new VisibleFailureReason(FailureKind.Others, location, "Trashing."));
         }
         final UnionPair<VisibleFileInformation, VisibleFailureReason> directory;
