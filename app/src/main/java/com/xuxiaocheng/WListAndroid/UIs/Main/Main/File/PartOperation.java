@@ -5,10 +5,14 @@ import androidx.annotation.UiThread;
 import androidx.appcompat.app.AlertDialog;
 import com.hjq.toast.Toaster;
 import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
+import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HProcessingInitializer;
+import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.AndroidSupports.FileInformationGetter;
+import com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper;
+import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
@@ -16,12 +20,15 @@ import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.AbstractTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.DownloadTasksManager;
+import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.TrashTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.PageTaskAdapter;
+import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
 import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileOperationBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileOperationRenameBinding;
 import org.jetbrains.annotations.NotNull;
 
+import java.time.ZonedDateTime;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 class PartOperation extends SFragmentFilePart {
@@ -142,17 +149,29 @@ class PartOperation extends SFragmentFilePart {
         operationBinding.pageFileOperationTrash.setOnClickListener(u -> {
             if (!clickable.compareAndSet(true, false)) return;
             modifier.cancel();
-//            new AlertDialog.Builder(this.pageFile.activity()).setTitle(R.string.page_file_operation_trash)
-//                    .setNegativeButton(R.string.cancel, null)
-//                    .setPositiveButton(R.string.confirm, (d, w) -> {
-//                        final AlertDialog dialog = this.pageFile.partUpload.loadingDialog(this.pageFile.activity(), R.string.page_file_operation_trash);
-//                        Main.runOnBackgroundThread(this.pageFile.activity(), HExceptionWrapper.wrapRunnable(() -> {
-//                            HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Deleting.",
-//                                    ParametersMap.create().add("address", this.pageFile.address()).add("information", information));
-//                            if (FilesAssistant.trash(this.pageFile.address(), this.pageFile.username(), new FileLocation(storage, FileInformationGetter.id(information)), FileInformationGetter.isDirectory(information), HExceptionWrapper.wrapPredicate(unused -> this.queryNotSupportedOperation(null))))
-//                                Main.showToast(this.pageFile.activity(), R.string.page_file_operation_delete_success);
-//                        }, () -> Main.runOnUiThread(this.pageFile.activity(), dialog::cancel)));
-//                    }).show();
+            new AlertDialog.Builder(this.activity()).setTitle(R.string.page_file_operation_trash)
+                    .setNegativeButton(R.string.cancel, null)
+                    .setPositiveButton(R.string.confirm, (d, w) -> {
+                        final AlertDialog dialog = this.activity().createLoadingDialog(R.string.page_file_operation_trash);
+                        dialog.show();
+                        Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
+                            HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Deleting.",
+                                    ParametersMap.create().add("address", this.address()).add("information", information));
+                            final FileLocation location = new FileLocation(storage, FileInformationGetter.id(information));
+                            final boolean isDirectory = FileInformationGetter.isDirectory(information);
+                            final Boolean success;
+                            try (final WListClientInterface client = this.client()) {
+                                success = OperateFilesHelper.trashFileOrDirectory(client, this.token(), location, isDirectory);
+                            }
+                            if (success == null || success.booleanValue()) {
+                                Toaster.show(R.string.page_file_operation_trash_success);
+                                return;
+                            }
+                            Toaster.showShort(R.string.page_file_operation_complex);
+                            TrashTasksManager.getInstance().addTask(this.activity(), new TrashTasksManager.TrashTask(new AbstractTasksManager.AbstractTask(
+                                    this.address(), this.username(), ZonedDateTime.now(), FileInformationGetter.name(information), PageTaskAdapter.Types.Trash), location));
+                        }, () -> Main.runOnUiThread(this.activity(), dialog::cancel)));
+                    }).show();
         });
         operationBinding.pageFileOperationTrashImage.setOnClickListener(u -> operationBinding.pageFileOperationTrash.performClick());
         if (FileInformationGetter.isDirectory(information)) {

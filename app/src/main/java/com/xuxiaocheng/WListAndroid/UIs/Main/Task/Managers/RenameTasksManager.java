@@ -48,7 +48,7 @@ public class RenameTasksManager extends AbstractTasksManager<RenameTasksManager.
 
     @Override
     public @NotNull File getRecordingFile(final @NotNull RenameTask task) {
-        return new File(RenameTasksManager.RenameRecordsSaveDirectory, task + ".bin.gz");
+        return new File(RenameTasksManager.RenameRecordsSaveDirectory, this.getRecordingFileIdentifier(task));
     }
 
     public static class RenameTask extends AbstractTask {

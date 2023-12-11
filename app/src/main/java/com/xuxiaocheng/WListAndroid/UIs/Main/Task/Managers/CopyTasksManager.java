@@ -48,7 +48,7 @@ public class CopyTasksManager extends AbstractTasksManager<CopyTasksManager.Copy
 
     @Override
     public @NotNull File getRecordingFile(final @NotNull CopyTask task) {
-        return new File(CopyTasksManager.CopyRecordsSaveDirectory, task + ".bin.gz");
+        return new File(CopyTasksManager.CopyRecordsSaveDirectory, this.getRecordingFileIdentifier(task));
     }
 
     public static class CopyTask extends AbstractTasksManager.AbstractTask {

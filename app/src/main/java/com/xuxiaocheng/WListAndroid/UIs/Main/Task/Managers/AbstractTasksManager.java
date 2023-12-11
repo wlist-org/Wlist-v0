@@ -125,6 +125,12 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
 
     @WorkerThread
     @Contract(pure = true)
+    protected final @NotNull String getRecordingFileIdentifier(final @NotNull T file) {
+        return file.time.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME).replace(':', '.') + '-' + file.time.getNano() + ".bin.gz";
+    }
+
+    @WorkerThread
+    @Contract(pure = true)
     public abstract @NotNull File getRecordingFile(final @NotNull T task);
 
     @WorkerThread
@@ -384,6 +390,7 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
             this.source = source;
         }
 
+        @WorkerThread
         protected AbstractTask(final @NotNull AbstractTask task) {
             super();
             this.address = task.address;
@@ -456,6 +463,17 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
         outputStream.writeInt(task.time.getNano());
         outputStream.writeUTF(task.filename);
         outputStream.writeInt(PageTaskAdapter.Types.toPosition(task.source));
+    }
+
+    protected static @NotNull FileLocation parseLocation(final @NotNull DataInput inputStream) throws IOException {
+        final String storage = inputStream.readUTF();
+        final long id = inputStream.readLong();
+        return new FileLocation(storage, id);
+    }
+
+    protected static void dumpLocation(final @NotNull DataOutput outputStream, final @NotNull FileLocation location) throws IOException {
+        outputStream.writeUTF(FileLocationGetter.storage(location));
+        outputStream.writeLong(FileLocationGetter.id(location));
     }
 
     public abstract static class AbstractExtraFailure {

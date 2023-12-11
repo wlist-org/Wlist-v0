@@ -4,4 +4,70 @@
                                                    android:layout_width="match_parent"
                                                    android:layout_height="50dp">
 
+	<androidx.constraintlayout.widget.Guideline
+		android:id="@+id/page_task_list_trash_success_cell_guideline_name"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:orientation="vertical"
+		app:layout_constraintGuide_begin="50dp" />
+
+	<androidx.appcompat.widget.AppCompatImageView
+		android:id="@+id/page_task_list_trash_success_cell_image"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:layout_marginStart="10dp"
+		android:layout_marginEnd="10dp"
+		android:scaleType="centerInside"
+		android:src="@mipmap/page_file_image_directory"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toLeftOf="parent"
+		app:layout_constraintRight_toLeftOf="@id/page_task_list_trash_success_cell_guideline_name"
+		app:layout_constraintTop_toTopOf="parent" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_task_list_trash_success_cell_name"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:layout_marginTop="5dp"
+		android:autoSizeTextType="uniform"
+		android:ellipsize="end"
+		android:gravity="center_vertical|start"
+		android:maxLines="1"
+		android:text="@string/app_name"
+		android:textColor="@color/text_normal"
+		app:layout_constraintBottom_toTopOf="@id/page_task_list_trash_success_cell_hint"
+		app:layout_constraintLeft_toRightOf="@id/page_task_list_trash_success_cell_guideline_name"
+		app:layout_constraintRight_toLeftOf="@id/page_task_list_trash_success_cell_remove"
+		app:layout_constraintTop_toTopOf="parent" />
+
+	<androidx.appcompat.widget.AppCompatImageView
+		android:id="@+id/page_task_list_trash_success_cell_remove"
+		android:layout_width="wrap_content"
+		android:layout_height="0dp"
+		android:layout_marginTop="5dp"
+		android:adjustViewBounds="true"
+		android:paddingStart="5dp"
+		android:paddingEnd="5dp"
+		android:src="@drawable/backer"
+		app:layout_constraintBottom_toTopOf="@id/page_task_list_trash_success_cell_hint"
+		app:layout_constraintLeft_toRightOf="@id/page_task_list_trash_success_cell_name"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toTopOf="parent" />
+
+	<androidx.appcompat.widget.AppCompatTextView
+		android:id="@+id/page_task_list_trash_success_cell_hint"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:layout_marginBottom="5dp"
+		android:autoSizeTextType="uniform"
+		android:ellipsize="end"
+		android:gravity="center_vertical|start"
+		android:maxLines="1"
+		android:text="@string/page_task_trash_time"
+		android:textColor="@color/text_hint"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintLeft_toRightOf="@id/page_task_list_trash_success_cell_guideline_name"
+		app:layout_constraintRight_toRightOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/page_task_list_trash_success_cell_name" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

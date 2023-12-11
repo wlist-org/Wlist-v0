@@ -509,5 +509,6 @@ public class PartList extends SFragmentFilePart {
             }
             // TODO: move position
         });
+        // TODO: Lock and sync
     }
 }

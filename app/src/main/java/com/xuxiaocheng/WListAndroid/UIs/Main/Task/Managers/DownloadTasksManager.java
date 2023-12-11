@@ -56,7 +56,7 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
 
     @Override
     public @NotNull File getRecordingFile(final @NotNull DownloadTask task) {
-        return new File(DownloadTasksManager.DownloadRecordsSaveDirectory, FileLocationGetter.storage(task.location) + " - " + FileLocationGetter.id(task.location) + ".bin.gz");
+        return new File(DownloadTasksManager.DownloadRecordsSaveDirectory, this.getRecordingFileIdentifier(task));
     }
 
     @Override
@@ -129,21 +129,18 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
     @Override
     protected @NotNull DownloadTask parseTask(final @NotNull DataInput inputStream) throws IOException {
         final AbstractTask abstractTask = AbstractTasksManager.parseAbstractTask(inputStream);
-        final String storage = inputStream.readUTF();
-        final long id = inputStream.readLong();
-        final FileLocation location = new FileLocation(storage, id);
+        final FileLocation location = AbstractTasksManager.parseLocation(inputStream);
         return new DownloadTask(abstractTask, location);
     }
 
     @Override
     protected void dumpTask(final @NotNull DataOutput outputStream, final @NotNull DownloadTask task) throws IOException {
         AbstractTasksManager.dumpAbstractTask(outputStream, task);
-        outputStream.writeUTF(FileLocationGetter.storage(task.location));
-        outputStream.writeLong(FileLocationGetter.id(task.location));
+        AbstractTasksManager.dumpLocation(outputStream, task.location);
     }
 
     public static class DownloadWorking extends AbstractSimpleExtraWorking {
-        protected List<Pair.@NotNull ImmutablePair<@NotNull AtomicLong, @NotNull Long>> progress = null;
+        protected @Nullable List<Pair.@NotNull ImmutablePair<@NotNull AtomicLong, @NotNull Long>> progress = null;
 
         public @Nullable List<Pair.ImmutablePair<AtomicLong, Long>> getProgress() {
             return this.progress;

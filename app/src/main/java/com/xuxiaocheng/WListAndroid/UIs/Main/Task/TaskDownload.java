@@ -114,7 +114,7 @@ public class TaskDownload extends SPageTaskFragment {
                     .setNeutralButton(R.string.cancel, null)
                     .setNegativeButton(R.string.confirm, (d, w) -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() ->
                             DownloadTasksManager.getInstance().removeSuccessTask(this.activity(), task))))
-                    .setPositiveButton(R.string.page_task_remove_file, (d, w) -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
+                    .setPositiveButton(R.string.page_task_download_remove_file, (d, w) -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
                         DownloadTasksManager.getInstance().removeSuccessTask(this.activity(), task);
                         Files.deleteIfExists(task.getSavePath().toPath());
                     }))).show());

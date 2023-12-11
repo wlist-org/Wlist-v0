@@ -303,6 +303,8 @@ public abstract class SPageTaskFragment extends CFragment<PageTaskListBinding> {
                 return "WrappedPageTaskListSimpleWorkingCellBinding{" +
                         "cell=" + this.cell +
                         ", working=" + this.working +
+                        ", lastW=" + this.lastW +
+                        ", lastT=" + this.lastT +
                         '}';
             }
         }
@@ -321,13 +323,13 @@ public abstract class SPageTaskFragment extends CFragment<PageTaskListBinding> {
             if (data.isStarted())
                 this.resetProgress(cell, false);
             else
-                this.onPending(cell, false);
+                this.onPending(cell);
             data.getUpdateCallbacks().registerNamedForce(this.getClass().getName(), () -> Main.runOnUiThread(this.activity(), () ->
                     this.resetProgress(cell, true)));
         }
 
         @UiThread
-        protected void onPending(final @NotNull V cell, final boolean animate) {
+        protected void onPending(final @NotNull V cell) {
             final Context context = cell.getRoot().getContext();
             cell.cell.pageTaskListSimpleWorkingCellProcessText.setText(MessageFormat.format(context.getString(R.string.page_task_process), 0));
             cell.cell.pageTaskListSimpleWorkingCellProgress.setIndeterminate(false);

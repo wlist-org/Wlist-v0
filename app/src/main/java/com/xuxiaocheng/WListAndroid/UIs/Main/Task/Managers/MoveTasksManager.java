@@ -48,7 +48,7 @@ public class MoveTasksManager extends AbstractTasksManager<MoveTasksManager.Move
 
     @Override
     public @NotNull File getRecordingFile(final @NotNull MoveTask task) {
-        return new File(MoveTasksManager.MoveRecordsSaveDirectory, task + ".bin.gz");
+        return new File(MoveTasksManager.MoveRecordsSaveDirectory, this.getRecordingFileIdentifier(task));
     }
 
     public static class MoveTask extends AbstractTasksManager.AbstractTask {

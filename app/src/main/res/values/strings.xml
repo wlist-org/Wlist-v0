@@ -49,9 +49,9 @@
 	<string name="page_file_operation_rename_success">Renamed.</string>
 	<string name="page_file_operation_move_success">Moved.</string>
 	<string name="page_file_operation_copy_success">Copied.</string>
-	<string name="page_file_operation_delete_success">Deleted.</string>
+	<string name="page_file_operation_trash_success">Deleted.</string>
 	<string name="page_file_operation_download_success">Downloaded.</string>
-	<string name="page_file_operation_complex">This operation is not supported directly by the storage. Force do it? (may cause a long time.)</string>
+	<string name="page_file_operation_complex">This operation is not supported directly by the storage. Running in task mode.</string>
 	<string name="page_file_create">Create</string>
 	<string name="page_file_create_directory">New Directory</string>
 	<string name="page_file_create_storage">Web Storage</string>
@@ -99,16 +99,18 @@
 	<string name="page_task_time">ETA: {0}</string>
 	<string name="page_task_waiting">Blocking.</string>
 	<string name="page_task_failure_reason" translatable="false">{0}: {1}</string>
+	<string name="page_task_remove">Remove the task.</string>
 	<string name="page_task_download_manager_waiting">Please wait while the download manager is starting.</string>
 	<string name="page_task_download_manager_failure">Something went wrong during initializing the download manager. Retry later.</string>
 	<string name="page_task_download_working_preparing">Download is about to begin.</string>
 	<string name="page_task_download_working_finishing">Please waiting…</string>
 	<string name="page_task_download_success_path">Saved: {0}</string>
+	<string name="page_task_download_remove_file">Confirm and delete file.</string>
 	<string name="page_task_download_success_deleted">Deleted</string>
 	<string name="page_task_upload_working_preparing">Upload is about to begin.</string>
 	<string name="page_task_upload_working_finishing">Please waiting…</string>
-	<string name="page_task_remove">Remove the task.</string>
-	<string name="page_task_remove_file">Confirm and delete file.</string>
+	<string name="page_task_trash_progress" translatable="false">@string/page_file_loading_text</string>
+	<string name="page_task_trash_time">Deleted time: {0}</string>
 	<string name="page_file_provider_lanzou">Lanzou</string>
 	<string name="page_file_provider_name">Storage name: </string>
 	<string name="page_file_provider_passport">Storage passport: </string>

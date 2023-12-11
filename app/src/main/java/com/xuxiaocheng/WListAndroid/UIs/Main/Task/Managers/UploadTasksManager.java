@@ -54,7 +54,7 @@ public class UploadTasksManager extends AbstractTasksManager<UploadTasksManager.
 
     @Override
     public @NotNull File getRecordingFile(final @NotNull UploadTask task) {
-        return new File(UploadTasksManager.UploadRecordsSaveDirectory, FileLocationGetter.storage(task.parent) + " - " + FileLocationGetter.id(task.parent) + ".bin.gz");
+        return new File(UploadTasksManager.UploadRecordsSaveDirectory, this.getRecordingFileIdentifier(task));
     }
 
     @Override
@@ -137,9 +137,7 @@ public class UploadTasksManager extends AbstractTasksManager<UploadTasksManager.
     @Override
     protected @NotNull UploadTask parseTask(final @NotNull DataInput inputStream) throws IOException {
         final AbstractTask abstractTask = AbstractTasksManager.parseAbstractTask(inputStream);
-        final String storage = inputStream.readUTF();
-        final long id = inputStream.readLong();
-        final FileLocation parent = new FileLocation(storage, id);
+        final FileLocation parent = AbstractTasksManager.parseLocation(inputStream);
         final long filesize = inputStream.readLong();
         final Uri uri = Uri.parse(inputStream.readUTF());
         return new UploadTask(abstractTask, parent, filesize, uri);
@@ -148,8 +146,7 @@ public class UploadTasksManager extends AbstractTasksManager<UploadTasksManager.
     @Override
     protected void dumpTask(final @NotNull DataOutput outputStream, final @NotNull UploadTask task) throws IOException {
         AbstractTasksManager.dumpAbstractTask(outputStream, task);
-        outputStream.writeUTF(FileLocationGetter.storage(task.parent));
-        outputStream.writeLong(FileLocationGetter.id(task.parent));
+        AbstractTasksManager.dumpLocation(outputStream, task.parent);
         outputStream.writeLong(task.filesize);
         outputStream.writeUTF(task.uri.toString());
     }
