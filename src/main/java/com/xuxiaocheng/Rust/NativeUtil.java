@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serial;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -69,6 +70,15 @@ public final class NativeUtil {
             } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable exception) {
                 HUncaughtExceptionHelper.uncaughtException(Thread.currentThread(), exception);
             }
+        }
+    }
+
+    public static class NativeException extends RuntimeException {
+        @Serial
+        private static final long serialVersionUID = 4660850296508097427L;
+
+        public NativeException(final @NotNull String message) {
+            super(message);
         }
     }
 }
