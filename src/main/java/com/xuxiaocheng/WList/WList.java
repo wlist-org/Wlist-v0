@@ -210,6 +210,7 @@ LogLevel: The log level.
         NetworkTransmission.load(); // Preload to check environment is supported.
         ClientCore.load();
         ClientCore.initialize();
+        ClientManager.quicklyInitialize(ClientManager.getDefault());
         ServerHandlerManager.load();
         WList.logger.log(HLogLevel.VERBOSE, "Initialized WList server environment.");
     }
