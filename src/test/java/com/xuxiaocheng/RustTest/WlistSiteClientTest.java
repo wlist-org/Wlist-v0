@@ -2,7 +2,6 @@ package com.xuxiaocheng.RustTest;
 
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
-import com.xuxiaocheng.Rust.NativeUtil;
 import com.xuxiaocheng.Rust.WlistSiteClient.ClientCore;
 import com.xuxiaocheng.Rust.WlistSiteClient.ClientVersion;
 import com.xuxiaocheng.StaticLoader;
@@ -30,7 +29,7 @@ public class WlistSiteClientTest {
 
     @Test
     public void initializeTwice() {
-        Assertions.assertThrowsExactly(NativeUtil.NativeException.class, ClientCore::initialize);
+        ClientCore.initialize();
     }
 
     @Test

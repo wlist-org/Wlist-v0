@@ -75,18 +75,18 @@ public class WListClientManager implements Closeable {
         return WListClientManager.instances.getInstance(address).getClient();
     }
 
-    protected final @NotNull GenericObjectPoolConfig<WListClientInterface> poolConfig;
-    protected final @NotNull ClientManagerConfig clientConfig;
-    protected final @NotNull HInitializer<GenericObjectPool<@NotNull WListClientInterface>> clientPool = new HInitializer<>("ClientPool");
-
-    public record ClientManagerConfig(@NotNull SocketAddress address) {
-    }
-
     public static @NotNull WListClientManager getDefault(final @NotNull SocketAddress address) {
         final GenericObjectPoolConfig<WListClientInterface> poolConfig = new GenericObjectPoolConfig<>();
         poolConfig.setJmxEnabled(AndroidSupporter.jmxEnable);
         poolConfig.setTestOnBorrow(true);
         return new WListClientManager(poolConfig, new ClientManagerConfig(address));
+    }
+
+    protected final @NotNull GenericObjectPoolConfig<WListClientInterface> poolConfig;
+    protected final @NotNull ClientManagerConfig clientConfig;
+    protected final @NotNull HInitializer<GenericObjectPool<@NotNull WListClientInterface>> clientPool = new HInitializer<>("ClientPool");
+
+    public record ClientManagerConfig(@NotNull SocketAddress address) {
     }
 
     /**

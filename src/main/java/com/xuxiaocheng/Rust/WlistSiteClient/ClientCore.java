@@ -1,5 +1,7 @@
 package com.xuxiaocheng.Rust.WlistSiteClient;
 
+import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.Rust.NativeUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -25,8 +27,12 @@ public final class ClientCore {
     }
 
     public static void initialize() {
-        if (!ClientCore.initializeTokioRuntime())
-            throw new NativeUtil.NativeException("Failed to initialize Tokio runtime: " + ClientCore.getLastError());
+        if (!ClientCore.initializeTokioRuntime()) {
+            final String error = ClientCore.getLastError();
+            if ("Runtime already initialized.".equals(error))
+                return;
+            throw new NativeUtil.NativeException("Failed to initialize Tokio runtime: " + error);
+        }
     }
 
     public static void uninitialize() {
@@ -35,12 +41,16 @@ public final class ClientCore {
     }
 
     private static native @Nullable String getVersion();
+    private static final @NotNull HInitializer<String> VersionString = new HInitializer<>("SiteClientVersionString");
 
     public static @NotNull String getVersionString() {
-        final String version = ClientCore.getVersion();
-        if (version == null)
-            throw new NativeUtil.NativeException("Failed to get version string: " + ClientCore.getLastError());
-        return version;
+        ClientCore.VersionString.initializeIfNot(() -> {
+            final String version = ClientCore.getVersion();
+            if (version == null)
+                throw new NativeUtil.NativeException("Failed to get version string: " + ClientCore.getLastError());
+            return version;
+        });
+        return ClientCore.VersionString.getInstance();
     }
 
 
@@ -100,5 +110,31 @@ public final class ClientCore {
         final String url = address.substring("tcp://".length());
         final int index = url.lastIndexOf(':');
         return new InetSocketAddress(url.substring(0, index), Integer.parseInt(url.substring(index + 1)));
+    }
+
+    private static final @NotNull HInitializer<InetSocketAddress> SelectedLink = new HInitializer<>("SelectedLink");
+
+    public static @Nullable WlistSiteClient tryConnect() {
+        final InetSocketAddress url;
+        synchronized (ClientCore.SelectedLink) {
+            final InetSocketAddress cache = ClientCore.SelectedLink.getInstanceNullable();
+            if (cache == null) {
+                final InetSocketAddress address = ClientCore.selectLink();
+                if (address == null)
+                    return null;
+                ClientCore.SelectedLink.initialize(address);
+                url = address;
+            } else
+                url = cache;
+        }
+        return HExceptionWrapper.wrapSupplier(() -> ClientCore.connect(url), e -> {
+            if (e == null)
+                return null;
+            final InetSocketAddress address = ClientCore.selectLink();
+            ClientCore.SelectedLink.reinitializeNullable(address);
+            if (address == null)
+                return null;
+            return ClientCore.connect(url);
+        }, true).get();
     }
 }

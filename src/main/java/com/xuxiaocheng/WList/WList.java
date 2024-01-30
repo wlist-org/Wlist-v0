@@ -9,6 +9,9 @@ import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.HeadLibs.Logger.HMergedStreams;
 import com.xuxiaocheng.Rust.NetworkTransmission;
+import com.xuxiaocheng.Rust.WlistSiteClient.ClientCore;
+import com.xuxiaocheng.Rust.WlistSiteClient.ClientManager;
+import com.xuxiaocheng.Rust.WlistSiteClient.ClientVersion;
 import com.xuxiaocheng.WList.Commons.Codecs.MessageServerCiphers;
 import com.xuxiaocheng.WList.Server.Databases.Constant.ConstantManager;
 import com.xuxiaocheng.WList.Server.Databases.SqlDatabaseInterface;
@@ -166,6 +169,10 @@ LogLevel: The log level.
             logger.log(HLogLevel.FINE, "Hello WList (Server v0.3.2)! Loading...");
             WList.loadServerConfiguration();
             WList.initializeServerEnvironment();
+            if (WList.checkSiteAvailable()) {
+                WList.setStarted();
+                return; // TODO: add flag.
+            }
             WList.initializeServerDatabase();
             WList.initializeStorageProvider();
             try {
@@ -201,8 +208,24 @@ LogLevel: The log level.
     private static void initializeServerEnvironment() {
         WList.logger.log(HLogLevel.LESS, "Initializing WList server environment.");
         NetworkTransmission.load(); // Preload to check environment is supported.
+        ClientCore.load();
+        ClientCore.initialize();
         ServerHandlerManager.load();
         WList.logger.log(HLogLevel.VERBOSE, "Initialized WList server environment.");
+    }
+
+    private static boolean checkSiteAvailable() throws IOException {
+        WList.logger.log(HLogLevel.LESS, "Checking version is available. Current: ", ClientCore.getVersionString());
+        final byte version;
+        try (final ClientCore.WlistSiteClient client = ClientManager.quicklyGetClient()) {
+            version = ClientVersion.isAvailable(client);
+        }
+        if ((version & ClientVersion.VERSION_AVAILABLE) == 0) {
+            WList.logger.log(HLogLevel.FAULT, "Checked version. Current is not available.");
+            return true;
+        }
+        WList.logger.log(HLogLevel.LESS, "Checked version. Current is available.");
+        return false;
     }
 
     private static void initializeServerDatabase() throws IOException, SQLException {
