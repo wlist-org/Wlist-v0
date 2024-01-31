@@ -228,7 +228,7 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
                 }
                 if (ViewUtil.isActivityAvailable(activity))
                     this.tryStartTask(activity);
-            })).addListener(Main.exceptionListenerWithToast(activity));
+            })).addListener(Main.exceptionListenerWithToast());
         }
     }
 

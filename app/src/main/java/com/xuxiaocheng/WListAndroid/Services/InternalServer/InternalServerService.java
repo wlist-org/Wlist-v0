@@ -4,10 +4,12 @@ import android.app.Service;
 import android.content.Intent;
 import android.os.IBinder;
 import android.os.Process;
+import androidx.annotation.AnyThread;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.Rust.NativeUtil;
+import com.xuxiaocheng.Rust.WlistSiteClient.ClientVersion;
 import com.xuxiaocheng.WList.Server.Operations.ServerHandler;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.WList;
@@ -21,17 +23,27 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 @SuppressWarnings("ClassHasNoToStringMethod")
 public final class InternalServerService extends Service {
-    private final @NotNull Thread ServerMainThread = new Thread(HExceptionWrapper.wrapRunnable(WList::main, this::stopSelf), "ServerMain");
+    private final @NotNull Thread ServerMainThread = new Thread(HExceptionWrapper.wrapRunnable(() -> {
+        WList.main();
+        final byte version = ClientVersion.getVersionInCache();
+        if (version == Byte.MAX_VALUE || (version & ClientVersion.VERSION_AVAILABLE) == 0)
+            this.forceStop();
+    }, this::stopSelf), "ServerMain");
+
+    @AnyThread
+    private void forceStop() {
+        Main.runOnBackgroundThread(null, () -> {
+            this.onDestroy(); // Force stop.
+            this.stopSelf();
+        }, 300, TimeUnit.MILLISECONDS);
+    }
 
     @Override
     public void onCreate() {
         super.onCreate();
         if (HLogManager.initialize(this, HLogManager.ProcessType.Server)) {
             HLogManager.getInstance("DefaultLogger").log(HLogLevel.FAULT, "Incompatible service instance.", ParametersMap.create().add("pid", Process.myPid()));
-            Main.runOnBackgroundThread(null, () -> {
-                this.onDestroy(); // Force stop.
-                this.stopSelf();
-            }, 300, TimeUnit.MILLISECONDS);
+            this.forceStop();
             return;
         }
         HLogManager.getInstance("DefaultLogger").log(HLogLevel.INFO, "Internal WList Server is starting.", ParametersMap.create().add("pid", Process.myPid()));

@@ -21,7 +21,6 @@ import com.xuxiaocheng.WList.Client.Assistants.BroadcastAssistant;
 import com.xuxiaocheng.WList.Client.Operations.OperateHelper;
 import com.xuxiaocheng.WList.Commons.Codecs.MessageClientCiphers;
 import com.xuxiaocheng.WList.Commons.Codecs.MessageServerCiphers;
-import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WList.Server.Operations.ServerHandler;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
@@ -69,7 +68,7 @@ public final class Main extends Application {
 
     private static final @NotNull Handler mainHandler = new Handler(Looper.getMainLooper());
 
-    public static @NotNull FutureListener<? super Object> exceptionListenerWithToast(final @NotNull Activity activity) {
+    public static @NotNull FutureListener<? super Object> exceptionListenerWithToast() {
         return f -> {
             final Throwable cause = f.cause();
             if (cause == null) return;
@@ -120,26 +119,17 @@ public final class Main extends Application {
         if (Main.mainHandler.getLooper().getThread() != Thread.currentThread())
             wrappedRunnable.run();
         else
-            if (activity != null)
-                Main.AndroidExecutors.submit(wrappedRunnable).addListener(Main.exceptionListenerWithToast(activity));
-            else
-                Main.AndroidExecutors.submit(wrappedRunnable).addListener(MiscellaneousUtil.exceptionListener());
+            Main.AndroidExecutors.submit(wrappedRunnable).addListener(Main.exceptionListenerWithToast());
     }
 
     public static void runOnNextBackgroundThread(final @Nullable Activity activity, @WorkerThread final @NotNull Runnable runnable) {
         final Runnable wrappedRunnable = Main.wrapRunnable(activity, runnable);
-        if (activity != null)
-            Main.AndroidExecutors.submit(wrappedRunnable).addListener(Main.exceptionListenerWithToast(activity));
-        else
-            Main.AndroidExecutors.submit(wrappedRunnable).addListener(MiscellaneousUtil.exceptionListener());
+        Main.AndroidExecutors.submit(wrappedRunnable).addListener(Main.exceptionListenerWithToast());
     }
 
     public static void runOnBackgroundThread(final @Nullable Activity activity, @WorkerThread final @NotNull Runnable runnable, final long delay, final @NotNull TimeUnit unit) {
         final Runnable wrappedRunnable = Main.wrapRunnable(activity, runnable);
-        if (activity != null)
-            Main.AndroidExecutors.schedule(wrappedRunnable, delay, unit).addListener(Main.exceptionListenerWithToast(activity));
-        else
-            Main.AndroidExecutors.schedule(wrappedRunnable, delay, unit).addListener(MiscellaneousUtil.exceptionListener());
+        Main.AndroidExecutors.schedule(wrappedRunnable, delay, unit).addListener(Main.exceptionListenerWithToast());
     }
 
     public static View.@NotNull OnClickListener debounceClickListener(final View.@NotNull OnClickListener listener, final long delay, final @NotNull TimeUnit unit) {

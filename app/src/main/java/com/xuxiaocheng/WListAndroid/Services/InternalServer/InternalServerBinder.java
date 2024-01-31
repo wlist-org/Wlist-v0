@@ -5,6 +5,7 @@ import android.os.IBinder;
 import android.os.Parcel;
 import android.os.RemoteException;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
+import com.xuxiaocheng.Rust.WlistSiteClient.ClientVersion;
 import com.xuxiaocheng.WList.AndroidSupports.DatabaseSupporter;
 import com.xuxiaocheng.WList.Server.WListServer;
 import com.xuxiaocheng.WList.WList;
@@ -16,11 +17,18 @@ import java.util.function.Consumer;
 
 public final class InternalServerBinder extends Binder {
     private enum TransactOperate {
+        GetVersionAvailable,
         GetAddress,
         GetAndDeleteAdminPassword,
     }
 
     public static final int Code = 2168877; // IBinder.FIRST_CALL_TRANSACTION <= Code=-"InternalServerBinder".hashCode()/100 <= IBinder.LAST_CALL_TRANSACTION
+
+    public static byte checkVersionAvailable(final @NotNull IBinder iService) throws RemoteException {
+        final byte[] available = new byte[1];
+        InternalServerBinder.sendTransact(iService, TransactOperate.GetVersionAvailable, p -> available[0] = p.readByte());
+        return available[0];
+    }
 
     public static @Nullable InetSocketAddress getAddress(final @NotNull IBinder iService) throws RemoteException {
         final InetSocketAddress[] address = new InetSocketAddress[1];
@@ -75,6 +83,10 @@ public final class InternalServerBinder extends Binder {
             return true;
         }
         switch (TransactOperate.valueOf(data.readString())) {
+            case GetVersionAvailable -> {
+                final byte available = ClientVersion.getVersionInCache();
+                reply.writeByte(available);
+            }
             case GetAddress -> {
                 final InetSocketAddress address = WListServer.getInstance().getAddress().getInstanceNullable();
                 if (address == null)
