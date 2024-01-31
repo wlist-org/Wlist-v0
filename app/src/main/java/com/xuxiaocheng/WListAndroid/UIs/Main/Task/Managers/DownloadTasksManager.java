@@ -1,13 +1,12 @@
 package com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers;
 
 import android.app.Activity;
-import android.content.ContentResolver;
-import android.net.Uri;
 import androidx.annotation.WorkerThread;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.PredicateE;
 import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
+import com.xuxiaocheng.HeadLibs.Helpers.HFileHelper;
 import com.xuxiaocheng.WList.AndroidSupports.FileLocationGetter;
 import com.xuxiaocheng.WList.Client.Assistants.FilesAssistant;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
@@ -22,7 +21,6 @@ import org.jetbrains.annotations.Nullable;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
@@ -63,14 +61,9 @@ public class DownloadTasksManager extends AbstractTasksManager<DownloadTasksMana
 
     @Override
     protected @NotNull DownloadTasksManager.DownloadWorking prepareTask(final @NotNull Activity activity, final @NotNull DownloadTask task) throws IOException, InterruptedException {
-        final ContentResolver contentResolver = activity.getContentResolver();
-        final Uri file = Uri.fromFile(DownloadTasksManager.getSaveFile(task));
-        try {
-            contentResolver.openFileDescriptor(file, "w").close();
-        } catch (final FileNotFoundException ignore) {
-            contentResolver.insert(file, null);
-        }
+        final File file = DownloadTasksManager.getSaveFile(task);
         PermissionUtil.writePermission(activity);
+        HFileHelper.ensureFileAccessible(file, true);
         return new DownloadWorking();
     }
 
