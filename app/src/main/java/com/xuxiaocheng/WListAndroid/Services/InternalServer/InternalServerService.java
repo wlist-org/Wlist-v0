@@ -23,9 +23,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 @SuppressWarnings("ClassHasNoToStringMethod")
 public final class InternalServerService extends Service {
+    private static byte version = 0;
+
+    public static byte getVersion() {
+        return InternalServerService.version;
+    }
+
     private final @NotNull Thread ServerMainThread = new Thread(HExceptionWrapper.wrapRunnable(() -> {
         WList.main();
         final byte version = ClientVersion.getVersionInCache();
+        InternalServerService.version = version;
         if (version == Byte.MAX_VALUE || (version & ClientVersion.VERSION_AVAILABLE) == 0)
             this.forceStop();
     }, this::stopSelf), "ServerMain");

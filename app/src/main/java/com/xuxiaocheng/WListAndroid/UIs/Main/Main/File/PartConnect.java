@@ -21,6 +21,7 @@ import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLog;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.Rust.WlistSiteClient.ClientVersion;
 import com.xuxiaocheng.WList.Client.Assistants.TokenAssistant;
 import com.xuxiaocheng.WList.Client.Operations.OperateServerHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
@@ -57,7 +58,6 @@ public class PartConnect extends SFragmentFilePart {
         page.pageFileConnectionInternalServer.setText(R.string.page_file_connect_internal_server);
         page.pageFileConnectionInternalServer.setOnClickListener(v -> {
             if (!clickable.compareAndSet(true, false)) return;
-            page.pageFileConnectionInternalServer.setText(R.string.page_file_connect_internal_server_starting);
             this.connectInternalServer((a, s) -> Main.runOnUiThread(a, () -> page.pageFileConnectionInternalServer.setText(s)),
                     a -> Main.runOnBackgroundThread(a, this::cOnDisconnect), ConsumerE.emptyConsumer());
         });
@@ -143,70 +143,68 @@ public class PartConnect extends SFragmentFilePart {
     @UiThread
     private void connectInternalServer(@AnyThread final @NotNull BiConsumer<? super @NotNull ActivityMain, ? super @NotNull String> text, @AnyThread final @NotNull Consumer<? super @NotNull ActivityMain> failure, @WorkerThread final @NotNull Consumer<? super @NotNull ActivityMain> success) {
         final ActivityMain activity = this.activity();
-        try {
-            final Intent serverIntent = new Intent(activity, InternalServerService.class);
-            final HLog logger = HLogManager.getInstance("DefaultLogger");
-            if (PartConnect.binderConnection.isInitialized() || PartConnect.binderActivity.isInitialized()) {
-                logger.log(HLogLevel.MISTAKE, "Internal server service is started.");
-                failure.accept(activity);
-                return;
-            }
-            logger.log(HLogLevel.LESS, "Starting internal server...");
-            final ServiceConnection connection = new ServiceConnection() {
-                @Override
-                public void onServiceConnected(final ComponentName name, final @NotNull IBinder iService) {
-                    Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> {
-                        final InetSocketAddress address = InternalServerBinder.getAddress(iService);
-                        if (address == null) {
-                            activity.unbindService(this);
-                            PartConnect.binderConnection.uninitialize();
-                            PartConnect.binderActivity.uninitialize();
-                            logger.log(HLogLevel.LESS, "Internal server is stopping...");
-                            Toaster.show(R.string.page_file_connect_closing);
-                            failure.accept(activity);
-                            return;
-                        }
-                        logger.log(HLogLevel.FINE, "Connecting to service: ", address);
-                        text.accept(activity, activity.getString(R.string.page_file_connect_connecting));
-                        WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
-                        logger.log(HLogLevel.LESS, "Clients initialized.");
-                        final String initPassword = InternalServerBinder.getAndDeleteAdminPassword(iService);
-                        final String password = PasswordHelper.updateInternalPassword(activity, IdentifierNames.UserName.Admin.getIdentifier(), initPassword);
-                        logger.log(HLogLevel.INFO, "Got server password.", ParametersMap.create().add("init", initPassword != null).add("password", password));
-                        text.accept(activity, activity.getString(R.string.page_file_connect_logging_in));
-                        if (password == null || !TokenAssistant.login(address, IdentifierNames.UserName.Admin.getIdentifier(), password, Main.ClientExecutors)) {
-                            // TODO get password from user.
-                            Main.runOnUiThread(activity, () -> Toast.makeText(activity, "No password!!!", Toast.LENGTH_SHORT).show());
-                            return;
-                        }
-                        activity.connect(address, IdentifierNames.UserName.Admin.getIdentifier(), iService);
-                        success.accept(activity);
-                    }, e -> {
-                        if (e != null) {
-                            logger.log(HLogLevel.FAULT, "Failed to initialize wlist clients.", e);
-                            Toaster.show(R.string.toast_fatal_application_initialization);
-                            failure.accept(activity);
-                        }
-                    }, true));
-                }
-
-                @Override
-                public void onServiceDisconnected(final ComponentName name) {
-                    final HLog logger = HLogManager.getInstance("DefaultLogger");
-                    logger.log(HLogLevel.FAULT, "Disconnecting to service.");
-                    activity.disconnect();
-                    Toaster.show(R.string.page_file_connect_internal_server_disconnected);
-                    failure.accept(activity);
-                }
-            };
-            text.accept(activity, activity.getString(R.string.page_file_connect_internal_server_starting));
-            PartConnect.binderActivity.initialize(activity);
-            PartConnect.binderConnection.initialize(connection);
-            activity.startService(serverIntent);
-            activity.bindService(serverIntent, connection, Context.BIND_AUTO_CREATE | Context.BIND_ABOVE_CLIENT | Context.BIND_IMPORTANT);
-        } finally {
-            text.accept(activity, activity.getString(R.string.page_file_connect_internal_server));
+        final Intent serverIntent = new Intent(activity, InternalServerService.class);
+        final HLog logger = HLogManager.getInstance("DefaultLogger");
+        if (PartConnect.binderConnection.isInitialized() || PartConnect.binderActivity.isInitialized()) {
+            logger.log(HLogLevel.MISTAKE, "Internal server service is started.");
+            failure.accept(activity);
+            return;
         }
+        logger.log(HLogLevel.LESS, "Starting internal server...");
+        final ServiceConnection connection = new ServiceConnection() {
+            @Override
+            public void onServiceConnected(final ComponentName name, final @NotNull IBinder iService) {
+                Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> {
+                    final InetSocketAddress address = InternalServerBinder.getAddress(iService);
+                    if (address == null) {
+                        activity.unbindService(this);
+                        PartConnect.binderConnection.uninitialize();
+                        PartConnect.binderActivity.uninitialize();
+                        logger.log(HLogLevel.LESS, "Internal server is stopping...");
+                        Toaster.show(R.string.page_file_connect_closing);
+                        failure.accept(activity);
+                        return;
+                    }
+                    logger.log(HLogLevel.FINE, "Connecting to service: ", address);
+                    text.accept(activity, activity.getString(R.string.page_file_connect_connecting));
+                    WListClientManager.quicklyInitialize(WListClientManager.getDefault(address));
+                    logger.log(HLogLevel.LESS, "Clients initialized.");
+                    final String initPassword = InternalServerBinder.getAndDeleteAdminPassword(iService);
+                    final String password = PasswordHelper.updateInternalPassword(activity, IdentifierNames.UserName.Admin.getIdentifier(), initPassword);
+                    logger.log(HLogLevel.INFO, "Got server password.", ParametersMap.create().add("init", initPassword != null).add("password", password));
+                    text.accept(activity, activity.getString(R.string.page_file_connect_logging_in));
+                    if (password == null || !TokenAssistant.login(address, IdentifierNames.UserName.Admin.getIdentifier(), password, Main.ClientExecutors)) {
+                        // TODO get password from user.
+                        Main.runOnUiThread(activity, () -> Toast.makeText(activity, "No password!!!", Toast.LENGTH_SHORT).show());
+                        return;
+                    }
+                    activity.connect(address, IdentifierNames.UserName.Admin.getIdentifier(), iService);
+                    success.accept(activity);
+                }, e -> {
+                    if (e != null) {
+                        logger.log(HLogLevel.FAULT, "Failed to initialize wlist clients.", e);
+                        Toaster.show(R.string.toast_fatal_application_initialization);
+                        failure.accept(activity);
+                    }
+                }, true));
+            }
+
+            @Override
+            public void onServiceDisconnected(final ComponentName name) {
+                final HLog logger = HLogManager.getInstance("DefaultLogger");
+                logger.log(HLogLevel.FAULT, "Disconnecting to service.");
+                activity.disconnect();
+                final byte version = InternalServerService.getVersion();
+                if ((version & ClientVersion.VERSION_AVAILABLE) == 0)
+                    Toaster.showLong(R.string.page_file_connect_internal_server_unavailable);
+                failure.accept(activity);
+            }
+        };
+        text.accept(activity, activity.getString(R.string.page_file_connect_internal_server_starting));
+        PartConnect.binderActivity.initialize(activity);
+        PartConnect.binderConnection.initialize(connection);
+        activity.startService(serverIntent);
+        activity.bindService(serverIntent, connection, Context.BIND_AUTO_CREATE | Context.BIND_ABOVE_CLIENT | Context.BIND_IMPORTANT);
     }
 
     @UiThread
