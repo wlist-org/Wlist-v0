@@ -102,24 +102,13 @@ class PartOperation extends SFragmentFilePart {
                                 }
                             }
                         }));
-//                        final AlertDialog dialog = this.fragment.partUpload().loadingDialog(this.activity(), R.string.page_file_operation_rename);
-//                        Main.runOnBackgroundThread(this.pageFile.activity(), HExceptionWrapper.wrapRunnable(() -> {
-//                            HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Renaming.",
-//                                    ParametersMap.create().add("address", this.pageFile.address()).add("information", information).add("renamed", renamed));
-//                            final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.rename(this.pageFile.address(), this.pageFile.username(), current, FileInformationGetter.isDirectory(information), renamed,
-//                                    Main.ClientExecutors, HExceptionWrapper.wrapPredicate(this::queryNotSupportedOperation));
-//                            if (res == null) return;
-//                            if (res.isFailure())
-//                                Main.runOnUiThread(this.pageFile.activity(), () -> Toast.makeText(this.pageFile.activity(), FailureReasonGetter.kind(res.getE()) + FailureReasonGetter.message(res.getE()), Toast.LENGTH_SHORT).show());
-//                            else
-//                                Main.showToast(this.pageFile.activity(), R.string.page_file_operation_rename_success);
-//                        }, () -> Main.runOnUiThread(this.activity(), dialog::cancel)));
                     }).show();
         });
         operationBinding.pageFileOperationRenameImage.setOnClickListener(u -> operationBinding.pageFileOperationRename.performClick());
         operationBinding.pageFileOperationMove.setOnClickListener(u -> {
             if (!clickable.compareAndSet(true, false)) return;
             modifier.cancel();
+            // TODO
 //            Main.runOnBackgroundThread(this.pageFile.activity(), HExceptionWrapper.wrapRunnable(() -> {
 //                final Pair.ImmutablePair<String, Long> pair = FileInformationGetter.isDirectory(information) ?
 //                        this.queryTargetDirectory(R.string.page_file_operation_move, storage, FileInformationGetter.id(information)) :
@@ -149,6 +138,7 @@ class PartOperation extends SFragmentFilePart {
         operationBinding.pageFileOperationCopy.setOnClickListener(u -> {
             if (!clickable.compareAndSet(true, false)) return;
             modifier.cancel();
+            // TODO
 //            Main.runOnBackgroundThread(this.pageFile.activity(), HExceptionWrapper.wrapRunnable(() -> {
 //                final Pair.ImmutablePair<String, Long> pair = FileInformationGetter.isDirectory(information) ?
 //                        this.queryTargetDirectory(R.string.page_file_operation_copy, storage, FileInformationGetter.id(information)) :

@@ -3,6 +3,7 @@ package com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers;
 import android.app.Activity;
 import androidx.annotation.WorkerThread;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
 import com.xuxiaocheng.WList.Client.Assistants.FilesAssistant;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason;
@@ -48,6 +49,8 @@ public class RenameTasksManager extends AbstractTasksManager<RenameTasksManager.
     @Override
     protected @NotNull UnionPair<RenameSuccess, RenameFailure> runTask(final @NotNull Activity activity, final @NotNull RenameTask task, final @NotNull RenameWorking progress) {
         try {
+            progress.started = true;
+            progress.updateCallbacks.callback(RunnableE::run);
             final UnionPair<VisibleFileInformation, VisibleFailureReason> reason = FilesAssistant.rename(task.address, task.username,
                     task.location, task.isDirectory, task.name, Main.ClientExecutors, p -> true);
             assert reason != null;

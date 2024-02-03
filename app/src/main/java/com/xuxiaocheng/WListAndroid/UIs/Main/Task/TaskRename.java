@@ -1,6 +1,6 @@
 package com.xuxiaocheng.WListAndroid.UIs.Main.Task;
 
-import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
+import android.view.View;
 import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.AbstractTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.RenameTasksManager;
@@ -44,19 +44,9 @@ public class TaskRename extends SPageTaskFragment {
         @Override
         protected void onPreparing(final @NotNull WrappedPageTaskListSimpleWorkingCellBinding<RenameTasksManager.RenameWorking> cell, final boolean animate) {
             super.onPreparing(cell, animate);
-            cell.cell.pageTaskListSimpleWorkingCellSize.setText(R.string.page_task_rename_working_preparing);
-        }
-
-        @Override
-        protected void onFinishing(final @NotNull WrappedPageTaskListSimpleWorkingCellBinding<RenameTasksManager.RenameWorking> cell, final boolean animate) {
-            super.onFinishing(cell, animate);
-            cell.cell.pageTaskListSimpleWorkingCellSize.setText(R.string.page_task_rename_working_finishing);
-        }
-
-        @Override
-        protected void onWorking(@NotNull final WrappedPageTaskListSimpleWorkingCellBinding<RenameTasksManager.RenameWorking> cell, final boolean animate, @NotNull final Pair.ImmutablePair<@NotNull Long, @NotNull Long> m) {
-            super.onWorking(cell, animate, m);
+            cell.cell.pageTaskListSimpleWorkingCellSize.setText(R.string.page_task_rename_working);
             cell.cell.pageTaskListSimpleWorkingCellProgress.setIndeterminate(true);
+            cell.cell.pageTaskListSimpleWorkingCellProcessText.setVisibility(View.INVISIBLE);
         }
     }
 

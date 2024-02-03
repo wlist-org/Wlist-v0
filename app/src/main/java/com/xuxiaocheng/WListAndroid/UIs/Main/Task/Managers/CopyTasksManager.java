@@ -3,6 +3,7 @@ package com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers;
 import android.app.Activity;
 import androidx.annotation.WorkerThread;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason;
 import com.xuxiaocheng.WListAndroid.UIs.Main.CActivity;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.PageTaskAdapter;
 import org.jetbrains.annotations.NotNull;
@@ -11,8 +12,6 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.File;
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.time.ZonedDateTime;
 
 public class CopyTasksManager extends AbstractTasksManager<CopyTasksManager.CopyTask, CopyTasksManager.CopyWorking, CopyTasksManager.CopySuccess, CopyTasksManager.CopyFailure> {
     protected CopyTasksManager() {
@@ -42,7 +41,7 @@ public class CopyTasksManager extends AbstractTasksManager<CopyTasksManager.Copy
 
     @Override
     protected @NotNull UnionPair<CopySuccess, CopyFailure> runTask(final @NotNull Activity activity, final @NotNull CopyTask task, final @NotNull CopyWorking progress) {
-
+        // TODO
         return UnionPair.ok(new CopySuccess());
     }
 
@@ -52,6 +51,8 @@ public class CopyTasksManager extends AbstractTasksManager<CopyTasksManager.Copy
     }
 
     public static class CopyTask extends AbstractTasksManager.AbstractTask {
+        // TODO
+
         protected CopyTask(final @NotNull AbstractTask task) {
             super(task);
         }
@@ -68,7 +69,7 @@ public class CopyTasksManager extends AbstractTasksManager<CopyTasksManager.Copy
         AbstractTasksManager.dumpAbstractTask(outputStream, task);
     }
 
-    public static class CopyWorking extends AbstractExtraWorking {
+    public static class CopyWorking extends AbstractSimpleExtraWorking {
     }
 
     @Override
@@ -80,7 +81,7 @@ public class CopyTasksManager extends AbstractTasksManager<CopyTasksManager.Copy
     protected void dumpExtraWorking(final @NotNull DataOutput outputStream, final @NotNull CopyWorking extra) {
     }
 
-    public static class CopySuccess extends AbstractExtraSuccess {
+    public static class CopySuccess extends AbstractSimpleExtraSuccess {
     }
 
     @Override
@@ -92,16 +93,20 @@ public class CopyTasksManager extends AbstractTasksManager<CopyTasksManager.Copy
     protected void dumpExtraSuccess(final @NotNull DataOutput outputStream, final @NotNull CopySuccess extra) {
     }
 
-    public static class CopyFailure extends AbstractExtraFailure {
+    public static class CopyFailure extends AbstractSimpleExtraFailure {
+        protected CopyFailure(final @NotNull VisibleFailureReason reason) {
+            super(reason);
+        }
     }
 
     @Override
-    protected @NotNull CopyFailure parseExtraFailure(final @NotNull DataInput inputStream) {
-        return new CopyFailure();
+    protected @NotNull CopyFailure parseExtraFailure(final @NotNull DataInput inputStream) throws IOException {
+        final VisibleFailureReason reason = AbstractTasksManager.parseReason(inputStream);
+        return new CopyFailure(reason);
     }
 
     @Override
-    protected void dumpExtraFailure(final @NotNull DataOutput outputStream, final @NotNull CopyFailure extra) {
+    protected void dumpExtraFailure(final @NotNull DataOutput outputStream, final @NotNull CopyFailure extra) throws IOException {
+        AbstractTasksManager.dumpReason(outputStream, extra.getReason());
     }
-
 }

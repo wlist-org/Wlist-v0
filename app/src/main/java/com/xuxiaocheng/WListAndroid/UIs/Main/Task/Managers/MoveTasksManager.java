@@ -3,6 +3,7 @@ package com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers;
 import android.app.Activity;
 import androidx.annotation.WorkerThread;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason;
 import com.xuxiaocheng.WListAndroid.UIs.Main.CActivity;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.PageTaskAdapter;
 import org.jetbrains.annotations.NotNull;
@@ -11,8 +12,6 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.File;
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.time.ZonedDateTime;
 
 public class MoveTasksManager extends AbstractTasksManager<MoveTasksManager.MoveTask, MoveTasksManager.MoveWorking, MoveTasksManager.MoveSuccess, MoveTasksManager.MoveFailure> {
     protected MoveTasksManager() {
@@ -42,7 +41,7 @@ public class MoveTasksManager extends AbstractTasksManager<MoveTasksManager.Move
 
     @Override
     protected @NotNull UnionPair<MoveSuccess, MoveFailure> runTask(final @NotNull Activity activity, final @NotNull MoveTask task, final @NotNull MoveWorking progress) {
-
+        // TODO
         return UnionPair.ok(new MoveSuccess());
     }
 
@@ -51,7 +50,9 @@ public class MoveTasksManager extends AbstractTasksManager<MoveTasksManager.Move
         return new File(MoveTasksManager.MoveRecordsSaveDirectory, this.getRecordingFileIdentifier(task));
     }
 
-    public static class MoveTask extends AbstractTasksManager.AbstractTask {
+    public static class MoveTask extends AbstractTask {
+        // TODO
+
         protected MoveTask(final @NotNull AbstractTask task) {
             super(task);
         }
@@ -68,7 +69,7 @@ public class MoveTasksManager extends AbstractTasksManager<MoveTasksManager.Move
         AbstractTasksManager.dumpAbstractTask(outputStream, task);
     }
 
-    public static class MoveWorking extends AbstractExtraWorking {
+    public static class MoveWorking extends AbstractSimpleExtraWorking {
     }
 
     @Override
@@ -80,7 +81,7 @@ public class MoveTasksManager extends AbstractTasksManager<MoveTasksManager.Move
     protected void dumpExtraWorking(final @NotNull DataOutput outputStream, final @NotNull MoveWorking extra) {
     }
 
-    public static class MoveSuccess extends AbstractExtraSuccess {
+    public static class MoveSuccess extends AbstractSimpleExtraSuccess {
     }
 
     @Override
@@ -92,16 +93,20 @@ public class MoveTasksManager extends AbstractTasksManager<MoveTasksManager.Move
     protected void dumpExtraSuccess(final @NotNull DataOutput outputStream, final @NotNull MoveSuccess extra) {
     }
 
-    public static class MoveFailure extends AbstractExtraFailure {
+    public static class MoveFailure extends AbstractSimpleExtraFailure {
+        protected MoveFailure(final @NotNull VisibleFailureReason reason) {
+            super(reason);
+        }
     }
 
     @Override
-    protected @NotNull MoveFailure parseExtraFailure(final @NotNull DataInput inputStream) {
-        return new MoveFailure();
+    protected @NotNull MoveFailure parseExtraFailure(final @NotNull DataInput inputStream) throws IOException {
+        final VisibleFailureReason reason = AbstractTasksManager.parseReason(inputStream);
+        return new MoveFailure(reason);
     }
 
     @Override
-    protected void dumpExtraFailure(final @NotNull DataOutput outputStream, final @NotNull MoveFailure extra) {
+    protected void dumpExtraFailure(final @NotNull DataOutput outputStream, final @NotNull MoveFailure extra) throws IOException {
+        AbstractTasksManager.dumpReason(outputStream, extra.getReason());
     }
-
 }
