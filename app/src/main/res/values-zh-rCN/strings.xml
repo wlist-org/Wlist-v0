@@ -44,6 +44,7 @@
 	<string name="page_file_operation_trash">删除</string>
 	<string name="page_file_operation_download">下载</string>
 	<string name="page_file_operation_rename_success">重命名成功</string>
+	<string name="page_file_operation_rename_failure">重命名失败：{0}</string>
 	<string name="page_file_operation_move_success">移动成功</string>
 	<string name="page_file_operation_copy_success">复制成功</string>
 	<string name="page_file_operation_trash_success">删除成功</string>
@@ -98,6 +99,10 @@
 	<string name="page_task_upload_working_preparing">上传即将开始……</string>
 	<string name="page_task_upload_working_finishing">正在完成上传……</string>
 	<string name="page_task_trash_time">删除时间：{0}</string>
+	<string name="page_task_rename_manager_waiting">请等待重命名任务管理器启动完成后重试</string>
+	<string name="page_task_rename_manager_failure">重命名任务管理器初始化失败，正在重试</string>
+	<string name="page_task_rename_working_preparing">重命名即将开始……</string>
+	<string name="page_task_rename_working_finishing">正在完成重命名……</string>
 	<string name="page_file_provider_lanzou">蓝奏云</string>
 	<string name="page_file_provider_name">目录名称：</string>
 	<string name="page_file_provider_passport">网盘账号：</string>

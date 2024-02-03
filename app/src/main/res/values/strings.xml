@@ -47,6 +47,7 @@
 	<string name="page_file_operation_trash">Delete</string>
 	<string name="page_file_operation_download">Download</string>
 	<string name="page_file_operation_rename_success">Renamed.</string>
+	<string name="page_file_operation_rename_failure">Failed to rename. {0}</string>
 	<string name="page_file_operation_move_success">Moved.</string>
 	<string name="page_file_operation_copy_success">Copied.</string>
 	<string name="page_file_operation_trash_success">Deleted.</string>
@@ -111,6 +112,10 @@
 	<string name="page_task_upload_working_finishing">Please waiting…</string>
 	<string name="page_task_trash_progress" translatable="false">@string/page_file_loading_text</string>
 	<string name="page_task_trash_time">Deleted time: {0}</string>
+	<string name="page_task_rename_manager_waiting">Please wait while the rename manager is starting.</string>
+	<string name="page_task_rename_manager_failure">Something went wrong during initializing the rename manager. Retry later.</string>
+	<string name="page_task_rename_working_preparing">Rename is about to begin.</string>
+	<string name="page_task_rename_working_finishing">Please waiting…</string>
 	<string name="page_file_provider_lanzou">Lanzou</string>
 	<string name="page_file_provider_name">Storage name: </string>
 	<string name="page_file_provider_passport">Storage passport: </string>

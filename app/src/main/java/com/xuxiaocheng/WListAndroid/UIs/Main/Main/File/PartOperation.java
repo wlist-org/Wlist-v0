@@ -10,16 +10,20 @@ import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Initializers.HProcessingInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.AndroidSupports.FailureReasonGetter;
 import com.xuxiaocheng.WList.AndroidSupports.FileInformationGetter;
 import com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
+import com.xuxiaocheng.WList.Commons.Options.DuplicatePolicy;
 import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.AbstractTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.DownloadTasksManager;
+import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.RenameTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.TrashTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.PageTaskAdapter;
 import com.xuxiaocheng.WListAndroid.Utils.HLogManager;
@@ -28,7 +32,9 @@ import com.xuxiaocheng.WListAndroid.databinding.PageFileOperationBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileOperationRenameBinding;
 import org.jetbrains.annotations.NotNull;
 
+import java.text.MessageFormat;
 import java.time.ZonedDateTime;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 class PartOperation extends SFragmentFilePart {
@@ -68,11 +74,35 @@ class PartOperation extends SFragmentFilePart {
                     .setPositiveButton(R.string.confirm, (d, w) -> {
                         final String renamed = ViewUtil.getText(rename.pageFileRenameName);
                         if (AndroidSupporter.isBlank(renamed) || FileInformationGetter.name(information).equals(renamed)) return;
-
                         Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
-                            throw new UnsupportedOperationException("WIP");
-                        }, () -> clickable.set(true))); // TODO
-//                        final AlertDialog dialog = this.pageFile.partUpload.loadingDialog(this.pageFile.activity(), R.string.page_file_operation_rename);
+                            final UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> res;
+                            try (final WListClientInterface client = this.client()) {
+                                res = OperateFilesHelper.renameDirectly(client, this.token(), current, FileInformationGetter.isDirectory(information), renamed, DuplicatePolicy.KEEP);
+                            }
+                            if (res.isFailure()) {
+                                Toaster.show(MessageFormat.format(this.activity().getString(R.string.page_file_operation_rename), FailureReasonGetter.toString(res.getE())));
+                                return;
+                            }
+                            if (res.getT().isPresent()) {
+                                Toaster.show(R.string.page_file_operation_rename_success);
+                                return;
+                            }
+                            final UnionPair<HProcessingInitializer.LoadingState, Throwable> state = AbstractTasksManager.managers.getLoadingState(PageTaskAdapter.Types.Rename);
+                            if (state == HProcessingInitializer.USuccess) {
+                                Toaster.showShort(R.string.page_file_operation_complex);
+                                RenameTasksManager.getInstance().addTask(this.activity(), new RenameTasksManager.RenameTask(new AbstractTasksManager.AbstractTask(
+                                        this.address(), this.username(), ZonedDateTime.now(), FileInformationGetter.name(information), PageTaskAdapter.Types.Rename),
+                                        current, FileInformationGetter.isDirectory(information), renamed));
+                            } else {
+                                if (state.isSuccess())
+                                    Toaster.show(R.string.page_task_rename_manager_waiting);
+                                else {
+                                    Toaster.show(R.string.page_task_rename_manager_failure);
+                                    this.fragment.partTask().initializeManagers();
+                                }
+                            }
+                        }));
+//                        final AlertDialog dialog = this.fragment.partUpload().loadingDialog(this.activity(), R.string.page_file_operation_rename);
 //                        Main.runOnBackgroundThread(this.pageFile.activity(), HExceptionWrapper.wrapRunnable(() -> {
 //                            HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Renaming.",
 //                                    ParametersMap.create().add("address", this.pageFile.address()).add("information", information).add("renamed", renamed));
@@ -83,9 +113,8 @@ class PartOperation extends SFragmentFilePart {
 //                                Main.runOnUiThread(this.pageFile.activity(), () -> Toast.makeText(this.pageFile.activity(), FailureReasonGetter.kind(res.getE()) + FailureReasonGetter.message(res.getE()), Toast.LENGTH_SHORT).show());
 //                            else
 //                                Main.showToast(this.pageFile.activity(), R.string.page_file_operation_rename_success);
-//                        }, () -> Main.runOnUiThread(this.pageFile.activity(), dialog::cancel)));
+//                        }, () -> Main.runOnUiThread(this.activity(), dialog::cancel)));
                     }).show();
-            modifier.cancel();
         });
         operationBinding.pageFileOperationRenameImage.setOnClickListener(u -> operationBinding.pageFileOperationRename.performClick());
         operationBinding.pageFileOperationMove.setOnClickListener(u -> {
