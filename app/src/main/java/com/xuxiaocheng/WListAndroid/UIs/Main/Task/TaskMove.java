@@ -1,10 +1,9 @@
 package com.xuxiaocheng.WListAndroid.UIs.Main.Task;
 
+import android.view.View;
+import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.AbstractTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.MoveTasksManager;
-import com.xuxiaocheng.WListAndroid.databinding.PageTaskListMoveFailureCellBinding;
-import com.xuxiaocheng.WListAndroid.databinding.PageTaskListMoveSuccessCellBinding;
-import com.xuxiaocheng.WListAndroid.databinding.PageTaskListMoveWorkingCellBinding;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.atomic.AtomicReference;
@@ -25,24 +24,16 @@ public class TaskMove extends SPageTaskFragment {
         };
     }
 
-    public static class MoveFailureTaskStateFragment extends FailureTaskStateFragment<PageTaskListMoveFailureCellBinding, MoveTasksManager.MoveTask, MoveTasksManager.MoveFailure> {
-        public MoveFailureTaskStateFragment() {
-            super(PageTaskListMoveFailureCellBinding::inflate);
-        }
-
+    public static class MoveFailureTaskStateFragment extends SimpleFailureTaskStateFragment<MoveTasksManager.MoveTask, MoveTasksManager.MoveFailure> {
         @Override
         protected @NotNull AbstractTasksManager<MoveTasksManager.MoveTask, ?, ?, MoveTasksManager.MoveFailure> getManager() {
             return MoveTasksManager.getInstance();
         }
-
-        @Override
-        protected void onBind(final @NotNull PageTaskListMoveFailureCellBinding cell, final MoveTasksManager.@NotNull MoveTask task, final MoveTasksManager.@NotNull MoveFailure data) {
-        }
     }
 
-    public static class MoveWorkingTaskStateFragment extends WorkingTaskStateFragment<PageTaskListMoveWorkingCellBinding, MoveTasksManager.MoveTask, MoveTasksManager.MoveWorking> {
+    public static class MoveWorkingTaskStateFragment extends SimpleWorkingTaskStateFragment<SimpleWorkingTaskStateFragment.WrappedPageTaskListSimpleWorkingCellBinding<MoveTasksManager.MoveWorking>, MoveTasksManager.MoveTask, MoveTasksManager.MoveWorking> {
         public MoveWorkingTaskStateFragment() {
-            super(PageTaskListMoveWorkingCellBinding::inflate);
+            super(WrappedPageTaskListSimpleWorkingCellBinding::new);
         }
 
         @Override
@@ -51,22 +42,18 @@ public class TaskMove extends SPageTaskFragment {
         }
 
         @Override
-        protected void onBind(final @NotNull PageTaskListMoveWorkingCellBinding cell, final MoveTasksManager.@NotNull MoveTask task, final MoveTasksManager.@NotNull MoveWorking data) {
+        protected void onPreparing(final @NotNull WrappedPageTaskListSimpleWorkingCellBinding<MoveTasksManager.MoveWorking> cell, final boolean animate) {
+            super.onPreparing(cell, animate);
+            cell.cell.pageTaskListSimpleWorkingCellSize.setText(R.string.page_task_move_working);
+            cell.cell.pageTaskListSimpleWorkingCellProgress.setIndeterminate(true);
+            cell.cell.pageTaskListSimpleWorkingCellProcessText.setVisibility(View.INVISIBLE);
         }
     }
 
-    public static class MoveSuccessTaskStateFragment extends SuccessTaskStateFragment<PageTaskListMoveSuccessCellBinding, MoveTasksManager.MoveTask, MoveTasksManager.MoveSuccess> {
-        public MoveSuccessTaskStateFragment() {
-            super(PageTaskListMoveSuccessCellBinding::inflate);
-        }
-
+    public static class MoveSuccessTaskStateFragment extends SimpleSuccessTaskStateFragment<MoveTasksManager.MoveTask, MoveTasksManager.MoveSuccess> {
         @Override
         protected @NotNull AbstractTasksManager<MoveTasksManager.MoveTask, ?, MoveTasksManager.MoveSuccess, ?> getManager() {
             return MoveTasksManager.getInstance();
-        }
-
-        @Override
-        protected void onBind(final @NotNull PageTaskListMoveSuccessCellBinding cell, final MoveTasksManager.@NotNull MoveTask task, final MoveTasksManager.@NotNull MoveSuccess data) {
         }
     }
 }

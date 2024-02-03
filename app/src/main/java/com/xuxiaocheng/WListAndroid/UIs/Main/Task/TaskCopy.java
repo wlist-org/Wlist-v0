@@ -1,10 +1,9 @@
 package com.xuxiaocheng.WListAndroid.UIs.Main.Task;
 
+import android.view.View;
+import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.AbstractTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.CopyTasksManager;
-import com.xuxiaocheng.WListAndroid.databinding.PageTaskListCopyFailureCellBinding;
-import com.xuxiaocheng.WListAndroid.databinding.PageTaskListCopySuccessCellBinding;
-import com.xuxiaocheng.WListAndroid.databinding.PageTaskListCopyWorkingCellBinding;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.atomic.AtomicReference;
@@ -25,24 +24,16 @@ public class TaskCopy extends SPageTaskFragment {
         };
     }
 
-    public static class CopyFailureTaskStateFragment extends FailureTaskStateFragment<PageTaskListCopyFailureCellBinding, CopyTasksManager.CopyTask, CopyTasksManager.CopyFailure> {
-        public CopyFailureTaskStateFragment() {
-            super(PageTaskListCopyFailureCellBinding::inflate);
-        }
-
+    public static class CopyFailureTaskStateFragment extends SimpleFailureTaskStateFragment<CopyTasksManager.CopyTask, CopyTasksManager.CopyFailure> {
         @Override
         protected @NotNull AbstractTasksManager<CopyTasksManager.CopyTask, ?, ?, CopyTasksManager.CopyFailure> getManager() {
             return CopyTasksManager.getInstance();
         }
-
-        @Override
-        protected void onBind(final @NotNull PageTaskListCopyFailureCellBinding cell, final CopyTasksManager.@NotNull CopyTask task, final CopyTasksManager.@NotNull CopyFailure data) {
-        }
     }
 
-    public static class CopyWorkingTaskStateFragment extends WorkingTaskStateFragment<PageTaskListCopyWorkingCellBinding, CopyTasksManager.CopyTask, CopyTasksManager.CopyWorking> {
+    public static class CopyWorkingTaskStateFragment extends SimpleWorkingTaskStateFragment<SimpleWorkingTaskStateFragment.WrappedPageTaskListSimpleWorkingCellBinding<CopyTasksManager.CopyWorking>, CopyTasksManager.CopyTask, CopyTasksManager.CopyWorking> {
         public CopyWorkingTaskStateFragment() {
-            super(PageTaskListCopyWorkingCellBinding::inflate);
+            super(WrappedPageTaskListSimpleWorkingCellBinding::new);
         }
 
         @Override
@@ -51,22 +42,18 @@ public class TaskCopy extends SPageTaskFragment {
         }
 
         @Override
-        protected void onBind(final @NotNull PageTaskListCopyWorkingCellBinding cell, final CopyTasksManager.@NotNull CopyTask task, final CopyTasksManager.@NotNull CopyWorking data) {
+        protected void onPreparing(final @NotNull WrappedPageTaskListSimpleWorkingCellBinding<CopyTasksManager.CopyWorking> cell, final boolean animate) {
+            super.onPreparing(cell, animate);
+            cell.cell.pageTaskListSimpleWorkingCellSize.setText(R.string.page_task_copy_working);
+            cell.cell.pageTaskListSimpleWorkingCellProgress.setIndeterminate(true);
+            cell.cell.pageTaskListSimpleWorkingCellProcessText.setVisibility(View.INVISIBLE);
         }
     }
 
-    public static class CopySuccessTaskStateFragment extends SuccessTaskStateFragment<PageTaskListCopySuccessCellBinding, CopyTasksManager.CopyTask, CopyTasksManager.CopySuccess> {
-        public CopySuccessTaskStateFragment() {
-            super(PageTaskListCopySuccessCellBinding::inflate);
-        }
-
+    public static class CopySuccessTaskStateFragment extends SimpleSuccessTaskStateFragment<CopyTasksManager.CopyTask, CopyTasksManager.CopySuccess> {
         @Override
         protected @NotNull AbstractTasksManager<CopyTasksManager.CopyTask, ?, CopyTasksManager.CopySuccess, ?> getManager() {
             return CopyTasksManager.getInstance();
-        }
-
-        @Override
-        protected void onBind(final @NotNull PageTaskListCopySuccessCellBinding cell, final CopyTasksManager.@NotNull CopyTask task, final CopyTasksManager.@NotNull CopySuccess data) {
         }
     }
 }

@@ -186,9 +186,19 @@ class PartOperation extends SFragmentFilePart {
                                 Toaster.show(R.string.page_file_operation_trash_success);
                                 return;
                             }
-                            Toaster.showShort(R.string.page_file_operation_complex);
-                            TrashTasksManager.getInstance().addTask(this.activity(), new TrashTasksManager.TrashTask(new AbstractTasksManager.AbstractTask(
-                                    this.address(), this.username(), ZonedDateTime.now(), FileInformationGetter.name(information), PageTaskAdapter.Types.Trash), location));
+                            final UnionPair<HProcessingInitializer.LoadingState, Throwable> state = AbstractTasksManager.managers.getLoadingState(PageTaskAdapter.Types.Trash);
+                            if (state == HProcessingInitializer.USuccess) {
+                                Toaster.showShort(R.string.page_file_operation_complex);
+                                TrashTasksManager.getInstance().addTask(this.activity(), new TrashTasksManager.TrashTask(new AbstractTasksManager.AbstractTask(
+                                        this.address(), this.username(), ZonedDateTime.now(), FileInformationGetter.name(information), PageTaskAdapter.Types.Trash), location));
+                            } else {
+                                if (state.isSuccess())
+                                    Toaster.show(R.string.page_task_trash_manager_waiting);
+                                else {
+                                    Toaster.show(R.string.page_task_trash_manager_failure);
+                                    this.fragment.partTask().initializeManagers();
+                                }
+                            }
                         }, () -> Main.runOnUiThread(this.activity(), dialog::cancel)));
                     }).show();
         });
