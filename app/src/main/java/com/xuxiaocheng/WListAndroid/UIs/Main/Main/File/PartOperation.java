@@ -25,6 +25,7 @@ import com.xuxiaocheng.WList.Commons.Utils.MiscellaneousUtil;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.AbstractTasksManager;
+import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.CopyTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.DownloadTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.MoveTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.RenameTasksManager;
@@ -154,31 +155,39 @@ class PartOperation extends SFragmentFilePart {
         operationBinding.pageFileOperationCopy.setOnClickListener(u -> {
             if (!clickable.compareAndSet(true, false)) return;
             modifier.cancel();
-            // TODO
-//            Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
-//                final Pair.ImmutablePair<String, Long> pair = FileInformationGetter.isDirectory(information) ?
-//                        this.queryTargetDirectory(R.string.page_file_operation_copy, storage, FileInformationGetter.id(information)) :
-//                        this.queryTargetDirectory(R.string.page_file_operation_copy, null, 0);
-//                if (pair == null) return;
-//                final FileLocation target = new FileLocation(pair.getFirst(), pair.getSecond().longValue());
-//                HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Copying.",
-//                        ParametersMap.create().add("address", this.pageFile.address()).add("information", information).add("target", target));
-//                Main.runOnUiThread(this.pageFile.activity(), () -> {
-//                    final AlertDialog dialog = this.pageFile.partUpload.loadingDialog(this.pageFile.activity(), R.string.page_file_operation_copy);
-//                    Main.runOnBackgroundThread(this.pageFile.activity(), HExceptionWrapper.wrapRunnable(() -> {
-//                        final AtomicBoolean queried = new AtomicBoolean(false);
-//                        final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.copy(this.pageFile.address(), this.pageFile.username(), current, FileInformationGetter.isDirectory(information), target, FileInformationGetter.name(information), Main.ClientExecutors, HExceptionWrapper.wrapPredicate(p -> {
-//                            if (queried.getAndSet(true)) return true;
-//                            return this.queryNotSupportedOperation(p);
-//                        }));
-//                        if (res == null) return;
-//                        if (res.isFailure())
-//                            Main.runOnUiThread(this.pageFile.activity(), () -> Toast.makeText(this.pageFile.activity(), FailureReasonGetter.kind(res.getE()) + FailureReasonGetter.message(res.getE()), Toast.LENGTH_SHORT).show());
-//                        else
-//                            Main.showToast(this.pageFile.activity(), R.string.page_file_operation_copy_success);
-//                    }, () -> Main.runOnUiThread(this.pageFile.activity(), dialog::cancel)));
-//                });
-//            }));
+            Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
+                final FileLocation target = this.queryTargetDirectory(R.string.page_file_operation_copy, FileInformationGetter.isDirectory(information) ? storage : null, FileInformationGetter.id(information));
+                if (target == null) return;
+                HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Copying.",
+                        ParametersMap.create().add("address", this.address()).add("information", information).add("target", target));
+                final String targetName = FileInformationGetter.name(information); // TODO
+                final UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> res;
+                try (final WListClientInterface client = this.client()) {
+                    res = OperateFilesHelper.copyDirectly(client, this.token(), current, FileInformationGetter.isDirectory(information), target, targetName, DuplicatePolicy.KEEP);
+                }
+                if (res.isFailure()) {
+                    Toaster.show(MessageFormat.format(this.activity().getString(R.string.page_file_operation_copy_failure), FailureReasonGetter.toString(res.getE())));
+                    return;
+                }
+                if (res.getT().isPresent()) {
+                    Toaster.show(R.string.page_file_operation_copy_success);
+                    return;
+                }
+                final UnionPair<HProcessingInitializer.LoadingState, Throwable> state = AbstractTasksManager.managers.getLoadingState(PageTaskAdapter.Types.Copy);
+                if (state == HProcessingInitializer.USuccess) {
+                    Toaster.showShort(R.string.page_file_operation_complex);
+                    CopyTasksManager.getInstance().addTask(this.activity(), new CopyTasksManager.CopyTask(new AbstractTasksManager.AbstractTask(
+                            this.address(), this.username(), ZonedDateTime.now(), FileInformationGetter.name(information), PageTaskAdapter.Types.Copy),
+                            current, FileInformationGetter.isDirectory(information), target, targetName));
+                } else {
+                    if (state.isSuccess())
+                        Toaster.show(R.string.page_task_copy_manager_waiting);
+                    else {
+                        Toaster.show(R.string.page_task_copy_manager_failure);
+                        this.fragment.partTask().initializeManagers();
+                    }
+                }
+            }));
         });
         operationBinding.pageFileOperationCopyImage.setOnClickListener(u -> operationBinding.pageFileOperationCopy.performClick());
         operationBinding.pageFileOperationTrash.setOnClickListener(u -> {

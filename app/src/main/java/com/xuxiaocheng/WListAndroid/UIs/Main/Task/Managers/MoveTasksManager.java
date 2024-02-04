@@ -3,8 +3,13 @@ package com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers;
 import android.app.Activity;
 import androidx.annotation.WorkerThread;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
+import com.xuxiaocheng.HeadLibs.Functions.RunnableE;
+import com.xuxiaocheng.WList.Client.Assistants.FilesAssistant;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason;
+import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
+import com.xuxiaocheng.WList.Commons.Operations.FailureKind;
+import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.UIs.Main.CActivity;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.PageTaskAdapter;
 import org.jetbrains.annotations.NotNull;
@@ -44,8 +49,17 @@ public class MoveTasksManager extends AbstractTasksManager<MoveTasksManager.Move
 
     @Override
     protected @NotNull UnionPair<MoveSuccess, MoveFailure> runTask(final @NotNull Activity activity, final @NotNull MoveTask task, final @NotNull MoveWorking progress) {
-        // TODO
-        return UnionPair.ok(new MoveSuccess());
+        try {
+            progress.started = true;
+            progress.updateCallbacks.callback(RunnableE::run);
+            final UnionPair<VisibleFileInformation, VisibleFailureReason> reason = FilesAssistant.move(task.address, task.username,
+                    task.location, task.isDirectory, task.target, Main.ClientExecutors, p -> true);
+            assert reason != null;
+            return reason.isSuccess() ? UnionPair.ok(new MoveSuccess()) : UnionPair.fail(new MoveFailure(reason.getE()));
+        } catch (@SuppressWarnings("OverlyBroadCatchBlock") final Throwable throwable) {
+            final VisibleFailureReason reason = new VisibleFailureReason(FailureKind.Others, task.location, Objects.requireNonNullElse(throwable.getLocalizedMessage(), ""));
+            return UnionPair.fail(new MoveFailure(reason));
+        }
     }
 
     @Override
