@@ -4,9 +4,12 @@ import com.xuxiaocheng.WListAndroid.UIs.Main.Main.PageMainAdapter;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Main.SPageMainFragment;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class FragmentFile extends SPageMainFragment<PageFileBinding> {
     private final @NotNull PartConnect partConnect = new PartConnect(this);
@@ -18,6 +21,8 @@ public class FragmentFile extends SPageMainFragment<PageFileBinding> {
     private final @NotNull PartTask partTask = new PartTask(this);
 
     protected final @NotNull AtomicBoolean selectingMode = new AtomicBoolean(false);
+    protected final @NotNull AtomicReference<String> currentStorage = new AtomicReference<>();
+    protected final @NotNull AtomicLong currentDirectoryId = new AtomicLong();
 
     public FragmentFile() {
         super();
@@ -30,12 +35,22 @@ public class FragmentFile extends SPageMainFragment<PageFileBinding> {
         this.parts().add(this.partTask);
     }
 
-    public void setSelectingMode() {
+    public void setSelectingMode(final @Nullable String currentStorage, final long currentDirectoryId) {
         this.selectingMode.set(true);
+        this.currentStorage.set(currentStorage);
+        this.currentDirectoryId.set(currentDirectoryId);
     }
 
     public boolean isSelectingMode() {
         return this.selectingMode.get();
+    }
+
+    public @Nullable String getCurrentStorage() {
+        return this.currentStorage.get();
+    }
+
+    public long getCurrentDirectoryId() {
+        return this.currentDirectoryId.get();
     }
 
     @SuppressWarnings("unchecked")

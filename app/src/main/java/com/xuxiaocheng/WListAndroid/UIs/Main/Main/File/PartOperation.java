@@ -83,6 +83,8 @@ class PartOperation extends SFragmentFilePart {
                         final String renamed = ViewUtil.getText(rename.pageFileRenameName);
                         if (AndroidSupporter.isBlank(renamed) || FileInformationGetter.name(information).equals(renamed)) return;
                         Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
+                            HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Renaming.",
+                                    ParametersMap.create().add("address", this.address()).add("information", information).add("renamed", renamed));
                             final UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> res;
                             try (final WListClientInterface client = this.client()) {
                                 res = OperateFilesHelper.renameDirectly(client, this.token(), current, FileInformationGetter.isDirectory(information), renamed, DuplicatePolicy.KEEP);
@@ -147,7 +149,7 @@ class PartOperation extends SFragmentFilePart {
             if (!clickable.compareAndSet(true, false)) return;
             modifier.cancel();
             // TODO
-//            Main.runOnBackgroundThread(this.pageFile.activity(), HExceptionWrapper.wrapRunnable(() -> {
+//            Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
 //                final Pair.ImmutablePair<String, Long> pair = FileInformationGetter.isDirectory(information) ?
 //                        this.queryTargetDirectory(R.string.page_file_operation_copy, storage, FileInformationGetter.id(information)) :
 //                        this.queryTargetDirectory(R.string.page_file_operation_copy, null, 0);
@@ -222,8 +224,8 @@ class PartOperation extends SFragmentFilePart {
                     modifier.cancel();
                     new AlertDialog.Builder(this.activity()).setTitle(R.string.page_file_operation_download)
                             .setNegativeButton(R.string.cancel, null)
-                            .setPositiveButton(R.string.confirm, (d, w) -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> DownloadTasksManager.getInstance()
-                                    .addTask(this.activity(), new DownloadTasksManager.DownloadTask(new AbstractTasksManager.AbstractTask(
+                            .setPositiveButton(R.string.confirm, (d, w) -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() ->
+                                    DownloadTasksManager.getInstance().addTask(this.activity(), new DownloadTasksManager.DownloadTask(new AbstractTasksManager.AbstractTask(
                                             this.address(), this.username(), MiscellaneousUtil.now(), FileInformationGetter.name(information),
                                             PageTaskAdapter.Types.Download), current)))))
                             .show();
@@ -247,7 +249,7 @@ class PartOperation extends SFragmentFilePart {
         final CountDownLatch latch = new CountDownLatch(1);
         final AtomicReference<FileLocation> result = new AtomicReference<>();
         final FragmentFile fragment = new FragmentFile();
-        fragment.setSelectingMode();
+        fragment.setSelectingMode(currentStorage, currentDirectoryId);
         Main.runOnUiThread(this.activity(), () -> {
             this.fragment.getChildFragmentManager().beginTransaction().add(fragment, "selecting").commitNow();
             final View p = this.fragmentContent().getRoot();

@@ -12,6 +12,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.hjq.toast.Toaster;
+import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
 import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.Triad;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
@@ -49,6 +50,7 @@ import java.text.MessageFormat;
 import java.util.ArrayDeque;
 import java.util.Comparator;
 import java.util.Deque;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -269,16 +271,25 @@ public class PartList extends SFragmentFilePart {
                         noMoreDown.set(FilesListInformationGetter.informationList(list).size() < limit);
                     else
                         noMoreUp.set(loadedUp.get() <= 0);
-                    final VisibleFilesListInformation l = list;
+                    final long total = FilesListInformationGetter.total(list);
+                    List<VisibleFileInformation> informations = FilesListInformationGetter.informationList(list);
+                    if (PartList.this.fragment.isSelectingMode()) {
+                        final String disabledStorage = PartList.this.fragment.getCurrentStorage();
+                        if (disabledStorage != null && disabledStorage.equals(FileLocationGetter.storage(location))) {
+                            final long disabledDirectory = PartList.this.fragment.getCurrentDirectoryId();
+                            informations = AndroidSupporter.streamToList(informations.stream().filter(v -> !FileInformationGetter.isDirectory(v) || FileInformationGetter.id(v) != disabledDirectory));
+                        }
+                    }
+                    final List<VisibleFileInformation> l = informations;
                     Main.runOnUiThread(activity, () -> {
-                        PartList.this.fragmentContent().pageFileCounter.setText(String.valueOf(FilesListInformationGetter.total(l)));
+                        PartList.this.fragmentContent().pageFileCounter.setText(String.valueOf(total));
                         PartList.this.fragmentContent().pageFileCounter.setVisibility(View.VISIBLE);
                         PartList.this.fragmentContent().pageFileCounterText.setVisibility(View.VISIBLE);
                         final boolean empty = adapter.getData().isEmpty();
                         if (isDown)
-                            adapter.addDataRange(FilesListInformationGetter.informationList(l));
+                            adapter.addDataRange(l);
                         else
-                            adapter.addDataRange(0, FilesListInformationGetter.informationList(l));
+                            adapter.addDataRange(0, l);
                         if (empty)
                             recyclerView.scrollToPosition(0);
                     });
