@@ -9,6 +9,7 @@ android {
     defaultConfig {
         applicationId "com.xuxiaocheng.wlist"
         minSdk 26
+        //noinspection ExpiredTargetSdkVersion
         targetSdk 29 // TODO
         versionCode 2
         versionName "0.1.1"
