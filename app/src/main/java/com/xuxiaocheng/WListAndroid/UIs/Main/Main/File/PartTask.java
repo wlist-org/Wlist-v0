@@ -32,12 +32,16 @@ class PartTask extends SFragmentFilePart {
     @Override
     protected void iOnBuildPage() {
         super.iOnBuildPage();
+        if (this.fragment.isSelectingMode())
+            return;
         this.pageContent().activityMainTasks.setOnClickListener(v -> this.start());
     }
 
     @Override
     public void cOnConnect() {
         super.cOnConnect();
+        if (this.fragment.isSelectingMode())
+            return;
         Main.runOnUiThread(this.activity(), () -> this.pageContent().activityMainTasks.setVisibility(View.VISIBLE));
         this.initializeManagers();
     }

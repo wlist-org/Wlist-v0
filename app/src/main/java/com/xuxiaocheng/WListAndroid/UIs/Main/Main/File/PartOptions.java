@@ -58,6 +58,8 @@ class PartOptions extends SFragmentFilePart {
     @Override
     protected void iOnBuildPage() {
         super.iOnBuildPage();
+        if (this.fragment.isSelectingMode())
+            return;
         this.pageContent().activityMainOptions.setOnClickListener(v -> {
             if (this.currentFragmentTypes() != PageMainAdapter.Types.File) return;
             final ListPopupWindow popup = new ListPopupWindow(this.activity());

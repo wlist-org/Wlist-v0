@@ -143,32 +143,32 @@ public abstract class AbstractTasksManager<T extends AbstractTasksManager.Abstra
                 try {
                     try (final DataInputStream inputStream = new DataInputStream(new GZIPInputStream(new BufferedInputStream(new FileInputStream(file))))) {
                         final T task = this.parseTask(inputStream);
-                        final boolean warn = !this.getRecordingFile(task).getCanonicalFile().equals(file.getCanonicalFile());
-                        if (warn) {
-                            HLogManager.getInstance("TasksManager").log(HLogLevel.WARN, "Incorrect task recording path.", ParametersMap.create()
-                                    .add("file", file).add("task", task));
-                            Files.deleteIfExists(file.toPath());
-                        }
+//                        final boolean warn = !this.getRecordingFile(task).getCanonicalFile().equals(file.getCanonicalFile());
+//                        if (warn) {
+//                            HLogManager.getInstance("TasksManager").log(HLogLevel.WARN, "Incorrect task recording path.", ParametersMap.create()
+//                                    .add("file", file).add("task", task));
+//                            Files.deleteIfExists(file.toPath());
+//                        }
                         final TaskState _state = this.parseState(inputStream);
                         final TaskState state = _state == TaskState.Working ? TaskState.Pending : _state;
                         switch (state) {
                             case Pending -> {
                                 final EW extra = this.parseExtraWorking(inputStream);
                                 this.pendingTasks.put(task, extra);
-                                if (warn)
-                                    this.dumpWorkingTask(activity, task, extra);
+//                                if (warn)
+//                                    this.dumpWorkingTask(activity, task, extra);
                             }
                             case Success -> {
                                 final ES extra = this.parseExtraSuccess(inputStream);
                                 this.successTasks.put(task, extra);
-                                if (warn)
-                                    this.dumpSuccessTask(activity, task, extra);
+//                                if (warn)
+//                                    this.dumpSuccessTask(activity, task, extra);
                             }
                             case Failure -> {
                                 final EF extra = this.parseExtraFailure(inputStream);
                                 this.failureTasks.put(task, extra);
-                                if (warn)
-                                    this.dumpFailureTask(activity, task, extra);
+//                                if (warn)
+//                                    this.dumpFailureTask(activity, task, extra);
                             }
                         }
                     } catch (@SuppressWarnings("OverlyBroadCatchBlock") final IOException exception) {

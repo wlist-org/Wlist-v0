@@ -1,10 +1,14 @@
 package com.xuxiaocheng.WListAndroid.UIs.Main.Main.File;
 
 import android.view.View;
+import android.widget.FrameLayout;
+import androidx.annotation.StringRes;
 import androidx.annotation.UiThread;
+import androidx.annotation.WorkerThread;
 import androidx.appcompat.app.AlertDialog;
 import com.hjq.toast.Toaster;
 import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
+import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
@@ -12,6 +16,7 @@ import com.xuxiaocheng.HeadLibs.Initializers.HProcessingInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.AndroidSupports.FailureReasonGetter;
 import com.xuxiaocheng.WList.AndroidSupports.FileInformationGetter;
+import com.xuxiaocheng.WList.AndroidSupports.FileLocationGetter;
 import com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
@@ -31,11 +36,14 @@ import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileOperationBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileOperationRenameBinding;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.text.MessageFormat;
 import java.time.ZonedDateTime;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 class PartOperation extends SFragmentFilePart {
     protected PartOperation(final @NotNull FragmentFile fragment) {
@@ -109,14 +117,14 @@ class PartOperation extends SFragmentFilePart {
             if (!clickable.compareAndSet(true, false)) return;
             modifier.cancel();
             // TODO
-//            Main.runOnBackgroundThread(this.pageFile.activity(), HExceptionWrapper.wrapRunnable(() -> {
-//                final Pair.ImmutablePair<String, Long> pair = FileInformationGetter.isDirectory(information) ?
-//                        this.queryTargetDirectory(R.string.page_file_operation_move, storage, FileInformationGetter.id(information)) :
-//                        this.queryTargetDirectory(R.string.page_file_operation_move, null, 0);
-//                if (pair == null) return;
-//                final FileLocation target = new FileLocation(pair.getFirst(), pair.getSecond().longValue());
-//                HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Moving.",
-//                        ParametersMap.create().add("address", this.pageFile.address()).add("information", information).add("target", target));
+            Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
+                final Pair.ImmutablePair<String, Long> pair = FileInformationGetter.isDirectory(information) ?
+                        this.queryTargetDirectory(R.string.page_file_operation_move, storage, FileInformationGetter.id(information)) :
+                        this.queryTargetDirectory(R.string.page_file_operation_move, null, 0);
+                if (pair == null) return;
+                final FileLocation target = new FileLocation(pair.getFirst(), pair.getSecond().longValue());
+                HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Moving.",
+                        ParametersMap.create().add("address", this.address()).add("information", information).add("target", target));
 //                Main.runOnUiThread(this.pageFile.activity(), () -> {
 //                    final AlertDialog dialog = this.pageFile.partUpload.loadingDialog(this.pageFile.activity(), R.string.page_file_operation_move);
 //                    Main.runOnBackgroundThread(this.pageFile.activity(), HExceptionWrapper.wrapRunnable(() -> {
@@ -132,7 +140,7 @@ class PartOperation extends SFragmentFilePart {
 //                            Main.showToast(this.pageFile.activity(), R.string.page_file_operation_move_success);
 //                    }, () -> Main.runOnUiThread(this.pageFile.activity(), dialog::cancel)));
 //                });
-//            }));
+            }));
         });
         operationBinding.pageFileOperationMoveImage.setOnClickListener(u -> operationBinding.pageFileOperationMove.performClick());
         operationBinding.pageFileOperationCopy.setOnClickListener(u -> {
@@ -234,52 +242,32 @@ class PartOperation extends SFragmentFilePart {
         modifier.show();
     }
 
-
-//    @WorkerThread
-//    public boolean queryNotSupportedOperation(final FilesAssistant.@Nullable NotDirectlyPolicy policy) throws InterruptedException {
-//        final CountDownLatch latch = new CountDownLatch(1);
-//        final AtomicBoolean continuer = new AtomicBoolean(false);
-//        Main.runOnUiThread(this.pageFile.activity(), () -> new AlertDialog.Builder(this.pageFile.activity())
-//                .setTitle(R.string.page_file_operation_complex)
-//                .setOnCancelListener(a -> latch.countDown())
-//                .setNegativeButton(R.string.cancel, (a, b) -> latch.countDown())
-//                .setPositiveButton(R.string.confirm, (a, k) -> Main.runOnBackgroundThread(this.pageFile.activity(), () -> {
-//                    continuer.set(true);
-//                    latch.countDown();
-//                })).show());
-//        latch.await();
-//        return continuer.get();
-//    }
-//
-//    @WorkerThread
-//    public Pair.@Nullable ImmutablePair<@NotNull String, @NotNull Long> queryTargetDirectory(@StringRes final int title, final @Nullable String currentStorage, final long currentDirectoryId) throws InterruptedException {
-//        final CountDownLatch latch = new CountDownLatch(1);
-//        final AtomicReference<FileLocation> result = new AtomicReference<>();
-//        final PageFile fragment = new PageFile() {
-//            @Override
-//            public @NotNull ActivityMain activity() {
-//                return PageFilePartOperation.this.pageFile.activity();
-//            }
-//        }; // TODO
-//        Main.runOnUiThread(this.pageFile.activity(), () -> {
-//            fragment.onCreateView(this.pageFile.activity().getLayoutInflater(), null, null);
-//            final View p = this.pageFile.fragment().getRoot();
-//            new AlertDialog.Builder(this.pageFile.activity())
-//                    .setTitle(title).setView(fragment.fragment().getRoot())
-//                    .setOnCancelListener(a -> latch.countDown())
-//                    .setNegativeButton(R.string.cancel, (a, b) -> latch.countDown())
-//                    .setPositiveButton(R.string.confirm, (a, k) -> {
-////                        result.set(fragment.partList.currentLocation());
-//                        latch.countDown();
-//                    }).show()
-//                    .getWindow().setLayout(p.getWidth(), p.getHeight());
-//            fragment.fragment().getRoot().setLayoutParams(new FrameLayout.LayoutParams(p.getWidth(), p.getHeight()));
-//            fragment.fragment().pageFileUploader.setVisibility(View.GONE);
-//        });
-//        latch.await();
-//        final FileLocation choice = result.get();
-//        if (choice == null)
-//            return null;
-//        return Pair.ImmutablePair.makeImmutablePair(FileLocationGetter.storage(choice), FileLocationGetter.id(choice));
-//    }
+    @WorkerThread
+    public Pair.@Nullable ImmutablePair<@NotNull String, @NotNull Long> queryTargetDirectory(@StringRes final int title, final @Nullable String currentStorage, final long currentDirectoryId) throws InterruptedException {
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<FileLocation> result = new AtomicReference<>();
+        final FragmentFile fragment = new FragmentFile();
+        fragment.setSelectingMode();
+        Main.runOnUiThread(this.activity(), () -> {
+            this.fragment.getChildFragmentManager().beginTransaction().add(fragment, "selecting").commitNow();
+            final View p = this.fragmentContent().getRoot();
+            new AlertDialog.Builder(this.activity())
+                    .setTitle(title).setView(fragment.content().getRoot())
+                    .setOnCancelListener(a -> latch.countDown())
+                    .setNegativeButton(R.string.cancel, (a, b) -> latch.countDown())
+                    .setPositiveButton(R.string.confirm, (a, k) -> {
+                        result.set(fragment.partList().currentLocation());
+                        latch.countDown();
+                    }).show()
+                    .getWindow().setLayout(p.getWidth(), p.getHeight());
+            fragment.content().getRoot().setLayoutParams(new FrameLayout.LayoutParams(p.getWidth(), p.getHeight()));
+            Main.runOnBackgroundThread(this.activity(), fragment::cOnConnect);
+        });
+        latch.await();
+        this.fragment.getChildFragmentManager().beginTransaction().remove(fragment).commit();
+        final FileLocation choice = result.get();
+        if (choice == null)
+            return null;
+        return Pair.ImmutablePair.makeImmutablePair(FileLocationGetter.storage(choice), FileLocationGetter.id(choice));
+    }
 }

@@ -6,8 +6,9 @@ import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-public final class FragmentFile extends SPageMainFragment<PageFileBinding> {
+public class FragmentFile extends SPageMainFragment<PageFileBinding> {
     private final @NotNull PartConnect partConnect = new PartConnect(this);
     private final @NotNull PartOptions partOptions = new PartOptions(this);
     private final @NotNull PartList partList = new PartList(this);
@@ -15,6 +16,8 @@ public final class FragmentFile extends SPageMainFragment<PageFileBinding> {
     private final @NotNull PartUpload partUpload = new PartUpload(this);
     private final @NotNull PartPreview partPreview = new PartPreview(this);
     private final @NotNull PartTask partTask = new PartTask(this);
+
+    protected final @NotNull AtomicBoolean selectingMode = new AtomicBoolean(false);
 
     public FragmentFile() {
         super();
@@ -27,9 +30,17 @@ public final class FragmentFile extends SPageMainFragment<PageFileBinding> {
         this.parts().add(this.partTask);
     }
 
+    public void setSelectingMode() {
+        this.selectingMode.set(true);
+    }
+
+    public boolean isSelectingMode() {
+        return this.selectingMode.get();
+    }
+
     @SuppressWarnings("unchecked")
     @Override
-    protected @NotNull List<SFragmentFilePart> parts() {
+    protected final @NotNull List<SFragmentFilePart> parts() {
         return (List<SFragmentFilePart>) super.parts();
     }
 

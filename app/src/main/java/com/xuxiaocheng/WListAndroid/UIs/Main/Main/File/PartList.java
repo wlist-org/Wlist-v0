@@ -68,6 +68,10 @@ public class PartList extends SFragmentFilePart {
         final PageFileBinding page = this.fragmentContent();
         page.pageFileList.setLayoutManager(new LinearLayoutManager(this.activity()));
         page.pageFileList.setHasFixedSize(true);
+        if (this.fragment.isSelectingMode()) {
+            page.pageFileUploader.setVisibility(View.GONE);
+            this.onRootPage(0);
+        }
     }
 
     @Override
@@ -198,7 +202,7 @@ public class PartList extends SFragmentFilePart {
                 }, f -> {
                     if (clickable.compareAndSet(true, false))
                         operation.accept(f);
-                });
+                }, PartList.this.fragment.isSelectingMode());
             }
         };
         this.fragmentContent().pageFileCounter.setVisibility(View.GONE);
