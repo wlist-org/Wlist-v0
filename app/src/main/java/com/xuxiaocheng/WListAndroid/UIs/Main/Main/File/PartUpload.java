@@ -12,6 +12,7 @@ import android.net.Uri;
 import android.provider.OpenableColumns;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.ImageView;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContract;
 import androidx.annotation.UiThread;
@@ -23,15 +24,19 @@ import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
 import com.xuxiaocheng.HeadLibs.Helpers.HMathHelper;
 import com.xuxiaocheng.HeadLibs.Initializers.HInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
+import com.xuxiaocheng.WList.AndroidSupports.StorageTypeGetter;
 import com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper;
+import com.xuxiaocheng.WList.Client.Operations.OperateProvidersHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Options.DuplicatePolicy;
 import com.xuxiaocheng.WList.Server.Storage.Providers.StorageConfiguration;
+import com.xuxiaocheng.WList.Server.Storage.Providers.StorageTypes;
 import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.UIs.Main.ActivityMain;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Main.PageMainAdapter;
+import com.xuxiaocheng.WListAndroid.UIs.Main.Provider.PageProvider;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.AbstractTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.UploadTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.PageTaskAdapter;
@@ -40,6 +45,7 @@ import com.xuxiaocheng.WListAndroid.Utils.ViewUtil;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileDirectoryBinding;
 import com.xuxiaocheng.WListAndroid.databinding.PageFileUploadBinding;
+import io.netty.util.internal.EmptyArrays;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
@@ -254,26 +260,29 @@ class PartUpload extends SFragmentFilePart {
     @UiThread
     @SuppressWarnings("unchecked")
     protected <C extends StorageConfiguration> void addStorage(final @NotNull ActivityMain activity) {
-//        final String[] storages = StorageTypeGetter.getAll().keySet().toArray(EmptyArrays.EMPTY_STRINGS);
-//        final AtomicInteger choice = new AtomicInteger(-1);
-//        new AlertDialog.Builder(activity).setTitle(R.string.page_file_create_storage)
-//                .setSingleChoiceItems(storages, -1, (d, w) -> choice.set(w))
-//                .setNegativeButton(R.string.cancel, null)
-//                .setPositiveButton(R.string.confirm, (d, w) -> {
-//                    if (choice.get() == -1) return;
-//                    final String identifier = storages[choice.get()];
-//                    final StorageTypes<C> type = (StorageTypes<C>) Objects.requireNonNull(StorageTypeGetter.get(identifier));
-//                    PageFileProviderConfigurations.getConfiguration(activity, type, null, configuration -> Main.runOnUiThread(activity, () -> {
-//                        final AlertDialog loading = new AlertDialog.Builder(activity)
-//                                .setTitle(R.string.page_file_create_storage).setView(this.loadingView(activity))
-//                                .setCancelable(false).show();
-//                        Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> {
-//                            try (final WListClientInterface client = this.pageFile.client()) {
-//                                OperateProvidersHelper.addProvider(client, this.pageFile.token(), configuration.getName(), type, configuration);
-//                            }
-//                        }, () -> Main.runOnUiThread(activity, loading::cancel)));
-//                    }));
-//                }).show();
+        final String[] storages = StorageTypeGetter.getAll().keySet().toArray(EmptyArrays.EMPTY_STRINGS);
+        final AtomicInteger choice = new AtomicInteger(-1);
+        new AlertDialog.Builder(activity).setTitle(R.string.page_file_create_storage)
+                .setSingleChoiceItems(storages, -1, (d, w) -> choice.set(w))
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.confirm, (d, w) -> {
+                    if (choice.get() == -1) return;
+                    final String identifier = storages[choice.get()];
+                    final StorageTypes<C> type = (StorageTypes<C>) Objects.requireNonNull(StorageTypeGetter.get(identifier));
+                    PageProvider.getConfiguration(activity, type, null, configuration -> Main.runOnUiThread(activity, () -> {
+                        final ImageView loadingView = new ImageView(activity);
+                        loadingView.setImageResource(R.drawable.loading);
+                        ViewUtil.startDrawableAnimation(loadingView);
+                        final AlertDialog loading = new AlertDialog.Builder(activity)
+                                .setTitle(R.string.page_file_create_storage).setView(loadingView)
+                                .setCancelable(false).show();
+                        Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> {
+                            try (final WListClientInterface client = this.client()) {
+                                OperateProvidersHelper.addProvider(client, this.token(), configuration.getName(), type, configuration);
+                            }
+                        }, () -> Main.runOnUiThread(activity, loading::cancel)));
+                    }));
+                }).show();
     }
 
     @UiThread

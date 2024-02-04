@@ -1,9 +1,9 @@
 package com.xuxiaocheng.WListAndroid.UIs.Main.Main.File;
 
 import androidx.annotation.UiThread;
-import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
+import com.hjq.toast.Toaster;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFileInformation;
-import com.xuxiaocheng.WListAndroid.Main;
+import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.UIs.Main.ActivityMain;
 import org.jetbrains.annotations.NotNull;
 
@@ -16,8 +16,7 @@ class PartPreview extends SFragmentFilePart {
 
     @UiThread
     protected void preview(final @NotNull ActivityMain activity, final @NotNull String storage, final @NotNull VisibleFileInformation information, final @NotNull AtomicBoolean clickable) {
-        Main.runOnBackgroundThread(activity, HExceptionWrapper.wrapRunnable(() -> {
-            throw new UnsupportedOperationException("WIP");
-        }, () -> clickable.set(true))); // TODO
+        Toaster.show(R.string.page_file_preview_unsupported); // TODO
+        clickable.set(true);
     }
 }

@@ -16,6 +16,7 @@ import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.AndroidSupports.FailureReasonGetter;
 import com.xuxiaocheng.WList.AndroidSupports.FileInformationGetter;
 import com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper;
+import com.xuxiaocheng.WList.Client.Operations.OperateProvidersHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
 import com.xuxiaocheng.WList.Commons.Beans.VisibleFailureReason;
@@ -51,10 +52,54 @@ class PartOperation extends SFragmentFilePart {
     }
 
     @UiThread
-    protected void rootOperation(final @NotNull VisibleFileInformation information, final @NotNull AtomicBoolean clickable) {
-        Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
-            throw new UnsupportedOperationException("WIP");
-        }, () -> clickable.set(true))); // TODO
+    protected void rootOperation(final @NotNull VisibleFileInformation information, final @NotNull AtomicBoolean c) {
+        final PageFileOperationBinding operationBinding = PageFileOperationBinding.inflate(this.activity().getLayoutInflater());
+        final AlertDialog modifier = new AlertDialog.Builder(this.activity())
+                .setTitle(R.string.page_file_operation).setView(operationBinding.getRoot())
+                .setOnCancelListener(d -> c.set(true))
+                .setPositiveButton(R.string.cancel, (d, w) -> c.set(true)).create();
+        operationBinding.pageFileOperationName.setText(FileInformationGetter.name(information));
+        final long size = FileInformationGetter.size(information);
+        final String unknown = this.activity().getString(R.string.unknown);
+        operationBinding.pageFileOperationSize.setText(ViewUtil.formatSizeDetail(size, unknown));
+        operationBinding.pageFileOperationCreate.setText(ViewUtil.formatTime(FileInformationGetter.createTime(information), unknown));
+        operationBinding.pageFileOperationUpdate.setText(ViewUtil.formatTime(FileInformationGetter.updateTime(information), unknown));
+        final String storage = FileInformationGetter.name(information);
+        final AtomicBoolean clickable = new AtomicBoolean(true);
+        operationBinding.pageFileOperationRename.setVisibility(View.GONE);
+        operationBinding.pageFileOperationRenameImage.setVisibility(View.GONE);
+        operationBinding.pageFileOperationMove.setVisibility(View.GONE);
+        operationBinding.pageFileOperationMoveImage.setVisibility(View.GONE);
+        operationBinding.pageFileOperationCopy.setVisibility(View.GONE);
+        operationBinding.pageFileOperationCopyImage.setVisibility(View.GONE);
+        operationBinding.pageFileOperationDownload.setVisibility(View.GONE);
+        operationBinding.pageFileOperationDownloadImage.setVisibility(View.GONE);
+//        operationBinding.pageFileOperationRename.setOnClickListener(u -> {
+//            if (!clickable.compareAndSet(true, false)) return;
+//            modifier.cancel();
+//            Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
+//                throw new UnsupportedOperationException("WIP");
+//            }, () -> clickable.set(true))); // TODO
+//        });
+//        operationBinding.pageFileOperationRenameImage.setOnClickListener(u -> operationBinding.pageFileOperationRename.performClick());
+        operationBinding.pageFileOperationTrash.setOnClickListener(u -> {
+            if (!clickable.compareAndSet(true, false)) return;
+            modifier.cancel();
+            new AlertDialog.Builder(this.activity()).setTitle(R.string.page_file_operation_trash)
+                    .setNegativeButton(R.string.cancel, null)
+                    .setNeutralButton(R.string.confirm, (d, w) -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
+                        try (final WListClientInterface client = this.client()) {
+                            OperateProvidersHelper.removeProvider(client, this.token(), storage, false);
+                        }
+                    })))
+                    .setPositiveButton(R.string.page_file_provider_delete, (d, w) -> Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
+                        try (final WListClientInterface client = this.client()) {
+                            OperateProvidersHelper.removeProvider(client, this.token(), storage, true);
+                        }
+                    }))).show();
+        });
+        operationBinding.pageFileOperationTrashImage.setOnClickListener(u -> operationBinding.pageFileOperationTrash.performClick());
+        modifier.show();
     }
 
     @UiThread
