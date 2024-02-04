@@ -27,7 +27,12 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
+// TODO
 public final class PageProvider {
+    private PageProvider() {
+        super();
+    }
+
     @SuppressWarnings("unchecked")
     @UiThread
     public static <C extends StorageConfiguration, V extends ViewBinding> void getConfiguration(final @NotNull Activity activity, final @NotNull StorageTypes<C> type, final @Nullable C old, final @NotNull @WorkerThread Consumer<@NotNull C> callback) {
@@ -53,7 +58,6 @@ public final class PageProvider {
         Pair.@NotNull ImmutablePair<@NotNull C, @NotNull Boolean> checkValid(final @NotNull Activity activity, final @NotNull V view);
     }
 
-    // TODO
     private static final @NotNull ConfigurationGetter<LanzouConfiguration, PageFileProviderLanzouBinding> Lanzou = new ConfigurationGetter<>() {
         @Override
         public @NotNull PageFileProviderLanzouBinding buildPage(final @NotNull Activity activity, final @Nullable LanzouConfiguration old) {
@@ -81,6 +85,7 @@ public final class PageProvider {
                 activity.runOnUiThread(() -> Toast.makeText(activity.getApplicationContext(), errors.toString(), Toast.LENGTH_SHORT).show());
                 return Pair.ImmutablePair.makeImmutablePair(configuration, Boolean.FALSE);
             }
+            configuration.setName(name);
             return Pair.ImmutablePair.makeImmutablePair(configuration, Boolean.TRUE);
         }
     };
