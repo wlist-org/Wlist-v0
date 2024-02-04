@@ -8,7 +8,6 @@ import androidx.annotation.WorkerThread;
 import androidx.appcompat.app.AlertDialog;
 import com.hjq.toast.Toaster;
 import com.xuxiaocheng.HeadLibs.AndroidSupport.AndroidSupporter;
-import com.xuxiaocheng.HeadLibs.DataStructures.Pair;
 import com.xuxiaocheng.HeadLibs.DataStructures.ParametersMap;
 import com.xuxiaocheng.HeadLibs.DataStructures.UnionPair;
 import com.xuxiaocheng.HeadLibs.Functions.HExceptionWrapper;
@@ -16,7 +15,6 @@ import com.xuxiaocheng.HeadLibs.Initializers.HProcessingInitializer;
 import com.xuxiaocheng.HeadLibs.Logger.HLogLevel;
 import com.xuxiaocheng.WList.AndroidSupports.FailureReasonGetter;
 import com.xuxiaocheng.WList.AndroidSupports.FileInformationGetter;
-import com.xuxiaocheng.WList.AndroidSupports.FileLocationGetter;
 import com.xuxiaocheng.WList.Client.Operations.OperateFilesHelper;
 import com.xuxiaocheng.WList.Client.WListClientInterface;
 import com.xuxiaocheng.WList.Commons.Beans.FileLocation;
@@ -28,6 +26,7 @@ import com.xuxiaocheng.WListAndroid.Main;
 import com.xuxiaocheng.WListAndroid.R;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.AbstractTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.DownloadTasksManager;
+import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.MoveTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.RenameTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.Managers.TrashTasksManager;
 import com.xuxiaocheng.WListAndroid.UIs.Main.Task.PageTaskAdapter;
@@ -90,7 +89,7 @@ class PartOperation extends SFragmentFilePart {
                                 res = OperateFilesHelper.renameDirectly(client, this.token(), current, FileInformationGetter.isDirectory(information), renamed, DuplicatePolicy.KEEP);
                             }
                             if (res.isFailure()) {
-                                Toaster.show(MessageFormat.format(this.activity().getString(R.string.page_file_operation_rename), FailureReasonGetter.toString(res.getE())));
+                                Toaster.show(MessageFormat.format(this.activity().getString(R.string.page_file_operation_rename_failure), FailureReasonGetter.toString(res.getE())));
                                 return;
                             }
                             if (res.getT().isPresent()) {
@@ -118,30 +117,37 @@ class PartOperation extends SFragmentFilePart {
         operationBinding.pageFileOperationMove.setOnClickListener(u -> {
             if (!clickable.compareAndSet(true, false)) return;
             modifier.cancel();
-            // TODO
             Main.runOnBackgroundThread(this.activity(), HExceptionWrapper.wrapRunnable(() -> {
-                final Pair.ImmutablePair<String, Long> pair = FileInformationGetter.isDirectory(information) ?
-                        this.queryTargetDirectory(R.string.page_file_operation_move, storage, FileInformationGetter.id(information)) :
-                        this.queryTargetDirectory(R.string.page_file_operation_move, null, 0);
-                if (pair == null) return;
-                final FileLocation target = new FileLocation(pair.getFirst(), pair.getSecond().longValue());
+                final FileLocation target = this.queryTargetDirectory(R.string.page_file_operation_move, FileInformationGetter.isDirectory(information) ? storage : null, FileInformationGetter.id(information));
+                if (target == null) return;
                 HLogManager.getInstance("ClientLogger").log(HLogLevel.INFO, "Moving.",
                         ParametersMap.create().add("address", this.address()).add("information", information).add("target", target));
-//                Main.runOnUiThread(this.pageFile.activity(), () -> {
-//                    final AlertDialog dialog = this.pageFile.partUpload.loadingDialog(this.pageFile.activity(), R.string.page_file_operation_move);
-//                    Main.runOnBackgroundThread(this.pageFile.activity(), HExceptionWrapper.wrapRunnable(() -> {
-//                        final AtomicBoolean queried = new AtomicBoolean(false);
-//                        final UnionPair<VisibleFileInformation, VisibleFailureReason> res = FilesAssistant.move(this.pageFile.address(), this.pageFile.username(), current, FileInformationGetter.isDirectory(information), target, Main.ClientExecutors, HExceptionWrapper.wrapPredicate(p -> {
-//                            if (queried.getAndSet(true)) return true;
-//                            return this.queryNotSupportedOperation(p);
-//                        }));
-//                        if (res == null) return;
-//                        if (res.isFailure())
-//                            Main.runOnUiThread(this.pageFile.activity(), () -> Toast.makeText(this.pageFile.activity(), FailureReasonGetter.kind(res.getE()) + FailureReasonGetter.message(res.getE()), Toast.LENGTH_SHORT).show());
-//                        else
-//                            Main.showToast(this.pageFile.activity(), R.string.page_file_operation_move_success);
-//                    }, () -> Main.runOnUiThread(this.pageFile.activity(), dialog::cancel)));
-//                });
+                final UnionPair<Optional<VisibleFileInformation>, VisibleFailureReason> res;
+                try (final WListClientInterface client = this.client()) {
+                    res = OperateFilesHelper.moveDirectly(client, this.token(), current, FileInformationGetter.isDirectory(information), target, DuplicatePolicy.KEEP);
+                }
+                if (res.isFailure()) {
+                    Toaster.show(MessageFormat.format(this.activity().getString(R.string.page_file_operation_move_failure), FailureReasonGetter.toString(res.getE())));
+                    return;
+                }
+                if (res.getT().isPresent()) {
+                    Toaster.show(R.string.page_file_operation_move_success);
+                    return;
+                }
+                final UnionPair<HProcessingInitializer.LoadingState, Throwable> state = AbstractTasksManager.managers.getLoadingState(PageTaskAdapter.Types.Move);
+                if (state == HProcessingInitializer.USuccess) {
+                    Toaster.showShort(R.string.page_file_operation_complex);
+                    MoveTasksManager.getInstance().addTask(this.activity(), new MoveTasksManager.MoveTask(new AbstractTasksManager.AbstractTask(
+                            this.address(), this.username(), ZonedDateTime.now(), FileInformationGetter.name(information), PageTaskAdapter.Types.Move),
+                            current, FileInformationGetter.isDirectory(information), target));
+                } else {
+                    if (state.isSuccess())
+                        Toaster.show(R.string.page_task_move_manager_waiting);
+                    else {
+                        Toaster.show(R.string.page_task_move_manager_failure);
+                        this.fragment.partTask().initializeManagers();
+                    }
+                }
             }));
         });
         operationBinding.pageFileOperationMoveImage.setOnClickListener(u -> operationBinding.pageFileOperationMove.performClick());
@@ -245,7 +251,7 @@ class PartOperation extends SFragmentFilePart {
     }
 
     @WorkerThread
-    public Pair.@Nullable ImmutablePair<@NotNull String, @NotNull Long> queryTargetDirectory(@StringRes final int title, final @Nullable String currentStorage, final long currentDirectoryId) throws InterruptedException {
+    public @Nullable FileLocation queryTargetDirectory(@StringRes final int title, final @Nullable String currentStorage, final long currentDirectoryId) throws InterruptedException {
         final CountDownLatch latch = new CountDownLatch(1);
         final AtomicReference<FileLocation> result = new AtomicReference<>();
         final FragmentFile fragment = new FragmentFile();
@@ -267,9 +273,6 @@ class PartOperation extends SFragmentFilePart {
         });
         latch.await();
         this.fragment.getChildFragmentManager().beginTransaction().remove(fragment).commit();
-        final FileLocation choice = result.get();
-        if (choice == null)
-            return null;
-        return Pair.ImmutablePair.makeImmutablePair(FileLocationGetter.storage(choice), FileLocationGetter.id(choice));
+        return result.get();
     }
 }

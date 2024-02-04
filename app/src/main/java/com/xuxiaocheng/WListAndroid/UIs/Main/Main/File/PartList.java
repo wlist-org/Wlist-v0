@@ -107,7 +107,8 @@ public class PartList extends SFragmentFilePart {
             page.pageFileList.setVisibility(View.VISIBLE);
         });
         HExceptionWrapper.wrapRunnable(() -> this.toPage(this.currentLocation(), this.currentLoadingUp.get().get())).run();
-        this.listenBroadcast(BroadcastAssistant.get(this.address()));
+        if (!this.fragment.isSelectingMode()) // TODO: listen
+            this.listenBroadcast(BroadcastAssistant.get(this.address()));
     }
 
     @Override

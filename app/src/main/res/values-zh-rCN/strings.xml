@@ -46,7 +46,9 @@
 	<string name="page_file_operation_rename_success">重命名成功</string>
 	<string name="page_file_operation_rename_failure">重命名失败：{0}</string>
 	<string name="page_file_operation_move_success">移动成功</string>
+	<string name="page_file_operation_move_failure">移动失败：{0}</string>
 	<string name="page_file_operation_copy_success">复制成功</string>
+	<string name="page_file_operation_copy_failure">复制失败：{0}</string>
 	<string name="page_file_operation_trash_success">删除成功</string>
 	<string name="page_file_operation_download_success">下载成功</string>
 	<string name="page_file_operation_complex">当前操作不被该存储直接支持，已作为任务模式开始</string>

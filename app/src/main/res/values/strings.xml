@@ -49,7 +49,9 @@
 	<string name="page_file_operation_rename_success">Renamed.</string>
 	<string name="page_file_operation_rename_failure">Failed to rename. {0}</string>
 	<string name="page_file_operation_move_success">Moved.</string>
+	<string name="page_file_operation_move_failure">Failed to move. {0}</string>
 	<string name="page_file_operation_copy_success">Copied.</string>
+	<string name="page_file_operation_copy_failure">Failed to copy. {0}</string>
 	<string name="page_file_operation_trash_success">Deleted.</string>
 	<string name="page_file_operation_download_success">Downloaded.</string>
 	<string name="page_file_operation_complex">This operation is not supported directly by the storage. Running in task mode.</string>
