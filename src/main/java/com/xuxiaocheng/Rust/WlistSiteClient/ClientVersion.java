@@ -23,4 +23,8 @@ public final class ClientVersion {
         ClientVersion.version = res;
         return res;
     }
+
+    public static byte getVersionInCache() {
+        return ClientVersion.version;
+    }
 }
